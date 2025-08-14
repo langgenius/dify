@@ -15,6 +15,7 @@ from typing import Any, Optional, TypedDict, cast
 
 from flask import Flask, current_app
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import (
@@ -57,6 +58,7 @@ from .output_registry import OutputRegistry
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
 from .worker import Worker
+from .worker_pool_manager import WorkerPoolManager
 
 logger = logging.getLogger(__name__)
 
@@ -146,23 +148,42 @@ class GraphEngine:
         # Capture current context variables
         context_vars = contextvars.copy_context()
 
-        # Worker threads (10 workers as specified)
+        # Dynamic worker pool management
+        self.worker_pool_manager = WorkerPoolManager(
+            min_workers=dify_config.GRAPH_ENGINE_MIN_WORKERS,
+            max_workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
+            scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
+            scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
+        )
+        initial_worker_count = self.worker_pool_manager.calculate_initial_workers(self.graph)
+
+        # Worker threads (dynamically sized)
         self.workers: list[Worker] = []
-        for i in range(10):
-            worker = Worker(
-                ready_queue=self.ready_queue,
-                event_queue=self.event_queue,
-                graph=self.graph,
-                worker_id=i,
-                flask_app=flask_app,
-                context_vars=context_vars,
-            )
+        self._worker_lock = threading.RLock()
+        self._next_worker_id = 0
+
+        # Create initial workers
+        for _ in range(initial_worker_count):
+            worker = self._create_worker(flask_app, context_vars)
             self.workers.append(worker)
+
+        logger.info(
+            "GraphEngine initialized with %d workers (min: %d, max: %d)",
+            initial_worker_count,
+            self.worker_pool_manager.min_workers,
+            self.worker_pool_manager.max_workers,
+        )
 
         # Dispatcher thread
         self.dispatcher_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._execution_complete = threading.Event()
+
+        # Dynamic scaling state
+        self._last_scale_check = time.time()
+        self._scale_check_interval = 1.0  # Check scaling every second
+        self._flask_app = flask_app
+        self._context_vars = context_vars
 
         # Execution state
         self._started = False
@@ -356,6 +377,9 @@ class GraphEngine:
             while not self._stop_event.is_set():
                 # Check for commands from external sources
                 self._check_commands()
+
+                # Check for dynamic scaling periodically
+                self._check_dynamic_scaling()
 
                 # Check for timeout
                 if time.time() - start_time > self.max_execution_time:
@@ -767,7 +791,7 @@ class GraphEngine:
             event: The container event to handle
         """
         # Trigger SGE expansion
-        pass
+        _ = event  # TODO: Implement container event handling
 
         # Expand subgraph and add new nodes to graph
         pass
@@ -940,3 +964,95 @@ class GraphEngine:
         logger.info("Received abort command for workflow %s: %s", self.workflow_id, command.reason)
         self._aborted = True
         self._stop_event.set()  # Signal all threads to stop
+
+    def _create_worker(self, flask_app: Optional[Flask], context_vars: contextvars.Context) -> Worker:
+        """Create a new worker with proper callbacks for activity tracking."""
+        worker_id = self._next_worker_id
+        self._next_worker_id += 1
+
+        def on_idle(wid: int) -> None:
+            self.worker_pool_manager.track_worker_activity(wid, is_active=False)
+
+        def on_active(wid: int) -> None:
+            self.worker_pool_manager.track_worker_activity(wid, is_active=True)
+
+        return Worker(
+            ready_queue=self.ready_queue,
+            event_queue=self.event_queue,
+            graph=self.graph,
+            worker_id=worker_id,
+            flask_app=flask_app,
+            context_vars=context_vars,
+            on_idle_callback=on_idle,
+            on_active_callback=on_active,
+        )
+
+    def _check_dynamic_scaling(self) -> None:
+        """Check and perform dynamic worker scaling if needed."""
+        current_time = time.time()
+        if current_time - self._last_scale_check < self._scale_check_interval:
+            return
+
+        self._last_scale_check = current_time
+
+        with self._worker_lock:
+            current_worker_count = len(self.workers)
+            queue_depth = self.ready_queue.qsize()
+            executing_count = self._executing_nodes_manager.count()
+
+            # Check for scale up
+            if self.worker_pool_manager.should_scale_up(current_worker_count, queue_depth, executing_count):
+                self._scale_up_workers()
+
+            # Check for scale down
+            idle_workers = self.worker_pool_manager.get_idle_workers(current_time)
+            if idle_workers:
+                self._scale_down_workers(idle_workers)
+
+    def _scale_up_workers(self) -> None:
+        """Add a new worker to the pool."""
+        with self._worker_lock:
+            current_count = len(self.workers)
+            if current_count >= self.worker_pool_manager.max_workers:
+                return
+
+            # Create and start new worker
+            worker = self._create_worker(self._flask_app, self._context_vars)
+            worker.start()
+            self.workers.append(worker)
+
+            logger.info(
+                "Scaled up workers: %d -> %d (queue_depth: %d)",
+                current_count,
+                current_count + 1,
+                self.ready_queue.qsize(),
+            )
+
+    def _scale_down_workers(self, worker_ids: list[int]) -> None:
+        """Remove idle workers from the pool."""
+        with self._worker_lock:
+            current_count = len(self.workers)
+            if current_count <= self.worker_pool_manager.min_workers:
+                return
+
+            # Find and stop idle workers
+            workers_to_remove: list[Worker] = []
+            for worker in self.workers:
+                if worker.worker_id in worker_ids:
+                    if current_count - len(workers_to_remove) > self.worker_pool_manager.min_workers:
+                        worker.stop()
+                        workers_to_remove.append(worker)
+
+            # Remove stopped workers
+            for worker in workers_to_remove:
+                self.workers.remove(worker)
+                if worker.is_alive():
+                    worker.join(timeout=1.0)
+
+            if workers_to_remove:
+                logger.info(
+                    "Scaled down workers: %d -> %d (removed %d idle workers)",
+                    current_count,
+                    len(self.workers),
+                    len(workers_to_remove),
+                )
