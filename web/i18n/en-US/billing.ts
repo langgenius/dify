@@ -17,7 +17,10 @@ const translation = {
   viewBilling: 'Manage billing and subscriptions',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {
-    title: 'Pricing that powers your AI journey',
+    title: {
+      plans: 'plans',
+      description: 'Select the plan that best fits your team\'s needs.',
+    },
     freeTrialTipPrefix: 'Sign up and get a ',
     freeTrialTip: 'free trial of 200 OpenAI calls. ',
     freeTrialTipSuffix: 'No credit card required',
@@ -33,7 +36,7 @@ const translation = {
     year: 'year',
     save: 'Save ',
     free: 'Free',
-    annualBilling: 'Annual Billing',
+    annualBilling: 'Bill Annually Save {{percent}}%',
     comparePlanAndFeatures: 'Compare plans & features',
     priceTip: 'per workspace/',
     currentPlan: 'Current Plan',

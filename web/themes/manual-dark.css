@@ -69,4 +69,5 @@ html[data-theme="dark"] {
     --color-pipeline-template-card-hover-bg: linear-gradient(0deg, rgba(58, 58, 64, 1) 60.27%, rgba(58, 58, 64, 0) 100%);
     --color-pipeline-add-documents-title-bg: linear-gradient(92deg, rgba(54, 191, 250, 1) 0%, rgba(41, 109, 255, 1) 97.78%);
     --color-background-gradient-bg-fill-chat-bubble-bg-3: #27314d;
+    --color-billing-plan-title-bg: linear-gradient(95deg, #0A68FF 29.47%, #03F 105.31%);
 }
