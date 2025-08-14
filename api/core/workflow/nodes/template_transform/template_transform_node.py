@@ -56,7 +56,7 @@ class TemplateTransformNode(Node):
 
     def _run(self) -> NodeRunResult:
         # Get variables
-        variables = {}
+        variables: dict[str, Any] = {}
         for variable_selector in self._node_data.variables:
             variable_name = variable_selector.variable
             value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)

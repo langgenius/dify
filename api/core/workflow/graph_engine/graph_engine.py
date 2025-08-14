@@ -167,7 +167,7 @@ class GraphEngine:
             worker = self._create_worker(flask_app, context_vars)
             self.workers.append(worker)
 
-        logger.info(
+        logger.debug(
             "GraphEngine initialized with %d workers (min: %d, max: %d)",
             initial_worker_count,
             self.worker_pool_manager.min_workers,
@@ -961,7 +961,7 @@ class GraphEngine:
         Args:
             command: The abort command
         """
-        logger.info("Received abort command for workflow %s: %s", self.workflow_id, command.reason)
+        logger.debug("Received abort command for workflow %s: %s", self.workflow_id, command.reason)
         self._aborted = True
         self._stop_event.set()  # Signal all threads to stop
 
@@ -1021,7 +1021,7 @@ class GraphEngine:
             worker.start()
             self.workers.append(worker)
 
-            logger.info(
+            logger.debug(
                 "Scaled up workers: %d -> %d (queue_depth: %d)",
                 current_count,
                 current_count + 1,
@@ -1050,7 +1050,7 @@ class GraphEngine:
                     worker.join(timeout=1.0)
 
             if workers_to_remove:
-                logger.info(
+                logger.debug(
                     "Scaled down workers: %d -> %d (removed %d idle workers)",
                     current_count,
                     len(self.workers),
