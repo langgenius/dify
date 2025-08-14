@@ -94,10 +94,12 @@ jobs:
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm run lint
 
   docker-compose-template:
