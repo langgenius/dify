@@ -421,7 +421,8 @@ class AliyunDataTrace(BaseTraceInstance):
         )
 
     def add_workflow_span(
-        self, trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo, links: Sequence[Link]):
+        self, trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo, links: Sequence[Link]
+    ):
         message_span_id = None
         if trace_info.message_id:
             message_span_id = convert_to_span_id(trace_info.message_id, "message")

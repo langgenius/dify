@@ -59,6 +59,7 @@ def extract_external_trace_id_from_args(args: Mapping[str, Any]) -> dict:
         return {"external_trace_id": trace_id}
     return {}
 
+
 def get_trace_id_from_otel_context() -> Optional[str]:
     """
     Retrieve the current trace ID from the active OpenTelemetry trace context.
@@ -69,6 +70,7 @@ def get_trace_id_from_otel_context() -> Optional[str]:
     try:
         from opentelemetry.trace import SpanContext, get_current_span
         from opentelemetry.trace.span import INVALID_TRACE_ID
+
         span = get_current_span()
         if not span:
             return None

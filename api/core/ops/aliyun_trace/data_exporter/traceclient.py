@@ -166,17 +166,16 @@ class SpanBuilder:
         )
         return span
 
+
 def create_link(trace_id_str: str) -> Link:
     placeholder_span_id = 0x0000000000000000
     trace_id = int(trace_id_str, 16)
     span_context = SpanContext(
-        trace_id=trace_id,
-        span_id=placeholder_span_id,
-        is_remote=False,
-        trace_flags=TraceFlags.SAMPLED
+        trace_id=trace_id, span_id=placeholder_span_id, is_remote=False, trace_flags=TraceFlags(TraceFlags.SAMPLED)
     )
 
     return Link(span_context)
+
 
 def generate_span_id() -> int:
     span_id = random.getrandbits(64)
