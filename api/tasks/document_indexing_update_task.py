@@ -73,7 +73,10 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     finally:
         db.session.close()
 
-def document_indexing_update_task_sync(dataset: Dataset, document: Document, old_segments: list[DocumentSegment], update_success: bool):
+
+def document_indexing_update_task_sync(
+    dataset: Dataset, document: Document, old_segments: list[DocumentSegment], update_success: bool
+):
     if not old_segments:
         return
     try:
