@@ -1153,7 +1153,7 @@ class WorkflowDraftVariable(Base):
             value: The Segment object to store as the variable's value.
         """
         self.__value = value
-        self.value = json.dumps(value, cls=variable_utils.SegmentJSONEncoder)
+        self.value = variable_utils.dumps_with_segments(value)
         self.value_type = value.value_type
 
     def get_node_id(self) -> str | None:
