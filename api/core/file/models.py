@@ -94,6 +94,7 @@ class File(BaseModel):
     def to_dict(self) -> Mapping[str, str | int | None]:
         # Ensure all values are JSON serializable
         return {
+            "dify_model_identity": self.dify_model_identity,
             "id": self.id,
             "tenant_id": self.tenant_id,
             "type": self.type.value if self.type else None,
