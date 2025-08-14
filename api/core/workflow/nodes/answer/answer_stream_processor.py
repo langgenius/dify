@@ -53,7 +53,9 @@ class AnswerStreamProcessor(StreamProcessor):
                 stream_events.append(event)
             elif isinstance(event, (NodeRunSucceededEvent, NodeRunExceptionEvent)):
                 complete_events.append(event)
-            elif isinstance(event, (ParallelBranchRunStartedEvent, ParallelBranchRunSucceededEvent, ParallelBranchRunFailedEvent)):
+            elif isinstance(
+                event, (ParallelBranchRunStartedEvent, ParallelBranchRunSucceededEvent, ParallelBranchRunFailedEvent)
+            ):
                 parallel_events.append(event)
             else:
                 other_events.append(event)
@@ -73,11 +75,11 @@ class AnswerStreamProcessor(StreamProcessor):
         # 处理完成事件
         for event in complete_events:
             node_id = event.route_node_state.node_id
-            node_status[node_id] = 'completed'
+            node_status[node_id] = "completed"
 
         # 获取依赖关系
         dependencies = {}
-        if hasattr(self.generate_routes, 'answer_dependencies'):
+        if hasattr(self.generate_routes, "answer_dependencies"):
             dependencies = self.generate_routes.answer_dependencies.copy()
 
         logger.debug(f"依赖关系: {dependencies}")
@@ -101,8 +103,8 @@ class AnswerStreamProcessor(StreamProcessor):
                 new_dependencies[node_id].extend(deps)
 
         # 添加特殊规则：所有answer节点依赖于所有if-else节点
-        ifelse_nodes = [node_id for node_id in all_node_ids if node_id.startswith('if-else-')]
-        answer_nodes = [node_id for node_id in all_node_ids if node_id.startswith('answer-')]
+        ifelse_nodes = [node_id for node_id in all_node_ids if node_id.startswith("if-else-")]
+        answer_nodes = [node_id for node_id in all_node_ids if node_id.startswith("answer-")]
 
         for answer_node in answer_nodes:
             for ifelse_node in ifelse_nodes:
@@ -130,7 +132,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
         while queue:
             # 优先处理if-else节点
-            ifelse_nodes = [node_id for node_id in queue if node_id.startswith('if-else-')]
+            ifelse_nodes = [node_id for node_id in queue if node_id.startswith("if-else-")]
             if ifelse_nodes:
                 node_id = ifelse_nodes[0]
                 queue.remove(node_id)
@@ -153,9 +155,12 @@ class AnswerStreamProcessor(StreamProcessor):
         # 按照排序处理节点
         for node_id in sorted_nodes:
             # 处理该节点的流事件
-            node_stream_events = [e for e in stream_events if
-                                 (e.route_node_state.node_id == node_id) or
-                                 (e.from_variable_selector and e.from_variable_selector[0] == node_id)]
+            node_stream_events = [
+                e
+                for e in stream_events
+                if (e.route_node_state.node_id == node_id)
+                or (e.from_variable_selector and e.from_variable_selector[0] == node_id)
+            ]
 
             for event in node_stream_events:
                 if event.in_iteration_id or event.in_loop_id:
@@ -213,7 +218,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
         # 获取依赖关系
         dependencies = {}
-        if hasattr(self.generate_routes, 'answer_dependencies'):
+        if hasattr(self.generate_routes, "answer_dependencies"):
             # 反转依赖关系，因为我们需要被依赖的节点先处理
             # 例如，如果answer依赖于answer2，那么answer2应该先处理
             for node_id, deps in self.generate_routes.answer_dependencies.items():
@@ -270,7 +275,11 @@ class AnswerStreamProcessor(StreamProcessor):
                 node_id_to_event[source_node_id] = event
 
         # 获取依赖关系
-        dependencies = self.generate_routes.answer_dependencies.copy() if hasattr(self.generate_routes, 'answer_dependencies') else {}
+        dependencies = (
+            self.generate_routes.answer_dependencies.copy()
+            if hasattr(self.generate_routes, "answer_dependencies")
+            else {}
+        )
 
         # 创建依赖计数字典
         dep_counts = {node_id: len(deps) for node_id, deps in dependencies.items()}
@@ -281,8 +290,7 @@ class AnswerStreamProcessor(StreamProcessor):
                 dep_counts[node_id] = 0
 
         # 创建一个没有依赖的节点列表
-        no_deps = [node_id for node_id, count in dep_counts.items()
-                  if count == 0 and node_id in node_id_to_event]
+        no_deps = [node_id for node_id, count in dep_counts.items() if count == 0 and node_id in node_id_to_event]
 
         # 按照依赖关系排序节点
         ordered_nodes = []
@@ -360,7 +368,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
                 # Find the latest execution state of the parent node in the current run
                 parent_node_run_state = None
-                if self.node_run_state and hasattr(self.node_run_state, 'node_state_mapping'):
+                if self.node_run_state and hasattr(self.node_run_state, "node_state_mapping"):
                     for state in self.node_run_state.node_state_mapping.values():
                         if state.node_id == parent_node_id:
                             parent_node_run_state = state
@@ -385,7 +393,9 @@ class AnswerStreamProcessor(StreamProcessor):
                     run_result = parent_node_run_state.node_run_result
                     chosen_handle = run_result.edge_source_handle if run_result else None
                     required_handle = edge.run_condition.branch_identify if edge.run_condition else None
-                    print(f"[DEBUG] 分支节点 {parent_node_id} 选择的分支: {chosen_handle}, 需要的分支: {required_handle}")
+                    print(
+                        f"[DEBUG] 分支节点 {parent_node_id} 选择的分支: {chosen_handle}, 需要的分支: {required_handle}"
+                    )
 
                     # If the chosen branch does not match the path we are traversing, this dependency is not met
                     if chosen_handle and required_handle and chosen_handle != required_handle:
@@ -476,7 +486,6 @@ class AnswerStreamProcessor(StreamProcessor):
                 print(f"[DEBUG] 更新节点 {answer_node_id} 的路由位置: {self.route_position[answer_node_id]}")
         print("[DEBUG] _generate_stream_outputs_when_node_finished 完成")
 
-
     def _get_stream_out_answer_node_ids(self, event: NodeRunStreamChunkEvent) -> list[str]:
         """
         Is stream out support
@@ -498,7 +507,7 @@ class AnswerStreamProcessor(StreamProcessor):
         ordered_answer_nodes = []
 
         # 检查是否有依赖关系信息
-        if hasattr(self.generate_routes, 'answer_dependencies') and self.generate_routes.answer_dependencies:
+        if hasattr(self.generate_routes, "answer_dependencies") and self.generate_routes.answer_dependencies:
             # 获取依赖关系 - 注意这里的依赖关系是反向的，即被依赖的节点列表
             # 例如，如果answer依赖于answer2，那么dependencies中是answer: ['answer2']
             dependencies = self.generate_routes.answer_dependencies.copy()
@@ -528,8 +537,9 @@ class AnswerStreamProcessor(StreamProcessor):
             print(f"[DEBUG] 依赖计数: {dep_counts}")
 
             # 创建一个没有依赖的节点列表
-            no_deps = [node_id for node_id, count in dep_counts.items()
-                      if count == 0 and node_id in self.route_position.keys()]
+            no_deps = [
+                node_id for node_id, count in dep_counts.items() if count == 0 and node_id in self.route_position.keys()
+            ]
 
             print(f"[DEBUG] 初始无依赖节点列表: {no_deps}")
 
@@ -589,7 +599,11 @@ class AnswerStreamProcessor(StreamProcessor):
 
                 # check chunk node id is before current node id or equal to current node id
                 # 修改为检查value_selector的第一个元素（节点ID）是否等于stream_output_value_selector的第一个元素
-                if not value_selector or not stream_output_value_selector or value_selector[0] != stream_output_value_selector[0]:
+                if (
+                    not value_selector
+                    or not stream_output_value_selector
+                    or value_selector[0] != stream_output_value_selector[0]
+                ):
                     print(f"[DEBUG] 跳过节点 {answer_node_id}，变量选择器不匹配")
                     continue
 
