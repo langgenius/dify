@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import cn from '@/utils/classnames'
 
 type TabProps<T> = {
-  Icon: React.ComponentType<any>
+  Icon: React.ComponentType<{ isActive: boolean }>
   value: T
   label: string
   isActive: boolean
@@ -22,14 +22,18 @@ const Tab = <T,>({
 
   return (
     <div
-      className={cn(
-        'flex cursor-pointer items-center justify-center gap-x-2 px-5 py-3 text-text-secondary',
-        isActive && 'text-saas-dify-blue-accessible',
-      )}
+      className='flex cursor-pointer items-center justify-center gap-x-2 px-5 py-3'
       onClick={handleClick}
     >
-      <Icon className='size-4' />
-      <span className='system-xl-semibold'>{label}</span>
+      <Icon isActive={isActive} />
+      <span
+        className={cn(
+          'system-xl-semibold text-text-secondary',
+          isActive && 'text-saas-dify-blue-accessible',
+        )}
+      >
+        {label}
+      </span>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import React from 'react'
 import type { Category } from '../index'
 import { useTranslation } from 'react-i18next'
-import { Ri24HoursFill, RiTerminalBoxFill } from '@remixicon/react'
+import { Cloud, SelfHosted } from '../assets'
 import Tab from './tab'
 import Divider from '@/app/components/base/divider'
 import type { PlanRange } from './plan-range-switcher'
@@ -27,12 +27,12 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
     cloud: {
       value: 'cloud' as Category,
       label: t('billing.plansCommon.cloud'),
-      Icon: Ri24HoursFill,
+      Icon: Cloud,
     },
     self: {
       value: 'self' as Category,
       label: t('billing.plansCommon.self'),
-      Icon: RiTerminalBoxFill,
+      Icon: SelfHosted,
     },
   }
 
