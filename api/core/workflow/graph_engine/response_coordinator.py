@@ -301,8 +301,10 @@ class ResponseStreamCoordinator:
                     self.registry.close_stream(event.selector)
                 return self.try_flush()
             elif isinstance(event, NodeRunSucceededEvent):
-                for variable_name, variable_value in event.node_run_result.outputs.items():
-                    self.registry.set_scalar((event.node_id, variable_name), variable_value)
+                # Skip cause we share the same variable pool.
+                #
+                # for variable_name, variable_value in event.node_run_result.outputs.items():
+                #     self.registry.set_scalar((event.node_id, variable_name), variable_value)
                 return self.try_flush()
         return []
 
@@ -314,7 +316,28 @@ class ResponseStreamCoordinator:
         chunk: str,
         is_final: bool = False,
     ) -> NodeRunStreamChunkEvent:
-        """Create a stream chunk event with consistent structure."""
+        """Create a stream chunk event with consistent structure.
+
+        For selectors with special prefixes (sys, env, conversation), we use the
+        active response node's information since these are not actual node IDs.
+        """
+        # Check if this is a special selector that doesn't correspond to a node
+        if selector and selector[0] not in self.graph.nodes and self.active_session:
+            # Use the active response node for special selectors
+            response_node = self.graph.nodes[self.active_session.node_id]
+            return NodeRunStreamChunkEvent(
+                id=execution_id,
+                node_id=response_node.id,
+                node_type=response_node.node_type,
+                selector=selector,
+                chunk=chunk,
+                is_final=is_final,
+                # Legacy fields
+                chunk_content=chunk,
+                from_variable_selector=list(selector),
+            )
+
+        # Standard case: selector refers to an actual node
         node = self.graph.nodes[node_id]
         return NodeRunStreamChunkEvent(
             id=execution_id,
@@ -329,24 +352,54 @@ class ResponseStreamCoordinator:
         )
 
     def _process_variable_segment(self, segment: VariableSegment) -> tuple[Sequence[NodeRunStreamChunkEvent], bool]:
-        """Process a variable segment. Returns (events, is_complete)."""
+        """Process a variable segment. Returns (events, is_complete).
 
+        Handles both regular node selectors and special system selectors (sys, env, conversation).
+        For special selectors, we attribute the output to the active response node.
+        """
         events: list[NodeRunStreamChunkEvent] = []
-        source_node_id = segment.selector[0]
+        source_selector_prefix = segment.selector[0] if segment.selector else ""
         is_complete = False
+
+        # Determine which node to attribute the output to
+        # For special selectors (sys, env, conversation), use the active response node
+        # For regular selectors, use the source node
+        if self.active_session and source_selector_prefix not in self.graph.nodes:
+            # Special selector - use active response node
+            output_node_id = self.active_session.node_id
+        else:
+            # Regular node selector
+            output_node_id = source_selector_prefix
+        execution_id = self._get_or_create_execution_id(output_node_id)
 
         if self.registry.has_unread(segment.selector):
             # Stream all available chunks
-            source_exec_id = self._get_or_create_execution_id(source_node_id)
-
             # Check if this is the last chunk by looking ahead
             stream_closed = self.registry.stream_closed(segment.selector)
 
             while self.registry.has_unread(segment.selector):
                 if event := self.registry.pop_chunk(segment.selector):
-                    # The event already contains all necessary information
-                    # We can use it directly in the RSC
-                    events.append(event)
+                    # For special selectors, we need to update the event to use
+                    # the active response node's information
+                    if self.active_session and source_selector_prefix not in self.graph.nodes:
+                        response_node = self.graph.nodes[self.active_session.node_id]
+                        # Create a new event with the response node's information
+                        # but keep the original selector
+                        updated_event = NodeRunStreamChunkEvent(
+                            id=execution_id,
+                            node_id=response_node.id,
+                            node_type=response_node.node_type,
+                            selector=event.selector,  # Keep original selector
+                            chunk=event.chunk,
+                            is_final=event.is_final,
+                            # Legacy fields
+                            chunk_content=event.chunk_content,
+                            from_variable_selector=event.from_variable_selector,
+                        )
+                        events.append(updated_event)
+                    else:
+                        # Regular node selector - use event as is
+                        events.append(event)
 
             # Check if stream is closed to determine if segment is complete
             if stream_closed:
@@ -354,15 +407,16 @@ class ResponseStreamCoordinator:
 
         elif value := self.registry.get_scalar(segment.selector):
             # Process scalar value
-            source_exec_id = self._get_or_create_execution_id(source_node_id)
-
+            is_last_segment = bool(
+                self.active_session and self.active_session.index == len(self.active_session.template.segments) - 1
+            )
             events.append(
                 self._create_stream_chunk_event(
-                    node_id=source_node_id,
-                    execution_id=source_exec_id,
+                    node_id=output_node_id,
+                    execution_id=execution_id,
                     selector=segment.selector,
                     chunk=value.markdown,
-                    is_final=True,
+                    is_final=is_last_segment,
                 )
             )
             is_complete = True
@@ -376,12 +430,14 @@ class ResponseStreamCoordinator:
 
         # Use get_or_create_execution_id to ensure we have a consistent ID
         execution_id = self._get_or_create_execution_id(current_response_node.id)
+
+        is_last_segment = self.active_session.index == len(self.active_session.template.segments)
         event = self._create_stream_chunk_event(
             node_id=current_response_node.id,
             execution_id=execution_id,
             selector=[current_response_node.id, "answer"],  # FIXME(-LAN-)
             chunk=segment.text,
-            is_final=True,
+            is_final=is_last_segment,
         )
         return [event]
 
@@ -401,9 +457,10 @@ class ResponseStreamCoordinator:
 
                 if isinstance(segment, VariableSegment):
                     # Check if the source node for this variable is skipped
-                    source_node_id = segment.selector[0]
-                    if source_node_id in self.graph.nodes:
-                        source_node = self.graph.nodes[source_node_id]
+                    # Only check for actual nodes, not special selectors (sys, env, conversation)
+                    source_selector_prefix = segment.selector[0] if segment.selector else ""
+                    if source_selector_prefix in self.graph.nodes:
+                        source_node = self.graph.nodes[source_selector_prefix]
 
                         if source_node.state == NodeState.SKIPPED:
                             # Skip this variable segment if the source node is skipped

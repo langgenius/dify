@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import pytest
 
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.output_registry import OutputRegistry
 from core.workflow.graph_events.node import NodeRunStreamChunkEvent
@@ -9,7 +10,8 @@ from core.workflow.graph_events.node import NodeRunStreamChunkEvent
 
 class TestOutputRegistry:
     def test_scalar_operations(self):
-        registry = OutputRegistry()
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
 
         # Test setting and getting scalar
         registry.set_scalar(["node1", "output"], "test_value")
@@ -22,7 +24,8 @@ class TestOutputRegistry:
         assert registry.get_scalar(["non_existent"]) is None
 
     def test_stream_operations(self):
-        registry = OutputRegistry()
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
 
         # Create test events
         event1 = NodeRunStreamChunkEvent(
@@ -64,7 +67,8 @@ class TestOutputRegistry:
         assert registry.has_unread(["node1", "stream"]) is False
 
     def test_stream_closing(self):
-        registry = OutputRegistry()
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
 
         # Test stream is not closed initially
         assert registry.stream_closed(["node1", "stream"]) is False
@@ -88,7 +92,8 @@ class TestOutputRegistry:
     def test_thread_safety(self):
         import threading
 
-        registry = OutputRegistry()
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
         results = []
 
         def append_chunks(thread_id: int):

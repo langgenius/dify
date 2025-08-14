@@ -79,10 +79,10 @@ class OutputRegistry:
     All operations are thread-safe using internal locking.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, variable_pool: VariablePool) -> None:
         """Initialize empty registry with thread-safe storage."""
         self._lock = RLock()
-        self._scalars = VariablePool()
+        self._scalars = variable_pool
         self._streams: dict[tuple, Stream] = {}
 
     def _selector_to_key(self, selector: Sequence[str]):

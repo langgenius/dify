@@ -129,7 +129,7 @@ class GraphEngine:
         self.state_lock = threading.RLock()
 
         # Subsystems
-        self.output_registry = OutputRegistry()
+        self.output_registry = OutputRegistry(self.graph_runtime_state.variable_pool)
         self.response_coordinator = ResponseStreamCoordinator(registry=self.output_registry, graph=self.graph)
 
         # Worker threads (10 workers as specified)
@@ -461,7 +461,6 @@ class GraphEngine:
             event: The node succeeded event to handle
         """
         node = self.graph.nodes[event.node_id]
-
         # Store outputs and notify RSC
         self._store_node_outputs(event)
         self._forward_event_to_rsc(event)
@@ -478,10 +477,10 @@ class GraphEngine:
         if event.node_id in self._node_retry_tracker:
             del self._node_retry_tracker[event.node_id]
 
-        self._collect_event(event)
-
         if node.execution_type == NodeExecutionType.RESPONSE:
             self.graph_runtime_state.outputs.update(event.node_run_result.outputs)
+
+        self._collect_event(event)
 
     def _store_node_outputs(self, event: NodeRunSucceededEvent) -> None:
         """

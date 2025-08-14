@@ -3,6 +3,7 @@
 from unittest.mock import Mock
 
 from core.variables import StringSegment
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import NodeState, NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.output_registry import OutputRegistry
@@ -38,8 +39,9 @@ class TestResponseStreamCoordinator:
         # Set up graph nodes dictionary
         graph.nodes = {"skipped_node": skipped_node, "active_node": active_node, "response_node": response_node}
 
-        # Create output registry
-        registry = OutputRegistry()
+        # Create output registry with variable pool
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
 
         # Add some test data to registry for the active node
         registry.set_scalar(("active_node", "output"), StringSegment(value="Active output"))
@@ -102,8 +104,9 @@ class TestResponseStreamCoordinator:
         # Set up graph nodes dictionary
         graph.nodes = {"node1": active_node1, "node2": active_node2, "response_node": response_node}
 
-        # Create output registry
-        registry = OutputRegistry()
+        # Create output registry with variable pool
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
 
         # Add test data to registry
         registry.set_scalar(("node1", "output"), StringSegment(value="Output 1"))
@@ -176,8 +179,9 @@ class TestResponseStreamCoordinator:
             "response_node": response_node,
         }
 
-        # Create output registry
-        registry = OutputRegistry()
+        # Create output registry with variable pool
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
 
         # Add data only for active node
         registry.set_scalar(("active", "result"), StringSegment(value="Active Result"))
@@ -237,8 +241,9 @@ class TestResponseStreamCoordinator:
         # Set up graph nodes dictionary
         graph.nodes = {"skip1": skipped_node1, "skip2": skipped_node2, "response_node": response_node}
 
-        # Create output registry (empty since nodes are skipped)
-        registry = OutputRegistry()
+        # Create output registry (empty since nodes are skipped) with variable pool
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
 
         # Create RSC instance
         rsc = ResponseStreamCoordinator(registry=registry, graph=graph)
@@ -262,6 +267,80 @@ class TestResponseStreamCoordinator:
         # Should only have the final text segment
         assert len(events) == 1
         assert events[0].chunk == "Final text"
+
+        # Session should be complete
+        assert session.is_complete()
+
+    def test_special_prefix_selectors(self):
+        """Test that special prefix selectors (sys, env, conversation) are handled correctly."""
+        # Create mock graph
+        graph = Mock(spec=Graph)
+
+        # Create response node
+        response_node = Mock(spec=AnswerNode)
+        response_node.id = "response_node"
+        response_node.node_type = NodeType.ANSWER
+
+        # Set up graph nodes dictionary (no sys, env, conversation nodes)
+        graph.nodes = {"response_node": response_node}
+
+        # Create output registry with special selector data and variable pool
+        variable_pool = VariablePool()
+        registry = OutputRegistry(variable_pool)
+        registry.set_scalar(("sys", "user_id"), StringSegment(value="user123"))
+        registry.set_scalar(("env", "api_key"), StringSegment(value="key456"))
+        registry.set_scalar(("conversation", "id"), StringSegment(value="conv789"))
+
+        # Create RSC instance
+        rsc = ResponseStreamCoordinator(registry=registry, graph=graph)
+
+        # Create template with special selectors
+        template = Template(
+            segments=[
+                TextSegment(text="User: "),
+                VariableSegment(selector=["sys", "user_id"]),
+                TextSegment(text=", API: "),
+                VariableSegment(selector=["env", "api_key"]),
+                TextSegment(text=", Conv: "),
+                VariableSegment(selector=["conversation", "id"]),
+            ]
+        )
+
+        # Create and set active session
+        session = ResponseSession(node_id="response_node", template=template, index=0)
+        rsc.active_session = session
+
+        # Execute try_flush
+        events = rsc.try_flush()
+
+        # Should have all segments processed
+        assert len(events) == 6
+
+        # Check text segments
+        assert events[0].chunk == "User: "
+        assert events[0].node_id == "response_node"
+
+        # Check sys selector - should use response node's info
+        assert events[1].chunk == "user123"
+        assert events[1].selector == ["sys", "user_id"]
+        assert events[1].node_id == "response_node"
+        assert events[1].node_type == NodeType.ANSWER
+
+        assert events[2].chunk == ", API: "
+
+        # Check env selector - should use response node's info
+        assert events[3].chunk == "key456"
+        assert events[3].selector == ["env", "api_key"]
+        assert events[3].node_id == "response_node"
+        assert events[3].node_type == NodeType.ANSWER
+
+        assert events[4].chunk == ", Conv: "
+
+        # Check conversation selector - should use response node's info
+        assert events[5].chunk == "conv789"
+        assert events[5].selector == ["conversation", "id"]
+        assert events[5].node_id == "response_node"
+        assert events[5].node_type == NodeType.ANSWER
 
         # Session should be complete
         assert session.is_complete()
