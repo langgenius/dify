@@ -145,6 +145,8 @@ const translation = {
     addMoreModel: 'Go to settings to add more models',
     settingsLink: 'Model Provider Settings',
     capabilities: 'MultiModal Capabilities',
+    unAuthorized: 'Unauthorized',
+    authRemoved: 'Auth removed',
   },
   menus: {
     status: 'beta',

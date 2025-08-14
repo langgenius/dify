@@ -43,3 +43,13 @@ export const useDeleteModelCredential = (providerName: string) => {
     }),
   })
 }
+
+export const useSetModelCredentialDefault = (providerName: string) => {
+  return useMutation({
+    mutationFn: (credentialId: string) => post<{ result: string }>(`/workspaces/current/model-providers/${providerName}/credentials/switch`, {
+      body: {
+        credential_id: credentialId,
+      },
+    }),
+  })
+}

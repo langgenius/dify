@@ -80,13 +80,13 @@ export const useProviderCredentialsAndLoadBalancing = (
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   credentialId?: string,
 ) => {
-  const { data: predefinedFormSchemasValue, mutate: mutatePredefined } = useSWR(
+  const { data: predefinedFormSchemasValue, mutate: mutatePredefined, isLoading: isPredefinedLoading } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && credentialId)
       ? `/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`
       : null,
     fetchModelProviderCredentials,
   )
-  const { data: customFormSchemasValue, mutate: mutateCustomized } = useSWR(
+  const { data: customFormSchemasValue, mutate: mutateCustomized, isLoading: isCustomizedLoading } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields && credentialId)
       ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`
       : null,
@@ -122,6 +122,7 @@ export const useProviderCredentialsAndLoadBalancing = (
       : customFormSchemasValue
     )?.load_balancing,
     mutate,
+    isLoading: isPredefinedLoading || isCustomizedLoading,
   }
   // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
 }

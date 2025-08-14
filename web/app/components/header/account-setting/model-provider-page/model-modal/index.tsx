@@ -47,6 +47,7 @@ import type {
 } from '@/app/components/base/form/types'
 import { useModelFormSchemas } from '../model-auth/hooks'
 import type { Credential } from '../declarations'
+import Loading from '@/app/components/base/loading'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -70,6 +71,7 @@ const ModelModal: FC<ModelModalProps> = ({
     credentials: formSchemasValue,
     loadBalancing: originalConfig,
     mutate,
+    isLoading,
   } = useProviderCredentialsAndLoadBalancing(
     provider.provider,
     configurateMethod,
@@ -185,7 +187,7 @@ const ModelModal: FC<ModelModalProps> = ({
       )
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
+        // mutate()
         onSave()
         onCancel()
       }
@@ -211,21 +213,32 @@ const ModelModal: FC<ModelModalProps> = ({
               </div>
 
               <div className='max-h-[calc(100vh-320px)] overflow-y-auto'>
-                <AuthForm
-                  formSchemas={formSchemas.map((formSchema) => {
-                    return {
-                      ...formSchema,
-                      name: formSchema.variable,
-                      showRadioUI: formSchema.type === FormTypeEnum.radio,
-                    }
-                  }) as FormSchema[]}
-                  defaultValues={{
-                    ...formSchemasValue,
-                    __authorization_name__: credential?.credential_name,
-                  }}
-                  inputClassName='justify-start'
-                  ref={formRef}
-                />
+                {
+                  isLoading && (
+                    <div className='flex items-center justify-center'>
+                      <Loading />
+                    </div>
+                  )
+                }
+                {
+                  !isLoading && (
+                    <AuthForm
+                      formSchemas={formSchemas.map((formSchema) => {
+                        return {
+                          ...formSchema,
+                          name: formSchema.variable,
+                          showRadioUI: formSchema.type === FormTypeEnum.radio,
+                        }
+                      }) as FormSchema[]}
+                      defaultValues={{
+                        ...formSchemasValue,
+                        __authorization_name__: credential?.credential_name,
+                      }}
+                      inputClassName='justify-start'
+                      ref={formRef}
+                    />
+                  )
+                }
                 {
                   !!draftConfig && (
                     <>

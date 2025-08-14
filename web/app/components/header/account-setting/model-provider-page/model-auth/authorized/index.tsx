@@ -22,7 +22,10 @@ import Confirm from '@/app/components/base/confirm'
 import Item from './item'
 import { useToastContext } from '@/app/components/base/toast'
 import type { Credential } from '../../declarations'
-import { useDeleteModelCredential } from '@/service/use-models'
+import {
+  useDeleteModelCredential,
+  useSetModelCredentialDefault,
+} from '@/service/use-models'
 
 type AuthorizedProps = {
   provider: string
@@ -87,6 +90,23 @@ const Authorized = ({
     setDoingAction(doing)
   }, [])
   const { mutateAsync: deleteModelCredential } = useDeleteModelCredential(provider)
+  const { mutateAsync: setModelCredentialDefault } = useSetModelCredentialDefault(provider)
+  const handleSetDefault = useCallback(async (id: string) => {
+    if (doingActionRef.current)
+      return
+    try {
+      handleSetDoingAction(true)
+      await setModelCredentialDefault(id)
+      notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+      onUpdate?.()
+    }
+    finally {
+      handleSetDoingAction(false)
+    }
+  }, [setModelCredentialDefault, onUpdate, notify, t, handleSetDoingAction])
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current)
       return
@@ -109,9 +129,10 @@ const Authorized = ({
       handleSetDoingAction(false)
     }
   }, [onUpdate, notify, t, handleSetDoingAction])
-  const handleEdit = useCallback((credential: Credential) => {
+  const handleOpenSetup = useCallback((credential?: Credential) => {
     onSetup(credential)
-  }, [onSetup])
+    setMergedIsOpen(false)
+  }, [onSetup, setMergedIsOpen])
 
   return (
     <>
@@ -142,10 +163,10 @@ const Authorized = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[100]'>
           <div className={cn(
-            'max-h-[360px] w-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+            'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
             popupClassName,
           )}>
-            <div className='py-1'>
+            <div className='max-h-[304px] overflow-y-auto py-1'>
               {
                 !!credentials.length && (
                   <div className='p-1'>
@@ -162,7 +183,8 @@ const Authorized = ({
                           credential={credential}
                           disabled={disabled}
                           onDelete={openConfirm}
-                          onEdit={handleEdit}
+                          onEdit={handleOpenSetup}
+                          onSetDefault={handleSetDefault}
                           onItemClick={onItemClick}
                           showSelectedIcon={showItemSelectedIcon}
                           selectedCredentialId={selectedCredentialId}
@@ -176,7 +198,7 @@ const Authorized = ({
             <div className='h-[1px] bg-divider-subtle'></div>
             <div className='p-2'>
               <Button
-                onClick={() => onSetup()}
+                onClick={() => handleOpenSetup()}
                 className='w-full'
               >
                 add api key
