@@ -93,3 +93,7 @@ class RedisConfig(BaseSettings):
         description="Enable client side cache in redis",
         default=False,
     )
+    REDIS_KEY_PREFIX: Optional[str] = Field(
+        description="Redis global string key prefix (if required)",
+        default=None,
+    )
