@@ -284,7 +284,12 @@ class Executor:
         if body and body.type == "form-data":
             # For multipart/form-data with files (including placeholder files),
             # remove any manually set Content-Type header to let httpx handle
-            # Content-Type and boundary automatically
+            # For multipart/form-data, if any files are present (including placeholder files),
+            # we must remove any manually set Content-Type header. This is because httpx needs to
+            # automatically set the Content-Type and boundary for multipart encoding whenever files
+            # are included, even if they are placeholders, to avoid boundary issues and ensure correct
+            # file upload behaviour. Manually setting Content-Type can cause httpx to fail to set the
+            # boundary, resulting in invalid requests.
             if self.files:
                 # Remove Content-Type if it was manually set to avoid boundary issues
                 headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
