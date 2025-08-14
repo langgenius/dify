@@ -32,7 +32,7 @@ const GotoAnything: FC<Props> = ({
   const { t } = useTranslation()
   const [show, setShow] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [cmdVal, setCmdVal] = useState<string>('')
+  const [cmdVal, setCmdVal] = useState<string>('_')
   const inputRef = useRef<HTMLInputElement>(null)
   const handleNavSearch = useCallback((q: string) => {
     setShow(true)
@@ -120,9 +120,14 @@ const GotoAnything: FC<Props> = ({
     },
   )
 
+  // Prevent automatic selection of the first option when cmdVal is not set
+  const clearSelection = () => {
+    setCmdVal('_')
+  }
+
   const handleCommandSelect = useCallback((commandKey: string) => {
     setSearchQuery(`${commandKey} `)
-    setCmdVal('')
+    clearSelection()
     setTimeout(() => {
       inputRef.current?.focus()
     }, 0)
@@ -233,9 +238,6 @@ const GotoAnything: FC<Props> = ({
         inputRef.current?.focus()
       })
     }
-    return () => {
-      setCmdVal('')
-    }
   }, [show])
 
   return (
@@ -245,6 +247,7 @@ const GotoAnything: FC<Props> = ({
         onClose={() => {
           setShow(false)
           setSearchQuery('')
+          clearSelection()
           onHide?.()
         }}
         closable={false}
@@ -268,7 +271,7 @@ const GotoAnything: FC<Props> = ({
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
                     if (!e.target.value.startsWith('@'))
-                      setCmdVal('')
+                      clearSelection()
                   }}
                   className='flex-1 !border-0 !bg-transparent !shadow-none'
                   wrapperClassName='flex-1 !border-0 !bg-transparent'
@@ -321,40 +324,40 @@ const GotoAnything: FC<Props> = ({
                     />
                   ) : (
                     Object.entries(groupedResults).map(([type, results], groupIndex) => (
-                    <Command.Group key={groupIndex} heading={(() => {
-                      const typeMap: Record<string, string> = {
-                        'app': 'app.gotoAnything.groups.apps',
-                        'plugin': 'app.gotoAnything.groups.plugins',
-                        'knowledge': 'app.gotoAnything.groups.knowledgeBases',
-                        'workflow-node': 'app.gotoAnything.groups.workflowNodes',
-                      }
-                      return t(typeMap[type] || `${type}s`)
-                    })()} className='p-2 capitalize text-text-secondary'>
-                      {results.map(result => (
-                        <Command.Item
-                          key={`${result.type}-${result.id}`}
-                          value={result.title}
-                          className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt'
-                          onSelect={() => handleNavigate(result)}
-                        >
-                          {result.icon}
-                          <div className='min-w-0 flex-1'>
-                            <div className='truncate font-medium text-text-secondary'>
-                              {result.title}
-                            </div>
-                            {result.description && (
-                              <div className='mt-0.5 truncate text-xs text-text-quaternary'>
-                                {result.description}
+                      <Command.Group key={groupIndex} heading={(() => {
+                        const typeMap: Record<string, string> = {
+                          'app': 'app.gotoAnything.groups.apps',
+                          'plugin': 'app.gotoAnything.groups.plugins',
+                          'knowledge': 'app.gotoAnything.groups.knowledgeBases',
+                          'workflow-node': 'app.gotoAnything.groups.workflowNodes',
+                        }
+                        return t(typeMap[type] || `${type}s`)
+                      })()} className='p-2 capitalize text-text-secondary'>
+                        {results.map(result => (
+                          <Command.Item
+                            key={`${result.type}-${result.id}`}
+                            value={result.title}
+                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] aria-[selected=true]:bg-state-base-hover data-[selected=true]:bg-state-base-hover'
+                            onSelect={() => handleNavigate(result)}
+                          >
+                            {result.icon}
+                            <div className='min-w-0 flex-1'>
+                              <div className='truncate font-medium text-text-secondary'>
+                                {result.title}
                               </div>
-                            )}
-                          </div>
-                          <div className='text-xs capitalize text-text-quaternary'>
-                            {result.type}
-                          </div>
-                        </Command.Item>
-                      ))}
-                    </Command.Group>
-                  ))
+                              {result.description && (
+                                <div className='mt-0.5 truncate text-xs text-text-quaternary'>
+                                  {result.description}
+                                </div>
+                              )}
+                            </div>
+                            <div className='text-xs capitalize text-text-quaternary'>
+                              {result.type}
+                            </div>
+                          </Command.Item>
+                        ))}
+                      </Command.Group>
+                    ))
                   )}
                   {!isCommandsMode && emptyResult}
                   {!isCommandsMode && defaultUI}
@@ -373,7 +376,7 @@ const GotoAnything: FC<Props> = ({
                         {t('app.gotoAnything.resultCount', { count: searchResults.length })}
                         {searchMode !== 'general' && (
                           <span className='ml-2 opacity-60'>
-{t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
+                            {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
                           </span>
                         )}
                       </>
