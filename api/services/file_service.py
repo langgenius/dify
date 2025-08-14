@@ -4,6 +4,8 @@ import uuid
 from typing import Any, Literal, Union
 
 from flask_login import current_user
+from sqlalchemy import Engine
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -15,7 +17,6 @@ from constants import (
 )
 from core.file import helpers as file_helpers
 from core.rag.extractor.extract_processor import ExtractProcessor
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
@@ -29,8 +30,18 @@ PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileService:
-    @staticmethod
+    _session_maker: sessionmaker
+
+    def __init__(self, session_factory: sessionmaker | Engine | None = None):
+        if isinstance(session_factory, Engine):
+            self._session_maker = sessionmaker(bind=session_factory)
+        elif isinstance(session_factory, sessionmaker):
+            self._session_maker = session_factory
+        else:
+            raise AssertionError("must be a sessionmaker or an Engine.")
+
     def upload_file(
+        self,
         *,
         filename: str,
         content: bytes,
@@ -85,14 +96,14 @@ class FileService:
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
         )
-
-        db.session.add(upload_file)
-        db.session.commit()
-
+        # The `UploadFile` ID is generated within its constructor, so flushing to retrieve the ID is unnecessary.
+        # We can directly generate the `source_url` here before committing.
         if not upload_file.source_url:
             upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
-            db.session.add(upload_file)
-            db.session.commit()
+
+        with self._session_maker(expire_on_commit=False) as session:
+            session.add(upload_file)
+            session.commit()
 
         return upload_file
 
@@ -109,8 +120,7 @@ class FileService:
 
         return file_size <= file_size_limit
 
-    @staticmethod
-    def upload_text(text: str, text_name: str) -> UploadFile:
+    def upload_text(self, text: str, text_name: str) -> UploadFile:
         if len(text_name) > 200:
             text_name = text_name[:200]
         # user uuid as file name
@@ -137,14 +147,15 @@ class FileService:
             used_at=naive_utc_now(),
         )
 
-        db.session.add(upload_file)
-        db.session.commit()
+        with self._session_maker(expire_on_commit=False) as session:
+            session.add(upload_file)
+            session.commit()
 
         return upload_file
 
-    @staticmethod
-    def get_file_preview(file_id: str):
-        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+    def get_file_preview(self, file_id: str):
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found")
@@ -159,15 +170,14 @@ class FileService:
 
         return text
 
-    @staticmethod
-    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str):
+    def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_image_signature(
             upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
         )
         if not result:
             raise NotFound("File not found or signature is invalid")
-
-        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -181,13 +191,13 @@ class FileService:
 
         return generator, upload_file.mime_type
 
-    @staticmethod
-    def get_file_generator_by_file_id(file_id: str, timestamp: str, nonce: str, sign: str):
+    def get_file_generator_by_file_id(self, file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
         if not result:
             raise NotFound("File not found or signature is invalid")
 
-        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -196,9 +206,9 @@ class FileService:
 
         return generator, upload_file
 
-    @staticmethod
-    def get_public_image_preview(file_id: str):
-        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+    def get_public_image_preview(self, file_id: str):
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")

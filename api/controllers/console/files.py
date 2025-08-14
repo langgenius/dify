@@ -22,6 +22,7 @@ from controllers.console.wraps import (
 )
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
+from models import db
 from services.file_service import FileService
 
 PREVIEW_WORDS_LIMIT = 3000
@@ -68,7 +69,7 @@ class FileApi(Resource):
             source = None
 
         try:
-            upload_file = FileService.upload_file(
+            upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
                 content=file.read(),
                 mimetype=file.mimetype,
@@ -89,7 +90,7 @@ class FilePreviewApi(Resource):
     @account_initialization_required
     def get(self, file_id):
         file_id = str(file_id)
-        text = FileService.get_file_preview(file_id)
+        text = FileService(db.engine).get_file_preview(file_id)
         return {"content": text}
 
 

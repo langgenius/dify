@@ -123,7 +123,7 @@ class DocumentAddByTextApi(DatasetApiResource):
                 args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
 
-        upload_file = FileService.upload_text(text=str(text), text_name=str(name))
+        upload_file = FileService(db.engine).upload_text(text=str(text), text_name=str(name))
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -198,7 +198,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             name = args.get("name")
             if text is None or name is None:
                 raise ValueError("Both text and name must be strings.")
-            upload_file = FileService.upload_text(text=str(text), text_name=str(name))
+            upload_file = FileService(db.engine).upload_text(text=str(text), text_name=str(name))
             data_source = {
                 "type": "upload_file",
                 "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -298,7 +298,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        upload_file = FileService.upload_file(
+        upload_file = FileService(db.engine).upload_file(
             filename=file.filename,
             content=file.read(),
             mimetype=file.mimetype,
@@ -387,7 +387,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
                 raise FilenameNotExistsError
 
             try:
-                upload_file = FileService.upload_file(
+                upload_file = FileService(db.engine).upload_file(
                     filename=file.filename,
                     content=file.read(),
                     mimetype=file.mimetype,
