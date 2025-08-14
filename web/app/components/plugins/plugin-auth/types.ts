@@ -22,4 +22,5 @@ export type Credential = {
   is_default: boolean
   credentials?: Record<string, any>
   isWorkspaceDefault?: boolean
+  from_enterprise?: boolean
 }
