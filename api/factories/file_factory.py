@@ -263,7 +263,7 @@ def _get_remote_file_info(url: str):
         file_size = int(resp.headers.get("Content-Length", file_size))
         # Fallback to Content-Type header if mime_type is still empty
         if not mime_type:
-            mime_type = resp.headers.get("Content-Type", "")
+            mime_type = resp.headers.get("Content-Type", "").split(';')[0].strip()
 
     return mime_type, filename, file_size
 
