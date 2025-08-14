@@ -409,22 +409,43 @@ class TableTestRunner:
         Returns:
             tuple: (is_valid, validation_details)
         """
+        validation_errors = []
+
         # Check expected outputs
         for key, expected_value in expected_outputs.items():
             if key not in actual_outputs:
-                return False, f"Missing expected key: {key}"
+                validation_errors.append(f"Missing expected key: {key}")
+                continue
 
             actual_value = actual_outputs[key]
             if actual_value != expected_value:
-                return False, f"Value mismatch for key '{key}': expected {expected_value}, got {actual_value}"
+                # Format multiline strings for better readability
+                if isinstance(expected_value, str) and "\n" in expected_value:
+                    expected_lines = expected_value.splitlines()
+                    actual_lines = (
+                        actual_value.splitlines() if isinstance(actual_value, str) else str(actual_value).splitlines()
+                    )
+
+                    validation_errors.append(
+                        f"Value mismatch for key '{key}':\n"
+                        f"  Expected ({len(expected_lines)} lines):\n    " + "\n    ".join(expected_lines) + "\n"
+                        f"  Actual ({len(actual_lines)} lines):\n    " + "\n    ".join(actual_lines)
+                    )
+                else:
+                    validation_errors.append(
+                        f"Value mismatch for key '{key}':\n  Expected: {expected_value}\n  Actual: {actual_value}"
+                    )
 
         # Apply custom validator if provided
         if custom_validator:
             try:
                 if not custom_validator(actual_outputs):
-                    return False, "Custom validator failed"
+                    validation_errors.append("Custom validator failed")
             except Exception as e:
-                return False, f"Custom validator error: {str(e)}"
+                validation_errors.append(f"Custom validator error: {str(e)}")
+
+        if validation_errors:
+            return False, "\n".join(validation_errors)
 
         return True, None
 

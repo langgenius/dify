@@ -124,18 +124,16 @@ class LoopNode(Node):
         )
 
         try:
-            reach_break_condition = False
+            _, _, reach_break_condition = condition_processor.process_conditions(
+                variable_pool=self.graph_runtime_state.variable_pool,
+                conditions=break_conditions,
+                operator=logical_operator,
+            )
+            if reach_break_condition:
+                loop_count = 0
             cost_tokens = 0
 
             for i in range(loop_count):
-                _, _, reach_break_condition = condition_processor.process_conditions(
-                    variable_pool=self.graph_runtime_state.variable_pool,
-                    conditions=break_conditions,
-                    operator=logical_operator,
-                )
-                if reach_break_condition:
-                    break
-
                 graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
 
                 loop_start_time = naive_utc_now()
@@ -156,6 +154,15 @@ class LoopNode(Node):
 
                 if reach_break_node:
                     break
+
+                _, _, reach_break_condition = condition_processor.process_conditions(
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    conditions=break_conditions,
+                    operator=logical_operator,
+                )
+                if reach_break_condition:
+                    break
+
                 yield LoopNextEvent(
                     index=i + 1,
                     pre_loop_output=self._node_data.outputs,
