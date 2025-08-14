@@ -27,7 +27,6 @@ def test_basic_chatflow():
             NodeRunStartedEvent,
             NodeRunStreamChunkEvent,
             NodeRunStreamChunkEvent,
-            NodeRunStreamChunkEvent,
             NodeRunSucceededEvent,
             # ANSWER
             NodeRunStartedEvent,
