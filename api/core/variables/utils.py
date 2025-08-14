@@ -24,8 +24,6 @@ def segment_orjson_default(o: Any) -> Any:
         return [segment_orjson_default(seg) for seg in o.value]
     elif isinstance(o, Segment):
         return o.value
-    # Let orjson handle the error for unsupported types
-    # orjson natively supports: datetime, date, time, uuid, dataclass, etc.
     raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
 
 
