@@ -128,10 +128,9 @@ class MockLLMNode(MockNodeMixin, LLMNode):
 
         # Simulate streaming if text output exists
         if "text" in outputs:
-            text = outputs["text"]
+            text = str(outputs["text"])
             # Send chunks
-            for i in range(0, len(text), 10):
-                chunk = text[i : i + 10]
+            for chunk in text.split(" "):
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],
                     chunk=chunk,

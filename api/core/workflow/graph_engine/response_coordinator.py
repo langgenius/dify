@@ -295,8 +295,7 @@ class ResponseStreamCoordinator:
     ) -> Sequence[NodeRunStreamChunkEvent]:
         with self.lock:
             if isinstance(event, NodeRunStreamChunkEvent):
-                if event.chunk:
-                    self.registry.append_chunk(event.selector, event)
+                self.registry.append_chunk(event.selector, event)
                 if event.is_final:
                     self.registry.close_stream(event.selector)
                 return self.try_flush()
