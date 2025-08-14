@@ -1,6 +1,6 @@
 import json
 
-from core.file import File, FileTransferMethod, FileType, FileUploadConfig
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType, FileUploadConfig
 from models.workflow import Workflow
 
 
@@ -17,6 +17,22 @@ def test_file_to_dict():
     file_dict = file.to_dict()
     assert "_storage_key" not in file_dict
     assert "url" in file_dict
+    
+    # Test JSON serialization fix for GitHub Issue #23905
+    assert "dify_model_identity" in file_dict
+    assert file_dict["dify_model_identity"] == FILE_MODEL_IDENTITY
+    
+    # Test enum values are converted to strings
+    assert isinstance(file_dict["type"], str)
+    assert file_dict["type"] == "image"
+    assert isinstance(file_dict["transfer_method"], str)
+    assert file_dict["transfer_method"] == "remote_url"
+    
+    # Test full JSON serialization works without errors
+    json_str = json.dumps(file_dict)
+    deserialized = json.loads(json_str)
+    assert deserialized["id"] == "file1"
+    assert deserialized["type"] == "image"
 
 
 def test_workflow_features_with_image():
@@ -54,3 +70,38 @@ def test_workflow_features_with_image():
         FileTransferMethod.LOCAL_FILE,
     ]
     assert list(file_upload_config.allowed_file_extensions) == []
+
+
+def test_file_enum_serialization_fix():
+    """Test that File enum serialization fix works for all enum types (Issue #23905)"""
+    # Test different file types and transfer methods
+    test_cases = [
+        (FileType.DOCUMENT, FileTransferMethod.LOCAL_FILE),
+        (FileType.AUDIO, FileTransferMethod.TOOL_FILE),
+        (FileType.VIDEO, FileTransferMethod.REMOTE_URL),
+    ]
+    
+    for file_type, transfer_method in test_cases:
+        file = File(
+            id=f"test-{file_type.value}",
+            tenant_id="test-tenant",
+            type=file_type,
+            transfer_method=transfer_method,
+            remote_url="https://example.com/file" if transfer_method == FileTransferMethod.REMOTE_URL else None,
+            related_id="related-123" if transfer_method != FileTransferMethod.REMOTE_URL else None,
+            storage_key="test-storage"
+        )
+        
+        file_dict = file.to_dict()
+        
+        # Verify enum conversion to strings
+        assert file_dict["type"] == file_type.value
+        assert file_dict["transfer_method"] == transfer_method.value
+        assert isinstance(file_dict["type"], str)
+        assert isinstance(file_dict["transfer_method"], str)
+        
+        # Verify JSON serialization works
+        json_str = json.dumps(file_dict)
+        deserialized = json.loads(json_str)
+        assert deserialized["type"] == file_type.value
+        assert deserialized["transfer_method"] == transfer_method.value
