@@ -486,6 +486,7 @@ const translation = {
     discoverMore: '发现更多就在',
     emptyProviderTitle: '尚未安装模型供应商',
     emptyProviderTip: '请安装模型供应商。',
+    usedByWorkflows: '被以下App使用',
   },
   dataSource: {
     add: '添加数据源',
