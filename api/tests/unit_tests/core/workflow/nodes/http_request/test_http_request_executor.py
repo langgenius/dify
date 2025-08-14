@@ -249,7 +249,7 @@ def test_executor_with_form_data():
     # to ensure the request is treated as multipart/form-data by the backend.
     assert executor.files == [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
     assert executor.content is None
-    
+
     # After fix for #23829: When placeholder files exist, Content-Type is removed
     # to let httpx handle Content-Type and boundary automatically
     headers = executor._assembling_headers()
