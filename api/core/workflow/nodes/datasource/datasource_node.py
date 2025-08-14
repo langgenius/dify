@@ -204,7 +204,8 @@ class DatasourceNode(BaseNode):
                         size=upload_file.size,
                         storage_key=upload_file.key,
                     )
-                    variable_pool.add([self.node_id, "file"], file_info.to_dict())
+                    variable_pool.add([self.node_id, "file"], file_info)
+                    #variable_pool.add([self.node_id, "file"], file_info.to_dict())
                     yield RunCompletedEvent(
                         run_result=NodeRunResult(
                             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -525,7 +526,7 @@ class DatasourceNode(BaseNode):
                     tenant_id=self.tenant_id,
                 )
         if file:
-            variable_pool.add([self.node_id, "file"], file.to_dict())
+            variable_pool.add([self.node_id, "file"], file)
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
