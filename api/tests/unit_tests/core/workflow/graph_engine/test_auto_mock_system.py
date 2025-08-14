@@ -216,11 +216,14 @@ def test_mock_factory_node_type_detection():
     assert factory.should_mock_node(NodeType.PARAMETER_EXTRACTOR)
     assert factory.should_mock_node(NodeType.DOCUMENT_EXTRACTOR)
 
+    # Test that CODE and TEMPLATE_TRANSFORM are mocked (they require SSRF proxy)
+    assert factory.should_mock_node(NodeType.CODE)
+    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+
     # Test that non-service nodes are not mocked
     assert not factory.should_mock_node(NodeType.START)
     assert not factory.should_mock_node(NodeType.END)
     assert not factory.should_mock_node(NodeType.IF_ELSE)
-    assert not factory.should_mock_node(NodeType.CODE)
     assert not factory.should_mock_node(NodeType.VARIABLE_AGGREGATOR)
 
 
@@ -301,16 +304,16 @@ def test_register_custom_mock_node():
         mock_config=None,
     )
 
-    # Initially, TEMPLATE_TRANSFORM should not be mocked
-    assert not factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
-
-    # Register custom mock
-    factory.register_mock_node_type(NodeType.TEMPLATE_TRANSFORM, MockTemplateTransformNode)
+    # TEMPLATE_TRANSFORM is mocked by default (requires SSRF proxy)
     assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
 
     # Unregister mock
     factory.unregister_mock_node_type(NodeType.TEMPLATE_TRANSFORM)
     assert not factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+
+    # Re-register custom mock
+    factory.register_mock_node_type(NodeType.TEMPLATE_TRANSFORM, MockTemplateTransformNode)
+    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
 
 
 def test_default_config_by_node_type():

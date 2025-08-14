@@ -48,6 +48,8 @@ class MockConfig:
     default_http_response: dict[str, Any] = field(
         default_factory=lambda: {"status_code": 200, "body": "mocked response", "headers": {}}
     )
+    default_template_transform_response: str = "This is mocked template transform output"
+    default_code_response: dict[str, Any] = field(default_factory=lambda: {"result": "mocked code execution result"})
 
     def get_node_config(self, node_id: str) -> Optional[NodeMockConfig]:
         """Get configuration for a specific node."""
@@ -126,6 +128,16 @@ class MockConfigBuilder:
     def with_http_response(self, response: dict[str, Any]) -> "MockConfigBuilder":
         """Set default HTTP response."""
         self._config.default_http_response = response
+        return self
+
+    def with_template_transform_response(self, response: str) -> "MockConfigBuilder":
+        """Set default template transform response."""
+        self._config.default_template_transform_response = response
+        return self
+
+    def with_code_response(self, response: dict[str, Any]) -> "MockConfigBuilder":
+        """Set default code execution response."""
+        self._config.default_code_response = response
         return self
 
     def with_node_output(self, node_id: str, outputs: dict[str, Any]) -> "MockConfigBuilder":
