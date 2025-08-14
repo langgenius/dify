@@ -473,7 +473,6 @@ class Node:
             node_title=self.get_base_node_data().title,
             index=event.index,
             pre_iteration_output=event.pre_iteration_output,
-            duration=event.duration,
         )
 
     def _handle_iteration_succeeded_event(self, event: IterationSucceededEvent) -> NodeRunIterationSucceededEvent:
@@ -487,7 +486,6 @@ class Node:
             outputs=event.outputs,
             metadata=event.metadata,
             steps=event.steps,
-            iteration_duration_map=event.iteration_duration_map,
         )
 
     def _handle_iteration_failed_event(self, event: IterationFailedEvent) -> NodeRunIterationFailedEvent:

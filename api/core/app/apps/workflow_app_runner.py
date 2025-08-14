@@ -515,7 +515,6 @@ class WorkflowBasedAppRunner:
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_iteration_output,
-                    duration=event.duration,
                 )
             )
         elif isinstance(event, (NodeRunIterationSucceededEvent | NodeRunIterationFailedEvent)):
@@ -558,7 +557,6 @@ class WorkflowBasedAppRunner:
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_loop_output,
-                    duration=event.duration,
                 )
             )
         elif isinstance(event, (NodeRunLoopSucceededEvent | NodeRunLoopFailedEvent)):

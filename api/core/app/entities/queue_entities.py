@@ -98,7 +98,6 @@ class QueueIterationNextEvent(AppQueueEvent):
     node_title: str
     node_run_index: int
     output: Optional[Any] = None  # output for the current iteration
-    duration: Optional[float] = None
 
 
 class QueueIterationCompletedEvent(AppQueueEvent):
@@ -173,7 +172,6 @@ class QueueLoopNextEvent(AppQueueEvent):
     """iteratoin run in parallel mode run id"""
     node_run_index: int
     output: Optional[Any] = None  # output for the current loop
-    duration: Optional[float] = None
 
 
 class QueueLoopCompletedEvent(AppQueueEvent):
@@ -382,10 +380,6 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
 
     error: Optional[str] = None
-    """single iteration duration map"""
-    iteration_duration_map: Optional[dict[str, float]] = None
-    """single loop duration map"""
-    loop_duration_map: Optional[dict[str, float]] = None
 
 
 class QueueAgentLogEvent(AppQueueEvent):

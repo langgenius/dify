@@ -456,8 +456,6 @@ class IterationNodeStartStreamResponse(StreamResponse):
         extras: dict = {}
         metadata: Mapping = {}
         inputs: Mapping = {}
-        parallel_id: Optional[str] = None
-        parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.ITERATION_STARTED
     workflow_run_id: str
@@ -480,12 +478,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         title: str
         index: int
         created_at: int
-        pre_iteration_output: Optional[Any] = None
         extras: dict = {}
-        parallel_id: Optional[str] = None
-        parallel_start_node_id: Optional[str] = None
-        parallel_mode_run_id: Optional[str] = None
-        duration: Optional[float] = None
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
     workflow_run_id: str
@@ -517,8 +510,6 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         execution_metadata: Optional[Mapping] = None
         finished_at: int
         steps: int
-        parallel_id: Optional[str] = None
-        parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.ITERATION_COMPLETED
     workflow_run_id: str
@@ -572,7 +563,6 @@ class LoopNodeNextStreamResponse(StreamResponse):
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parallel_mode_run_id: Optional[str] = None
-        duration: Optional[float] = None
 
     event: StreamEvent = StreamEvent.LOOP_NEXT
     workflow_run_id: str

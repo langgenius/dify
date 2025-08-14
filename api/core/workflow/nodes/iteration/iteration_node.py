@@ -159,7 +159,10 @@ class IterationNode(Node):
                 inputs=inputs,
                 outputs={"output": outputs},
                 steps=len(iterator_list_value),
-                metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens},
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+                },
             )
 
             # Yield final success event
@@ -168,7 +171,6 @@ class IterationNode(Node):
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     outputs={"output": outputs},
                     metadata={
-                        WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
                         WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
                     },
                 )
@@ -179,7 +181,10 @@ class IterationNode(Node):
                 inputs=inputs,
                 outputs={"output": outputs},
                 steps=len(iterator_list_value),
-                metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens},
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+                },
                 error=str(e),
             )
             yield StreamCompletedEvent(
