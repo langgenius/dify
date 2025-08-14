@@ -16,6 +16,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
 from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.trace import Link, SpanContext, TraceFlags
 
 from configs import dify_config
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
@@ -165,6 +166,17 @@ class SpanBuilder:
         )
         return span
 
+def create_link(trace_id_str: str) -> Link:
+    placeholder_span_id = 0x0000000000000000
+    trace_id = int(trace_id_str, 16)
+    span_context = SpanContext(
+        trace_id=trace_id,
+        span_id=placeholder_span_id,
+        is_remote=False,
+        trace_flags=TraceFlags.SAMPLED
+    )
+
+    return Link(span_context)
 
 def generate_span_id() -> int:
     span_id = random.getrandbits(64)
