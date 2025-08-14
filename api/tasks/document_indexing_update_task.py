@@ -33,30 +33,10 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     document.indexing_status = "parsing"
     document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     db.session.commit()
-
-    # delete all document segment and index
-    try:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
-        if not dataset:
-            raise Exception("Dataset not found")
-
-        # only delay delete segment because need retrive when update document
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
-        if segments:
-            for segment in segments:
-                db.session.delete(segment)
-            db.session.commit()
-        end_at = time.perf_counter()
-        logging.info(
-            click.style(
-                "Cleaned document when document update data source or process rule: {} latency: {}".format(
-                    document_id, end_at - start_at
-                ),
-                fg="green",
-            )
-        )
-    except Exception:
-        logging.exception("Cleaned document when document update data source or process rule failed")
+    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise Exception("Dataset not found")
+    segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
 
     try:
         indexing_runner = IndexingRunner()
@@ -73,33 +53,41 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     finally:
         db.session.close()
 
-def document_indexing_update_task_sync(dataset: Dataset, document: Document, old_segments: list[DocumentSegment], update_success: bool):
-    if not old_segments:
-        return
+
+def document_indexing_update_task_sync(
+    dataset: Dataset, document: Document, old_segments: list[DocumentSegment], update_success: bool
+):
     try:
         index_type = document.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        if update_success:
-            index_node_ids = [segment.index_node_id for segment in old_segments]
-
-            # delete from vector index
-            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-
-        else:
-            # delete all new document segment and index
-            segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
+        if update_success and document.indexing_status == "completed":
+            # delete all old document segment and index
+            if old_segments:
+                index_node_ids = [segment.index_node_id for segment in old_segments]
 
                 # delete from vector index
                 index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
-                for segment in segments:
+                for segment in old_segments:
                     db.session.delete(segment)
                 db.session.commit()
-            # revert segment
+        else:
+            # Restore the old segment status
             for segment in old_segments:
-                db.session.add(segment)
+                segment.status = "completed"
             db.session.commit()
+            # delete all new document segment and index
+            segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+            old_segment_ids = [s.id for s in old_segments]
+            new_segments = [s for s in segments if s.id not in old_segment_ids]
+            if new_segments:
+                index_node_ids = [segment.index_node_id for segment in new_segments]
+
+                # delete from vector index
+                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+
+                for segment in new_segments:
+                    db.session.delete(segment)
+                db.session.commit()
     except Exception:
         logging.exception("document_indexing_update_task_sync failed, document_id: %s", document.id)
