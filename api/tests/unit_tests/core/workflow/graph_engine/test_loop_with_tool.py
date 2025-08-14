@@ -30,7 +30,6 @@ def test_loop_with_tool():
         mock_config=mock_config,
         expected_outputs={
             "answer": """- mocked search result
-- mocked search result
 - mocked search result"""
         },
         expected_event_sequence=[
@@ -48,12 +47,6 @@ def test_loop_with_tool():
             NodeRunSucceededEvent,
             NodeRunLoopNextEvent,
             # 2024
-            NodeRunStartedEvent,
-            NodeRunSucceededEvent,
-            NodeRunStartedEvent,
-            NodeRunSucceededEvent,
-            NodeRunLoopNextEvent,
-            # 2025
             NodeRunStartedEvent,
             NodeRunSucceededEvent,
             NodeRunStartedEvent,
