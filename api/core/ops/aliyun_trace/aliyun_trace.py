@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Optional, Sequence
+from collections.abc import Sequence
+from typing import Optional
 from urllib.parse import urljoin
 
 from opentelemetry.trace import Link, Status, StatusCode
