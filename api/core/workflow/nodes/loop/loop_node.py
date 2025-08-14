@@ -124,11 +124,13 @@ class LoopNode(Node):
         )
 
         try:
-            _, _, reach_break_condition = condition_processor.process_conditions(
-                variable_pool=self.graph_runtime_state.variable_pool,
-                conditions=break_conditions,
-                operator=logical_operator,
-            )
+            reach_break_condition = False
+            if break_conditions:
+                _, _, reach_break_condition = condition_processor.process_conditions(
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    conditions=break_conditions,
+                    operator=logical_operator,
+                )
             if reach_break_condition:
                 loop_count = 0
             cost_tokens = 0
@@ -155,11 +157,12 @@ class LoopNode(Node):
                 if reach_break_node:
                     break
 
-                _, _, reach_break_condition = condition_processor.process_conditions(
-                    variable_pool=self.graph_runtime_state.variable_pool,
-                    conditions=break_conditions,
-                    operator=logical_operator,
-                )
+                if break_conditions:
+                    _, _, reach_break_condition = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=break_conditions,
+                        operator=logical_operator,
+                    )
                 if reach_break_condition:
                     break
 
