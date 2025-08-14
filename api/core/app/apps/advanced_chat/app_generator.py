@@ -423,8 +423,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             db.session.refresh(message)
             db.session.refresh(user)
 
-            
-
         # get conversation dialogue count
         self._dialogue_count = get_thread_messages_length(conversation.id)
 
