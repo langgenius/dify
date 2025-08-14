@@ -25,8 +25,9 @@ def test_basic_chatflow():
             NodeRunSucceededEvent,
             # LLM
             NodeRunStartedEvent,
-            NodeRunStreamChunkEvent,
-            NodeRunStreamChunkEvent,
+        ]
+        + [NodeRunStreamChunkEvent] * ("mocked llm response".count(" ") + 2)
+        + [
             NodeRunSucceededEvent,
             # ANSWER
             NodeRunStartedEvent,
