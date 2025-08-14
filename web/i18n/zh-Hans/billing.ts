@@ -16,7 +16,10 @@ const translation = {
   viewBilling: '管理账单及订阅',
   buyPermissionDeniedTip: '请联系企业管理员订阅',
   plansCommon: {
-    title: '为您的 AI 之旅提供动力的定价套餐',
+    title: {
+      plans: '方案',
+      description: '选择最适合您团队需求的方案。',
+    },
     freeTrialTipPrefix: '注册即可',
     freeTrialTip: '免费试用 200 个 OpenAI 消息额度',
     freeTrialTipSuffix: '。无需信用卡',
@@ -32,7 +35,7 @@ const translation = {
     year: '年',
     save: '节省',
     free: '免费',
-    annualBilling: '按年计费',
+    annualBilling: '按年计费节省 {{percent}}%',
     comparePlanAndFeatures: '对比套餐 & 功能特性',
     priceTip: '每个团队空间/',
     currentPlan: '当前计划',

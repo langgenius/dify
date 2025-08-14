@@ -256,11 +256,11 @@ const translation = {
   maxActiveRequestsTip: 'Maximale Anzahl gleichzeitiger aktiver Anfragen pro App (0 für unbegrenzt)',
   gotoAnything: {
     actions: {
-      searchPlugins: 'Such-Plugins',
+      searchPlugins: 'Plugins durchsuchen',
       searchKnowledgeBases: 'Wissensdatenbanken durchsuchen',
       searchWorkflowNodes: 'Workflow-Knoten durchsuchen',
       searchKnowledgeBasesDesc: 'Suchen und navigieren Sie zu Ihren Wissensdatenbanken',
-      searchApplications: 'Anwendungen suchen',
+      searchApplications: 'Anwendungen durchsuchen',
       searchWorkflowNodesHelp: 'Diese Funktion funktioniert nur, wenn ein Workflow angezeigt wird. Navigieren Sie zuerst zu einem Workflow.',
       searchApplicationsDesc: 'Suchen und navigieren Sie zu Ihren Anwendungen',
       searchPluginsDesc: 'Suchen und navigieren Sie zu Ihren Plugins',

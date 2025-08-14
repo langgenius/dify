@@ -1,51 +1,63 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
-import { RiArrowRightUpLine, RiCloseLine, RiCloudFill, RiTerminalBoxFill } from '@remixicon/react'
-import Link from 'next/link'
+import Header from './header'
+import PlanSwitcher from './plan-switcher'
+import { PlanRange } from './plan-switcher/plan-range-switcher'
 import { useKeyPress } from 'ahooks'
-import { Plan, SelfHostedPlan } from '../type'
-import TabSlider from '../../base/tab-slider'
-import SelectPlanRange, { PlanRange } from './select-plan-range'
-import PlanItem from './plan-item'
-import SelfHostedPlanItem from './self-hosted-plan-item'
-import { useProviderContext } from '@/context/provider-context'
-import GridMask from '@/app/components/base/grid-mask'
-import { useAppContext } from '@/context/app-context'
-import classNames from '@/utils/classnames'
-import { useGetPricingPageLanguage } from '@/context/i18n'
+// import { useTranslation } from 'react-i18next'
+// import { RiArrowRightUpLine, RiCloseLine, RiCloudFill, RiTerminalBoxFill } from '@remixicon/react'
+// import Link from 'next/link'
+// import { Plan, SelfHostedPlan } from '../type'
+// import TabSlider from '../../base/tab-slider'
+// import PlanItem from './plan-item'
+// import SelfHostedPlanItem from './self-hosted-plan-item'
+// import { useProviderContext } from '@/context/provider-context'
+// import GridMask from '@/app/components/base/grid-mask'
+// import { useAppContext } from '@/context/app-context'
+// import classNames from '@/utils/classnames'
+// import { useGetPricingPageLanguage } from '@/context/i18n'
 
-type Props = {
+export type Category = 'cloud' | 'self'
+
+type PricingProps = {
   onCancel: () => void
 }
 
-const Pricing: FC<Props> = ({
+const Pricing: FC<PricingProps> = ({
   onCancel,
 }) => {
-  const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const { isCurrentWorkspaceManager } = useAppContext()
-  const canPay = isCurrentWorkspaceManager
+  // const { t } = useTranslation()
+  // const { plan } = useProviderContext()
+  // const { isCurrentWorkspaceManager } = useAppContext()
+  // const canPay = isCurrentWorkspaceManager
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
 
-  const [currentPlan, setCurrentPlan] = React.useState<string>('cloud')
+  const [currentCategory, setCurrentCategory] = useState<Category>('cloud')
 
   useKeyPress(['esc'], onCancel)
 
-  const pricingPageLanguage = useGetPricingPageLanguage()
-  const pricingPageURL = pricingPageLanguage
-    ? `https://dify.ai/${pricingPageLanguage}/pricing#plans-and-features`
-    : 'https://dify.ai/pricing#plans-and-features'
+  // const pricingPageLanguage = useGetPricingPageLanguage()
+  // const pricingPageURL = pricingPageLanguage
+  //   ? `https://dify.ai/${pricingPageLanguage}/pricing#plans-and-features`
+  //   : 'https://dify.ai/pricing#plans-and-features'
 
   return createPortal(
     <div
-      className='fixed inset-0 bottom-0 left-0 right-0 top-0 z-[1000] bg-background-overlay-backdrop p-4 backdrop-blur-[6px]'
+      className='fixed inset-0 bottom-0 left-0 right-0 top-0 z-[1000] overflow-auto bg-saas-background'
       onClick={e => e.stopPropagation()}
     >
-      <div className='relative h-full w-full overflow-auto rounded-2xl border border-effects-highlight bg-saas-background'>
-        <div
+      <div className='relative h-full min-w-[1200px]'>
+        <Header onClose={onCancel} />
+        <PlanSwitcher
+          currentCategory={currentCategory}
+          onChangeCategory={setCurrentCategory}
+          currentPlanRange={planRange}
+          onChangePlanRange={setPlanRange}
+        />
+
+        {/* <div
           className='fixed right-7 top-7 z-[1001] flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover'
           onClick={onCancel}
         >
@@ -137,8 +149,8 @@ const Pricing: FC<Props> = ({
               <RiArrowRightUpLine className='size-4' />
             </div>
           </div>
-        </GridMask>
-      </div >
+        </GridMask> */}
+      </div>
     </div >,
     document.body,
   )

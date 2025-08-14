@@ -254,8 +254,8 @@ const translation = {
   maxActiveRequestsTip: 'حداکثر تعداد درخواست‌های فعال همزمان در هر برنامه (0 برای نامحدود)',
   gotoAnything: {
     actions: {
-      searchPlugins: 'افزونه های جستجو',
-      searchWorkflowNodes: 'گره های گردش کار جستجو',
+      searchPlugins: 'جستجوی افزونه ها',
+      searchWorkflowNodes: 'جستجوی گره های گردش کار',
       searchApplications: 'جستجوی برنامه ها',
       searchKnowledgeBases: 'جستجو در پایگاه های دانش',
       searchWorkflowNodesHelp: 'این ویژگی فقط هنگام مشاهده گردش کار کار می کند. ابتدا به گردش کار بروید.',
