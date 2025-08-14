@@ -11,7 +11,7 @@ from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
 
-@shared_task(queue="dataset_hz")
+@shared_task(queue="dataset")
 def document_indexing_update_task(dataset_id: str, document_id: str):
     """
     Async update document
