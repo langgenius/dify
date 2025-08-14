@@ -13,6 +13,7 @@ from core.workflow.nodes.node_factory import DifyNodeFactory
 
 from .test_mock_nodes import (
     MockAgentNode,
+    MockCodeNode,
     MockDocumentExtractorNode,
     MockHttpRequestNode,
     MockIterationNode,
@@ -21,6 +22,7 @@ from .test_mock_nodes import (
     MockLoopNode,
     MockParameterExtractorNode,
     MockQuestionClassifierNode,
+    MockTemplateTransformNode,
     MockToolNode,
 )
 
@@ -67,6 +69,8 @@ class MockNodeFactory(DifyNodeFactory):
             NodeType.DOCUMENT_EXTRACTOR: MockDocumentExtractorNode,
             NodeType.ITERATION: MockIterationNode,
             NodeType.LOOP: MockLoopNode,
+            NodeType.TEMPLATE_TRANSFORM: MockTemplateTransformNode,
+            NodeType.CODE: MockCodeNode,
         }
 
     def create_node(self, node_config: dict[str, Any]) -> Node:

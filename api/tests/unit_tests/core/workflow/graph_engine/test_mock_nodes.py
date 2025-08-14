@@ -13,12 +13,14 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.agent import AgentNode
+from core.workflow.nodes.code import CodeNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.http_request import HttpRequestNode
 from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from core.workflow.nodes.llm import LLMNode
 from core.workflow.nodes.parameter_extractor import ParameterExtractorNode
 from core.workflow.nodes.question_classifier import QuestionClassifierNode
+from core.workflow.nodes.template_transform import TemplateTransformNode
 from core.workflow.nodes.tool import ToolNode
 
 if TYPE_CHECKING:
@@ -696,3 +698,99 @@ class MockLoopNode(MockNodeMixin, LoopNode):
         )
 
         return graph_engine
+
+
+class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
+    """Mock implementation of TemplateTransformNode for testing."""
+
+    @classmethod
+    def version(cls) -> str:
+        """Return the version of this mock node."""
+        return "mock-1"
+
+    def _run(self) -> NodeRunResult:
+        """Execute mock template transform node."""
+        # Simulate delay if configured
+        self._simulate_delay()
+
+        # Check for simulated error
+        error = self._should_simulate_error()
+        if error:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                error_type="MockError",
+            )
+
+        # Get mock outputs
+        default_response = (
+            self.mock_config.default_template_transform_response if self.mock_config else "mocked template output"
+        )
+        default_outputs = {"output": default_response}
+        outputs = self._get_mock_outputs(default_outputs)
+
+        # Return result
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={},
+            outputs=outputs,
+        )
+
+
+class MockCodeNode(MockNodeMixin, CodeNode):
+    """Mock implementation of CodeNode for testing."""
+
+    @classmethod
+    def version(cls) -> str:
+        """Return the version of this mock node."""
+        return "mock-1"
+
+    def _run(self) -> NodeRunResult:
+        """Execute mock code node."""
+        # Simulate delay if configured
+        self._simulate_delay()
+
+        # Check for simulated error
+        error = self._should_simulate_error()
+        if error:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                error_type="MockError",
+            )
+
+        # Get mock outputs - use configured outputs or default based on output schema
+        default_outputs = {}
+        if hasattr(self._node_data, "outputs") and self._node_data.outputs:
+            # Generate default outputs based on schema
+            for output_name, output_config in self._node_data.outputs.items():
+                if output_config.type == "string":
+                    default_outputs[output_name] = f"mocked_{output_name}"
+                elif output_config.type == "number":
+                    default_outputs[output_name] = 42
+                elif output_config.type == "object":
+                    default_outputs[output_name] = {"key": "value"}
+                elif output_config.type == "array[string]":
+                    default_outputs[output_name] = ["item1", "item2"]
+                elif output_config.type == "array[number]":
+                    default_outputs[output_name] = [1, 2, 3]
+                elif output_config.type == "array[object]":
+                    default_outputs[output_name] = [{"key": "value1"}, {"key": "value2"}]
+        else:
+            # Default output when no schema is defined
+            default_outputs = (
+                self.mock_config.default_code_response
+                if self.mock_config
+                else {"result": "mocked code execution result"}
+            )
+
+        outputs = self._get_mock_outputs(default_outputs)
+
+        # Return result
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={},
+            outputs=outputs,
+        )
