@@ -5,15 +5,20 @@ Workers pull node IDs from the ready_queue, execute nodes, and push events
 to the event_queue for the dispatcher to process.
 """
 
+import contextvars
 import queue
 import threading
 from datetime import datetime
+from typing import Optional
 from uuid import uuid4
+
+from flask import Flask
 
 from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
 from core.workflow.nodes.base.node import Node
+from libs.flask_utils import preserve_flask_contexts
 
 
 class Worker(threading.Thread):
@@ -31,6 +36,8 @@ class Worker(threading.Thread):
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         worker_id: int = 0,
+        flask_app: Optional[Flask] = None,
+        context_vars: Optional[contextvars.Context] = None,
     ) -> None:
         """
         Initialize worker thread.
@@ -40,12 +47,16 @@ class Worker(threading.Thread):
             event_queue: Queue for pushing execution events
             graph: Graph containing nodes to execute
             worker_id: Unique identifier for this worker
+            flask_app: Optional Flask application for context preservation
+            context_vars: Optional context variables to preserve in worker thread
         """
         super().__init__(name=f"GraphWorker-{worker_id}", daemon=True)
         self.ready_queue = ready_queue
         self.event_queue = event_queue
         self.graph = graph
         self.worker_id = worker_id
+        self.flask_app = flask_app
+        self.context_vars = context_vars
         self._stop_event = threading.Event()
 
     def stop(self) -> None:
@@ -93,10 +104,20 @@ class Worker(threading.Thread):
         Args:
             node: The node instance to execute
         """
-
-        # Execute the node
-        node_events = node.run()
-
-        for event in node_events:
-            # Forward event to dispatcher immediately for streaming
-            self.event_queue.put(event)
+        # Execute the node with preserved context if Flask app is provided
+        if self.flask_app and self.context_vars:
+            with preserve_flask_contexts(
+                flask_app=self.flask_app,
+                context_vars=self.context_vars,
+            ):
+                # Execute the node
+                node_events = node.run()
+                for event in node_events:
+                    # Forward event to dispatcher immediately for streaming
+                    self.event_queue.put(event)
+        else:
+            # Execute without context preservation
+            node_events = node.run()
+            for event in node_events:
+                # Forward event to dispatcher immediately for streaming
+                self.event_queue.put(event)
