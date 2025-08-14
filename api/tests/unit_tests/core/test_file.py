@@ -17,17 +17,17 @@ def test_file_to_dict():
     file_dict = file.to_dict()
     assert "_storage_key" not in file_dict
     assert "url" in file_dict
-    
+
     # Test JSON serialization fix for GitHub Issue #23905
     assert "dify_model_identity" in file_dict
     assert file_dict["dify_model_identity"] == FILE_MODEL_IDENTITY
-    
+
     # Test enum values are converted to strings
     assert isinstance(file_dict["type"], str)
     assert file_dict["type"] == "image"
     assert isinstance(file_dict["transfer_method"], str)
     assert file_dict["transfer_method"] == "remote_url"
-    
+
     # Test full JSON serialization works without errors
     json_str = json.dumps(file_dict)
     deserialized = json.loads(json_str)
@@ -80,7 +80,7 @@ def test_file_enum_serialization_fix():
         (FileType.AUDIO, FileTransferMethod.TOOL_FILE),
         (FileType.VIDEO, FileTransferMethod.REMOTE_URL),
     ]
-    
+
     for file_type, transfer_method in test_cases:
         file = File(
             id=f"test-{file_type.value}",
@@ -89,17 +89,17 @@ def test_file_enum_serialization_fix():
             transfer_method=transfer_method,
             remote_url="https://example.com/file" if transfer_method == FileTransferMethod.REMOTE_URL else None,
             related_id="related-123" if transfer_method != FileTransferMethod.REMOTE_URL else None,
-            storage_key="test-storage"
+            storage_key="test-storage",
         )
-        
+
         file_dict = file.to_dict()
-        
+
         # Verify enum conversion to strings
         assert file_dict["type"] == file_type.value
         assert file_dict["transfer_method"] == transfer_method.value
         assert isinstance(file_dict["type"], str)
         assert isinstance(file_dict["transfer_method"], str)
-        
+
         # Verify JSON serialization works
         json_str = json.dumps(file_dict)
         deserialized = json.loads(json_str)
