@@ -279,14 +279,17 @@ class Executor:
                 headers[authorization.config.header] = authorization.config.api_key or ""
 
         # Handle Content-Type for multipart/form-data requests
-        # Fix for issue #22880: Missing boundary when using multipart/form-data
+        # Fix for issue #23829: Missing boundary when using multipart/form-data
         body = self.node_data.body
         if body and body.type == "form-data":
-            # For multipart/form-data with files, let httpx handle the boundary automatically
-            # by not setting Content-Type header when files are present
-            if not self.files or all(f[0] == "__multipart_placeholder__" for f in self.files):
-                # Only set Content-Type when there are no actual files
-                # This ensures httpx generates the correct boundary
+            # For multipart/form-data with files (including placeholder files),
+            # remove any manually set Content-Type header to let httpx handle
+            # Content-Type and boundary automatically
+            if self.files:
+                # Remove Content-Type if it was manually set to avoid boundary issues
+                headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
+            else:
+                # No files at all, set Content-Type manually
                 if "content-type" not in (k.lower() for k in headers):
                     headers["Content-Type"] = "multipart/form-data"
         elif body and body.type in BODY_TYPE_TO_CONTENT_TYPE:
