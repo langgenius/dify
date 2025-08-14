@@ -5,7 +5,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -193,17 +193,6 @@ class LLMNode(BaseNode):
                 if self._node_data.vision.enabled
                 else []
             )
-
-            # single step run fetch file from sys files
-            if not files and self.invoke_from == InvokeFrom.DEBUGGER and not self.previous_node_id:
-                files = (
-                    llm_utils.fetch_files(
-                        variable_pool=variable_pool,
-                        selector=["sys", "files"],
-                    )
-                    if self._node_data.vision.enabled
-                    else []
-                )
 
             if files:
                 node_inputs["#files#"] = [file.to_dict() for file in files]
