@@ -135,6 +135,13 @@ const Item = ({
                 </Badge>
               )
             }
+            {
+              credential.from_enterprise && (
+                <Badge className='shrink-0'>
+                  Enterprise
+                </Badge>
+              )
+            }
           </div>
         )
       }
@@ -172,7 +179,7 @@ const Item = ({
               )
             }
             {
-              !isOAuth && !disableEdit && (
+              !isOAuth && !disableEdit && !credential.from_enterprise && (
                 <Tooltip popupContent={t('common.operation.edit')}>
                   <ActionButton
                     disabled={disabled}
@@ -194,7 +201,7 @@ const Item = ({
               )
             }
             {
-              !disableDelete && (
+              !disableDelete && !credential.from_enterprise && (
                 <Tooltip popupContent={t('common.operation.delete')}>
                   <ActionButton
                     className='hover:bg-transparent'
