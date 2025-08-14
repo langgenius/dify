@@ -50,3 +50,13 @@ class ExecutingNodesManager:
         """
         with self._lock:
             return len(self._executing_nodes) == 0
+
+    def count(self) -> int:
+        """
+        Get the count of currently executing nodes.
+
+        Returns:
+            Number of nodes currently executing
+        """
+        with self._lock:
+            return len(self._executing_nodes)

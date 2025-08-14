@@ -8,6 +8,8 @@ to the event_queue for the dispatcher to process.
 import contextvars
 import queue
 import threading
+import time
+from collections.abc import Callable
 from datetime import datetime
 from typing import Optional
 from uuid import uuid4
@@ -38,6 +40,8 @@ class Worker(threading.Thread):
         worker_id: int = 0,
         flask_app: Optional[Flask] = None,
         context_vars: Optional[contextvars.Context] = None,
+        on_idle_callback: Optional[Callable[[int], None]] = None,
+        on_active_callback: Optional[Callable[[int], None]] = None,
     ) -> None:
         """
         Initialize worker thread.
@@ -49,6 +53,8 @@ class Worker(threading.Thread):
             worker_id: Unique identifier for this worker
             flask_app: Optional Flask application for context preservation
             context_vars: Optional context variables to preserve in worker thread
+            on_idle_callback: Optional callback when worker becomes idle
+            on_active_callback: Optional callback when worker becomes active
         """
         super().__init__(name=f"GraphWorker-{worker_id}", daemon=True)
         self.ready_queue = ready_queue
@@ -58,6 +64,9 @@ class Worker(threading.Thread):
         self.flask_app = flask_app
         self.context_vars = context_vars
         self._stop_event = threading.Event()
+        self.on_idle_callback = on_idle_callback
+        self.on_active_callback = on_active_callback
+        self.last_task_time = time.time()
 
     def stop(self) -> None:
         """Signal the worker to stop processing."""
@@ -75,8 +84,16 @@ class Worker(threading.Thread):
             try:
                 node_id = self.ready_queue.get(timeout=0.1)
             except queue.Empty:
+                # Notify that worker is idle
+                if self.on_idle_callback:
+                    self.on_idle_callback(self.worker_id)
                 continue
 
+            # Notify that worker is active
+            if self.on_active_callback:
+                self.on_active_callback(self.worker_id)
+
+            self.last_task_time = time.time()
             node = self.graph.nodes[node_id]
             try:
                 self._execute_node(node)
