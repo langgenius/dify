@@ -35,7 +35,7 @@ import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
-import { fetchAppDetail } from '@/service/apps'
+import { fetchAppDetailDirect } from '@/service/apps'
 import { AccessMode } from '@/models/access-control'
 import AccessControl from '../app-access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
@@ -161,11 +161,15 @@ function AppCard({
       return
     setShowAccessControl(true)
   }, [appDetail])
-  const handleAccessControlUpdate = useCallback(() => {
-    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
+  const handleAccessControlUpdate = useCallback(async () => {
+    try {
+      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail!.id })
       setAppDetail(res)
       setShowAccessControl(false)
-    })
+    }
+ catch (error) {
+      console.error('Failed to fetch app detail:', error)
+    }
   }, [appDetail, setAppDetail])
 
   return (

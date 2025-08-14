@@ -24,9 +24,20 @@ def queue_monitor_task():
     queue_name = "dataset"
     threshold = dify_config.QUEUE_MONITOR_THRESHOLD
 
+    if threshold is None:
+        logging.warning(click.style("QUEUE_MONITOR_THRESHOLD is not configured, skipping monitoring", fg="yellow"))
+        return
+
     try:
         queue_length = celery_redis.llen(f"{queue_name}")
         logging.info(click.style(f"Start monitor {queue_name}", fg="green"))
+
+        if queue_length is None:
+            logging.error(
+                click.style(f"Failed to get queue length for {queue_name} - Redis may be unavailable", fg="red")
+            )
+            return
+
         logging.info(click.style(f"Queue length: {queue_length}", fg="green"))
 
         if queue_length >= threshold:
