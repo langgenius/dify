@@ -758,6 +758,11 @@ const translation = {
       expiresError: 'Sona erme süresi en az 1 gün olmalıdır',
       scopesLabel: 'İzinler',
       scopeRequired: 'En az bir izin gereklidir',
+      validationHint: {
+        nameAndScope: 'Lütfen bir API anahtarı adı girin ve izinleri seçin',
+        nameOnly: 'Lütfen bir API anahtarı adı girin',
+        scopeOnly: 'Lütfen izinleri seçin',
+      },
       apiKeyLabel: 'API Anahtarı',
       apiKeyPlaceholder: 'API anahtarını girin',
       apiKeyError: 'API anahtarı en az 5 karakter olmalıdır',

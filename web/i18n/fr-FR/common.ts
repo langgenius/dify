@@ -758,6 +758,11 @@ const translation = {
       expiresError: 'L\'expiration doit être d\'au moins 1 jour',
       scopesLabel: 'Autorisations',
       scopeRequired: 'Au moins une autorisation est requise',
+      validationHint: {
+        nameAndScope: 'Veuillez saisir un nom de clé API et sélectionner des autorisations',
+        nameOnly: 'Veuillez saisir un nom de clé API',
+        scopeOnly: 'Veuillez sélectionner des autorisations',
+      },
       apiKeyLabel: 'Clé API',
       apiKeyPlaceholder: 'Entrez la clé API',
       apiKeyError: 'La clé API doit contenir au moins 5 caractères',

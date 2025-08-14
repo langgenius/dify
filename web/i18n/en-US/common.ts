@@ -758,6 +758,11 @@ const translation = {
       expiresError: 'Expiry must be at least 1 day',
       scopesLabel: 'Permissions',
       scopeRequired: 'At least one permission is required',
+      validationHint: {
+        nameAndScope: 'Please enter an API key name and select permissions',
+        nameOnly: 'Please enter an API key name',
+        scopeOnly: 'Please select permissions',
+      },
       apiKeyLabel: 'API Key',
       apiKeyPlaceholder: 'Enter API key',
       apiKeyError: 'API key must be at least 5 characters',

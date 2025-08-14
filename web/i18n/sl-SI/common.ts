@@ -956,6 +956,11 @@ const translation = {
       expiresError: 'Potek mora biti vsaj 1 dan',
       scopesLabel: 'Dovoljenja',
       scopeRequired: 'Zahtevano je vsaj eno dovoljenje',
+      validationHint: {
+        nameAndScope: 'Prosimo, vnesite ime API ključa in izberite dovoljenja',
+        nameOnly: 'Prosimo, vnesite ime API ključa',
+        scopeOnly: 'Prosimo, izberite dovoljenja',
+      },
       apiKeyLabel: 'API ključ',
       apiKeyPlaceholder: 'Vnesite API ključ',
       apiKeyError: 'API ključ mora imeti vsaj 5 znakov',

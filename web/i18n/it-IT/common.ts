@@ -789,6 +789,11 @@ const translation = {
       expiresError: 'La scadenza deve essere di almeno 1 giorno',
       scopesLabel: 'Permessi',
       scopeRequired: 'Almeno un permesso è richiesto',
+      validationHint: {
+        nameAndScope: 'Inserisci un nome per la chiave API e seleziona i permessi',
+        nameOnly: 'Inserisci un nome per la chiave API',
+        scopeOnly: 'Seleziona i permessi',
+      },
       apiKeyLabel: 'Chiave API',
       apiKeyPlaceholder: 'Inserisci la chiave API',
       apiKeyError: 'La chiave API deve contenere almeno 5 caratteri',

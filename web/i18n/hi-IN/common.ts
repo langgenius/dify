@@ -780,6 +780,11 @@ const translation = {
       expiresError: 'समाप्ति कम से कम 1 दिन होनी चाहिए',
       scopesLabel: 'अनुमतियाँ',
       scopeRequired: 'कम से कम एक अनुमति आवश्यक है',
+      validationHint: {
+        nameAndScope: 'कृपया API कुंजी का नाम दर्ज करें और अनुमतियाँ चुनें',
+        nameOnly: 'कृपया API कुंजी का नाम दर्ज करें',
+        scopeOnly: 'कृपया अनुमतियाँ चुनें',
+      },
       apiKeyLabel: 'API कुंजी',
       apiKeyPlaceholder: 'API कुंजी दर्ज करें',
       apiKeyError: 'API कुंजी कम से कम 5 वर्णों की होनी चाहिए',

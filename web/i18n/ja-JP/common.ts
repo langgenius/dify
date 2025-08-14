@@ -598,6 +598,11 @@ const translation = {
       expiresError: '有効期限は1日以上で指定してください',
       scopesLabel: '権限',
       scopeRequired: '少なくとも1つの権限が必要です',
+      validationHint: {
+        nameAndScope: 'APIキー名を入力し、権限を選択してください',
+        nameOnly: 'APIキー名を入力してください',
+        scopeOnly: '権限を選択してください',
+      },
       apiKeyLabel: 'APIキー',
       apiKeyPlaceholder: 'APIキーを入力してください',
       apiKeyError: 'APIキーは5文字以上である必要があります',

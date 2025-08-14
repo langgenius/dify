@@ -757,6 +757,11 @@ const translation = {
       expiresError: '過期時間必須至少為 1 天',
       scopesLabel: '權限',
       scopeRequired: '至少需要一個權限',
+      validationHint: {
+        nameAndScope: '請輸入API金鑰名稱並選擇權限',
+        nameOnly: '請輸入API金鑰名稱',
+        scopeOnly: '請選擇權限',
+      },
       apiKeyLabel: 'API 金鑰',
       apiKeyPlaceholder: '輸入 API 金鑰',
       apiKeyError: 'API 金鑰必須至少為 5 個字元',

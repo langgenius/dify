@@ -757,6 +757,11 @@ const translation = {
       expiresError: 'La caducidad debe ser de al menos 1 día',
       scopesLabel: 'Permisos',
       scopeRequired: 'Se requiere al menos un permiso',
+      validationHint: {
+        nameAndScope: 'Por favor ingrese un nombre de clave API y seleccione permisos',
+        nameOnly: 'Por favor ingrese un nombre de clave API',
+        scopeOnly: 'Por favor seleccione permisos',
+      },
       apiKeyLabel: 'Clave API',
       apiKeyPlaceholder: 'Ingrese la clave API',
       apiKeyError: 'La clave API debe tener al menos 5 caracteres',

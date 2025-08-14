@@ -758,6 +758,11 @@ const translation = {
       expiresError: 'Thời gian hết hạn phải ít nhất 1 ngày',
       scopesLabel: 'Quyền',
       scopeRequired: 'Cần ít nhất một quyền',
+      validationHint: {
+        nameAndScope: 'Vui lòng nhập tên khóa API và chọn quyền',
+        nameOnly: 'Vui lòng nhập tên khóa API',
+        scopeOnly: 'Vui lòng chọn quyền',
+      },
       apiKeyLabel: 'Khóa API',
       apiKeyPlaceholder: 'Nhập khóa API',
       apiKeyError: 'Khóa API phải có ít nhất 5 ký tự',

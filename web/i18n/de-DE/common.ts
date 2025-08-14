@@ -757,6 +757,11 @@ const translation = {
       expiresError: 'Ablauf muss mindestens 1 Tag betragen',
       scopesLabel: 'Berechtigungen',
       scopeRequired: 'Mindestens eine Berechtigung ist erforderlich',
+      validationHint: {
+        nameAndScope: 'Bitte geben Sie einen API-Schlüssel-Namen ein und wählen Sie Berechtigungen aus',
+        nameOnly: 'Bitte geben Sie einen API-Schlüssel-Namen ein',
+        scopeOnly: 'Bitte wählen Sie Berechtigungen aus',
+      },
       apiKeyLabel: 'API-Schlüssel',
       apiKeyPlaceholder: 'API-Schlüssel eingeben',
       apiKeyError: 'API-Schlüssel muss mindestens 5 Zeichen lang sein',

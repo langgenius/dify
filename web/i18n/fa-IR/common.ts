@@ -758,6 +758,11 @@ const translation = {
       expiresError: 'انقضا باید حداقل 1 روز باشد',
       scopesLabel: 'مجوزها',
       scopeRequired: 'حداقل یک مجوز الزامی است',
+      validationHint: {
+        nameAndScope: 'لطفاً نام کلید API را وارد کرده و مجوزها را انتخاب کنید',
+        nameOnly: 'لطفاً نام کلید API را وارد کنید',
+        scopeOnly: 'لطفاً مجوزها را انتخاب کنید',
+      },
       apiKeyLabel: 'کلید API',
       apiKeyPlaceholder: 'کلید API را وارد کنید',
       apiKeyError: 'کلید API باید حداقل 5 کاراکتر باشد',

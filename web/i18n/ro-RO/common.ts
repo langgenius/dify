@@ -758,6 +758,11 @@ const translation = {
       expiresError: 'Expirarea trebuie să fie de cel puțin 1 zi',
       scopesLabel: 'Permisiuni',
       scopeRequired: 'Este necesară cel puțin o permisiune',
+      validationHint: {
+        nameAndScope: 'Vă rugăm să introduceți un nume pentru cheia API și să selectați permisiuni',
+        nameOnly: 'Vă rugăm să introduceți un nume pentru cheia API',
+        scopeOnly: 'Vă rugăm să selectați permisiuni',
+      },
       apiKeyLabel: 'Cheie API',
       apiKeyPlaceholder: 'Introduceți cheia API',
       apiKeyError: 'Cheia API trebuie să aibă cel puțin 5 caractere',

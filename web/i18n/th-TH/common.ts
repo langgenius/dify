@@ -753,6 +753,11 @@ const translation = {
       expiresError: 'การหมดอายุต้องมีอย่างน้อย 1 วัน',
       scopesLabel: 'สิทธิ์',
       scopeRequired: 'ต้องมีสิทธิ์อย่างน้อยหนึ่งรายการ',
+      validationHint: {
+        nameAndScope: 'กรุณาป้อนชื่อคีย์ API และเลือกสิทธิ์',
+        nameOnly: 'กรุณาป้อนชื่อคีย์ API',
+        scopeOnly: 'กรุณาเลือกสิทธิ์',
+      },
       apiKeyLabel: 'คีย์ API',
       apiKeyPlaceholder: 'ป้อนคีย์ API',
       apiKeyError: 'คีย์ API ต้องมีอย่างน้อย 5 ตัวอักษร',

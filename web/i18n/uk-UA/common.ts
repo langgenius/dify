@@ -759,6 +759,11 @@ const translation = {
       expiresError: 'Термін дії має бути не менше 1 дня',
       scopesLabel: 'Дозволи',
       scopeRequired: 'Потрібен принаймні один дозвіл',
+      validationHint: {
+        nameAndScope: 'Будь ласка, введіть ім\'я ключа API та виберіть дозволи',
+        nameOnly: 'Будь ласка, введіть ім\'я ключа API',
+        scopeOnly: 'Будь ласка, виберіть дозволи',
+      },
       apiKeyLabel: 'Ключ API',
       apiKeyPlaceholder: 'Введіть ключ API',
       apiKeyError: 'Ключ API має містити щонайменше 5 символів',

@@ -776,6 +776,11 @@ const translation = {
       expiresError: 'Wygasa musi wynosić co najmniej 1 dzień',
       scopesLabel: 'Uprawnienia',
       scopeRequired: 'Wymagane jest co najmniej jedno uprawnienie',
+      validationHint: {
+        nameAndScope: 'Proszę wprowadzić nazwę klucza API i wybrać uprawnienia',
+        nameOnly: 'Proszę wprowadzić nazwę klucza API',
+        scopeOnly: 'Proszę wybrać uprawnienia',
+      },
       apiKeyLabel: 'Klucz API',
       apiKeyPlaceholder: 'Wprowadź klucz API',
       apiKeyError: 'Klucz API musi mieć co najmniej 5 znaków',

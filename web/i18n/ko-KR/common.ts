@@ -753,6 +753,11 @@ const translation = {
       expiresError: '만료는 최소 1일 이상이어야 합니다',
       scopesLabel: '권한',
       scopeRequired: '최소 하나 이상의 권한이 필요합니다',
+      validationHint: {
+        nameAndScope: 'API 키 이름을 입력하고 권한을 선택해주세요',
+        nameOnly: 'API 키 이름을 입력해주세요',
+        scopeOnly: '권한을 선택해주세요',
+      },
       apiKeyLabel: 'API 키',
       apiKeyPlaceholder: 'API 키를 입력하세요',
       apiKeyError: 'API 키는 5자 이상이어야 합니다',

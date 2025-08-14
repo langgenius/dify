@@ -14,13 +14,15 @@ import WorkspaceApiKeyModal from './modal'
 
 export default function WorkspaceApiKeyPage() {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceOwner, isCurrentWorkspaceManager }
+    = useAppContext()
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const { data, mutate: mutateApiKeys, isLoading: isLoadingApiKeys } = useSWR(
-    { url: '/workspaces/current/api-keys' },
-    fetchWorkspaceApiKeys,
-  )
+  const {
+    data,
+    mutate: mutateApiKeys,
+    isLoading: isLoadingApiKeys,
+  } = useSWR({ url: '/workspaces/current/api-keys' }, fetchWorkspaceApiKeys)
 
   if (isLoadingApiKeys) {
     return (
@@ -35,7 +37,7 @@ export default function WorkspaceApiKeyPage() {
 
   return (
     <div>
-      {(!apiKeys || apiKeys.length === 0) ? (
+      {!apiKeys || apiKeys.length === 0 ? (
         <Empty />
       ) : (
         <div>

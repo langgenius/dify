@@ -758,6 +758,11 @@ const translation = {
       expiresError: 'Срок действия должен быть не менее 1 дня',
       scopesLabel: 'Разрешения',
       scopeRequired: 'Требуется хотя бы одно разрешение',
+      validationHint: {
+        nameAndScope: 'Пожалуйста, введите имя ключа API и выберите разрешения',
+        nameOnly: 'Пожалуйста, введите имя ключа API',
+        scopeOnly: 'Пожалуйста, выберите разрешения',
+      },
       apiKeyLabel: 'Ключ API',
       apiKeyPlaceholder: 'Введите ключ API',
       apiKeyError: 'Ключ API должен содержать не менее 5 символов',
