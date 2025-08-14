@@ -35,6 +35,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: pnpm/action-setup@v4
         with:
+          package_json_file: web/package.json
           run_install: false
 
       - name: Setup Node.js
