@@ -507,6 +507,7 @@ const vars = {
   'divider-intense': 'var(--color-divider-intense)',
   'divider-solid': 'var(--color-divider-solid)',
   'divider-solid-alt': 'var(--color-divider-solid-alt)',
+  'divider-accent': 'var(--color-divider-accent)',
 
   'state-base-hover': 'var(--color-state-base-hover)',
   'state-base-active': 'var(--color-state-base-active)',
@@ -748,6 +749,14 @@ const vars = {
 
   'saas-background': 'var(--color-saas-background)',
   'saas-pricing-grid-bg': 'var(--color-saas-pricing-grid-bg)',
+  'saas-dify-blue-static': 'var(--color-saas-dify-blue-static)',
+  'saas-dify-blue-static-hover': 'var(--color-saas-dify-blue-static-hover)',
+  'saas-dify-blue-accessible': 'var(--color-saas-dify-blue-accessible)',
+  'saas-dify-blue-inverted': 'var(--color-saas-dify-blue-inverted)',
+  'saas-dify-blue-inverted-dimmed': 'var(--color-saas-dify-blue-inverted-dimmed)',
+
+  'saas-background-inverted': 'var(--color-saas-background-inverted)',
+  'saas-background-inverted-hover': 'var(--color-saas-background-inverted-hover)',
 
   'dify-logo-dify-logo-blue': 'var(--color-dify-logo-dify-logo-blue)',
   'dify-logo-dify-logo-black': 'var(--color-dify-logo-dify-logo-black)',

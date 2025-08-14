@@ -20,7 +20,6 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
       return true
     const filterLower = searchFilter.toLowerCase()
     return action.shortcut.toLowerCase().includes(filterLower)
-      || action.key.toLowerCase().includes(filterLower)
   })
 
   useEffect(() => {
@@ -61,7 +60,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             className="flex cursor-pointer items-center rounded-md
                      p-2.5
                      transition-all
-                     duration-150 hover:bg-state-base-hover-alt aria-[selected=true]:bg-state-base-hover"
+                     duration-150 hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt"
             onSelect={() => onCommandSelect(action.shortcut)}
           >
             <span className="min-w-[4.5rem] text-left font-mono text-xs text-text-tertiary">

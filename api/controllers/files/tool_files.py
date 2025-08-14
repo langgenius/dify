@@ -4,8 +4,8 @@ from flask import Response
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.errors import UnsupportedFileTypeError
 from controllers.files import api
-from controllers.files.error import UnsupportedFileTypeError
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from models import db as global_db

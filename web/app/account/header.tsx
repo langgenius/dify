@@ -13,14 +13,14 @@ const Header = () => {
   const router = useRouter()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
-  const back = useCallback(() => {
-    router.back()
+  const goToStudio = useCallback(() => {
+    router.push('/apps')
   }, [router])
 
   return (
     <div className='flex flex-1 items-center justify-between px-4'>
       <div className='flex items-center gap-3'>
-        <div className='flex cursor-pointer items-center' onClick={back}>
+        <div className='flex cursor-pointer items-center' onClick={goToStudio}>
           {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
             ? <img
               src={systemFeatures.branding.login_page_logo}
@@ -33,7 +33,7 @@ const Header = () => {
         <p className='title-3xl-semi-bold relative mt-[-2px] text-text-primary'>{t('common.account.account')}</p>
       </div>
       <div className='flex shrink-0 items-center gap-3'>
-        <Button className='system-sm-medium gap-2 px-3 py-2' onClick={back}>
+        <Button className='system-sm-medium gap-2 px-3 py-2' onClick={goToStudio}>
           <RiRobot2Line className='h-4 w-4' />
           <p>{t('common.account.studio')}</p>
           <RiArrowRightUpLine className='h-4 w-4' />

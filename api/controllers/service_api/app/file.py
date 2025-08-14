@@ -2,14 +2,14 @@ from flask import request
 from flask_restful import Resource, marshal_with
 
 import services
-from controllers.common.errors import FilenameNotExistsError
-from controllers.service_api import api
-from controllers.service_api.app.error import (
+from controllers.common.errors import (
+    FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.service_api import api
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from fields.file_fields import file_fields
 from models.model import App, EndUser

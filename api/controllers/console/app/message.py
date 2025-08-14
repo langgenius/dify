@@ -27,7 +27,7 @@ from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models.model import AppMode, Conversation, Message, MessageAnnotation
+from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -124,16 +124,33 @@ class MessageFeedbackApi(Resource):
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         args = parser.parse_args()
 
-        try:
-            MessageService.create_feedback(
-                app_model=app_model,
-                message_id=str(args["message_id"]),
-                user=current_user,
-                rating=args.get("rating"),
-                content=None,
-            )
-        except MessageNotExistsError:
+        message_id = str(args["message_id"])
+
+        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+
+        if not message:
             raise NotFound("Message Not Exists.")
+
+        feedback = message.admin_feedback
+
+        if not args["rating"] and feedback:
+            db.session.delete(feedback)
+        elif args["rating"] and feedback:
+            feedback.rating = args["rating"]
+        elif not args["rating"] and not feedback:
+            raise ValueError("rating cannot be None when feedback not exists")
+        else:
+            feedback = MessageFeedback(
+                app_id=app_model.id,
+                conversation_id=message.conversation_id,
+                message_id=message.id,
+                rating=args["rating"],
+                from_source="admin",
+                from_account_id=current_user.id,
+            )
+            db.session.add(feedback)
+
+        db.session.commit()
 
         return {"result": "success"}
 
