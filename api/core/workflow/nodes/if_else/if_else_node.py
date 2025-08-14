@@ -55,7 +55,7 @@ class IfElseNode(Node):
 
         input_conditions: Sequence[Mapping[str, Any]] = []
         final_result = False
-        selected_case_id = None
+        selected_case_id = "false"
         condition_processor = ConditionProcessor()
         try:
             # Check if the new cases structure is used
