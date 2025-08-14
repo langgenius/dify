@@ -92,9 +92,18 @@ class File(BaseModel):
         self._storage_key = str(storage_key)
 
     def to_dict(self) -> Mapping[str, str | int | None]:
-        data = self.model_dump(mode="json")
+        # Ensure all values are JSON serializable
         return {
-            **data,
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "type": self.type.value if self.type else None,
+            "transfer_method": self.transfer_method.value if self.transfer_method else None,
+            "remote_url": self.remote_url,
+            "related_id": self.related_id,
+            "filename": self.filename,
+            "extension": self.extension,
+            "mime_type": self.mime_type,
+            "size": self.size,
             "url": self.generate_url(),
         }
 

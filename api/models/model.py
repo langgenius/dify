@@ -1160,10 +1160,23 @@ class Message(Base):
                 )
             files.append(file)
 
-        result = [
-            {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
-            for (file, message_file) in zip(files, message_files)
-        ]
+        result = []
+        for file, message_file in zip(files, message_files):
+            try:
+                file_dict = file.to_dict()
+                result.append({
+                    "belongs_to": message_file.belongs_to, 
+                    "upload_file_id": message_file.upload_file_id, 
+                    **file_dict
+                })
+            except Exception:
+                # Log the error but don't break the entire operation
+                import logging
+                logger = logging.getLogger(__name__)
+                file_id = file.id if hasattr(file, 'id') else 'unknown'
+                logger.exception("Failed to serialize file %s", file_id)
+                # Skip this file and continue with others
+                continue
 
         db.session.commit()
         return result
