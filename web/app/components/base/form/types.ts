@@ -69,7 +69,7 @@ export type FormSchema = {
   inputClassName?: string
   validators?: AnyValidators
   selfFormProps?: (form: AnyFormApi) => Record<string, any>
-  onChange?: (form: AnyFormApi) => void
+  onChange?: (form: AnyFormApi, v: any) => void
 }
 
 export type FormValues = Record<string, any>

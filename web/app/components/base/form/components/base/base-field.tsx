@@ -64,7 +64,6 @@ const BaseField = ({
     onChange,
   } = formSchema
   const type = typeof typeOrFn === 'function' ? typeOrFn(field.form) : typeOrFn
-  console.log('type', field.name, type)
 
   const memorizedLabel = useMemo(() => {
     if (isValidElement(label))
@@ -120,13 +119,12 @@ const BaseField = ({
   const show = useMemo(() => {
     return (Array.isArray(show_on) ? show_on : show_on(field.form)).every((condition) => {
       const conditionValue = values[condition.variable]
-      console.log('conditionValue', condition.value, field.name, conditionValue)
       return Array.isArray(condition.value) ? condition.value.includes(conditionValue) : conditionValue === condition.value
     })
   }, [values, show_on, field.name])
   const handleChange = useCallback((value: any) => {
     field.handleChange(value)
-    onChange?.(field.form)
+    onChange?.(field.form, value)
   }, [field, onChange])
 
   if (!show)

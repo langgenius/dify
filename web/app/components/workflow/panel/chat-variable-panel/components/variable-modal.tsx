@@ -57,7 +57,9 @@ const ChatVariableModal = ({
   const handleConfirm = useCallback(async () => {
     const {
       values,
-    } = formRef.current?.getFormValues({}) || { isCheckValidated: false, values: {} }
+    } = formRef.current?.getFormValues({
+      needCheckValidatedValues: true,
+    }) || { isCheckValidated: false, values: {} }
     const {
       name,
       type,
