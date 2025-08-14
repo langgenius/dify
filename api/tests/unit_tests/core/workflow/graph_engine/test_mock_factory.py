@@ -15,8 +15,10 @@ from .test_mock_nodes import (
     MockAgentNode,
     MockDocumentExtractorNode,
     MockHttpRequestNode,
+    MockIterationNode,
     MockKnowledgeRetrievalNode,
     MockLLMNode,
+    MockLoopNode,
     MockParameterExtractorNode,
     MockQuestionClassifierNode,
     MockToolNode,
@@ -63,6 +65,8 @@ class MockNodeFactory(DifyNodeFactory):
             NodeType.QUESTION_CLASSIFIER: MockQuestionClassifierNode,
             NodeType.PARAMETER_EXTRACTOR: MockParameterExtractorNode,
             NodeType.DOCUMENT_EXTRACTOR: MockDocumentExtractorNode,
+            NodeType.ITERATION: MockIterationNode,
+            NodeType.LOOP: MockLoopNode,
         }
 
     def create_node(self, node_config: dict[str, Any]) -> Node:

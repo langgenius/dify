@@ -539,3 +539,160 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
                 outputs=outputs,
             )
         )
+
+
+from core.workflow.nodes.iteration import IterationNode
+from core.workflow.nodes.loop import LoopNode
+
+
+class MockIterationNode(MockNodeMixin, IterationNode):
+    """Mock implementation of IterationNode that preserves mock configuration."""
+
+    @classmethod
+    def version(cls) -> str:
+        """Return the version of this mock node."""
+        return "mock-1"
+
+    def _create_graph_engine(self, index: int, item: Any):
+        """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
+        # Import dependencies
+        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.graph import Graph
+        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine.command_channels import InMemoryChannel
+
+        # Import our MockNodeFactory instead of DifyNodeFactory
+        from .test_mock_factory import MockNodeFactory
+
+        # Create GraphInitParams from node attributes
+        graph_init_params = GraphInitParams(
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_id=self.workflow_id,
+            graph_config=self.graph_config,
+            user_id=self.user_id,
+            user_from=self.user_from.value,
+            invoke_from=self.invoke_from.value,
+            call_depth=self.workflow_call_depth,
+        )
+
+        # Create a deep copy of the variable pool for each iteration
+        variable_pool_copy = self.graph_runtime_state.variable_pool.model_copy(deep=True)
+
+        # append iteration variable (item, index) to variable pool
+        variable_pool_copy.add([self._node_id, "index"], index)
+        variable_pool_copy.add([self._node_id, "item"], item)
+
+        # Create a new GraphRuntimeState for this iteration
+        graph_runtime_state_copy = GraphRuntimeState(
+            variable_pool=variable_pool_copy,
+            start_at=self.graph_runtime_state.start_at,
+            total_tokens=0,
+            node_run_steps=0,
+        )
+
+        # Create a MockNodeFactory with the same mock_config
+        node_factory = MockNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state_copy,
+            mock_config=self.mock_config,  # Pass the mock configuration
+        )
+
+        # Initialize the iteration graph with the mock node factory
+        iteration_graph = Graph.init(
+            graph_config=self.graph_config, node_factory=node_factory, root_node_id=self._node_data.start_node_id
+        )
+
+        if not iteration_graph:
+            from core.workflow.nodes.iteration.exc import IterationGraphNotFoundError
+
+            raise IterationGraphNotFoundError("iteration graph not found")
+
+        # Create a new GraphEngine for this iteration
+        graph_engine = GraphEngine(
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_id=self.workflow_id,
+            user_id=self.user_id,
+            user_from=self.user_from,
+            invoke_from=self.invoke_from,
+            call_depth=self.workflow_call_depth,
+            graph=iteration_graph,
+            graph_config=self.graph_config,
+            graph_runtime_state=graph_runtime_state_copy,
+            max_execution_steps=10000,  # Use default or config value
+            max_execution_time=600,  # Use default or config value
+            command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+        )
+
+        return graph_engine
+
+
+class MockLoopNode(MockNodeMixin, LoopNode):
+    """Mock implementation of LoopNode that preserves mock configuration."""
+
+    @classmethod
+    def version(cls) -> str:
+        """Return the version of this mock node."""
+        return "mock-1"
+
+    def _create_graph_engine(self, start_at, root_node_id: str):
+        """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
+        # Import dependencies
+        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.graph import Graph
+        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine.command_channels import InMemoryChannel
+
+        # Import our MockNodeFactory instead of DifyNodeFactory
+        from .test_mock_factory import MockNodeFactory
+
+        # Create GraphInitParams from node attributes
+        graph_init_params = GraphInitParams(
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_id=self.workflow_id,
+            graph_config=self.graph_config,
+            user_id=self.user_id,
+            user_from=self.user_from.value,
+            invoke_from=self.invoke_from.value,
+            call_depth=self.workflow_call_depth,
+        )
+
+        # Create a new GraphRuntimeState for this iteration
+        graph_runtime_state_copy = GraphRuntimeState(
+            variable_pool=self.graph_runtime_state.variable_pool,
+            start_at=start_at.timestamp(),
+        )
+
+        # Create a MockNodeFactory with the same mock_config
+        node_factory = MockNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state_copy,
+            mock_config=self.mock_config,  # Pass the mock configuration
+        )
+
+        # Initialize the loop graph with the mock node factory
+        loop_graph = Graph.init(graph_config=self.graph_config, node_factory=node_factory, root_node_id=root_node_id)
+
+        if not loop_graph:
+            raise ValueError("loop graph not found")
+
+        # Create a new GraphEngine for this iteration
+        graph_engine = GraphEngine(
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_id=self.workflow_id,
+            user_id=self.user_id,
+            user_from=self.user_from,
+            invoke_from=self.invoke_from,
+            call_depth=self.workflow_call_depth,
+            graph=loop_graph,
+            graph_config=self.graph_config,
+            graph_runtime_state=graph_runtime_state_copy,
+            max_execution_steps=10000,  # Use default or config value
+            max_execution_time=600,  # Use default or config value
+            command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+        )
+
+        return graph_engine
