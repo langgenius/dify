@@ -23,6 +23,7 @@ import { changeModelProviderPriority } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Authorized from '../model-auth/authorized'
+import cn from '@/utils/classnames'
 
 type CredentialPanelProps = {
   provider: ModelProvider
@@ -49,8 +50,9 @@ const CredentialPanel = ({
     current_credential_name,
     available_credentials,
   } = provider.custom_configuration
-  const authorized = current_credential_id && current_credential_name && available_credentials?.every(item => !!item.credential_id)
-  const authRemoved = !!available_credentials?.length && available_credentials?.every(item => !item.credential_id)
+  const hasCredential = !!available_credentials?.length
+  const authorized = current_credential_id && current_credential_name
+  const authRemoved = hasCredential && !current_credential_id && !current_credential_name
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
@@ -75,21 +77,30 @@ const CredentialPanel = ({
     }
   }
   const credentialLabel = useMemo(() => {
+    if (!hasCredential)
+      return t('common.model.unAuthorized')
     if (authorized)
       return current_credential_name
     if (authRemoved)
-      return 'Auth removed'
-    return 'Unauthorized'
-  }, [authorized, authRemoved, current_credential_name])
+      return t('common.model.authRemoved')
+
+    return ''
+  }, [authorized, authRemoved, current_credential_name, hasCredential])
 
   return (
     <>
       {
         provider.provider_credential_schema && (
-          <div className='relative ml-1 w-[112px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] p-1'>
+          <div className={cn(
+            'relative ml-1 w-[120px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] p-1',
+            authRemoved && 'border-state-destructive-border bg-state-destructive-hover',
+          )}>
             <div className='system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary'>
               <div
-                className='grow truncate'
+                className={cn(
+                  'grow truncate',
+                  authRemoved && 'text-text-destructive',
+                )}
                 title={credentialLabel}
               >
                 {credentialLabel}
@@ -98,7 +109,7 @@ const CredentialPanel = ({
             </div>
             <div className='flex items-center gap-0.5'>
               {
-                (!authorized || authRemoved) && (
+                !hasCredential && (
                   <Button
                     className='grow'
                     size='small'
@@ -106,16 +117,12 @@ const CredentialPanel = ({
                     variant={!authorized ? 'secondary-accent' : 'secondary'}
                   >
                     <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
-                    {
-                      authRemoved
-                        ? t('common.operation.config')
-                        : t('common.operation.setup')
-                    }
+                    {t('common.operation.setup')}
                   </Button>
                 )
               }
               {
-                authorized && (
+                (hasCredential || authRemoved) && (
                   <Authorized
                     provider={provider.provider}
                     onSetup={onSetup}

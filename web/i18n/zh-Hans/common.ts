@@ -145,6 +145,8 @@ const translation = {
     addMoreModel: '添加更多模型',
     settingsLink: '模型设置',
     capabilities: '多模态能力',
+    unAuthorized: '未授权',
+    authRemoved: '授权已移除',
   },
   menus: {
     status: 'beta',

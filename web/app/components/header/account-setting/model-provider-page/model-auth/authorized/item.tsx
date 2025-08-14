@@ -13,6 +13,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import type { Credential } from '../../declarations'
+import Button from '@/app/components/base/button'
 
 type ItemProps = {
   credential: Credential
@@ -33,6 +34,7 @@ const Item = ({
   disabled,
   onDelete,
   onEdit,
+  onSetDefault,
   disableRename,
   disableEdit,
   disableDelete,
@@ -77,6 +79,20 @@ const Item = ({
       {
         showAction && (
           <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>
+            {
+              !disableSetDefault && (
+                <Button
+                  size='small'
+                  disabled={disabled}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSetDefault?.(credential.credential_id)
+                  }}
+                >
+                  {t('plugin.auth.setDefault')}
+                </Button>
+              )
+            }
             {
               !disableEdit && (
                 <Tooltip popupContent={t('common.operation.edit')}>
