@@ -194,7 +194,7 @@ class DatasourceNode(BaseNode):
                     file_info = File(
                         id=upload_file.id,
                         filename=upload_file.name,
-                        extension="." + upload_file.extension,
+                        extension=upload_file.extension,
                         mime_type=upload_file.mime_type,
                         tenant_id=self.tenant_id,
                         type=FileType.CUSTOM,
