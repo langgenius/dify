@@ -70,19 +70,11 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(false)
 
   useEffect(() => {
-    if (accessModeResult?.accessMode) {
-      updateWebAppAccessMode(accessModeResult.accessMode)
-      if (accessModeResult.accessMode === AccessMode.PUBLIC) {
-        setIsFetchingAccessToken(true)
-        checkOrSetAccessToken(shareCode).finally(() => {
-          setIsFetchingAccessToken(false)
-        })
-      }
-      else {
-        setIsFetchingAccessToken(false)
-      }
-    }
-  }, [accessModeResult, updateWebAppAccessMode, shareCode])
+    setIsFetchingAccessToken(true)
+    checkOrSetAccessToken(shareCode).finally(() => {
+      setIsFetchingAccessToken(false)
+    })
+  }, [shareCode])
 
   if (isFetching || isFetchingAccessToken) {
     return <div className='flex h-full w-full items-center justify-center'>
