@@ -14,7 +14,7 @@ concurrency:
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  ALIYUN_REGISTRY: registry.cn-hangzhou.aliyuncs.com
+  ALIYUN_REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
   ALIYUN_USERNAME: ${{ secrets.ALIYUN_USERNAME }}
   ALIYUN_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
   DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'langgenius/dify-web' }}
