@@ -223,7 +223,8 @@ docker compose up -d
 使用 [CDK](https://aws.amazon.com/cdk/) 将 Dify 部署到 AWS
 
 ##### AWS 
-- [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### 使用 阿里云计算巢 部署
 
