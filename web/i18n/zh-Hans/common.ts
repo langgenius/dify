@@ -446,6 +446,7 @@ const translation = {
     },
     addMoreModelProvider: '添加更多模型提供商',
     addModel: '添加模型',
+    showModelReferences: '显示模型引用',
     modelsNum: '{{num}} 个模型',
     showModels: '显示模型',
     showModelsNum: '显示 {{num}} 个模型',
