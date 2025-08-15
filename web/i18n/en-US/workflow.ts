@@ -282,6 +282,9 @@ const translation = {
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
+    'trigger-schedule': 'Time-based workflow trigger that starts workflows on a schedule',
+    'trigger-webhook': 'HTTP callback trigger that starts workflows from external HTTP requests',
+    'trigger-plugin': 'Third-party integration trigger that starts workflows from external platform events',
   },
   operator: {
     zoomIn: 'Zoom In',
