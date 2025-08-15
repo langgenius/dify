@@ -9,7 +9,7 @@ const Cloud = ({
 
   return (
     <svg xmlns='http://www.w3.org/2000/svg' width='16' height='17' viewBox='0 0 16 17' fill='none'>
-      <g clip-path='url(#clip0_1_4630)'>
+      <g clipPath='url(#clip0_1_4630)'>
         <rect y='0.5' width='4' height='4' rx='2' fill={color} />
         <rect opacity='0.18' x='6' y='0.5' width='4' height='4' rx='2' fill='var(--color-text-quaternary)' />
         <rect x='12' y='0.5' width='4' height='4' rx='2' fill={color} />
