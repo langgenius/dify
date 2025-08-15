@@ -13,7 +13,6 @@ from core.app.entities.app_invoke_entities import (
 from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.system_variable import SystemVariable

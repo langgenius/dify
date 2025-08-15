@@ -261,3 +261,14 @@ def is_allow_transfer_owner(view):
         abort(403)
 
     return decorated
+
+
+def knowledge_pipeline_publish_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if features.knowledge_pipeline.publish_enabled:
+            return view(*args, **kwargs)
+        abort(403)
+
+    return decorated
