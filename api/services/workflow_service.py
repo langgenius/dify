@@ -246,25 +246,23 @@ class WorkflowService:
         for var_dict in raw_environment_variables:
             if var_dict.get("value_type") == SegmentType.SECRET.value and "from_version" in var_dict:
                 # Restore secret from a previous version
-                env_var_id = var_dict.get('id')
-                from_version = var_dict.get('from_version')
+                env_var_id = var_dict.get("id")
+                from_version = var_dict.get("from_version")
 
                 if not env_var_id or not from_version:
                     # Skip if essential info is missing
-                    var_dict['value'] = ''
+                    var_dict["value"] = ""
                 else:
                     try:
                         restored_value = self._restore_secret_from_version(
-                            app_model=app_model,
-                            env_var_id=cast(str, env_var_id),
-                            from_version=cast(str, from_version)
+                            app_model=app_model, env_var_id=cast(str, env_var_id), from_version=cast(str, from_version)
                         )
                         # Use the restored encrypted value
-                        var_dict['value'] = restored_value
+                        var_dict["value"] = restored_value
                     except ValueError:
                         # If restoration fails, treat it as a regular variable without a value
                         # This prevents errors and allows the user to manually set it if needed
-                        var_dict['value'] = ''
+                        var_dict["value"] = ""
 
             # Build the Variable object after potential restoration
             processed_env_vars.append(variable_factory.build_environment_variable_from_mapping(var_dict))

@@ -508,7 +508,7 @@ class AppDslService:
                 features=workflow_data.get("features", {}),
                 unique_hash=unique_hash,
                 raw_environment_variables=environment_variables,
-                conversation_variables=conversation_variables
+                conversation_variables=conversation_variables,
             )
         elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
             # Initialize model config
