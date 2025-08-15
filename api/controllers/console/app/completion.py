@@ -1,6 +1,7 @@
 import logging
 
 import flask_login
+from flask import request
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -24,6 +25,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -114,6 +116,10 @@ class ChatMessageApi(Resource):
 
         streaming = args["response_mode"] != "blocking"
         args["auto_generate_name"] = False
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         account = flask_login.current_user
 
