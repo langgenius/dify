@@ -77,6 +77,7 @@ class WorkflowBasedAppRunner:
         graph_runtime_state: GraphRuntimeState,
         workflow_id: str = "",
         tenant_id: str = "",
+        user_id: str = "",
     ) -> Graph:
         """
         Init graph
@@ -96,7 +97,7 @@ class WorkflowBasedAppRunner:
             app_id=self._app_id,
             workflow_id=workflow_id,
             graph_config=graph_config,
-            user_id="",
+            user_id=user_id,
             user_from=UserFrom.ACCOUNT.value,
             invoke_from=InvokeFrom.SERVICE_API.value,
             call_depth=0,
