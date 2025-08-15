@@ -12,18 +12,18 @@ import List from './list'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
 import { Community, Enterprise, Premium } from '../../assets'
 
-const style = {
+const STYLE_MAP = {
   [SelfHostedPlan.community]: {
     icon: <Community />,
     bg: '',
   },
   [SelfHostedPlan.premium]: {
     icon: <Premium />,
-    bg: '',
+    bg: 'bg-billing-plan-card-premium-bg opacity-10',
   },
   [SelfHostedPlan.enterprise]: {
     icon: <Enterprise />,
-    bg: '',
+    bg: 'bg-billing-plan-card-enterprise-bg opacity-10',
   },
 }
 
@@ -65,13 +65,11 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   }, [isCurrentWorkspaceManager, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
 
   return (
-    <div className={cn(
-      'flex flex-1 flex-col',
-      style[plan].bg,
-    )}>
+    <div className='relative flex flex-1 flex-col'>
+      <div className={cn('absolute inset-0 -z-10', STYLE_MAP[plan].bg)} />
       <div className='flex flex-col px-5 py-4'>
         <div className=' flex flex-col gap-y-6 px-1 pt-10'>
-          {style[plan].icon}
+          {STYLE_MAP[plan].icon}
           <div className='flex min-h-[104px] flex-col gap-y-2'>
             <div className='text-[30px] font-medium leading-[1.2] text-text-primary'>{t(`${i18nPrefix}.name`)}</div>
             <div className='system-md-regular line-clamp-2 text-text-secondary'>{t(`${i18nPrefix}.description`)}</div>

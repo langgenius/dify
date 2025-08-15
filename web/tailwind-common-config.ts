@@ -133,6 +133,8 @@ const config = {
         'pipeline-template-card-hover-bg': 'var(--color-pipeline-template-card-hover-bg)',
         'pipeline-add-documents-title-bg': 'var(--color-pipeline-add-documents-title-bg)',
         'billing-plan-title-bg': 'var(--color-billing-plan-title-bg)',
+        'billing-plan-card-premium-bg': 'var(--color-billing-plan-card-premium-bg)',
+        'billing-plan-card-enterprise-bg': 'var(--color-billing-plan-card-enterprise-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
