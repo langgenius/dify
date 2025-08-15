@@ -38,8 +38,6 @@ uv run --project api mypy .                 # Type checking
 
 ```bash
 cd web
-pnpm dev                          # Start development server
-pnpm build                        # Build for production
 pnpm lint                         # Run ESLint
 pnpm eslint-fix                   # Fix ESLint issues
 pnpm test                         # Run Jest tests
