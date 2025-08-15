@@ -201,11 +201,13 @@ class WorkflowService:
         Restore a secret value from a specific published workflow version.
         """
         # Fetch the specific published workflow version
-        published_workflow = db.session.query(Workflow).filter(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.id == from_version
-        ).first()
+        published_workflow = (
+            db.session.query(Workflow)
+            .filter(
+                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.id == from_version
+            )
+            .first()
+        )
 
         if not published_workflow or published_workflow.version == Workflow.VERSION_DRAFT:
             raise ValueError(f"Published workflow version {from_version} not found.")
@@ -242,25 +244,21 @@ class WorkflowService:
         # Process environment variables
         processed_env_vars = []
         for var_dict in raw_environment_variables:
-            if var_dict.get('value_type') == SegmentType.SECRET.value and 'from_version' in var_dict:
+            if var_dict.get("value_type") == SegmentType.SECRET.value and "from_version" in var_dict:
                 # Restore secret from a previous version
                 try:
                     restored_value = self._restore_secret_from_version(
-                        app_model=app_model,
-                        env_var_id=var_dict.get('id'),
-                        from_version=var_dict.get('from_version')
+                        app_model=app_model, env_var_id=var_dict.get("id"), from_version=var_dict.get("from_version")
                     )
                     # Use the restored encrypted value
-                    var_dict['value'] = restored_value
+                    var_dict["value"] = restored_value
                 except ValueError as e:
                     # If restoration fails, treat it as a regular variable without a value
                     # This prevents errors and allows the user to manually set it if needed
-                    var_dict['value'] = ''
+                    var_dict["value"] = ""
 
             # Build the Variable object after potential restoration
-            processed_env_vars.append(
-                variable_factory.build_environment_variable_from_mapping(var_dict)
-            )
+            processed_env_vars.append(variable_factory.build_environment_variable_from_mapping(var_dict))
 
         # validate features structure
         self.validate_features_structure(app_model=app_model, features=features)

@@ -42,12 +42,13 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 
 logger = logging.getLogger(__name__)
 
+
 # Define a custom type for environment variables to include 'from_version'
 def environment_variable(value):
     if not isinstance(value, dict):
         raise ValueError("Must be a dictionary")
     # Basic validation, can be expanded
-    if 'name' not in value or 'value_type' not in value:
+    if "name" not in value or "value_type" not in value:
         raise ValueError("Missing 'name' or 'value_type'")
     # 'from_version' is optional
     return value
@@ -115,7 +116,7 @@ class DraftWorkflowApi(Resource):
             parser.add_argument("features", type=dict, required=True, nullable=False, location="json")
             parser.add_argument("hash", type=str, required=False, location="json")
             parser.add_argument(
-                "environment_variables", type=environment_variable, required=True, location="json", action='append'
+                "environment_variables", type=environment_variable, required=True, location="json", action="append"
             )
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
             args = parser.parse_args()
