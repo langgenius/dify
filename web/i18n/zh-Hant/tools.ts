@@ -191,6 +191,8 @@ const translation = {
       cancel: '取消',
       save: '儲存',
       confirm: '新增並授權',
+      sseReadTimeout: 'SSE 讀取超時',
+      timeout: '超時',
     },
     delete: '刪除 MCP 伺服器',
     deleteConfirmTitle: '您確定要刪除 {{mcp}} 嗎？',

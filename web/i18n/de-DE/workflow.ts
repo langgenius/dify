@@ -991,6 +991,10 @@ const translation = {
       noDependents: 'Keine Angehörigen',
     },
     relationsTab: 'Beziehungen',
+    copyLastRun: 'Letzte Ausführung kopieren',
+    copyLastRunError: 'Fehler beim Kopieren der letzten Lauf-Eingaben',
+    noMatchingInputsFound: 'Keine übereinstimmenden Eingaben aus dem letzten Lauf gefunden.',
+    noLastRunFound: 'Kein vorheriger Lauf gefunden',
   },
 }
 

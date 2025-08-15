@@ -277,6 +277,11 @@ class ConversationService:
 
             # Validate that the new value type matches the expected variable type
             expected_type = SegmentType(current_variable.value_type)
+
+            # There is showing number in web ui but int in db
+            if expected_type == SegmentType.INTEGER:
+                expected_type = SegmentType.NUMBER
+
             if not expected_type.is_valid(new_value):
                 inferred_type = SegmentType.infer_segment_type(new_value)
                 raise ConversationVariableTypeMismatchError(

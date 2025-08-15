@@ -786,9 +786,6 @@ class ToolManager:
         """
         get api provider
         """
-        """
-            get tool provider
-        """
         provider_name = provider
         provider_obj: ApiToolProvider | None = (
             db.session.query(ApiToolProvider)

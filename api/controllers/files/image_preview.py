@@ -5,8 +5,8 @@ from flask_restful import Resource, reqparse
 from werkzeug.exceptions import NotFound
 
 import services
+from controllers.common.errors import UnsupportedFileTypeError
 from controllers.files import api
-from controllers.files.error import UnsupportedFileTypeError
 from services.account_service import TenantService
 from services.file_service import FileService
 
