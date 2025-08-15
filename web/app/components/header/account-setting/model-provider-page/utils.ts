@@ -1,6 +1,5 @@
 import { ValidatedStatus } from '../key-validator/declarations'
 import type {
-  CredentialFormSchemaRadio,
   CredentialFormSchemaTextInput,
   FormValue,
   ModelLoadBalancingConfig,
@@ -181,7 +180,7 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
         show_on: [],
       }
     }),
-  } as CredentialFormSchemaRadio
+  } as any
 }
 
 export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>) => {
@@ -198,5 +197,5 @@ export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInpu
       zh_Hans: '请输入模型名称',
       en_US: 'Please enter model name',
     },
-  } as CredentialFormSchemaTextInput
+  } as any
 }

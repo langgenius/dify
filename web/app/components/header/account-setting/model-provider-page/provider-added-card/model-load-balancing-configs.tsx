@@ -11,7 +11,7 @@ import classNames from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Edit02, Plus02 } from '@/app/components/base/icons/src/vender/line/general'
+import { Edit02 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { useModalContextSelector } from '@/context/modal-context'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -19,6 +19,7 @@ import s from '@/app/components/custom/style.module.css'
 import GridMask from '@/app/components/base/grid-mask'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { IS_CE_EDITION } from '@/config'
+import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 export type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig
@@ -234,15 +235,10 @@ const ModelLoadBalancingConfigs = ({
                 </div>
               )
             })}
-
-            <div
-              className='mt-1 flex h-8 items-center px-3 text-[13px] font-medium text-primary-600'
-              onClick={() => toggleEntryModal()}
-            >
-              <div className='flex cursor-pointer items-center'>
-                <Plus02 className='mr-2 h-3 w-3' />{t('common.modelProvider.addConfig')}
-              </div>
-            </div>
+            <AddCredentialInLoadBalancing
+              provider={provider}
+              onSetup={() => toggleEntryModal()}
+            />
           </div>
         )}
         {

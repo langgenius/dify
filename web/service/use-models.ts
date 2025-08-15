@@ -2,9 +2,13 @@ import {
   del,
   get,
   post,
+  put,
 } from './base'
 import type {
+  ModelCredential,
   ModelItem,
+  ModelTypeEnum,
+  ProviderCredential,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useMutation,
@@ -21,35 +25,114 @@ export const useModelProviderModelList = (provider: string) => {
   })
 }
 
-export const useAddModelCredential = (providerName: string) => {
-  return useMutation({
-    mutationFn: (data: any) => post<{ result: string }>(`/workspaces/current/model-providers/${providerName}/credentials`, data),
-  })
-}
-
-export const useGetModelCredential = (providerName: string, credentialId: string) => {
+export const useGetProviderCredential = (enabled: boolean, provider: string, credentialId?: string) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'model-credential', providerName, credentialId],
-    queryFn: () => get<{ data: Credential[] }>(`/workspaces/current/model-providers/${providerName}/credentials?credential_id=${credentialId}`),
+    enabled,
+    queryKey: [NAME_SPACE, 'model-list', provider, credentialId],
+    queryFn: () => get<{ data: ProviderCredential }>(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
   })
 }
 
-export const useDeleteModelCredential = (providerName: string) => {
+export const useAddProviderCredential = (provider: string) => {
   return useMutation({
-    mutationFn: (credentialId: string) => del<{ result: string }>(`/workspaces/current/model-providers/${providerName}/credentials`, {
-      body: {
-        credential_id: credentialId,
-      },
+    mutationFn: (data: ProviderCredential) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/credentials`, {
+      body: data,
     }),
   })
 }
 
-export const useSetModelCredentialDefault = (providerName: string) => {
+export const useEditProviderCredential = (provider: string) => {
   return useMutation({
-    mutationFn: (credentialId: string) => post<{ result: string }>(`/workspaces/current/model-providers/${providerName}/credentials/switch`, {
-      body: {
-        credential_id: credentialId,
-      },
+    mutationFn: (data: ProviderCredential) => put<{ result: string }>(`/workspaces/current/model-providers/${provider}/credentials`, {
+      body: data,
+    }),
+  })
+}
+
+export const useDeleteProviderCredential = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: {
+      credential_id: string
+    }) => del<{ result: string }>(`/workspaces/current/model-providers/${provider}/credentials`, {
+      body: data,
+    }),
+  })
+}
+
+export const useActiveProviderCredential = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: {
+      credential_id: string
+      model?: string
+      model_type?: ModelTypeEnum
+    }) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/credentials/switch`, {
+      body: data,
+    }),
+  })
+}
+
+export const useGetModelCredential = (
+  enabled: boolean,
+  provider: string,
+  credentialId?: string,
+  model?: string,
+  modelType?: string,
+  configFrom?: string,
+) => {
+  return useQuery({
+    enabled,
+    queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId],
+    queryFn: () => get<{ data: ModelCredential }>(`/workspaces/current/model-providers/${provider}/models/credentials?model=${model}&model_type=${modelType}$credential_id=${credentialId}$config_from=${configFrom}`),
+  })
+}
+
+export const useAddModelCredential = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: ModelCredential) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
+      body: data,
+    }),
+  })
+}
+
+export const useEditModelCredential = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: ModelCredential) => put<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
+      body: data,
+    }),
+  })
+}
+
+export const useDeleteModelCredential = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: {
+      credential_id: string
+      model?: string
+      model_type?: ModelTypeEnum
+    }) => del<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
+      body: data,
+    }),
+  })
+}
+
+export const useDeleteModel = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: {
+      model: string
+      model_type: ModelTypeEnum
+    }) => del<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
+      body: data,
+    }),
+  })
+}
+
+export const useActiveModelCredential = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: {
+      credential_id: string
+      model?: string
+      model_type?: ModelTypeEnum
+    }) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials/switch`, {
+      body: data,
     }),
   })
 }

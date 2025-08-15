@@ -8,6 +8,7 @@ import type {
   ConfigurationMethodEnum,
   Credential,
   CustomConfigurationModelFixedFields,
+  CustomModel,
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -81,6 +82,7 @@ export type ModelModalType = {
   currentConfigurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   credential?: Credential
+  model?: CustomModel
 }
 export type LoadBalancingEntryModalType = ModelModalType & {
   entry?: ModelLoadBalancingConfigEntry
@@ -338,6 +340,7 @@ export const ModalContextProvider = ({
             <ModelModal
               provider={showModelModal.payload.currentProvider}
               configurateMethod={showModelModal.payload.currentConfigurationMethod}
+              model={showModelModal.payload.model}
               currentCustomConfigurationModelFixedFields={showModelModal.payload.currentCustomConfigurationModelFixedFields}
               credential={showModelModal.payload.credential}
               onCancel={handleCancelModelModal}
