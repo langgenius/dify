@@ -16,7 +16,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
       <div className='space-y-4 px-4 pb-2'>
         <Field title={t('workflow.nodes.triggerWebhook.title')}>
           <div className="text-sm text-gray-500">
-            Webhook trigger configuration will be implemented here
+            {t('workflow.nodes.triggerWebhook.configPlaceholder')}
           </div>
         </Field>
       </div>
