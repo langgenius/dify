@@ -16,7 +16,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
       <div className='space-y-4 px-4 pb-2'>
         <Field title={t('workflow.nodes.triggerPlugin.title')}>
           <div className="text-sm text-gray-500">
-            Plugin trigger configuration will be implemented here
+            {t('workflow.nodes.triggerPlugin.configPlaceholder')}
           </div>
         </Field>
       </div>

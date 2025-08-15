@@ -16,7 +16,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
       <div className='space-y-4 px-4 pb-2'>
         <Field title={t('workflow.nodes.triggerSchedule.title')}>
           <div className="text-sm text-gray-500">
-            Schedule trigger configuration will be implemented here
+            {t('workflow.nodes.triggerSchedule.configPlaceholder')}
           </div>
         </Field>
       </div>
