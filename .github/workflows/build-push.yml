@@ -3,11 +3,7 @@ name: Build and Push API & Web
 on:
   push:
     branches:
-      - "main"
-      - "deploy/dev"
-      - "deploy/enterprise"
-      - "build/**"
-      - "release/e-*"
+      - "custom"
     tags:
       - "*"
 
