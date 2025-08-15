@@ -507,7 +507,7 @@ class AppDslService:
                 graph=graph,
                 features=workflow_data.get("features", {}),
                 unique_hash=unique_hash,
-                raw_environment_variables=environment_variables,
+                raw_environment_variables=[var.model_dump() for var in environment_variables],
                 conversation_variables=conversation_variables,
             )
         elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
