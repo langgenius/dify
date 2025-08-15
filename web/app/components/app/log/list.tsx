@@ -218,8 +218,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         conversation_id: detail.id,
         limit: 10,
       }
-      if (allChatItems[0]?.id)
-        params.first_id = allChatItems[0]?.id.replace('question-', '')
+      // Find the oldest answer item (original message ID) to use as first_id
+      // allChatItems is ordered from newest to oldest, so we need the last answer item
+      const answerItems = allChatItems.filter(item => item.isAnswer)
+      const oldestAnswerItem = answerItems[answerItems.length - 1]
+      if (oldestAnswerItem?.id)
+        params.first_id = oldestAnswerItem.id
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
