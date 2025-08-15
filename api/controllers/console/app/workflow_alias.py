@@ -81,7 +81,7 @@ class WorkflowAliasApi(Resource):
         workflow_alias_service = WorkflowAliasService()
 
         try:
-            alias = workflow_alias_service.create_alias(
+            alias = workflow_alias_service.create_or_update_alias(
                 session=db.session,
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,

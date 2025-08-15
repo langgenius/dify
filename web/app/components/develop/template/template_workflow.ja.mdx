@@ -353,7 +353,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - ワークフローID（UUID形式）
       - ワークフローエイリアス
       
-      システムはエイリアス検索を優先し、エイリアスが存在しない場合はUUID形式で処理します。
+      システムはUUID形式の処理を優先し、有効なUUID形式でない場合はエイリアス検索にフォールバックします。
       
       **しゅとくほうほう：**
       - ワークフローID：バージョン履歴ページから特定バージョンのワークフローIDを取得

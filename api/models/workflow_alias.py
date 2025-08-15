@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 import sqlalchemy as sa
 from sqlalchemy import String, func
@@ -10,7 +10,7 @@ from .base import Base
 from .types import StringUUID
 
 
-class AliasType(Enum):
+class AliasType(StrEnum):
     """Alias type enumeration"""
 
     SYSTEM = "system"  # System aliases like 'production', 'staging'
@@ -41,21 +41,18 @@ class WorkflowAlias(Base):
     __allow_unmapped__ = True  # Allow non-mapped attributes
     __slots__ = ("_is_transferred", "_old_workflow_id")
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="workflow_alias_pkey"),
         # Ensure alias name is unique within an app
         sa.UniqueConstraint("app_id", "alias_name", name="unique_workflow_alias_app_name"),
-        # Indexes for better query performance
-        sa.Index("workflow_alias_workflow_idx", "tenant_id", "app_id", "workflow_id"),
-        sa.Index("workflow_alias_tenant_idx", "tenant_id"),
-        sa.Index("workflow_alias_type_idx", "alias_type"),
+        # Composite index for workflow-level queries
+        sa.Index("tenant_id", "app_id", "workflow_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     alias_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    alias_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=AliasType.CUSTOM.value)
+    alias_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=AliasType.CUSTOM, index=True)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -78,12 +75,12 @@ class WorkflowAlias(Base):
     @property
     def is_system_alias(self) -> bool:
         """Check if this is a system alias"""
-        return self.alias_type == AliasType.SYSTEM.value
+        return self.alias_type == AliasType.SYSTEM
 
     @property
     def is_custom_alias(self) -> bool:
         """Check if this is a custom alias"""
-        return self.alias_type == AliasType.CUSTOM.value
+        return self.alias_type == AliasType.CUSTOM
 
     def __repr__(self):
         return (

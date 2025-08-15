@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import TYPE_CHECKING, Optional, Union
 from uuid import uuid4
 
@@ -15,16 +16,18 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAliasService:
-    def create_alias(
+    def create_or_update_alias(
         self,
         session: Union[Session, "scoped_session"],
         tenant_id: str,
         app_id: str,
         workflow_id: str,
         alias_name: str,
-        alias_type: str = AliasType.CUSTOM.value,
+        alias_type: str = AliasType.CUSTOM,
         created_by: str | None = None,
     ) -> WorkflowAlias:
+        self._validate_alias_name(alias_name)
+
         workflow = session.get(Workflow, workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {workflow_id} not found")
@@ -43,10 +46,6 @@ class WorkflowAliasService:
 
             existing_alias._is_transferred = True
             existing_alias._old_workflow_id = old_workflow_id
-
-            logger.info(
-                "Transferred alias '%s' from workflow %s to workflow %s", alias_name, old_workflow_id, workflow_id
-            )
             return existing_alias
 
         alias = WorkflowAlias(
@@ -61,8 +60,6 @@ class WorkflowAliasService:
 
         session.add(alias)
         session.flush()
-
-        logger.info("Created workflow alias: %s for workflow %s", alias_name, workflow_id)
         return alias
 
     def get_aliases_by_app(
@@ -117,3 +114,16 @@ class WorkflowAliasService:
         session.delete(alias)
         session.flush()
         return True
+
+    def _validate_alias_name(self, alias_name: str) -> None:
+        if not alias_name:
+            raise ValueError("Alias name cannot be empty")
+
+        if len(alias_name) > 100:
+            raise ValueError("Alias name cannot exceed 100 characters")
+
+        if len(alias_name) < 1:
+            raise ValueError("Alias name must be at least 1 character long")
+
+        if not re.match(r"^[a-zA-Z0-9_-]+$", alias_name):
+            raise ValueError("Alias name can only contain letters, numbers, hyphens, and underscores")

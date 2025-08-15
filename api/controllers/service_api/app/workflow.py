@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Optional
 
 from dateutil.parser import isoparse
 from flask import request
@@ -33,6 +34,7 @@ from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
+from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -178,25 +180,26 @@ class WorkflowRunByIdentifierApi(Resource):
     def _resolve_workflow_id(self, app_model: App, identifier: str) -> str:
         """
         Resolve identifier to workflow_id
-        Priority: alias > workflow_id
+        Priority: workflow_id > alias
         """
-        workflow_alias_service = WorkflowAliasService()
-        workflow = workflow_alias_service.get_workflow_by_alias(
-            session=db.session, tenant_id=app_model.tenant_id, app_id=app_model.id, alias_name=identifier
-        )
-
-        if workflow:
-            return workflow.id
-
-        # If not found as alias, check if it's a valid UUID format
         try:
             uuid.UUID(identifier)
             return identifier
         except (ValueError, TypeError):
-            # Neither alias nor valid UUID format
+            workflow = self._get_workflow_by_alias(app_model, identifier)
+            if workflow:
+                return workflow.id
+
             raise WorkflowIdFormatError(
                 f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
             )
+
+    def _get_workflow_by_alias(self, app_model: App, alias_name: str) -> Optional[Workflow]:
+        """Get workflow by alias name"""
+        workflow_alias_service = WorkflowAliasService()
+        return workflow_alias_service.get_workflow_by_alias(
+            session=db.session, tenant_id=app_model.tenant_id, app_id=app_model.id, alias_name=alias_name
+        )
 
 
 class WorkflowTaskStopApi(Resource):
