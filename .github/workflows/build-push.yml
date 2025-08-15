@@ -24,7 +24,7 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.platform == 'linux/arm64' && 'arm64_runner' || 'ubuntu-latest' }}
-    if: github.repository == 'Zhou-JinYuan/dify-custom'
+    if: github.repository == 'Zhou-JinYuan/dify_custom'
     strategy:
       matrix:
         include:
@@ -107,7 +107,7 @@ jobs:
   create-manifest:
     needs: build
     runs-on: ubuntu-latest
-    if: github.repository == 'Zhou-JinYuan/dify-custom'
+    if: github.repository == 'Zhou-JinYuan/dify_custom'
     strategy:
       matrix:
         include:
