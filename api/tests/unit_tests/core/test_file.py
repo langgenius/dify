@@ -74,34 +74,49 @@ def test_workflow_features_with_image():
 
 def test_file_enum_serialization_fix():
     """Test that File enum serialization fix works for all enum types (Issue #23905)"""
-    # Test different file types and transfer methods
+    # Test different file types with appropriate transfer methods and required fields
     test_cases = [
-        (FileType.DOCUMENT, FileTransferMethod.LOCAL_FILE),
-        (FileType.AUDIO, FileTransferMethod.TOOL_FILE),
-        (FileType.VIDEO, FileTransferMethod.REMOTE_URL),
+        {
+            "type": FileType.DOCUMENT,
+            "transfer_method": FileTransferMethod.LOCAL_FILE,
+            "related_id": "local-file-123",
+            "remote_url": None
+        },
+        {
+            "type": FileType.AUDIO,
+            "transfer_method": FileTransferMethod.TOOL_FILE,
+            "related_id": "tool-file-456",
+            "remote_url": None
+        },
+        {
+            "type": FileType.VIDEO,
+            "transfer_method": FileTransferMethod.REMOTE_URL,
+            "related_id": None,
+            "remote_url": "https://example.com/video.mp4"
+        },
     ]
     
-    for file_type, transfer_method in test_cases:
+    for case in test_cases:
         file = File(
-            id=f"test-{file_type.value}",
+            id=f"test-{case['type'].value}",
             tenant_id="test-tenant",
-            type=file_type,
-            transfer_method=transfer_method,
-            remote_url="https://example.com/file" if transfer_method == FileTransferMethod.REMOTE_URL else None,
-            related_id="related-123" if transfer_method != FileTransferMethod.REMOTE_URL else None,
+            type=case["type"],
+            transfer_method=case["transfer_method"],
+            remote_url=case["remote_url"],
+            related_id=case["related_id"],
             storage_key="test-storage"
         )
         
         file_dict = file.to_dict()
         
         # Verify enum conversion to strings
-        assert file_dict["type"] == file_type.value
-        assert file_dict["transfer_method"] == transfer_method.value
+        assert file_dict["type"] == case["type"].value
+        assert file_dict["transfer_method"] == case["transfer_method"].value
         assert isinstance(file_dict["type"], str)
         assert isinstance(file_dict["transfer_method"], str)
         
         # Verify JSON serialization works
         json_str = json.dumps(file_dict)
         deserialized = json.loads(json_str)
-        assert deserialized["type"] == file_type.value
-        assert deserialized["transfer_method"] == transfer_method.value
+        assert deserialized["type"] == case["type"].value
+        assert deserialized["transfer_method"] == case["transfer_method"].value
