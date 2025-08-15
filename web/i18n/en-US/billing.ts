@@ -43,6 +43,7 @@ const translation = {
     contractSales: 'Contact sales',
     contractOwner: 'Contact team manager',
     startForFree: 'Start for Free',
+    startBuilding: 'Start Building',
     getStarted: 'Get Started',
     contactSales: 'Contact Sales',
     talkToSales: 'Talk to Sales',
@@ -110,17 +111,17 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       for: 'Free Trial of Core Capabilities',
-      description: 'Free Trial of Core Capabilities',
+      description: 'Try core features for free.',
     },
     professional: {
       name: 'Professional',
       for: 'For Independent Developers/Small Teams',
-      description: 'For Independent Developers/Small Teams',
+      description: 'For independent developers & small teams ready to build production AI applications.',
     },
     team: {
       name: 'Team',
       for: 'For Medium-sized Teams',
-      description: 'For Medium-sized Teams',
+      description: 'For medium-sized teams requiring collaboration and higher throughput.',
     },
     community: {
       name: 'Community',

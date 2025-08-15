@@ -42,6 +42,7 @@ const translation = {
     contractSales: '联系销售',
     contractOwner: '联系团队管理员',
     startForFree: '免费开始',
+    startBuilding: '开始构建',
     getStarted: '立即开始',
     contactSales: '联系销售',
     talkToSales: '联系销售',
@@ -109,17 +110,17 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       for: '核心能力的免费试用',
-      description: '核心功能免费试用',
+      description: '免费试用核心功能。',
     },
     professional: {
       name: 'Professional',
       for: '适合独立开发者或小团队',
-      description: '对于独立开发者/小团队',
+      description: '适合准备构建生产级 AI 应用的独立开发者和小团队。',
     },
     team: {
       name: 'Team',
       for: '适合中等规模的团队',
-      description: '对于中型团队',
+      description: '适合需要协作和更高吞吐量的中等规模团队。',
     },
     community: {
       name: 'Community',
