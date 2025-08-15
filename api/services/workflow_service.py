@@ -14,6 +14,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
+from core.variables.types import SegmentType
 from core.variables.variables import VariableUnion
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -31,6 +32,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
+from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
@@ -194,6 +196,28 @@ class WorkflowService:
 
         return workflows, has_more
 
+    def _restore_secret_from_version(self, app_model: App, env_var_id: str, from_version: str) -> str:
+        """
+        Restore a secret value from a specific published workflow version.
+        """
+        # Fetch the specific published workflow version
+        published_workflow = db.session.query(Workflow).filter(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.id == from_version
+        ).first()
+
+        if not published_workflow or published_workflow.version == Workflow.VERSION_DRAFT:
+            raise ValueError(f"Published workflow version {from_version} not found.")
+
+        # Find the specific secret environment variable
+        for env_var in published_workflow.environment_variables:
+            if env_var.id == env_var_id and env_var.value_type == SegmentType.SECRET.value:
+                # Return the original encrypted value
+                return env_var.value
+
+        raise ValueError(f"Secret environment variable with id {env_var_id} not found in version {from_version}.")
+
     def sync_draft_workflow(
         self,
         *,
@@ -202,7 +226,7 @@ class WorkflowService:
         features: dict,
         unique_hash: Optional[str],
         account: Account,
-        environment_variables: Sequence[Variable],
+        raw_environment_variables: Sequence[dict],
         conversation_variables: Sequence[Variable],
     ) -> Workflow:
         """
@@ -214,6 +238,29 @@ class WorkflowService:
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
+
+        # Process environment variables
+        processed_env_vars = []
+        for var_dict in raw_environment_variables:
+            if var_dict.get('value_type') == SegmentType.SECRET.value and 'from_version' in var_dict:
+                # Restore secret from a previous version
+                try:
+                    restored_value = self._restore_secret_from_version(
+                        app_model=app_model,
+                        env_var_id=var_dict.get('id'),
+                        from_version=var_dict.get('from_version')
+                    )
+                    # Use the restored encrypted value
+                    var_dict['value'] = restored_value
+                except ValueError as e:
+                    # If restoration fails, treat it as a regular variable without a value
+                    # This prevents errors and allows the user to manually set it if needed
+                    var_dict['value'] = ''
+
+            # Build the Variable object after potential restoration
+            processed_env_vars.append(
+                variable_factory.build_environment_variable_from_mapping(var_dict)
+            )
 
         # validate features structure
         self.validate_features_structure(app_model=app_model, features=features)
@@ -228,7 +275,7 @@ class WorkflowService:
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=environment_variables,
+                environment_variables=processed_env_vars,
                 conversation_variables=conversation_variables,
             )
             db.session.add(workflow)
@@ -238,7 +285,7 @@ class WorkflowService:
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = naive_utc_now()
-            workflow.environment_variables = environment_variables
+            workflow.environment_variables = processed_env_vars
             workflow.conversation_variables = conversation_variables
 
         # commit db session changes
