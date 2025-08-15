@@ -1,2 +1,8 @@
 export { default as Cloud } from './cloud'
 export { default as SelfHosted } from './self-hosted'
+export { default as Sandbox } from './sandbox'
+export { default as Professional } from './professional'
+export { default as Team } from './team'
+export { default as Community } from './community'
+export { default as Premium } from './premium'
+export { default as Enterprise } from './enterprise'

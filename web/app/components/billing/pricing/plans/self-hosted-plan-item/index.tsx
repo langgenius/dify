@@ -10,28 +10,20 @@ import { useAppContext } from '@/context/app-context'
 import Button from './button'
 import List from './list'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
+import { Community, Enterprise, Premium } from '../../assets'
 
 const style = {
   [SelfHostedPlan.community]: {
-    icon: <div className='size-[60px] bg-black' />,
+    icon: <Community />,
     bg: '',
-    btnStyle: 'bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover border-[0.5px] border-components-button-secondary-border text-text-primary',
-    values: 'text-text-secondary',
-    tooltipIconColor: 'text-text-tertiary',
   },
   [SelfHostedPlan.premium]: {
-    icon: <div className='size-[60px] bg-black' />,
+    icon: <Premium />,
     bg: '',
-    btnStyle: 'bg-third-party-aws hover:bg-third-party-aws-hover border border-components-button-primary-border text-text-primary-on-surface shadow-xs',
-    values: 'text-text-secondary',
-    tooltipIconColor: 'text-text-tertiary',
   },
   [SelfHostedPlan.enterprise]: {
-    icon: <div className='size-[60px] bg-black' />,
+    icon: <Enterprise />,
     bg: '',
-    btnStyle: 'bg-white/96 hover:opacity-85 border-[0.5px] border-components-button-secondary-border text-[#155AEF] shadow-xs',
-    values: 'text-text-primary-on-surface',
-    tooltipIconColor: 'text-text-primary-on-surface',
   },
 }
 

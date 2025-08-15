@@ -11,11 +11,12 @@ import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import List from './list'
 import Button from './button'
+import { Professional, Sandbox, Team } from '../../assets'
 
 const ICON_MAP = {
-  [Plan.sandbox]: <div className='size-[60px] bg-black' />,
-  [Plan.professional]: <div className='size-[60px] bg-black' />,
-  [Plan.team]: <div className='size-[60px] bg-black' />,
+  [Plan.sandbox]: <Sandbox />,
+  [Plan.professional]: <Professional />,
+  [Plan.team]: <Team />,
 }
 
 type CloudPlanItemProps = {
