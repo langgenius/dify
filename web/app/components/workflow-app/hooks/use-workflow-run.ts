@@ -35,7 +35,6 @@ export const useWorkflowRun = () => {
   const invalidAllLastRun = useInvalidAllLastRun(appId as string)
   const configsMap = useConfigsMap()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowId: appId as string,
     ...configsMap,
   })
 
