@@ -2,34 +2,20 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
-  useEffect,
-  useMemo,
   useRef,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   CustomConfigurationModelFixedFields,
-  ModelLoadBalancingConfig,
-  ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
 import {
   ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
   FormTypeEnum,
 } from '../declarations'
 import {
-  genModelNameFormSchema,
-  genModelTypeFormSchema,
-  removeCredentials,
-  saveCredentials,
-} from '../utils'
-import {
   useLanguage,
-  useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
-import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -37,7 +23,6 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
 import { useAppContext } from '@/context/app-context'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
@@ -46,20 +31,29 @@ import type {
   FormSchema,
 } from '@/app/components/base/form/types'
 import { useModelFormSchemas } from '../model-auth/hooks'
-import type { Credential } from '../declarations'
+import type {
+  Credential,
+  CustomModel,
+} from '../declarations'
 import Loading from '@/app/components/base/loading'
+import {
+  useAuth,
+  useGetCredential,
+} from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 
 type ModelModalProps = {
   provider: ModelProvider
+  model?: CustomModel
+  credential?: Credential
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
-  credential?: Credential
   onCancel: () => void
   onSave: () => void
 }
 
 const ModelModal: FC<ModelModalProps> = ({
   provider,
+  model,
   configurateMethod,
   currentCustomConfigurationModelFixedFields,
   credential,
@@ -68,134 +62,62 @@ const ModelModal: FC<ModelModalProps> = ({
 }) => {
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const {
-    credentials: formSchemasValue,
-    loadBalancing: originalConfig,
-    mutate,
     isLoading,
-  } = useProviderCredentialsAndLoadBalancing(
-    provider.provider,
-    configurateMethod,
-    providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
-    currentCustomConfigurationModelFixedFields,
-    credential?.credential_id,
-  )
+    data: credentialData = {},
+  } = useGetCredential(provider.provider, credential?.credential_id, model)
+  const {
+    handleSaveCredential,
+    handleConfirmDelete,
+    deleteCredentialId,
+    closeConfirmDelete,
+    openConfirmDelete,
+    doingAction,
+  } = useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, onSave)
+  const {
+    credentials: formSchemasValue,
+  } = credentialData as any
+
   const { isCurrentWorkspaceManager } = useAppContext()
   const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const language = useLanguage()
-  const [loading, setLoading] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-
-  const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
-  const originalConfigMap = useMemo(() => {
-    if (!originalConfig)
-      return {}
-    return originalConfig?.configs.reduce((prev, config) => {
-      if (config.id)
-        prev[config.id] = config
-      return prev
-    }, {} as Record<string, ModelLoadBalancingConfigEntry>)
-  }, [originalConfig])
-  useEffect(() => {
-    if (originalConfig && !draftConfig)
-      setDraftConfig(originalConfig)
-  }, [draftConfig, originalConfig])
-
-  const { formSchemas } = useModelFormSchemas(provider, providerFormSchemaPredefined, draftConfig)
+  const { formSchemas } = useModelFormSchemas(provider, providerFormSchemaPredefined)
   const formRef = useRef<FormRefObject>(null)
 
-  const extendedSecretFormSchemas = useMemo(
-    () =>
-      (providerFormSchemaPredefined
-        ? provider.provider_credential_schema.credential_form_schemas
-        : [
-          genModelTypeFormSchema(provider.supported_model_types),
-          genModelNameFormSchema(provider.model_credential_schema?.model),
-          ...provider.model_credential_schema.credential_form_schemas,
-        ]).filter(({ type }) => type === FormTypeEnum.secretInput),
-    [
-      provider.model_credential_schema?.credential_form_schemas,
-      provider.model_credential_schema?.model,
-      provider.provider_credential_schema?.credential_form_schemas,
-      provider.supported_model_types,
-      providerFormSchemaPredefined,
-    ],
-  )
+  const handleSave = useCallback(async () => {
+    const {
+      isCheckValidated,
+      values,
+    } = formRef.current?.getFormValues({
+      needCheckValidatedValues: true,
+      needTransformWhenSecretFieldIsPristine: true,
+    }) || { isCheckValidated: false, values: {} }
+    if (!isCheckValidated)
+      return
 
-  const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
-    const result = { ...entry }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (entry.id && result.credentials[variable] === originalConfigMap[entry.id]?.credentials?.[variable])
-        result.credentials[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, originalConfigMap])
-
-  const handleSave = async () => {
-    try {
-      setLoading(true)
-      const {
-        isCheckValidated,
-        values,
-      } = formRef.current?.getFormValues({
-        needCheckValidatedValues: true,
-        needTransformWhenSecretFieldIsPristine: true,
-      }) || { isCheckValidated: false, values: {} }
-      if (!isCheckValidated)
-        return
-
-      const res = await saveCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        values,
-        {
-          ...draftConfig,
-          enabled: Boolean(draftConfig?.enabled),
-          configs: draftConfig?.configs.map(encodeConfigEntrySecretValues) || [],
-        },
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
-        onSave()
-        onCancel()
-      }
+    const {
+      __authorization_name__,
+      __model_name,
+      __model_type,
+      ...rest
+    } = values
+    if (__model_name && __model_type) {
+      handleSaveCredential({
+        credential_id: credential?.credential_id,
+        credentials: rest,
+        name: __authorization_name__,
+        model: __model_name,
+        model_type: __model_type,
+      })
     }
-    finally {
-      setLoading(false)
+    else {
+      handleSaveCredential({
+        credential_id: credential?.credential_id,
+        credentials: rest,
+        name: __authorization_name__,
+      })
     }
-  }
-
-  const handleRemove = async () => {
-    try {
-      setLoading(true)
-      const {
-        isCheckValidated,
-        values,
-      } = formRef.current?.getFormValues({
-        needCheckValidatedValues: true,
-        needTransformWhenSecretFieldIsPristine: true,
-      }) || { isCheckValidated: false, values: {} }
-      if (!isCheckValidated)
-        return
-      const res = await removeCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        values,
-        credential?.credential_id,
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        // mutate()
-        onSave()
-        onCancel()
-      }
-    }
-    finally {
-      setLoading(false)
-    }
-  }
+  }, [handleSaveCredential, credential?.credential_id, model])
 
   const renderTitlePrefix = () => {
     const prefix = isEditMode ? t('common.operation.setup') : t('common.operation.add')
@@ -239,20 +161,6 @@ const ModelModal: FC<ModelModalProps> = ({
                     />
                   )
                 }
-                {
-                  !!draftConfig && (
-                    <>
-                      <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
-                      <ModelLoadBalancingConfigs withSwitch {...{
-                        draftConfig,
-                        setDraftConfig,
-                        provider,
-                        currentCustomConfigurationModelFixedFields,
-                        configurationMethod: configurateMethod,
-                      }} />
-                    </>
-                  )
-                }
               </div>
 
               <div className='sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-between gap-y-2 bg-components-panel-bg px-2 pb-6 pt-4'>
@@ -278,7 +186,7 @@ const ModelModal: FC<ModelModalProps> = ({
                         variant='warning'
                         size='large'
                         className='mr-2'
-                        onClick={() => setShowConfirm(true)}
+                        onClick={() => openConfirmDelete(credential?.credential_id, model)}
                       >
                         {t('common.operation.remove')}
                       </Button>
@@ -295,11 +203,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     size='large'
                     variant='primary'
                     onClick={handleSave}
-                    disabled={
-                      loading
-                      || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
-                    }
-
+                    disabled={isLoading || doingAction}
                   >
                     {t('common.operation.save')}
                   </Button>
@@ -322,12 +226,13 @@ const ModelModal: FC<ModelModalProps> = ({
             </div>
           </div>
           {
-            showConfirm && (
+            deleteCredentialId && (
               <Confirm
+                isShow
                 title={t('common.modelProvider.confirmDelete')}
-                isShow={showConfirm}
-                onCancel={() => setShowConfirm(false)}
-                onConfirm={handleRemove}
+                isDisabled={doingAction}
+                onCancel={closeConfirmDelete}
+                onConfirm={handleConfirmDelete}
               />
             )
           }

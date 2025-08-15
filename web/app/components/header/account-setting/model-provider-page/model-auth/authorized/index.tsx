@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useRef,
   useState,
 } from 'react'
 import {
@@ -19,17 +18,25 @@ import type {
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
-import Item from './item'
-import { useToastContext } from '@/app/components/base/toast'
-import type { Credential } from '../../declarations'
-import {
-  useDeleteModelCredential,
-  useSetModelCredentialDefault,
-} from '@/service/use-models'
+import type {
+  ConfigurationMethodEnum,
+  Credential,
+  CustomConfigurationModelFixedFields,
+  CustomModel,
+  ModelProvider,
+} from '../../declarations'
+import { useAuth } from '../hooks'
+import AuthorizedItem from './authorized-item'
 
 type AuthorizedProps = {
-  provider: string
-  credentials: Credential[]
+  provider: ModelProvider,
+  configurationMethod: ConfigurationMethodEnum,
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  items: {
+    model?: CustomModel
+    credentials: Credential[]
+  }[]
+  selectedCredential?: Credential
   disabled?: boolean
   renderTrigger?: (open?: boolean) => React.ReactNode
   isOpen?: boolean
@@ -40,13 +47,15 @@ type AuthorizedProps = {
   popupClassName?: string
   onItemClick?: (id: string) => void
   showItemSelectedIcon?: boolean
-  selectedCredentialId?: string
   onUpdate?: () => void
-  onSetup: (credential?: Credential) => void
+  disableSetDefault?: boolean
 }
 const Authorized = ({
   provider,
-  credentials,
+  configurationMethod,
+  currentCustomConfigurationModelFixedFields,
+  items,
+  selectedCredential,
   disabled,
   renderTrigger,
   isOpen,
@@ -57,12 +66,10 @@ const Authorized = ({
   popupClassName,
   onItemClick,
   showItemSelectedIcon,
-  selectedCredentialId,
   onUpdate,
-  onSetup,
+  disableSetDefault,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -71,68 +78,20 @@ const Authorized = ({
 
     setIsLocalOpen(open)
   }, [onOpenChange])
-  const pendingOperationCredentialId = useRef<string | null>(null)
-  const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
-  const openConfirm = useCallback((credentialId?: string) => {
-    if (credentialId)
-      pendingOperationCredentialId.current = credentialId
+  const {
+    openConfirmDelete,
+    closeConfirmDelete,
+    doingAction,
+    handleActiveCredential,
+    handleConfirmDelete,
+    deleteCredentialId,
+    handleOpenModal,
+  } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields, onUpdate)
 
-    setDeleteCredentialId(pendingOperationCredentialId.current)
-  }, [])
-  const closeConfirm = useCallback(() => {
-    setDeleteCredentialId(null)
-    pendingOperationCredentialId.current = null
-  }, [])
-  const [doingAction, setDoingAction] = useState(false)
-  const doingActionRef = useRef(doingAction)
-  const handleSetDoingAction = useCallback((doing: boolean) => {
-    doingActionRef.current = doing
-    setDoingAction(doing)
-  }, [])
-  const { mutateAsync: deleteModelCredential } = useDeleteModelCredential(provider)
-  const { mutateAsync: setModelCredentialDefault } = useSetModelCredentialDefault(provider)
-  const handleSetDefault = useCallback(async (id: string) => {
-    if (doingActionRef.current)
-      return
-    try {
-      handleSetDoingAction(true)
-      await setModelCredentialDefault(id)
-      notify({
-        type: 'success',
-        message: t('common.api.actionSuccess'),
-      })
-      onUpdate?.()
-    }
-    finally {
-      handleSetDoingAction(false)
-    }
-  }, [setModelCredentialDefault, onUpdate, notify, t, handleSetDoingAction])
-  const handleConfirm = useCallback(async () => {
-    if (doingActionRef.current)
-      return
-    if (!pendingOperationCredentialId.current) {
-      setDeleteCredentialId(null)
-      return
-    }
-    try {
-      handleSetDoingAction(true)
-      await deleteModelCredential(pendingOperationCredentialId.current)
-      notify({
-        type: 'success',
-        message: t('common.api.actionSuccess'),
-      })
-      onUpdate?.()
-      setDeleteCredentialId(null)
-      pendingOperationCredentialId.current = null
-    }
-    finally {
-      handleSetDoingAction(false)
-    }
-  }, [onUpdate, notify, t, handleSetDoingAction])
-  const handleOpenSetup = useCallback((credential?: Credential) => {
-    onSetup(credential)
+  const handleEdit = useCallback((model?: CustomModel, credential?: Credential) => {
+    handleOpenModal(model, credential)
     setMergedIsOpen(false)
-  }, [onSetup, setMergedIsOpen])
+  }, [handleOpenModal, setMergedIsOpen])
 
   return (
     <>
@@ -166,39 +125,29 @@ const Authorized = ({
             'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
             popupClassName,
           )}>
-            <div className='max-h-[304px] overflow-y-auto py-1'>
+            <div className='max-h-[304px] overflow-y-auto'>
               {
-                !!credentials.length && (
-                  <div className='p-1'>
-                    <div className={cn(
-                      'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
-                      showItemSelectedIcon && 'pl-7',
-                    )}>
-                      API Keys
-                    </div>
-                    {
-                      credentials.map(credential => (
-                        <Item
-                          key={credential.credential_id}
-                          credential={credential}
-                          disabled={disabled}
-                          onDelete={openConfirm}
-                          onEdit={handleOpenSetup}
-                          onSetDefault={handleSetDefault}
-                          onItemClick={onItemClick}
-                          showSelectedIcon={showItemSelectedIcon}
-                          selectedCredentialId={selectedCredentialId}
-                        />
-                      ))
-                    }
-                  </div>
-                )
+                items.map((item, index) => (
+                  <AuthorizedItem
+                    key={index}
+                    model={item.model}
+                    credentials={item.credentials}
+                    disabled={disabled}
+                    onDelete={openConfirmDelete}
+                    onEdit={handleEdit}
+                    onSetDefault={handleActiveCredential}
+                    onItemClick={onItemClick}
+                    showItemSelectedIcon={showItemSelectedIcon}
+                    selectedCredentialId={selectedCredential?.credential_id}
+                    disableSetDefault={disableSetDefault}
+                  />
+                ))
               }
             </div>
             <div className='h-[1px] bg-divider-subtle'></div>
             <div className='p-2'>
               <Button
-                onClick={() => handleOpenSetup()}
+                onClick={() => handleOpenModal()}
                 className='w-full'
               >
                 add api key
@@ -211,10 +160,10 @@ const Authorized = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title={t('datasetDocuments.list.delete.title')}
+            title={t('common.modelProvider.confirmDelete')}
             isDisabled={doingAction}
-            onCancel={closeConfirm}
-            onConfirm={handleConfirm}
+            onCancel={closeConfirmDelete}
+            onConfirm={handleConfirmDelete}
           />
         )
       }

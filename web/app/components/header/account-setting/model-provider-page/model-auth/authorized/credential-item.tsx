@@ -15,11 +15,11 @@ import cn from '@/utils/classnames'
 import type { Credential } from '../../declarations'
 import Button from '@/app/components/base/button'
 
-type ItemProps = {
+type CredentialItemProps = {
   credential: Credential
   disabled?: boolean
   onDelete?: (id: string) => void
-  onEdit?: (credential: Credential) => void
+  onEdit?: (credential?: Credential) => void
   onSetDefault?: (id: string) => void
   disableRename?: boolean
   disableEdit?: boolean
@@ -29,7 +29,7 @@ type ItemProps = {
   showSelectedIcon?: boolean
   selectedCredentialId?: string
 }
-const Item = ({
+const CredentialItem = ({
   credential,
   disabled,
   onDelete,
@@ -42,7 +42,7 @@ const Item = ({
   onItemClick,
   showSelectedIcon,
   selectedCredentialId,
-}: ItemProps) => {
+}: CredentialItemProps) => {
   const { t } = useTranslation()
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete && disableSetDefault)
@@ -131,4 +131,4 @@ const Item = ({
   )
 }
 
-export default memo(Item)
+export default memo(CredentialItem)

@@ -9,6 +9,7 @@ import { useContext } from 'use-context-selector'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
+  CustomModel,
   DefaultModel,
   DefaultModelResponse,
   Model,
@@ -354,6 +355,7 @@ export const useModelModalHandler = () => {
     configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     credential?: Credential,
+    model?: CustomModel,
   ) => {
     setShowModelModal({
       payload: {
@@ -361,6 +363,7 @@ export const useModelModalHandler = () => {
         currentConfigurationMethod: configurationMethod,
         currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
         credential,
+        model,
       },
       onSaveCallback: () => {
         handleRefreshModel(provider, configurationMethod, CustomConfigurationModelFixedFields)

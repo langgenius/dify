@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next'
 import type {
   ModelLoadBalancingConfig,
   ModelProvider,
-} from '../declarations'
+} from '../../declarations'
 import {
   genModelNameFormSchema,
   genModelTypeFormSchema,
-} from '../utils'
+} from '../../utils'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 
 export const useModelFormSchemas = (

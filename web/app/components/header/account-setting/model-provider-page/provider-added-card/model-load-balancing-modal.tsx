@@ -1,7 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
-import type { ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
+import type {
+  Credential,
+  ModelItem,
+  ModelLoadBalancingConfig,
+  ModelLoadBalancingConfigEntry,
+  ModelProvider,
+} from '../declarations'
 import { FormTypeEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
@@ -13,17 +19,26 @@ import Button from '@/app/components/base/button'
 import { fetchModelLoadBalancingConfig } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import { useToastContext } from '@/app/components/base/toast'
+import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 export type ModelLoadBalancingModalProps = {
   provider: ModelProvider
   model: ModelItem
+  credential?: Credential
   open?: boolean
   onClose?: () => void
   onSave?: (provider: string) => void
 }
 
 // model balancing config modal
-const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSave }: ModelLoadBalancingModalProps) => {
+const ModelLoadBalancingModal = ({
+  provider,
+  model,
+  credential,
+  open = false,
+  onClose,
+  onSave,
+}: ModelLoadBalancingModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
 
@@ -152,6 +167,11 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
                     <div className='text-sm text-text-secondary'>{t('common.modelProvider.providerManaged')}</div>
                     <div className='text-xs text-text-tertiary'>{t('common.modelProvider.providerManagedDescription')}</div>
                   </div>
+                  <SwitchCredentialInLoadBalancing
+                    draftConfig={draftConfig}
+                    setDraftConfig={setDraftConfig}
+                    provider={provider}
+                  />
                 </div>
               </div>
 

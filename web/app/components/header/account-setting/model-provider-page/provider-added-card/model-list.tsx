@@ -5,6 +5,7 @@ import {
   RiArrowRightSLine,
 } from '@remixicon/react'
 import type {
+  Credential,
   CustomConfigurationModelFixedFields,
   ModelItem,
   ModelProvider,
@@ -13,10 +14,11 @@ import {
   ConfigurationMethodEnum,
 } from '../declarations'
 // import Tab from './tab'
-import AddModelButton from './add-model-button'
 import ModelListItem from './model-list-item'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useAppContext } from '@/context/app-context'
+import { useCustomModels } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import { AddCustomModel } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 type ModelListProps = {
   provider: ModelProvider
@@ -36,11 +38,12 @@ const ModelList: FC<ModelListProps> = ({
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const { isCurrentWorkspaceManager } = useAppContext()
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
-
+  const customModels = useCustomModels(provider)
   const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
-  const onModifyLoadBalancing = useCallback((model: ModelItem) => {
+  const onModifyLoadBalancing = useCallback((model: ModelItem, credential?: Credential) => {
     setShowModelLoadBalancingModal({
       provider,
+      credential,
       model: model!,
       open: !!model,
       onClose: () => setShowModelLoadBalancingModal(null),
@@ -65,17 +68,15 @@ const ModelList: FC<ModelListProps> = ({
               <RiArrowRightSLine className='mr-0.5 h-4 w-4 rotate-90' />
             </span>
           </span>
-          {/* {
-            isConfigurable && canSystemConfig && (
-              <span className='flex items-center'>
-                <Tab active='all' onSelect={() => {}} />
-              </span>
-            )
-          } */}
           {
             isConfigurable && isCurrentWorkspaceManager && (
               <div className='flex grow justify-end'>
-                <AddModelButton onClick={() => onConfig()} />
+                <AddCustomModel
+                  provider={provider}
+                  configurationMethod={ConfigurationMethodEnum.customizableModel}
+                  currentCustomConfigurationModelFixedFields={undefined}
+                  models={customModels}
+                />
               </div>
             )
           }

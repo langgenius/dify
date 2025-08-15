@@ -28,7 +28,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import cn from '@/utils/classnames'
-import { useRefreshModel } from '../hooks'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -82,8 +81,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       getModelList(v.payload)
   })
 
-  const { handleRefreshModel } = useRefreshModel()
-
   return (
     <div
       className={cn(
@@ -118,8 +115,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         {
           showCredential && (
             <CredentialPanel
-              onSetup={(credential?: Credential) => onOpenModal(ConfigurationMethodEnum.predefinedModel, undefined, credential)}
-              onUpdate={() => handleRefreshModel(provider, ConfigurationMethodEnum.predefinedModel, undefined)}
               provider={provider}
             />
           )

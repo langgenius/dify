@@ -3,13 +3,21 @@ import {
   useCallback,
 } from 'react'
 import { RiAddLine } from '@remixicon/react'
-import {
-  AuthCategory,
-  Authorized,
-} from '@/app/components/plugins/plugin-auth'
+import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import cn from '@/utils/classnames'
+import type {
+  Credential,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-const AddCredentialInLoadBalancing = () => {
+type AddCredentialInLoadBalancingProps = {
+  provider: ModelProvider
+  onSetup: (credential?: Credential) => void
+}
+const AddCredentialInLoadBalancing = ({
+  provider,
+  onSetup,
+}: AddCredentialInLoadBalancingProps) => {
   const renderTrigger = useCallback((open?: boolean) => {
     return (
       <div className={cn(
@@ -25,13 +33,9 @@ const AddCredentialInLoadBalancing = () => {
   return (
     <Authorized
       credentials={[]}
-      pluginPayload={{
-        provider: '',
-        category: AuthCategory.model,
-      }}
-      canApiKey
-      offset={4}
+      provider={provider.provider}
       renderTrigger={renderTrigger}
+      onSetup={onSetup}
     />
   )
 }
