@@ -54,18 +54,14 @@ const Plans = ({
           currentPlan === 'self' && <>
             <SelfHostedPlanItem
               plan={SelfHostedPlan.community}
-              planRange={planRange}
-              canPay={canPay}
             />
+            <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
             <SelfHostedPlanItem
               plan={SelfHostedPlan.premium}
-              planRange={planRange}
-              canPay={canPay}
             />
+            <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
             <SelfHostedPlanItem
               plan={SelfHostedPlan.enterprise}
-              planRange={planRange}
-              canPay={canPay}
             />
           </>
         }

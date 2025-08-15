@@ -102,8 +102,8 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
             <div className='system-sm-regular text-text-secondary'>{t(`${i18nPrefix}.description`)}</div>
           </div>
         </div>
+        {/* Price */}
         <div className='mb-8 mt-4 flex items-end gap-x-2'>
-          {/* Price */}
           {isFreePlan && (
             <span className='title-4xl-semi-bold text-text-primary'>{t('billing.plansCommon.free')}</span>
           )}
@@ -111,7 +111,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
             <>
               {isYear && <span className='title-4xl-semi-bold text-text-quaternary line-through'>${planInfo.price * 12}</span>}
               <span className='title-4xl-semi-bold text-text-primary'>${isYear ? planInfo.price * 10 : planInfo.price}</span>
-              <span className='system-md-regular text-text-tertiary'>
+              <span className='system-md-regular pb-0.5 text-text-tertiary'>
                 {t('billing.plansCommon.priceTip')}
                 {t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}
               </span>

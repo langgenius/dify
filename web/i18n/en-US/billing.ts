@@ -126,9 +126,9 @@ const translation = {
     community: {
       name: 'Community',
       for: 'For Individual Users, Small Teams, or Non-commercial Projects',
-      description: 'For Individual Users, Small Teams, or Non-commercial Projects',
+      description: 'For open-source enthusiasts, individual developers, and non-commercial projects',
       price: 'Free',
-      btnText: 'Get Started with Community',
+      btnText: 'Get Started',
       includesTitle: 'Free Features:',
       features: [
         'All Core Features Released Under the Public Repository',
@@ -139,10 +139,10 @@ const translation = {
     premium: {
       name: 'Premium',
       for: 'For Mid-sized Organizations and Teams',
-      description: 'For Mid-sized Organizations and Teams',
+      description: 'For Mid-sized organizations needing deployment flexibility and enhanced support',
       price: 'Scalable',
       priceTip: 'Based on Cloud Marketplace',
-      btnText: 'Get Premium in',
+      btnText: 'Get Premium on',
       includesTitle: 'Everything from Community, plus:',
       comingSoon: 'Microsoft Azure & Google Cloud Support Coming Soon',
       features: [
@@ -155,7 +155,7 @@ const translation = {
     enterprise: {
       name: 'Enterprise',
       for: 'For large-sized Teams',
-      description: 'For Enterprise Require Organization-wide Security, Compliance, Scalability, Control and More Advanced Features',
+      description: 'For enterprise requiring organization-grade security, compliance, scalability, control and custom solutions',
       price: 'Custom',
       priceTip: 'Annual Billing Only',
       btnText: 'Contact Sales',

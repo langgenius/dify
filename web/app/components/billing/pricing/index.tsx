@@ -39,7 +39,7 @@ const Pricing: FC<PricingProps> = ({
       className='fixed inset-0 bottom-0 left-0 right-0 top-0 z-[1000] overflow-auto bg-saas-background'
       onClick={e => e.stopPropagation()}
     >
-      <div className='relative grid min-h-[1140px] min-w-[1200px] grid-rows-[1fr_auto_auto_1fr]'>
+      <div className='relative grid min-h-full min-w-[1200px] grid-rows-[1fr_auto_auto_1fr]'>
         <Header onClose={onCancel} />
         <PlanSwitcher
           currentCategory={currentCategory}

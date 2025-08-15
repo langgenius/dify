@@ -22,6 +22,7 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
   onChangePlanRange,
 }) => {
   const { t } = useTranslation()
+  const isCloud = currentCategory === 'cloud'
 
   const tabs = {
     cloud: {
@@ -52,10 +53,12 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
             onClick={onChangeCategory}
           />
         </div>
-        <PlanRangeSwitcher
-          value={currentPlanRange}
-          onChange={onChangePlanRange}
-        />
+        {isCloud && (
+          <PlanRangeSwitcher
+            value={currentPlanRange}
+            onChange={onChangePlanRange}
+          />
+        )}
       </div>
     </div>
   )

@@ -125,7 +125,7 @@ const translation = {
     community: {
       name: 'Community',
       for: '适用于个人用户、小型团队或非商业项目',
-      description: '适用于个人用户、小型团队或非商业项目',
+      description: '适用于开源爱好者、个人开发者以及非商业项目',
       price: '免费',
       btnText: '开始使用',
       includesTitle: '免费功能：',
@@ -138,7 +138,7 @@ const translation = {
     premium: {
       name: 'Premium',
       for: '对于中型组织和团队',
-      description: '对于中型组织和团队',
+      description: '适合需要部署灵活性和增强支持的中型组织和团队',
       price: '可扩展',
       priceTip: '基于云市场',
       btnText: '获得 Premium 版',
@@ -154,7 +154,7 @@ const translation = {
     enterprise: {
       name: 'Enterprise',
       for: '适合大人员规模的团队',
-      description: '对于需要组织范围内的安全性、合规性、可扩展性、控制和更高级功能的企业',
+      description: '适合需要组织级安全性、合规性、可扩展性、控制和定制解决方案的企业',
       price: '定制',
       priceTip: '仅按年计费',
       btnText: '联系销售',
