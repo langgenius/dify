@@ -9,10 +9,10 @@ const remove = (node: AgentLogItemWithChildren, removeId: string) => {
   if (!children || children.length === 0)
     return
 
-  const hasCircle = !!children.find(c => c.id === removeId)
+  const hasCircle = !!children.find(c => c.message_id === removeId)
   if (hasCircle) {
     node.hasCircle = true
-    node.children = node.children.filter(c => c.id !== removeId)
+    node.children = node.children.filter(c => c.message_id !== removeId)
     children = node.children
   }
 
@@ -28,9 +28,9 @@ const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
   const result: AgentLogItemWithChildren[] = []
   const addedItemIds: string[] = []
   list.forEach((item) => {
-    if (!addedItemIds.includes(item.id)) {
+    if (!addedItemIds.includes(item.message_id)) {
       result.push(item)
-      addedItemIds.push(item.id)
+      addedItemIds.push(item.message_id)
     }
   })
   return result
@@ -39,15 +39,15 @@ const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
 const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
   const newLog = cloneDeep(log)
   newLog.children = removeRepeatedSiblings(newLog.children)
-  let { id, children } = newLog
+  let { message_id: id, children } = newLog
   if (!children || children.length === 0)
     return log
 
   // check one step circle
-  const hasOneStepCircle = !!children.find(c => c.id === id)
+  const hasOneStepCircle = !!children.find(c => c.message_id === id)
   if (hasOneStepCircle) {
     newLog.hasCircle = true
-    newLog.children = newLog.children.filter(c => c.id !== id)
+    newLog.children = newLog.children.filter(c => c.message_id !== id)
     children = newLog.children
   }
 
@@ -66,7 +66,7 @@ const listToTree = (logs: AgentLogItem[]) => {
   logs.forEach((log) => {
     const hasParent = !!log.parent_id
     if (hasParent) {
-      const parent = logs.find(item => item.id === log.parent_id) as AgentLogItemWithChildren
+      const parent = logs.find(item => item.message_id === log.parent_id) as AgentLogItemWithChildren
       if (parent) {
         if (!parent.children)
           parent.children = []
