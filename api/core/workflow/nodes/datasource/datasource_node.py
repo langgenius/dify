@@ -138,7 +138,7 @@ class DatasourceNode(BaseNode):
                         datasource_runtime.get_online_document_page_content(
                             user_id=self.user_id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
-                                 workspace_id=datasource_info.get("workspace_id"),
+                                workspace_id=datasource_info.get("workspace_id"),
                                 page_id=datasource_info.get("page").get("page_id"),
                                 type=datasource_info.get("page").get("type"),
                             ),
@@ -205,7 +205,7 @@ class DatasourceNode(BaseNode):
                         storage_key=upload_file.key,
                     )
                     variable_pool.add([self.node_id, "file"], file_info)
-                    #variable_pool.add([self.node_id, "file"], file_info.to_dict())
+                    # variable_pool.add([self.node_id, "file"], file_info.to_dict())
                     yield RunCompletedEvent(
                         run_result=NodeRunResult(
                             status=WorkflowNodeExecutionStatus.SUCCEEDED,

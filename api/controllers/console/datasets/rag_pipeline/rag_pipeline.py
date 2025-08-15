@@ -8,8 +8,8 @@ from controllers.console import api
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
-    setup_required,
     knowledge_pipeline_publish_enabled,
+    setup_required,
 )
 from extensions.ext_database import db
 from libs.login import login_required
