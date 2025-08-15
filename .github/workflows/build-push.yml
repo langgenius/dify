@@ -20,6 +20,10 @@ env:
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
   DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'langgenius/dify-web' }}
   DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'langgenius/dify-api' }}
+  ALIYUN_REGISTRY: ${{ vars.ALIYUN_REGISTRY || 'crpi-ux005897up30zuvm.cn-shanghai.personal.cr.aliyuncs.com' }}
+  ALIYUN_NAMESPACE: ${{ vars.ALIYUN_NAMESPACE || 'rag_github_docker' }}
+  ALIYUN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+  ALIYUN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
 
 jobs:
   build:
@@ -59,6 +63,13 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
+      - name: Login to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ env.ALIYUN_ACCESS_KEY_ID }}
+          password: ${{ env.ALIYUN_ACCESS_KEY_SECRET }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -135,13 +146,26 @@ jobs:
             type=sha,enable=true,priority=100,prefix=,suffix=,format=long
             type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
+      - name: Login to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ env.ALIYUN_ACCESS_KEY_ID }}
+          password: ${{ env.ALIYUN_ACCESS_KEY_SECRET }}
+
       - name: Create manifest list and push
         working-directory: /tmp/digests
         env:
           IMAGE_NAME: ${{ env[matrix.image_name_env] }}
         run: |
+          # Push to Docker Hub
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "$IMAGE_NAME@sha256:%s " *)
+
+          # Push to Aliyun Registry
+          ALIYUN_IMAGE_NAME=${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ matrix.context }}
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON" | sed "s|$IMAGE_NAME|$ALIYUN_IMAGE_NAME|g") \
+            $(printf "$ALIYUN_IMAGE_NAME@sha256:%s " *)
 
       - name: Inspect image
         env:
