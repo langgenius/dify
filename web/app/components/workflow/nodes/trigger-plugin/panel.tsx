@@ -5,6 +5,8 @@ import type { PluginTriggerNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 
+const i18nPrefix = 'workflow.nodes.triggerPlugin'
+
 const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   id,
   data,
@@ -14,9 +16,9 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   return (
     <div className='mt-2'>
       <div className='space-y-4 px-4 pb-2'>
-        <Field title={t('workflow.nodes.triggerPlugin.title')}>
+        <Field title={t(`${i18nPrefix}.title`)}>
           <div className="text-sm text-gray-500">
-            {t('workflow.nodes.triggerPlugin.configPlaceholder')}
+            {t(`${i18nPrefix}.configPlaceholder`)}
           </div>
         </Field>
       </div>

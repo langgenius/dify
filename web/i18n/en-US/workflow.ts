@@ -260,6 +260,9 @@ const translation = {
     'loop-start': 'Loop Start',
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
+    'trigger-schedule': 'Schedule Trigger',
+    'trigger-webhook': 'Webhook Trigger',
+    'trigger-plugin': 'Plugin Trigger',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -918,6 +921,21 @@ const translation = {
       },
       clickToViewParameterSchema: 'Click to view parameter schema',
       parameterSchema: 'Parameter Schema',
+    },
+    triggerSchedule: {
+      title: 'Schedule Trigger',
+      nodeTitle: '📅 Schedule Trigger',
+      configPlaceholder: 'Schedule trigger configuration will be implemented here',
+    },
+    triggerWebhook: {
+      title: 'Webhook Trigger',
+      nodeTitle: '🔗 Webhook Trigger',
+      configPlaceholder: 'Webhook trigger configuration will be implemented here',
+    },
+    triggerPlugin: {
+      title: 'Plugin Trigger',
+      nodeTitle: '🔌 Plugin Trigger',
+      configPlaceholder: 'Plugin trigger configuration will be implemented here',
     },
   },
   tracing: {
