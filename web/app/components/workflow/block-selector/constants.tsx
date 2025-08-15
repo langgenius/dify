@@ -11,6 +11,24 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Default,
+    type: BlockEnum.TriggerSchedule,
+    title: 'Schedule Trigger',
+    description: 'Time-based workflow trigger',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.TriggerWebhook,
+    title: 'Webhook Trigger',
+    description: 'HTTP callback trigger',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.TriggerPlugin,
+    title: 'Plugin Trigger',
+    description: 'Third-party integration trigger',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.LLM,
     title: 'LLM',
   },

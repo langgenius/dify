@@ -38,6 +38,12 @@ import ListFilterNode from './list-operator/node'
 import ListFilterPanel from './list-operator/panel'
 import AgentNode from './agent/node'
 import AgentPanel from './agent/panel'
+import TriggerScheduleNode from './trigger-schedule/node'
+import TriggerSchedulePanel from './trigger-schedule/panel'
+import TriggerWebhookNode from './trigger-webhook/node'
+import TriggerWebhookPanel from './trigger-webhook/panel'
+import TriggerPluginNode from './trigger-plugin/node'
+import TriggerPluginPanel from './trigger-plugin/panel'
 import { TransferMethod } from '@/types/app'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
@@ -61,6 +67,9 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
   [BlockEnum.Agent]: AgentNode,
+  [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
+  [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
+  [BlockEnum.TriggerPlugin]: TriggerPluginNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -84,6 +93,9 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
   [BlockEnum.Agent]: AgentPanel,
+  [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
+  [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
+  [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
 }
 
 export const CUSTOM_NODE_TYPE = 'custom'
