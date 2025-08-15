@@ -17,17 +17,17 @@ def test_file_to_dict():
     file_dict = file.to_dict()
     assert "_storage_key" not in file_dict
     assert "url" in file_dict
-    
+
     # Test JSON serialization fix for GitHub Issue #23905
     assert "dify_model_identity" in file_dict
     assert file_dict["dify_model_identity"] == FILE_MODEL_IDENTITY
-    
+
     # Test enum values are converted to strings
     assert isinstance(file_dict["type"], str)
     assert file_dict["type"] == "image"
     assert isinstance(file_dict["transfer_method"], str)
     assert file_dict["transfer_method"] == "remote_url"
-    
+
     # Test full JSON serialization works without errors
     json_str = json.dumps(file_dict)
     deserialized = json.loads(json_str)
@@ -95,7 +95,7 @@ def test_file_enum_serialization_fix():
             "remote_url": "https://example.com/video.mp4"
         },
     ]
-    
+
     for case in test_cases:
         file = File(
             id=f"test-{case['type'].value}",
@@ -106,15 +106,15 @@ def test_file_enum_serialization_fix():
             related_id=case["related_id"],
             storage_key="test-storage"
         )
-        
+
         file_dict = file.to_dict()
-        
+
         # Verify enum conversion to strings
         assert file_dict["type"] == case["type"].value
         assert file_dict["transfer_method"] == case["transfer_method"].value
         assert isinstance(file_dict["type"], str)
         assert isinstance(file_dict["transfer_method"], str)
-        
+
         # Verify JSON serialization works
         json_str = json.dumps(file_dict)
         deserialized = json.loads(json_str)
