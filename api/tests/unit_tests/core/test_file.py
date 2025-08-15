@@ -86,7 +86,8 @@ def test_file_enum_serialization_fix():
             "type": FileType.AUDIO,
             "transfer_method": FileTransferMethod.TOOL_FILE,
             "related_id": "tool-file-456",
-            "remote_url": None
+            "remote_url": None,
+            "extension": ".mp3"  # TOOL_FILE requires extension
         },
         {
             "type": FileType.VIDEO,
@@ -104,6 +105,7 @@ def test_file_enum_serialization_fix():
             transfer_method=case["transfer_method"],
             remote_url=case["remote_url"],
             related_id=case["related_id"],
+            extension=case.get("extension"),  # Add extension if provided
             storage_key="test-storage"
         )
 
