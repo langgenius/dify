@@ -1,6 +1,6 @@
 import logging
 
-import requests
+import httpx
 from flask import current_app, redirect, request
 from flask_login import current_user
 from flask_restful import Resource
@@ -79,7 +79,7 @@ class OAuthDataSourceBinding(Resource):
                 return {"error": "Invalid code"}, 400
             try:
                 oauth_provider.get_access_token(code)
-            except requests.exceptions.HTTPError as e:
+            except httpx.HTTPStatusError as e:
                 logging.exception(
                     "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
                 )
@@ -102,7 +102,7 @@ class OAuthDataSourceSync(Resource):
             return {"error": "Invalid provider"}, 400
         try:
             oauth_provider.sync_data_source(binding_id)
-        except requests.exceptions.HTTPError as e:
+        except httpx.HTTPStatusError as e:
             logging.exception(
                 "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
             )

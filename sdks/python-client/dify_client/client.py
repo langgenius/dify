@@ -1,6 +1,6 @@
 import json
 
-import requests
+import httpx
 
 
 class DifyClient:
@@ -15,7 +15,7 @@ class DifyClient:
         }
 
         url = f"{self.base_url}{endpoint}"
-        response = requests.request(
+        response = httpx.request(
             method, url, json=json, params=params, headers=headers, stream=stream
         )
 
@@ -25,7 +25,7 @@ class DifyClient:
         headers = {"Authorization": f"Bearer {self.api_key}"}
 
         url = f"{self.base_url}{endpoint}"
-        response = requests.request(
+        response = httpx.request(
             method, url, data=data, headers=headers, files=files
         )
 

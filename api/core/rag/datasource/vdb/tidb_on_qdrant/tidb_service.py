@@ -1,7 +1,7 @@
 import time
 import uuid
 
-import requests
+import httpx
 from requests.auth import HTTPDigestAuth
 
 from configs import dify_config
@@ -48,7 +48,7 @@ class TidbService:
             "rootPassword": password,
         }
 
-        response = requests.post(f"{api_url}/clusters", json=cluster_data, auth=HTTPDigestAuth(public_key, private_key))
+        response = httpx.post(f"{api_url}/clusters", json=cluster_data, auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             response_data = response.json()
@@ -82,7 +82,7 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = requests.delete(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
+        response = httpx.delete(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             return response.json()
@@ -101,7 +101,7 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = requests.get(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
+        response = httpx.get(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             return response.json()
@@ -126,7 +126,7 @@ class TidbService:
 
         body = {"password": new_password, "builtinRole": "role_admin", "customRoles": []}
 
-        response = requests.patch(
+        response = httpx.patch(
             f"{api_url}/clusters/{cluster_id}/sqlUsers/{account}",
             json=body,
             auth=HTTPDigestAuth(public_key, private_key),
@@ -160,7 +160,7 @@ class TidbService:
         tidb_serverless_list_map = {item.cluster_id: item for item in tidb_serverless_list}
         cluster_ids = [item.cluster_id for item in tidb_serverless_list]
         params = {"clusterIds": cluster_ids, "view": "BASIC"}
-        response = requests.get(
+        response = httpx.get(
             f"{api_url}/clusters:batchGet", params=params, auth=HTTPDigestAuth(public_key, private_key)
         )
 
@@ -223,7 +223,7 @@ class TidbService:
             clusters.append(cluster_data)
 
         request_body = {"requests": clusters}
-        response = requests.post(
+        response = httpx.post(
             f"{api_url}/clusters:batchCreate", json=request_body, auth=HTTPDigestAuth(public_key, private_key)
         )
 

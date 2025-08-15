@@ -4,9 +4,8 @@ import logging
 from collections.abc import Callable, Generator
 from typing import TypeVar
 
-import requests
+import httpx
 from pydantic import BaseModel
-from requests.exceptions import HTTPError
 from yarl import URL
 
 from configs import dify_config
@@ -61,10 +60,10 @@ class BasePluginClient:
             data = json.dumps(data)
 
         try:
-            response = requests.request(
+            response = httpx.request(
                 method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
             )
-        except requests.exceptions.ConnectionError:
+        except httpx.ConnectError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 

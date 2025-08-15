@@ -1,6 +1,6 @@
 from typing import cast
 
-import requests
+import httpx
 
 from configs import dify_config
 from models.api_based_extension import APIBasedExtensionPoint
@@ -35,7 +35,7 @@ class APIBasedExtensionRequestor:
                     "https": dify_config.SSRF_PROXY_HTTPS_URL,
                 }
 
-            response = requests.request(
+            response = httpx.request(
                 method="POST",
                 url=url,
                 json={"point": point.value, "params": params},
@@ -43,9 +43,9 @@ class APIBasedExtensionRequestor:
                 timeout=self.timeout,
                 proxies=proxies,
             )
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             raise ValueError("request timeout")
-        except requests.exceptions.ConnectionError:
+        except httpx.ConnectError:
             raise ValueError("request connection error")
 
         if response.status_code != 200:
