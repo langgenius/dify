@@ -80,19 +80,19 @@ def test_file_enum_serialization_fix():
             "type": FileType.DOCUMENT,
             "transfer_method": FileTransferMethod.LOCAL_FILE,
             "related_id": "local-file-123",
-            "remote_url": None
+            "remote_url": None,
         },
         {
             "type": FileType.AUDIO,
             "transfer_method": FileTransferMethod.TOOL_FILE,
             "related_id": "tool-file-456",
-            "remote_url": None
+            "remote_url": None,
         },
         {
             "type": FileType.VIDEO,
             "transfer_method": FileTransferMethod.REMOTE_URL,
             "related_id": None,
-            "remote_url": "https://example.com/video.mp4"
+            "remote_url": "https://example.com/video.mp4",
         },
     ]
 
@@ -104,7 +104,7 @@ def test_file_enum_serialization_fix():
             transfer_method=case["transfer_method"],
             remote_url=case["remote_url"],
             related_id=case["related_id"],
-            storage_key="test-storage"
+            storage_key="test-storage",
         )
 
         file_dict = file.to_dict()
