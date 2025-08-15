@@ -220,7 +220,8 @@ Despliega Dify en una plataforma en la nube con un solo clic utilizando [terrafo
 Despliegue Dify en AWS usando [CDK](https://aws.amazon.com/cdk/)
 
 ##### AWS 
-- [AWS CDK por @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK por @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK por @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
 

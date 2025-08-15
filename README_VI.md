@@ -213,7 +213,8 @@ Triển khai Dify lên nền tảng đám mây với một cú nhấp chuột b�
 Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
 
 ##### AWS 
-- [AWS CDK bởi @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK bởi @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK bởi @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 
 #### Alibaba Cloud
