@@ -3,12 +3,12 @@ import type { FC, ReactNode } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiBrain2Line, RiCheckLine, RiQuestionLine } from '@remixicon/react'
-import { SelfHostedPlan } from '../type'
-import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../config'
-import Toast from '../../base/toast'
-import Tooltip from '../../base/tooltip'
-import { Asterisk, AwsMarketplace, Azure, Buildings, Diamond, GoogleCloud } from '../../base/icons/src/public/billing'
-import type { PlanRange } from './select-plan-range'
+import { SelfHostedPlan } from '../../../type'
+import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
+import Toast from '../../../../base/toast'
+import Tooltip from '../../../../base/tooltip'
+import { Asterisk, AwsMarketplace, Azure, Buildings, Diamond, GoogleCloud } from '../../../../base/icons/src/public/billing'
+import type { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import cn from '@/utils/classnames'
 import { useAppContext } from '@/context/app-context'
 
@@ -113,8 +113,8 @@ const SelfHostedPlanItem: FC<Props> = ({
       <div>
         <div className={cn(isEnterprisePlan ? 'z-1 absolute bottom-0 left-0 right-0 top-0 bg-price-enterprise-background' : '')} >
         </div>
-        {isEnterprisePlan && <div className='z-15 absolute -left-[90px] -top-[104px] size-[341px] rounded-full bg-[#09328c] opacity-15 mix-blend-plus-darker blur-[80px]'></div>}
-        {isEnterprisePlan && <div className='z-15 absolute -bottom-[72px] -right-[40px] size-[341px] rounded-full bg-[#e2eafb] opacity-15 mix-blend-plus-darker blur-[80px]'></div>}
+        {isEnterprisePlan && <div className='z-15 absolute left-[-90px] top-[-104px] size-[341px] rounded-full bg-[#09328c] opacity-15 mix-blend-plus-darker blur-[80px]'></div>}
+        {isEnterprisePlan && <div className='z-15 absolute bottom-[-72px] right-[-40px] size-[341px] rounded-full bg-[#e2eafb] opacity-15 mix-blend-plus-darker blur-[80px]'></div>}
       </div>
       <div className='relative z-10 min-h-[559px] w-full p-6'>
         <div className=' flex min-h-[108px] flex-col gap-y-1'>

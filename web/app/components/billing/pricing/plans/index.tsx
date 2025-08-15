@@ -1,7 +1,8 @@
 import Divider from '@/app/components/base/divider'
-import { type BasicPlan, Plan, type UsagePlanInfo } from '../../type'
-import PlanItem from './plan-item'
+import { type BasicPlan, Plan, SelfHostedPlan, type UsagePlanInfo } from '../../type'
+import CloudPlanItem from './cloud-plan-item'
 import type { PlanRange } from '../plan-switcher/plan-range-switcher'
+import SelfHostedPlanItem from './self-hosted-plan-item'
 
 type PlansProps = {
   plan: {
@@ -26,21 +27,21 @@ const Plans = ({
         {
           currentPlan === 'cloud' && (
             <>
-              <PlanItem
+              <CloudPlanItem
                 currentPlan={plan.type}
                 plan={Plan.sandbox}
                 planRange={planRange}
                 canPay={canPay}
               />
               <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
-              <PlanItem
+              <CloudPlanItem
                 currentPlan={plan.type}
                 plan={Plan.professional}
                 planRange={planRange}
                 canPay={canPay}
               />
               <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
-              <PlanItem
+              <CloudPlanItem
                 currentPlan={plan.type}
                 plan={Plan.team}
                 planRange={planRange}
@@ -50,23 +51,23 @@ const Plans = ({
           )
         }
         {
-          // currentPlan === 'self' && <>
-          //   <SelfHostedPlanItem
-          //     plan={SelfHostedPlan.community}
-          //     planRange={planRange}
-          //     canPay={canPay}
-          //   />
-          //   <SelfHostedPlanItem
-          //     plan={SelfHostedPlan.premium}
-          //     planRange={planRange}
-          //     canPay={canPay}
-          //   />
-          //   <SelfHostedPlanItem
-          //     plan={SelfHostedPlan.enterprise}
-          //     planRange={planRange}
-          //     canPay={canPay}
-          //   />
-          // </>
+          currentPlan === 'self' && <>
+            <SelfHostedPlanItem
+              plan={SelfHostedPlan.community}
+              planRange={planRange}
+              canPay={canPay}
+            />
+            <SelfHostedPlanItem
+              plan={SelfHostedPlan.premium}
+              planRange={planRange}
+              canPay={canPay}
+            />
+            <SelfHostedPlanItem
+              plan={SelfHostedPlan.enterprise}
+              planRange={planRange}
+              canPay={canPay}
+            />
+          </>
         }
       </div>
     </div>

@@ -20,7 +20,7 @@ const Header = ({
           <div className='py-[5px]'>
             <DifyLogo className='h-[27px] w-[60px]' />
           </div>
-          <span className='overflow-visible bg-billing-plan-title-bg bg-clip-text px-1.5 font-instrument text-[37px] italic leading-[1.2] text-transparent'>
+          <span className='bg-billing-plan-title-bg bg-clip-text px-1.5 font-instrument text-[37px] italic leading-[1.2] text-transparent'>
             {t('billing.plansCommon.title.plans')}
           </span>
         </div>

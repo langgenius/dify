@@ -6,7 +6,7 @@ import type { BasicPlan } from '../../../type'
 import { Plan } from '../../../type'
 import { ALL_PLANS } from '../../../config'
 import Toast from '../../../../base/toast'
-import { PlanRange } from '../../select-plan-range'
+import { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import List from './list'
@@ -18,14 +18,14 @@ const ICON_MAP = {
   [Plan.team]: <div className='size-[60px] bg-black' />,
 }
 
-type PlanItemProps = {
+type CloudPlanItemProps = {
   currentPlan: BasicPlan
   plan: BasicPlan
   planRange: PlanRange
   canPay: boolean
 }
 
-const PlanItem: FC<PlanItemProps> = ({
+const CloudPlanItem: FC<CloudPlanItemProps> = ({
   plan,
   currentPlan,
   planRange,
@@ -82,7 +82,7 @@ const PlanItem: FC<PlanItemProps> = ({
     }
   }
   return (
-    <div className='flex min-w-0 grow flex-col pb-3'>
+    <div className='flex min-w-0 flex-1 flex-col pb-3'>
       <div className='flex flex-col px-5 py-4'>
         <div className='flex flex-col gap-y-6 px-1 pt-10'>
           {ICON_MAP[plan]}
@@ -129,4 +129,4 @@ const PlanItem: FC<PlanItemProps> = ({
     </div>
   )
 }
-export default React.memo(PlanItem)
+export default React.memo(CloudPlanItem)
