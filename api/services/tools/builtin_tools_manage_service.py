@@ -604,7 +604,7 @@ class BuiltinToolManageService:
         1.if the default provider exists, return the default provider
         2.if the default provider does not exist, return the oldest provider
         """
-        with Session(db.engine) as session:
+        with Session(db.engine).no_autoflush as session:
             try:
                 full_provider_name = provider_name
                 provider_id_entity = ToolProviderID(provider_name)
