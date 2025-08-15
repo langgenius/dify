@@ -1,6 +1,6 @@
 import Divider from '@/app/components/base/divider'
 import { type BasicPlan, Plan, type UsagePlanInfo } from '../../type'
-import PlanItem from '../plan-item'
+import PlanItem from './plan-item'
 import type { PlanRange } from '../plan-switcher/plan-range-switcher'
 
 type PlansProps = {
