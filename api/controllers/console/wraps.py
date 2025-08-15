@@ -270,4 +270,5 @@ def knowledge_pipeline_publish_enabled(view):
         if features.knowledge_pipeline.publish_enabled:
             return view(*args, **kwargs)
         abort(403)
+
     return decorated

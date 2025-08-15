@@ -87,8 +87,10 @@ class WebAppAuthModel(BaseModel):
     allow_email_code_login: bool = False
     allow_email_password_login: bool = False
 
+
 class KnowledgePipeline(BaseModel):
     publish_enabled: bool = False
+
 
 class PluginInstallationScope(StrEnum):
     NONE = "none"

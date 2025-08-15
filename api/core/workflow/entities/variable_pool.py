@@ -18,6 +18,7 @@ from core.workflow.constants import (
 )
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
+
 VariableValue = Union[str, int, float, dict, list, File]
 
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
@@ -74,7 +75,6 @@ class VariablePool(BaseModel):
                 rag_pipeline_variables_map[node_id][key] = value
             for key, value in rag_pipeline_variables_map.items():
                 self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
-
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """
