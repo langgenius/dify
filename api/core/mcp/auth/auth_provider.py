@@ -10,8 +10,6 @@ from core.mcp.types import (
 from models.tools import MCPToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
-LATEST_PROTOCOL_VERSION = "1.0"
-
 
 class OAuthClientProvider:
     mcp_provider: MCPToolProvider

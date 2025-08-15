@@ -38,11 +38,6 @@ WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
 
 
-def remove_request_params(url: str) -> str:
-    """Remove request parameters from URL, keeping only the path."""
-    return urljoin(url, urlparse(url).path)
-
-
 class SSETransport:
     """SSE client transport implementation."""
 
