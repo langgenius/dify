@@ -328,6 +328,7 @@ const translation = {
     moveToThisNode: 'このノードに移動する',
     maximize: 'キャンバスを最大化する',
     minimize: '全画面を終了する',
+    scrollToSelectedNode: '選択したノードまでスクロール',
   },
   nodes: {
     common: {

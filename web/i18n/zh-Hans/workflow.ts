@@ -328,6 +328,7 @@ const translation = {
     moveToThisNode: '定位至此节点',
     maximize: '最大化画布',
     minimize: '退出最大化',
+    scrollToSelectedNode: '滚动至选中节点',
   },
   nodes: {
     common: {

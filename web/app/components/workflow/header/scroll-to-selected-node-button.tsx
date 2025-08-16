@@ -1,11 +1,13 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useNodes } from 'reactflow'
+import { useTranslation } from 'react-i18next'
 import type { CommonNodeType } from '../types'
 import { scrollToWorkflowNode } from '../utils/node-navigation'
 import cn from '@/utils/classnames'
 
 const ScrollToSelectedNodeButton: FC = () => {
+  const { t } = useTranslation()
   const nodes = useNodes<CommonNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
 
@@ -24,7 +26,7 @@ const ScrollToSelectedNodeButton: FC = () => {
       )}
       onClick={handleScrollToSelectedNode}
     >
-      Scroll to selected node
+      {t('workflow.panel.scrollToSelectedNode')}
     </div>
   )
 }
