@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
     currentWorkflow: 'Quy trình làm việc hiện tại',
     currentView: 'Hiện tại View',
+    moreActions: 'Hành động khác',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',

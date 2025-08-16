@@ -116,6 +116,7 @@ const translation = {
     loadMore: 'さらに読み込む',
     noHistory: '履歴がありません',
     tagBound: 'このタグを使用しているアプリの数',
+    moreActions: 'さらにアクション',
   },
   env: {
     envPanelTitle: '環境変数',

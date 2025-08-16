@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'Кількість додатків, що використовують цей тег',
     currentView: 'Поточний вигляд',
     currentWorkflow: 'Поточний робочий процес',
+    moreActions: 'Більше дій',
   },
   env: {
     envPanelTitle: 'Змінні середовища',

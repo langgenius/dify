@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'Numărul de aplicații care folosesc acest tag',
     currentView: 'Vizualizare curentă',
     currentWorkflow: 'Flux de lucru curent',
+    moreActions: 'Mai multe acțiuni',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',

@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'Nombre d\'applications utilisant cette étiquette',
     currentView: 'Vue actuelle',
     currentWorkflow: 'Flux de travail actuel',
+    moreActions: 'Plus d’actions',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',

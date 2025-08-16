@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'تعداد برنامه‌هایی که از این برچسب استفاده می‌کنند',
     currentView: 'نمای فعلی',
     currentWorkflow: 'گردش کار فعلی',
+    moreActions: 'اقدامات بیشتر',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
