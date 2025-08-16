@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { Fragment, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Fragment, useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   RiAccountCircleLine,
   RiArrowRightUpLine,
@@ -45,6 +45,7 @@ export default function AppSelector() {
 
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const pathname = usePathname()
   const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
@@ -61,6 +62,10 @@ export default function AppSelector() {
 
     router.push('/signin')
   }
+
+  useEffect(() => {
+    setAboutVisible(false)
+  }, [pathname])
 
   return (
     <div className="">

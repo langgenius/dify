@@ -1,9 +1,9 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type {
   ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
@@ -148,8 +148,25 @@ export const ModalContextProvider = ({
 
   const searchParams = useSearchParams()
   const router = useRouter()
+  const pathname = usePathname()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
+
+  const closeAllModals = useCallback(() => {
+    setShowAccountSettingModal(null)
+    setShowApiBasedExtensionModal(null)
+    setShowModerationSettingModal(null)
+    setShowExternalDataToolModal(null)
+    setShowModelModal(null)
+    setShowExternalKnowledgeAPIModal(null)
+    setShowModelLoadBalancingModal(null)
+    setShowModelLoadBalancingEntryModal(null)
+    setShowOpeningModal(null)
+    setShowUpdatePluginModal(null)
+    setShowPricingModal(false)
+    setShowAnnotationFullModal(false)
+  }, [])
+
   const handleCancelAccountSettingModal = () => {
     const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
 
@@ -257,6 +274,10 @@ export const ModalContextProvider = ({
       showOpeningModal.onSaveCallback(newOpening)
     setShowOpeningModal(null)
   }
+
+  useEffect(() => {
+    closeAllModals()
+  }, [pathname, closeAllModals])
 
   return (
     <ModalContext.Provider value={{
