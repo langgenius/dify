@@ -6,6 +6,7 @@ import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
+import StartBlocks from './start-blocks'
 import AllTools from './all-tools'
 import cn from '@/utils/classnames'
 
@@ -18,6 +19,7 @@ export type TabsProps = {
   availableBlocksTypes?: BlockEnum[]
   filterElem: React.ReactNode
   noBlocks?: boolean
+  showStartTab?: boolean
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -28,8 +30,9 @@ const Tabs: FC<TabsProps> = ({
   availableBlocksTypes,
   filterElem,
   noBlocks,
+  showStartTab = false,
 }) => {
-  const tabs = useTabs()
+  const tabs = useTabs(showStartTab)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -60,6 +63,17 @@ const Tabs: FC<TabsProps> = ({
         )
       }
       {filterElem}
+      {
+        activeTab === TabsEnum.Start && !noBlocks && (
+          <div className='border-t border-divider-subtle'>
+            <StartBlocks
+              searchText={searchText}
+              onSelect={onSelect}
+              availableBlocksTypes={availableBlocksTypes}
+            />
+          </div>
+        )
+      }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
           <div className='border-t border-divider-subtle'>

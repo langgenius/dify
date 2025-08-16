@@ -104,6 +104,7 @@ const AddBlock = ({
       trigger={renderTrigger || renderTriggerElement}
       popupClassName='!min-w-[256px]'
       availableBlocksTypes={availableNextBlocks}
+      showStartTab={true}
     />
   )
 }

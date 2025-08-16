@@ -42,6 +42,9 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  TriggerSchedule = 'trigger-schedule',
+  TriggerWebhook = 'trigger-webhook',
+  TriggerPlugin = 'trigger-plugin',
 }
 
 export enum ControlMode {
@@ -452,4 +455,14 @@ export enum VersionHistoryContextMenuOptions {
 
 export type ChildNodeTypeCount = {
   [key: string]: number;
+}
+
+export const TRIGGER_NODE_TYPES = [
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+] as const
+
+export function isTriggerNode(nodeType: BlockEnum): boolean {
+  return TRIGGER_NODE_TYPES.includes(nodeType as any)
 }

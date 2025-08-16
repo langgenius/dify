@@ -222,6 +222,7 @@ const translation = {
   },
   tabs: {
     'searchBlock': 'Search node',
+    'start': 'Start',
     'blocks': 'Nodes',
     'searchTool': 'Search tool',
     'tools': 'Tools',
@@ -261,6 +262,9 @@ const translation = {
     'loop-start': 'Loop Start',
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
+    'trigger-schedule': 'Schedule Trigger',
+    'trigger-webhook': 'Webhook Trigger',
+    'trigger-plugin': 'Plugin Trigger',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -283,6 +287,9 @@ const translation = {
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
+    'trigger-schedule': 'Time-based workflow trigger that starts workflows on a schedule',
+    'trigger-webhook': 'HTTP callback trigger that starts workflows from external HTTP requests',
+    'trigger-plugin': 'Third-party integration trigger that starts workflows from external platform events',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -916,6 +923,21 @@ const translation = {
       },
       clickToViewParameterSchema: 'Click to view parameter schema',
       parameterSchema: 'Parameter Schema',
+    },
+    triggerSchedule: {
+      title: 'Schedule Trigger',
+      nodeTitle: '📅 Schedule Trigger',
+      configPlaceholder: 'Schedule trigger configuration will be implemented here',
+    },
+    triggerWebhook: {
+      title: 'Webhook Trigger',
+      nodeTitle: '🔗 Webhook Trigger',
+      configPlaceholder: 'Webhook trigger configuration will be implemented here',
+    },
+    triggerPlugin: {
+      title: 'Plugin Trigger',
+      nodeTitle: '🔌 Plugin Trigger',
+      configPlaceholder: 'Plugin trigger configuration will be implemented here',
     },
   },
   tracing: {

@@ -43,6 +43,7 @@ type NodeSelectorProps = {
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   noBlocks?: boolean
+  showStartTab?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -59,6 +60,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   availableBlocksTypes,
   disabled,
   noBlocks = false,
+  showStartTab = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -90,9 +92,10 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     setActiveTab(newActiveTab)
   }, [])
   const searchPlaceholder = useMemo(() => {
+    if (activeTab === TabsEnum.Start)
+      return t('workflow.tabs.searchBlock')
     if (activeTab === TabsEnum.Blocks)
       return t('workflow.tabs.searchBlock')
-
     if (activeTab === TabsEnum.Tools)
       return t('workflow.tabs.searchTool')
     return ''
@@ -163,6 +166,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
+            showStartTab={showStartTab}
           />
         </div>
       </PortalToFollowElemContent>

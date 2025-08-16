@@ -22,6 +22,9 @@ import IterationStartDefault from './nodes/iteration-start/default'
 import AgentDefault from './nodes/agent/default'
 import LoopStartDefault from './nodes/loop-start/default'
 import LoopEndDefault from './nodes/loop-end/default'
+import TriggerScheduleDefault from './nodes/trigger-schedule/default'
+import TriggerWebhookDefault from './nodes/trigger-webhook/default'
+import TriggerPluginDefault from './nodes/trigger-plugin/default'
 
 type NodesExtraData = {
   author: string
@@ -242,6 +245,33 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: ListFilterDefault.getAvailableNextNodes,
     checkValid: AgentDefault.checkValid,
   },
+  [BlockEnum.TriggerSchedule]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: TriggerScheduleDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: TriggerScheduleDefault.getAvailableNextNodes,
+    checkValid: TriggerScheduleDefault.checkValid,
+  },
+  [BlockEnum.TriggerWebhook]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: TriggerWebhookDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: TriggerWebhookDefault.getAvailableNextNodes,
+    checkValid: TriggerWebhookDefault.checkValid,
+  },
+  [BlockEnum.TriggerPlugin]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: TriggerPluginDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: TriggerPluginDefault.getAvailableNextNodes,
+    checkValid: TriggerPluginDefault.checkValid,
+  },
 }
 
 export const NODES_INITIAL_DATA = {
@@ -400,6 +430,24 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     ...AgentDefault.defaultValue,
+  },
+  [BlockEnum.TriggerSchedule]: {
+    type: BlockEnum.TriggerSchedule,
+    title: '',
+    desc: '',
+    ...TriggerScheduleDefault.defaultValue,
+  },
+  [BlockEnum.TriggerWebhook]: {
+    type: BlockEnum.TriggerWebhook,
+    title: '',
+    desc: '',
+    ...TriggerWebhookDefault.defaultValue,
+  },
+  [BlockEnum.TriggerPlugin]: {
+    type: BlockEnum.TriggerPlugin,
+    title: '',
+    desc: '',
+    ...TriggerPluginDefault.defaultValue,
   },
 }
 export const MAX_ITERATION_PARALLEL_NUM = 10
