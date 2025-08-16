@@ -415,9 +415,7 @@ class GraphEngine:
             event: The event to process
         """
         # Dispatch to appropriate handler based on event type
-        if isinstance(event, NodeRunSucceededEvent | NodeRunFailedEvent) and (
-            event.in_loop_id or event.in_iteration_id
-        ):
+        if event.in_loop_id or event.in_iteration_id:
             self._collect_event(event)
             return
         handler = self._get_event_handler(type(event))
@@ -518,7 +516,20 @@ class GraphEngine:
             del self._node_retry_tracker[event.node_id]
 
         if node.execution_type == NodeExecutionType.RESPONSE:
-            self.graph_runtime_state.outputs.update(event.node_run_result.outputs)
+            # For answer outputs, concatenate them instead of overwriting
+            for key, value in event.node_run_result.outputs.items():
+                if key == "answer":
+                    # Check if answer already exists in outputs
+                    existing_answer = self.graph_runtime_state.outputs.get("answer", "")
+                    if existing_answer:
+                        # Concatenate with newline
+                        self.graph_runtime_state.outputs["answer"] = f"{existing_answer}{value}"
+                    else:
+                        # First answer, just set it
+                        self.graph_runtime_state.outputs["answer"] = value
+                else:
+                    # For other outputs, just update
+                    self.graph_runtime_state.outputs[key] = value
 
         self._collect_event(event)
 
