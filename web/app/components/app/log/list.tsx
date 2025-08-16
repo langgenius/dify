@@ -203,6 +203,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   })))
   const { t } = useTranslation()
   const [hasMore, setHasMore] = useState(true)
+  const [autoLoadTriggered, setAutoLoadTriggered] = useState(false)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
 
   const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
@@ -210,6 +211,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
 
   const fetchData = useCallback(async () => {
+    // Reset flag to allow checking container again after new data loads
+    setAutoLoadTriggered(false)
     try {
       if (!hasMore)
         return
@@ -218,8 +221,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         conversation_id: detail.id,
         limit: 10,
       }
-      if (allChatItems[0]?.id)
-        params.first_id = allChatItems[0]?.id.replace('question-', '')
+      // Use the oldest answer item ID for pagination
+      const answerItems = allChatItems.filter(item => item.isAnswer)
+      const oldestAnswerItem = answerItems[answerItems.length - 1]
+      if (oldestAnswerItem?.id)
+        params.first_id = oldestAnswerItem.id
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
@@ -249,7 +255,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       setChatItemTree(tree)
 
-      setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
+      setThreadChatItems(getThreadMessages(tree))
     }
     catch (err) {
       console.error(err)
@@ -350,6 +356,22 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       fetchData()
     }
   }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
+
+    // Add a safe auto-load mechanism that won't cause infinite loops
+  useEffect(() => {
+    // Only check if we have more data and haven't triggered auto-load yet
+    if (hasMore && !autoLoadTriggered && threadChatItems.length >= 8) {
+      // Do a first check immediately for better UX
+      const scrollDiv = document.getElementById('scrollableDiv')
+      if (scrollDiv && scrollDiv.scrollHeight <= scrollDiv.clientHeight) {
+        fetchData()
+      }
+ else {
+        // Not loaded initially, mark as triggered and wait for scroll events
+        setAutoLoadTriggered(true)
+      }
+    }
+  }, [hasMore, autoLoadTriggered, threadChatItems.length, fetchData])
 
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
@@ -481,16 +503,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 hasMore={hasMore}
                 loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
                 // endMessage={<div className='text-center'>Nothing more to show</div>}
+                          // Very sensitive scroll threshold to make it easier to trigger
+                scrollThreshold={0.5}
                 // below props only if you need pull down functionality
                 refreshFunction={fetchData}
                 pullDownToRefresh
                 pullDownToRefreshThreshold={50}
-                // pullDownToRefreshContent={
-                //   <div className='text-center'>Pull down to refresh</div>
-                // }
-                // releaseToRefreshContent={
-                //   <div className='text-center'>Release to refresh</div>
-                // }
                 // To put endMessage and loader to the top.
                 style={{ display: 'flex', flexDirection: 'column-reverse' }}
                 inverse={true}
