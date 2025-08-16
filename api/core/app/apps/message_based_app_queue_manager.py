@@ -6,7 +6,6 @@ from core.app.entities.queue_entities import (
     MessageQueueMessage,
     QueueAdvancedChatMessageEndEvent,
     QueueErrorEvent,
-    QueueMessage,
     QueueMessageEndEvent,
     QueueStopEvent,
 )
@@ -21,15 +20,6 @@ class MessageBasedAppQueueManager(AppQueueManager):
         self._conversation_id = str(conversation_id)
         self._app_mode = app_mode
         self._message_id = str(message_id)
-
-    def construct_queue_message(self, event: AppQueueEvent) -> QueueMessage:
-        return MessageQueueMessage(
-            task_id=self._task_id,
-            message_id=self._message_id,
-            conversation_id=self._conversation_id,
-            app_mode=self._app_mode,
-            event=event,
-        )
 
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
