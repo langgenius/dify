@@ -315,13 +315,13 @@ const translation = {
     checklistResolved: 'Toate problemele au fost rezolvate',
     change: 'Schimbă',
     optional: '(opțional)',
-    moveToThisNode: 'Mutați la acest nod',
     organizeBlocks: 'Organizează nodurile',
     addNextStep: 'Adăugați următorul pas în acest flux de lucru',
     changeBlock: 'Schimbă nodul',
     selectNextStep: 'Selectați Pasul Următor',
     maximize: 'Maximize Canvas',
     minimize: 'Iesi din modul pe tot ecranul',
+    scrollToSelectedNode: 'Derulați la nodul selectat',
   },
   nodes: {
     common: {

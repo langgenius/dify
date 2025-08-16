@@ -320,7 +320,6 @@ const translation = {
     addNextStep: 'Add the next step in this workflow',
     selectNextStep: 'Select Next Step',
     runThisStep: 'Run this step',
-    moveToThisNode: 'Move to this node',
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
     checklistResolved: 'All issues are resolved',
@@ -329,6 +328,7 @@ const translation = {
     optional: '(optional)',
     maximize: 'Maximize Canvas',
     minimize: 'Exit Full Screen',
+    scrollToSelectedNode: 'Scroll to selected node',
   },
   nodes: {
     common: {

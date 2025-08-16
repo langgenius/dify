@@ -315,13 +315,13 @@ const translation = {
     checklistResolved: 'Alle Probleme wurden gelöst',
     change: 'Ändern',
     optional: '(optional)',
-    moveToThisNode: 'Bewege zu diesem Knoten',
     selectNextStep: 'Nächsten Schritt auswählen',
     addNextStep: 'Fügen Sie den nächsten Schritt in diesem Arbeitsablauf hinzu.',
     organizeBlocks: 'Knoten organisieren',
     changeBlock: 'Knoten ändern',
     maximize: 'Maximiere die Leinwand',
     minimize: 'Vollbildmodus beenden',
+    scrollToSelectedNode: 'Zum ausgewählten Knoten scrollen',
   },
   nodes: {
     common: {

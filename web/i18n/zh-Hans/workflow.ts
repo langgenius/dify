@@ -326,9 +326,9 @@ const translation = {
     organizeBlocks: '整理节点',
     change: '更改',
     optional: '（选填）',
-    moveToThisNode: '定位至此节点',
     maximize: '最大化画布',
     minimize: '退出最大化',
+    scrollToSelectedNode: '滚动至选中节点',
   },
   nodes: {
     common: {

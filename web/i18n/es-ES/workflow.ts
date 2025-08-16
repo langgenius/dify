@@ -315,13 +315,13 @@ const translation = {
     checklistResolved: 'Se resolvieron todos los problemas',
     change: 'Cambiar',
     optional: '(opcional)',
-    moveToThisNode: 'Mueve a este nodo',
     organizeBlocks: 'Organizar nodos',
     addNextStep: 'Agrega el siguiente paso en este flujo de trabajo',
     changeBlock: 'Cambiar Nodo',
     selectNextStep: 'Seleccionar siguiente paso',
     maximize: 'Maximizar Canvas',
     minimize: 'Salir de pantalla completa',
+    scrollToSelectedNode: 'Desplácese hasta el nodo seleccionado',
   },
   nodes: {
     common: {
