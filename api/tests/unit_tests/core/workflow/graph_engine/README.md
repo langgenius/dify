@@ -383,7 +383,7 @@ config = (MockConfigBuilder()
 
 ### 1. Create Workflow Fixture
 
-Create a YAML fixture file in `fixtures/` directory defining your workflow graph.
+Create a YAML fixture file in `api/tests/fixtures/workflow/` directory defining your workflow graph.
 
 ### 2. Configure Mocks
 
