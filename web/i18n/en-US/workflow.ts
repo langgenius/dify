@@ -222,6 +222,7 @@ const translation = {
   },
   tabs: {
     'searchBlock': 'Search node',
+    'start': 'Start',
     'blocks': 'Nodes',
     'searchTool': 'Search tool',
     'tools': 'Tools',

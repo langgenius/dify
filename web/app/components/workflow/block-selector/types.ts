@@ -1,6 +1,7 @@
 import type { PluginMeta } from '../../plugins/types'
 
 export enum TabsEnum {
+  Start = 'start',
   Blocks = 'blocks',
   Tools = 'tools',
 }

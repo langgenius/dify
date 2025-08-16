@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { BLOCKS } from './constants'
+import { BLOCKS, START_BLOCKS } from './constants'
 import {
   TabsEnum,
   ToolTypeEnum,
@@ -16,10 +16,21 @@ export const useBlocks = () => {
   })
 }
 
-export const useTabs = () => {
+export const useStartBlocks = () => {
   const { t } = useTranslation()
 
-  return [
+  return START_BLOCKS.map((block) => {
+    return {
+      ...block,
+      title: t(`workflow.blocks.${block.type}`),
+    }
+  })
+}
+
+export const useTabs = (showStartTab = false) => {
+  const { t } = useTranslation()
+
+  const tabs = [
     {
       key: TabsEnum.Blocks,
       name: t('workflow.tabs.blocks'),
@@ -29,6 +40,15 @@ export const useTabs = () => {
       name: t('workflow.tabs.tools'),
     },
   ]
+
+  if (showStartTab) {
+    tabs.push({
+      key: TabsEnum.Start,
+      name: t('workflow.tabs.start'),
+    })
+  }
+
+  return tabs
 }
 
 export const useToolTabs = (isHideMCPTools?: boolean) => {

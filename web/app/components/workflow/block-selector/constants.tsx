@@ -2,12 +2,12 @@ import type { Block } from '../types'
 import { BlockEnum } from '../types'
 import { BlockClassificationEnum } from './types'
 
-export const BLOCKS: Block[] = [
+export const START_BLOCKS: Block[] = [
   {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.Start,
-    title: 'Start',
-    description: '',
+    title: 'User Input',
+    description: 'Traditional start node for user input',
   },
   {
     classification: BlockClassificationEnum.Default,
@@ -27,6 +27,9 @@ export const BLOCKS: Block[] = [
     title: 'Plugin Trigger',
     description: 'Third-party integration trigger',
   },
+]
+
+export const BLOCKS: Block[] = [
   {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.LLM,
