@@ -13,7 +13,7 @@ from threading import RLock
 from typing import Optional, TypeAlias
 from uuid import uuid4
 
-from core.workflow.enums import NodeExecutionType, NodeState
+from core.workflow.enums import NodeState, NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
 from core.workflow.nodes.answer.answer_node import AnswerNode
@@ -209,7 +209,14 @@ class ResponseStreamCoordinator:
             for edge_id in path:
                 edge = self.graph.edges[edge_id]
                 source_node = self.graph.nodes[edge.tail]
-                if source_node.execution_type in {NodeExecutionType.BRANCH, NodeExecutionType.CONTAINER}:
+                # if source_node.execution_type in {NodeExecutionType.BRANCH, NodeExecutionType.CONTAINER}:
+                if source_node.node_type in {
+                    NodeType.IF_ELSE,
+                    NodeType.QUESTION_CLASSIFIER,
+                    NodeType.ITERATION,
+                    NodeType.LOOP,
+                    NodeType.VARIABLE_ASSIGNER,
+                }:
                     branch_edges.append(edge_id)
             # Keep the path even if it's empty
             filtered_paths.append(Path(edges=branch_edges))

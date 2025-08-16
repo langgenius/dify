@@ -143,6 +143,19 @@ class LoopNode(Node):
                 # Track loop duration
                 loop_duration_map[str(i)] = (naive_utc_now() - loop_start_time).total_seconds()
 
+                # Accumulate outputs from the sub-graph's response nodes
+                for key, value in graph_engine.graph_runtime_state.outputs.items():
+                    if key == "answer":
+                        # Concatenate answer outputs with newline
+                        existing_answer = self.graph_runtime_state.outputs.get("answer", "")
+                        if existing_answer:
+                            self.graph_runtime_state.outputs["answer"] = f"{existing_answer}{value}"
+                        else:
+                            self.graph_runtime_state.outputs["answer"] = value
+                    else:
+                        # For other outputs, just update
+                        self.graph_runtime_state.outputs[key] = value
+
                 # Update the total tokens from this iteration
                 cost_tokens += graph_engine.graph_runtime_state.total_tokens
 
