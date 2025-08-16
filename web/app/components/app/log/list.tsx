@@ -111,74 +111,82 @@ const statusTdRender = (statusCount: StatusCount) => {
 
 const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
-  messages.forEach((item: ChatMessage) => {
-    const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
-    newChatList.push({
-      id: `question-${item.id}`,
-      content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
-      isAnswer: false,
-      message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-      parentMessageId: item.parent_message_id || undefined,
+
+  try {
+    messages.forEach((item: ChatMessage, _index: number) => {
+      const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
+      newChatList.push({
+        id: `question-${item.id}`,
+        content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
+        isAnswer: false,
+        message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+        parentMessageId: item.parent_message_id || undefined,
+      })
+
+      const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+      newChatList.push({
+        id: item.id,
+        content: item.answer,
+        agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
+        feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
+        adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
+        feedbackDisabled: false,
+        isAnswer: true,
+        message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+        log: [
+          ...item.message,
+          ...(item.message[item.message.length - 1]?.role !== 'assistant'
+            ? [
+              {
+                role: 'assistant',
+                text: item.answer,
+                files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+              },
+            ]
+            : []),
+        ] as IChatItem['log'],
+        workflow_run_id: item.workflow_run_id,
+        conversationId,
+        input: {
+          inputs: item.inputs,
+          query: item.query,
+        },
+        more: {
+          time: dayjs.unix(item.created_at).tz(timezone).format(format),
+          tokens: item.answer_tokens + item.message_tokens,
+          latency: item.provider_response_latency.toFixed(2),
+        },
+        citation: item.metadata?.retriever_resources,
+        annotation: (() => {
+          if (item.annotation_hit_history) {
+            return {
+              id: item.annotation_hit_history.annotation_id,
+              authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
+              created_at: item.annotation_hit_history.created_at,
+            }
+          }
+
+          if (item.annotation) {
+            return {
+              id: item.annotation.id,
+              authorName: item.annotation.account.name,
+              logAnnotation: item.annotation,
+              created_at: 0,
+            }
+          }
+
+          return undefined
+        })(),
+        parentMessageId: `question-${item.id}`,
+      })
     })
 
-    const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
-    newChatList.push({
-      id: item.id,
-      content: item.answer,
-      agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-      feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
-      adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
-      feedbackDisabled: false,
-      isAnswer: true,
-      message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-      log: [
-        ...item.message,
-        ...(item.message[item.message.length - 1]?.role !== 'assistant'
-          ? [
-            {
-              role: 'assistant',
-              text: item.answer,
-              files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-            },
-          ]
-          : []),
-      ] as IChatItem['log'],
-      workflow_run_id: item.workflow_run_id,
-      conversationId,
-      input: {
-        inputs: item.inputs,
-        query: item.query,
-      },
-      more: {
-        time: dayjs.unix(item.created_at).tz(timezone).format(format),
-        tokens: item.answer_tokens + item.message_tokens,
-        latency: item.provider_response_latency.toFixed(2),
-      },
-      citation: item.metadata?.retriever_resources,
-      annotation: (() => {
-        if (item.annotation_hit_history) {
-          return {
-            id: item.annotation_hit_history.annotation_id,
-            authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
-            created_at: item.annotation_hit_history.created_at,
-          }
-        }
-
-        if (item.annotation) {
-          return {
-            id: item.annotation.id,
-            authorName: item.annotation.account.name,
-            logAnnotation: item.annotation,
-            created_at: 0,
-          }
-        }
-
-        return undefined
-      })(),
-      parentMessageId: `question-${item.id}`,
-    })
-  })
-  return newChatList
+    return newChatList
+  }
+ catch (error) {
+    console.error('getFormattedChatList processing failed:', error)
+    throw error
+  }
 }
 
 type IDetailPanel = {
@@ -188,6 +196,10 @@ type IDetailPanel = {
 }
 
 function DetailPanel({ detail, onFeedback }: IDetailPanel) {
+  const MIN_ITEMS_FOR_SCROLL_LOADING = 8
+  const SCROLL_THRESHOLD_PX = 50
+  const SCROLL_DEBOUNCE_MS = 200
+
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
@@ -204,13 +216,19 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { t } = useTranslation()
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
+  const isLoadingRef = useRef(false)
 
   const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
   const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
 
   const fetchData = useCallback(async () => {
+    if (isLoadingRef.current)
+      return
+
     try {
+      isLoadingRef.current = true
+
       if (!hasMore)
         return
 
@@ -220,14 +238,17 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       if (allChatItems[0]?.id)
         params.first_id = allChatItems[0]?.id.replace('question-', '')
+
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
       })
+
       if (messageRes.data.length > 0) {
         const varValues = messageRes.data.at(-1)!.inputs
         setVarValues(varValues)
       }
+
       setHasMore(messageRes.has_more)
 
       const newAllChatItems = [
@@ -237,6 +258,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       setAllChatItems(newAllChatItems)
 
       let tree = buildChatItemTree(newAllChatItems)
+
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
         tree = [{
           id: 'introduction',
@@ -249,15 +271,20 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       setChatItemTree(tree)
 
-      setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
+      const newThreadChatItems = getThreadMessages(tree, newAllChatItems.at(-1)?.id)
+      setThreadChatItems(newThreadChatItems)
     }
     catch (err) {
-      console.error(err)
+      console.error('fetchData execution failed:', err)
+    }
+    finally {
+      isLoadingRef.current = false
     }
   }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
   const switchSibling = useCallback((siblingMessageId: string) => {
-    setThreadChatItems(getThreadMessages(chatItemTree, siblingMessageId))
+    const newThreadChatItems = getThreadMessages(chatItemTree, siblingMessageId)
+    setThreadChatItems(newThreadChatItems)
   }, [chatItemTree])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
@@ -378,6 +405,38 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  // Add scroll listener to ensure loading is triggered
+  useEffect(() => {
+    if (threadChatItems.length >= MIN_ITEMS_FOR_SCROLL_LOADING && hasMore) {
+      const scrollableDiv = document.getElementById('scrollableDiv')
+
+      if (scrollableDiv) {
+        let loadingTimeout: NodeJS.Timeout | null = null
+
+        const handleScroll = () => {
+          const { scrollTop } = scrollableDiv
+
+          // Trigger loading when scrolling near the top
+          if (scrollTop < SCROLL_THRESHOLD_PX && !isLoadingRef.current) {
+            if (loadingTimeout)
+              clearTimeout(loadingTimeout)
+
+            loadingTimeout = setTimeout(() => {
+              fetchData()
+            }, SCROLL_DEBOUNCE_MS) // 200ms debounce
+          }
+        }
+
+        scrollableDiv.addEventListener('scroll', handleScroll)
+        return () => {
+          scrollableDiv.removeEventListener('scroll', handleScroll)
+          if (loadingTimeout)
+            clearTimeout(loadingTimeout)
+        }
+      }
+    }
+  }, [threadChatItems.length, hasMore, fetchData])
+
   return (
     <div ref={ref} className='flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border'>
       {/* Panel Header */}
@@ -417,30 +476,33 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         </div>
       </div>
       <div className='mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn'>
-        {!isChatMode
-          ? <div className="px-6 py-4">
-            <div className='flex h-[18px] items-center space-x-3'>
-              <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
-              <div className='h-[1px] grow' style={{
-                background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
-              }}></div>
+        {(() => {
+          if (!isChatMode) {
+            return <div className="px-6 py-4">
+              <div className='flex h-[18px] items-center space-x-3'>
+                <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
+                <div className='h-[1px] grow' style={{
+                  background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+                }}></div>
+              </div>
+              <TextGeneration
+                className='mt-2'
+                content={detail.message.answer}
+                messageId={detail.message.id}
+                isError={false}
+                onRetry={noop}
+                isInstalledApp={false}
+                supportFeedback
+                feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
+                onFeedback={feedback => onFeedback(detail.message.id, feedback)}
+                isShowTextToSpeech
+                siteInfo={null}
+              />
             </div>
-            <TextGeneration
-              className='mt-2'
-              content={detail.message.answer}
-              messageId={detail.message.id}
-              isError={false}
-              onRetry={noop}
-              isInstalledApp={false}
-              supportFeedback
-              feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              onFeedback={feedback => onFeedback(detail.message.id, feedback)}
-              isShowTextToSpeech
-              siteInfo={null}
-            />
-          </div>
-          : threadChatItems.length < 8
-            ? <div className="mb-4 pt-4">
+          }
+
+          if (threadChatItems.length < MIN_ITEMS_FOR_SCROLL_LOADING) {
+            return <div className="mb-4 pt-4">
               <Chat
                 config={{
                   appId: appDetail?.id,
@@ -466,62 +528,67 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 switchSibling={switchSibling}
               />
             </div>
-            : <div
-              className="py-4"
-              id="scrollableDiv"
-              style={{
-                display: 'flex',
-                flexDirection: 'column-reverse',
-              }}>
-              {/* Put the scroll bar always on the bottom */}
-              <InfiniteScroll
-                scrollableTarget="scrollableDiv"
-                dataLength={threadChatItems.length}
-                next={fetchData}
-                hasMore={hasMore}
-                loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
-                // endMessage={<div className='text-center'>Nothing more to show</div>}
-                // below props only if you need pull down functionality
-                refreshFunction={fetchData}
-                pullDownToRefresh
-                pullDownToRefreshThreshold={50}
-                // pullDownToRefreshContent={
-                //   <div className='text-center'>Pull down to refresh</div>
-                // }
-                // releaseToRefreshContent={
-                //   <div className='text-center'>Release to refresh</div>
-                // }
-                // To put endMessage and loader to the top.
-                style={{ display: 'flex', flexDirection: 'column-reverse' }}
-                inverse={true}
-              >
-                <Chat
-                  config={{
-                    appId: appDetail?.id,
-                    text_to_speech: {
-                      enabled: true,
-                    },
-                    questionEditEnable: false,
-                    supportAnnotation: true,
-                    annotation_reply: {
-                      enabled: true,
-                    },
-                    supportFeedback: true,
-                  } as any}
-                  chatList={threadChatItems}
-                  onAnnotationAdded={handleAnnotationAdded}
-                  onAnnotationEdited={handleAnnotationEdited}
-                  onAnnotationRemoved={handleAnnotationRemoved}
-                  onFeedback={onFeedback}
-                  noChatInput
-                  showPromptLog
-                  hideProcessDetail
-                  chatContainerInnerClassName='px-3'
-                  switchSibling={switchSibling}
-                />
-              </InfiniteScroll>
-            </div>
-        }
+          }
+
+          return <div
+            className="py-4"
+            id="scrollableDiv"
+            style={{
+              display: 'flex',
+              flexDirection: 'column-reverse',
+              height: '100%',
+              overflow: 'auto',
+            }}>
+            {/* Put the scroll bar always on the bottom */}
+            <InfiniteScroll
+              scrollableTarget="scrollableDiv"
+              dataLength={threadChatItems.length}
+              next={fetchData}
+              hasMore={hasMore}
+              loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
+              // endMessage={<div className='text-center'>Nothing more to show</div>}
+              // below props only if you need pull down functionality
+              refreshFunction={fetchData}
+              pullDownToRefresh
+              pullDownToRefreshThreshold={50}
+              // pullDownToRefreshContent={
+              //   <div className='text-center'>Pull down to refresh</div>
+              // }
+              // releaseToRefreshContent={
+              //   <div className='text-center'>Release to refresh</div>
+              // }
+              // To put endMessage and loader to the top.
+              style={{ display: 'flex', flexDirection: 'column-reverse' }}
+              inverse={true}
+              scrollThreshold={0.1}
+            >
+              <Chat
+                config={{
+                  appId: appDetail?.id,
+                  text_to_speech: {
+                    enabled: true,
+                  },
+                  questionEditEnable: false,
+                  supportAnnotation: true,
+                  annotation_reply: {
+                    enabled: true,
+                  },
+                  supportFeedback: true,
+                } as any}
+                chatList={threadChatItems}
+                onAnnotationAdded={handleAnnotationAdded}
+                onAnnotationEdited={handleAnnotationEdited}
+                onAnnotationRemoved={handleAnnotationRemoved}
+                onFeedback={onFeedback}
+                noChatInput
+                showPromptLog
+                hideProcessDetail
+                chatContainerInnerClassName='px-3'
+                switchSibling={switchSibling}
+              />
+            </InfiniteScroll>
+          </div>
+        })()}
       </div>
       {showMessageLogModal && (
         <MessageLogModal
@@ -600,6 +667,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
 const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
   const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
+
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
