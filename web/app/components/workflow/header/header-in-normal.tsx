@@ -17,6 +17,7 @@ import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import VersionHistoryButton from './version-history-button'
+import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
 
 export type HeaderInNormalProps = {
   components?: {
@@ -56,6 +57,11 @@ const HeaderInNormal = ({
     <>
       <div>
         <EditingTitle />
+      </div>
+      <div className='pointer-events-none absolute top-1/2 z-10 -translate-y-1/2' style={{ left: 'calc(50% - 40px)' }}>
+        <div className='pointer-events-auto -translate-x-1/2'>
+          <ScrollToSelectedNodeButton />
+        </div>
       </div>
       <div className='flex items-center gap-2'>
         {components?.left}
