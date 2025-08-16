@@ -73,12 +73,12 @@ class CompletionClient(DifyClient):
 class ChatClient(DifyClient):
     def create_chat_message(
         self,
-        inputs,
-        query,
-        user,
-        response_mode="blocking",
-        conversation_id=None,
-        files=None,
+        inputs: dict,
+        query: str,
+        user: str,
+        response_mode: str = "blocking",
+        conversation_id: str | None = None,
+        files: dict | None = None,
     ):
         data = {
             "inputs": inputs,
@@ -97,22 +97,33 @@ class ChatClient(DifyClient):
             stream=True if response_mode == "streaming" else False,
         )
 
-    def get_suggested(self, message_id, user: str):
+    def get_suggested(self, message_id: str, user: str):
         params = {"user": user}
         return self._send_request(
             "GET", f"/messages/{message_id}/suggested", params=params
         )
 
-    def stop_message(self, task_id, user):
+    def stop_message(self, task_id: str, user: str):
         data = {"user": user}
         return self._send_request("POST", f"/chat-messages/{task_id}/stop", data)
 
-    def get_conversations(self, user, last_id=None, limit=None, pinned=None):
-        params = {"user": user, "last_id": last_id, "limit": limit, "pinned": pinned}
+    def get_conversations(
+        self,
+        user: str,
+        last_id: str | None = None,
+        limit: int | None = None,
+        pinned: bool | None = None
+    ):
+        params = {"user": user, "last_id": last_id,
+                  "limit": limit, "pinned": pinned}
         return self._send_request("GET", "/conversations", params=params)
 
     def get_conversation_messages(
-        self, user, conversation_id=None, first_id=None, limit=None
+        self,
+        user: str,
+        conversation_id: str | None = None,
+        first_id: str | None = None,
+        limit: int | None = None
     ):
         params = {"user": user}
 
@@ -126,18 +137,18 @@ class ChatClient(DifyClient):
         return self._send_request("GET", "/messages", params=params)
 
     def rename_conversation(
-        self, conversation_id, name, auto_generate: bool, user: str
+        self, conversation_id: str, name: str, auto_generate: bool, user: str
     ):
         data = {"name": name, "auto_generate": auto_generate, "user": user}
         return self._send_request(
             "POST", f"/conversations/{conversation_id}/name", data
         )
 
-    def delete_conversation(self, conversation_id, user):
+    def delete_conversation(self, conversation_id: str, user: str):
         data = {"user": user}
         return self._send_request("DELETE", f"/conversations/{conversation_id}", data)
 
-    def audio_to_text(self, audio_file, user):
+    def audio_to_text(self, audio_file: dict, user: str):
         data = {"user": user}
         files = {"audio_file": audio_file}
         return self._send_request_with_files("POST", "/audio-to-text", data, files)
