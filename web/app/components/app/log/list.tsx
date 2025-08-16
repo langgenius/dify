@@ -354,18 +354,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
 
-  // Auto-load if container has space for more content
-  useEffect(() => {
-    if (hasMore && threadChatItems.length >= 8) {
-      const timer = setTimeout(() => {
-        const scrollDiv = document.getElementById('scrollableDiv')
-        if (scrollDiv && scrollDiv.scrollHeight <= scrollDiv.clientHeight)
-          fetchData()
-      }, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [hasMore, threadChatItems.length, fetchData])
-
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
 
@@ -496,7 +484,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 hasMore={hasMore}
                 loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
                 // endMessage={<div className='text-center'>Nothing more to show</div>}
-
+                // More sensitive scroll threshold
+                scrollThreshold={0.9}
                 // below props only if you need pull down functionality
                 refreshFunction={fetchData}
                 pullDownToRefresh
