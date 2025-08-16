@@ -1,55 +1,20 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
-import { useNodes, useReactFlow, useStore } from 'reactflow'
-import { useShallow } from 'zustand/react/shallow'
+import { useNodes } from 'reactflow'
 import type { CommonNodeType } from '../types'
-import { useNodesSyncDraft } from '../../workflow-app/hooks'
+import { scrollToWorkflowNode } from '../utils/node-navigation'
 import cn from '@/utils/classnames'
 
 const ScrollToSelectedNodeButton: FC = () => {
-  const reactflow = useReactFlow()
   const nodes = useNodes<CommonNodeType>()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
-
   const selectedNode = nodes.find(node => node.data.selected)
 
-  const {
-    nodePosition,
-    nodeWidth,
-    nodeHeight,
-  } = useStore(useShallow((s) => {
-    if (!selectedNode) return { nodePosition: null, nodeWidth: null, nodeHeight: null }
-
-    const nodes = s.getNodes()
-    const currentNode = nodes.find(node => node.id === selectedNode.id)!
-
-    return {
-      nodePosition: currentNode.position,
-      nodeWidth: currentNode.width,
-      nodeHeight: currentNode.height,
-    }
-  }))
-  const transform = useStore(s => s.transform)
-
   const handleScrollToSelectedNode = useCallback(() => {
-    if (!selectedNode || !nodePosition || !nodeWidth || !nodeHeight) return
+    if (!selectedNode) return
+    scrollToWorkflowNode(selectedNode.id)
+  }, [selectedNode])
 
-    const workflowContainer = document.getElementById('workflow-container')
-    if (!workflowContainer) return
-
-    const zoom = transform[2]
-    const { clientWidth, clientHeight } = workflowContainer
-    const { setViewport } = reactflow
-
-    setViewport({
-      x: (clientWidth - 400 - nodeWidth * zoom) / 2 - nodePosition.x * zoom,
-      y: (clientHeight - nodeHeight * zoom) / 2 - nodePosition.y * zoom,
-      zoom: transform[2],
-    })
-    doSyncWorkflowDraft()
-  }, [selectedNode, nodePosition, nodeWidth, nodeHeight, transform, reactflow, doSyncWorkflowDraft])
-
-  if (!selectedNode || !nodePosition || !nodeWidth || !nodeHeight)
+  if (!selectedNode)
     return null
 
   return (
