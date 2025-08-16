@@ -105,8 +105,17 @@ class WorkflowRunner:
     def __init__(self, fixtures_dir: Optional[Path] = None):
         """Initialize the workflow runner."""
         if fixtures_dir is None:
-            test_dir = Path(__file__).parent
-            fixtures_dir = test_dir / "fixtures"
+            # Use the new central fixtures location
+            # Navigate from current file to api/tests directory
+            current_file = Path(__file__).resolve()
+            # Find the 'api' directory by traversing up
+            for parent in current_file.parents:
+                if parent.name == "api" and (parent / "tests").exists():
+                    fixtures_dir = parent / "tests" / "fixtures" / "workflow"
+                    break
+            else:
+                # Fallback if structure is not as expected
+                raise ValueError("Could not locate api/tests/fixtures/workflow directory")
 
         self.fixtures_dir = Path(fixtures_dir)
         if not self.fixtures_dir.exists():
@@ -237,6 +246,7 @@ class TableTestRunner:
         retry_attempts = 0
         last_result = None
         last_error = None
+        start_time = time.perf_counter()
 
         for attempt in range(test_case.retry_count + 1):
             start_time = time.perf_counter()
