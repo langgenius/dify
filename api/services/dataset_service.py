@@ -79,7 +79,15 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def get_datasets(
+        page: int,
+        per_page: int,
+        tenant_id: Optional[str] = None,
+        user=None,
+        search=None,
+        tag_ids: Optional[list[str]] = None,
+        include_all: bool = False,
+    ):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
 
         if user:
@@ -131,6 +139,7 @@ class DatasetService:
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
+            assert tenant_id is not None
             target_ids = TagService.get_target_ids_by_tag_ids("knowledge", tenant_id, tag_ids)
             if target_ids and len(target_ids) > 0:
                 query = query.where(Dataset.id.in_(target_ids))
@@ -1274,6 +1283,7 @@ class DocumentService:
                     )
                     if documents:
                         for document in documents:
+                            assert document.data_source_info is not None
                             data_source_info = json.loads(document.data_source_info)
                             exist_page_ids.append(data_source_info["notion_page_id"])
                             exist_document[data_source_info["notion_page_id"]] = document.id
@@ -2004,6 +2014,7 @@ class SegmentService:
         tokens = 0
         if dataset.indexing_technique == "high_quality":
             model_manager = ModelManager()
+            assert dataset.embedding_model is not None
             embedding_model = model_manager.get_model_instance(
                 tenant_id=current_user.current_tenant_id,
                 provider=dataset.embedding_model_provider,
@@ -2066,6 +2077,7 @@ class SegmentService:
             embedding_model = None
             if dataset.indexing_technique == "high_quality":
                 model_manager = ModelManager()
+                assert dataset.embedding_model is not None
                 embedding_model = model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -2199,6 +2211,7 @@ class SegmentService:
                         model_manager = ModelManager()
 
                         if dataset.embedding_model_provider:
+                            assert dataset.embedding_model is not None
                             embedding_model_instance = model_manager.get_model_instance(
                                 tenant_id=dataset.tenant_id,
                                 provider=dataset.embedding_model_provider,
@@ -2232,6 +2245,7 @@ class SegmentService:
                 tokens = 0
                 if dataset.indexing_technique == "high_quality":
                     model_manager = ModelManager()
+                    assert dataset.embedding_model is not None
                     embedding_model = model_manager.get_model_instance(
                         tenant_id=current_user.current_tenant_id,
                         provider=dataset.embedding_model_provider,
@@ -2275,6 +2289,7 @@ class SegmentService:
                         model_manager = ModelManager()
 
                         if dataset.embedding_model_provider:
+                            assert dataset.embedding_model is not None
                             embedding_model_instance = model_manager.get_model_instance(
                                 tenant_id=dataset.tenant_id,
                                 provider=dataset.embedding_model_provider,
@@ -2654,6 +2669,7 @@ class SegmentService:
         if dataset.indexing_technique == "high_quality":
             try:
                 model_manager = ModelManager()
+                assert dataset.embedding_model is not None
                 model_manager.get_model_instance(
                     tenant_id=user_id,
                     provider=dataset.embedding_model_provider,

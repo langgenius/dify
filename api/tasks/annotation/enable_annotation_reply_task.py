@@ -94,6 +94,7 @@ def enable_annotation_reply_task(
         )
         if annotations:
             for annotation in annotations:
+                assert annotation.question is not None
                 document = Document(
                     page_content=annotation.question,
                     metadata={"annotation_id": annotation.id, "app_id": app_id, "doc_id": annotation.id},

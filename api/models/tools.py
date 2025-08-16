@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
-from typing import Any, cast
+from decimal import Decimal
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
@@ -30,7 +31,7 @@ class ToolOAuthSystemClient(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    plugin_id = mapped_column(String(512), nullable=False)
+    plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -75,13 +76,13 @@ class BuiltinToolProvider(Base):
         String(256), nullable=False, server_default=sa.text("'API KEY 1'::character varying")
     )
     # id of the tenant
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)  # TODO: figure out Optional or not
     # who created this tool provider
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
     provider: Mapped[str] = mapped_column(String(256), nullable=False)
     # credential of the tool provider
-    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)
+    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)  # TODO: Optional or not
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
@@ -111,26 +112,28 @@ class ApiToolProvider(Base):
         sa.UniqueConstraint("name", "tenant_id", name="unique_api_tool_provider"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # name of the api provider
-    name = mapped_column(String(255), nullable=False, server_default=sa.text("'API KEY 1'::character varying"))
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'API KEY 1'::character varying")
+    )
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
-    schema = mapped_column(sa.Text, nullable=False)
+    schema: Mapped[str] = mapped_column(sa.Text, nullable=False)
     schema_type_str: Mapped[str] = mapped_column(String(40), nullable=False)
     # who created this tool
-    user_id = mapped_column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # description of the provider
-    description = mapped_column(sa.Text, nullable=False)
+    description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # json format tools
-    tools_str = mapped_column(sa.Text, nullable=False)
+    tools_str: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # json format credentials
-    credentials_str = mapped_column(sa.Text, nullable=False)
+    credentials_str: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # privacy policy
-    privacy_policy = mapped_column(String(255), nullable=True)
+    privacy_policy: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # custom_disclaimer
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 
@@ -267,7 +270,7 @@ class MCPToolProvider(Base):
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # encrypted credentials
-    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)
+    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)  # TODO: Optional or not
     # authed
     authed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # tools
@@ -351,33 +354,35 @@ class ToolModelInvoke(Base):
     __tablename__ = "tool_model_invokes"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="tool_model_invoke_pkey"),)
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # who invoke this tool
-    user_id = mapped_column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # provider
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # type
-    tool_type = mapped_column(String(40), nullable=False)
+    tool_type: Mapped[str] = mapped_column(String(40), nullable=False)
     # tool name
-    tool_name = mapped_column(String(128), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
     # invoke parameters
-    model_parameters = mapped_column(sa.Text, nullable=False)
+    model_parameters: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # prompt messages
-    prompt_messages = mapped_column(sa.Text, nullable=False)
+    prompt_messages: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # invoke response
-    model_response = mapped_column(sa.Text, nullable=False)
+    model_response: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    answer_unit_price = mapped_column(sa.Numeric(10, 4), nullable=False)
-    answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    provider_response_latency = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
-    total_price = mapped_column(sa.Numeric(10, 7))
+    answer_unit_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 4), nullable=False)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
+    provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
+    total_price: Mapped[Optional[Decimal]] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 @deprecated
@@ -394,18 +399,18 @@ class ToolConversationVariables(Base):
         sa.Index("conversation_id_idx", "conversation_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # conversation user id
-    user_id = mapped_column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # conversation id
-    conversation_id = mapped_column(StringUUID, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # variables pool
-    variables_str = mapped_column(sa.Text, nullable=False)
+    variables_str: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def variables(self) -> Any:
@@ -429,7 +434,7 @@ class ToolFile(Base):
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)  # TODO: figure out Optional or not
     # file key
     file_key: Mapped[str] = mapped_column(String(255), nullable=False)
     # mime type
@@ -454,26 +459,30 @@ class DeprecatedPublishedAppTool(Base):
         sa.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # id of the app
-    app_id = mapped_column(StringUUID, ForeignKey("apps.id"), nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, ForeignKey("apps.id"), nullable=False)
 
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # who published this tool
-    description = mapped_column(sa.Text, nullable=False)
+    description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # llm_description of the tool, for LLM
-    llm_description = mapped_column(sa.Text, nullable=False)
+    llm_description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # query description, query will be seem as a parameter of the tool,
     # to describe this parameter to llm, we need this field
-    query_description = mapped_column(sa.Text, nullable=False)
+    query_description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # query name, the name of the query parameter
-    query_name = mapped_column(String(40), nullable=False)
+    query_name: Mapped[str] = mapped_column(String(40), nullable=False)
     # name of the tool provider
-    tool_name = mapped_column(String(40), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(40), nullable=False)
     # author
-    author = mapped_column(String(40), nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
+    author: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
+    )
 
     @property
     def description_i18n(self) -> I18nObject:

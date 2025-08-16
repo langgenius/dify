@@ -331,6 +331,7 @@ class DatasetRetrieval:
             if dataset:
                 results = []
                 if dataset.provider == "external":
+                    assert dataset.retrieval_model is not None
                     external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                         tenant_id=dataset.tenant_id,
                         dataset_id=dataset_id,
@@ -606,6 +607,7 @@ class DatasetRetrieval:
                 return []
 
             if dataset.provider == "external":
+                assert dataset.retrieval_model is not None
                 external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset_id,

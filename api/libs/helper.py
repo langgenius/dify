@@ -67,6 +67,8 @@ class AppIconUrlField(fields.Raw):
             obj = obj["app"]
 
         if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
+            if obj.icon is None:
+                return None
             return file_helpers.get_signed_file_url(obj.icon)
         return None
 

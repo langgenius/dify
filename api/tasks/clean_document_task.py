@@ -36,7 +36,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
         # check segment is exist
         if segments:
-            index_node_ids = [segment.index_node_id for segment in segments]
+            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id is not None]
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 

@@ -231,6 +231,7 @@ class OpsTraceManager:
             raise ValueError("App not found")
 
         tenant_id = app.tenant_id
+        assert trace_config_data.tracing_config is not None
         decrypt_tracing_config = cls.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
@@ -308,7 +309,7 @@ class OpsTraceManager:
                 .first()
             )
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
-            app_model_config = conversation_data.override_model_configs
+            app_model_config = conversation_data.override_model_configs  # type: ignore
 
         return app_model_config
 

@@ -155,7 +155,7 @@ class ModelInvocationUtils:
             raise InvokeModelError(f"Invoke error: {e}")
 
         # update tool model invoke
-        tool_model_invoke.model_response = response.message.content
+        tool_model_invoke.model_response = response.message.content  # type: ignore
         if response.usage:
             tool_model_invoke.answer_tokens = response.usage.completion_tokens
             tool_model_invoke.answer_unit_price = response.usage.completion_unit_price

@@ -227,6 +227,8 @@ class Vector:
             redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:
+        if not self._dataset.embedding_model_provider or not self._dataset.embedding_model:
+            raise ValueError("Embedding model provider or model is not set.")
         model_manager = ModelManager()
 
         embedding_model = model_manager.get_model_instance(
