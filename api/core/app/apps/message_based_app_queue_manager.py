@@ -6,7 +6,6 @@ from core.app.entities.queue_entities import (
     MessageQueueMessage,
     QueueAdvancedChatMessageEndEvent,
     QueueErrorEvent,
-    QueueMessage,
     QueueMessageEndEvent,
     QueueStopEvent,
 )
