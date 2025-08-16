@@ -253,10 +253,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       setChatItemTree(tree)
 
-      setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
+      setThreadChatItems(getThreadMessages(tree))
     }
     catch (err) {
       console.error(err)
+      // Reset loading state on error to prevent infinite loading
+      setHasMore(false)
     }
   }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
@@ -354,6 +356,20 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       fetchData()
     }
   }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
+
+  // Auto-load more data if container has space and more data is available
+  useEffect(() => {
+    if (hasMore && threadChatItems.length >= 8) {
+      const timer = setTimeout(() => {
+        const scrollDiv = document.getElementById('scrollableDiv')
+        if (scrollDiv && scrollDiv.scrollHeight <= scrollDiv.clientHeight) {
+          // Container has space, auto load more
+          fetchData()
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [hasMore, threadChatItems.length, fetchData])
 
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
@@ -484,17 +500,13 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 next={fetchData}
                 hasMore={hasMore}
                 loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
-                // endMessage={<div className='text-center'>Nothing more to show</div>}
+                endMessage={hasMore ? null : <div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.noMore')}</div>}
+                // Force initial load if has more data
+                scrollThreshold={0.8}
                 // below props only if you need pull down functionality
                 refreshFunction={fetchData}
                 pullDownToRefresh
                 pullDownToRefreshThreshold={50}
-                // pullDownToRefreshContent={
-                //   <div className='text-center'>Pull down to refresh</div>
-                // }
-                // releaseToRefreshContent={
-                //   <div className='text-center'>Release to refresh</div>
-                // }
                 // To put endMessage and loader to the top.
                 style={{ display: 'flex', flexDirection: 'column-reverse' }}
                 inverse={true}
