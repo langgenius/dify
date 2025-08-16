@@ -20,6 +20,15 @@ from typing import Any, Optional
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.utils.yaml_utils import load_yaml_file
+from core.variables import (
+    ArrayNumberVariable,
+    ArrayObjectVariable,
+    ArrayStringVariable,
+    FloatVariable,
+    IntegerVariable,
+    ObjectVariable,
+    StringVariable,
+)
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.graph import Graph
@@ -154,7 +163,7 @@ class WorkflowRunner:
             graph_config=graph_config,
             user_id="test_user",
             user_from="account",
-            invoke_from="web-app",
+            invoke_from="debugger",  # Set to debugger to avoid conversation_id requirement
             call_depth=0,
         )
 
@@ -166,9 +175,38 @@ class WorkflowRunner:
             query=query,
         )
         user_inputs = inputs if inputs is not None else {}
+
+        # Extract conversation variables from workflow config
+        conversation_variables = []
+        conversation_var_configs = workflow_config.get("conversation_variables", [])
+
+        # Mapping from value_type to Variable class
+        variable_type_mapping = {
+            "string": StringVariable,
+            "number": FloatVariable,
+            "integer": IntegerVariable,
+            "object": ObjectVariable,
+            "array[string]": ArrayStringVariable,
+            "array[number]": ArrayNumberVariable,
+            "array[object]": ArrayObjectVariable,
+        }
+
+        for var_config in conversation_var_configs:
+            value_type = var_config.get("value_type", "string")
+            variable_class = variable_type_mapping.get(value_type, StringVariable)
+
+            # Create the appropriate Variable type based on value_type
+            var = variable_class(
+                selector=tuple(var_config.get("selector", [])),
+                name=var_config.get("name", ""),
+                value=var_config.get("value", ""),
+            )
+            conversation_variables.append(var)
+
         variable_pool = VariablePool(
             system_variables=system_variables,
             user_inputs=user_inputs,
+            conversation_variables=conversation_variables,
         )
 
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
@@ -329,7 +367,7 @@ class TableTestRunner:
                 workflow_id="test_workflow",
                 user_id="test_user",
                 user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.WEB_APP,
+                invoke_from=InvokeFrom.DEBUGGER,  # Use DEBUGGER to avoid conversation_id requirement
                 call_depth=0,
                 graph=graph,
                 graph_config=graph_config,
