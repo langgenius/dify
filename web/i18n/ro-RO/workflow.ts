@@ -321,6 +321,7 @@ const translation = {
     selectNextStep: 'Selectați Pasul Următor',
     maximize: 'Maximize Canvas',
     minimize: 'Iesi din modul pe tot ecranul',
+    scrollToSelectedNode: 'Derulați la nodul selectat',
   },
   nodes: {
     common: {

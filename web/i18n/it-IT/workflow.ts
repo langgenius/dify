@@ -336,6 +336,7 @@ const translation = {
     addNextStep: 'Aggiungi il prossimo passo in questo flusso di lavoro',
     minimize: 'Esci dalla modalità schermo intero',
     maximize: 'Massimizza Canvas',
+    scrollToSelectedNode: 'Scorri fino al nodo selezionato',
   },
   nodes: {
     common: {

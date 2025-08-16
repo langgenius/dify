@@ -321,6 +321,7 @@ const translation = {
     changeBlock: 'Изменить узел',
     minimize: 'Выйти из полноэкранного режима',
     maximize: 'Максимизировать холст',
+    scrollToSelectedNode: 'Прокрутите до выбранного узла',
   },
   nodes: {
     common: {

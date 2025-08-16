@@ -321,6 +321,7 @@ const translation = {
     selectNextStep: 'Selecione o próximo passo',
     maximize: 'Maximize Canvas',
     minimize: 'Sair do Modo Tela Cheia',
+    scrollToSelectedNode: 'Role até o nó selecionado',
   },
   nodes: {
     common: {

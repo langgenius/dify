@@ -321,6 +321,7 @@ const translation = {
     organizeBlocks: 'Organizuj węzły',
     minimize: 'Wyjdź z trybu pełnoekranowego',
     maximize: 'Maksymalizuj płótno',
+    scrollToSelectedNode: 'Przewiń do wybranego węzła',
   },
   nodes: {
     common: {

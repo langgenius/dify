@@ -321,6 +321,7 @@ const translation = {
     moveToThisNode: '定位至此節點',
     minimize: '退出全螢幕',
     maximize: '最大化畫布',
+    scrollToSelectedNode: '捲動至選取的節點',
   },
   nodes: {
     common: {

@@ -321,6 +321,7 @@ const translation = {
     changeBlock: 'Knoten ändern',
     maximize: 'Maximiere die Leinwand',
     minimize: 'Vollbildmodus beenden',
+    scrollToSelectedNode: 'Zum ausgewählten Knoten scrollen',
   },
   nodes: {
     common: {

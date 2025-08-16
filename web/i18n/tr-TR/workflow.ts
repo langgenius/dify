@@ -321,6 +321,7 @@ const translation = {
     selectNextStep: 'Sonraki Adımı Seç',
     minimize: 'Tam Ekrandan Çık',
     maximize: 'Kanvası Maksimize Et',
+    scrollToSelectedNode: 'Seçili düğüme kaydırma',
   },
   nodes: {
     common: {

@@ -321,6 +321,7 @@ const translation = {
     addNextStep: 'مرحله بعدی را به این فرآیند اضافه کنید',
     minimize: 'خروج از حالت تمام صفحه',
     maximize: 'بیشینه‌سازی بوم',
+    scrollToSelectedNode: 'به گره انتخاب شده بروید',
   },
   nodes: {
     common: {

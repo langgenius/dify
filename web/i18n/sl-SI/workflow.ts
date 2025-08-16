@@ -328,6 +328,7 @@ const translation = {
     minimize: 'Izhod iz celotnega zaslona',
     maximize: 'Maksimiziraj platno',
     optional: '(neobvezno)',
+    scrollToSelectedNode: 'Pomaknite se do izbranega vozlišča',
   },
   nodes: {
     common: {

@@ -321,6 +321,7 @@ const translation = {
     changeBlock: 'Changer de nœud',
     maximize: 'Maximiser le Canvas',
     minimize: 'Sortir du mode plein écran',
+    scrollToSelectedNode: 'Faites défiler jusqu’au nœud sélectionné',
   },
   nodes: {
     common: {

@@ -321,6 +321,7 @@ const translation = {
     selectNextStep: 'เลือกขั้นตอนถัดไป',
     minimize: 'ออกจากโหมดเต็มหน้าจอ',
     maximize: 'เพิ่มประสิทธิภาพผ้าใบ',
+    scrollToSelectedNode: 'เลื่อนไปยังโหนดที่เลือก',
   },
   nodes: {
     common: {

@@ -321,6 +321,7 @@ const translation = {
     addNextStep: 'Додайте наступний крок у цей робочий процес',
     minimize: 'Вийти з повноекранного режиму',
     maximize: 'Максимізувати полотно',
+    scrollToSelectedNode: 'Прокрутіть до вибраного вузла',
   },
   nodes: {
     common: {

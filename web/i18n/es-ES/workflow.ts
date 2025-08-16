@@ -321,6 +321,7 @@ const translation = {
     selectNextStep: 'Seleccionar siguiente paso',
     maximize: 'Maximizar Canvas',
     minimize: 'Salir de pantalla completa',
+    scrollToSelectedNode: 'Desplácese hasta el nodo seleccionado',
   },
   nodes: {
     common: {

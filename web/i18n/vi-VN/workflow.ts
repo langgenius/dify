@@ -321,6 +321,7 @@ const translation = {
     addNextStep: 'Thêm bước tiếp theo trong quy trình này',
     maximize: 'Tối đa hóa Canvas',
     minimize: 'Thoát chế độ toàn màn hình',
+    scrollToSelectedNode: 'Cuộn đến nút đã chọn',
   },
   nodes: {
     common: {
