@@ -3,7 +3,7 @@ from collections.abc import Generator
 from typing import Union
 from urllib.parse import urljoin
 
-import requests
+import httpx
 from requests import Response
 
 from core.rag.extractor.watercrawl.exceptions import (
@@ -170,7 +170,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict):
-        response = requests.get(result_object["result"])
+        response = httpx.get(result_object["result"])
         response.raise_for_status()
         result_object["result"] = response.json()
         return result_object

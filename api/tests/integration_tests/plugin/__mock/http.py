@@ -2,7 +2,7 @@ import os
 from typing import Literal
 
 import pytest
-import requests
+import httpx
 from _pytest.monkeypatch import MonkeyPatch
 
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse
@@ -30,7 +30,7 @@ class MockedHttp:
         cls, method: Literal["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"], url: str, **kwargs
     ) -> requests.Response:
         """
-        Mocked requests.request
+        Mocked httpx.request
         """
         request = requests.PreparedRequest()
         request.method = method

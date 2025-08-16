@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Optional
 
-import requests
+import httpx
 from flask_login import current_user
 
 from core.helper import encrypter
@@ -202,7 +202,7 @@ class WebsiteService:
     @classmethod
     def _crawl_with_jinareader(cls, request: CrawlRequest, api_key: str) -> dict[str, Any]:
         if not request.options.crawl_sub_pages:
-            response = requests.get(
+            response = httpx.get(
                 f"https://r.jina.ai/{request.url}",
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
@@ -210,7 +210,7 @@ class WebsiteService:
                 raise ValueError("Failed to crawl")
             return {"status": "active", "data": response.json().get("data")}
         else:
-            response = requests.post(
+            response = httpx.post(
                 "https://adaptivecrawl-kir3wx7b3a-uc.a.run.app",
                 json={
                     "url": request.url,
@@ -274,7 +274,7 @@ class WebsiteService:
 
     @classmethod
     def _get_jinareader_status(cls, job_id: str, api_key: str) -> dict[str, Any]:
-        response = requests.post(
+        response = httpx.post(
             "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
             json={"taskId": job_id},
@@ -290,7 +290,7 @@ class WebsiteService:
         }
 
         if crawl_status_data["status"] == "completed":
-            response = requests.post(
+            response = httpx.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id, "urls": list(data.get("processed", {}).keys())},
@@ -350,7 +350,7 @@ class WebsiteService:
     @classmethod
     def _get_jinareader_url_data(cls, job_id: str, url: str, api_key: str) -> dict[str, Any] | None:
         if not job_id:
-            response = requests.get(
+            response = httpx.get(
                 f"https://r.jina.ai/{url}",
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
@@ -359,7 +359,7 @@ class WebsiteService:
             return dict(response.json().get("data", {}))
         else:
             # Get crawl status first
-            status_response = requests.post(
+            status_response = httpx.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id},
@@ -369,7 +369,7 @@ class WebsiteService:
                 raise ValueError("Crawl job is not completed")
 
             # Get processed data
-            data_response = requests.post(
+            data_response = httpx.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id, "urls": list(status_data.get("processed", {}).keys())},

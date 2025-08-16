@@ -2,7 +2,7 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Optional
 
-import requests
+import httpx
 
 
 @dataclass
@@ -59,7 +59,7 @@ class GitHubOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
         }
         headers = {"Accept": "application/json"}
-        response = requests.post(self._TOKEN_URL, data=data, headers=headers)
+        response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = response.json()
         access_token = response_json.get("access_token")
@@ -71,11 +71,11 @@ class GitHubOAuth(OAuth):
 
     def get_raw_user_info(self, token: str):
         headers = {"Authorization": f"token {token}"}
-        response = requests.get(self._USER_INFO_URL, headers=headers)
+        response = httpx.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         user_info = response.json()
 
-        email_response = requests.get(self._EMAIL_INFO_URL, headers=headers)
+        email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
         email_info = email_response.json()
         primary_email: dict = next((email for email in email_info if email["primary"] == True), {})
 
@@ -113,7 +113,7 @@ class GoogleOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
         }
         headers = {"Accept": "application/json"}
-        response = requests.post(self._TOKEN_URL, data=data, headers=headers)
+        response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = response.json()
         access_token = response_json.get("access_token")
@@ -125,7 +125,7 @@ class GoogleOAuth(OAuth):
 
     def get_raw_user_info(self, token: str):
         headers = {"Authorization": f"Bearer {token}"}
-        response = requests.get(self._USER_INFO_URL, headers=headers)
+        response = httpx.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         return response.json()
 

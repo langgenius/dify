@@ -6,7 +6,7 @@ from itertools import islice
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 import qdrant_client
-import requests
+import httpx
 from flask import current_app
 from pydantic import BaseModel
 from qdrant_client.http import models as rest
@@ -508,7 +508,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
         }
         cluster_data = {"displayName": display_name, "region": region_object, "labels": labels}
 
-        response = requests.post(
+        response = httpx.post(
             f"{tidb_config.api_url}/clusters",
             json=cluster_data,
             auth=HTTPDigestAuth(tidb_config.public_key, tidb_config.private_key),
@@ -531,7 +531,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
 
         body = {"password": new_password}
 
-        response = requests.put(
+        response = httpx.put(
             f"{tidb_config.api_url}/clusters/{cluster_id}/password",
             json=body,
             auth=HTTPDigestAuth(tidb_config.public_key, tidb_config.private_key),

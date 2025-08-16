@@ -7,7 +7,7 @@ import urllib.parse
 from typing import Optional
 from urllib.parse import urljoin
 
-import requests
+import httpx
 from pydantic import BaseModel, ValidationError
 
 from core.mcp.auth.auth_provider import OAuthClientProvider
@@ -105,7 +105,7 @@ def discover_oauth_metadata(server_url: str, protocol_version: Optional[str] = N
 
     try:
         headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION}
-        response = requests.get(url, headers=headers)
+        response = httpx.get(url, headers=headers)
         if response.status_code == 404:
             return None
         if not response.ok:
@@ -113,7 +113,7 @@ def discover_oauth_metadata(server_url: str, protocol_version: Optional[str] = N
         return OAuthMetadata.model_validate(response.json())
     except requests.RequestException as e:
         if isinstance(e, requests.ConnectionError):
-            response = requests.get(url)
+            response = httpx.get(url)
             if response.status_code == 404:
                 return None
             if not response.ok:
@@ -206,7 +206,7 @@ def exchange_authorization(
     if client_information.client_secret:
         params["client_secret"] = client_information.client_secret
 
-    response = requests.post(token_url, data=params)
+    response = httpx.post(token_url, data=params)
     if not response.ok:
         raise ValueError(f"Token exchange failed: HTTP {response.status_code}")
     return OAuthTokens.model_validate(response.json())
@@ -237,7 +237,7 @@ def refresh_authorization(
     if client_information.client_secret:
         params["client_secret"] = client_information.client_secret
 
-    response = requests.post(token_url, data=params)
+    response = httpx.post(token_url, data=params)
     if not response.ok:
         raise ValueError(f"Token refresh failed: HTTP {response.status_code}")
     return OAuthTokens.model_validate(response.json())
@@ -256,7 +256,7 @@ def register_client(
     else:
         registration_url = urljoin(server_url, "/register")
 
-    response = requests.post(
+    response = httpx.post(
         registration_url,
         json=client_metadata.model_dump(),
         headers={"Content-Type": "application/json"},
