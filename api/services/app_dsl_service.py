@@ -503,11 +503,11 @@ class AppDslService:
                     ]
             workflow_service.sync_draft_workflow(
                 app_model=app,
-                graph=workflow_data.get("graph", {}),
+                account=account,
+                graph=graph,
                 features=workflow_data.get("features", {}),
                 unique_hash=unique_hash,
-                account=account,
-                environment_variables=environment_variables,
+                raw_environment_variables=[var.model_dump() for var in environment_variables],
                 conversation_variables=conversation_variables,
             )
         elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:

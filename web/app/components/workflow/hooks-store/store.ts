@@ -13,6 +13,7 @@ import type {
   Node,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import type { EnvironmentVariable } from '@/types/workflow'
 
 type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
@@ -21,7 +22,8 @@ type CommonHooksFnMap = {
       onSuccess?: () => void
       onError?: () => void
       onSettled?: () => void
-    }
+    },
+    overrideEnv?: EnvironmentVariable[]
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void
