@@ -11,6 +11,8 @@ import Filter from './filter'
 import type { VersionHistory } from '@/types/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useWorkflowAliasList } from '@/service/use-workflow-alias'
+import type { WorkflowAlias } from '@/app/components/workflow/types'
 import Divider from '@/app/components/base/divider'
 import Loading from './loading'
 import Empty from './empty'
@@ -18,6 +20,7 @@ import { useSelector as useAppContextSelector } from '@/context/app-context'
 import RestoreConfirmModal from './restore-confirm-modal'
 import DeleteConfirmModal from './delete-confirm-modal'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
+import AliasManagementModal from './alias-management-modal'
 import Toast from '@/app/components/base/toast'
 
 const HISTORY_PER_PAGE = 10
@@ -30,6 +33,7 @@ const VersionHistoryPanel = () => {
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [aliasModalOpen, setAliasModalOpen] = useState(false)
   const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
@@ -38,6 +42,7 @@ const VersionHistoryPanel = () => {
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
+
   const invalidAllLastRun = useInvalidAllLastRun(appDetail!.id)
   const {
     deleteAllInspectVars,
@@ -56,6 +61,31 @@ const VersionHistoryPanel = () => {
     userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
     namedOnly: isOnlyShowNamedVersions,
   })
+
+  // Extract all workflow IDs from version history for batch alias query (excluding draft)
+  const allWorkflowIds = versionHistory?.pages?.flatMap(page =>
+    page.items?.filter(item => item.version !== 'draft').map(item => item.id) || [],
+  ) || []
+
+  // Batch query aliases for all workflow versions (only when we have workflow IDs)
+  const { data: allAliases, refetch: refetchAliases } = useWorkflowAliasList({
+    appId: appDetail!.id,
+    workflowIds: allWorkflowIds,
+  })
+
+  // Create a map of workflow_id -> aliases for efficient lookup
+  const aliasesMap = React.useMemo(() => {
+    const map = new Map<string, WorkflowAlias[]>()
+    if (allAliases?.items) {
+      allAliases.items.forEach((alias) => {
+        if (!map.has(alias.workflow_id))
+          map.set(alias.workflow_id, [])
+
+        map.get(alias.workflow_id)!.push(alias)
+      })
+    }
+    return map
+  }, [allAliases])
 
   const handleVersionClick = useCallback((item: VersionHistory) => {
     if (item.id !== currentVersion?.id) {
@@ -107,6 +137,9 @@ const VersionHistoryPanel = () => {
           message: t('workflow.versionHistory.action.copyIdSuccess'),
         })
         break
+      case VersionHistoryContextMenuOptions.manageAlias:
+        setAliasModalOpen(true)
+        break
     }
   }, [t])
 
@@ -120,6 +153,9 @@ const VersionHistoryPanel = () => {
         break
       case VersionHistoryContextMenuOptions.delete:
         setDeleteConfirmOpen(false)
+        break
+      case VersionHistoryContextMenuOptions.manageAlias:
+        setAliasModalOpen(false)
         break
     }
   }, [])
@@ -243,6 +279,7 @@ const VersionHistoryPanel = () => {
                       onClick={handleVersionClick}
                       handleClickMenuItem={handleClickMenuItem.bind(null, item)}
                       isLast={isLast}
+                      aliases={aliasesMap.get(item.id) || []}
                     />
                   })
                 ))}
@@ -287,6 +324,13 @@ const VersionHistoryPanel = () => {
         versionInfo={operatedItem}
         onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.edit)}
         onPublish={handleUpdateWorkflow}
+      />)}
+      {aliasModalOpen && operatedItem && (<AliasManagementModal
+        isOpen={aliasModalOpen}
+        versionHistory={operatedItem}
+        onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.manageAlias)}
+        aliases={aliasesMap.get(operatedItem.id) || []}
+        onAliasChange={refetchAliases}
       />)}
     </div>
   )

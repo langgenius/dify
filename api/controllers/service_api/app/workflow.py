@@ -1,4 +1,6 @@
 import logging
+import uuid
+from typing import Optional
 
 from dateutil.parser import isoparse
 from flask import request
@@ -32,10 +34,12 @@ from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
+from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_alias_service import WorkflowAliasService
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
@@ -121,11 +125,11 @@ class WorkflowRunApi(Resource):
             raise InternalServerError()
 
 
-class WorkflowRunByIdApi(Resource):
+class WorkflowRunByIdentifierApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, workflow_id: str):
+    def post(self, app_model: App, end_user: EndUser, identifier: str):
         """
-        Run specific workflow by ID
+        Run specific workflow by ID or alias name
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
@@ -137,15 +141,15 @@ class WorkflowRunByIdApi(Resource):
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         args = parser.parse_args()
 
-        # Add workflow_id to args for AppGenerateService
-        args["workflow_id"] = workflow_id
-
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
         streaming = args.get("response_mode") == "streaming"
 
         try:
+            workflow_id = self._resolve_workflow_id(app_model, identifier)
+            # Add workflow_id to args for AppGenerateService
+            args["workflow_id"] = workflow_id
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
@@ -172,6 +176,30 @@ class WorkflowRunByIdApi(Resource):
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
+
+    def _resolve_workflow_id(self, app_model: App, identifier: str) -> str:
+        """
+        Resolve identifier to workflow_id
+        Priority: workflow_id > alias
+        """
+        try:
+            uuid.UUID(identifier)
+            return identifier
+        except (ValueError, TypeError):
+            workflow = self._get_workflow_by_alias(app_model, identifier)
+            if workflow:
+                return workflow.id
+
+            raise WorkflowIdFormatError(
+                f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
+            )
+
+    def _get_workflow_by_alias(self, app_model: App, alias_name: str) -> Optional[Workflow]:
+        """Get workflow by alias name"""
+        workflow_alias_service = WorkflowAliasService()
+        return workflow_alias_service.get_workflow_by_alias(
+            session=db.session, tenant_id=app_model.tenant_id, app_id=app_model.id, alias_name=alias_name
+        )
 
 
 class WorkflowTaskStopApi(Resource):
@@ -247,6 +275,6 @@ class WorkflowAppLogApi(Resource):
 
 api.add_resource(WorkflowRunApi, "/workflows/run")
 api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_run_id>")
-api.add_resource(WorkflowRunByIdApi, "/workflows/<string:workflow_id>/run")
+api.add_resource(WorkflowRunByIdentifierApi, "/workflows/<string:identifier>/run")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
 api.add_resource(WorkflowAppLogApi, "/workflows/logs")

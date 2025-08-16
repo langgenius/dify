@@ -61,7 +61,6 @@ const RetrievalParamConfig: FC<Props> = ({
       ...value,
       reranking_enable: enable,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentModel, onChange, value])
 
   const rerankModel = useMemo(() => {

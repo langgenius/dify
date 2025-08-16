@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { VersionHistoryContextMenuOptions } from '../../../types'
+import { workflowAliasTranslation } from '@/i18n/zh-Hans/workflow-alias'
 import type { ContextMenuProps } from './index'
 
 const useContextMenu = (props: ContextMenuProps) => {
@@ -8,6 +9,7 @@ const useContextMenu = (props: ContextMenuProps) => {
     isNamedVersion,
   } = props
   const { t } = useTranslation()
+  const aliasT = workflowAliasTranslation
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
@@ -32,6 +34,10 @@ const useContextMenu = (props: ContextMenuProps) => {
       {
         key: VersionHistoryContextMenuOptions.copyId,
         name: t('workflow.versionHistory.copyId'),
+      },
+      {
+        key: VersionHistoryContextMenuOptions.manageAlias,
+        name: aliasT.manageAlias,
       },
     ]
   }, [isNamedVersion, t])

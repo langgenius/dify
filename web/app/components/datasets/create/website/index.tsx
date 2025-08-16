@@ -64,7 +64,6 @@ const Website: FC<Props> = ({
     checkSetApiKey().then(() => {
       setIsLoaded(true)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const handleOnConfig = useCallback(() => {
     setShowAccountSettingModal({

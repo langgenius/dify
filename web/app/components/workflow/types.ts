@@ -448,8 +448,34 @@ export enum VersionHistoryContextMenuOptions {
   edit = 'edit',
   delete = 'delete',
   copyId = 'copyId',
+  manageAlias = 'manageAlias',
 }
 
 export type ChildNodeTypeCount = {
   [key: string]: number;
+}
+
+export type WorkflowAlias = {
+  id: string
+  tenant_id: string
+  app_id: string
+  workflow_id: string
+  alias_name: string
+  alias_type: 'system' | 'custom'
+  created_by: {
+    id: string
+    name: string
+    email: string
+  }
+  created_at: number
+  updated_at: number
+  is_transferred?: boolean
+  old_workflow_id?: string
+}
+
+export type WorkflowAliasList = {
+  items: WorkflowAlias[]
+  page: number
+  limit: number
+  has_more: boolean
 }

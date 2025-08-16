@@ -61,7 +61,6 @@ const Loaded: React.FC<LoadedProps> = ({
   useEffect(() => {
     if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasInstalled])
 
   const handleInstall = async () => {

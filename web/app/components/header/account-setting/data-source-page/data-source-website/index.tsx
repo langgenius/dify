@@ -32,7 +32,6 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
 
   useEffect(() => {
     checkSetApiKey()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const [configTarget, setConfigTarget] = useState<DataSourceProvider | null>(null)
