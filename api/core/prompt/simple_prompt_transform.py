@@ -265,11 +265,11 @@ class SimplePromptTransform(PromptTransform):
     ) -> UserPromptMessage:
         if files:
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
             prompt_message = UserPromptMessage(content=prompt_message_contents)
         else:

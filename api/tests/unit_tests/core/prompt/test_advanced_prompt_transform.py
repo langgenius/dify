@@ -164,7 +164,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
     )
     assert isinstance(prompt_messages[3].content, list)
     assert len(prompt_messages[3].content) == 2
-    assert prompt_messages[3].content[1].data == files[0].remote_url
+    assert prompt_messages[3].content[0].data == files[0].remote_url
 
 
 @pytest.fixture
