@@ -335,7 +335,6 @@ const translation = {
     checklistResolved: '모든 문제가 해결되었습니다',
     change: '변경',
     optional: '(선택사항)',
-    moveToThisNode: '이 노드로 이동',
     organizeBlocks: '노드 정리하기',
     selectNextStep: '다음 단계 선택',
     changeBlock: '노드 변경',

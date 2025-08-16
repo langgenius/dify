@@ -314,7 +314,6 @@ const translation = {
     checklistResolved: 'ปัญหาทั้งหมดได้รับการแก้ไขแล้ว',
     change: 'เปลี่ยน',
     optional: '(ไม่บังคับ)',
-    moveToThisNode: 'ย้ายไปที่โหนดนี้',
     organizeBlocks: 'จัดระเบียบโหนด',
     addNextStep: 'เพิ่มขั้นตอนถัดไปในกระบวนการทำงานนี้',
     changeBlock: 'เปลี่ยนโหนด',

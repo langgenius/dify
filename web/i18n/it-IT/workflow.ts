@@ -329,7 +329,6 @@ const translation = {
     checklistResolved: 'Tutti i problemi sono risolti',
     change: 'Cambia',
     optional: '(opzionale)',
-    moveToThisNode: 'Sposta a questo nodo',
     changeBlock: 'Cambia Nodo',
     selectNextStep: 'Seleziona il prossimo passo',
     organizeBlocks: 'Organizzare i nodi',

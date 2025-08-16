@@ -318,7 +318,6 @@ const translation = {
     organizeBlocks: '整理節點',
     change: '更改',
     optional: '(選擇性)',
-    moveToThisNode: '定位至此節點',
     minimize: '退出全螢幕',
     maximize: '最大化畫布',
     scrollToSelectedNode: '捲動至選取的節點',

@@ -326,7 +326,6 @@ const translation = {
     checklistResolved: 'सभी समस्याएं हल हो गई हैं',
     change: 'बदलें',
     optional: '(वैकल्पिक)',
-    moveToThisNode: 'इस नोड पर जाएं',
     changeBlock: 'नोड बदलें',
     addNextStep: 'इस कार्यप्रवाह में अगला कदम जोड़ें',
     selectNextStep: 'अगला कदम चुनें',

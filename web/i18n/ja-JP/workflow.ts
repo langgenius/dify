@@ -325,7 +325,6 @@ const translation = {
     organizeBlocks: 'ノード整理',
     change: '変更',
     optional: '（任意）',
-    moveToThisNode: 'このノードに移動する',
     maximize: 'キャンバスを最大化する',
     minimize: '全画面を終了する',
     scrollToSelectedNode: '選択したノードまでスクロール',

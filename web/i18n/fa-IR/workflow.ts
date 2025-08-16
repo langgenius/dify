@@ -314,7 +314,6 @@ const translation = {
     checklistResolved: 'تمام مسائل حل شده‌اند',
     change: 'تغییر',
     optional: '(اختیاری)',
-    moveToThisNode: 'به این گره بروید',
     selectNextStep: 'گام بعدی را انتخاب کنید',
     changeBlock: 'تغییر گره',
     organizeBlocks: 'گره‌ها را سازماندهی کنید',

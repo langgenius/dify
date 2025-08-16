@@ -314,7 +314,6 @@ const translation = {
     checklistResolved: 'Todos os problemas foram resolvidos',
     change: 'Mudar',
     optional: '(opcional)',
-    moveToThisNode: 'Mova-se para este nó',
     changeBlock: 'Mudar Nó',
     addNextStep: 'Adicione o próximo passo neste fluxo de trabalho',
     organizeBlocks: 'Organizar nós',

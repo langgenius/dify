@@ -314,7 +314,6 @@ const translation = {
     checklistResolved: 'Tất cả các vấn đề đã được giải quyết',
     change: 'Thay đổi',
     optional: '(tùy chọn)',
-    moveToThisNode: 'Di chuyển đến nút này',
     changeBlock: 'Thay đổi Node',
     selectNextStep: 'Chọn bước tiếp theo',
     organizeBlocks: 'Tổ chức các nút',

@@ -314,7 +314,6 @@ const translation = {
     checklistResolved: 'Все проблемы решены',
     change: 'Изменить',
     optional: '(необязательно)',
-    moveToThisNode: 'Перейдите к этому узлу',
     selectNextStep: 'Выберите следующий шаг',
     organizeBlocks: 'Организовать узлы',
     addNextStep: 'Добавьте следующий шаг в этот рабочий процесс',

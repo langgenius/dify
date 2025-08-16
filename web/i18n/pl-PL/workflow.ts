@@ -314,7 +314,6 @@ const translation = {
     checklistResolved: 'Wszystkie problemy zostały rozwiązane',
     change: 'Zmień',
     optional: '(opcjonalne)',
-    moveToThisNode: 'Przenieś do tego węzła',
     selectNextStep: 'Wybierz następny krok',
     addNextStep: 'Dodaj następny krok w tym procesie roboczym',
     changeBlock: 'Zmień węzeł',
