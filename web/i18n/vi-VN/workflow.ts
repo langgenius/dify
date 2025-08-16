@@ -315,13 +315,13 @@ const translation = {
     checklistResolved: 'Tất cả các vấn đề đã được giải quyết',
     change: 'Thay đổi',
     optional: '(tùy chọn)',
-    moveToThisNode: 'Di chuyển đến nút này',
     changeBlock: 'Thay đổi Node',
     selectNextStep: 'Chọn bước tiếp theo',
     organizeBlocks: 'Tổ chức các nút',
     addNextStep: 'Thêm bước tiếp theo trong quy trình này',
     maximize: 'Tối đa hóa Canvas',
     minimize: 'Thoát chế độ toàn màn hình',
+    scrollToSelectedNode: 'Cuộn đến nút đã chọn',
   },
   nodes: {
     common: {

@@ -327,13 +327,13 @@ const translation = {
     checklistResolved: 'सभी समस्याएं हल हो गई हैं',
     change: 'बदलें',
     optional: '(वैकल्पिक)',
-    moveToThisNode: 'इस नोड पर जाएं',
     changeBlock: 'नोड बदलें',
     addNextStep: 'इस कार्यप्रवाह में अगला कदम जोड़ें',
     selectNextStep: 'अगला कदम चुनें',
     organizeBlocks: 'नोड्स का आयोजन करें',
     minimize: 'पूर्ण स्क्रीन से बाहर निकलें',
     maximize: 'कैनवास का अधिकतम लाभ उठाएँ',
+    scrollToSelectedNode: 'चुने गए नोड पर स्क्रॉल करें',
   },
   nodes: {
     common: {

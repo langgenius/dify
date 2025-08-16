@@ -318,7 +318,6 @@ const translation = {
     runThisStep: 'Izvedi ta korak',
     changeBlock: 'Spremeni vozlišče',
     addNextStep: 'Dodajte naslednji korak v ta delovni potek',
-    moveToThisNode: 'Premakni se na to vozlišče',
     checklistTip: 'Prepričajte se, da so vse težave rešene, preden objavite.',
     selectNextStep: 'Izberi naslednji korak',
     helpLink: 'Pomočna povezava',
@@ -329,6 +328,7 @@ const translation = {
     minimize: 'Izhod iz celotnega zaslona',
     maximize: 'Maksimiziraj platno',
     optional: '(neobvezno)',
+    scrollToSelectedNode: 'Pomaknite se do izbranega vozlišča',
   },
   nodes: {
     common: {

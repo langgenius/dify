@@ -315,13 +315,13 @@ const translation = {
     checklistResolved: 'Tüm sorunlar çözüldü',
     change: 'Değiştir',
     optional: '(isteğe bağlı)',
-    moveToThisNode: 'Bu düğüme geç',
     changeBlock: 'Düğümü Değiştir',
     addNextStep: 'Bu iş akışına bir sonraki adımı ekleyin',
     organizeBlocks: 'Düğümleri düzenle',
     selectNextStep: 'Sonraki Adımı Seç',
     minimize: 'Tam Ekrandan Çık',
     maximize: 'Kanvası Maksimize Et',
+    scrollToSelectedNode: 'Seçili düğüme kaydırma',
   },
   nodes: {
     common: {
