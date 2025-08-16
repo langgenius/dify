@@ -151,11 +151,15 @@ class GraphEngine:
         try:
             if self.init_params.workflow_type == WorkflowType.CHAT:
                 stream_processor = AnswerStreamProcessor(
-                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                    graph=self.graph,
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    node_run_state=self.graph_runtime_state.node_run_state,
                 )
             else:
                 stream_processor = EndStreamProcessor(
-                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                    graph=self.graph,
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    node_run_state=self.graph_runtime_state.node_run_state,
                 )
 
             # run graph
