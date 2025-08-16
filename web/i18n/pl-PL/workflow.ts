@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'Liczba aplikacji korzystających z tego tagu',
     currentWorkflow: 'Bieżący przepływ pracy',
     currentView: 'Bieżący widok',
+    moreActions: 'Więcej akcji',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',

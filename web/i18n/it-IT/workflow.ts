@@ -120,6 +120,7 @@ const translation = {
     tagBound: 'Numero di app che utilizzano questo tag',
     currentWorkflow: 'Flusso di lavoro corrente',
     currentView: 'Vista corrente',
+    moreActions: 'Altre azioni',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
