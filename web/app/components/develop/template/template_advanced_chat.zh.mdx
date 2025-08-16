@@ -1916,3 +1916,179 @@ ___
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}'
+  method='GET'
+  title='获取消息详情'
+  name='#get-message-detail'
+/>
+<Row>
+  <Col>
+    根据消息ID获取消息的详细信息，包括工作流运行ID等关键信息。
+
+    ### Path Parameters
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        消息ID，可从聊天接口响应或事件流中获取
+      </Property>
+    </Properties>
+
+    ### Response
+    返回消息的详细信息，包含以下关键字段：
+    - `id` (string) 消息ID
+    - `conversation_id` (string) 会话ID
+    - `workflow_run_id` (string) 工作流运行ID（如果消息来自工作流执行）
+    - `inputs` (object) 消息输入内容
+    - `query` (string) 用户查询内容
+    - `answer` (string) 助手回复内容
+    - `status` (string) 消息状态
+    - `created_at` (timestamp) 消息创建时间
+    - 其他消息相关字段...
+
+    ### Errors
+    - 401，`unauthorized`，认证失败
+    - 404，`message_not_found`，消息不存在
+    - 500，服务内部异常
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/messages/{message_id}"
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c",
+      "conversation_id": "49045336-89bc-457b-b54d-a1e30eaa4d73",
+      "workflow_run_id": "3c4655be-6e43-453e-8cbd-0ae23d5738b3",
+      "inputs": {
+        "query": "你好"
+      },
+      "query": "你好",
+      "answer": "你好！我是你的AI助手，有什么可以帮助你的吗？",
+      "status": "normal",
+      "created_at": "2025-08-10T14:55:56.632003",
+      "updated_at": "2025-08-10T14:55:57.856024"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/node-executions'
+  method='GET'
+  title='获取节点执行列表'
+  name='#get-node-executions'
+/>
+<Row>
+  <Col>
+    根据工作流运行ID获取节点执行列表，用于查看工作流中各个节点的执行状态和结果。
+
+    ### Query Parameters
+    <Properties>
+      <Property name='workflow_run_id' type='string' key='workflow_run_id'>
+        工作流运行ID（必需）。可通过以下方式获取：
+        <br />• 工作流执行开始时的 `workflow_started` 事件中的 `workflow_run_id` 字段
+        <br />• 工作流执行完成时的 `workflow_finished` 事件中的 `workflow_run_id` 字段  
+        <br />• 调用工作流运行接口响应中的 `workflow_run_id` 字段
+        <br />• 节点执行输出中的 `sys.workflow_run_id` 字段
+        <br />• 通过消息详情接口：`GET /messages/{message_id}` 获取消息的 `workflow_run_id` 字段
+      </Property>
+    </Properties>
+
+    ### Response
+    返回 `data` 数组，包含工作流中每个节点的执行情况。每个工作流都会有一个开始节点，记录工作流的基本信息和输入参数：
+    - `id` (string) 节点执行ID
+    - `node_id` (string) 节点ID
+    - `node_type` (string) 节点类型，开始节点为 "start"
+    - `title` (string) 节点名称
+    - `index` (int) 执行序号，开始节点通常为 1
+    - `predecessor_node_id` (string) 前置节点ID，开始节点为 null
+    - `inputs` (object) 节点输入内容，包含系统参数如 sys.user_id、sys.app_id 等
+    - `outputs` (object) 节点输出内容，与输入内容相同
+    - `status` (string) 执行状态：`running` / `succeeded` / `failed` / `stopped`
+    - `error` (string) 错误原因（如果执行失败）
+    - `elapsed_time` (float) 节点执行耗时（秒）
+    - `execution_metadata` (object) 执行元数据
+    - `created_at` (timestamp) 节点开始执行时间
+    - `finished_at` (timestamp) 节点执行结束时间
+
+    ### Errors
+    - 400，`invalid_param`，传入参数异常
+    - 401，`unauthorized`，认证失败
+    - 404，`workflow_run_not_found`，工作流运行不存在
+    - 500，服务内部异常
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/node-executions"
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/node-executions?workflow_run_id=3c4655be-6e43-453e-8cbd-0ae23d5738b3' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/node-executions?workflow_run_id=3c4655be-6e43-453e-8cbd-0ae23d5738b3' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "73ae2fcb-3873-4b84-ba23-3e510d4d62e9",
+          "node_id": "1754531878923",
+          "node_type": "start",
+          "title": "开始",
+          "index": 1,
+          "predecessor_node_id": null,
+          "inputs": {
+            "sys.files": [],
+            "sys.user_id": "abc-123",
+            "sys.app_id": "5e946a4f-ca73-4e63-a249-1aaa344aa11f",
+            "sys.workflow_id": "05a67cd1-56f4-4d66-a0e6-2a54abdc55eb",
+            "sys.workflow_run_id": "3c4655be-6e43-453e-8cbd-0ae23d5738b3",
+            "sys.query": "你好",
+            "sys.conversation_id": "49045336-89bc-457b-b54d-a1e30eaa4d73",
+            "sys.dialogue_count": 0
+          },
+          "outputs": {
+            "sys.files": [],
+            "sys.user_id": "abc-123",
+            "sys.app_id": "5e946a4f-ca73-4e63-a249-1aaa344aa11f",
+            "sys.workflow_id": "05a67cd1-56f4-4d66-a0e6-2a54abdc55eb",
+            "sys.workflow_run_id": "3c4655be-6e43-453e-8cbd-0ae23d5738b3",
+            "sys.query": "你好",
+            "sys.conversation_id": "49045336-89bc-457b-b54d-a1e30eaa4d73",
+            "sys.dialogue_count": 0
+          },
+          "status": "succeeded",
+          "error": null,
+          "elapsed_time": 0.330173,
+          "execution_metadata": {},
+          "created_at": "2025-08-10T14:55:56.632003",
+          "finished_at": "2025-08-10T14:55:56.856024"
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

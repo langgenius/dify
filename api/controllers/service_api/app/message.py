@@ -109,8 +109,51 @@ class AppGetFeedbacksApi(Resource):
         return {"data": feedbacks}
 
 
+class MessageDetailApi(Resource):
+    message_detail_fields = {
+        "id": fields.String,
+        "conversation_id": fields.String,
+        "parent_message_id": fields.String,
+        "inputs": FilesContainedField,
+        "query": fields.String,
+        "answer": fields.String(attribute="re_sign_file_url_answer"),
+        "message_files": fields.List(fields.Nested(message_file_fields)),
+        "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
+        "retriever_resources": fields.Raw(
+            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
+            if obj.message_metadata
+            else []
+        ),
+        "workflow_run_id": fields.String,
+        "status": fields.String,
+        "error": fields.String,
+        "created_at": TimestampField,
+        "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
+    }
+
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @marshal_with(message_detail_fields)
+    def get(self, app_model: App, end_user: EndUser, message_id):
+        """
+        Get message detail including workflow_run_id
+        """
+        message_id = str(message_id)
+
+        try:
+            # Use MessageService.get_message with the end_user from API token validation
+            # The validate_app_token decorator ensures end_user is always provided
+            message = MessageService.get_message(
+                app_model=app_model,
+                user=end_user,
+                message_id=message_id
+            )
+            return message
+        except MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
+
+
 class MessageSuggestedApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)
@@ -133,6 +176,7 @@ class MessageSuggestedApi(Resource):
 
 
 api.add_resource(MessageListApi, "/messages")
+api.add_resource(MessageDetailApi, "/messages/<uuid:message_id>")
 api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
 api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
 api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")
