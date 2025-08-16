@@ -203,6 +203,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   })))
   const { t } = useTranslation()
   const [hasMore, setHasMore] = useState(true)
+  const [autoLoadTriggered, setAutoLoadTriggered] = useState(false)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
 
   const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
@@ -210,6 +211,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
 
   const fetchData = useCallback(async () => {
+    // Reset auto-load flag when manually triggered
+    setAutoLoadTriggered(false)
     try {
       if (!hasMore)
         return
@@ -354,6 +357,23 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
 
+  // Add a safe auto-load mechanism that won't cause infinite loops
+  useEffect(() => {
+    // Only check once after initial data is loaded and only when in InfiniteScroll mode
+    if (hasMore && !autoLoadTriggered && threadChatItems.length >= 8) {
+      setAutoLoadTriggered(true) // Prevent repeated triggering
+
+      // Check if we need to load more data
+      const timer = setTimeout(() => {
+        const scrollDiv = document.getElementById('scrollableDiv')
+        if (scrollDiv && scrollDiv.scrollHeight <= scrollDiv.clientHeight)
+          fetchData()
+      }, 300)
+
+      return () => clearTimeout(timer)
+    }
+  }, [hasMore, autoLoadTriggered, threadChatItems.length, fetchData])
+
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
 
@@ -380,6 +400,23 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     const raf = requestAnimationFrame(adjustModalWidth)
     return () => cancelAnimationFrame(raf)
   }, [])
+
+  // Also adjust auto-load mechanism when data changes or on resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (hasMore && threadChatItems.length >= 8 && !autoLoadTriggered) {
+        setAutoLoadTriggered(true)
+        const scrollDiv = document.getElementById('scrollableDiv')
+        if (scrollDiv && scrollDiv.scrollHeight <= scrollDiv.clientHeight)
+          fetchData()
+      }
+    }
+
+    // Check on data change and window resize
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [hasMore, autoLoadTriggered, threadChatItems, fetchData])
 
   return (
     <div ref={ref} className='flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border'>
@@ -484,8 +521,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 hasMore={hasMore}
                 loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
                 // endMessage={<div className='text-center'>Nothing more to show</div>}
-                // More sensitive scroll threshold
-                scrollThreshold={0.9}
+                          // Very sensitive scroll threshold to make it easier to trigger
+                scrollThreshold={0.5}
                 // below props only if you need pull down functionality
                 refreshFunction={fetchData}
                 pullDownToRefresh
