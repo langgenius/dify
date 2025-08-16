@@ -218,8 +218,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         conversation_id: detail.id,
         limit: 10,
       }
-      // Find the oldest answer item (original message ID) to use as first_id
-      // allChatItems is ordered from newest to oldest, so we need the last answer item
+      // Use the oldest answer item ID for pagination
       const answerItems = allChatItems.filter(item => item.isAnswer)
       const oldestAnswerItem = answerItems[answerItems.length - 1]
       if (oldestAnswerItem?.id)
@@ -257,8 +256,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
     catch (err) {
       console.error(err)
-      // Reset loading state on error to prevent infinite loading
-      setHasMore(false)
     }
   }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
@@ -357,15 +354,13 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
 
-  // Auto-load more data if container has space and more data is available
+  // Auto-load if container has space for more content
   useEffect(() => {
     if (hasMore && threadChatItems.length >= 8) {
       const timer = setTimeout(() => {
         const scrollDiv = document.getElementById('scrollableDiv')
-        if (scrollDiv && scrollDiv.scrollHeight <= scrollDiv.clientHeight) {
-          // Container has space, auto load more
+        if (scrollDiv && scrollDiv.scrollHeight <= scrollDiv.clientHeight)
           fetchData()
-        }
       }, 100)
       return () => clearTimeout(timer)
     }
@@ -500,9 +495,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 next={fetchData}
                 hasMore={hasMore}
                 loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
-                endMessage={hasMore ? null : <div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.noMore')}</div>}
-                // Force initial load if has more data
-                scrollThreshold={0.8}
+                // endMessage={<div className='text-center'>Nothing more to show</div>}
+
                 // below props only if you need pull down functionality
                 refreshFunction={fetchData}
                 pullDownToRefresh
