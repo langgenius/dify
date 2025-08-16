@@ -270,6 +270,10 @@ const formatItem = (
         variable: 'sys.workflow_run_id',
         type: VarType.string,
       })
+      res.vars.push({
+        variable: 'sys.llm_usage',
+        type: VarType.object,
+      })
 
       break
     }
