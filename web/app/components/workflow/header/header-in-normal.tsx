@@ -54,14 +54,12 @@ const HeaderInNormal = ({
   }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel])
 
   return (
-    <>
+    <div className='flex w-full items-center justify-between'>
       <div>
         <EditingTitle />
       </div>
-      <div className='pointer-events-none absolute top-1/2 z-10 -translate-y-1/2' style={{ left: 'calc(50% - 40px)' }}>
-        <div className='pointer-events-auto -translate-x-1/2'>
-          <ScrollToSelectedNodeButton />
-        </div>
+      <div>
+        <ScrollToSelectedNodeButton />
       </div>
       <div className='flex items-center gap-2'>
         {components?.left}
@@ -71,7 +69,7 @@ const HeaderInNormal = ({
         {components?.middle}
         <VersionHistoryButton onClick={onStartRestoring} />
       </div>
-    </>
+    </div>
   )
 }
 
