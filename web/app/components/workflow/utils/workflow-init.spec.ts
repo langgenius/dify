@@ -5,6 +5,18 @@ import type {
 } from '@/app/components/workflow/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 
+jest.mock('ky', () => ({
+  __esModule: true,
+  default: {
+    create: jest.fn(),
+  },
+}))
+
+jest.mock('lodash-es/groupBy', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}))
+
 describe('preprocessNodesAndEdges', () => {
   it('process nodes without iteration node or loop node should return origin nodes and edges.', () => {
     const nodes = [

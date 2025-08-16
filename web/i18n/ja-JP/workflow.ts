@@ -115,6 +115,8 @@ const translation = {
     addFailureBranch: '失敗ブランチを追加',
     loadMore: 'さらに読み込む',
     noHistory: '履歴がありません',
+    referenceVar: '参照変数',
+    noExist: '存在しません',
     tagBound: 'このタグを使用しているアプリの数',
   },
   env: {
@@ -627,6 +629,7 @@ const translation = {
       },
       select: '選ぶ',
       addSubVariable: 'サブ変数',
+      condition: '条件',
     },
     variableAssigner: {
       title: '変数を代入する',
