@@ -29,7 +29,7 @@ const Operation = (
     onSend,
     theme,
   }: OperationProps & {
-    ref: React.RefObject<HTMLDivElement>;
+    ref: React.RefObject<HTMLDivElement | null>;
   },
 ) => {
   return (

@@ -11,7 +11,7 @@ import { noop } from 'lodash-es'
 import { getMarketplaceUrl } from '@/utils/var'
 
 export type ListProps = {
-  wrapElemRef: React.RefObject<HTMLElement>
+  wrapElemRef: React.RefObject<HTMLElement | null>
   list: Plugin[]
   searchText: string
   tags: string[]
@@ -56,7 +56,6 @@ const List = forwardRef<ListRef, ListProps>(({
 
   useEffect(() => {
     handleScroll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list])
 
   const handleHeadClick = () => {
