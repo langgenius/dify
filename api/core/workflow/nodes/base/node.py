@@ -224,6 +224,18 @@ class Node:
     ) -> Mapping[str, Sequence[str]]:
         return {}
 
+    def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
+        """
+        Check if this node blocks the output of specific variables.
+
+        This method is used to determine if a node must complete execution before
+        the specified variables can be used in streaming output.
+
+        :param variable_selectors: Set of variable selectors, each as a tuple (e.g., ('conversation', 'str'))
+        :return: True if this node blocks output of any of the specified variables, False otherwise
+        """
+        return False
+
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
         return {}

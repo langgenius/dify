@@ -78,6 +78,23 @@ class VariableAssignerNode(Node):
     def get_base_node_data(self) -> BaseNodeData:
         return self._node_data
 
+    def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
+        """
+        Check if this Variable Assigner node blocks the output of specific variables.
+
+        Returns True if this node updates any of the requested conversation variables.
+        """
+        # Check each item in this Variable Assigner node
+        for item in self._node_data.items:
+            # Convert the item's variable_selector to tuple for comparison
+            item_selector_tuple = tuple(item.variable_selector)
+
+            # Check if this item updates any of the requested variables
+            if item_selector_tuple in variable_selectors:
+                return True
+
+        return False
+
     def _conv_var_updater_factory(self) -> ConversationVariableUpdater:
         return conversation_variable_updater_factory()
 

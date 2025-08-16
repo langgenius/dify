@@ -13,7 +13,7 @@ from threading import RLock
 from typing import Optional, TypeAlias
 from uuid import uuid4
 
-from core.workflow.enums import NodeState, NodeType
+from core.workflow.enums import NodeExecutionType, NodeState
 from core.workflow.graph import Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
 from core.workflow.nodes.answer.answer_node import AnswerNode
@@ -172,6 +172,17 @@ class ResponseStreamCoordinator:
         if root_node_id == response_node_id:
             return [Path()]
 
+        # Extract variable selectors from the response node's template
+        response_node = self.graph.nodes[response_node_id]
+        response_session = ResponseSession.from_node(response_node)
+        template = response_session.template
+
+        # Collect all variable selectors from the template
+        variable_selectors: set[tuple[str, ...]] = set()
+        for segment in template.segments:
+            if isinstance(segment, VariableSegment):
+                variable_selectors.add(tuple(segment.selector[:2]))
+
         # Step 1: Find all complete paths from root to response node
         all_complete_paths: list[list[EdgeID]] = []
 
@@ -202,24 +213,23 @@ class ResponseStreamCoordinator:
         # Start searching from root node
         find_paths(root_node_id, response_node_id, [], set())
 
-        # Step 2: For each complete path, filter to keep only edges from branch nodes
+        # Step 2: For each complete path, filter edges based on node blocking behavior
         filtered_paths: list[Path] = []
         for path in all_complete_paths:
-            branch_edges = []
+            blocking_edges = []
             for edge_id in path:
                 edge = self.graph.edges[edge_id]
                 source_node = self.graph.nodes[edge.tail]
-                # if source_node.execution_type in {NodeExecutionType.BRANCH, NodeExecutionType.CONTAINER}:
-                if source_node.node_type in {
-                    NodeType.IF_ELSE,
-                    NodeType.QUESTION_CLASSIFIER,
-                    NodeType.ITERATION,
-                    NodeType.LOOP,
-                    NodeType.VARIABLE_ASSIGNER,
-                }:
-                    branch_edges.append(edge_id)
+
+                # Check if node is a branch/container (original behavior)
+                if source_node.execution_type in {
+                    NodeExecutionType.BRANCH,
+                    NodeExecutionType.CONTAINER,
+                } or source_node.blocks_variable_output(variable_selectors):
+                    blocking_edges.append(edge_id)
+
             # Keep the path even if it's empty
-            filtered_paths.append(Path(edges=branch_edges))
+            filtered_paths.append(Path(edges=blocking_edges))
 
         return filtered_paths
 
