@@ -1,6 +1,7 @@
 from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -56,9 +57,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         )
 
     def _run(self, query: str) -> str:
-        dataset = (
-            db.session.query(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id).first()
-        )
+        dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
+        dataset = db.session.scalar(dataset_stmt)
 
         if not dataset:
             return ""
@@ -188,15 +188,12 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         for record in records:
                             segment = record.segment
                             dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                            document = (
-                                db.session.query(DatasetDocument)  # type: ignore
-                                .where(
-                                    DatasetDocument.id == segment.document_id,
-                                    DatasetDocument.enabled == True,
-                                    DatasetDocument.archived == False,
-                                )
-                                .first()
+                            dataset_document_stmt = select(DatasetDocument).where(
+                                DatasetDocument.id == segment.document_id,
+                                DatasetDocument.enabled == True,
+                                DatasetDocument.archived == False,
                             )
+                            document = db.session.scalar(dataset_document_stmt)  # type: ignore
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,
