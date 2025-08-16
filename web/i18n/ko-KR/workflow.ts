@@ -120,6 +120,7 @@ const translation = {
     tagBound: '이 태그를 사용하는 앱 수',
     currentView: '현재 보기',
     currentWorkflow: '현재 워크플로',
+    moreActions: '더 많은 작업',
   },
   env: {
     envPanelTitle: '환경 변수',

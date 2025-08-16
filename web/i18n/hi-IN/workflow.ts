@@ -119,6 +119,7 @@ const translation = {
     tagBound: 'इस टैग का उपयोग करने वाले ऐप्स की संख्या',
     currentView: 'वर्तमान दृश्य',
     currentWorkflow: 'वर्तमान कार्यप्रवाह',
+    moreActions: 'अधिक क्रियाएँ',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',

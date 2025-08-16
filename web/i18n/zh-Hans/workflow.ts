@@ -75,6 +75,7 @@ const translation = {
     exportSVG: '导出为 SVG',
     currentView: '当前视图',
     currentWorkflow: '整个工作流',
+    moreActions: '更多操作',
     model: '模型',
     workflowAsTool: '发布为工具',
     configureRequired: '需要进行配置',

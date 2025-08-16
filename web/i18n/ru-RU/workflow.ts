@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'Количество приложений, использующих этот тег',
     currentView: 'Текущий вид',
     currentWorkflow: 'Текущий рабочий процесс',
+    moreActions: 'Больше действий',
   },
   env: {
     envPanelTitle: 'Переменные среды',

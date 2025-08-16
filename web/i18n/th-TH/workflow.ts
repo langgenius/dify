@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
     currentWorkflow: 'เวิร์กโฟลว์ปัจจุบัน',
     currentView: 'ปัจจุบัน View',
+    moreActions: 'การดําเนินการเพิ่มเติม',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',

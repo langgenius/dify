@@ -116,6 +116,7 @@ const translation = {
     tagBound: '使用此標籤的應用程式數量',
     currentView: '當前檢視',
     currentWorkflow: '當前工作流程',
+    moreActions: '更多動作',
   },
   env: {
     envPanelTitle: '環境變數',

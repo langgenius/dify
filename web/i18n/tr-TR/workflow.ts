@@ -116,6 +116,7 @@ const translation = {
     tagBound: 'Bu etiketi kullanan uygulama sayısı',
     currentView: 'Geçerli Görünüm',
     currentWorkflow: 'Mevcut İş Akışı',
+    moreActions: 'Daha Fazla Eylem',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
