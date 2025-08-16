@@ -98,6 +98,7 @@
     "lexical": "^0.30.0",
     "line-clamp": "^1.0.0",
     "lodash-es": "^4.17.21",
+    "lucide-react": "^0.536.0",
     "mermaid": "11.4.1",
     "mime": "^4.0.4",
     "mitt": "^3.0.1",

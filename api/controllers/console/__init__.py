@@ -174,6 +174,7 @@ from .tag import tags
 from .workspace import (
     account,
     agent_providers,
+    api_keys,
     endpoint,
     load_balancing_config,
     members,

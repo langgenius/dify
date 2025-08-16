@@ -11,6 +11,8 @@ import {
   RiDatabase2Line,
   RiGroup2Fill,
   RiGroup2Line,
+  RiKey2Fill,
+  RiKey2Line,
   RiMoneyDollarCircleFill,
   RiMoneyDollarCircleLine,
   RiPuzzle2Fill,
@@ -23,6 +25,7 @@ import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelProviderPage from './model-provider-page'
+import WorkspaceApiKeyPage from './workspace-apikey-page'
 import cn from '@/utils/classnames'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
@@ -99,6 +102,12 @@ export default function AccountSetting({
         name: t('custom.custom'),
         icon: <RiColorFilterLine className={iconClassName} />,
         activeIcon: <RiColorFilterFill className={iconClassName} />,
+      },
+      {
+        key: 'workspace-api-key',
+        name: t('common.settings.workspaceApiKey'),
+        icon: <RiKey2Line className={iconClassName} />,
+        activeIcon: <RiKey2Fill className={iconClassName} />,
       },
     ].filter(item => !!item.key) as GroupItem[]
   })()
@@ -219,6 +228,7 @@ export default function AccountSetting({
               {activeMenu === 'data-source' && <DataSourcePage />}
               {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
               {activeMenu === 'custom' && <CustomPage />}
+              {activeMenu === 'workspace-api-key' && <WorkspaceApiKeyPage />}
               {activeMenu === 'language' && <LanguagePage />}
             </div>
           </div>

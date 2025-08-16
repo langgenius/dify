@@ -1557,6 +1557,11 @@ class ApiToken(Base):
                 continue
             return result
 
+    @staticmethod
+    def generate_workspace_api_key():
+        """Generate workspace management API key"""
+        return ApiToken.generate_api_key("wsk-", 32)
+
 
 class UploadFile(Base):
     __tablename__ = "upload_files"

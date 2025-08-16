@@ -215,4 +215,5 @@ mise.toml
 # AI Assistant
 .roo/
 api/.env.backup
+.kiro/
 /clickzetta

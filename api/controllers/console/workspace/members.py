@@ -37,7 +37,7 @@ class MemberListApi(Resource):
     """List all members of current tenant."""
 
     @setup_required
-    @login_required
+    @login_required(["workspace:read", "members:read"])
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
@@ -49,7 +49,7 @@ class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
     @setup_required
-    @login_required
+    @login_required(["workspace:write", "members:write"])
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
     def post(self):
@@ -105,7 +105,7 @@ class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
     @setup_required
-    @login_required
+    @login_required(["workspace:write", "members:admin"])
     @account_initialization_required
     def delete(self, member_id):
         member = db.session.query(Account).where(Account.id == str(member_id)).first()
@@ -130,7 +130,7 @@ class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
     @setup_required
-    @login_required
+    @login_required(["workspace:write", "members:write"])
     @account_initialization_required
     def put(self, member_id):
         parser = reqparse.RequestParser()
@@ -160,7 +160,7 @@ class DatasetOperatorMemberListApi(Resource):
     """List all members of current tenant."""
 
     @setup_required
-    @login_required
+    @login_required(["workspace:read", "members:read"])
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
@@ -172,7 +172,7 @@ class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
     @setup_required
-    @login_required
+    @login_required(["workspace:admin", "members:admin"])
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
@@ -206,7 +206,7 @@ class SendOwnerTransferEmailApi(Resource):
 
 class OwnerTransferCheckApi(Resource):
     @setup_required
-    @login_required
+    @login_required(["workspace:admin", "members:admin"])
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
@@ -247,7 +247,7 @@ class OwnerTransferCheckApi(Resource):
 
 class OwnerTransfer(Resource):
     @setup_required
-    @login_required
+    @login_required(["workspace:admin", "members:admin"])
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self, member_id):

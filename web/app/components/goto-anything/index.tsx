@@ -259,7 +259,6 @@ const GotoAnything: FC<Props> = ({
             className='outline-none'
             value={cmdVal}
             onValueChange={setCmdVal}
-            disablePointerSelection
           >
             <div className='flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3'>
               <RiSearchLine className='h-4 w-4 text-text-quaternary' />
