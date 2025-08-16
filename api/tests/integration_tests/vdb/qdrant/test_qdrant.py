@@ -21,7 +21,7 @@ class QdrantVectorTest(AbstractVectorTest):
 
     def search_by_vector(self):
         super().search_by_vector()
-        # only tested for qdrant, may not work on other vector stores
+        # only test for qdrant, may not work on other vector stores
         hits_by_vector: list[Document] = self.vector.search_by_vector(
             query_vector=self.example_embedding, score_threshold=1
         )
