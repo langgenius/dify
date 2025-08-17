@@ -5,7 +5,21 @@ import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, payload)
+
+  const defaultPayload = {
+    ...payload,
+    mode: payload.mode || 'visual',
+    frequency: payload.frequency || 'daily',
+    visual_config: {
+      time: '11:30 AM',
+      weekdays: ['sun'],
+      ...payload.visual_config,
+    },
+    timezone: payload.timezone || 'UTC',
+    enabled: payload.enabled !== undefined ? payload.enabled : true,
+  }
+
+  const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, defaultPayload)
 
   const handleModeChange = useCallback((mode: ScheduleMode) => {
     const newInputs = {

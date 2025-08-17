@@ -943,6 +943,7 @@ const translation = {
       weekdays: 'Week days',
       time: 'Time',
       cronExpression: 'Cron expression',
+      nextExecutionTime: 'NEXT EXECUTION TIME',
     },
     triggerWebhook: {
       title: 'Webhook Trigger',
