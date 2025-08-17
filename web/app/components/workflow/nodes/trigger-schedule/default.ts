@@ -9,12 +9,13 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
     frequency: 'daily',
     cron_expression: '',
     visual_config: {
+      time: '11:30 AM',
       weekdays: ['sun'],
     },
     timezone: 'UTC',
     enabled: true,
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
+  getAvailablePrevNodes(_isChatMode: boolean) {
     return []
   },
   getAvailableNextNodes(isChatMode: boolean) {
@@ -23,7 +24,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
       : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
     return nodes.filter(type => type !== BlockEnum.Start)
   },
-  checkValid(payload: ScheduleTriggerNodeType, t: any) {
+  checkValid(_payload: ScheduleTriggerNodeType, _t: any) {
     return {
       isValid: true,
       errorMessage: '',

@@ -37,6 +37,7 @@ const translation = {
     downloadFailed: 'Download failed. Please try again later.',
     viewDetails: 'View Details',
     delete: 'Delete',
+    now: 'Now',
     deleteApp: 'Delete App',
     settings: 'Settings',
     setup: 'Setup',

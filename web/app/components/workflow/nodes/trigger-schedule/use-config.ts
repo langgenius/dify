@@ -42,6 +42,17 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleTimeChange = useCallback((time: string) => {
+    const newInputs = {
+      ...inputs,
+      visual_config: {
+        ...inputs.visual_config,
+        time,
+      },
+    }
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
@@ -49,6 +60,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     handleFrequencyChange,
     handleCronExpressionChange,
     handleWeekdaysChange,
+    handleTimeChange,
   }
 }
 
