@@ -926,6 +926,7 @@ const translation = {
     },
     triggerSchedule: {
       frequency: {
+        label: '频率',
         monthly: '每月',
         once: '仅一次',
         daily: '每日',

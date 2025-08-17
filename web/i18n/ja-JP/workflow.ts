@@ -926,6 +926,7 @@ const translation = {
     },
     triggerSchedule: {
       frequency: {
+        label: '頻度',
         monthly: '毎月',
         once: '1回のみ',
         weekly: '毎週',
