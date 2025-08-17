@@ -19,29 +19,28 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
     { key: 'sat', label: 'Sat' },
   ]
 
-  const handleDayToggle = (dayKey: string) => {
-    const newDays = selectedDays.includes(dayKey)
-      ? selectedDays.filter(d => d !== dayKey)
-      : [...selectedDays, dayKey]
-    onChange(newDays)
+  const selectedDay = selectedDays.length > 0 ? selectedDays[0] : 'sun'
+
+  const handleDaySelect = (dayKey: string) => {
+    onChange([dayKey])
   }
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-gray-700">
+      <label className="mb-2 block text-xs font-medium text-gray-500">
         {t('workflow.nodes.triggerSchedule.weekdays')}
       </label>
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         {weekdays.map(day => (
           <button
             key={day.key}
             type="button"
-            className={`rounded border px-3 py-1 text-xs ${
-              selectedDays.includes(day.key)
-                ? 'border-blue-200 bg-blue-50 text-blue-700'
-                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+            className={`flex-1 rounded-lg py-1.5 text-xs transition-colors ${
+              selectedDay === day.key
+                ? 'border-2 border-util-colors-blue-brand-blue-brand-600 text-util-colors-blue-brand-blue-brand-600'
+                : 'border-components-input-border-normal border text-text-tertiary hover:border-components-input-border-hover hover:text-text-secondary'
             }`}
-            onClick={() => handleDayToggle(day.key)}
+            onClick={() => handleDaySelect(day.key)}
           >
             {day.label}
           </button>

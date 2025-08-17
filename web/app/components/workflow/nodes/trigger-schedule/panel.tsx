@@ -27,7 +27,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='space-y-4 px-4 py-3'>
+      <div className='space-y-4 px-4 pb-3 pt-2'>
         <Field
           title={t(`${i18nPrefix}.title`)}
           operations={

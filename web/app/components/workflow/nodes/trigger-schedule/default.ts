@@ -8,7 +8,9 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
     mode: 'visual',
     frequency: 'daily',
     cron_expression: '',
-    visual_config: {},
+    visual_config: {
+      weekdays: ['sun'],
+    },
     timezone: 'UTC',
     enabled: true,
   },
