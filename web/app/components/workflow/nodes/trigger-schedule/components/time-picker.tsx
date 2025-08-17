@@ -2,6 +2,11 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiTimeLine } from '@remixicon/react'
 
+const scrollbarHideStyles = {
+  scrollbarWidth: 'none' as const,
+  msOverflowStyle: 'none' as const,
+} as React.CSSProperties
+
 type TimePickerProps = {
   value?: string
   onChange: (time: string) => void
@@ -26,7 +31,7 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
   }, [value])
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1)
-  const commonMinutes = [0, 15, 30, 45]
+  const minutes = Array.from({ length: 60 }, (_, i) => i)
   const periods = ['AM', 'PM'] as const
 
   const handleNow = () => {
@@ -41,7 +46,7 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
       displayHour = hour - 12
 
     setSelectedHour(displayHour)
-    setSelectedMinute(Math.round(minute / 15) * 15)
+    setSelectedMinute(minute)
     setSelectedPeriod(period)
   }
 
@@ -58,32 +63,35 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+        className="flex h-9 w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
       >
         <span>{displayTime}</span>
         <RiTimeLine className="h-4 w-4 text-gray-400" />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
           <div className="mb-3">
-            <h3 className="text-sm font-medium text-gray-900">{t('time.pickTime')}</h3>
+            <h3 className="text-sm font-medium text-gray-900">{t('time.title.pickTime')}</h3>
           </div>
 
-          <div className="mb-3 border-b border-gray-100" />
+          <div className="mb-4 border-b border-gray-100" />
 
-          <div className="mb-4 flex gap-2">
+          <div className="mb-4 flex gap-3">
             {/* Hours */}
             <div className="flex-1">
-              <div className="space-y-1">
+              <div
+                className="h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden"
+                style={scrollbarHideStyles}
+              >
                 {hours.map(hour => (
                   <button
                     key={hour}
                     type="button"
-                    className={`w-full rounded px-2 py-1 text-center text-sm transition-colors ${
+                    className={`block w-full rounded-lg px-3 py-1.5 text-center text-sm transition-colors ${
                       selectedHour === hour
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                     onClick={() => setSelectedHour(hour)}
                   >
@@ -95,15 +103,18 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
 
             {/* Minutes */}
             <div className="flex-1">
-              <div className="space-y-1">
-                {commonMinutes.map(minute => (
+              <div
+                className="h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden"
+                style={scrollbarHideStyles}
+              >
+                {minutes.map(minute => (
                   <button
                     key={minute}
                     type="button"
-                    className={`w-full rounded px-2 py-1 text-center text-sm transition-colors ${
+                    className={`block w-full rounded-lg px-3 py-1.5 text-center text-sm transition-colors ${
                       selectedMinute === minute
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                     onClick={() => setSelectedMinute(minute)}
                   >
@@ -115,15 +126,18 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
 
             {/* AM/PM */}
             <div className="flex-1">
-              <div className="space-y-1">
+              <div
+                className="h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden"
+                style={scrollbarHideStyles}
+              >
                 {periods.map(period => (
                   <button
                     key={period}
                     type="button"
-                    className={`w-full rounded px-2 py-1 text-center text-sm transition-colors ${
+                    className={`block w-full rounded-lg px-3 py-1.5 text-center text-sm transition-colors ${
                       selectedPeriod === period
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                     onClick={() => setSelectedPeriod(period)}
                   >
