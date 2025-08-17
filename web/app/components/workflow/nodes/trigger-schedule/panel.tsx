@@ -8,6 +8,7 @@ import ModeToggle from './components/mode-toggle'
 import FrequencySelector from './components/frequency-selector'
 import WeekdaySelector from './components/weekday-selector'
 import TimePicker from './components/time-picker'
+import NextExecutionTimes from './components/next-execution-times'
 import Input from '@/app/components/base/input'
 import useConfig from './use-config'
 
@@ -93,6 +94,10 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
             )}
           </div>
         </Field>
+
+        <div className="border-t border-divider-subtle"></div>
+
+        <NextExecutionTimes data={inputs} />
       </div>
     </div>
   )
