@@ -44,19 +44,19 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
     if (isOpen) {
       setTimeout(() => {
         if (hourContainerRef.current) {
-          const selectedHourElement = hourContainerRef.current.querySelector('.bg-components-panel-on-panel-item-bg')
+          const selectedHourElement = hourContainerRef.current.querySelector('.bg-state-base-active')
           if (selectedHourElement)
             selectedHourElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
 
         if (minuteContainerRef.current) {
-          const selectedMinuteElement = minuteContainerRef.current.querySelector('.bg-components-panel-on-panel-item-bg')
+          const selectedMinuteElement = minuteContainerRef.current.querySelector('.bg-state-base-active')
           if (selectedMinuteElement)
             selectedMinuteElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
 
         if (periodContainerRef.current) {
-          const selectedPeriodElement = periodContainerRef.current.querySelector('.bg-components-panel-on-panel-item-bg')
+          const selectedPeriodElement = periodContainerRef.current.querySelector('.bg-state-base-active')
           if (selectedPeriodElement)
             selectedPeriodElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
@@ -130,8 +130,8 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
                     type="button"
                     className={`block w-full rounded-lg px-3 py-1.5 text-center text-sm transition-colors ${
                       selectedHour === hour
-                        ? 'bg-components-panel-on-panel-item-bg text-text-primary'
-                        : 'text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover'
+                        ? 'bg-state-base-active text-text-primary'
+                        : 'text-text-secondary hover:bg-state-base-hover'
                     }`}
                     onClick={() => setSelectedHour(hour)}
                   >
@@ -156,8 +156,8 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
                     type="button"
                     className={`block w-full rounded-lg px-3 py-1.5 text-center text-sm transition-colors ${
                       selectedMinute === minute
-                        ? 'bg-components-panel-on-panel-item-bg text-text-primary'
-                        : 'text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover'
+                        ? 'bg-state-base-active text-text-primary'
+                        : 'text-text-secondary hover:bg-state-base-hover'
                     }`}
                     onClick={() => setSelectedMinute(minute)}
                   >
@@ -181,8 +181,8 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
                     type="button"
                     className={`block w-full rounded-lg px-3 py-1.5 text-center text-sm transition-colors ${
                       selectedPeriod === period
-                        ? 'bg-components-panel-on-panel-item-bg text-text-primary'
-                        : 'text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover'
+                        ? 'bg-state-base-active text-text-primary'
+                        : 'text-text-secondary hover:bg-state-base-hover'
                     }`}
                     onClick={() => setSelectedPeriod(period)}
                   >

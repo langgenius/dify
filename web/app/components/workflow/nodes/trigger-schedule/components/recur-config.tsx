@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputNumber } from '@/app/components/base/input-number'
+import { SimpleSegmentedControl } from './simple-segmented-control'
 
 type RecurConfigProps = {
   recurEvery?: number
@@ -17,10 +18,21 @@ const RecurConfig = ({
 }: RecurConfigProps) => {
   const { t } = useTranslation()
 
+  const unitOptions = [
+    {
+      text: t('workflow.nodes.triggerSchedule.hours'),
+      value: 'hours' as const,
+    },
+    {
+      text: t('workflow.nodes.triggerSchedule.minutes'),
+      value: 'minutes' as const,
+    },
+  ]
+
   return (
     <div className="flex gap-3">
       <div className="flex-[2]">
-        <label className="mb-2 block text-xs font-medium text-gray-500">
+        <label className="mb-2 block text-xs font-medium text-text-tertiary">
           {t('workflow.nodes.triggerSchedule.recurEvery')}
         </label>
         <InputNumber
@@ -31,38 +43,14 @@ const RecurConfig = ({
         />
       </div>
       <div className="flex-1">
-        <label className="mb-2 block text-xs font-medium text-gray-500">
+        <label className="mb-2 block text-xs font-medium text-text-tertiary">
           &nbsp;
         </label>
-        <div className="border-components-input-border-normal relative flex h-9 rounded-lg border bg-components-input-bg-normal p-0.5">
-          <div
-            className={`absolute bottom-0.5 top-0.5 rounded-md bg-white shadow-xs transition-transform duration-200 ease-in-out ${
-              recurUnit === 'hours' ? 'left-0.5 w-[calc(50%-2px)]' : 'left-[calc(50%+2px)] w-[calc(50%-2px)]'
-            }`}
-          />
-          <button
-            type="button"
-            className={`relative z-10 flex flex-1 items-center justify-center text-xs font-medium transition-colors ${
-              recurUnit === 'hours'
-                ? 'text-util-colors-blue-brand-blue-brand-600'
-                : 'text-text-primary hover:text-text-secondary'
-            }`}
-            onClick={() => onRecurUnitChange('hours')}
-          >
-            {t('workflow.nodes.triggerSchedule.hours')}
-          </button>
-          <button
-            type="button"
-            className={`relative z-10 flex flex-1 items-center justify-center text-xs font-medium transition-colors ${
-              recurUnit === 'minutes'
-                ? 'text-util-colors-blue-brand-blue-brand-600'
-                : 'text-text-primary hover:text-text-secondary'
-            }`}
-            onClick={() => onRecurUnitChange('minutes')}
-          >
-            {t('workflow.nodes.triggerSchedule.minutes')}
-          </button>
-        </div>
+        <SimpleSegmentedControl
+          options={unitOptions}
+          value={recurUnit}
+          onChange={onRecurUnitChange}
+        />
       </div>
     </div>
   )
