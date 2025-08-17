@@ -1,0 +1,37 @@
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { RiAsterisk, RiCalendarLine } from '@remixicon/react'
+import type { ScheduleMode } from '../types'
+
+type ModeToggleProps = {
+  mode: ScheduleMode
+  onChange: (mode: ScheduleMode) => void
+}
+
+const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
+  const { t } = useTranslation()
+
+  const handleToggle = () => {
+    const newMode = mode === 'visual' ? 'cron' : 'visual'
+    onChange(newMode)
+  }
+
+  const currentText = mode === 'visual'
+    ? t('workflow.nodes.triggerSchedule.useCronExpression')
+    : t('workflow.nodes.triggerSchedule.useVisualPicker')
+
+  const currentIcon = mode === 'visual' ? RiAsterisk : RiCalendarLine
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      className="flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
+    >
+      {React.createElement(currentIcon, { className: 'w-3 h-3' })}
+      <span>{currentText}</span>
+    </button>
+  )
+}
+
+export default ModeToggle
