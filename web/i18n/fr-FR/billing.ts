@@ -115,6 +115,15 @@ const translation = {
       description: 'Obtenez toutes les capacités et le support pour les systèmes à grande échelle et critiques pour la mission.',
       includesTitle: 'Tout ce qui est inclus dans le plan Équipe, plus :',
       features: {
+        6: 'Sécurité et contrôles avancés',
+        3: 'Espaces de travail multiples et gestion d’entreprise',
+        4: 'SSO',
+        1: 'Autorisation de licence commerciale',
+        2: 'Fonctionnalités exclusives à l’entreprise',
+        5: 'SLA négociés par les partenaires Dify',
+        8: 'Assistance technique professionnelle',
+        7: 'Mises à jour et maintenance par Dify officiellement',
+        0: 'Solutions de déploiement évolutives de niveau entreprise',
       },
       for: 'Pour les équipes de grande taille',
       btnText: 'Contacter les ventes',
@@ -123,6 +132,9 @@ const translation = {
     },
     community: {
       features: {
+        1: 'Espace de travail unique',
+        0: 'Toutes les fonctionnalités de base publiées dans le dépôt public',
+        2: 'Conforme à la licence Open Source Dify',
       },
       name: 'Communauté',
       btnText: 'Commencez avec la communauté',
@@ -133,6 +145,10 @@ const translation = {
     },
     premium: {
       features: {
+        2: 'Personnalisation du logo et de l’image de marque WebApp',
+        1: 'Espace de travail unique',
+        3: 'Assistance prioritaire par e-mail et chat',
+        0: 'Fiabilité autogérée par différents fournisseurs de cloud',
       },
       for: 'Pour les organisations et les équipes de taille moyenne',
       includesTitle: 'Tout de la communauté, en plus :',
