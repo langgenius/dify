@@ -566,7 +566,7 @@ const translation = {
     overview: '監視',
     promptEng: 'オーケストレート',
     apiAccess: 'API アクセス',
-    logAndAnn: 'ログ＆アナウンス',
+    logAndAnn: 'ログ＆注釈',
     logs: 'ログ',
   },
   environment: {
