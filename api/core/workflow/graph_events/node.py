@@ -2,18 +2,15 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.workflow.entities import AgentNodeStrategyInit
 
 from .base import GraphNodeEventBase
 
 
 class NodeRunStartedEvent(GraphNodeEventBase):
-    class AgentNodeStrategyInit(BaseModel):
-        name: str
-        icon: str | None = None
-
     node_title: str
     predecessor_node_id: Optional[str] = None
     parallel_mode_run_id: Optional[str] = None

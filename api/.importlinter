@@ -1,29 +1,60 @@
 [importlinter]
 root_packages =
     core
+    configs
+    controllers
+    models
+    tasks
+    services
 
-[importlinter:contract:events-independence-contract]
-name = Events should be independent
-type = independence
-modules =
-    core.workflow.graph_events
-    core.workflow.node_events
-ignore_imports =
-    core.workflow.graph_events.base -> core.workflow.node_events
-
-[importlinter:contract:workflow-layers]
-name = Workflow packages layers
+[importlinter:contract:workflow]
+name = Workflow
 type=layers
 layers =
-    core.workflow.graph_engine
-    core.workflow.graph
-    core.workflow.nodes
-    core.workflow.entities
+    graph_engine
+    graph_events
+    graph
+    nodes
+    node_events
+    entities
+containers =
+    core.workflow
 ignore_imports =
+    core.workflow.nodes.base.node -> core.workflow.graph_events
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_events
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine.command_channels
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_events
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
     core.workflow.nodes.loop.loop_node -> core.workflow.graph
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
     core.workflow.nodes.node_factory -> core.workflow.graph
+
+[importlinter:contract:rsc]
+name = RSC
+type = layers
+layers = 
+    graph_engine
+    response_coordinator
+    output_registry
+containers =
+    core.workflow.graph_engine
+
+[importlinter:contract:executing-nodes-manager]
+name = Executing nodes manager
+type = layers
+layers = 
+    graph_engine
+    executing_nodes_manager
+containers =
+    core.workflow.graph_engine
+
+[importlinter:contract:worker]
+name = Worker
+type = layers
+layers = 
+    graph_engine
+    worker
+containers =
+    core.workflow.graph_engine

@@ -7,9 +7,8 @@ from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import GraphRuntimeState
+from core.workflow.entities import AgentNodeStrategyInit, GraphRuntimeState
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_events import NodeRunStartedEvent
 from core.workflow.nodes import NodeType
 
 
@@ -346,7 +345,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     in_loop_id: Optional[str] = None
     start_at: datetime
     parallel_mode_run_id: Optional[str] = None
-    agent_strategy: Optional[NodeRunStartedEvent.AgentNodeStrategyInit] = None
+    agent_strategy: Optional[AgentNodeStrategyInit] = None
 
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
