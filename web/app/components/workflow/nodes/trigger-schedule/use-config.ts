@@ -15,7 +15,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       weekdays: ['sun'],
       ...payload.visual_config,
     },
-    timezone: payload.timezone || 'UTC',
+    timezone: payload.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
     enabled: payload.enabled !== undefined ? payload.enabled : true,
   }
 

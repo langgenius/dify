@@ -562,4 +562,184 @@ describe('execution-time-calculator', () => {
       }
     })
   })
+
+  describe('getNextExecutionTimes - monthly frequency', () => {
+    test('returns monthly execution times for specific day', () => {
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '2:30 PM',
+          monthly_day: 15,
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(3)
+      result.forEach((date) => {
+        expect(date.getDate()).toBe(15)
+        expect(date.getHours()).toBe(14)
+        expect(date.getMinutes()).toBe(30)
+      })
+
+      expect(result[0].getMonth()).toBe(0) // January
+      expect(result[1].getMonth()).toBe(1) // February
+      expect(result[2].getMonth()).toBe(2) // March
+    })
+
+    test('returns monthly execution times for last day', () => {
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '11:30 AM',
+          monthly_day: 'last',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 4)
+
+      expect(result).toHaveLength(4)
+      result.forEach((date) => {
+        expect(date.getHours()).toBe(11)
+        expect(date.getMinutes()).toBe(30)
+      })
+
+      expect(result[0].getDate()).toBe(31) // January 31
+      expect(result[1].getDate()).toBe(29) // February 29 (2024 is leap year)
+      expect(result[2].getDate()).toBe(31) // March 31
+      expect(result[3].getDate()).toBe(30) // April 30
+    })
+
+    test('handles day 31 in months with fewer days', () => {
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '3:00 PM',
+          monthly_day: 31,
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 4)
+
+      expect(result).toHaveLength(4)
+      expect(result[0].getDate()).toBe(31) // January 31
+      expect(result[1].getDate()).toBe(29) // February 29 (can't have 31)
+      expect(result[2].getDate()).toBe(31) // March 31
+      expect(result[3].getDate()).toBe(30) // April 30 (can't have 31)
+    })
+
+    test('handles day 30 in February', () => {
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '9:00 AM',
+          monthly_day: 30,
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(3)
+      expect(result[0].getDate()).toBe(30) // January 30
+      expect(result[1].getDate()).toBe(29) // February 29 (max in 2024)
+      expect(result[2].getDate()).toBe(30) // March 30
+    })
+
+    test('skips to next month if current month execution has passed', () => {
+      jest.useFakeTimers()
+      jest.setSystemTime(new Date(2024, 0, 20, 15, 0, 0)) // January 20, 2024 3:00 PM
+
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '2:30 PM',
+          monthly_day: 15, // Already passed in January
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(3)
+      expect(result[0].getMonth()).toBe(1) // February (skip January)
+      expect(result[1].getMonth()).toBe(2) // March
+      expect(result[2].getMonth()).toBe(3) // April
+
+      jest.useRealTimers()
+    })
+
+    test('includes current month if execution time has not passed', () => {
+      jest.useFakeTimers()
+      jest.setSystemTime(new Date(2024, 0, 10, 10, 0, 0)) // January 10, 2024 10:00 AM
+
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '2:30 PM',
+          monthly_day: 15, // Still upcoming in January
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(3)
+      expect(result[0].getMonth()).toBe(0) // January (current month)
+      expect(result[1].getMonth()).toBe(1) // February
+      expect(result[2].getMonth()).toBe(2) // March
+
+      jest.useRealTimers()
+    })
+
+    test('handles AM/PM time conversion correctly', () => {
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '11:30 PM',
+          monthly_day: 1,
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      result.forEach((date) => {
+        expect(date.getHours()).toBe(23) // 11 PM in 24-hour format
+        expect(date.getMinutes()).toBe(30)
+        expect(date.getDate()).toBe(1)
+      })
+    })
+
+    test('formats monthly execution times without weekday', () => {
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '2:30 PM',
+          monthly_day: 15,
+        },
+      })
+
+      const result = getFormattedExecutionTimes(data, 1)
+
+      expect(result).toHaveLength(1)
+      expect(result[0]).not.toMatch(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/)
+      expect(result[0]).toMatch(/January 15, 2024 2:30 PM/)
+    })
+
+    test('uses default day 1 when monthly_day is not specified', () => {
+      const data = createMockData({
+        frequency: 'monthly',
+        visual_config: {
+          time: '10:00 AM',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      result.forEach((date) => {
+        expect(date.getDate()).toBe(1)
+        expect(date.getHours()).toBe(10)
+        expect(date.getMinutes()).toBe(0)
+      })
+    })
+  })
 })

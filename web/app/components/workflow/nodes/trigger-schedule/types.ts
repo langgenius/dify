@@ -11,6 +11,7 @@ export type VisualConfig = {
   weekdays?: string[]
   recur_every?: number
   recur_unit?: 'hours' | 'minutes'
+  monthly_day?: number | 'last'
 }
 
 export type ScheduleTriggerNodeType = CommonNodeType & {

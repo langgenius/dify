@@ -84,6 +84,51 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       times.push(nextExecution)
     }
   }
+  else if (data.frequency === 'monthly') {
+    const selectedDay = data.visual_config?.monthly_day || 1
+    const [time, period] = defaultTime.split(' ')
+    const [hour, minute] = time.split(':')
+    let displayHour = Number.parseInt(hour)
+    if (period === 'PM' && displayHour !== 12) displayHour += 12
+    if (period === 'AM' && displayHour === 12) displayHour = 0
+
+    const now = getCurrentTime()
+    let monthOffset = 0
+
+    const currentMonthExecution = (() => {
+      const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      let targetDay: number
+
+      if (selectedDay === 'last') {
+        const lastDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
+        targetDay = lastDayOfMonth
+      }
+ else {
+        targetDay = Math.min(selectedDay as number, new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate())
+      }
+
+      return new Date(currentMonth.getFullYear(), currentMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
+    })()
+
+    if (currentMonthExecution <= now)
+      monthOffset = 1
+
+    for (let i = 0; i < count; i++) {
+      const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset + i, 1)
+      let targetDay: number
+
+      if (selectedDay === 'last') {
+        const lastDayOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+        targetDay = lastDayOfMonth
+      }
+ else {
+        targetDay = Math.min(selectedDay as number, new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate())
+      }
+
+      const nextExecution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
+      times.push(nextExecution)
+    }
+  }
   else if (data.frequency === 'once') {
     // For 'once' frequency, return the selected datetime
     const selectedDateTime = data.visual_config?.datetime

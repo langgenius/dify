@@ -951,6 +951,9 @@ const translation = {
       recurEvery: 'Recur every',
       hours: 'Hours',
       minutes: 'Minutes',
+      days: 'Days',
+      lastDay: 'Last day',
+      lastDayTooltip: 'Not all months have 31 days. Use the \'last day\' option to select each month\'s final day.',
     },
     triggerWebhook: {
       title: 'Webhook Trigger',

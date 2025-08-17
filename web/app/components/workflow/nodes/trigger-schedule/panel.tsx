@@ -12,6 +12,7 @@ import DateTimePicker from './components/date-time-picker'
 import NextExecutionTimes from './components/next-execution-times'
 import ExecuteNowButton from './components/execute-now-button'
 import RecurConfig from './components/recur-config'
+import MonthlyDaysSelector from './components/monthly-days-selector'
 import Input from '@/app/components/base/input'
 import useConfig from './use-config'
 
@@ -108,6 +109,22 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                     recurUnit={inputs.visual_config?.recur_unit}
                     onRecurEveryChange={handleRecurEveryChange}
                     onRecurUnitChange={handleRecurUnitChange}
+                  />
+                )}
+
+                {inputs.frequency === 'monthly' && (
+                  <MonthlyDaysSelector
+                    selectedDay={inputs.visual_config?.monthly_day || 1}
+                    onChange={(day) => {
+                      const newInputs = {
+                        ...inputs,
+                        visual_config: {
+                          ...inputs.visual_config,
+                          monthly_day: day,
+                        },
+                      }
+                      setInputs(newInputs)
+                    }}
                   />
                 )}
               </div>
