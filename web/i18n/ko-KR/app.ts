@@ -283,6 +283,19 @@ const translation = {
       searchKnowledgeBasesDesc: '기술 자료를 검색하고 탐색합니다.',
       searchWorkflowNodesHelp: '이 기능은 워크플로를 볼 때만 작동합니다. 먼저 워크플로로 이동합니다.',
       searchKnowledgeBases: '기술 자료 검색',
+      themeCategoryTitle: '주제',
+      themeSystem: '시스템 테마',
+      themeDark: '어두운 테마',
+      languageChangeDesc: 'UI 언어 변경',
+      languageCategoryTitle: '언어',
+      runTitle: '명령어',
+      themeLight: '라이트 테마',
+      themeDarkDesc: '어두운 모양 사용',
+      themeLightDesc: '밝은 외관 사용',
+      themeCategoryDesc: '애플리케이션 테마 전환',
+      languageCategoryDesc: '인터페이스 언어 전환',
+      runDesc: '빠른 명령 실행 (테마, 언어 등...)',
+      themeSystemDesc: '운영 체제의 외관을 따르세요',
     },
     emptyState: {
       noAppsFound: '앱을 찾을 수 없습니다.',
@@ -314,6 +327,8 @@ const translation = {
     resultCount: '{{count}} 개 결과',
     resultCount_other: '{{count}} 개 결과',
     inScope: '{{scope}}s 내에서',
+    tryDifferentSearch: '다른 검색어 사용해 보기',
+    noMatchingCommands: '일치하는 명령을 찾을 수 없습니다.',
   },
 }
 

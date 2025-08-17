@@ -218,7 +218,8 @@ namestite Dify v Cloud Platform z enim klikom z uporabo [terraform](https://www.
 Uvedite Dify v AWS z uporabo [CDK](https://aws.amazon.com/cdk/)
 
 ##### AWS 
-- [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
 

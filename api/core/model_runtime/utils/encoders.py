@@ -151,12 +151,9 @@ def jsonable_encoder(
         return format(obj, "f")
     if isinstance(obj, dict):
         encoded_dict = {}
-        allowed_keys = set(obj.keys())
         for key, value in obj.items():
-            if (
-                (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa")))
-                and (value is not None or not exclude_none)
-                and key in allowed_keys
+            if (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa"))) and (
+                value is not None or not exclude_none
             ):
                 encoded_key = jsonable_encoder(
                     key,

@@ -225,7 +225,8 @@ Deploy Dify to AWS with [CDK](https://aws.amazon.com/cdk/)
 
 ##### AWS
 
-- [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Using Alibaba Cloud Computing Nest
 

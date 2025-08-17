@@ -46,7 +46,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: web/package.json
           run_install: false
 
       - name: Set up Node.js
@@ -59,10 +59,12 @@ jobs:
 
       - name: Install dependencies
         if: env.FILES_CHANGED == 'true'
+        working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Generate i18n translations
         if: env.FILES_CHANGED == 'true'
+        working-directory: ./web
         run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
 
       - name: Create Pull Request

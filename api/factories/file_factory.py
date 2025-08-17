@@ -248,6 +248,8 @@ def _get_remote_file_info(url: str):
 
     # Initialize mime_type from filename as fallback
     mime_type, _ = mimetypes.guess_type(filename)
+    if mime_type is None:
+        mime_type = ""
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     resp = cast(httpx.Response, resp)
@@ -256,7 +258,12 @@ def _get_remote_file_info(url: str):
             filename = str(content_disposition.split("filename=")[-1].strip('"'))
             # Re-guess mime_type from updated filename
             mime_type, _ = mimetypes.guess_type(filename)
+            if mime_type is None:
+                mime_type = ""
         file_size = int(resp.headers.get("Content-Length", file_size))
+        # Fallback to Content-Type header if mime_type is still empty
+        if not mime_type:
+            mime_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
 
     return mime_type, filename, file_size
 
