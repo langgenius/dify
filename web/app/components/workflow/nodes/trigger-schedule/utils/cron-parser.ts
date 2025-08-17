@@ -67,8 +67,9 @@ export const parseCronExpression = (cronExpression: string): Date[] => {
     const nextTimes: Date[] = []
     const now = new Date()
     const checkDate = new Date(now)
+    checkDate.setSeconds(0, 0)
 
-    for (let i = 0; i < 100 && nextTimes.length < 5; i++) {
+    for (let i = 0; i < 10080 && nextTimes.length < 5; i++) {
       checkDate.setMinutes(checkDate.getMinutes() + 1)
 
       if (matchesCron(checkDate, minute, hour, dayOfMonth, month, dayOfWeek))
