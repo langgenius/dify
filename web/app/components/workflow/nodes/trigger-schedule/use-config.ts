@@ -67,6 +67,28 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleRecurEveryChange = useCallback((recur_every: number) => {
+    const newInputs = {
+      ...inputs,
+      visual_config: {
+        ...inputs.visual_config,
+        recur_every,
+      },
+    }
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleRecurUnitChange = useCallback((recur_unit: 'hours' | 'minutes') => {
+    const newInputs = {
+      ...inputs,
+      visual_config: {
+        ...inputs.visual_config,
+        recur_unit,
+      },
+    }
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
@@ -76,6 +98,8 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     handleCronExpressionChange,
     handleWeekdaysChange,
     handleTimeChange,
+    handleRecurEveryChange,
+    handleRecurUnitChange,
   }
 }
 

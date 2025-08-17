@@ -34,7 +34,40 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
     const times: string[] = []
     const defaultTime = data.visual_config?.time || '11:30 AM'
 
-    if (data.frequency === 'daily') {
+    if (data.frequency === 'hourly') {
+      const recurEvery = data.visual_config?.recur_every || 1
+      const recurUnit = data.visual_config?.recur_unit || 'hours'
+      const startTime = data.visual_config?.datetime ? new Date(data.visual_config.datetime) : new Date()
+
+      const intervalMs = recurUnit === 'hours'
+        ? recurEvery * 60 * 60 * 1000
+        : recurEvery * 60 * 1000
+
+      for (let i = 0; i < 5; i++) {
+        const nextExecution = new Date(startTime.getTime() + (i + 1) * intervalMs)
+
+        if (nextExecution <= new Date()) {
+          const now = new Date()
+          const timeDiff = now.getTime() - startTime.getTime()
+          const intervals = Math.ceil(timeDiff / intervalMs)
+          nextExecution.setTime(startTime.getTime() + (intervals + i) * intervalMs)
+        }
+
+        const formattedTime = `${nextExecution.toLocaleDateString('en-US', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })} ${nextExecution.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })}`
+
+        times.push(formattedTime)
+      }
+    }
+    else if (data.frequency === 'daily') {
       const [time, period] = defaultTime.split(' ')
       const [hour, minute] = time.split(':')
       let displayHour = Number.parseInt(hour)

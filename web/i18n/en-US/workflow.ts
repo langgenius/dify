@@ -948,6 +948,9 @@ const translation = {
       startTime: 'Start Time',
       executeNow: 'Execution now',
       selectDateTime: 'Select Date & Time',
+      recurEvery: 'Recur every',
+      hours: 'Hours',
+      minutes: 'Minutes',
     },
     triggerWebhook: {
       title: 'Webhook Trigger',
