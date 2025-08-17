@@ -1,9 +1,11 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { SelfHostedPlan } from '../../../type'
-import { AwsMarketplace } from '@/app/components/base/icons/src/public/billing'
+import { AwsMarketplaceDark, AwsMarketplaceLight } from '@/app/components/base/icons/src/public/billing'
 import { RiArrowRightLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 
 const BUTTON_CLASSNAME = {
   [SelfHostedPlan.community]: 'text-text-primary bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover',
@@ -21,8 +23,12 @@ const Button = ({
   handleGetPayUrl,
 }: ButtonProps) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const i18nPrefix = `billing.plans.${plan}`
   const isPremiumPlan = plan === SelfHostedPlan.premium
+  const AwsMarketplace = useMemo(() => {
+    return theme === Theme.light ? AwsMarketplaceLight : AwsMarketplaceDark
+  }, [theme])
 
   return (
     <button

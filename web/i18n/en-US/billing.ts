@@ -159,7 +159,7 @@ const translation = {
       price: 'Custom',
       priceTip: 'Annual Billing Only',
       btnText: 'Contact Sales',
-      includesTitle: 'Everything from Premium, plus:',
+      includesTitle: 'Everything from <highlight>Premium</highlight>, plus:',
       features: [
         'Enterprise-grade Scalable Deployment Solutions',
         'Commercial License Authorization',

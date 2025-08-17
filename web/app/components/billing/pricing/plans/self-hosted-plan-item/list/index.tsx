@@ -1,6 +1,6 @@
 import React from 'react'
 import type { SelfHostedPlan } from '@/app/components/billing/type'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import Item from './item'
 
 type ListProps = {
@@ -17,7 +17,10 @@ const List = ({
   return (
     <div className='flex flex-col gap-y-[10px] p-6'>
       <div className='system-md-semibold text-text-secondary'>
-        {t(`${i18nPrefix}.includesTitle`)}
+        <Trans
+          i18nKey={t(`${i18nPrefix}.includesTitle`)}
+          components={{ highlight: <span className='text-text-warning'></span> }}
+        />
       </div>
       {features.map(feature =>
         <Item

@@ -158,7 +158,7 @@ const translation = {
       price: '定制',
       priceTip: '仅按年计费',
       btnText: '联系销售',
-      includesTitle: 'Premium 版的所有功能，加上：',
+      includesTitle: '<highlight>Premium</highlight> 版的所有功能，加上：',
       features: [
         '企业级可扩展部署解决方案',
         '商业许可授权',
