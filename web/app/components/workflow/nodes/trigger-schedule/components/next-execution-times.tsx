@@ -26,7 +26,6 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
         nextExecution.setDate(nextExecution.getDate() + i + (nextExecution <= new Date() ? 1 : 0))
 
         const formattedTime = `${nextExecution.toLocaleDateString('en-US', {
-          weekday: 'short',
           year: 'numeric',
           month: 'long',
           day: 'numeric',
@@ -83,7 +82,6 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
         nextExecution.setDate(nextExecution.getDate() + i + 1)
 
         const formattedTime = `${nextExecution.toLocaleDateString('en-US', {
-          weekday: 'short',
           year: 'numeric',
           month: 'long',
           day: 'numeric',

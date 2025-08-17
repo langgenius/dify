@@ -63,7 +63,7 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-9 w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+        className="flex h-9 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-3 py-1.5 text-sm text-text-secondary hover:bg-components-input-bg-hover"
       >
         <span>{displayTime}</span>
         <RiTimeLine className="h-4 w-4 text-gray-400" />
