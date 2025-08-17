@@ -50,6 +50,7 @@ jobs:
       - name: Run ty check
         run: |
           cd api
+          uv add --dev ty
           uv run ty check || true
       - name: Run pyrefly check
         run: |
