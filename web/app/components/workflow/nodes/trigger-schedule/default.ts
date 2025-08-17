@@ -5,7 +5,10 @@ import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/ap
 
 const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
   defaultValue: {
+    mode: 'visual',
+    frequency: 'daily',
     cron_expression: '',
+    visual_config: {},
     timezone: 'UTC',
     enabled: true,
   },
