@@ -7,7 +7,8 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import NodeState, NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.output_registry import OutputRegistry
-from core.workflow.graph_engine.response_coordinator import ResponseSession, ResponseStreamCoordinator
+from core.workflow.graph_engine.response_coordinator import ResponseStreamCoordinator
+from core.workflow.graph_engine.response_coordinator.session import ResponseSession
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.template import Template, TextSegment, VariableSegment

@@ -1,14 +1,13 @@
 """
-ResponseStreamCoordinator - Coordinates streaming output from response nodes
+Main ResponseStreamCoordinator implementation.
 
-This component manages response streaming sessions and ensures ordered streaming
-of responses based on upstream node outputs and constants.
+This module contains the public ResponseStreamCoordinator class that manages
+response streaming sessions and ensures ordered streaming of responses.
 """
 
 import logging
 from collections import deque
 from collections.abc import Sequence
-from dataclasses import dataclass, field
 from threading import RLock
 from typing import Optional, TypeAlias
 from uuid import uuid4
@@ -16,72 +15,17 @@ from uuid import uuid4
 from core.workflow.enums import NodeExecutionType, NodeState
 from core.workflow.graph import Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
-from core.workflow.nodes.answer.answer_node import AnswerNode
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.base.template import Template, TextSegment, VariableSegment
-from core.workflow.nodes.end.end_node import EndNode
+from core.workflow.nodes.base.template import TextSegment, VariableSegment
 
-from .output_registry import OutputRegistry
+from ..output_registry import OutputRegistry
+from .path import Path
+from .session import ResponseSession
 
 logger = logging.getLogger(__name__)
 
 # Type definitions
 NodeID: TypeAlias = str
 EdgeID: TypeAlias = str
-
-
-@dataclass
-class Path:
-    """Represents a path of branch edges that must be taken to reach a response node."""
-
-    edges: list[EdgeID] = field(default_factory=list)
-
-    def contains_edge(self, edge_id: EdgeID) -> bool:
-        """Check if this path contains the given edge."""
-        return edge_id in self.edges
-
-    def remove_edge(self, edge_id: EdgeID) -> None:
-        """Remove the given edge from this path in place."""
-        if self.contains_edge(edge_id):
-            self.edges.remove(edge_id)
-
-    def is_empty(self) -> bool:
-        """Check if the path has no edges (node is reachable)."""
-        return len(self.edges) == 0
-
-
-@dataclass
-class ResponseSession:
-    """Represents an active response streaming session."""
-
-    node_id: str
-    template: Template  # Template object from the response node
-    index: int = 0  # Current position in the template segments
-
-    @classmethod
-    def from_node(cls, node: Node):
-        """
-        Create a ResponseSession from an AnswerNode or EndNode.
-
-        Args:
-            node: Must be either an AnswerNode or EndNode instance
-
-        Returns:
-            ResponseSession configured with the node's streaming template
-
-        Raises:
-            TypeError: If node is not an AnswerNode or EndNode
-        """
-        if not isinstance(node, AnswerNode | EndNode):
-            raise TypeError
-        return cls(
-            node_id=node.id,
-            template=node.get_streaming_template(),
-        )
-
-    def is_complete(self) -> bool:
-        """Check if all segments in the template have been processed."""
-        return self.index >= len(self.template.segments)
 
 
 class ResponseStreamCoordinator:

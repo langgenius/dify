@@ -1,8 +1,8 @@
 """
-OutputRegistry - Thread-safe storage for node outputs (streams and scalars)
+Main OutputRegistry implementation.
 
-This component provides thread-safe storage and retrieval of node outputs,
-supporting both scalar values and streaming chunks with proper state management.
+This module contains the public OutputRegistry class that provides
+thread-safe storage for node outputs.
 """
 
 from collections.abc import Sequence
@@ -11,64 +11,10 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from core.workflow.entities.variable_pool import VariablePool
 
+from .stream import Stream
+
 if TYPE_CHECKING:
     from core.workflow.graph_events.node import NodeRunStreamChunkEvent
-
-
-class Stream:
-    """
-    A stream that holds NodeRunStreamChunkEvent objects and tracks read position.
-
-    This class encapsulates stream-specific data and operations,
-    including event storage, read position tracking, and closed state.
-    """
-
-    def __init__(self) -> None:
-        """Initialize an empty stream."""
-        self.events: list[NodeRunStreamChunkEvent] = []
-        self.read_position: int = 0
-        self.is_closed: bool = False
-
-    def append(self, event: "NodeRunStreamChunkEvent") -> None:
-        """
-        Append a NodeRunStreamChunkEvent to the stream.
-
-        Args:
-            event: The NodeRunStreamChunkEvent to append
-
-        Raises:
-            ValueError: If the stream is already closed
-        """
-        if self.is_closed:
-            raise ValueError("Cannot append to a closed stream")
-        self.events.append(event)
-
-    def pop_next(self) -> Optional["NodeRunStreamChunkEvent"]:
-        """
-        Pop the next unread NodeRunStreamChunkEvent from the stream.
-
-        Returns:
-            The next event, or None if no unread events available
-        """
-        if self.read_position >= len(self.events):
-            return None
-
-        event = self.events[self.read_position]
-        self.read_position += 1
-        return event
-
-    def has_unread(self) -> bool:
-        """
-        Check if the stream has unread events.
-
-        Returns:
-            True if there are unread events, False otherwise
-        """
-        return self.read_position < len(self.events)
-
-    def close(self) -> None:
-        """Mark the stream as closed (no more chunks can be appended)."""
-        self.is_closed = True
 
 
 class OutputRegistry:
@@ -85,7 +31,7 @@ class OutputRegistry:
         self._scalars = variable_pool
         self._streams: dict[tuple, Stream] = {}
 
-    def _selector_to_key(self, selector: Sequence[str]):
+    def _selector_to_key(self, selector: Sequence[str]) -> tuple:
         """Convert selector list to tuple key for internal storage."""
         return tuple(selector)
 
