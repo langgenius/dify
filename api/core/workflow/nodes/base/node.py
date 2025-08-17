@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.entities import AgentNodeStrategyInit
 from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_events import (
     GraphNodeEventBase,
@@ -121,7 +122,7 @@ class Node:
         from core.workflow.nodes.agent.entities import AgentNodeData
 
         if isinstance(self, AgentNode):
-            start_event.agent_strategy = NodeRunStartedEvent.AgentNodeStrategyInit(
+            start_event.agent_strategy = AgentNodeStrategyInit(
                 name=cast(AgentNodeData, self.get_base_node_data()).agent_strategy_name,
                 icon=self.agent_strategy_icon,
             )

@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.workflow.entities import AgentNodeStrategyInit
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.graph_events import NodeRunStartedEvent
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -267,7 +267,7 @@ class NodeStartStreamResponse(StreamResponse):
         iteration_id: Optional[str] = None
         loop_id: Optional[str] = None
         parallel_run_id: Optional[str] = None
-        agent_strategy: Optional[NodeRunStartedEvent.AgentNodeStrategyInit] = None
+        agent_strategy: Optional[AgentNodeStrategyInit] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
