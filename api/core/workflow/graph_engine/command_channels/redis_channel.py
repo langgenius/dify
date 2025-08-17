@@ -7,9 +7,12 @@ Each instance uses a unique key for its command queue.
 """
 
 import json
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Optional
 
 from ..entities.commands import AbortCommand, CommandType, GraphEngineCommand
+
+if TYPE_CHECKING:
+    from extensions.ext_redis import RedisClientWrapper
 
 
 class RedisChannel:
@@ -22,7 +25,7 @@ class RedisChannel:
 
     def __init__(
         self,
-        redis_client: Any,  # Accepts both redis.Redis and RedisClientWrapper
+        redis_client: "RedisClientWrapper",
         channel_key: str,
         command_ttl: int = 3600,
     ) -> None:
