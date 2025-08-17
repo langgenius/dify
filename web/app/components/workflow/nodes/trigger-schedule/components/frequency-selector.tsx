@@ -21,6 +21,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
 
   return (
     <SimpleSelect
+      key={frequency} // Force re-render when frequency changes
       items={frequencies}
       defaultValue={frequency}
       onSelect={item => onChange(item.value as ScheduleFrequency)}
