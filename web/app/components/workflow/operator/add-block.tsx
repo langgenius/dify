@@ -13,6 +13,7 @@ import {
 } from '../utils'
 import {
   useAvailableBlocks,
+  useIsChatMode,
   useNodesReadOnly,
   usePanelInteractions,
 } from '../hooks'
@@ -39,6 +40,7 @@ const AddBlock = ({
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const [open, setOpen] = useState(false)
@@ -104,7 +106,7 @@ const AddBlock = ({
       trigger={renderTrigger || renderTriggerElement}
       popupClassName='!min-w-[256px]'
       availableBlocksTypes={availableNextBlocks}
-      showStartTab={true}
+      showStartTab={!isChatMode}
     />
   )
 }
