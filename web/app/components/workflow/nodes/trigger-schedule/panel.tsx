@@ -8,6 +8,7 @@ import ModeToggle from './components/mode-toggle'
 import FrequencySelector from './components/frequency-selector'
 import WeekdaySelector from './components/weekday-selector'
 import TimePicker from './components/time-picker'
+import DateTimePicker from './components/date-time-picker'
 import NextExecutionTimes from './components/next-execution-times'
 import ExecuteNowButton from './components/execute-now-button'
 import Input from '@/app/components/base/input'
@@ -67,10 +68,26 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                         : t('workflow.nodes.triggerSchedule.time')
                       }
                     </label>
-                    <TimePicker
-                      value={inputs.visual_config?.time || '11:30 AM'}
-                      onChange={handleTimeChange}
-                    />
+                    {inputs.frequency === 'once' ? (
+                      <DateTimePicker
+                        value={inputs.visual_config?.datetime}
+                        onChange={(datetime) => {
+                          const newInputs = {
+                            ...inputs,
+                            visual_config: {
+                              ...inputs.visual_config,
+                              datetime,
+                            },
+                          }
+                          setInputs(newInputs)
+                        }}
+                      />
+                    ) : (
+                      <TimePicker
+                        value={inputs.visual_config?.time || '11:30 AM'}
+                        onChange={handleTimeChange}
+                      />
+                    )}
                   </div>
                 </div>
 

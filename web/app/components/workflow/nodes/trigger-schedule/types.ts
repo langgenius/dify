@@ -6,6 +6,7 @@ export type ScheduleFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'onc
 
 export type VisualConfig = {
   time?: string
+  datetime?: string
   days?: number[]
   weekdays?: string[]
   recur_every?: number

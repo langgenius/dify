@@ -28,6 +28,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       className="w-full"
       optionWrapClassName="min-w-40"
       notClearable={true}
+      allowSearch={false}
     />
   )
 }

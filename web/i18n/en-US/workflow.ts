@@ -947,6 +947,7 @@ const translation = {
       nextExecutionTimes: 'Next 5 execution times',
       startTime: 'Start Time',
       executeNow: 'Execution now',
+      selectDateTime: 'Select Date & Time',
     },
     triggerWebhook: {
       title: 'Webhook Trigger',
