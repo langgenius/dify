@@ -1046,6 +1046,10 @@ const translation = {
       noDependents: '无被依赖',
     },
   },
+  triggerStatus: {
+    enabled: '触发器',
+    disabled: '触发器 • 已禁用',
+  },
 }
 
 export default translation

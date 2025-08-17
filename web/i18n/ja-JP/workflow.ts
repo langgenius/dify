@@ -1045,6 +1045,10 @@ const translation = {
     copyLastRunError: '最後の実行の入力をコピーできませんでした',
     noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
   },
+  triggerStatus: {
+    enabled: 'トリガー',
+    disabled: 'トリガー • 無効',
+  },
 }
 
 export default translation
