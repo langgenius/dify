@@ -26,8 +26,11 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
       </label>
       <div className="space-y-2 rounded-lg bg-components-input-bg-normal p-3">
         {executionTimes.map((time, index) => (
-          <div key={index} className="text-xs text-text-secondary">
-            {time}
+          <div key={index} className="flex items-baseline gap-3 text-xs text-text-secondary">
+            <span className="select-none font-mono leading-none text-text-quaternary">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <span className="leading-none">{time}</span>
           </div>
         ))}
       </div>
