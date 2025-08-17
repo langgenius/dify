@@ -11,6 +11,12 @@ type DateTimePickerProps = {
 const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
+  const [tempValue, setTempValue] = useState('')
+
+  React.useEffect(() => {
+    if (isOpen)
+      setTempValue('')
+  }, [isOpen])
 
   const getCurrentDateTime = () => {
     if (value) {
@@ -46,18 +52,16 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
 
   const handleDateTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const dateTimeValue = event.target.value
-    if (dateTimeValue) {
-      // datetime-local value is in local timezone, convert to ISO string for storage
-      const date = new Date(dateTimeValue)
-      onChange(date.toISOString())
-    }
+    setTempValue(dateTimeValue)
   }
 
   const getInputValue = () => {
+    if (tempValue)
+      return tempValue
+
     if (value) {
       try {
         const date = new Date(value)
-        // Convert to local datetime format for datetime-local input
         const year = date.getFullYear()
         const month = String(date.getMonth() + 1).padStart(2, '0')
         const day = String(date.getDate()).padStart(2, '0')
@@ -91,7 +95,7 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 w-72 select-none rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
           <div className="mb-3">
             <h3 className="text-sm font-medium text-gray-900">{t('workflow.nodes.triggerSchedule.selectDateTime')}</h3>
           </div>
@@ -113,6 +117,7 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
               onClick={() => {
                 const now = new Date()
                 onChange(now.toISOString())
+                setTempValue('')
                 setIsOpen(false)
               }}
               className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -121,7 +126,14 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
             </button>
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                if (tempValue) {
+                  const date = new Date(tempValue)
+                  onChange(date.toISOString())
+                }
+                setTempValue('')
+                setIsOpen(false)
+              }}
               className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
             >
               {t('common.operation.ok')}
@@ -133,7 +145,10 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
       {isOpen && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
+          onClick={() => {
+            setTempValue('')
+            setIsOpen(false)
+          }}
         />
       )}
     </div>

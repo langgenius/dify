@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiTimeLine } from '@remixicon/react'
 
@@ -18,17 +18,44 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
   const [selectedHour, setSelectedHour] = useState(11)
   const [selectedMinute, setSelectedMinute] = useState(30)
   const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>('AM')
+  const hourContainerRef = useRef<HTMLDivElement>(null)
+  const minuteContainerRef = useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    if (value) {
-      const match = value.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/)
-      if (match) {
-        setSelectedHour(Number.parseInt(match[1], 10))
-        setSelectedMinute(Number.parseInt(match[2], 10))
-        setSelectedPeriod(match[3] as 'AM' | 'PM')
+    if (isOpen) {
+      if (value) {
+        const match = value.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/)
+        if (match) {
+          setSelectedHour(Number.parseInt(match[1], 10))
+          setSelectedMinute(Number.parseInt(match[2], 10))
+          setSelectedPeriod(match[3] as 'AM' | 'PM')
+        }
+      }
+ else {
+        setSelectedHour(11)
+        setSelectedMinute(30)
+        setSelectedPeriod('AM')
       }
     }
-  }, [value])
+  }, [isOpen, value])
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        if (hourContainerRef.current) {
+          const selectedHourElement = hourContainerRef.current.querySelector('.bg-gray-100')
+          if (selectedHourElement)
+            selectedHourElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+
+        if (minuteContainerRef.current) {
+          const selectedMinuteElement = minuteContainerRef.current.querySelector('.bg-gray-100')
+          if (selectedMinuteElement)
+            selectedMinuteElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 50)
+    }
+  }, [isOpen, selectedHour, selectedMinute, selectedPeriod])
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1)
   const minutes = Array.from({ length: 60 }, (_, i) => i)
@@ -45,9 +72,9 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
      else if (hour > 12)
       displayHour = hour - 12
 
-    setSelectedHour(displayHour)
-    setSelectedMinute(minute)
-    setSelectedPeriod(period)
+    const timeString = `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`
+    onChange(timeString)
+    setIsOpen(false)
   }
 
   const handleOK = () => {
@@ -56,8 +83,6 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
     setIsOpen(false)
   }
 
-  const displayTime = `${selectedHour}:${selectedMinute.toString().padStart(2, '0')} ${selectedPeriod}`
-
   return (
     <div className="relative">
       <button
@@ -65,12 +90,12 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-9 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-3 py-1.5 text-sm text-text-secondary hover:bg-components-input-bg-hover"
       >
-        <span>{displayTime}</span>
+        <span>{value}</span>
         <RiTimeLine className="h-4 w-4 text-gray-400" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 w-72 select-none rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
           <div className="mb-3">
             <h3 className="text-sm font-medium text-gray-900">{t('time.title.pickTime')}</h3>
           </div>
@@ -81,8 +106,10 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
             {/* Hours */}
             <div className="flex-1">
               <div
+                ref={hourContainerRef}
                 className="h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden"
                 style={scrollbarHideStyles}
+                data-testid="hour-selector"
               >
                 {hours.map(hour => (
                   <button
@@ -104,8 +131,10 @@ const TimePicker = ({ value = '11:30 AM', onChange }: TimePickerProps) => {
             {/* Minutes */}
             <div className="flex-1">
               <div
+                ref={minuteContainerRef}
                 className="h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden"
                 style={scrollbarHideStyles}
+                data-testid="minute-selector"
               >
                 {minutes.map(minute => (
                   <button
