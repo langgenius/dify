@@ -991,6 +991,10 @@ const translation = {
       noDependencies: 'Brez odvisnosti',
     },
     relationsTab: 'Odnose',
+    copyLastRun: 'Kopiraj zadnji zagon',
+    copyLastRunError: 'Kopiranje vhodov zadnjega zagona ni uspelo',
+    noLastRunFound: 'Nobenega prejšnjega zagona ni bilo najdenega.',
+    noMatchingInputsFound: 'Ni podatkov, ki bi ustrezali prejšnjemu zagonu',
   },
 }
 

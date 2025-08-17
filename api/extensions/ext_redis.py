@@ -1,17 +1,22 @@
 import functools
 import logging
 from collections.abc import Callable
-from typing import Any, Union
+from datetime import timedelta
+from typing import TYPE_CHECKING, Any, Union
 
 import redis
 from redis import RedisError
 from redis.cache import CacheConfig
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
+from redis.lock import Lock
 from redis.sentinel import Sentinel
 
 from configs import dify_config
 from dify_app import DifyApp
+
+if TYPE_CHECKING:
+    from redis.lock import Lock
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +33,8 @@ class RedisClientWrapper:
     a failover in a Sentinel-managed Redis setup.
 
     Attributes:
-        _client (redis.Redis): The actual Redis client instance. It remains None until
-                               initialized with the `initialize` method.
+        _client: The actual Redis client instance. It remains None until
+                 initialized with the `initialize` method.
 
     Methods:
         initialize(client): Initializes the Redis client if it hasn't been initialized already.
@@ -37,20 +42,78 @@ class RedisClientWrapper:
                            if the client is not initialized.
     """
 
-    def __init__(self):
+    _client: Union[redis.Redis, RedisCluster, None]
+
+    def __init__(self) -> None:
         self._client = None
 
-    def initialize(self, client):
+    def initialize(self, client: Union[redis.Redis, RedisCluster]) -> None:
         if self._client is None:
             self._client = client
 
-    def __getattr__(self, item):
+    if TYPE_CHECKING:
+        # Type hints for IDE support and static analysis
+        # These are not executed at runtime but provide type information
+        def get(self, name: str | bytes) -> Any: ...
+
+        def set(
+            self,
+            name: str | bytes,
+            value: Any,
+            ex: int | None = None,
+            px: int | None = None,
+            nx: bool = False,
+            xx: bool = False,
+            keepttl: bool = False,
+            get: bool = False,
+            exat: int | None = None,
+            pxat: int | None = None,
+        ) -> Any: ...
+
+        def setex(self, name: str | bytes, time: int | timedelta, value: Any) -> Any: ...
+        def setnx(self, name: str | bytes, value: Any) -> Any: ...
+        def delete(self, *names: str | bytes) -> Any: ...
+        def incr(self, name: str | bytes, amount: int = 1) -> Any: ...
+        def expire(
+            self,
+            name: str | bytes,
+            time: int | timedelta,
+            nx: bool = False,
+            xx: bool = False,
+            gt: bool = False,
+            lt: bool = False,
+        ) -> Any: ...
+        def lock(
+            self,
+            name: str,
+            timeout: float | None = None,
+            sleep: float = 0.1,
+            blocking: bool = True,
+            blocking_timeout: float | None = None,
+            thread_local: bool = True,
+        ) -> Lock: ...
+        def zadd(
+            self,
+            name: str | bytes,
+            mapping: dict[str | bytes | int | float, float | int | str | bytes],
+            nx: bool = False,
+            xx: bool = False,
+            ch: bool = False,
+            incr: bool = False,
+            gt: bool = False,
+            lt: bool = False,
+        ) -> Any: ...
+        def zremrangebyscore(self, name: str | bytes, min: float | str, max: float | str) -> Any: ...
+        def zcard(self, name: str | bytes) -> Any: ...
+        def getdel(self, name: str | bytes) -> Any: ...
+
+    def __getattr__(self, item: str) -> Any:
         if self._client is None:
             raise RuntimeError("Redis client is not initialized. Call init_app first.")
         return getattr(self._client, item)
 
 
-redis_client = RedisClientWrapper()
+redis_client: RedisClientWrapper = RedisClientWrapper()
 
 
 def init_app(app: DifyApp):
@@ -80,6 +143,9 @@ def init_app(app: DifyApp):
 
     if dify_config.REDIS_USE_SENTINEL:
         assert dify_config.REDIS_SENTINELS is not None, "REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True"
+        assert dify_config.REDIS_SENTINEL_SERVICE_NAME is not None, (
+            "REDIS_SENTINEL_SERVICE_NAME must be set when REDIS_USE_SENTINEL is True"
+        )
         sentinel_hosts = [
             (node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")
         ]

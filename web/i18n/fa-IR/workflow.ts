@@ -991,6 +991,10 @@ const translation = {
       dependentsDescription: 'گره هایی که به این گره متکی هستند',
     },
     relationsTab: 'روابط',
+    copyLastRun: 'کپی آخرین اجرا',
+    noLastRunFound: 'هیچ اجرای قبلی یافت نشد',
+    noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
+    copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
   },
 }
 

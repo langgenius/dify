@@ -7,17 +7,16 @@ from flask_restful import Resource, marshal_with, reqparse
 
 import services
 from controllers.common import helpers
-from controllers.common.errors import RemoteFileUploadError
+from controllers.common.errors import (
+    FileTooLargeError,
+    RemoteFileUploadError,
+    UnsupportedFileTypeError,
+)
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
 from models.account import Account
 from services.file_service import FileService
-
-from .error import (
-    FileTooLargeError,
-    UnsupportedFileTypeError,
-)
 
 
 class RemoteFileInfoApi(Resource):

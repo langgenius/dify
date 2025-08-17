@@ -259,11 +259,11 @@ export const useWorkflow = () => {
 
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
-    const afterNodes = getAfterNodesInSameBranch(nodeId)
-    const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
-    if (effectNodes.length > 0) {
-      const newNodes = getNodes().map((node) => {
-        if (effectNodes.find(n => n.id === node.id))
+    const allNodes = getNodes()
+    const affectedNodes = findUsedVarNodes(oldValeSelector, allNodes)
+    if (affectedNodes.length > 0) {
+      const newNodes = allNodes.map((node) => {
+        if (affectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, oldValeSelector, newVarSelector)
 
         return node
