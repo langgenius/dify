@@ -142,11 +142,7 @@ class MessageDetailApi(Resource):
         try:
             # Use MessageService.get_message with the end_user from API token validation
             # The validate_app_token decorator ensures end_user is always provided
-            message = MessageService.get_message(
-                app_model=app_model,
-                user=end_user,
-                message_id=message_id
-            )
+            message = MessageService.get_message(app_model=app_model, user=end_user, message_id=message_id)
             return message
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

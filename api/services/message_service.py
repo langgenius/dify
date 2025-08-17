@@ -197,19 +197,15 @@ class MessageService:
     def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
         if not user:
             raise MessageNotExistsError()
-            
+
         # Check if this is the default user created by API key validation
         is_default_user = isinstance(user, EndUser) and user.session_id == "DEFAULT-USER" and user.type == "service_api"
-        
+
         if is_default_user:
             # For default user, query messages from API source without user restriction
             message = (
                 db.session.query(Message)
-                .where(
-                    Message.id == message_id,
-                    Message.app_id == app_model.id,
-                    Message.from_source == "api"
-                )
+                .where(Message.id == message_id, Message.app_id == app_model.id, Message.from_source == "api")
                 .first()
             )
         else:
