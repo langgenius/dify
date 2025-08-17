@@ -48,6 +48,7 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
   const handleDateTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const dateTimeValue = event.target.value
     if (dateTimeValue) {
+      // datetime-local value is in local timezone, convert to ISO string for storage
       const date = new Date(dateTimeValue)
       onChange(date.toISOString())
     }
@@ -57,7 +58,13 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
     if (value) {
       try {
         const date = new Date(value)
-        return date.toISOString().slice(0, 16)
+        // Convert to local datetime format for datetime-local input
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${year}-${month}-${day}T${hours}:${minutes}`
       }
  catch {
         // fallback
@@ -67,7 +74,12 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
     const defaultDate = new Date()
     defaultDate.setHours(11, 30, 0, 0)
     defaultDate.setDate(defaultDate.getDate() + 1)
-    return defaultDate.toISOString().slice(0, 16)
+    const year = defaultDate.getFullYear()
+    const month = String(defaultDate.getMonth() + 1).padStart(2, '0')
+    const day = String(defaultDate.getDate()).padStart(2, '0')
+    const hours = String(defaultDate.getHours()).padStart(2, '0')
+    const minutes = String(defaultDate.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
   }
 
   return (

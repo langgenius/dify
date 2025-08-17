@@ -355,6 +355,34 @@ describe('execution-time-calculator', () => {
     })
   })
 
+  describe('getNextExecutionTimes - once frequency', () => {
+    test('returns selected datetime for once frequency', () => {
+      const selectedTime = new Date(2024, 0, 20, 15, 30, 0) // January 20, 2024 3:30 PM
+      const data = createMockData({
+        frequency: 'once',
+        visual_config: {
+          datetime: selectedTime.toISOString(),
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 5)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].getTime()).toBe(selectedTime.getTime())
+    })
+
+    test('returns empty array when no datetime selected for once frequency', () => {
+      const data = createMockData({
+        frequency: 'once',
+        visual_config: {},
+      })
+
+      const result = getNextExecutionTimes(data, 5)
+
+      expect(result).toEqual([])
+    })
+  })
+
   describe('getNextExecutionTimes - fallback behavior', () => {
     test('handles unknown frequency by returning next days', () => {
       const data = createMockData({

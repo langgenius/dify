@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { ScheduleFrequency } from '../types'
@@ -11,17 +11,17 @@ type FrequencySelectorProps = {
 const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
   const { t } = useTranslation()
 
-  const frequencies = [
+  const frequencies = useMemo(() => [
     { value: 'hourly', name: t('workflow.nodes.triggerSchedule.frequency.hourly') },
     { value: 'daily', name: t('workflow.nodes.triggerSchedule.frequency.daily') },
     { value: 'weekly', name: t('workflow.nodes.triggerSchedule.frequency.weekly') },
     { value: 'monthly', name: t('workflow.nodes.triggerSchedule.frequency.monthly') },
     { value: 'once', name: t('workflow.nodes.triggerSchedule.frequency.once') },
-  ]
+  ], [t])
 
   return (
     <SimpleSelect
-      key={frequency} // Force re-render when frequency changes
+      key={`${frequency}-${frequencies[0]?.name}`} // Include translation in key to force re-render
       items={frequencies}
       defaultValue={frequency}
       onSelect={item => onChange(item.value as ScheduleFrequency)}

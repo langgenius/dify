@@ -69,22 +69,29 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
+    const now = getCurrentTime()
+    const currentDay = now.getDay()
+    let daysUntilNext = (targetDay - currentDay + 7) % 7
+
+    const nextExecutionBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+
+    if (daysUntilNext === 0 && nextExecutionBase <= now)
+      daysUntilNext = 7
+
     for (let i = 0; i < count; i++) {
-      const today = getCurrentTime()
-      const currentDay = today.getDay()
-      const daysUntilNext = (targetDay - currentDay + 7) % 7
-
-      const nextExecution = new Date(today.getFullYear(), today.getMonth(), today.getDate(), displayHour, Number.parseInt(minute), 0, 0)
-
-      let finalDate = today.getDate() + daysUntilNext + (i * 7)
-      if (i === 0 && daysUntilNext === 0 && nextExecution <= today)
-        finalDate += 7
-
-      nextExecution.setDate(finalDate)
+      const nextExecution = new Date(nextExecutionBase)
+      nextExecution.setDate(nextExecution.getDate() + daysUntilNext + (i * 7))
       times.push(nextExecution)
     }
   }
+  else if (data.frequency === 'once') {
+    // For 'once' frequency, return the selected datetime
+    const selectedDateTime = data.visual_config?.datetime
+    if (selectedDateTime)
+      times.push(new Date(selectedDateTime))
+  }
   else {
+    // Fallback for unknown frequencies
     for (let i = 0; i < count; i++) {
       const now = getCurrentTime()
       const nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i + 1)
