@@ -6,6 +6,14 @@ const getCurrentTime = (): Date => {
   return new Date()
 }
 
+// Helper function to get default datetime for once/hourly modes - consistent with DateTimePicker
+export const getDefaultDateTime = (): Date => {
+  const defaultDate = new Date()
+  defaultDate.setHours(11, 30, 0, 0)
+  defaultDate.setDate(defaultDate.getDate() + 1)
+  return defaultDate
+}
+
 export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): Date[] => {
   if (data.mode === 'cron') {
     if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
@@ -180,6 +188,10 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   const times = getFormattedExecutionTimes(data, 1)
   if (times.length === 0) {
+    if (data.frequency === 'once') {
+      const defaultDate = getDefaultDateTime()
+      return formatExecutionTime(defaultDate, false)
+    }
     const now = getCurrentTime()
     const includeWeekday = data.frequency === 'weekly'
     return formatExecutionTime(now, includeWeekday)

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCalendarLine } from '@remixicon/react'
+import { getDefaultDateTime } from '../utils/execution-time-calculator'
 
 type DateTimePickerProps = {
   value?: string
@@ -30,9 +31,7 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
       }
     }
 
-    const defaultDate = new Date()
-    defaultDate.setHours(11, 30, 0, 0)
-    defaultDate.setDate(defaultDate.getDate() + 1)
+    const defaultDate = getDefaultDateTime()
 
     return `${defaultDate.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -71,9 +70,7 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
       }
     }
 
-    const defaultDate = new Date()
-    defaultDate.setHours(11, 30, 0, 0)
-    defaultDate.setDate(defaultDate.getDate() + 1)
+    const defaultDate = getDefaultDateTime()
     const year = defaultDate.getFullYear()
     const month = String(defaultDate.getMonth() + 1).padStart(2, '0')
     const day = String(defaultDate.getDate()).padStart(2, '0')

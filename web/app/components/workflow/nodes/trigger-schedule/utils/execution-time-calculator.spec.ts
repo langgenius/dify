@@ -1,4 +1,4 @@
-import { formatExecutionTime, getFormattedExecutionTimes, getNextExecutionTime, getNextExecutionTimes } from './execution-time-calculator'
+import { formatExecutionTime, getDefaultDateTime, getFormattedExecutionTimes, getNextExecutionTime, getNextExecutionTimes } from './execution-time-calculator'
 import type { ScheduleTriggerNodeType } from '../types'
 
 const createMockData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
@@ -467,7 +467,7 @@ describe('execution-time-calculator', () => {
       expect(result).toMatch(/January \d+, 2024 2:30 PM/)
     })
 
-    test('returns current time when no execution times available', () => {
+    test('returns current time when no execution times available for non-once frequencies', () => {
       const data = createMockData({
         mode: 'cron',
         cron_expression: 'invalid',
@@ -476,6 +476,31 @@ describe('execution-time-calculator', () => {
       const result = getNextExecutionTime(data)
 
       expect(result).toMatch(/January 15, 2024 10:00 AM/)
+    })
+
+    test('returns default datetime for once frequency when no datetime configured', () => {
+      const data = createMockData({
+        frequency: 'once',
+        visual_config: {},
+      })
+
+      const result = getNextExecutionTime(data)
+
+      expect(result).toMatch(/January 16, 2024 11:30 AM/)
+    })
+
+    test('returns configured datetime for once frequency when available', () => {
+      const selectedTime = new Date(2024, 0, 20, 15, 30, 0)
+      const data = createMockData({
+        frequency: 'once',
+        visual_config: {
+          datetime: selectedTime.toISOString(),
+        },
+      })
+
+      const result = getNextExecutionTime(data)
+
+      expect(result).toMatch(/January 20, 2024 3:30 PM/)
     })
 
     test('applies correct weekday formatting based on frequency', () => {
@@ -740,6 +765,31 @@ describe('execution-time-calculator', () => {
         expect(date.getHours()).toBe(10)
         expect(date.getMinutes()).toBe(0)
       })
+    })
+  })
+
+  describe('getDefaultDateTime', () => {
+    test('returns consistent default datetime', () => {
+      const defaultDate = getDefaultDateTime()
+
+      expect(defaultDate.getHours()).toBe(11)
+      expect(defaultDate.getMinutes()).toBe(30)
+      expect(defaultDate.getSeconds()).toBe(0)
+      expect(defaultDate.getMilliseconds()).toBe(0)
+      expect(defaultDate.getDate()).toBe(new Date().getDate() + 1)
+    })
+
+    test('default datetime matches DateTimePicker fallback behavior', () => {
+      const data = createMockData({
+        frequency: 'once',
+        visual_config: {},
+      })
+
+      const nextExecutionTime = getNextExecutionTime(data)
+      const defaultDate = getDefaultDateTime()
+      const expectedFormat = formatExecutionTime(defaultDate, false)
+
+      expect(nextExecutionTime).toBe(expectedFormat)
     })
   })
 })
