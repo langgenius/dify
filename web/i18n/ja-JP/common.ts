@@ -66,6 +66,7 @@ const translation = {
     more: 'もっと',
     selectAll: 'すべて選択',
     deSelectAll: 'すべて選択解除',
+    now: '今',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
