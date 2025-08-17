@@ -966,6 +966,10 @@ const translation = {
       configPlaceholder: 'Plugin trigger configuration will be implemented here',
     },
   },
+  triggerStatus: {
+    enabled: 'TRIGGER',
+    disabled: 'TRIGGER • DISABLED',
+  },
   tracing: {
     stopBy: 'Stop by {{user}}',
   },
