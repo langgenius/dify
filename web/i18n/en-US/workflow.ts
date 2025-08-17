@@ -945,6 +945,8 @@ const translation = {
       cronExpression: 'Cron expression',
       nextExecutionTime: 'NEXT EXECUTION TIME',
       nextExecutionTimes: 'Next 5 execution times',
+      startTime: 'Start Time',
+      executeNow: 'Execution now',
     },
     triggerWebhook: {
       title: 'Webhook Trigger',

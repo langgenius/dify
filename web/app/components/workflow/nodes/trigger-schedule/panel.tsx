@@ -9,6 +9,7 @@ import FrequencySelector from './components/frequency-selector'
 import WeekdaySelector from './components/weekday-selector'
 import TimePicker from './components/time-picker'
 import NextExecutionTimes from './components/next-execution-times'
+import ExecuteNowButton from './components/execute-now-button'
 import Input from '@/app/components/base/input'
 import useConfig from './use-config'
 
@@ -27,6 +28,11 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
     handleWeekdaysChange,
     handleTimeChange,
   } = useConfig(id, data)
+
+  const handleExecuteNow = () => {
+    // TODO: Implement execute now functionality
+    console.log('Execute now clicked')
+  }
 
   return (
     <div className='mt-2'>
@@ -56,7 +62,10 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                   </div>
                   <div className="col-span-2">
                     <label className="mb-2 block text-xs font-medium text-gray-500">
-                      {t('workflow.nodes.triggerSchedule.time')}
+                      {inputs.frequency === 'hourly' || inputs.frequency === 'once'
+                        ? t('workflow.nodes.triggerSchedule.startTime')
+                        : t('workflow.nodes.triggerSchedule.time')
+                      }
                     </label>
                     <TimePicker
                       value={inputs.visual_config?.time || '11:30 AM'}
@@ -98,6 +107,10 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
         <div className="border-t border-divider-subtle"></div>
 
         <NextExecutionTimes data={inputs} />
+
+        <div className="pt-2">
+          <ExecuteNowButton onClick={handleExecuteNow} />
+        </div>
       </div>
     </div>
   )
