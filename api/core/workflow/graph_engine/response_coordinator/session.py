@@ -26,7 +26,7 @@ class ResponseSession:
     index: int = 0  # Current position in the template segments
 
     @classmethod
-    def from_node(cls, node: Node):
+    def from_node(cls, node: Node) -> "ResponseSession":
         """
         Create a ResponseSession from an AnswerNode or EndNode.
 

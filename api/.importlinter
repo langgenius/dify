@@ -41,15 +41,6 @@ layers =
 containers =
     core.workflow.graph_engine
 
-[importlinter:contract:executing-nodes-manager]
-name = Executing nodes manager
-type = layers
-layers = 
-    graph_engine
-    executing_nodes_manager
-containers =
-    core.workflow.graph_engine
-
 [importlinter:contract:worker]
 name = Worker
 type = layers
@@ -58,3 +49,74 @@ layers =
     worker
 containers =
     core.workflow.graph_engine
+
+[importlinter:contract:graph-engine-architecture]
+name = Graph Engine Architecture
+type = layers
+layers =
+    graph_engine
+    orchestration
+    command_processing
+    event_management
+    error_handling
+    graph_traversal
+    state_management
+    worker_management
+    domain
+containers =
+    core.workflow.graph_engine
+
+[importlinter:contract:domain-isolation]
+name = Domain Model Isolation
+type = forbidden
+source_modules =
+    core.workflow.graph_engine.domain
+forbidden_modules =
+    core.workflow.graph_engine.worker_management
+    core.workflow.graph_engine.command_channels
+    core.workflow.graph_engine.layers
+    core.workflow.graph_engine.protocols
+
+[importlinter:contract:state-management-layers]
+name = State Management Layers
+type = layers
+layers =
+    execution_tracker
+    node_state_manager
+    edge_state_manager
+containers =
+    core.workflow.graph_engine.state_management
+
+[importlinter:contract:worker-management-layers]
+name = Worker Management Layers  
+type = layers
+layers =
+    worker_pool
+    worker_factory
+    dynamic_scaler
+    activity_tracker
+containers =
+    core.workflow.graph_engine.worker_management
+
+[importlinter:contract:error-handling-strategies]
+name = Error Handling Strategies
+type = independence
+modules =
+    core.workflow.graph_engine.error_handling.abort_strategy
+    core.workflow.graph_engine.error_handling.retry_strategy
+    core.workflow.graph_engine.error_handling.fail_branch_strategy
+    core.workflow.graph_engine.error_handling.default_value_strategy
+
+[importlinter:contract:graph-traversal-components]
+name = Graph Traversal Components
+type = independence
+modules =
+    core.workflow.graph_engine.graph_traversal.node_readiness
+    core.workflow.graph_engine.graph_traversal.skip_propagator
+
+[importlinter:contract:command-channels]
+name = Command Channels Independence
+type = independence
+modules =
+    core.workflow.graph_engine.command_channels.in_memory_channel
+    core.workflow.graph_engine.command_channels.redis_channel
