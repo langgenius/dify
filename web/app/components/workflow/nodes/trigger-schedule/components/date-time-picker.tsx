@@ -101,10 +101,14 @@ const DateTimePicker = ({ value, onChange }: DateTimePickerProps) => {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                const now = new Date()
+                onChange(now.toISOString())
+                setIsOpen(false)
+              }}
               className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              {t('common.operation.cancel')}
+              {t('common.operation.now')}
             </button>
             <button
               type="button"

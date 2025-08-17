@@ -23,6 +23,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
   const { t } = useTranslation()
   const {
     inputs,
+    setInputs,
     handleModeChange,
     handleFrequencyChange,
     handleCronExpressionChange,
@@ -68,7 +69,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                         : t('workflow.nodes.triggerSchedule.time')
                       }
                     </label>
-                    {inputs.frequency === 'once' ? (
+                    {inputs.frequency === 'hourly' || inputs.frequency === 'once' ? (
                       <DateTimePicker
                         value={inputs.visual_config?.datetime}
                         onChange={(datetime) => {

@@ -70,6 +70,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   return {
     readOnly,
     inputs,
+    setInputs,
     handleModeChange,
     handleFrequencyChange,
     handleCronExpressionChange,
