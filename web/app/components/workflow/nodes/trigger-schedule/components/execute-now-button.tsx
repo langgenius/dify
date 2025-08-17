@@ -14,7 +14,7 @@ const ExecuteNowButton = ({ onClick, disabled = false }: ExecuteNowButtonProps) 
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-lg border border-gray-200 bg-white py-1.5 text-xs font-medium text-gray-900 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+      className="w-full rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-1.5 text-xs font-medium text-components-button-secondary-text shadow-xs hover:bg-components-button-secondary-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
     >
       {t('workflow.nodes.triggerSchedule.executeNow')}
     </button>
