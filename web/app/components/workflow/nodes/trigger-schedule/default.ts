@@ -12,7 +12,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
       time: '11:30 AM',
       weekdays: ['sun'],
     },
-    timezone: 'UTC',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     enabled: true,
   },
   getAvailablePrevNodes(_isChatMode: boolean) {
