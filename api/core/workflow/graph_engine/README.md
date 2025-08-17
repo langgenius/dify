@@ -161,38 +161,6 @@ flowchart TB
     Disp --> |Monitor| EventQueue
 ```
 
-## Key Design Principles
-
-### 1. Domain-Driven Design
-
-- Clear bounded contexts for each subsystem
-- Domain models isolated from infrastructure
-- Ubiquitous language throughout the codebase
-
-### 2. Single Responsibility
-
-- Each package has one clear purpose
-- Minimal coupling between packages
-- High cohesion within packages
-
-### 3. Dependency Injection
-
-- All dependencies explicitly injected
-- Interfaces/protocols for abstraction
-- Easy testing and mocking
-
-### 4. Thread Safety
-
-- Proper synchronization primitives
-- Thread-safe state management
-- Lock-free designs where possible
-
-### 5. Event-Driven Architecture
-
-- Loosely coupled event flow
-- Clean separation of concerns
-- Extensible through event handlers
-
 ## Usage Example
 
 ```python
@@ -236,23 +204,4 @@ manager = GraphEngineManager()
 
 # Stop a running workflow
 manager.stop_workflow(workflow_id="workflow_123")
-```
-
-## Testing
-
-The modular architecture makes testing straightforward:
-
-```python
-# Test individual components in isolation
-error_handler = ErrorHandler(graph)
-error_handler.register_strategy(ErrorStrategy.RETRY, RetryStrategy())
-
-# Test with mock dependencies
-mock_graph = MagicMock(spec=Graph)
-edge_processor = EdgeProcessor(
-    graph=mock_graph,
-    edge_state_manager=mock_edge_manager,
-    node_state_manager=mock_node_manager,
-    response_coordinator=mock_coordinator,
-)
 ```
