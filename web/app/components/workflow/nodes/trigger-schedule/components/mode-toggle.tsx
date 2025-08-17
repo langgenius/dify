@@ -26,7 +26,7 @@ const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
     <button
       type="button"
       onClick={handleToggle}
-      className="flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
+      className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
     >
       {React.createElement(currentIcon, { className: 'w-3 h-3' })}
       <span>{currentText}</span>

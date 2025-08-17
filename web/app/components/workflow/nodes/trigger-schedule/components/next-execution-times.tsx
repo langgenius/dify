@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ScheduleTriggerNodeType } from '../types'
+import { isValidCronExpression, parseCronExpression } from '../utils/cron-parser'
 
 type NextExecutionTimesProps = {
   data: ScheduleTriggerNodeType
@@ -10,6 +11,26 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
   const { t } = useTranslation()
 
   const getNextExecutionTimes = () => {
+    if (data.mode === 'cron') {
+      if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
+        return []
+
+      const nextDates = parseCronExpression(data.cron_expression)
+      return nextDates.map((date) => {
+        const formattedTime = `${date.toLocaleDateString('en-US', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })} ${date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })}`
+        return formattedTime
+      })
+    }
+
     const times: string[] = []
     const defaultTime = data.visual_config?.time || '11:30 AM'
 
@@ -99,6 +120,9 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
   }
 
   const executionTimes = getNextExecutionTimes()
+
+  if (executionTimes.length === 0)
+    return null
 
   return (
     <div className="space-y-2">
