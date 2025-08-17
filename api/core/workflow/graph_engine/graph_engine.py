@@ -11,7 +11,7 @@ import queue
 import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Optional, TypedDict, cast
+from typing import Any, Optional, TypedDict
 
 from flask import Flask, current_app
 
@@ -51,7 +51,7 @@ from core.workflow.graph_events import (
 from core.workflow.node_events import NodeRunResult
 from models.enums import UserFrom
 
-from .entities.commands import AbortCommand, CommandType, GraphEngineCommand
+from .entities.commands import AbortCommand, GraphEngineCommand
 from .executing_nodes_manager import ExecutingNodesManager
 from .layers.base import Layer
 from .output_registry import OutputRegistry
@@ -961,8 +961,8 @@ class GraphEngine:
         Args:
             command: The command to handle
         """
-        if command.command_type == CommandType.ABORT:
-            self._handle_abort_command(cast(AbortCommand, command))
+        if isinstance(command, AbortCommand):
+            self._handle_abort_command(command)
         # Add other command type handlers here as needed
 
     def _handle_abort_command(self, command: AbortCommand) -> None:
