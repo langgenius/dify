@@ -12,6 +12,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
   const { t } = useTranslation()
 
   const frequencies = useMemo(() => [
+    { value: 'frequency-header', name: t('workflow.nodes.triggerSchedule.frequency.label'), isGroup: true },
     { value: 'hourly', name: t('workflow.nodes.triggerSchedule.frequency.hourly') },
     { value: 'daily', name: t('workflow.nodes.triggerSchedule.frequency.daily') },
     { value: 'weekly', name: t('workflow.nodes.triggerSchedule.frequency.weekly') },

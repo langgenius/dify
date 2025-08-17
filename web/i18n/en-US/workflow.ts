@@ -931,6 +931,7 @@ const translation = {
       useCronExpression: 'Use cron expression',
       useVisualPicker: 'Use visual picker',
       frequency: {
+        label: 'FREQUENCY',
         hourly: 'Hourly',
         daily: 'Daily',
         weekly: 'Weekly',
