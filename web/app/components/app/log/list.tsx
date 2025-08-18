@@ -539,7 +539,13 @@ finally {
  else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
       scrollContainer = chatContainer
     }
- else {
+    else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
+      scrollContainer = scrollableDiv
+    }
+    else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
+      scrollContainer = chatContainer
+    }
+    else {
       const possibleContainers = document.querySelectorAll('.overflow-auto, .overflow-y-auto')
       for (let i = 0; i < possibleContainers.length; i++) {
         const container = possibleContainers[i] as HTMLElement
