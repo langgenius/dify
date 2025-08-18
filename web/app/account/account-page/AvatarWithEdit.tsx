@@ -28,6 +28,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [isShowDeleteConfirm, setIsShowDeleteConfirm] = useState(false)
+  const [hoverArea, setHoverArea] = useState<string>('left')
 
   const handleImageInput: OnImageInput = useCallback(async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
     setInputImageInfo(
@@ -100,23 +101,20 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
           <Avatar {...props} />
           <div
             className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+            onClick={() => hoverArea === 'right' ? setIsShowDeleteConfirm(true) : setIsShowAvatarPicker(true)}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              const x = e.clientX - rect.left
+              const isRight = x > rect.width / 2
+              setHoverArea(isRight ? 'right' : 'left')
+            }}
           >
-            <div className="flex gap-2">
-              <span
-                className="rounded-full p-1 text-xs text-white hover:bg-black/30"
-                onClick={() => { setIsShowAvatarPicker(true) }}
-              >
-                <RiPencilLine />
-              </span>
-              {props.avatar && (
-                <span
-                  className="rounded-full p-1 text-xs text-white hover:bg-black/30"
-                  onClick={() => { setIsShowDeleteConfirm(true) }}
-                >
-                  <RiDeleteBin5Line />
-                </span>
-              )}
-            </div>
+            {hoverArea === 'right' ? <span className="text-xs text-white">
+              <RiDeleteBin5Line />
+            </span> : <span className="text-xs text-white">
+              <RiPencilLine />
+            </span>}
+
           </div>
         </div>
       </div>
@@ -155,7 +153,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
             {t('common.operation.cancel')}
           </Button>
 
-          <Button variant="danger" className="w-full" onClick={handleDeleteAvatar}>
+          <Button variant="warning" className="w-full" onClick={handleDeleteAvatar}>
             {t('common.operation.delete')}
           </Button>
         </div>
