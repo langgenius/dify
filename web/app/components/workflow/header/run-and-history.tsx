@@ -15,6 +15,8 @@ import {
 import { WorkflowRunningStatus } from '../types'
 import ViewHistory from './view-history'
 import Checklist from './checklist'
+import TestRunDropdown, { createMockOptions } from './test-run-dropdown'
+import type { TriggerOption } from './test-run-dropdown'
 import cn from '@/utils/classnames'
 import {
   StopCircle,
@@ -35,6 +37,11 @@ const RunMode = memo(() => {
     handleStopRun(workflowRunningData?.task_id || '')
   }
 
+  const handleTriggerSelect = (option: TriggerOption) => {
+    console.log('Selected trigger:', option)
+    handleWorkflowStartRunInWorkflow()
+  }
+
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === EVENT_WORKFLOW_STOP)
@@ -43,33 +50,35 @@ const RunMode = memo(() => {
 
   return (
     <>
-      <div
-        className={cn(
-          'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
-          'cursor-pointer hover:bg-state-accent-hover',
-          isRunning && '!cursor-not-allowed bg-state-accent-hover',
-        )}
-        onClick={() => {
-          handleWorkflowStartRunInWorkflow()
-        }}
-      >
-        {
-          isRunning
-            ? (
-              <>
-                <RiLoader2Line className='mr-1 h-4 w-4 animate-spin' />
-                {t('workflow.common.running')}
-              </>
-            )
-            : (
-              <>
+      {
+        isRunning
+          ? (
+            <div
+              className={cn(
+                'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
+                '!cursor-not-allowed bg-state-accent-hover',
+              )}
+            >
+              <RiLoader2Line className='mr-1 h-4 w-4 animate-spin' />
+              {t('workflow.common.running')}
+            </div>
+          )
+          : (
+            <TestRunDropdown options={createMockOptions()} onSelect={handleTriggerSelect}>
+              <div
+                className={cn(
+                  'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
+                  'cursor-pointer hover:bg-state-accent-hover',
+                )}
+                style={{ userSelect: 'none' }}
+              >
                 <RiPlayLargeLine className='mr-1 h-4 w-4' />
                 {t('workflow.common.run')}
                 <ShortcutsName keys={['alt', 'r']} className="ml-1" textColor="secondary" />
-              </>
-            )
-        }
-      </div>
+              </div>
+            </TestRunDropdown>
+          )
+      }
       {
         isRunning && (
           <div
