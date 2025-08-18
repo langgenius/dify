@@ -83,7 +83,34 @@ class Mail:
             case _:
                 raise ValueError(f"Unsupported mail type {mail_type}")
 
-    def send(self, to: str, subject: str, html: str, from_: str | None = None):
+    def _get_oauth_token(self) -> Optional[str]:
+        """Get OAuth access token using client credentials flow"""
+        try:
+            from libs.mail.oauth_email import MicrosoftEmailOAuth
+
+            client_id = dify_config.MICROSOFT_OAUTH2_CLIENT_ID
+            client_secret = dify_config.MICROSOFT_OAUTH2_CLIENT_SECRET
+            tenant_id = dify_config.MICROSOFT_OAUTH2_TENANT_ID or "common"
+
+            if not client_id or not client_secret:
+                return None
+
+            oauth_client = MicrosoftEmailOAuth(
+                client_id=client_id,
+                client_secret=client_secret,
+                redirect_uri="",  # Not needed for client credentials flow
+                tenant_id=tenant_id,
+            )
+
+            token_response = oauth_client.get_access_token_client_credentials()
+            access_token = token_response.get("access_token")
+            return str(access_token) if access_token is not None else None
+
+        except Exception as e:
+            logging.warning("Failed to obtain OAuth 2.0 access token: %s", str(e))
+            return None
+
+    def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
         if not self._client:
             raise ValueError("Mail client is not initialized")
 
