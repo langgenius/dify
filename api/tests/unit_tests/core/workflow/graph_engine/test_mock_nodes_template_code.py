@@ -15,7 +15,7 @@ class TestMockTemplateTransformNode:
     """Test cases for MockTemplateTransformNode."""
 
     def test_mock_template_transform_node_default_output(self):
-        """Test that MockTemplateTransformNode returns default output."""
+        """Test that MockTemplateTransformNode processes templates with Jinja2."""
         from core.workflow.entities import GraphInitParams, GraphRuntimeState
         from core.workflow.entities.variable_pool import VariablePool
 
@@ -71,7 +71,8 @@ class TestMockTemplateTransformNode:
         # Verify results
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert "output" in result.outputs
-        assert result.outputs["output"] == "This is mocked template transform output"
+        # The template "Hello {{ name }}" with no name variable renders as "Hello "
+        assert result.outputs["output"] == "Hello "
 
     def test_mock_template_transform_node_custom_output(self):
         """Test that MockTemplateTransformNode returns custom configured output."""
@@ -191,6 +192,69 @@ class TestMockTemplateTransformNode:
         # Verify results
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error == "Simulated template error"
+
+    def test_mock_template_transform_node_with_variables(self):
+        """Test that MockTemplateTransformNode processes templates with variables."""
+        from core.variables import StringVariable
+        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.entities.variable_pool import VariablePool
+
+        # Create test parameters
+        graph_init_params = GraphInitParams(
+            tenant_id="test_tenant",
+            app_id="test_app",
+            workflow_id="test_workflow",
+            graph_config={},
+            user_id="test_user",
+            user_from="account",
+            invoke_from="debugger",
+            call_depth=0,
+        )
+
+        variable_pool = VariablePool(
+            system_variables={},
+            user_inputs={},
+        )
+
+        # Add a variable to the pool
+        variable_pool.add(["test", "name"], StringVariable(name="name", value="World", selector=["test", "name"]))
+
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool,
+            start_at=0,
+        )
+
+        # Create mock config
+        mock_config = MockConfig()
+
+        # Create node config with a variable
+        node_config = {
+            "id": "template_node_1",
+            "data": {
+                "type": "template-transform",
+                "title": "Test Template Transform",
+                "variables": [{"variable": "name", "value_selector": ["test", "name"]}],
+                "template": "Hello {{ name }}!",
+            },
+        }
+
+        # Create mock node
+        mock_node = MockTemplateTransformNode(
+            id="template_node_1",
+            config=node_config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+            mock_config=mock_config,
+        )
+        mock_node.init_node_data(node_config["data"])
+
+        # Run the node
+        result = mock_node._run()
+
+        # Verify results
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert "output" in result.outputs
+        assert result.outputs["output"] == "Hello World!"
 
 
 class TestMockCodeNode:
