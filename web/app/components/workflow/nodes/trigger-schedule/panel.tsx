@@ -76,6 +76,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                     </label>
                     {inputs.frequency === 'hourly' || inputs.frequency === 'once' ? (
                       <DatePicker
+                        notClearable={true}
                         value={inputs.visual_config?.datetime ? dayjs(inputs.visual_config.datetime) : dayjs()}
                         onChange={(date) => {
                           const newInputs = {
@@ -102,6 +103,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                       />
                     ) : (
                       <TimePicker
+                        notClearable={true}
                         value={inputs.visual_config?.time
                           ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
                           : dayjs('1/1/2000 11:30 AM')

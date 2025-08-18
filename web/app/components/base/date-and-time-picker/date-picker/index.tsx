@@ -36,6 +36,7 @@ const DatePicker = ({
   renderTrigger,
   triggerWrapClassName,
   popupZIndexClassname = 'z-[11]',
+  notClearable = false,
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -224,15 +225,17 @@ const DatePicker = ({
             <RiCalendarLine className={cn(
               'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-              (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
+              (displayValue || (isOpen && selectedDate)) && !notClearable && 'group-hover:hidden',
             )} />
-            <RiCloseCircleFill
-              className={cn(
-                'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
-              )}
-              onClick={handleClear}
-            />
+            {!notClearable && (
+              <RiCloseCircleFill
+                className={cn(
+                  'hidden h-4 w-4 shrink-0 text-text-quaternary',
+                  (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
+                )}
+                onClick={handleClear}
+              />
+            )}
           </div>
         )}
       </PortalToFollowElemTrigger>
