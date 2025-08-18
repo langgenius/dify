@@ -7,7 +7,6 @@ import {
   RiBook2Line,
   RiFileEditLine,
   RiGraduationCapLine,
-  RiGroup3Line,
   RiGroupLine,
 } from '@remixicon/react'
 import { Plan, SelfHostedPlan } from '../type'
@@ -22,7 +21,7 @@ import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useEducationVerify } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
-import { Professional, Sandbox, Team } from './assets'
+import { Enterprise, Professional, Sandbox, Team } from './assets'
 
 type Props = {
   loc: string
@@ -69,7 +68,7 @@ const PlanComp: FC<Props> = ({
           <Team />
         )}
         {(plan.type as any) === SelfHostedPlan.enterprise && (
-          <RiGroup3Line className='h-7 w-7 text-util-colors-indigo-indigo-600' />
+          <Enterprise />
         )}
         <div className='mt-1 flex items-center'>
           <div className='grow'>
