@@ -50,6 +50,7 @@ from .exc import (
     AgentInputTypeError,
     AgentInvocationError,
     AgentMessageTransformError,
+    AgentNodeError,
     AgentVariableNotFoundError,
     AgentVariableTypeError,
     ToolFileNotFoundError,
@@ -309,7 +310,7 @@ class AgentNode(BaseNode):
                             }
                         )
                     value = tool_value
-                if parameter.type == "model-selector":
+                if parameter.type == AgentStrategyParameter.AgentStrategyParameterType.MODEL_SELECTOR:
                     value = cast(dict[str, Any], value)
                     model_instance, model_schema = self._fetch_model(value)
                     # memory config
@@ -593,7 +594,14 @@ class AgentNode(BaseNode):
                     variables[variable_name] = variable_value
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
-                assert isinstance(message.meta, File)
+                assert isinstance(message.meta, dict)
+                # Validate that meta contains a 'file' key
+                if "file" not in message.meta:
+                    raise AgentNodeError("File message is missing 'file' key in meta")
+
+                # Validate that the file is an instance of File
+                if not isinstance(message.meta["file"], File):
+                    raise AgentNodeError(f"Expected File object but got {type(message.meta['file']).__name__}")
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)

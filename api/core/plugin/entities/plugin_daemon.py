@@ -182,6 +182,10 @@ class PluginOAuthAuthorizationUrlResponse(BaseModel):
 
 
 class PluginOAuthCredentialsResponse(BaseModel):
+    metadata: Mapping[str, Any] = Field(
+        default_factory=dict, description="The metadata of the OAuth, like avatar url, name, etc."
+    )
+    expires_at: int = Field(default=-1, description="The expires at time of the credentials. UTC timestamp.")
     credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")
 
 

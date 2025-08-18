@@ -84,6 +84,16 @@ const translation = {
     endpointDeleteContent: 'Czy chcesz usunąć {{name}}?',
     endpointsTip: 'Ta wtyczka zapewnia określone funkcje za pośrednictwem punktów końcowych i można skonfigurować wiele zestawów punktów końcowych dla bieżącego obszaru roboczego.',
     modelNum: '{{liczba}} MODELE W ZESTAWIE',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'dostosowania biznesowe',
+        ownershipTransferred: 'własność przekazana',
+        noMaintainer: 'brak opiekuna',
+      },
+      onlyReason: 'Ten plugin został wycofany z użycia z powodu {{deprecatedReason}} i nie będzie już aktualizowany.',
+      noReason: 'Ten wtyczka została przestarzała i nie będzie dłużej aktualizowana.',
+      fullMessage: 'Ten plugin został wycofany z użycia z powodu {{deprecatedReason}} i nie będzie już aktualizowany. Proszę użyć zamiast tego <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>.',
+    },
   },
   debugInfo: {
     viewDocs: 'Wyświetlanie dokumentów',
@@ -236,6 +246,57 @@ const translation = {
     addOAuth: 'Dodaj OAuth',
     useApiAuthDesc: 'Po skonfigurowaniu poświadczeń wszyscy członkowie w przestrzeni roboczej mogą korzystać z tego narzędzia podczas orkiestracji aplikacji.',
     clientInfo: 'Ponieważ nie znaleziono tajemnic klientów systemu dla tego dostawcy narzędzi, wymagane jest ręczne skonfigurowanie, dla redirect_uri proszę użyć',
+  },
+  deprecated: 'Nieaktualny',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        description: 'Wtyczki nie będą się automatycznie aktualizować',
+        name: 'Niepełnosprawny',
+      },
+      fixOnly: {
+        selectedDescription: 'Automatyczna aktualizacja tylko dla wersji poprawek',
+        name: 'Napraw tylko',
+        description: 'Automatyczna aktualizacja tylko dla wersji łatkowych (np. 1.0.1 → 1.0.2). Zmiany w wersjach mniejszych nie będą wywoływać aktualizacji.',
+      },
+      latest: {
+        name: 'Najświeższy',
+        description: 'Zawsze aktualizuj do najnowszej wersji',
+        selectedDescription: 'Zawsze aktualizuj do najnowszej wersji',
+      },
+    },
+    upgradeMode: {
+      all: 'Zaktualizuj wszystko',
+      partial: 'Tylko wybrane',
+      exclude: 'Wyłącz wybrane',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Wybrane wtyczki nie będą aktualizować się automatycznie.',
+      partial: 'Tylko wybrane wtyczki będą się aktualizować automatycznie. Obecnie nie wybrano żadnych wtyczek, więc żadna wtyczka nie będzie się automatycznie aktualizować.',
+    },
+    operation: {
+      clearAll: 'Wyczyść wszystko',
+      select: 'Wybierz wtyczki',
+    },
+    pluginDowngradeWarning: {
+      exclude: 'Wyłącz z automatycznej aktualizacji',
+      downgrade: 'Zrób downgrade tak czy inaczej',
+      title: 'Obniżenie wersji wtyczki',
+      description: 'Automatyczna aktualizacja jest obecnie włączona dla tej wtyczki. Obniżenie wersji może spowodować, że twoje zmiany zostaną nadpisane podczas następnej automatycznej aktualizacji.',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'Brak zainstalowanych wtyczek',
+      noFound: 'Nie znaleziono wtyczek',
+    },
+    updateTime: 'Czas aktualizacji',
+    updateSettings: 'Zaktualizuj ustawienia',
+    updateTimeTitle: 'Czas aktualizacji',
+    specifyPluginsToUpdate: 'Określ wtyczki do zaktualizowania',
+    nextUpdateTime: 'Następna automatyczna aktualizacja: {{time}}',
+    automaticUpdates: 'Automatyczne aktualizacje',
+    excludeUpdate: 'Następujące {{num}} wtyczki nie będą aktualizować się automatycznie',
+    changeTimezone: 'Aby zmienić strefę czasową, przejdź do <setTimezone>Ustawienia</setTimezone>',
+    partialUPdate: 'Tylko następujące {{num}} wtyczki będą się automatycznie aktualizować',
   },
 }
 

@@ -330,17 +330,17 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum connection timeout in seconds for HTTP requests")
-    ] = 10
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
+        ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
+    )
 
-    HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=60, description="Maximum read timeout in seconds for HTTP requests")
-    ] = 60
+    HTTP_REQUEST_MAX_READ_TIMEOUT: int = Field(
+        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=60
+    )
 
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum write timeout in seconds for HTTP requests")
-    ] = 20
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = Field(
+        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=20
+    )
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
         description="Maximum allowed size in bytes for binary data in HTTP requests",
@@ -552,12 +552,18 @@ class RepositoryConfig(BaseSettings):
     """
 
     CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowExecution. Specify as a module path",
+        description="Repository implementation for WorkflowExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
     )
 
     CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowNodeExecution. Specify as a module path",
+        description="Repository implementation for WorkflowNodeExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_node_execution_repository."
+        "SQLAlchemyWorkflowNodeExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_node_execution_repository."
+        "CeleryWorkflowNodeExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
     )
 
@@ -832,6 +838,41 @@ class CeleryBeatConfig(BaseSettings):
     )
 
 
+class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
+        description="Enable clean embedding cache task",
+        default=False,
+    )
+    ENABLE_CLEAN_UNUSED_DATASETS_TASK: bool = Field(
+        description="Enable clean unused datasets task",
+        default=False,
+    )
+    ENABLE_CREATE_TIDB_SERVERLESS_TASK: bool = Field(
+        description="Enable create tidb service job task",
+        default=False,
+    )
+    ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK: bool = Field(
+        description="Enable update tidb service job status task",
+        default=False,
+    )
+    ENABLE_CLEAN_MESSAGES: bool = Field(
+        description="Enable clean messages task",
+        default=False,
+    )
+    ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
+        description="Enable mail clean document notify task",
+        default=False,
+    )
+    ENABLE_DATASETS_QUEUE_MONITOR: bool = Field(
+        description="Enable queue monitor task",
+        default=False,
+    )
+    ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
+        description="Enable check upgradable plugin task",
+        default=True,
+    )
+
+
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
         description="Comma-separated list of pinned model providers",
@@ -961,5 +1002,6 @@ class FeatureConfig(
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,
+    CeleryScheduleTasksConfig,
 ):
     pass

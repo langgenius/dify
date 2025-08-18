@@ -17,7 +17,7 @@ class UploadFileApi(DatasetApiResource):
         # check dataset
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -31,7 +31,7 @@ class UploadFileApi(DatasetApiResource):
         data_source_info = document.data_source_info_dict
         if data_source_info and "upload_file_id" in data_source_info:
             file_id = data_source_info["upload_file_id"]
-            upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+            upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
             if not upload_file:
                 raise NotFound("UploadFile not found.")
         else:

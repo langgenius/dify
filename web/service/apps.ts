@@ -9,7 +9,12 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
   return get<AppListResponse>(url, { params })
 }
 
-export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
+export const fetchAppDetail: Fetcher<AppDetailResponse, { url: string; id: string }> = ({ url, id }) => {
+  return get<AppDetailResponse>(`${url}/${id}`)
+}
+
+// Direct API call function for non-SWR usage
+export const fetchAppDetailDirect = async ({ url, id }: { url: string; id: string }): Promise<AppDetailResponse> => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }
 

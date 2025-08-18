@@ -49,6 +49,13 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'conversation'
 }
 
+export const hasValidChildren = (children: any): boolean => {
+  return children && (
+    (Array.isArray(children) && children.length > 0)
+    || (!Array.isArray(children) && Object.keys((children as StructuredOutput)?.schema?.properties || {}).length > 0)
+  )
+}
+
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
@@ -139,19 +146,57 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   if (isStructuredOutput) {
     childrenResult = findExceptVarInStructuredOutput(children, filterVar)
   }
- else if (Array.isArray(children)) {
-    childrenResult = children.filter((item: Var) => {
-      const { children: itemChildren } = item
-      const currSelector = [...value_selector, item.variable]
+  else if (Array.isArray(children)) {
+    childrenResult = children
+      .map((item: Var) => {
+        const { children: itemChildren } = item
+        const currSelector = [...value_selector, item.variable]
 
-      if (!itemChildren)
-        return filterVar(item, currSelector)
+        if (!itemChildren) {
+          return {
+            item,
+            filteredObj: null,
+            passesFilter: filterVar(item, currSelector),
+          }
+        }
 
-      const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contain file children
-      return filteredObj.children && (filteredObj.children as Var[])?.length > 0
-    })
+        const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false)
+        const itemHasValidChildren = hasValidChildren(filteredObj.children)
+
+        let passesFilter
+        if ((item.type === VarType.object || item.type === VarType.file) && itemChildren)
+          passesFilter = itemHasValidChildren || filterVar(item, currSelector)
+        else
+          passesFilter = itemHasValidChildren
+
+        return {
+          item,
+          filteredObj,
+          passesFilter,
+        }
+      })
+      .filter(({ passesFilter }) => passesFilter)
+      .map(({ item, filteredObj }) => {
+        const { children: itemChildren } = item
+        if (!itemChildren || !filteredObj)
+          return item
+
+        return {
+          ...item,
+          children: filteredObj.children,
+        }
+      })
+
+    if (isFile && Array.isArray(childrenResult)) {
+      if (childrenResult.length === 0) {
+        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map(key => ({
+          variable: key,
+          type: key === 'size' ? VarType.number : VarType.string,
+        }))
+      }
+    }
   }
- else {
+  else {
     childrenResult = []
   }
 
@@ -977,7 +1022,15 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
-      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).map(c => c.variable_selector || []))
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).flatMap((c) => {
+        const selectors: ValueSelector[] = []
+        if (c.variable_selector)
+          selectors.push(c.variable_selector)
+        // Handle sub-variable conditions
+        if (c.sub_variable_condition && c.sub_variable_condition.conditions)
+          selectors.push(...c.sub_variable_condition.conditions.map(subC => subC.variable_selector || []).filter(sel => sel.length > 0))
+        return selectors
+      }))
       break
     }
     case BlockEnum.Code: {
@@ -1212,6 +1265,26 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
             if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
               c.variable_selector = newVarSelector
             return c
+          })
+        }
+        if (payload.cases) {
+          payload.cases = payload.cases.map((caseItem) => {
+            if (caseItem.conditions) {
+              caseItem.conditions = caseItem.conditions.map((c) => {
+                if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
+                  c.variable_selector = newVarSelector
+                // Handle sub-variable conditions
+                if (c.sub_variable_condition && c.sub_variable_condition.conditions) {
+                  c.sub_variable_condition.conditions = c.sub_variable_condition.conditions.map((subC) => {
+                    if (subC.variable_selector?.join('.') === oldVarSelector.join('.'))
+                      subC.variable_selector = newVarSelector
+                    return subC
+                  })
+                }
+                return c
+              })
+            }
+            return caseItem
           })
         }
         break

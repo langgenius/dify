@@ -84,6 +84,16 @@ const translation = {
     endpointModalTitle: 'Configurer le point de terminaison',
     serviceOk: 'Service OK',
     endpointModalDesc: 'Une fois configuré, les fonctionnalités fournies par le plugin via les points de terminaison de l’API peuvent être utilisées.',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'propriété transférée',
+        businessAdjustments: 'ajustements commerciaux',
+        noMaintainer: 'aucun mainteneur',
+      },
+      noReason: 'Ce plugin a été abandonné et ne sera plus mis à jour.',
+      onlyReason: 'Ce plugin a été déprécié en raison de {{deprecatedReason}} et ne sera plus mis à jour.',
+      fullMessage: 'Ce plugin a été déprécié en raison de {{deprecatedReason}}, et ne sera plus mis à jour. Veuillez utiliser <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> à la place.',
+    },
   },
   debugInfo: {
     title: 'Débogage',
@@ -236,6 +246,57 @@ const translation = {
     setDefault: 'Définir comme par défaut',
     authorization: 'Autorisation',
     useApi: 'Utilisez la clé API',
+  },
+  deprecated: 'Obsolète',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        description: 'Les plugins ne se mettront pas à jour automatiquement',
+        name: 'désactivé',
+      },
+      fixOnly: {
+        selectedDescription: 'Mise à jour automatique uniquement pour les versions de correctif',
+        name: 'Réparer seulement',
+        description: 'Mise à jour automatique uniquement pour les versions de correctif (par exemple, 1.0.1 → 1.0.2). Les changements de version mineure ne déclencheront pas de mises à jour.',
+      },
+      latest: {
+        name: 'Dernier',
+        selectedDescription: 'Mettez toujours à jour vers la dernière version',
+        description: 'Mettez toujours à jour vers la dernière version',
+      },
+    },
+    upgradeMode: {
+      exclude: 'Exclure sélectionné',
+      all: 'Mettre à jour tout',
+      partial: 'Seulement sélectionné',
+    },
+    upgradeModePlaceholder: {
+      partial: 'Seuls les plugins sélectionnés se mettront à jour automatiquement. Aucun plugin n\'est actuellement sélectionné, donc aucun plugin ne se mettra à jour automatiquement.',
+      exclude: 'Les plugins sélectionnés ne se mettront pas à jour automatiquement.',
+    },
+    operation: {
+      clearAll: 'Tout effacer',
+      select: 'Sélectionner des plugins',
+    },
+    pluginDowngradeWarning: {
+      title: 'Baisse de version du plugin',
+      exclude: 'Exclure de la mise à jour automatique',
+      downgrade: 'Dégradez de toute façon',
+      description: 'La mise à jour automatique est actuellement activée pour ce plugin. Le fait de rétrograder la version peut entraîner la perte de vos modifications lors de la prochaine mise à jour automatique.',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'Aucun plugin installé',
+      noFound: 'Aucun plugin n\'a été trouvé',
+    },
+    updateTime: 'Temps de mise à jour',
+    specifyPluginsToUpdate: 'Spécifiez les plugins à mettre à jour',
+    updateTimeTitle: 'Temps de mise à jour',
+    changeTimezone: 'Pour changer de fuseau horaire, allez dans <setTimezone>Paramètres</setTimezone>',
+    automaticUpdates: 'Mises à jour automatiques',
+    updateSettings: 'Mettre à jour les paramètres',
+    excludeUpdate: 'Les {{num}} plugins suivants ne se mettront pas à jour automatiquement',
+    partialUPdate: 'Seuls les {{num}} plugins suivants se mettront à jour automatiquement',
+    nextUpdateTime: 'Prochaine mise à jour automatique : {{time}}',
   },
 }
 

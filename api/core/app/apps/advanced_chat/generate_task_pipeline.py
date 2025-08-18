@@ -74,6 +74,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatorUserRole
@@ -271,7 +272,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception:
-                logger.exception(f"Failed to listen audio message, task_id: {task_id}")
+                logger.exception("Failed to listen audio message, task_id: %s", task_id)
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
@@ -559,6 +560,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 outputs=event.outputs,
                 conversation_id=self._conversation_id,
                 trace_manager=trace_manager,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
             workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                 session=session,
@@ -567,7 +569,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             )
 
         yield workflow_finish_resp
-        self._base_task_pipeline._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_partial_success_event(
         self,
@@ -590,6 +592,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 exceptions_count=event.exceptions_count,
                 conversation_id=None,
                 trace_manager=trace_manager,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
             workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                 session=session,
@@ -598,7 +601,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             )
 
         yield workflow_finish_resp
-        self._base_task_pipeline._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_failed_event(
         self,
@@ -622,6 +625,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 conversation_id=self._conversation_id,
                 trace_manager=trace_manager,
                 exceptions_count=event.exceptions_count,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
             workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                 session=session,
@@ -653,6 +657,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     error_message=event.get_stop_reason(),
                     conversation_id=self._conversation_id,
                     trace_manager=trace_manager,
+                    external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
                 )
                 workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                     session=session,
@@ -841,7 +846,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         # Initialize graph runtime state
         graph_runtime_state: Optional[GraphRuntimeState] = None
 
-        for queue_message in self._base_task_pipeline._queue_manager.listen():
+        for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
 
             match event:
@@ -892,6 +897,7 @@ class AdvancedChatAppGenerateTaskPipeline:
     def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
         message = self._get_message(session=session)
         message.answer = self._task_state.answer
+        message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
         message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
@@ -955,11 +961,11 @@ class AdvancedChatAppGenerateTaskPipeline:
         if self._base_task_pipeline._output_moderation_handler:
             if self._base_task_pipeline._output_moderation_handler.should_direct_output():
                 self._task_state.answer = self._base_task_pipeline._output_moderation_handler.get_final_output()
-                self._base_task_pipeline._queue_manager.publish(
+                self._base_task_pipeline.queue_manager.publish(
                     QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
                 )
 
-                self._base_task_pipeline._queue_manager.publish(
+                self._base_task_pipeline.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
                 )
                 return True

@@ -124,7 +124,9 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        trace_manager = TraceQueueManager(app_model.id)
+        trace_manager = TraceQueueManager(
+            app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
+        )
 
         # init application generate entity
         application_generate_entity = CompletionAppGenerateEntity(
@@ -248,7 +250,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         """
         message = (
             db.session.query(Message)
-            .filter(
+            .where(
                 Message.id == message_id,
                 Message.app_id == app_model.id,
                 Message.from_source == ("api" if isinstance(user, EndUser) else "console"),

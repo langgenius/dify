@@ -24,22 +24,15 @@ const translation = {
     contractSales: 'Contatta vendite',
     contractOwner: 'Contatta il responsabile del team',
     startForFree: 'Inizia gratis',
-    getStartedWith: 'Inizia con ',
     contactSales: 'Contatta le vendite',
     talkToSales: 'Parla con le vendite',
     modelProviders: 'Fornitori di Modelli',
-    teamMembers: 'Membri del Team',
     annotationQuota: 'Quota di Annotazione',
     buildApps: 'Crea App',
     vectorSpace: 'Spazio Vettoriale',
-    vectorSpaceBillingTooltip:
-      'Ogni 1MB può memorizzare circa 1,2 milioni di caratteri di dati vettoriali (stimato utilizzando OpenAI Embeddings, varia tra i modelli).',
     vectorSpaceTooltip:
       'Lo Spazio Vettoriale è il sistema di memoria a lungo termine necessario per permettere agli LLM di comprendere i tuoi dati.',
-    documentsUploadQuota: 'Quota di Caricamento Documenti',
     documentProcessingPriority: 'Priorità di Elaborazione Documenti',
-    documentProcessingPriorityTip:
-      'Per una maggiore priorità di elaborazione dei documenti, aggiorna il tuo piano.',
     documentProcessingPriorityUpgrade:
       'Elabora più dati con maggiore precisione a velocità più elevate.',
     priority: {
@@ -113,21 +106,18 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       description: '200 prove gratuite di GPT',
-      includesTitle: 'Include:',
       for: 'Prova gratuita delle capacità principali',
     },
     professional: {
       name: 'Professional',
       description:
         'Per individui e piccoli team per sbloccare più potenza a prezzi accessibili.',
-      includesTitle: 'Tutto nel piano gratuito, più:',
       for: 'Per sviluppatori indipendenti / piccoli team',
     },
     team: {
       name: 'Team',
       description:
         'Collabora senza limiti e goditi prestazioni di alto livello.',
-      includesTitle: 'Tutto nel piano Professional, più:',
       for: 'Per team di medie dimensioni',
     },
     enterprise: {
@@ -136,15 +126,15 @@ const translation = {
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
       features: {
-        6: 'Sicurezza e Controlli Avanzati',
-        2: 'Funzionalità esclusive per le imprese',
+        3: 'Spazi di lavoro multipli e gestione aziendale',
+        2: 'Funzionalità esclusive per le aziende',
+        1: 'Autorizzazione Licenza Commerciale',
+        5: 'SLA negoziati dai partner Dify',
         4: 'SSO',
-        8: 'Supporto Tecnico Professionale',
-        5: 'SLA negoziati da Dify Partners',
-        0: 'Soluzioni di distribuzione scalabili di livello enterprise',
-        7: 'Aggiornamenti e manutenzione di Dify ufficialmente',
-        1: 'Autorizzazione alla Licenza Commerciale',
-        3: 'Gestione di più spazi di lavoro e imprese',
+        6: 'Sicurezza e controlli avanzati',
+        8: 'Supporto tecnico professionale',
+        7: 'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
+        0: 'Soluzioni di distribuzione scalabili di livello aziendale',
       },
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
@@ -153,9 +143,9 @@ const translation = {
     },
     community: {
       features: {
-        1: 'Spazio di Lavoro Unico',
-        2: 'Rispetta la Licenza Open Source di Dify',
-        0: 'Tutte le funzionalità principali rilasciate sotto il repository pubblico',
+        1: 'Area di lavoro singola',
+        2: 'Conforme alla licenza Open Source Dify',
+        0: 'Tutte le funzionalità principali rilasciate nel repository pubblico',
       },
       name: 'Comunità',
       btnText: 'Inizia con la comunità',
@@ -166,10 +156,10 @@ const translation = {
     },
     premium: {
       features: {
-        0: 'Affidabilità autogestita da vari fornitori di cloud',
-        3: 'Supporto prioritario via Email e Chat',
-        2: 'Personalizzazione del logo e del marchio dell\'app web',
-        1: 'Spazio di Lavoro Unico',
+        3: 'Supporto prioritario via e-mail e chat',
+        1: 'Area di lavoro singola',
+        2: 'Personalizzazione del logo e del marchio WebApp',
+        0: 'Affidabilità autogestita da vari fornitori di servizi cloud',
       },
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
@@ -186,8 +176,6 @@ const translation = {
     fullSolution: 'Aggiorna il tuo piano per ottenere più spazio.',
   },
   apps: {
-    fullTipLine1: 'Aggiorna il tuo piano per',
-    fullTipLine2: 'creare più app.',
     fullTip1des: 'Hai raggiunto il limite di costruzione delle app su questo piano.',
     fullTip2des: 'Si consiglia di disinstallare le applicazioni inattive per liberare spazio, o contattarci.',
     contactUs: 'Contattaci',

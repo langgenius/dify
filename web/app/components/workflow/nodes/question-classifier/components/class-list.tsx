@@ -64,55 +64,56 @@ const ClassList: FC<Props> = ({
   const handleSideWidth = 3
   // Todo Remove; edit topic name
   return (
-    <ReactSortable
-      list={list.map(item => ({ ...item }))}
-      setList={handleSortTopic}
-      handle='.handle'
-      ghostClass='bg-components-panel-bg'
-      animation={150}
-      disabled={readonly}
-      className='space-y-2'
-    >
-      {
-        list.map((item, index) => {
-          const canDrag = (() => {
-            if (readonly)
-              return false
+    <>
+      <ReactSortable
+        list={list.map(item => ({ ...item }))}
+        setList={handleSortTopic}
+        handle='.handle'
+        ghostClass='bg-components-panel-bg'
+        animation={150}
+        disabled={readonly}
+        className='space-y-2'
+      >
+        {
+          list.map((item, index) => {
+            const canDrag = (() => {
+              if (readonly)
+                return false
 
-            return topicCount >= 2
-          })()
-          return (
-            <div key={item.id}
-                className={cn(
-                  'group relative rounded-[10px] bg-components-panel-bg',
-                  `-ml-${handleSideWidth} min-h-[40px] px-0 py-0`,
-            )}>
-              <div >
-                <Item
-                  className={cn(canDrag && 'handle')}
-                  headerClassName={cn(canDrag && 'cursor-grab')}
-                  nodeId={nodeId}
-                  key={list[index].id}
-                  payload={item}
-                  onChange={handleClassChange(index)}
-                  onRemove={handleRemoveClass(index)}
-                  index={index + 1}
-                  readonly={readonly}
-                  filterVar={filterVar}
-                />
+              return topicCount >= 2
+            })()
+            return (
+              <div key={item.id}
+                  className={cn(
+                    'group relative rounded-[10px] bg-components-panel-bg',
+                    `-ml-${handleSideWidth} min-h-[40px] px-0 py-0`,
+              )}>
+                <div >
+                  <Item
+                    className={cn(canDrag && 'handle')}
+                    headerClassName={cn(canDrag && 'cursor-grab')}
+                    nodeId={nodeId}
+                    key={list[index].id}
+                    payload={item}
+                    onChange={handleClassChange(index)}
+                    onRemove={handleRemoveClass(index)}
+                    index={index + 1}
+                    readonly={readonly}
+                    filterVar={filterVar}
+                  />
+                </div>
               </div>
-            </div>
-          )
-        })
-      }
+            )
+          })
+        }
+      </ReactSortable>
       {!readonly && (
         <AddButton
           onClick={handleAddClass}
           text={t(`${i18nPrefix}.addClass`)}
         />
       )}
-
-    </ReactSortable>
+    </>
   )
 }
 export default React.memo(ClassList)

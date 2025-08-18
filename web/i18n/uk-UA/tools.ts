@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Ключ HTTP-заголовка. Якщо ви не знаєте, залиште його як "Authorization" або встановіть власне значення',
       types: {
         none: 'Відсутня',
-        api_key: 'API-ключ',
         apiKeyPlaceholder: 'Назва HTTP-заголовка для API-ключа',
         apiValuePlaceholder: 'Введіть API-ключ',
         api_key_header: 'Заголовок',
@@ -192,6 +191,8 @@ const translation = {
       cancel: 'Скасувати',
       save: 'Зберегти',
       confirm: 'Додати та Авторизувати',
+      timeout: 'Час вичерпано',
+      sseReadTimeout: 'Тайм-аут читання SSE',
     },
     delete: 'Видалити сервер MCP',
     deleteConfirmTitle: 'Видалити {mcp}?',

@@ -28,8 +28,9 @@ const translation = {
       delete: 'Usuń',
       enableWarning: 'Zarchiwizowany plik nie może zostać włączony',
       sync: 'Synchronizuj',
-      resume: 'Wznawiać',
+      resume: 'Wznów',
       pause: 'Pauza',
+      download: 'Pobierz plik',
     },
     index: {
       enable: 'Włącz',

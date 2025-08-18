@@ -12,7 +12,6 @@ import {
   RiFileUploadLine,
 } from '@remixicon/react'
 import AppIcon from '../base/app-icon'
-import cn from '@/utils/classnames'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
@@ -26,11 +25,12 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
-import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/cardView'
+import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import Divider from '../base/divider'
 import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
+import cn from '@/utils/classnames'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -256,31 +256,40 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           }}
           className='block w-full'
         >
-          <div className={cn('flex rounded-lg', expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1', open && 'bg-state-base-hover', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}>
-            <div className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`}>
-              <AppIcon
-                size={expand ? 'large' : 'small'}
-                iconType={appDetail.icon_type}
-                icon={appDetail.icon}
-                background={appDetail.icon_background}
-                imageUrl={appDetail.icon_url}
-              />
-              <div className='flex items-center justify-center rounded-md p-0.5'>
-                <div className='flex h-5 w-5 items-center justify-center'>
+          <div className='flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover'>
+            <div className='flex items-center gap-1'>
+              <div className={cn(!expand && 'ml-1')}>
+                <AppIcon
+                  size={expand ? 'large' : 'small'}
+                  iconType={appDetail.icon_type}
+                  icon={appDetail.icon}
+                  background={appDetail.icon_background}
+                  imageUrl={appDetail.icon_url}
+                />
+              </div>
+              {expand && (
+                <div className='ml-auto flex items-center justify-center rounded-md p-0.5'>
+                  <div className='flex h-5 w-5 items-center justify-center'>
+                    <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                  </div>
+                </div>
+              )}
+            </div>
+            {!expand && (
+              <div className='flex items-center justify-center'>
+                <div className='flex h-5 w-5 items-center justify-center rounded-md p-0.5'>
                   <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
                 </div>
               </div>
-            </div>
-            {
-              expand && (
-                <div className='flex flex-col items-start gap-1'>
-                  <div className='flex w-full'>
-                    <div className='system-md-semibold truncate text-text-secondary'>{appDetail.name}</div>
-                  </div>
-                  <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+            )}
+            {expand && (
+              <div className='flex flex-col items-start gap-1'>
+                <div className='flex w-full'>
+                  <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
                 </div>
-              )
-            }
+                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              </div>
+            )}
           </div>
         </button>
       )}
@@ -322,7 +331,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           className='flex flex-1 flex-col gap-2 overflow-auto px-2 py-1'
         />
         <Divider />
-        <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch border-t-[0.5px] border-divider-subtle p-2'>
+        <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2'>
           <Button
             size={'medium'}
             variant={'ghost'}

@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'HTTP 헤더 키입니다. 생각이 없으면 "Authorization"으로 남겨둘 수 있습니다. 또는 사용자 정의 값을 설정할 수 있습니다.',
       types: {
         none: '없음',
-        api_key: 'API 키',
         apiKeyPlaceholder: 'API 키의 HTTP 헤더 이름',
         apiValuePlaceholder: 'API 키를 입력하세요',
         api_key_query: '쿼리 매개변수',
@@ -192,6 +191,8 @@ const translation = {
       cancel: '취소',
       save: '저장',
       confirm: '추가 및 승인',
+      timeout: '타임아웃',
+      sseReadTimeout: 'SSE 읽기 타임아웃',
     },
     delete: 'MCP 서버 제거',
     deleteConfirmTitle: '{mcp}를 제거하시겠습니까?',

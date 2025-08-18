@@ -55,7 +55,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
                     main_content_type = mimetypes.guess_type(filename)[0]
 
         if main_content_type not in supported_content_types:
-            return "Unsupported content-type [{}] of URL.".format(main_content_type)
+            return f"Unsupported content-type [{main_content_type}] of URL."
 
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
             return cast(str, ExtractProcessor.load_from_url(url, return_text=True))
@@ -67,7 +67,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
         response = scraper.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))  # type: ignore
 
     if response.status_code != 200:
-        return "URL returned status code {}.".format(response.status_code)
+        return f"URL returned status code {response.status_code}."
 
     # Detect encoding using chardet
     detected_encoding = chardet.detect(response.content)

@@ -48,9 +48,9 @@ export default function FullScreenModal({
               <DialogPanel className={classNames(
                 'h-full',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
-                'duration-100 ease-in data-[closed]:opacity-0 data-[closed]:scale-95',
-                'data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:opacity-0 data-[enter]:scale-95',
+                'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
                 className,
               )}>
                 {closable

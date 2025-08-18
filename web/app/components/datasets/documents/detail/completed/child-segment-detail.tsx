@@ -60,7 +60,6 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   const wordCountText = useMemo(() => {
     const count = content.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.length])
 
   const EditTimeText = useMemo(() => {
@@ -69,7 +68,6 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
       dateFormat: `${t('datasetDocuments.segment.dateTimeFormat')}`,
     })
     return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childChunkInfo?.updated_at])
 
   return (

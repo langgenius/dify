@@ -28,6 +28,12 @@ from services.feature_service import FeatureService
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
 
+def _validate_description_length(description):
+    if description and len(description) > 400:
+        raise ValueError("Description cannot exceed 400 characters.")
+    return description
+
+
 class AppListApi(Resource):
     @setup_required
     @login_required
@@ -94,7 +100,7 @@ class AppListApi(Resource):
         """Create app"""
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
-        parser.add_argument("description", type=str, location="json")
+        parser.add_argument("description", type=_validate_description_length, location="json")
         parser.add_argument("mode", type=str, choices=ALLOW_CREATE_APP_MODES, location="json")
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
@@ -146,7 +152,7 @@ class AppApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("description", type=str, location="json")
+        parser.add_argument("description", type=_validate_description_length, location="json")
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
@@ -189,7 +195,7 @@ class AppCopyApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
+        parser.add_argument("description", type=_validate_description_length, location="json")
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")

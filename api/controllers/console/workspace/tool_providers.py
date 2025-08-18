@@ -739,7 +739,7 @@ class ToolOAuthCallback(Resource):
             raise Forbidden("no oauth available client config found for this tool provider")
 
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
-        credentials = oauth_handler.get_credentials(
+        credentials_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
             user_id=user_id,
             plugin_id=plugin_id,
@@ -747,7 +747,10 @@ class ToolOAuthCallback(Resource):
             redirect_uri=redirect_uri,
             system_credentials=oauth_client_params,
             request=request,
-        ).credentials
+        )
+
+        credentials = credentials_response.credentials
+        expires_at = credentials_response.expires_at
 
         if not credentials:
             raise Exception("the plugin credentials failed")
@@ -758,6 +761,7 @@ class ToolOAuthCallback(Resource):
             tenant_id=tenant_id,
             provider=provider,
             credentials=dict(credentials),
+            expires_at=expires_at,
             api_type=CredentialType.OAUTH2,
         )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
@@ -858,6 +862,10 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("timeout", type=float, required=False, nullable=False, location="json", default=30)
+        parser.add_argument(
+            "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
+        )
         args = parser.parse_args()
         user = current_user
         if not is_valid_url(args["server_url"]):
@@ -872,6 +880,8 @@ class ToolProviderMCPApi(Resource):
                 icon_background=args["icon_background"],
                 user_id=user.id,
                 server_identifier=args["server_identifier"],
+                timeout=args["timeout"],
+                sse_read_timeout=args["sse_read_timeout"],
             )
         )
 
@@ -887,6 +897,8 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
+        parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
@@ -902,6 +914,8 @@ class ToolProviderMCPApi(Resource):
             icon_type=args["icon_type"],
             icon_background=args["icon_background"],
             server_identifier=args["server_identifier"],
+            timeout=args.get("timeout"),
+            sse_read_timeout=args.get("sse_read_timeout"),
         )
         return {"result": "success"}
 

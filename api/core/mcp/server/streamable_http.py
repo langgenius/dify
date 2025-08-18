@@ -16,19 +16,20 @@ from extensions.ext_database import db
 from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 
-"""
-Apply to MCP HTTP streamable server with stateless http
-"""
 logger = logging.getLogger(__name__)
 
 
 class MCPServerStreamableHTTPRequestHandler:
+    """
+    Apply to MCP HTTP streamable server with stateless http
+    """
+
     def __init__(
         self, app: App, request: types.ClientRequest | types.ClientNotification, user_input_form: list[VariableEntity]
     ):
         self.app = app
         self.request = request
-        mcp_server = db.session.query(AppMCPServer).filter(AppMCPServer.app_id == self.app.id).first()
+        mcp_server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == self.app.id).first()
         if not mcp_server:
             raise ValueError("MCP server not found")
         self.mcp_server: AppMCPServer = mcp_server
@@ -192,7 +193,7 @@ class MCPServerStreamableHTTPRequestHandler:
     def retrieve_end_user(self):
         return (
             db.session.query(EndUser)
-            .filter(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
+            .where(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
             .first()
         )
 

@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'Масовий імпорт',
       bulkExport: 'Масовий експорт',
       clearAll: 'Очистити всі анотації',
+      clearAllConfirm: 'Видалити всі анотації?',
     },
   },
   editModal: {
@@ -82,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Зберегти',
   },
   embeddingModelSwitchTip: 'Модель векторизації тексту анотації, перемикання моделей буде повторно вбудовано, що призведе до додаткових витрат.',
+  list: {
+    delete: {
+      title: 'Ви впевнені, що хочете видалити?',
+    },
+  },
+  batchAction: {
+    selected: 'Вибрано',
+    cancel: 'Скасувати',
+    delete: 'Видалити',
+  },
 }
 
 export default translation

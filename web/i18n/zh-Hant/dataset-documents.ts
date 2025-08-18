@@ -30,6 +30,7 @@ const translation = {
       sync: '同步',
       resume: '恢復',
       pause: '暫停',
+      download: '下載檔案',
     },
     index: {
       enable: '啟用中',
@@ -341,7 +342,6 @@ const translation = {
     keywords: '關鍵詞',
     addKeyWord: '新增關鍵詞',
     keywordError: '關鍵詞最大長度為 20',
-    characters: '字元',
     hitCount: '召回次數',
     vectorHash: '向量雜湊：',
     questionPlaceholder: '在這裡新增問題',

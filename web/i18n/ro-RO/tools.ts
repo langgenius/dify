@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Cheie antet HTTP, puteți lăsa "Autorizare" dacă nu știți ce este sau setați-o la o valoare personalizată',
       types: {
         none: 'Niciuna',
-        api_key: 'Cheie API',
         apiKeyPlaceholder: 'Nume antet HTTP pentru cheia API',
         apiValuePlaceholder: 'Introduceți cheia API',
         api_key_header: 'Antet',
@@ -192,6 +191,8 @@ const translation = {
       cancel: 'Anulare',
       save: 'Salvare',
       confirm: 'Adăugare și Autorizare',
+      timeout: 'Timp de așteptare',
+      sseReadTimeout: 'Timp de așteptare pentru citirea SSE',
     },
     delete: 'Eliminare Server MCP',
     deleteConfirmTitle: 'Ștergeți {mcp}?',

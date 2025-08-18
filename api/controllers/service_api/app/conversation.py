@@ -1,7 +1,7 @@
 from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.service_api import api
@@ -15,6 +15,7 @@ from fields.conversation_fields import (
     simple_conversation_fields,
 )
 from fields.conversation_variable_fields import (
+    conversation_variable_fields,
     conversation_variable_infinite_scroll_pagination_fields,
 )
 from libs.helper import uuid_value
@@ -120,7 +121,44 @@ class ConversationVariablesApi(Resource):
             raise NotFound("Conversation Not Exists.")
 
 
+class ConversationVariableDetailApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @marshal_with(conversation_variable_fields)
+    def put(self, app_model: App, end_user: EndUser, c_id, variable_id):
+        """Update a conversation variable's value"""
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        conversation_id = str(c_id)
+        variable_id = str(variable_id)
+
+        parser = reqparse.RequestParser()
+        # using lambda is for passing the already-typed value without modification
+        # if no lambda, it will be converted to string
+        # the string cannot be converted using json.loads
+        parser.add_argument("value", required=True, location="json", type=lambda x: x)
+        args = parser.parse_args()
+
+        try:
+            return ConversationService.update_conversation_variable(
+                app_model, conversation_id, variable_id, end_user, args["value"]
+            )
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationVariableNotExistsError:
+            raise NotFound("Conversation Variable Not Exists.")
+        except services.errors.conversation.ConversationVariableTypeMismatchError as e:
+            raise BadRequest(str(e))
+
+
 api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")
 api.add_resource(ConversationApi, "/conversations")
 api.add_resource(ConversationDetailApi, "/conversations/<uuid:c_id>", endpoint="conversation_detail")
 api.add_resource(ConversationVariablesApi, "/conversations/<uuid:c_id>/variables", endpoint="conversation_variables")
+api.add_resource(
+    ConversationVariableDetailApi,
+    "/conversations/<uuid:c_id>/variables/<uuid:variable_id>",
+    endpoint="conversation_variable_detail",
+    methods=["PUT"],
+)

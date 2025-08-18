@@ -52,7 +52,7 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = db.session.query(Account).filter(Account.email == email).first()
+        account = db.session.query(Account).where(Account.email == email).first()
         if not account:
             return None
 
@@ -91,10 +91,10 @@ class WebAppAuthService:
 
     @classmethod
     def create_end_user(cls, app_code, email) -> EndUser:
-        site = db.session.query(Site).filter(Site.code == app_code).first()
+        site = db.session.query(Site).where(Site.code == app_code).first()
         if not site:
             raise NotFound("Site not found.")
-        app_model = db.session.query(App).filter(App.id == site.app_id).first()
+        app_model = db.session.query(App).where(App.id == site.app_id).first()
         if not app_model:
             raise NotFound("App not found.")
         end_user = EndUser(
