@@ -394,7 +394,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
       // Use the earliest response item as the first_id
       const answerItems = allChatItems.filter(item => item.isAnswer)
-      const oldestAnswerItem = answerItems[0]
+      const oldestAnswerItem = answerItems[answerItems.length - 1]
       if (oldestAnswerItem?.id) {
         params.first_id = oldestAnswerItem.id
       }
