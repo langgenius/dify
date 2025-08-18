@@ -10,20 +10,31 @@ import { useAppContext } from '@/context/app-context'
 import Button from './button'
 import List from './list'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
-import { Community, Enterprise, Premium } from '../../assets'
+import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
 
 const STYLE_MAP = {
   [SelfHostedPlan.community]: {
     icon: <Community />,
     bg: '',
+    noise: null,
   },
   [SelfHostedPlan.premium]: {
     icon: <Premium />,
     bg: 'bg-billing-plan-card-premium-bg opacity-10',
+    noise: (
+      <div className='absolute -top-12 left-0 right-0'>
+        <PremiumNoise />
+      </div>
+    ),
   },
   [SelfHostedPlan.enterprise]: {
     icon: <Enterprise />,
     bg: 'bg-billing-plan-card-enterprise-bg opacity-10',
+    noise: (
+      <div className='absolute -top-12 left-0 right-0'>
+        <EnterpriseNoise />
+      </div>
+    ),
   },
 }
 
@@ -65,8 +76,10 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   }, [isCurrentWorkspaceManager, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
 
   return (
-    <div className='relative flex flex-1 flex-col'>
+    <div className='relative flex flex-1 flex-col overflow-hidden'>
       <div className={cn('absolute inset-0 -z-10', STYLE_MAP[plan].bg)} />
+      {/* Noise Effect */}
+      {STYLE_MAP[plan].noise}
       <div className='flex flex-col px-5 py-4'>
         <div className=' flex flex-col gap-y-6 px-1 pt-10'>
           {STYLE_MAP[plan].icon}

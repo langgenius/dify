@@ -11,6 +11,7 @@ import { useKeyPress } from 'ahooks'
 import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
+import { NoiseBottom, NoiseTop } from './assets'
 
 export type Category = 'cloud' | 'self'
 
@@ -39,7 +40,10 @@ const Pricing: FC<PricingProps> = ({
       className='fixed inset-0 bottom-0 left-0 right-0 top-0 z-[1000] overflow-auto bg-saas-background'
       onClick={e => e.stopPropagation()}
     >
-      <div className='relative grid min-h-full min-w-[1200px] grid-rows-[1fr_auto_auto_1fr]'>
+      <div className='relative grid min-h-full min-w-[1200px] grid-rows-[1fr_auto_auto_1fr] overflow-hidden'>
+        <div className='absolute -top-12 left-0 right-0'>
+          <NoiseTop />
+        </div>
         <Header onClose={onCancel} />
         <PlanSwitcher
           currentCategory={currentCategory}
@@ -54,6 +58,9 @@ const Pricing: FC<PricingProps> = ({
           canPay={canPay}
         />
         <Footer pricingPageURL={pricingPageURL} />
+        <div className='absolute -bottom-12 left-0 right-0'>
+          <NoiseBottom />
+        </div>
       </div>
     </div>,
     document.body,
