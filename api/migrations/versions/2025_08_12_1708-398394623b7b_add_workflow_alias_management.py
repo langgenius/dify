@@ -34,7 +34,6 @@ def upgrade():
         sa.PrimaryKeyConstraint('id')
     )
 
-    # Create indexes for better query performance
     # Index for app-level alias uniqueness check (unique constraint)
     op.create_index('ix_workflow_aliases_tenant_id', 'workflow_aliases', ['tenant_id'], unique=False)
     op.create_index('ix_workflow_aliases_alias_type', 'workflow_aliases', ['alias_type'], unique=False)
