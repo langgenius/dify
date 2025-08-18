@@ -23,7 +23,7 @@ const ShortcutsName = ({
             key={key}
             className={cn(
               'system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray capitalize',
-              textColor === 'secondary' && 'text-text-secondary',
+              textColor === 'secondary' && 'text-text-tertiary',
             )}
           >
             {getKeyboardKeyNameBySystem(key)}
