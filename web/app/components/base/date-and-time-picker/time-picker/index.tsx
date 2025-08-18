@@ -124,7 +124,7 @@ const TimePicker = ({
     <PortalToFollowElem
       open={isOpen}
       onOpenChange={setIsOpen}
-      placement='bottom-end'
+      placement='bottom-start'
     >
       <PortalToFollowElemTrigger>
         {renderTrigger ? (renderTrigger({

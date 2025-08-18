@@ -201,7 +201,7 @@ const DatePicker = ({
     <PortalToFollowElem
       open={isOpen}
       onOpenChange={setIsOpen}
-      placement='bottom-end'
+      placement='bottom-start'
     >
       <PortalToFollowElemTrigger className={triggerWrapClassName}>
         {renderTrigger ? (renderTrigger({
