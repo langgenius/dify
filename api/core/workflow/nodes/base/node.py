@@ -24,7 +24,6 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.graph_events.node import NodeRunRetrieverResourceEvent
 from core.workflow.node_events import (
     AgentLogEvent,
     IterationFailedEvent,
@@ -41,7 +40,6 @@ from core.workflow.node_events import (
     StreamChunkEvent,
     StreamCompletedEvent,
 )
-from core.workflow.node_events.node import RunRetrieverResourceEvent
 from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 

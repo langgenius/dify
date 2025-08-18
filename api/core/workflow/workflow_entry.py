@@ -14,7 +14,7 @@ from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.layers import DebugLoggingLayer
+from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
@@ -99,6 +99,12 @@ class WorkflowEntry:
                 logger_name=f"GraphEngine.Debug.{workflow_id[:8]}",  # Use workflow ID prefix for unique logger
             )
             self.graph_engine.layer(debug_layer)
+
+        # Add execution limits layer
+        limits_layer = ExecutionLimitsLayer(
+            max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
+        )
+        self.graph_engine.layer(limits_layer)
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         graph_engine = self.graph_engine
