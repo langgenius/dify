@@ -142,6 +142,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
+      if(!currentCode)
+        res.modified = (res as any).code
 
       if (error) {
         Toast.notify({
