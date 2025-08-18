@@ -163,11 +163,11 @@ class WorkflowVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-        workflow_vars = draft_var_srv.list_variables_without_values(
-            app_id=app_model.id,
-            page=args.page,
-            limit=args.limit,
-        )
+            workflow_vars = draft_var_srv.list_variables_without_values(
+                app_id=app_model.id,
+                page=args.page,
+                limit=args.limit,
+            )
 
         return workflow_vars
 

@@ -254,8 +254,8 @@ const translation = {
   maxActiveRequestsTip: 'حداکثر تعداد درخواست‌های فعال همزمان در هر برنامه (0 برای نامحدود)',
   gotoAnything: {
     actions: {
-      searchPlugins: 'افزونه های جستجو',
-      searchWorkflowNodes: 'گره های گردش کار جستجو',
+      searchPlugins: 'جستجوی افزونه ها',
+      searchWorkflowNodes: 'جستجوی گره های گردش کار',
       searchApplications: 'جستجوی برنامه ها',
       searchKnowledgeBases: 'جستجو در پایگاه های دانش',
       searchWorkflowNodesHelp: 'این ویژگی فقط هنگام مشاهده گردش کار کار می کند. ابتدا به گردش کار بروید.',
@@ -276,6 +276,7 @@ const translation = {
       languageChangeDesc: 'زبان رابط کاربری را تغییر دهید',
       themeSystemDesc: 'به ظاهر سیستم‌عامل خود پایبند باشید',
       runDesc: 'دستورات سریع اجرا کنید (موضوع، زبان، ...)',
+      slashDesc: 'دستورات را مانند /theme، /lang اجرا کنید',
     },
     emptyState: {
       noKnowledgeBasesFound: 'هیچ پایگاه دانش یافت نشد',
@@ -290,6 +291,7 @@ const translation = {
       apps: 'برنامه‌ها',
       knowledgeBases: 'پایگاه های دانش',
       workflowNodes: 'گره های گردش کار',
+      commands: 'دستورات',
     },
     searching: 'جستجو...',
     searchFailed: 'جستجو انجام نشد',

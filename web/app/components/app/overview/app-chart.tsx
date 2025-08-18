@@ -123,7 +123,7 @@ const Chart: React.FC<IChartProps> = ({
       dimensions: ['date', yField],
       source: statistics,
     },
-    grid: { top: 8, right: 36, bottom: 0, left: 0, containLabel: true },
+    grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
     tooltip: {
       trigger: 'item',
       position: 'top',
@@ -165,7 +165,7 @@ const Chart: React.FC<IChartProps> = ({
         lineStyle: {
           color: COMMON_COLOR_MAP.splitLineDark,
         },
-        interval(index, value) {
+        interval(_index, value) {
           return !!value
         },
       },
@@ -242,7 +242,7 @@ const Chart: React.FC<IChartProps> = ({
             ? ''
             : <span>{t('appOverview.analysis.tokenUsage.consumed')} Tokens<span className='text-sm'>
               <span className='ml-1 text-text-tertiary'>(</span>
-              <span className='text-orange-400'>~{sum(statistics.map(item => Number.parseFloat(get(item, 'total_price', '0')))).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4 })}</span>
+              <span className='text-orange-400'>~{sum(statistics.map(item => Number.parseFloat(String(get(item, 'total_price', '0'))))).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4 })}</span>
               <span className='text-text-tertiary'>)</span>
             </span></span>}
           textStyle={{ main: `!text-3xl !font-normal ${sumData === 0 ? '!text-text-quaternary' : ''}` }} />
@@ -268,7 +268,7 @@ export const MessagesChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.totalMessages.title'), explanation: t('appOverview.analysis.totalMessages.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
     chartType='messages'
     {...(noDataFlag && { yMax: 500 })}
   />
@@ -282,7 +282,7 @@ export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.totalConversations.title'), explanation: t('appOverview.analysis.totalConversations.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
     chartType='conversations'
     {...(noDataFlag && { yMax: 500 })}
   />
@@ -297,7 +297,7 @@ export const EndUsersChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.activeUsers.title'), explanation: t('appOverview.analysis.activeUsers.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
     chartType='endUsers'
     {...(noDataFlag && { yMax: 500 })}
   />
@@ -380,7 +380,7 @@ export const CostChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.tokenUsage.title'), explanation: t('appOverview.analysis.tokenUsage.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
     chartType='costs'
     {...(noDataFlag && { yMax: 100 })}
   />
@@ -394,7 +394,7 @@ export const WorkflowMessagesChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.totalMessages.title'), explanation: t('appOverview.analysis.totalMessages.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'runs' }) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'runs' }) } as any}
     chartType='conversations'
     valueKey='runs'
     {...(noDataFlag && { yMax: 500 })}
@@ -410,7 +410,7 @@ export const WorkflowDailyTerminalsChart: FC<IBizChartProps> = ({ id, period }) 
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.activeUsers.title'), explanation: t('appOverview.analysis.activeUsers.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
     chartType='endUsers'
     {...(noDataFlag && { yMax: 500 })}
   />
@@ -425,7 +425,7 @@ export const WorkflowCostChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.tokenUsage.title'), explanation: t('appOverview.analysis.tokenUsage.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
     chartType='workflowCosts'
     {...(noDataFlag && { yMax: 100 })}
   />
