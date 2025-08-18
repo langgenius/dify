@@ -145,7 +145,7 @@ def init_app(app: DifyApp) -> Celery:
                 minutes=dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30
             ),
         }
-    if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:
+    if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
