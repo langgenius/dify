@@ -504,7 +504,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
       setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
     }
- catch (_) {
+ catch (error) {
+      console.error(error)
       setHasMore(false)
     }
  finally {
