@@ -28,8 +28,8 @@ const TriggerContainer: FC<TriggerContainerProps> = ({
   }, [status, customLabel, t])
 
   return (
-    <div className="w-[242px] rounded-2xl bg-workflow-block-wrapper-bg-1 px-px pb-px pt-0.5">
-      <div className="mb-0.5 flex items-center px-2 pt-1">
+    <div className="w-[242px] rounded-2xl bg-workflow-block-wrapper-bg-1 px-0 pb-0 pt-0.5">
+      <div className="mb-0.5 flex items-center px-1.5 pt-0.5">
         <div className={cn('mr-1 h-2 w-2 rounded-sm', statusConfig.dotColor)} />
         <span className="system-2xs-medium-uppercase text-text-tertiary">
           {statusConfig.label}
