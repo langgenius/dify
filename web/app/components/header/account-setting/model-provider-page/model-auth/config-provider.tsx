@@ -67,6 +67,9 @@ const ConfigProvider = ({
       configurationMethod={ConfigurationMethodEnum.predefinedModel}
       items={[
         {
+          model: {
+            model: t('common.modelProvider.auth.apiKeys'),
+          } as any,
           credentials: available_credentials ?? [],
         },
       ]}

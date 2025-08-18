@@ -56,9 +56,6 @@ const ExternalAPIModal = dynamic(() => import('@/app/components/datasets/externa
 const ModelLoadBalancingModal = dynamic(() => import('@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'), {
   ssr: false,
 })
-const ModelLoadBalancingEntryModal = dynamic(() => import('@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'), {
-  ssr: false,
-})
 const OpeningSettingModal = dynamic(() => import('@/app/components/base/features/new-feature-panel/conversation-opener/modal'), {
   ssr: false,
 })
@@ -81,6 +78,7 @@ export type ModelModalType = {
   currentProvider: ModelProvider
   currentConfigurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  isModelCredential?: boolean
   credential?: Credential
   model?: CustomModel
 }
@@ -99,7 +97,6 @@ export type ModalContextState = {
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
   setShowExternalKnowledgeAPIModal: Dispatch<SetStateAction<ModalState<CreateExternalAPIReq> | null>>
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
-  setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
   setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement & {
     promptVariables?: PromptVariable[]
     workflowVariables?: InputVar[]
@@ -117,7 +114,6 @@ const ModalContext = createContext<ModalContextState>({
   setShowModelModal: noop,
   setShowExternalKnowledgeAPIModal: noop,
   setShowModelLoadBalancingModal: noop,
-  setShowModelLoadBalancingEntryModal: noop,
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
 })
@@ -142,7 +138,6 @@ export const ModalContextProvider = ({
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
   const [showExternalKnowledgeAPIModal, setShowExternalKnowledgeAPIModal] = useState<ModalState<CreateExternalAPIReq> | null>(null)
   const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
-  const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
   const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement & {
     promptVariables?: PromptVariable[]
     workflowVariables?: InputVar[]
@@ -208,29 +203,11 @@ export const ModalContextProvider = ({
     setShowExternalKnowledgeAPIModal(null)
   }, [showExternalKnowledgeAPIModal])
 
-  const handleCancelModelLoadBalancingEntryModal = useCallback(() => {
-    showModelLoadBalancingEntryModal?.onCancelCallback?.()
-    setShowModelLoadBalancingEntryModal(null)
-  }, [showModelLoadBalancingEntryModal])
-
   const handleCancelOpeningModal = useCallback(() => {
     setShowOpeningModal(null)
     if (showOpeningModal?.onCancelCallback)
       showOpeningModal.onCancelCallback()
   }, [showOpeningModal])
-
-  const handleSaveModelLoadBalancingEntryModal = useCallback((entry: ModelLoadBalancingConfigEntry) => {
-    showModelLoadBalancingEntryModal?.onSaveCallback?.({
-      ...showModelLoadBalancingEntryModal.payload,
-      entry,
-    })
-    setShowModelLoadBalancingEntryModal(null)
-  }, [showModelLoadBalancingEntryModal])
-
-  const handleRemoveModelLoadBalancingEntry = useCallback(() => {
-    showModelLoadBalancingEntryModal?.onRemoveCallback?.(showModelLoadBalancingEntryModal.payload)
-    setShowModelLoadBalancingEntryModal(null)
-  }, [showModelLoadBalancingEntryModal])
 
   const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtension) => {
     if (showApiBasedExtensionModal?.onSaveCallback)
@@ -273,7 +250,6 @@ export const ModalContextProvider = ({
       setShowModelModal,
       setShowExternalKnowledgeAPIModal,
       setShowModelLoadBalancingModal,
-      setShowModelLoadBalancingEntryModal,
       setShowOpeningModal,
       setShowUpdatePluginModal,
     }}>
@@ -340,9 +316,10 @@ export const ModalContextProvider = ({
             <ModelModal
               provider={showModelModal.payload.currentProvider}
               configurateMethod={showModelModal.payload.currentConfigurationMethod}
-              model={showModelModal.payload.model}
               currentCustomConfigurationModelFixedFields={showModelModal.payload.currentCustomConfigurationModelFixedFields}
+              isModelCredential={showModelModal.payload.isModelCredential}
               credential={showModelModal.payload.credential}
+              model={showModelModal.payload.model}
               onCancel={handleCancelModelModal}
               onSave={handleSaveModelModal}
             />
@@ -363,19 +340,6 @@ export const ModalContextProvider = ({
         {
           Boolean(showModelLoadBalancingModal) && (
             <ModelLoadBalancingModal {...showModelLoadBalancingModal!} />
-          )
-        }
-        {
-          !!showModelLoadBalancingEntryModal && (
-            <ModelLoadBalancingEntryModal
-              provider={showModelLoadBalancingEntryModal.payload.currentProvider}
-              configurationMethod={showModelLoadBalancingEntryModal.payload.currentConfigurationMethod}
-              currentCustomConfigurationModelFixedFields={showModelLoadBalancingEntryModal.payload.currentCustomConfigurationModelFixedFields}
-              entry={showModelLoadBalancingEntryModal.payload.entry}
-              onCancel={handleCancelModelLoadBalancingEntryModal}
-              onSave={handleSaveModelLoadBalancingEntryModal}
-              onRemove={handleRemoveModelLoadBalancingEntry}
-            />
           )
         }
         {showOpeningModal && (

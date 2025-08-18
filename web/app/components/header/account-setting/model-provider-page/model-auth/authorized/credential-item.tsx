@@ -13,19 +13,16 @@ import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import type { Credential } from '../../declarations'
-import Button from '@/app/components/base/button'
 
 type CredentialItemProps = {
   credential: Credential
   disabled?: boolean
-  onDelete?: (id: string) => void
+  onDelete?: (credential: Credential) => void
   onEdit?: (credential?: Credential) => void
-  onSetDefault?: (id: string) => void
+  onItemClick?: (credential: Credential) => void
   disableRename?: boolean
   disableEdit?: boolean
   disableDelete?: boolean
-  disableSetDefault?: boolean
-  onItemClick?: (id: string) => void
   showSelectedIcon?: boolean
   selectedCredentialId?: string
 }
@@ -34,19 +31,17 @@ const CredentialItem = ({
   disabled,
   onDelete,
   onEdit,
-  onSetDefault,
+  onItemClick,
   disableRename,
   disableEdit,
   disableDelete,
-  disableSetDefault,
-  onItemClick,
   showSelectedIcon,
   selectedCredentialId,
 }: CredentialItemProps) => {
   const { t } = useTranslation()
   const showAction = useMemo(() => {
-    return !(disableRename && disableEdit && disableDelete && disableSetDefault)
-  }, [disableRename, disableEdit, disableDelete, disableSetDefault])
+    return !(disableRename && disableEdit && disableDelete)
+  }, [disableRename, disableEdit, disableDelete])
 
   return (
     <div
@@ -54,7 +49,7 @@ const CredentialItem = ({
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
       )}
-      onClick={() => onItemClick?.(credential.credential_id)}
+      onClick={() => onItemClick?.(credential)}
     >
       <div className='flex w-0 grow items-center space-x-1.5'>
         {
@@ -80,20 +75,6 @@ const CredentialItem = ({
         showAction && (
           <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>
             {
-              !disableSetDefault && (
-                <Button
-                  size='small'
-                  disabled={disabled}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSetDefault?.(credential.credential_id)
-                  }}
-                >
-                  {t('plugin.auth.setDefault')}
-                </Button>
-              )
-            }
-            {
               !disableEdit && (
                 <Tooltip popupContent={t('common.operation.edit')}>
                   <ActionButton
@@ -116,7 +97,7 @@ const CredentialItem = ({
                     disabled={disabled}
                     onClick={(e) => {
                       e.stopPropagation()
-                      onDelete?.(credential.credential_id)
+                      onDelete?.(credential)
                     }}
                   >
                     <RiDeleteBinLine className='h-4 w-4 text-text-tertiary hover:text-text-destructive' />

@@ -12,52 +12,60 @@ import {
 } from '@/app/components/base/button'
 import type {
   CustomConfigurationModelFixedFields,
-  CustomModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
-import { useAuth } from './hooks'
+import {
+  useAuth,
+  useCustomModels,
+} from './hooks'
 import cn from '@/utils/classnames'
 
 type AddCustomModelProps = {
   provider: ModelProvider,
   configurationMethod: ConfigurationMethodEnum,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  models: CustomModelCredential[]
 }
 const AddCustomModel = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
-  models,
 }: AddCustomModelProps) => {
   const { t } = useTranslation()
-  const noModels = !models.length
+  const customModels = useCustomModels(provider)
+  const noModels = !customModels.length
   const {
     handleOpenModal,
-  } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields)
+  } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields, true)
   const handleClick = useCallback(() => {
-    if (noModels)
-      handleOpenModal()
-  }, [handleOpenModal, noModels])
+    handleOpenModal()
+  }, [handleOpenModal])
   const ButtonComponent = useMemo(() => {
     return (
       <Button
         variant='ghost-accent'
         size='small'
         onClick={handleClick}
-        className={cn(noModels && 'text-text-accent')}
       >
         <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
         {t('common.modelProvider.addModel')}
       </Button>
     )
-  }, [handleClick, noModels])
+  }, [handleClick])
 
-  const renderTrigger = useCallback(() => {
-    return ButtonComponent
-  }, [ButtonComponent])
+  const renderTrigger = useCallback((open?: boolean) => {
+    return (
+      <Button
+        variant='ghost'
+        size='small'
+        className={cn(open && 'bg-components-button-ghost-bg-hover')}
+      >
+        <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
+        {t('common.modelProvider.addModel')}
+      </Button>
+    )
+  }, [t])
 
   if (noModels)
     return ButtonComponent
@@ -66,11 +74,14 @@ const AddCustomModel = ({
     <Authorized
       provider={provider}
       configurationMethod={ConfigurationMethodEnum.customizableModel}
-      items={models.map(model => ({
+      items={customModels.map(model => ({
         model,
         credentials: model.available_model_credentials ?? [],
       }))}
       renderTrigger={renderTrigger}
+      isModelCredential
+      enableAddModelCredential
+      bottomAddModelCredentialText={t('common.modelProvider.auth.addNewModel')}
     />
   )
 }

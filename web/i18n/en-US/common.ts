@@ -40,6 +40,7 @@ const translation = {
     deleteApp: 'Delete App',
     settings: 'Settings',
     setup: 'Setup',
+    config: 'Config',
     getForFree: 'Get for free',
     reload: 'Reload',
     ok: 'OK',
@@ -66,7 +67,6 @@ const translation = {
     more: 'More',
     selectAll: 'Select All',
     deSelectAll: 'Deselect All',
-    config: 'Config',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -145,8 +145,6 @@ const translation = {
     addMoreModel: 'Go to settings to add more models',
     settingsLink: 'Model Provider Settings',
     capabilities: 'MultiModal Capabilities',
-    unAuthorized: 'Unauthorized',
-    authRemoved: 'Auth removed',
   },
   menus: {
     status: 'beta',
@@ -489,6 +487,18 @@ const translation = {
     discoverMore: 'Discover more in ',
     emptyProviderTitle: 'Model provider not set up',
     emptyProviderTip: 'Please install a model provider first.',
+    auth: {
+      unAuthorized: 'Unauthorized',
+      authRemoved: 'Auth removed',
+      apiKeys: 'API Keys',
+      addApiKey: 'Add API Key',
+      addNewModel: 'Add new model',
+      addCredential: 'Add credential',
+      addModelCredential: 'Add model credential',
+      modelCredentials: 'Model credentials',
+      configModel: 'Config model',
+      configLoadBalancing: 'Config Load Balancing',
+    },
   },
   dataSource: {
     add: 'Add a data source',

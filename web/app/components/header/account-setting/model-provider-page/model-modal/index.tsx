@@ -38,33 +38,35 @@ import type {
 import Loading from '@/app/components/base/loading'
 import {
   useAuth,
-  useGetCredential,
+  useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 
 type ModelModalProps = {
   provider: ModelProvider
-  model?: CustomModel
-  credential?: Credential
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   onCancel: () => void
   onSave: () => void
+  model?: CustomModel
+  credential?: Credential
+  isModelCredential?: boolean
 }
 
 const ModelModal: FC<ModelModalProps> = ({
   provider,
-  model,
   configurateMethod,
   currentCustomConfigurationModelFixedFields,
-  credential,
   onCancel,
   onSave,
+  model,
+  credential,
+  isModelCredential,
 }) => {
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const {
     isLoading,
-    data: credentialData = {},
-  } = useGetCredential(provider.provider, credential?.credential_id, model)
+    credentialData,
+  } = useCredentialData(provider, providerFormSchemaPredefined, isModelCredential, credential, model)
   const {
     handleSaveCredential,
     handleConfirmDelete,
@@ -72,7 +74,7 @@ const ModelModal: FC<ModelModalProps> = ({
     closeConfirmDelete,
     openConfirmDelete,
     doingAction,
-  } = useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, onSave)
+  } = useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, isModelCredential, onSave)
   const {
     credentials: formSchemasValue,
   } = credentialData as any
@@ -81,7 +83,10 @@ const ModelModal: FC<ModelModalProps> = ({
   const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
   const { t } = useTranslation()
   const language = useLanguage()
-  const { formSchemas } = useModelFormSchemas(provider, providerFormSchemaPredefined)
+  const {
+    formSchemas,
+    formValues,
+  } = useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
   const formRef = useRef<FormRefObject>(null)
 
   const handleSave = useCallback(async () => {
@@ -152,10 +157,7 @@ const ModelModal: FC<ModelModalProps> = ({
                           showRadioUI: formSchema.type === FormTypeEnum.radio,
                         }
                       }) as FormSchema[]}
-                      defaultValues={{
-                        ...formSchemasValue,
-                        __authorization_name__: credential?.credential_name,
-                      }}
+                      defaultValues={formValues}
                       inputClassName='justify-start'
                       ref={formRef}
                     />
@@ -186,7 +188,7 @@ const ModelModal: FC<ModelModalProps> = ({
                         variant='warning'
                         size='large'
                         className='mr-2'
-                        onClick={() => openConfirmDelete(credential?.credential_id, model)}
+                        onClick={() => openConfirmDelete(credential, model)}
                       >
                         {t('common.operation.remove')}
                       </Button>

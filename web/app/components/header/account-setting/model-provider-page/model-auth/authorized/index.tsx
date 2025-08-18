@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react'
 import {
+  RiAddLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -32,6 +33,7 @@ type AuthorizedProps = {
   provider: ModelProvider,
   configurationMethod: ConfigurationMethodEnum,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  isModelCredential?: boolean
   items: {
     model?: CustomModel
     credentials: Credential[]
@@ -45,16 +47,18 @@ type AuthorizedProps = {
   placement?: PortalToFollowElemOptions['placement']
   triggerPopupSameWidth?: boolean
   popupClassName?: string
-  onItemClick?: (id: string) => void
   showItemSelectedIcon?: boolean
   onUpdate?: () => void
-  disableSetDefault?: boolean
+  onItemClick?: (credential: Credential, model?: CustomModel) => void
+  enableAddModelCredential?: boolean
+  bottomAddModelCredentialText?: string
 }
 const Authorized = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
   items,
+  isModelCredential,
   selectedCredential,
   disabled,
   renderTrigger,
@@ -64,10 +68,11 @@ const Authorized = ({
   placement = 'bottom-end',
   triggerPopupSameWidth = false,
   popupClassName,
-  onItemClick,
   showItemSelectedIcon,
   onUpdate,
-  disableSetDefault,
+  onItemClick,
+  enableAddModelCredential,
+  bottomAddModelCredentialText,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
@@ -86,12 +91,19 @@ const Authorized = ({
     handleConfirmDelete,
     deleteCredentialId,
     handleOpenModal,
-  } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields, onUpdate)
+  } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields, isModelCredential, onUpdate)
 
-  const handleEdit = useCallback((model?: CustomModel, credential?: Credential) => {
-    handleOpenModal(model, credential)
+  const handleEdit = useCallback((credential?: Credential, model?: CustomModel) => {
+    handleOpenModal(credential, model)
     setMergedIsOpen(false)
   }, [handleOpenModal, setMergedIsOpen])
+
+  const handleItemClick = useCallback((credential: Credential, model?: CustomModel) => {
+    if (!onItemClick)
+      return handleActiveCredential(credential, model)
+
+    onItemClick?.(credential, model)
+  }, [handleActiveCredential, onItemClick])
 
   return (
     <>
@@ -135,24 +147,38 @@ const Authorized = ({
                     disabled={disabled}
                     onDelete={openConfirmDelete}
                     onEdit={handleEdit}
-                    onSetDefault={handleActiveCredential}
-                    onItemClick={onItemClick}
                     showItemSelectedIcon={showItemSelectedIcon}
                     selectedCredentialId={selectedCredential?.credential_id}
-                    disableSetDefault={disableSetDefault}
+                    onItemClick={handleItemClick}
+                    enableAddModelCredential={enableAddModelCredential}
                   />
                 ))
               }
             </div>
             <div className='h-[1px] bg-divider-subtle'></div>
-            <div className='p-2'>
-              <Button
-                onClick={() => handleOpenModal()}
-                className='w-full'
-              >
-                add api key
-              </Button>
-            </div>
+            {
+              isModelCredential && (
+                <div
+                  onClick={() => handleEdit()}
+                  className='system-xs-medium flex h-[30px] cursor-pointer items-center px-3 text-text-accent-light-mode-only'
+                >
+                  <RiAddLine className='mr-1 h-4 w-4' />
+                  {bottomAddModelCredentialText ?? t('common.modelProvider.auth.addModelCredential')}
+                </div>
+              )
+            }
+            {
+              !isModelCredential && (
+                <div className='p-2'>
+                  <Button
+                    onClick={() => handleEdit()}
+                    className='w-full'
+                  >
+                    {t('common.modelProvider.auth.addApiKey')}
+                  </Button>
+                </div>
+              )
+            }
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

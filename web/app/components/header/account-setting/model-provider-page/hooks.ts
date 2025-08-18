@@ -354,6 +354,7 @@ export const useModelModalHandler = () => {
     provider: ModelProvider,
     configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    isModelCredential?: boolean,
     credential?: Credential,
     model?: CustomModel,
   ) => {
@@ -362,6 +363,7 @@ export const useModelModalHandler = () => {
         currentProvider: provider,
         currentConfigurationMethod: configurationMethod,
         currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
+        isModelCredential,
         credential,
         model,
       },

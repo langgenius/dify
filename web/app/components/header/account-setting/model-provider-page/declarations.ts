@@ -183,7 +183,7 @@ export type QuotaConfiguration = {
 
 export type Credential = {
   credential_id: string
-  credential_name: string
+  credential_name?: string
 }
 
 export type CustomModel = {

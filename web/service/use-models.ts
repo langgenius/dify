@@ -7,6 +7,7 @@ import {
 import type {
   ModelCredential,
   ModelItem,
+  ModelLoadBalancingConfig,
   ModelTypeEnum,
   ProviderCredential,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -29,7 +30,7 @@ export const useGetProviderCredential = (enabled: boolean, provider: string, cre
   return useQuery({
     enabled,
     queryKey: [NAME_SPACE, 'model-list', provider, credentialId],
-    queryFn: () => get<{ data: ProviderCredential }>(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
+    queryFn: () => get<ProviderCredential>(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
   })
 }
 
@@ -82,7 +83,8 @@ export const useGetModelCredential = (
   return useQuery({
     enabled,
     queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId],
-    queryFn: () => get<{ data: ModelCredential }>(`/workspaces/current/model-providers/${provider}/models/credentials?model=${model}&model_type=${modelType}$credential_id=${credentialId}$config_from=${configFrom}`),
+    queryFn: () => get<ModelCredential>(`/workspaces/current/model-providers/${provider}/models/credentials?model=${model}&model_type=${modelType}&config_from=${configFrom}${credentialId ? `&credential_id=${credentialId}` : ''}`),
+    staleTime: 0,
   })
 }
 
@@ -132,6 +134,19 @@ export const useActiveModelCredential = (provider: string) => {
       model?: string
       model_type?: ModelTypeEnum
     }) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials/switch`, {
+      body: data,
+    }),
+  })
+}
+
+export const useUpdateModelLoadBalancingConfig = (provider: string) => {
+  return useMutation({
+    mutationFn: (data: {
+      config_from: string
+      model: string
+      model_type: ModelTypeEnum
+      load_balancing: ModelLoadBalancingConfig
+    }) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models`, {
       body: data,
     }),
   })

@@ -3,3 +3,4 @@ export { default as SwitchCredentialInLoadBalancing } from './switch-credential-
 export { default as AddCredentialInLoadBalancing } from './add-credential-in-load-balancing'
 export { default as AddCustomModel } from './add-custom-model'
 export { default as ConfigProvider } from './config-provider'
+export { default as ConfigModel } from './config-model'

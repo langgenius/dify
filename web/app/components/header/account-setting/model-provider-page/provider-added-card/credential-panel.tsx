@@ -70,11 +70,11 @@ const CredentialPanel = ({
   }
   const credentialLabel = useMemo(() => {
     if (!hasCredential)
-      return t('common.model.unAuthorized')
+      return t('common.modelProvider.auth.unAuthorized')
     if (authorized)
       return current_credential_name
     if (authRemoved)
-      return t('common.model.authRemoved')
+      return t('common.modelProvider.auth.authRemoved')
 
     return ''
   }, [authorized, authRemoved, current_credential_name, hasCredential])

@@ -3,41 +3,51 @@ import {
   useCallback,
 } from 'react'
 import { RiAddLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import CredentialItem from './credential-item'
 import type {
   Credential,
   CustomModel,
+  CustomModelCredential,
 } from '../../declarations'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 
 type AuthorizedItemProps = {
-  model?: CustomModel
+  model?: CustomModelCredential
+  title?: string
   disabled?: boolean
-  onDelete?: (id: string) => void
-  onEdit?: (model?: CustomModel, credential?: Credential) => void
-  onSetDefault?: (id: string) => void
-  onItemClick?: (id: string) => void
+  onDelete?: (credential?: Credential, model?: CustomModel) => void
+  onEdit?: (credential?: Credential, model?: CustomModel) => void
   showItemSelectedIcon?: boolean
   selectedCredentialId?: string
-  disableSetDefault?: boolean
   credentials: Credential[]
+  onItemClick?: (credential: Credential, model?: CustomModel) => void
+  enableAddModelCredential?: boolean
 }
 export const AuthorizedItem = ({
   model,
+  title,
   credentials,
   disabled,
   onDelete,
   onEdit,
-  onSetDefault,
-  onItemClick,
   showItemSelectedIcon,
   selectedCredentialId,
-  disableSetDefault,
+  onItemClick,
+  enableAddModelCredential,
 }: AuthorizedItemProps) => {
+  const { t } = useTranslation()
   const handleEdit = useCallback((credential?: Credential) => {
-    onEdit?.(model, credential)
+    onEdit?.(credential, model)
   }, [onEdit, model])
+  const handleDelete = useCallback((credential?: Credential) => {
+    onDelete?.(credential, model)
+  }, [onDelete, model])
+  const handleItemClick = useCallback((credential: Credential) => {
+    onItemClick?.(credential, model)
+  }, [onItemClick, model])
+
   return (
     <div className='p-1'>
       {
@@ -47,23 +57,28 @@ export const AuthorizedItem = ({
           >
             <div className='h-5 w-5 shrink-0'></div>
             <div
-              className='system-md-medium mx-1 truncate text-text-primary'
+              className='system-md-medium mx-1 grow truncate text-text-primary'
               title={model.model}
             >
-              {model.model}
+              {title ?? model.model}
             </div>
-            <Tooltip
-              asChild
-              popupContent='Add model credential'
-            >
-              <Button
-                className='h-6 w-6 rounded-full p-0'
-                size='small'
-                variant='secondary-accent'
-              >
-                <RiAddLine className='h-4 w-4' />
-              </Button>
-            </Tooltip>
+            {
+              enableAddModelCredential && (
+                <Tooltip
+                  asChild
+                  popupContent={t('common.modelProvider.auth.addModelCredential')}
+                >
+                  <Button
+                    className='h-6 w-6 shrink-0 rounded-full p-0'
+                    size='small'
+                    variant='secondary-accent'
+                    onClick={() => handleEdit?.()}
+                  >
+                    <RiAddLine className='h-4 w-4' />
+                  </Button>
+                </Tooltip>
+              )
+            }
           </div>
         )
       }
@@ -73,13 +88,11 @@ export const AuthorizedItem = ({
             key={credential.credential_id}
             credential={credential}
             disabled={disabled}
-            onDelete={onDelete}
+            onDelete={handleDelete}
             onEdit={handleEdit}
-            onSetDefault={onSetDefault}
-            onItemClick={onItemClick}
             showSelectedIcon={showItemSelectedIcon}
             selectedCredentialId={selectedCredentialId}
-            disableSetDefault={disableSetDefault}
+            onItemClick={handleItemClick}
           />
         ))
       }
