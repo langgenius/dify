@@ -1,0 +1,164 @@
+[build]
+builder = "docker"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# ------------------------------
+# API Service
+# ------------------------------
+[[services]]
+name = "api"
+image = "langgenius/dify-api:1.7.2"
+startCommand = "gunicorn --bind 0.0.0.0:${PORT} --workers 1 --worker-class gevent --worker-connections 10 --timeout 360 app:app"
+
+[services.api.env]
+MODE = "api"
+# Replace with your public API URL after deployment
+CONSOLE_API_URL = "https://your-api-service-url"
+SERVICE_API_URL = "https://your-api-service-url"
+APP_API_URL = "https://your-api-service-url"
+# Replace with your public web URL after deployment
+CONSOLE_WEB_URL = "https://your-web-service-url"
+APP_WEB_URL = "https://your-web-service-url"
+FILES_URL = "https://your-api-service-url"
+INTERNAL_FILES_URL = "http://api:5001" # This might need to be adjusted based on Railway's internal networking
+# Generate a new secret key with: openssl rand -base64 42
+SECRET_KEY = "sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U"
+MIGRATION_ENABLED = "true"
+
+# Database Configuration (replace with your Railway Postgres details)
+DB_USERNAME = "${{Postgres.user}}"
+DB_PASSWORD = "${{Postgres.password}}"
+DB_HOST = "${{Postgres.host}}"
+DB_PORT = "${{Postgres.port}}"
+DB_DATABASE = "${{Postgres.database}}"
+
+# Redis Configuration (replace with your Railway Redis details)
+REDIS_HOST = "${{Redis.host}}"
+REDIS_PORT = "${{Redis.port}}"
+REDIS_PASSWORD = "${{Redis.password}}"
+REDIS_USE_SSL = "true"
+
+# Celery Configuration
+CELERY_BROKER_URL = "redis://:${{Redis.password}}@${{Redis.host}}:${{Redis.port}}/1?ssl_cert_reqs=required"
+CELERY_BACKEND = "redis"
+BROKER_USE_SSL = "true"
+
+# Storage Configuration
+STORAGE_TYPE = "local" # or "s3" if you have S3 configured
+
+# Mail Configuration (replace with your email provider details)
+MAIL_TYPE = "smtp"
+SMTP_SERVER = "smtp.example.com"
+SMTP_PORT = "587"
+SMTP_USERNAME = "your-username"
+SMTP_PASSWORD = "your-password"
+SMTP_USE_TLS = "true"
+MAIL_DEFAULT_SEND_FROM = "noreply@example.com"
+
+
+# ------------------------------
+# Worker Service
+# ------------------------------
+[[services]]
+name = "worker"
+image = "langgenius/dify-api:1.7.2"
+startCommand = "celery -A app.celery worker -P gevent --max-tasks-per-child 50 --loglevel INFO -Q dataset,mail,ops_trace,app_deletion,plugin,workflow_storage"
+
+[services.worker.env]
+MODE = "worker"
+# Replace with your public API URL after deployment
+CONSOLE_API_URL = "https://your-api-service-url"
+SERVICE_API_URL = "https://your-api-service-url"
+APP_API_URL = "https://your-api-service-url"
+# Replace with your public web URL after deployment
+CONSOLE_WEB_URL = "https://your-web-service-url"
+APP_WEB_URL = "https://your-web-service-url"
+FILES_URL = "https://your-api-service-url"
+INTERNAL_FILES_URL = "http://api:5001" # This might need to be adjusted based on Railway's internal networking
+# Generate a new secret key with: openssl rand -base64 42
+SECRET_KEY = "sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U"
+MIGRATION_ENABLED = "false"
+
+# Database Configuration (replace with your Railway Postgres details)
+DB_USERNAME = "${{Postgres.user}}"
+DB_PASSWORD = "${{Postgres.password}}"
+DB_HOST = "${{Postgres.host}}"
+DB_PORT = "${{Postgres.port}}"
+DB_DATABASE = "${{Postgres.database}}"
+
+# Redis Configuration (replace with your Railway Redis details)
+REDIS_HOST = "${{Redis.host}}"
+REDIS_PORT = "${{Redis.port}}"
+REDIS_PASSWORD = "${{Redis.password}}"
+REDIS_USE_SSL = "true"
+
+# Celery Configuration
+CELERY_BROKER_URL = "redis://:${{Redis.password}}@${{Redis.host}}:${{Redis.port}}/1?ssl_cert_reqs=required"
+CELERY_BACKEND = "redis"
+BROKER_USE_SSL = "true"
+
+# Storage Configuration
+STORAGE_TYPE = "local" # or "s3" if you have S3 configured
+
+
+# ------------------------------
+# Worker Beat Service
+# ------------------------------
+[[services]]
+name = "worker_beat"
+image = "langgenius/dify-api:1.7.2"
+startCommand = "celery -A app.celery beat --loglevel INFO"
+
+[services.worker_beat.env]
+MODE = "beat"
+# Replace with your public API URL after deployment
+CONSOLE_API_URL = "https://your-api-service-url"
+SERVICE_API_URL = "https://your-api-service-url"
+APP_API_URL = "https://your-api-service-url"
+# Replace with your public web URL after deployment
+CONSOLE_WEB_URL = "https://your-web-service-url"
+APP_WEB_URL = "https://your-web-service-url"
+FILES_URL = "https://your-api-service-url"
+INTERNAL_FILES_URL = "http://api:5001" # This might need to be adjusted based on Railway's internal networking
+# Generate a new secret key with: openssl rand -base64 42
+SECRET_KEY = "sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U"
+MIGRATION_ENABLED = "false"
+
+# Database Configuration (replace with your Railway Postgres details)
+DB_USERNAME = "${{Postgres.user}}"
+DB_PASSWORD = "${{Postgres.password}}"
+DB_HOST = "${{Postgres.host}}"
+DB_PORT = "${{Postgres.port}}"
+DB_DATABASE = "${{Postgres.database}}"
+
+# Redis Configuration (replace with your Railway Redis details)
+REDIS_HOST = "${{Redis.host}}"
+REDIS_PORT = "${{Redis.port}}"
+REDIS_PASSWORD = "${{Redis.password}}"
+REDIS_USE_SSL = "true"
+
+# Celery Configuration
+CELERY_BROKER_URL = "redis://:${{Redis.password}}@${{Redis.host}}:${{Redis.port}}/1?ssl_cert_reqs=required"
+CELERY_BACKEND = "redis"
+BROKER_USE_SSL = "true"
+
+
+# ------------------------------
+# Web Service
+# ------------------------------
+[[services]]
+name = "web"
+image = "langgenius/dify-web:1.7.2"
+startCommand = "pm2 start /app/web/server.js --name dify-web --cwd /app/web -i 2 --no-daemon"
+
+[services.web.env]
+# Replace with your public API URL after deployment
+CONSOLE_API_URL = "https://your-api-service-url"
+APP_API_URL = "https://your-api-service-url"
+# Replace with your public web URL after deployment
+NEXT_PUBLIC_CONSOLE_URL = "https://your-web-service-url"
+NEXT_PUBLIC_APP_URL = "https://your-web-service-url"
+PM2_INSTANCES = "2"
