@@ -398,7 +398,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       if (oldestAnswerItem?.id) {
         params.first_id = oldestAnswerItem.id
       }
- else if (allChatItems.length > 0 && allChatItems[0]?.id) {
+      else if (allChatItems.length > 0 && allChatItems[0]?.id) {
         const firstId = allChatItems[0].id.replace('question-', '').replace('answer-', '')
         params.first_id = firstId
       }
