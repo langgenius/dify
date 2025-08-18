@@ -8,7 +8,7 @@ const translation = {
     published: 'Veröffentlicht',
     publish: 'Veröffentlichen',
     update: 'Aktualisieren',
-    run: 'Ausführen',
+    run: 'Test ausführen',
     running: 'Wird ausgeführt',
     inRunMode: 'Im Ausführungsmodus',
     inPreview: 'In der Vorschau',

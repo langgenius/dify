@@ -8,7 +8,7 @@ const translation = {
     published: 'Опубліковано',
     publish: 'Опублікувати',
     update: 'Оновити',
-    run: 'Запустити',
+    run: 'Тестовий запуск',
     running: 'Запущено',
     inRunMode: 'У режимі запуску',
     inPreview: 'У режимі попереднього перегляду',

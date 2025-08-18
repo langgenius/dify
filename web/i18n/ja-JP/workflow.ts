@@ -9,7 +9,7 @@ const translation = {
     publish: '公開する',
     update: '更新',
     publishUpdate: '更新を公開',
-    run: '実行',
+    run: 'テスト実行',
     running: '実行中',
     inRunMode: '実行モード中',
     inPreview: 'プレビュー中',

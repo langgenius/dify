@@ -8,7 +8,7 @@ const translation = {
     published: '已發佈',
     publish: '發佈',
     update: '更新',
-    run: '運行',
+    run: '測試運行',
     running: '運行中',
     inRunMode: '在運行模式中',
     inPreview: '預覽中',

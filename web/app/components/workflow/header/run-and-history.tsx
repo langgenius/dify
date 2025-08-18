@@ -22,6 +22,7 @@ import {
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import useTheme from '@/hooks/use-theme'
+import ShortcutsName from '../shortcuts-name'
 
 const RunMode = memo(() => {
   const { t } = useTranslation()
@@ -64,6 +65,7 @@ const RunMode = memo(() => {
               <>
                 <RiPlayLargeLine className='mr-1 h-4 w-4' />
                 {t('workflow.common.run')}
+                <ShortcutsName keys={['alt', 'r']} className="ml-1" textColor="secondary" />
               </>
             )
         }

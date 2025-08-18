@@ -18,7 +18,7 @@ const translation = {
     },
     versionHistory: 'Zgodovina različic',
     published: 'Objavljeno',
-    run: 'Teči',
+    run: 'Testni tek',
     featuresDocLink: 'Nauči se več',
     notRunning: 'Še ne teče',
     exportImage: 'Izvozi sliko',

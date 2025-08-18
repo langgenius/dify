@@ -9,7 +9,7 @@ const translation = {
     publish: '发布',
     update: '更新',
     publishUpdate: '发布更新',
-    run: '运行',
+    run: '测试运行',
     running: '运行中',
     inRunMode: '在运行模式中',
     inPreview: '预览中',
