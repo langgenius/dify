@@ -1891,9 +1891,7 @@ class DocumentService:
 
     @staticmethod
     def _prepare_document_status_update(
-        document: Document,
-        action: Literal["enable", "disable", "archive", "un_archive"],
-        user
+        document: Document, action: Literal["enable", "disable", "archive", "un_archive"], user
     ):
         """Prepare document status update information.
 
@@ -2359,11 +2357,7 @@ class SegmentService:
 
     @classmethod
     def update_segments_status(
-        cls,
-        segment_ids: list,
-        action: Literal["enable", "disable"],
-        dataset: Dataset,
-        document: Document
+        cls, segment_ids: list, action: Literal["enable", "disable"], dataset: Dataset, document: Document
     ):
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
