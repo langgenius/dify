@@ -157,7 +157,7 @@ const translation = {
       price: 'カスタム',
       priceTip: '年間契約専用',
       btnText: '営業に相談',
-      includesTitle: 'プレミアム版機能に加えて：',
+      includesTitle: '<highlight>プレミアム</highlight>版機能に加えて：',
       features: [
         'エンタープライズ向け拡張ソリューション',
         '商用ライセンス認可',
