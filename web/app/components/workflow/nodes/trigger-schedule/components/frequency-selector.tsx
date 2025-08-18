@@ -27,7 +27,8 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       defaultValue={frequency}
       onSelect={item => onChange(item.value as ScheduleFrequency)}
       placeholder={t('workflow.nodes.triggerSchedule.selectFrequency')}
-      className="w-full"
+      className="w-full py-2"
+      wrapperClassName="h-auto"
       optionWrapClassName="min-w-40"
       notClearable={true}
       allowSearch={false}
