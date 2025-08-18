@@ -508,7 +508,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       console.error(error)
       setHasMore(false)
     }
- finally {
+    catch (error) {
+      console.error(error)
+      setHasMore(false)
+    }
+    finally {
       setIsLoading(false)
 catch (error) {
   console.error(error)
