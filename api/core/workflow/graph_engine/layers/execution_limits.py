@@ -17,9 +17,9 @@ from pydantic import PositiveInt
 from core.workflow.graph_engine.entities.commands import AbortCommand
 from core.workflow.graph_engine.layers import Layer
 from core.workflow.graph_events import (
+    GraphEngineEvent,
     NodeRunStartedEvent,
 )
-from core.workflow.graph_events.base import GraphEngineEvent
 
 
 class ExecutionLimitsLayer(Layer):
