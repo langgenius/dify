@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 from flask import Flask, current_app
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.graph import Graph
@@ -218,10 +219,10 @@ class GraphEngine:
         # Create worker management components
         self.activity_tracker = ActivityTracker()
         self.dynamic_scaler = DynamicScaler(
-            min_workers=2,
-            max_workers=10,
-            scale_up_threshold=5,
-            scale_down_idle_time=30.0,
+            min_workers=dify_config.GRAPH_ENGINE_MIN_WORKERS,
+            max_workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
+            scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
+            scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
         )
         self.worker_factory = WorkerFactory(flask_app, context_vars)
 
