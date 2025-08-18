@@ -558,7 +558,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       const isNearTop = distanceFromTop < 30
       const isNearBottom = distanceFromBottom < 30
 
-      if ((isNearTop || isNearBottom) && hasMore && !isLoading && (now - lastLoadTime > throttleDelay)) {
+      if (isNearTop && hasMore && !isLoading && (now - lastLoadTime > throttleDelay)) {
         lastLoadTime = now
         loadMoreMessages()
       }
