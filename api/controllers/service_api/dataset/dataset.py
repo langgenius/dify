@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask import request
 from flask_restful import marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
@@ -358,14 +360,14 @@ class DatasetApi(DatasetApiResource):
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
-    def patch(self, tenant_id, dataset_id, action):
+    def patch(self, tenant_id, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
         """
         Batch update document status.
 
         Args:
             tenant_id: tenant id
             dataset_id: dataset id
-            action: action to perform (enable, disable, archive, un_archive)
+            action: action to perform (Literal["enable", "disable", "archive", "un_archive"])
 
         Returns:
             dict: A dictionary with a key 'result' and a value 'success'
