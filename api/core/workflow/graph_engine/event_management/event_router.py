@@ -47,7 +47,7 @@ class EventRouter:
     def _setup_default_handlers(self) -> None:
         """Set up the default event type to handler mapping."""
         # Iteration and loop events are collected directly
-        iteration_loop_events = [
+        iteration_loop_events: list[type[GraphEngineEvent]] = [
             NodeRunIterationStartedEvent,
             NodeRunIterationNextEvent,
             NodeRunIterationSucceededEvent,
@@ -59,7 +59,7 @@ class EventRouter:
         ]
 
         for event_type in iteration_loop_events:
-            self._handlers[event_type] = self.event_collector.collect  # type: ignore
+            self._handlers[event_type] = self.event_collector.collect
 
     def register_handler(self, event_type: type[GraphEngineEvent], handler: Callable) -> None:
         """

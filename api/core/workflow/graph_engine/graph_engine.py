@@ -201,7 +201,7 @@ class GraphEngine:
         abort_handler = AbortCommandHandler()
         self.command_processor.register_handler(
             AbortCommand,
-            abort_handler,  # type: ignore
+            abort_handler,
         )
 
     def _setup_worker_management(self) -> None:
