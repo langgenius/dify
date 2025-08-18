@@ -151,7 +151,7 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
       open={open}
       onOpenChange={setOpen}
       placement='bottom-start'
-      offset={{ mainAxis: 8, crossAxis: 0 }}
+      offset={{ mainAxis: 8, crossAxis: -4 }}
     >
       <PortalToFollowElemTrigger asChild onClick={() => setOpen(!open)}>
         <div style={{ userSelect: 'none' }}>
