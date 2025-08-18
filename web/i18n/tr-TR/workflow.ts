@@ -8,7 +8,7 @@ const translation = {
     published: 'Yayınlandı',
     publish: 'Yayınla',
     update: 'Güncelle',
-    run: 'Çalıştır',
+    run: 'Test çalıştır',
     running: 'Çalışıyor',
     inRunMode: 'Çalıştırma Modunda',
     inPreview: 'Ön İzlemede',

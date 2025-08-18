@@ -8,7 +8,7 @@ const translation = {
     published: 'منتشر شده',
     publish: 'انتشار',
     update: 'به‌روزرسانی',
-    run: 'اجرا',
+    run: 'اجرای تست',
     running: 'در حال اجرا',
     inRunMode: 'در حالت اجرا',
     inPreview: 'در پیش‌نمایش',

@@ -8,7 +8,7 @@ const translation = {
     published: 'प्रकाशित',
     publish: 'प्रकाशित करें',
     update: 'अपडेट करें',
-    run: 'चलाएं',
+    run: 'परीक्षण चलाएं',
     running: 'चल रहा है',
     inRunMode: 'रन मोड में',
     inPreview: 'पूर्वावलोकन में',

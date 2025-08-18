@@ -8,7 +8,7 @@ const translation = {
     published: 'Đã xuất bản',
     publish: 'Xuất bản',
     update: 'Cập nhật',
-    run: 'Chạy',
+    run: 'Chạy thử nghiệm',
     running: 'Đang chạy',
     inRunMode: 'Chế độ chạy',
     inPreview: 'Trong chế độ xem trước',
