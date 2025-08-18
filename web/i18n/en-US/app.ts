@@ -299,7 +299,7 @@ const translation = {
       noPluginsFound: 'No plugins found',
       noKnowledgeBasesFound: 'No knowledge bases found',
       noWorkflowNodesFound: 'No workflow nodes found',
-      tryDifferentTerm: 'Try a different search term or remove the {{mode}} filter',
+      tryDifferentTerm: 'Try a different search term',
       trySpecificSearch: 'Try {{shortcuts}} for specific searches',
     },
     groups: {
