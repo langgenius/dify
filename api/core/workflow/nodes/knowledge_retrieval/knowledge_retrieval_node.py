@@ -391,10 +391,10 @@ class KnowledgeRetrievalNode(BaseNode):
                                 "score": record.score or 0.0,
                                 "child_chunks": [
                                     {
-                                        "id": str(getattr(chunk, 'id', '')),
-                                        "content": str(getattr(chunk, 'content', '')),
-                                        "position": int(getattr(chunk, 'position', 0)),
-                                        "score": float(getattr(chunk, 'score', 0.0))
+                                        "id": str(getattr(chunk, "id", "")),
+                                        "content": str(getattr(chunk, "content", "")),
+                                        "position": int(getattr(chunk, "position", 0)),
+                                        "score": float(getattr(chunk, "score", 0.0)),
                                     }
                                     for chunk in (record.child_chunks or [])
                                 ],
