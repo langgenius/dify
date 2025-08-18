@@ -554,7 +554,16 @@ finally {
           break
         }
       }
+  else {
+    const possibleContainers = document.querySelectorAll('.overflow-auto, .overflow-y-auto')
+    for (let i = 0; i < possibleContainers.length; i++) {
+      const container = possibleContainers[i] as HTMLElement
+      if (container.scrollHeight > container.clientHeight) {
+        scrollContainer = container
+        break
+      }
     }
+  }
 
     if (!scrollContainer)
       return
