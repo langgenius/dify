@@ -28,6 +28,7 @@ from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.lindorm_config import LindormConfig
 from .vdb.matrixone_config import MatrixoneConfig
 from .vdb.milvus_config import MilvusConfig
+from .vdb.mongodb_config import MongoDBConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
 from .vdb.opengauss_config import OpenGaussConfig
@@ -348,5 +349,6 @@ class MiddlewareConfig(
     TableStoreConfig,
     DatasetQueueMonitorConfig,
     MatrixoneConfig,
+    MongoDBConfig,
 ):
     pass
