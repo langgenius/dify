@@ -44,7 +44,7 @@ export type CommandSearchResult = {
 export type SearchResult = AppSearchResult | PluginSearchResult | KnowledgeSearchResult | WorkflowNodeSearchResult | CommandSearchResult
 
 export type ActionItem = {
-  key: '@app' | '@knowledge' | '@plugin' | '@node' | '@run'
+  key: '@app' | '@knowledge' | '@plugin' | '@node' | '/'
   shortcut: string
   title: string | TypeWithI18N
   description: string
