@@ -19,7 +19,6 @@ class NodeRunIterationNextEvent(GraphNodeEventBase):
     node_title: str
     index: int = Field(..., description="index")
     pre_iteration_output: Optional[Any] = None
-    duration: Optional[float] = None
 
 
 class NodeRunIterationSucceededEvent(GraphNodeEventBase):
@@ -29,7 +28,6 @@ class NodeRunIterationSucceededEvent(GraphNodeEventBase):
     outputs: Optional[Mapping[str, Any]] = None
     metadata: Optional[Mapping[str, Any]] = None
     steps: int = 0
-    iteration_duration_map: Optional[dict[str, float]] = None
 
 
 class NodeRunIterationFailedEvent(GraphNodeEventBase):

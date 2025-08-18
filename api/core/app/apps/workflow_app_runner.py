@@ -77,6 +77,7 @@ class WorkflowBasedAppRunner:
         graph_runtime_state: GraphRuntimeState,
         workflow_id: str = "",
         tenant_id: str = "",
+        user_id: str = "",
     ) -> Graph:
         """
         Init graph
@@ -96,7 +97,7 @@ class WorkflowBasedAppRunner:
             app_id=self._app_id,
             workflow_id=workflow_id,
             graph_config=graph_config,
-            user_id="",
+            user_id=user_id,
             user_from=UserFrom.ACCOUNT.value,
             invoke_from=InvokeFrom.SERVICE_API.value,
             call_depth=0,
@@ -515,7 +516,6 @@ class WorkflowBasedAppRunner:
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_iteration_output,
-                    duration=event.duration,
                 )
             )
         elif isinstance(event, (NodeRunIterationSucceededEvent | NodeRunIterationFailedEvent)):
@@ -558,7 +558,6 @@ class WorkflowBasedAppRunner:
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_loop_output,
-                    duration=event.duration,
                 )
             )
         elif isinstance(event, (NodeRunLoopSucceededEvent | NodeRunLoopFailedEvent)):

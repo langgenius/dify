@@ -23,6 +23,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.graph_events.node import NodeRunRetrieverResourceEvent
 from core.workflow.node_events import (
     AgentLogEvent,
     IterationFailedEvent,
@@ -38,6 +39,7 @@ from core.workflow.node_events import (
     StreamChunkEvent,
     StreamCompletedEvent,
 )
+from core.workflow.node_events.node import RunRetrieverResourceEvent
 from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 
@@ -348,6 +350,7 @@ class Node:
             IterationNextEvent: self._handle_iteration_next_event,
             IterationSucceededEvent: self._handle_iteration_succeeded_event,
             IterationFailedEvent: self._handle_iteration_failed_event,
+            RunRetrieverResourceEvent: self._handle_run_retriever_resource_event,
         }
         handler = handler_maps.get(type(event))
         if not handler:
@@ -473,7 +476,6 @@ class Node:
             node_title=self.get_base_node_data().title,
             index=event.index,
             pre_iteration_output=event.pre_iteration_output,
-            duration=event.duration,
         )
 
     def _handle_iteration_succeeded_event(self, event: IterationSucceededEvent) -> NodeRunIterationSucceededEvent:
@@ -487,7 +489,6 @@ class Node:
             outputs=event.outputs,
             metadata=event.metadata,
             steps=event.steps,
-            iteration_duration_map=event.iteration_duration_map,
         )
 
     def _handle_iteration_failed_event(self, event: IterationFailedEvent) -> NodeRunIterationFailedEvent:
@@ -502,4 +503,14 @@ class Node:
             metadata=event.metadata,
             steps=event.steps,
             error=event.error,
+        )
+
+    def _handle_run_retriever_resource_event(self, event: RunRetrieverResourceEvent) -> NodeRunRetrieverResourceEvent:
+        return NodeRunRetrieverResourceEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            retriever_resources=event.retriever_resources,
+            context=event.context,
+            node_version=self.version(),
         )

@@ -304,10 +304,8 @@ class WorkflowResponseConverter:
                 node_type=event.node_type.value,
                 title=event.node_title,
                 index=event.index,
-                pre_iteration_output=event.output,
                 created_at=int(time.time()),
                 extras={},
-                duration=event.duration,
             ),
         )
 
@@ -385,7 +383,6 @@ class WorkflowResponseConverter:
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
                 parallel_mode_run_id=event.parallel_mode_run_id,
-                duration=event.duration,
             ),
         )
 
