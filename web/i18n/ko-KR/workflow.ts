@@ -18,7 +18,6 @@ const translation = {
     runHistory: '실행 기록',
     goBackToEdit: '편집기로 돌아가기',
     conversationLog: '대화 로그',
-    features: '기능',
     debugAndPreview: '미리보기',
     restart: '재시작',
     currentDraft: '현재 초안',
@@ -94,9 +93,7 @@ const translation = {
     addParallelNode: '병렬 노드 추가',
     parallel: '병렬',
     branch: '브랜치',
-    featuresDocLink: '더 알아보세요',
     fileUploadTip: '이미지 업로드 기능이 파일 업로드로 업그레이드되었습니다.',
-    featuresDescription: '웹앱 사용자 경험 향상',
     ImageUploadLegacyTip:
       '이제 시작 양식에서 파일 형식 변수를 만들 수 있습니다. 앞으로 이미지 업로드 기능은 더 이상 지원되지 않습니다.',
     importWarning: '주의',
