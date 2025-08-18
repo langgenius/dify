@@ -795,7 +795,8 @@ finally {
                   switchSibling={switchSibling}
                 />
               </div>
-            </div>)
+            </div>
+          )
         }
       </div>
       {showMessageLogModal && (
