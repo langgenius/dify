@@ -23,6 +23,7 @@ const TimePicker = ({
   title,
   minuteFilter,
   popupClassName,
+  notClearable = false,
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -123,7 +124,7 @@ const TimePicker = ({
     <PortalToFollowElem
       open={isOpen}
       onOpenChange={setIsOpen}
-      placement='bottom-end'
+      placement='bottom-start'
     >
       <PortalToFollowElemTrigger>
         {renderTrigger ? (renderTrigger({
@@ -139,15 +140,17 @@ const TimePicker = ({
             <RiTimeLine className={cn(
               'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-              (displayValue || (isOpen && selectedTime)) && 'group-hover:hidden',
+              (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden',
             )} />
-            <RiCloseCircleFill
-              className={cn(
-                'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                (displayValue || (isOpen && selectedTime)) && 'hover:text-text-secondary group-hover:inline-block',
-              )}
-              onClick={handleClear}
-            />
+            {!notClearable && (
+              <RiCloseCircleFill
+                className={cn(
+                  'hidden h-4 w-4 shrink-0 text-text-quaternary',
+                  (displayValue || (isOpen && selectedTime)) && 'hover:text-text-secondary group-hover:inline-block',
+                )}
+                onClick={handleClear}
+              />
+            )}
           </div>
         )}
       </PortalToFollowElemTrigger>

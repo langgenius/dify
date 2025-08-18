@@ -6,7 +6,7 @@ const getCurrentTime = (): Date => {
   return new Date()
 }
 
-// Helper function to get default datetime for once/hourly modes - consistent with DateTimePicker
+// Helper function to get default datetime for once/hourly modes - consistent with base DatePicker
 export const getDefaultDateTime = (): Date => {
   const defaultDate = new Date()
   defaultDate.setHours(11, 30, 0, 0)
@@ -25,26 +25,20 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   const defaultTime = data.visual_config?.time || '11:30 AM'
 
   if (data.frequency === 'hourly') {
-    const recurEvery = data.visual_config?.recur_every || 1
+    if (!data.visual_config?.datetime)
+      return []
+
+    const baseTime = new Date(data.visual_config.datetime)
     const recurUnit = data.visual_config?.recur_unit || 'hours'
-    const startTime = data.visual_config?.datetime ? new Date(data.visual_config.datetime) : getCurrentTime()
+    const recurEvery = data.visual_config?.recur_every || 1
 
     const intervalMs = recurUnit === 'hours'
       ? recurEvery * 60 * 60 * 1000
       : recurEvery * 60 * 1000
 
-    // Calculate the initial offset if start time has passed
-    const now = getCurrentTime()
-    let initialOffset = 0
-
-    if (startTime <= now) {
-      const timeDiff = now.getTime() - startTime.getTime()
-      initialOffset = Math.floor(timeDiff / intervalMs)
-    }
-
     for (let i = 0; i < count; i++) {
-      const nextExecution = new Date(startTime.getTime() + (initialOffset + i + 1) * intervalMs)
-      times.push(nextExecution)
+      const executionTime = new Date(baseTime.getTime() + i * intervalMs)
+      times.push(executionTime)
     }
   }
   else if (data.frequency === 'daily') {

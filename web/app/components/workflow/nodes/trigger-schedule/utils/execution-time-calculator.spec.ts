@@ -204,9 +204,9 @@ describe('execution-time-calculator', () => {
       const result = getNextExecutionTimes(data, 3)
 
       expect(result).toHaveLength(3)
-      expect(result[0].getTime() - startTime.getTime()).toBe(2 * 60 * 60 * 1000)
-      expect(result[1].getTime() - startTime.getTime()).toBe(4 * 60 * 60 * 1000)
-      expect(result[2].getTime() - startTime.getTime()).toBe(6 * 60 * 60 * 1000)
+      expect(result[0].getTime() - startTime.getTime()).toBe(0) // Starts from baseTime
+      expect(result[1].getTime() - startTime.getTime()).toBe(2 * 60 * 60 * 1000)
+      expect(result[2].getTime() - startTime.getTime()).toBe(4 * 60 * 60 * 1000)
     })
 
     test('calculates minute intervals correctly', () => {
@@ -224,11 +224,12 @@ describe('execution-time-calculator', () => {
       const result = getNextExecutionTimes(data, 3)
 
       expect(result).toHaveLength(3)
-      expect(result[0].getTime() - startTime.getTime()).toBe(30 * 60 * 1000)
-      expect(result[1].getTime() - startTime.getTime()).toBe(60 * 60 * 1000)
+      expect(result[0].getTime() - startTime.getTime()).toBe(0) // Starts from baseTime
+      expect(result[1].getTime() - startTime.getTime()).toBe(30 * 60 * 1000)
+      expect(result[2].getTime() - startTime.getTime()).toBe(60 * 60 * 1000)
     })
 
-    test('handles past start time by calculating next interval', () => {
+    test('calculates intervals from baseTime regardless of current time', () => {
       jest.setSystemTime(new Date(2024, 0, 15, 14, 30, 0)) // Local time 2:30 PM
       const startTime = new Date(2024, 0, 15, 12, 0, 0) // Local time 12:00 PM
 
@@ -243,11 +244,12 @@ describe('execution-time-calculator', () => {
 
       const result = getNextExecutionTimes(data, 2)
 
-      expect(result[0].getHours()).toBe(15)
-      expect(result[1].getHours()).toBe(16)
+      // New logic: always starts from baseTime regardless of current time
+      expect(result[0].getHours()).toBe(12) // Starts from baseTime (12:00 PM)
+      expect(result[1].getHours()).toBe(13) // 1 hour after baseTime
     })
 
-    test('uses current time as default start time', () => {
+    test('returns empty array when no datetime provided', () => {
       const data = createMockData({
         frequency: 'hourly',
         visual_config: {
@@ -258,7 +260,7 @@ describe('execution-time-calculator', () => {
 
       const result = getNextExecutionTimes(data, 1)
 
-      expect(result[0].getTime()).toBeGreaterThan(Date.now())
+      expect(result).toHaveLength(0)
     })
 
     test('minute intervals should not have duplicates when recur_every changes', () => {
@@ -313,6 +315,220 @@ describe('execution-time-calculator', () => {
         const timeDiff = result[i].getTime() - result[i - 1].getTime()
         expect(timeDiff).toBe(3 * 60 * 60 * 1000) // 3 hours in milliseconds
       }
+    })
+
+    test('returns empty array when only time field provided (no datetime)', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 9, 0, 0)) // 9:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('prioritizes datetime over time field for hourly frequency', () => {
+      const specificDateTime = new Date(2024, 0, 15, 14, 15, 0)
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          datetime: specificDateTime.toISOString(),
+          recur_every: 2,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      expect(result[0].getHours()).toBe(14) // Starts from datetime (14:15)
+      expect(result[0].getMinutes()).toBe(15)
+      expect(result[1].getHours()).toBe(16) // 2 hours after 14:15
+      expect(result[1].getMinutes()).toBe(15)
+    })
+
+    test('returns empty array when only time field provided (no datetime)', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 13, 0, 0)) // 1:00 PM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 2,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - PM test', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 9, 0, 0)) // 9:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '2:30 PM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - 12 AM test', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 22, 0, 0)) // 10:00 PM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '12:00 AM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - 12 PM test', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 9, 0, 0)) // 9:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '12:00 PM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - minute intervals', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 0, 0)) // 11:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM', // User sees 11:30 AM in UI
+          recur_every: 1,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 5)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - exact time test', () => {
+      // Set current time to exactly 11:30 AM
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 30, 0)) // 11:30 AM exactly
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 1,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - 5 minute intervals', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 0, 0)) // 11:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 5,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 4)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - past times', () => {
+      // User sets time to 11:30 but current time is already 11:32
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 32, 0)) // 11:32 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 1,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when only time field provided (no datetime) - 3 minute intervals', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 32, 0)) // 11:32 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 3, // every 3 minutes
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 4)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
+    })
+
+    test('returns empty array when no datetime field (frequency switch scenario)', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 35, 0)) // 11:35 AM current time
+
+      // Simulate user switching FROM daily TO hourly
+      // Daily frequency only has time field, no datetime
+      const dataWithoutDatetime = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM', // User sees this in UI
+          recur_every: 1,
+          recur_unit: 'minutes',
+          // NO datetime field - this is the bug scenario
+        },
+      })
+
+      const result = getNextExecutionTimes(dataWithoutDatetime, 5)
+
+      expect(result).toHaveLength(0) // New logic requires datetime field
     })
   })
 
@@ -439,7 +655,8 @@ describe('execution-time-calculator', () => {
 
       const result = getFormattedExecutionTimes(data, 1)
 
-      expect(result[0]).toMatch(/January 16, 2024 4:00 PM/)
+      // New logic: starts from baseTime (2:00 PM), not baseTime + interval
+      expect(result[0]).toMatch(/January 16, 2024 2:00 PM/)
       expect(result[0]).not.toMatch(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/)
     })
 
@@ -537,7 +754,7 @@ describe('execution-time-calculator', () => {
       expect(result).toHaveLength(1)
     })
 
-    test('uses default values for missing config properties', () => {
+    test('returns empty array for hourly when no datetime provided', () => {
       const data = createMockData({
         frequency: 'hourly',
         visual_config: {},
@@ -545,7 +762,7 @@ describe('execution-time-calculator', () => {
 
       const result = getNextExecutionTimes(data, 1)
 
-      expect(result).toHaveLength(1)
+      expect(result).toHaveLength(0) // New logic requires datetime field for hourly
     })
 
     test('handles malformed time strings gracefully', () => {
