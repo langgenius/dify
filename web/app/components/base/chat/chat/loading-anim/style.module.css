@@ -1,3 +1,26 @@
+.dot-flashing {
+  position: relative;
+  animation: 1s infinite linear alternate;
+  animation-delay: 0.5s;
+}
+
+.dot-flashing::before,
+.dot-flashing::after {
+  content: "";
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  animation: 1s infinite linear alternate;
+}
+
+.dot-flashing::before {
+  animation-delay: 0s;
+}
+
+.dot-flashing::after {
+  animation-delay: 1s;
+}
+
 @keyframes dot-flashing {
   0% {
     background-color: #667085;
@@ -18,29 +41,6 @@
   100% {
     background-color: rgba(21, 94, 239, 0.3);
   }
-}
-
-.dot-flashing {
-  position: relative;
-  animation: dot-flashing 1s infinite linear alternate;
-  animation-delay: 0.5s;
-}
-
-.dot-flashing::before,
-.dot-flashing::after {
-  content: "";
-  display: inline-block;
-  position: absolute;
-  top: 0;
-  animation: dot-flashing 1s infinite linear alternate;
-}
-
-.dot-flashing::before {
-  animation-delay: 0s;
-}
-
-.dot-flashing::after {
-  animation-delay: 1s;
 }
 
 .text,
