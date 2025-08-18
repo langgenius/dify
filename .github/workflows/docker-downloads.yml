@@ -1,0 +1,45 @@
+name: Save Dify Docker Images
+
+on:
+  workflow_dispatch:
+
+jobs:
+  save-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Pull Docker images
+        run: |
+          docker pull langgenius/dify-api:1.7.2
+          docker pull langgenius/dify-web:1.7.2
+          docker pull langgenius/dify-sandbox:0.2.12
+          docker pull langgenius/dify-plugin-daemon:0.2.0-local
+          docker pull postgres:15-alpine
+          docker pull redis:6-alpine
+          docker pull nginx:latest
+          docker pull ubuntu/squid:latest
+
+      - name: Save Docker images to tar
+        run: |
+          docker save \
+            langgenius/dify-api:1.7.2 \
+            langgenius/dify-web:1.7.2 \
+            langgenius/dify-sandbox:0.2.12 \
+            langgenius/dify-plugin-daemon:0.2.0-local \
+            postgres:15-alpine \
+            redis:6-alpine \
+            nginx:latest \
+            ubuntu/squid:latest \
+            -o dify-1.7.2.tar
+
+      - name: Upload tar as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dify-1.7.2
+          path: dify-1.7.2.tar
