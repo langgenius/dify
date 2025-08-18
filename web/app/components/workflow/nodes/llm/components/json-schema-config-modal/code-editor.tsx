@@ -15,6 +15,8 @@ type CodeEditorProps = {
   editorWrapperClassName?: string
   readOnly?: boolean
   hideTopMenu?: boolean
+  onFocus?: () => void
+  onBlur?: () => void
 } & React.HTMLAttributes<HTMLDivElement>
 
 const CodeEditor: FC<CodeEditorProps> = ({
@@ -25,6 +27,8 @@ const CodeEditor: FC<CodeEditorProps> = ({
   readOnly = false,
   hideTopMenu = false,
   className,
+  onFocus,
+  onBlur,
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -45,6 +49,14 @@ const CodeEditor: FC<CodeEditorProps> = ({
   const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor
     monacoRef.current = monaco
+
+    editor.onDidFocusEditorText(() => {
+      onFocus?.()
+    })
+    editor.onDidBlurEditorText(() => {
+      onBlur?.()
+    })
+
     monaco.editor.defineTheme('light-theme', {
       base: 'vs',
       inherit: true,
