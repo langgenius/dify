@@ -88,12 +88,11 @@ class ExecutionLimitsLayer(Layer):
 
         # Check step limit when node execution completes
         if isinstance(event, NodeRunSucceededEvent | NodeRunFailedEvent):
-            if self.step_count > self.max_steps:
-                self._abort_execution(LimitType.STEP_LIMIT)
+            if self._reached_step_limitation():
+                self._send_abort_command(LimitType.STEP_LIMIT)
 
-            # Check time limits after each event
-            if self.start_time and (time.time() - self.start_time) > self.max_time:
-                self._abort_execution(LimitType.TIME_LIMIT)
+            if self._reached_time_limitation():
+                self._send_abort_command(LimitType.TIME_LIMIT)
 
     def on_graph_end(self, error: Optional[Exception]) -> None:
         """Called when graph execution ends."""
@@ -104,9 +103,17 @@ class ExecutionLimitsLayer(Layer):
                 total_time = time.time() - self.start_time
                 self.logger.debug("Execution completed: %d steps in %.2f seconds", self.step_count, total_time)
 
-    def _abort_execution(self, limit_type: LimitType) -> None:
+    def _reached_step_limitation(self) -> bool:
+        """Check if step count limit has been exceeded."""
+        return self.step_count > self.max_steps
+
+    def _reached_time_limitation(self) -> bool:
+        """Check if time limit has been exceeded."""
+        return self.start_time is not None and (time.time() - self.start_time) > self.max_time
+
+    def _send_abort_command(self, limit_type: LimitType) -> None:
         """
-        Abort execution due to limit violation.
+        Send abort command due to limit violation.
 
         Args:
             limit_type: Type of limit exceeded
