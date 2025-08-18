@@ -510,7 +510,13 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
  finally {
       setIsLoading(false)
-    }
+catch (error) {
+  console.error(error)
+  setHasMore(false)
+}
+finally {
+  setIsLoading(false)
+}
   }, [allChatItems, detail.id, hasMore, isLoading, timezone, t, appDetail])
 
   useEffect(() => {
