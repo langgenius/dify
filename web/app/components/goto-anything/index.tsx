@@ -91,7 +91,9 @@ const GotoAnything: FC<Props> = ({
 
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
-    return action ? action.key : 'general'
+    return action
+      ? (action.key === '/' ? 'Command' : action.key)
+      : 'general'
   }, [searchQueryDebouncedValue, Actions, isCommandsMode])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
