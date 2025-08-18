@@ -1,207 +1,196 @@
 # Graph Engine
 
-Queue-based workflow execution engine that orchestrates the parallel execution of workflow graphs using a modular, domain-driven architecture.
+Queue-based workflow execution engine for parallel graph processing.
 
-## Architecture Overview
+## Architecture
 
-The Graph Engine uses a clean, modular architecture following Domain-Driven Design principles. The engine is organized into 10 specialized packages, each with a single responsibility.
+The engine uses a modular architecture with specialized packages:
 
-### Core Packages
+### Core Components
 
-#### 1. **Domain** (`domain/`)
-
-Core domain models representing the business entities:
-
-- `ExecutionContext`: Immutable context for workflow execution
-- `GraphExecution`: Aggregate root tracking overall execution state
-- `NodeExecution`: Entity tracking individual node execution state
-
-#### 2. **Event Management** (`event_management/`)
-
-Handles all event-related operations:
-
-- `EventRouter`: Routes events to appropriate handlers
-- `EventCollector`: Thread-safe event collection and buffering
-- `EventEmitter`: Manages event emission to consumers
-- `EventHandlerRegistry`: Central registry of event handlers
-
-#### 3. **State Management** (`state_management/`)
-
-Manages execution state throughout the workflow:
-
-- `NodeStateManager`: Tracks and manages node states
-- `EdgeStateManager`: Manages edge states and transitions
-- `ExecutionTracker`: Tracks currently executing nodes
-
-#### 4. **Error Handling** (`error_handling/`)
-
-Strategy-based error handling system:
-
-- `ErrorHandler`: Coordinates error handling strategies
-- `AbortStrategy`: Stops execution on error
-- `RetryStrategy`: Retries failed nodes with backoff
-- `FailBranchStrategy`: Routes to failure branches
-- `DefaultValueStrategy`: Uses default values on failure
-
-#### 5. **Graph Traversal** (`graph_traversal/`)
-
-Handles graph navigation and execution flow:
-
-- `NodeReadinessChecker`: Determines when nodes are ready
-- `EdgeProcessor`: Processes edges after node completion
-- `SkipPropagator`: Propagates skip states through graph
-- `BranchHandler`: Handles branch node logic
-
-#### 6. **Command Processing** (`command_processing/`)
-
-Processes external control commands:
-
-- `CommandProcessor`: Routes commands to handlers
-- `AbortCommandHandler`: Handles workflow abort commands
-
-#### 7. **Worker Management** (`worker_management/`)
-
-Dynamic worker pool management:
-
-- `WorkerPool`: Manages worker thread lifecycle
-- `WorkerFactory`: Creates workers with proper context
-- `DynamicScaler`: Scales workers based on load
-- `ActivityTracker`: Tracks worker activity
-
-#### 8. **Orchestration** (`orchestration/`)
-
-High-level execution coordination:
-
-- `Dispatcher`: Main event loop processing events
-- `ExecutionCoordinator`: Coordinates subsystems
+- **Domain** (`domain/`) - Core models: ExecutionContext, GraphExecution, NodeExecution
+- **Event Management** (`event_management/`) - Event routing, collection, and emission
+- **State Management** (`state_management/`) - Thread-safe state tracking for nodes and edges
+- **Error Handling** (`error_handling/`) - Strategy-based error recovery (retry, abort, fail-branch, default-value)
+- **Graph Traversal** (`graph_traversal/`) - Node readiness, edge processing, branch handling
+- **Command Processing** (`command_processing/`) - External command handling (abort, pause, resume)
+- **Worker Management** (`worker_management/`) - Dynamic worker pool with auto-scaling
+- **Orchestration** (`orchestration/`) - Main event loop and execution coordination
 
 ### Supporting Components
 
-#### **Output Registry** (`output_registry/`)
+- **Output Registry** (`output_registry/`) - Thread-safe storage for node outputs
+- **Response Coordinator** (`response_coordinator/`) - Ordered streaming of response nodes
+- **Command Channels** (`command_channels/`) - Command transport (InMemory/Redis)
+- **Layers** (`layers/`) - Pluggable middleware for extensions
 
-Thread-safe storage for node outputs supporting both scalar values and streaming data.
-
-#### **Response Coordinator** (`response_coordinator/`)
-
-Manages ordered streaming of response nodes based on execution paths, ensuring proper output ordering.
-
-#### **Command Channels** (`command_channels/`)
-
-Abstraction for sending control commands:
-
-- `InMemoryChannel`: For testing and single-process execution
-- `RedisChannel`: For distributed execution control
-
-#### **Layers** (`layers/`)
-
-Pluggable middleware for extending engine functionality:
-
-- `Layer`: Base abstraction for engine extensions
-- `DebugLoggingLayer`: Example layer for debugging
-
-## Architecture Flow
+## Architecture Diagram
 
 ```mermaid
-flowchart TB
-    Start([Start]) --> GE[GraphEngine]
+classDiagram
+    class GraphEngine {
+        +run()
+        +add_layer()
+    }
     
-    GE --> |Initialize| Subsystems{Initialize Subsystems}
+    class Domain {
+        ExecutionContext
+        GraphExecution
+        NodeExecution
+    }
     
-    subgraph Domain
-        EC[ExecutionContext]
-        GEx[GraphExecution]
-    end
+    class EventManagement {
+        EventRouter
+        EventCollector
+        EventEmitter
+    }
     
-    subgraph EventMgmt[Event Management]
-        ER[EventRouter]
-        EColl[EventCollector]
-        EE[EventEmitter]
-    end
+    class StateManagement {
+        NodeStateManager
+        EdgeStateManager
+        ExecutionTracker
+    }
     
-    subgraph StateMgmt[State Management]
-        NSM[NodeStateManager]
-        ESM[EdgeStateManager]
-        ET[ExecutionTracker]
-    end
+    class WorkerManagement {
+        WorkerPool
+        WorkerFactory
+        DynamicScaler
+        ActivityTracker
+    }
     
-    subgraph ErrorHandling[Error Handling]
-        EH[ErrorHandler]
-        Strategies[Error Strategies]
-    end
+    class GraphTraversal {
+        NodeReadinessChecker
+        EdgeProcessor
+        BranchHandler
+        SkipPropagator
+    }
     
-    subgraph Traversal[Graph Traversal]
-        NRC[NodeReadinessChecker]
-        EP[EdgeProcessor]
-        SP[SkipPropagator]
-        BH[BranchHandler]
-    end
+    class Orchestration {
+        Dispatcher
+        ExecutionCoordinator
+    }
     
-    subgraph Workers[Worker Management]
-        WP[WorkerPool]
-        WF[WorkerFactory]
-        DS[DynamicScaler]
-    end
+    class ErrorHandling {
+        ErrorHandler
+        RetryStrategy
+        AbortStrategy
+        FailBranchStrategy
+    }
     
-    subgraph Orchestration
-        Disp[Dispatcher]
-        ExecCoord[ExecutionCoordinator]
-    end
+    class CommandProcessing {
+        CommandProcessor
+        AbortCommandHandler
+    }
     
-    Subsystems --> Domain
-    Subsystems --> EventMgmt
-    Subsystems --> StateMgmt
-    Subsystems --> ErrorHandling
-    Subsystems --> Traversal
-    Subsystems --> Workers
-    Subsystems --> Orchestration
+    class CommandChannels {
+        InMemoryChannel
+        RedisChannel
+    }
     
-    Disp --> |Process Events| ER
-    Workers --> |Execute Nodes| ReadyQueue[Ready Queue]
-    Workers --> |Emit Events| EventQueue[Event Queue]
-    Disp --> |Monitor| EventQueue
+    class OutputRegistry {
+        <<Storage>>
+        Scalar Values
+        Streaming Data
+    }
+    
+    class ResponseCoordinator {
+        Session Management
+        Path Analysis
+    }
+    
+    class Layers {
+        <<Plugin>>
+        DebugLoggingLayer
+    }
+    
+    GraphEngine --> Orchestration : coordinates
+    GraphEngine --> Layers : extends
+    
+    Orchestration --> EventManagement : processes events
+    Orchestration --> WorkerManagement : manages scaling
+    Orchestration --> CommandProcessing : checks commands
+    Orchestration --> StateManagement : monitors state
+    
+    WorkerManagement --> StateManagement : consumes ready queue
+    WorkerManagement --> EventManagement : produces events
+    WorkerManagement --> Domain : executes nodes
+    
+    EventManagement --> ErrorHandling : failed events
+    EventManagement --> GraphTraversal : success events
+    EventManagement --> ResponseCoordinator : stream events
+    EventManagement --> Layers : notifies
+    
+    GraphTraversal --> StateManagement : updates states
+    GraphTraversal --> Domain : checks graph
+    
+    CommandProcessing --> CommandChannels : fetches commands
+    CommandProcessing --> Domain : modifies execution
+    
+    ErrorHandling --> Domain : handles failures
+    
+    StateManagement --> Domain : tracks entities
+    
+    ResponseCoordinator --> OutputRegistry : reads outputs
+    
+    Domain --> OutputRegistry : writes outputs
 ```
 
-## Usage Example
+## Package Relationships
+
+### Core Dependencies
+
+- **Orchestration** acts as the central coordinator, managing all subsystems
+- **Domain** provides the core business entities used by all packages
+- **EventManagement** serves as the communication backbone between components
+- **StateManagement** maintains thread-safe state for the entire system
+
+### Data Flow
+
+1. **Commands** flow from CommandChannels → CommandProcessing → Domain
+2. **Events** flow from Workers → EventManagement → Handlers → State updates
+3. **Node outputs** flow from Workers → OutputRegistry → ResponseCoordinator
+4. **Ready nodes** flow from GraphTraversal → StateManagement → WorkerManagement
+
+### Extension Points
+
+- **Layers** observe all events for monitoring, logging, and custom logic
+- **ErrorHandling** strategies can be extended for custom failure recovery
+- **CommandChannels** can be implemented for different transport mechanisms
+
+## Execution Flow
+
+1. **Initialization**: GraphEngine creates all subsystems with the workflow graph
+2. **Node Discovery**: Traversal components identify ready nodes
+3. **Worker Execution**: Workers pull from ready queue and execute nodes
+4. **Event Processing**: Dispatcher routes events to appropriate handlers
+5. **State Updates**: Managers track node/edge states for next steps
+6. **Completion**: Coordinator detects when all nodes are done
+
+## Usage
 
 ```python
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 
-# Create engine with all subsystems
+# Create and run engine
 engine = GraphEngine(
     tenant_id="tenant_1",
     app_id="app_1",
     workflow_id="workflow_1",
-    user_id="user_1",
-    user_from=UserFrom.ACCOUNT,
-    invoke_from=InvokeFrom.WEB_APP,
-    call_depth=0,
     graph=graph,
-    graph_config=config,
-    graph_runtime_state=runtime_state,
-    max_execution_steps=500,
-    max_execution_time=60,
     command_channel=InMemoryChannel(),
 )
 
-# Add layers for extended functionality
-engine.layer(DebugLoggingLayer())
-
-# Run workflow
+# Stream execution events
 for event in engine.run():
-    # Process events as they occur
     handle_event(event)
 ```
 
 ## External Control
 
-The `GraphEngineManager` provides external control over running workflows:
-
 ```python
 from core.workflow.graph_engine.manager import GraphEngineManager
 
 manager = GraphEngineManager()
-
-# Stop a running workflow
 manager.stop_workflow(workflow_id="workflow_123")
 ```
