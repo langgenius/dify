@@ -142,7 +142,7 @@ class MessageEndStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
-    metadata: dict = {}
+    metadata: dict = Field(default_factory = dict)
     files: Optional[Sequence[Mapping[str, Any]]] = None
 
 
