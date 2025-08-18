@@ -6,7 +6,7 @@ import secrets
 import time
 import uuid
 from collections import Counter
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from flask_login import current_user
 from sqlalchemy import func, select
@@ -51,7 +51,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     RetrievalModel,
     SegmentUpdateArgs,
 )
-from services.errors.account import InvalidActionError, NoPermissionError
+from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -1800,14 +1800,16 @@ class DocumentService:
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @staticmethod
-    def batch_update_document_status(dataset: Dataset, document_ids: list[str], action: str, user):
+    def batch_update_document_status(
+        dataset: Dataset, document_ids: list[str], action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
         """
         Batch update document status.
 
         Args:
             dataset (Dataset): The dataset object
             document_ids (list[str]): List of document IDs to update
-            action (str): Action to perform (enable, disable, archive, un_archive)
+            action (Literal["enable", "disable", "archive", "un_archive"]): Action to perform
             user: Current user performing the action
 
         Raises:
@@ -1890,9 +1892,10 @@ class DocumentService:
                 raise propagation_error
 
     @staticmethod
-    def _prepare_document_status_update(document, action: str, user):
-        """
-        Prepare document status update information.
+    def _prepare_document_status_update(
+        document: Document, action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
+        """Prepare document status update information.
 
         Args:
             document: Document object to update
@@ -2355,7 +2358,9 @@ class SegmentService:
         db.session.commit()
 
     @classmethod
-    def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
+    def update_segments_status(
+        cls, segment_ids: list, action: Literal["enable", "disable"], dataset: Dataset, document: Document
+    ):
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
@@ -2413,8 +2418,6 @@ class SegmentService:
             db.session.commit()
 
             disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
-        else:
-            raise InvalidActionError()
 
     @classmethod
     def create_child_chunk(
