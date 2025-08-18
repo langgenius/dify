@@ -722,7 +722,55 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
                 error_type="MockError",
             )
 
-        # Get mock outputs
+        # Get variables from the node data
+        variables: dict[str, Any] = {}
+        if hasattr(self._node_data, "variables"):
+            for variable_selector in self._node_data.variables:
+                variable_name = variable_selector.variable
+                value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+                variables[variable_name] = value.to_object() if value else None
+
+        # Check if we have custom mock outputs configured
+        if self.mock_config:
+            node_config = self.mock_config.get_node_config(self._node_id)
+            if node_config and node_config.outputs:
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=variables,
+                    outputs=node_config.outputs,
+                )
+
+        # Try to actually process the template using Jinja2 directly
+        try:
+            if hasattr(self._node_data, "template"):
+                # Import jinja2 here to avoid dependency issues
+                from jinja2 import Template
+
+                template = Template(self._node_data.template)
+                result_text = template.render(**variables)
+
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs={"output": result_text}
+                )
+        except Exception as e:
+            # If direct Jinja2 fails, try CodeExecutor as fallback
+            try:
+                from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
+
+                if hasattr(self._node_data, "template"):
+                    result = CodeExecutor.execute_workflow_code_template(
+                        language=CodeLanguage.JINJA2, code=self._node_data.template, inputs=variables
+                    )
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=variables,
+                        outputs={"output": result["result"]},
+                    )
+            except Exception:
+                # Both methods failed, fall back to default mock output
+                pass
+
+        # Fall back to default mock output
         default_response = (
             self.mock_config.default_template_transform_response if self.mock_config else "mocked template output"
         )
@@ -732,7 +780,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
         # Return result
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs={},
+            inputs=variables,
             outputs=outputs,
         )
 

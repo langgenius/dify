@@ -1,7 +1,7 @@
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
-def test_simple_iteration_outputs():
+def test_array_iteration_formatting_workflow():
     """
     Validate Iteration node processes [1,2,3] into formatted strings.
 
@@ -15,6 +15,7 @@ def test_simple_iteration_outputs():
         inputs={},
         expected_outputs={"output": ["output: 1", "output: 2", "output: 3"]},
         description="Iteration formats numbers into strings",
+        use_auto_mock=True,
     )
 
     result = runner.run_test_case(test_case)
