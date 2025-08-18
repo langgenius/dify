@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 
 type Params = {
-  ref: React.RefObject<HTMLDivElement>
+  ref?: React.RefObject<HTMLDivElement | null>
   hasFooter?: boolean
   isInNode?: boolean
 }
 
 const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   const [isExpand, setIsExpand] = useState(false)
-  const [wrapHeight, setWrapHeight] = useState(ref.current?.clientHeight)
+  const [wrapHeight, setWrapHeight] = useState(ref?.current?.clientHeight)
   const editorExpandHeight = isExpand ? wrapHeight! - (hasFooter ? 56 : 29) : 0
   useEffect(() => {
+    if (!ref?.current) return
     setWrapHeight(ref.current?.clientHeight)
   }, [isExpand])
 

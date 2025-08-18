@@ -749,8 +749,8 @@ const translation = {
         continueOnError: 'continuer sur l’erreur',
       },
       comma: ',',
-      error_one: '{{compte}} Erreur',
-      error_other: '{{compte}} Erreurs',
+      error_one: '{{count}} Erreur',
+      error_other: '{{count}} Erreurs',
       parallelModeEnableDesc: 'En mode parallèle, les tâches au sein des itérations prennent en charge l’exécution parallèle. Vous pouvez le configurer dans le panneau des propriétés à droite.',
       parallelModeUpper: 'MODE PARALLÈLE',
       parallelPanelDesc: 'En mode parallèle, les tâches de l’itération prennent en charge l’exécution parallèle.',
@@ -995,6 +995,7 @@ const translation = {
     noLastRunFound: 'Aucune exécution précédente trouvée',
     noMatchingInputsFound: 'Aucune entrée correspondante trouvée dans la dernière exécution.',
     copyLastRunError: 'Échec de la copie des entrées de la dernière exécution',
+    lastOutput: 'Dernière sortie',
   },
 }
 

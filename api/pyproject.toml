@@ -18,6 +18,7 @@ dependencies = [
     "flask-cors~=6.0.0",
     "flask-login~=0.6.3",
     "flask-migrate~=4.0.7",
+    "flask-orjson~=2.0.0",
     "flask-restful~=0.3.10",
     "flask-sqlalchemy~=3.1.1",
     "gevent~=24.11.1",
@@ -162,6 +163,7 @@ dev = [
     "pandas-stubs~=2.2.3",
     "scipy-stubs>=1.15.3.0",
     "types-python-http-client>=3.3.7.20240910",
+    "types-redis>=4.6.0.20241004",
 ]
 
 ############################################################

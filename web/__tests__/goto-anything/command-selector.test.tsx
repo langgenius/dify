@@ -37,7 +37,7 @@ describe('CommandSelector', () => {
     },
     knowledge: {
       key: '@knowledge',
-      shortcut: '@knowledge',
+      shortcut: '@kb',
       title: 'Search Knowledge',
       description: 'Search knowledge bases',
       search: jest.fn(),
@@ -75,7 +75,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
-      expect(screen.getByTestId('command-item-@knowledge')).toBeInTheDocument()
+      expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@plugin')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@node')).toBeInTheDocument()
     })
@@ -90,7 +90,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
-      expect(screen.getByTestId('command-item-@knowledge')).toBeInTheDocument()
+      expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@plugin')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@node')).toBeInTheDocument()
     })
@@ -107,7 +107,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.queryByTestId('command-item-@app')).not.toBeInTheDocument()
-      expect(screen.getByTestId('command-item-@knowledge')).toBeInTheDocument()
+      expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()
       expect(screen.queryByTestId('command-item-@plugin')).not.toBeInTheDocument()
       expect(screen.queryByTestId('command-item-@node')).not.toBeInTheDocument()
     })
@@ -122,7 +122,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
-      expect(screen.queryByTestId('command-item-@knowledge')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('command-item-@kb')).not.toBeInTheDocument()
       expect(screen.getByTestId('command-item-@plugin')).toBeInTheDocument()
       expect(screen.queryByTestId('command-item-@node')).not.toBeInTheDocument()
     })
@@ -137,7 +137,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
-      expect(screen.queryByTestId('command-item-@knowledge')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('command-item-@kb')).not.toBeInTheDocument()
     })
 
     it('should match partial strings', () => {
@@ -145,14 +145,14 @@ describe('CommandSelector', () => {
         <CommandSelector
           actions={mockActions}
           onCommandSelect={mockOnCommandSelect}
-          searchFilter="nowl"
+          searchFilter="od"
         />,
       )
 
       expect(screen.queryByTestId('command-item-@app')).not.toBeInTheDocument()
-      expect(screen.getByTestId('command-item-@knowledge')).toBeInTheDocument()
+      expect(screen.queryByTestId('command-item-@kb')).not.toBeInTheDocument()
       expect(screen.queryByTestId('command-item-@plugin')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('command-item-@node')).not.toBeInTheDocument()
+      expect(screen.getByTestId('command-item-@node')).toBeInTheDocument()
     })
   })
 
@@ -167,7 +167,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.queryByTestId('command-item-@app')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('command-item-@knowledge')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('command-item-@kb')).not.toBeInTheDocument()
       expect(screen.queryByTestId('command-item-@plugin')).not.toBeInTheDocument()
       expect(screen.queryByTestId('command-item-@node')).not.toBeInTheDocument()
 
@@ -210,7 +210,7 @@ describe('CommandSelector', () => {
         />,
       )
 
-      expect(mockOnCommandValueChange).toHaveBeenCalledWith('@knowledge')
+      expect(mockOnCommandValueChange).toHaveBeenCalledWith('@kb')
     })
 
     it('should not call onCommandValueChange if current value still exists', () => {
@@ -246,10 +246,10 @@ describe('CommandSelector', () => {
         />,
       )
 
-      const knowledgeItem = screen.getByTestId('command-item-@knowledge')
+      const knowledgeItem = screen.getByTestId('command-item-@kb')
       fireEvent.click(knowledgeItem)
 
-      expect(mockOnCommandSelect).toHaveBeenCalledWith('@knowledge')
+      expect(mockOnCommandSelect).toHaveBeenCalledWith('@kb')
     })
   })
 
@@ -276,7 +276,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
-      expect(screen.getByTestId('command-item-@knowledge')).toBeInTheDocument()
+      expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@plugin')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@node')).toBeInTheDocument()
     })
@@ -312,7 +312,7 @@ describe('CommandSelector', () => {
       )
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
-      expect(screen.getByTestId('command-item-@knowledge')).toBeInTheDocument()
+      expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@plugin')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@node')).toBeInTheDocument()
     })
@@ -326,7 +326,7 @@ describe('CommandSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('command-item-@knowledge')).toBeInTheDocument()
+      expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()
       expect(screen.queryByTestId('command-item-@app')).not.toBeInTheDocument()
     })
   })

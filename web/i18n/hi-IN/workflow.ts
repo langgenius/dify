@@ -1015,6 +1015,7 @@ const translation = {
     noLastRunFound: 'कोई पिछला रन नहीं मिला',
     noMatchingInputsFound: 'अंतिम रन से कोई मेल खाने वाले इनपुट नहीं मिले',
     copyLastRunError: 'अंतिम रन इनपुट को कॉपी करने में विफल',
+    lastOutput: 'अंतिम आउटपुट',
   },
 }
 

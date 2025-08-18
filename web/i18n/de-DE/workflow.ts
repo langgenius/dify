@@ -995,6 +995,7 @@ const translation = {
     copyLastRunError: 'Fehler beim Kopieren der letzten Lauf-Eingaben',
     noMatchingInputsFound: 'Keine übereinstimmenden Eingaben aus dem letzten Lauf gefunden.',
     noLastRunFound: 'Kein vorheriger Lauf gefunden',
+    lastOutput: 'Letzte Ausgabe',
   },
 }
 

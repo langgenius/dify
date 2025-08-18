@@ -108,10 +108,18 @@ class ApiProviderAuthType(Enum):
         :param value: mode value
         :return: mode
         """
+        # 'api_key' deprecated in PR #21656
+        # normalize & tiny alias for backward compatibility
+        v = (value or "").strip().lower()
+        if v == "api_key":
+            v = cls.API_KEY_HEADER.value
+
         for mode in cls:
-            if mode.value == value:
+            if mode.value == v:
                 return mode
-        raise ValueError(f"invalid mode value {value}")
+
+        valid = ", ".join(m.value for m in cls)
+        raise ValueError(f"invalid mode value '{value}', expected one of: {valid}")
 
 
 class ToolInvokeMessage(BaseModel):
