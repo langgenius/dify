@@ -17,7 +17,6 @@ class LoopStartedEvent(NodeEventBase):
 class LoopNextEvent(NodeEventBase):
     index: int = Field(..., description="index")
     pre_loop_output: Optional[Any] = None
-    duration: Optional[float] = None
 
 
 class LoopSucceededEvent(NodeEventBase):
@@ -26,7 +25,6 @@ class LoopSucceededEvent(NodeEventBase):
     outputs: Optional[Mapping[str, Any]] = None
     metadata: Optional[Mapping[str, Any]] = None
     steps: int = 0
-    loop_duration_map: Optional[dict[str, float]] = None
 
 
 class LoopFailedEvent(NodeEventBase):

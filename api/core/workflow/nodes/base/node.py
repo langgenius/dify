@@ -427,7 +427,6 @@ class Node:
             node_title=self.get_base_node_data().title,
             index=event.index,
             pre_loop_output=event.pre_loop_output,
-            duration=event.duration,
         )
 
     def _handle_loop_succeeded_event(self, event: LoopSucceededEvent) -> NodeRunLoopSucceededEvent:
@@ -441,7 +440,6 @@ class Node:
             outputs=event.outputs,
             metadata=event.metadata,
             steps=event.steps,
-            loop_duration_map=event.loop_duration_map,
         )
 
     def _handle_loop_failed_event(self, event: LoopFailedEvent) -> NodeRunLoopFailedEvent:

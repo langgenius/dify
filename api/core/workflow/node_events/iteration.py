@@ -17,7 +17,6 @@ class IterationStartedEvent(NodeEventBase):
 class IterationNextEvent(NodeEventBase):
     index: int = Field(..., description="index")
     pre_iteration_output: Optional[Any] = None
-    duration: Optional[float] = None
 
 
 class IterationSucceededEvent(NodeEventBase):
@@ -26,7 +25,6 @@ class IterationSucceededEvent(NodeEventBase):
     outputs: Optional[Mapping[str, Any]] = None
     metadata: Optional[Mapping[str, Any]] = None
     steps: int = 0
-    iteration_duration_map: Optional[dict[str, float]] = None
 
 
 class IterationFailedEvent(NodeEventBase):
