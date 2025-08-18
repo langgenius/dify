@@ -111,12 +111,8 @@
  *    }
  *    ```
  *
- * 3. **Export Command** (in `./commands/index.ts`):
- *    ```typescript
- *    export { myCommand } from './my-command' // Add this line if needed externally
- *    ```
  *
- * 4. **Update SlashCommandProvider** (in `./commands/slash.tsx`):
+ * 3. **Update SlashCommandProvider** (in `./commands/slash.tsx`):
  *    ```typescript
  *    export const SlashCommandProvider = () => {
  *      const theme = useTheme()
@@ -139,7 +135,7 @@
  *    **Note:** Self-contained commands (like calculator) don't require dependencies but are
  *    still registered through the same system for consistent lifecycle management.
  *
- * 5. **Usage**: Users can now type `/mycommand` or `/mc` to use your command
+ * 4. **Usage**: Users can now type `/mycommand` or `/mc` to use your command
  *
  * ## Command System Architecture
  * - Commands are registered via `SlashCommandRegistry`
