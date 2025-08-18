@@ -50,10 +50,10 @@ class SMTPAuthenticator:
         try:
             connection.docmd("AUTH", f"XOAUTH2 {auth_string}")
         except smtplib.SMTPAuthenticationError as e:
-            logging.exception(f"OAuth2 authentication failed for user {username}")
+            logging.exception("OAuth2 authentication failed for user %s", username)
             raise ValueError(f"OAuth2 authentication failed: {str(e)}")
         except Exception:
-            logging.exception(f"Unexpected error during OAuth2 authentication for user {username}")
+            logging.exception("Unexpected error during OAuth2 authentication for user %s", username)
             raise
 
 
@@ -153,7 +153,7 @@ class SMTPClient:
             logging.exception("Timeout occurred while sending email")
             raise
         except Exception:
-            logging.exception(f"Unexpected error occurred while sending email to {mail['to']}")
+            logging.exception("Unexpected error occurred while sending email to %s", mail['to'])
             raise
         finally:
             if connection:
