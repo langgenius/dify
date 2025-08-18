@@ -291,13 +291,14 @@ const translation = {
       languageCategoryTitle: '语言',
       languageCategoryDesc: '切换界面语言',
       languageChangeDesc: '更改界面语言',
+      slashDesc: '执行诸如 /theme、/lang 等命令',
     },
     emptyState: {
       noAppsFound: '未找到应用',
       noPluginsFound: '未找到插件',
       noKnowledgeBasesFound: '未找到知识库',
       noWorkflowNodesFound: '未找到工作流节点',
-      tryDifferentTerm: '尝试不同的搜索词或移除 {{mode}} 过滤器',
+      tryDifferentTerm: '尝试不同的搜索词',
       trySpecificSearch: '尝试使用 {{shortcuts}} 进行特定搜索',
     },
     groups: {

@@ -292,6 +292,7 @@ const translation = {
       languageCategoryTitle: 'Language',
       languageCategoryDesc: 'Switch interface language',
       languageChangeDesc: 'Change UI language',
+      slashDesc: 'Execute commands like /theme, /lang',
     },
     emptyState: {
       noAppsFound: 'No apps found',
