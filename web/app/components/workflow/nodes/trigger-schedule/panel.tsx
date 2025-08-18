@@ -7,8 +7,9 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import ModeToggle from './components/mode-toggle'
 import FrequencySelector from './components/frequency-selector'
 import WeekdaySelector from './components/weekday-selector'
-import TimePicker from './components/time-picker'
-import DateTimePicker from './components/date-time-picker'
+import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
+import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import dayjs from 'dayjs'
 import NextExecutionTimes from './components/next-execution-times'
 import ExecuteNowButton from './components/execute-now-button'
 import RecurConfig from './components/recur-config'
@@ -74,23 +75,47 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                       }
                     </label>
                     {inputs.frequency === 'hourly' || inputs.frequency === 'once' ? (
-                      <DateTimePicker
-                        value={inputs.visual_config?.datetime}
-                        onChange={(datetime) => {
+                      <DatePicker
+                        value={inputs.visual_config?.datetime ? dayjs(inputs.visual_config.datetime) : undefined}
+                        onChange={(date) => {
                           const newInputs = {
                             ...inputs,
                             visual_config: {
                               ...inputs.visual_config,
-                              datetime,
+                              datetime: date ? date.toISOString() : undefined,
                             },
                           }
                           setInputs(newInputs)
                         }}
+                        onClear={() => {
+                          const newInputs = {
+                            ...inputs,
+                            visual_config: {
+                              ...inputs.visual_config,
+                              datetime: undefined,
+                            },
+                          }
+                          setInputs(newInputs)
+                        }}
+                        placeholder={t('workflow.nodes.triggerSchedule.selectDateTime')}
+                        needTimePicker={true}
                       />
                     ) : (
                       <TimePicker
-                        value={inputs.visual_config?.time || '11:30 AM'}
-                        onChange={handleTimeChange}
+                        value={inputs.visual_config?.time
+                          ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
+                          : dayjs('1/1/2000 11:30 AM')
+                        }
+                        onChange={(time) => {
+                          if (time) {
+                            const timeString = time.format('h:mm A')
+                            handleTimeChange(timeString)
+                          }
+                        }}
+                        onClear={() => {
+                          handleTimeChange('11:30 AM')
+                        }}
+                        placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
                       />
                     )}
                   </div>

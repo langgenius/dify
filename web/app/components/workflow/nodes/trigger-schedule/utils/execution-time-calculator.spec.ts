@@ -443,6 +443,170 @@ describe('execution-time-calculator', () => {
       expect(result[1].getHours()).toBe(14)
       expect(result[1].getMinutes()).toBe(0)
     })
+
+    test('REPRODUCE BUG: minute intervals with time field show wrong times', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 0, 0)) // 11:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM', // User sees 11:30 AM in UI
+          recur_every: 1,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 5)
+
+      console.log('System time:', new Date(2024, 0, 15, 11, 0, 0).toISOString())
+      console.log('Expected base time: 11:30 AM')
+      console.log('Actual results:')
+      result.forEach((time, i) => {
+        console.log(`${i + 1}: ${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')} (${time.toISOString()})`)
+      })
+
+      // What user expects: 11:31, 11:32, 11:33, 11:34, 11:35
+      // But let's see what actually happens
+      expect(result).toHaveLength(5)
+
+      // This test will likely fail and show us the actual problematic behavior
+      expect(result[0].getHours()).toBe(11)
+      expect(result[0].getMinutes()).toBe(31) // Should be 11:31 AM
+      expect(result[1].getMinutes()).toBe(32) // Should be 11:32 AM
+      expect(result[2].getMinutes()).toBe(33) // Should be 11:33 AM
+    })
+
+    test('REPRODUCE BUG: minute intervals starting from exact time', () => {
+      // Set current time to exactly 11:30 AM
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 30, 0)) // 11:30 AM exactly
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 1,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      console.log('Current time: 11:30:00 AM exactly')
+      console.log('Expected: 11:31, 11:32, 11:33')
+      console.log('Actual results:')
+      result.forEach((time, i) => {
+        console.log(`${i + 1}: ${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')}`)
+      })
+
+      expect(result[0].getMinutes()).toBe(31)
+      expect(result[1].getMinutes()).toBe(32)
+      expect(result[2].getMinutes()).toBe(33)
+    })
+
+    test('REPRODUCE BUG: minute intervals with 5 minute recur_every', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 0, 0)) // 11:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 5,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 4)
+
+      console.log('Expected every 5 minutes from 11:30: 11:35, 11:40, 11:45, 11:50')
+      console.log('Actual results:')
+      result.forEach((time, i) => {
+        console.log(`${i + 1}: ${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')}`)
+      })
+
+      // Expected: 11:35, 11:40, 11:45, 11:50
+      expect(result[0].getMinutes()).toBe(35)
+      expect(result[1].getMinutes()).toBe(40)
+      expect(result[2].getMinutes()).toBe(45)
+      expect(result[3].getMinutes()).toBe(50)
+    })
+
+    test('minute intervals correctly handle past times (expected behavior)', () => {
+      // User sets time to 11:30 but current time is already 11:32
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 32, 0)) // 11:32 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 1,
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(3)
+      // Should show next future intervals, not past ones
+      expect(result[0].getMinutes()).toBe(33) // 11:33 (next interval after 11:32)
+      expect(result[1].getMinutes()).toBe(34) // 11:34
+      expect(result[2].getMinutes()).toBe(35) // 11:35
+    })
+
+    test('minute intervals with multiple minute recur_every', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 32, 0)) // 11:32 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 3, // every 3 minutes
+          recur_unit: 'minutes',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 4)
+
+      expect(result).toHaveLength(4)
+      // From 11:30 base, every 3 minutes: 11:33, 11:36, 11:39, 11:42
+      expect(result[0].getMinutes()).toBe(33)
+      expect(result[1].getMinutes()).toBe(36)
+      expect(result[2].getMinutes()).toBe(39)
+      expect(result[3].getMinutes()).toBe(42)
+    })
+
+    test('REPRODUCE DATA FLOW BUG: hourly without datetime field uses current time instead of time field', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 11, 35, 0)) // 11:35 AM current time
+
+      // Simulate user switching FROM daily TO hourly
+      // Daily frequency only has time field, no datetime
+      const dataWithoutDatetime = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM', // User sees this in UI
+          recur_every: 1,
+          recur_unit: 'minutes',
+          // NO datetime field - this is the bug scenario
+        },
+      })
+
+      const result = getNextExecutionTimes(dataWithoutDatetime, 5)
+
+      console.log('=== REPRODUCING USER BUG SCENARIO ===')
+      console.log('Current time: 11:35 AM')
+      console.log('UI shows time: 11:30 AM')
+      console.log('No datetime field (frequency switch scenario)')
+      console.log('Expected: minutes from 11:30 base (36, 37, 38, 39, 40)')
+      console.log('Actual results:')
+      result.forEach((time, i) => {
+        console.log(`${i + 1}: ${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')}`)
+      })
+
+      // This test should show us what actually happens
+      expect(result).toHaveLength(5)
+
+      // The bug: if using current time instead of time field,
+      // it will show 11:36, 11:37, etc instead of using 11:30 as base
+    })
   })
 
   describe('getNextExecutionTimes - cron mode', () => {
