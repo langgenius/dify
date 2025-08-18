@@ -48,6 +48,7 @@ const translation = {
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
     needEndNode: 'The End node must be added',
+    needStartNode: 'A start node (Start or Trigger) must be added',
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',

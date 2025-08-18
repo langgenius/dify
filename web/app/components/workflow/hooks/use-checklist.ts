@@ -144,6 +144,23 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
     }
 
+    // Check for start nodes (including triggers)
+    const startNodes = nodes.filter(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    )
+
+    if (startNodes.length === 0) {
+      list.push({
+        id: 'start-node-required',
+        type: BlockEnum.Start,
+        title: t('workflow.blocks.start'),
+        errorMessage: t('workflow.common.needStartNode'),
+      })
+    }
+
     if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
       list.push({
         id: 'answer-need-added',
@@ -268,6 +285,18 @@ export const useChecklistBeforePublish = () => {
         notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnectTip')}` })
         return false
       }
+    }
+
+    const startNodes = nodes.filter(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    )
+
+    if (startNodes.length === 0) {
+      notify({ type: 'error', message: t('workflow.common.needStartNode') })
+      return false
     }
 
     if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {

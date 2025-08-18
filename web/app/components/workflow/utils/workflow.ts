@@ -94,7 +94,12 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
 }
 
 export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const startNode = nodes.find(node =>
+    node.data.type === BlockEnum.Start
+    || node.data.type === BlockEnum.TriggerSchedule
+    || node.data.type === BlockEnum.TriggerWebhook
+    || node.data.type === BlockEnum.TriggerPlugin,
+  )
 
   if (!startNode) {
     return {
@@ -196,7 +201,12 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
     startNode = nodes.find(node => node.id === (parentNode.data as (IterationNodeType | LoopNodeType)).start_node_id)
   }
   else {
-    startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    startNode = nodes.find(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    )
   }
   if (!startNode)
     throw new Error('Start node not found')
