@@ -27,7 +27,21 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   if (data.frequency === 'hourly') {
     const recurEvery = data.visual_config?.recur_every || 1
     const recurUnit = data.visual_config?.recur_unit || 'hours'
-    const startTime = data.visual_config?.datetime ? new Date(data.visual_config.datetime) : getCurrentTime()
+
+    let startTime: Date
+    if (data.visual_config?.datetime) {
+      startTime = new Date(data.visual_config.datetime)
+    }
+ else {
+      const [time, period] = defaultTime.split(' ')
+      const [hour, minute] = time.split(':')
+      let displayHour = Number.parseInt(hour)
+      if (period === 'PM' && displayHour !== 12) displayHour += 12
+      if (period === 'AM' && displayHour === 12) displayHour = 0
+
+      const now = getCurrentTime()
+      startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+    }
 
     const intervalMs = recurUnit === 'hours'
       ? recurEvery * 60 * 60 * 1000
