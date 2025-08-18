@@ -8,6 +8,7 @@ class PGVectorConfig(BaseSettings):
     """
     Configuration settings for PGVector (PostgreSQL with vector extension)
     """
+
     PGVECTOR_IS_OWNER: Optional[bool] = Field(
         description="Whether the PGVector is the owner of the database",
         default=True,
