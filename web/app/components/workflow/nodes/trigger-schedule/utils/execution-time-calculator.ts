@@ -25,40 +25,20 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   const defaultTime = data.visual_config?.time || '11:30 AM'
 
   if (data.frequency === 'hourly') {
-    const recurEvery = data.visual_config?.recur_every || 1
+    if (!data.visual_config?.datetime)
+      return []
+
+    const baseTime = new Date(data.visual_config.datetime)
     const recurUnit = data.visual_config?.recur_unit || 'hours'
-
-    let startTime: Date
-    if (data.visual_config?.datetime) {
-      startTime = new Date(data.visual_config.datetime)
-    }
- else {
-      const [time, period] = defaultTime.split(' ')
-      const [hour, minute] = time.split(':')
-      let displayHour = Number.parseInt(hour)
-      if (period === 'PM' && displayHour !== 12) displayHour += 12
-      if (period === 'AM' && displayHour === 12) displayHour = 0
-
-      const now = getCurrentTime()
-      startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
-    }
+    const recurEvery = data.visual_config?.recur_every || 1
 
     const intervalMs = recurUnit === 'hours'
       ? recurEvery * 60 * 60 * 1000
       : recurEvery * 60 * 1000
 
-    // Calculate the initial offset if start time has passed
-    const now = getCurrentTime()
-    let initialOffset = 0
-
-    if (startTime <= now) {
-      const timeDiff = now.getTime() - startTime.getTime()
-      initialOffset = Math.floor(timeDiff / intervalMs)
-    }
-
     for (let i = 0; i < count; i++) {
-      const nextExecution = new Date(startTime.getTime() + (initialOffset + i + 1) * intervalMs)
-      times.push(nextExecution)
+      const executionTime = new Date(baseTime.getTime() + i * intervalMs)
+      times.push(executionTime)
     }
   }
   else if (data.frequency === 'daily') {
