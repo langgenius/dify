@@ -18,12 +18,14 @@ class CreateOrUpdateAliasRequest(BaseModel):
     """
     Pydantic model for create or update alias request parameters.
     """
+
     tenant_id: str = Field(..., description="Tenant ID")
     app_id: str = Field(..., description="App ID")
     workflow_id: str = Field(..., description="Workflow ID")
     alias_name: str = Field(..., description="Alias name", max_length=255)
     alias_type: str = Field(default=AliasType.CUSTOM, description="Alias type")
     created_by: Optional[str] = Field(default=None, description="User ID who created the alias")
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +47,7 @@ class WorkflowAliasService:
 
         existing_alias = session.execute(
             select(WorkflowAlias).where(
-                and_(
-                    WorkflowAlias.app_id == request.app_id,
-                    WorkflowAlias.alias_name == request.alias_name
-                )
+                and_(WorkflowAlias.app_id == request.app_id, WorkflowAlias.alias_name == request.alias_name)
             )
         ).scalar_one_or_none()
 
