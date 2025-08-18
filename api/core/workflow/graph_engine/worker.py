@@ -5,7 +5,6 @@ Workers pull node IDs from the ready_queue, execute nodes, and push events
 to the event_queue for the dispatcher to process.
 """
 
-import contextlib
 import contextvars
 import queue
 import threading
@@ -100,17 +99,15 @@ class Worker(threading.Thread):
                 self._execute_node(node)
                 self.ready_queue.task_done()
             except Exception as e:
-                with contextlib.suppress(Exception):
-                    # Handle unexpected errors
-                    error_event = NodeRunFailedEvent(
-                        id=str(uuid4()),
-                        node_id="unknown",
-                        node_type=NodeType.CODE,
-                        in_iteration_id=None,
-                        error=str(e),
-                        start_at=datetime.now(),
-                    )
-                    self.event_queue.put(error_event)
+                error_event = NodeRunFailedEvent(
+                    id=str(uuid4()),
+                    node_id="unknown",
+                    node_type=NodeType.CODE,
+                    in_iteration_id=None,
+                    error=str(e),
+                    start_at=datetime.now(),
+                )
+                self.event_queue.put(error_event)
 
     def _execute_node(self, node: Node) -> None:
         """
