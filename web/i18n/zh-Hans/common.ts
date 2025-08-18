@@ -709,6 +709,10 @@ const translation = {
   pagination: {
     perPage: '每页显示',
   },
+  avatar: {
+    deleteTitle: '删除头像',
+    deleteDescription: '确定要删除你的个人头像吗？你的账号将使用默认的首字母头像。',
+  },
   imageInput: {
     dropImageHere: '将图片拖放到此处，或',
     browse: '浏览',

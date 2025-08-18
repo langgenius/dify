@@ -4,7 +4,7 @@ import type { Area } from 'react-easy-crop'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { RiPencilLine } from '@remixicon/react'
+import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
 import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import ImageInput, { type OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
@@ -27,6 +27,8 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [isShowDeleteConfirm, setIsShowDeleteConfirm] = useState(false)
+  const [hoverArea, setHoverArea] = useState<string>('left')
 
   const handleImageInput: OnImageInput = useCallback(async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
     setInputImageInfo(
@@ -41,6 +43,18 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setIsShowAvatarPicker(false)
+      onSave?.()
+    }
+    catch (e) {
+      notify({ type: 'error', message: (e as Error).message })
+    }
+  }, [notify, onSave, t])
+
+  const handleDeleteAvatar = useCallback(async () => {
+    try {
+      await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      setIsShowDeleteConfirm(false)
       onSave?.()
     }
     catch (e) {
@@ -86,12 +100,21 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         <div className="group relative">
           <Avatar {...props} />
           <div
-            onClick={() => { setIsShowAvatarPicker(true) }}
             className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+            onClick={() => hoverArea === 'right' ? setIsShowDeleteConfirm(true) : setIsShowAvatarPicker(true)}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              const x = e.clientX - rect.left
+              const isRight = x > rect.width / 2
+              setHoverArea(isRight ? 'right' : 'left')
+            }}
           >
-            <span className="text-xs text-white">
+            {hoverArea === 'right' ? <span className="text-xs text-white">
+              <RiDeleteBin5Line />
+            </span> : <span className="text-xs text-white">
               <RiPencilLine />
-            </span>
+            </span>}
+
           </div>
         </div>
       </div>
@@ -112,6 +135,26 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
 
           <Button variant="primary" className='w-full' disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
             {t('app.iconPicker.ok')}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        closable
+        className="!w-[362px] !p-6"
+        isShow={isShowDeleteConfirm}
+        onClose={() => setIsShowDeleteConfirm(false)}
+      >
+        <div className="title-2xl-semi-bold mb-3 text-text-primary">{t('common.avatar.deleteTitle')}</div>
+        <p className="mb-8 text-text-secondary">{t('common.avatar.deleteDescription')}</p>
+
+        <div className="flex w-full items-center justify-center gap-2">
+          <Button className="w-full" onClick={() => setIsShowDeleteConfirm(false)}>
+            {t('common.operation.cancel')}
+          </Button>
+
+          <Button variant="warning" className="w-full" onClick={handleDeleteAvatar}>
+            {t('common.operation.delete')}
           </Button>
         </div>
       </Modal>
