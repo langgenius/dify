@@ -99,31 +99,19 @@ class Worker(threading.Thread):
                 self._execute_node(node)
                 self.ready_queue.task_done()
             except Exception as e:
-                # Handle unexpected errors
                 try:
-                    node_id = self.ready_queue.get(timeout=0.1)
-                except queue.Empty:
-                    continue
-
-                node = self.graph.nodes[node_id]
-                try:
-                    self._execute_node(node)
-                    self.ready_queue.task_done()
-                except Exception as e:
-                    # Handle unexpected errors
-                    try:
-                        error_event = NodeRunFailedEvent(
-                            id=str(uuid4()),
-                            node_id="unknown",
-                            node_type=NodeType.CODE,
-                            in_iteration_id=None,
-                            error=str(e),
-                            start_at=datetime.now(),
-                        )
-                        self.event_queue.put(error_event)
-                    except Exception:
-                        # If we can't even create an error event, just continue
-                        pass
+                    error_event = NodeRunFailedEvent(
+                        id=str(uuid4()),
+                        node_id="unknown",
+                        node_type=NodeType.CODE,
+                        in_iteration_id=None,
+                        error=str(e),
+                        start_at=datetime.now(),
+                    )
+                    self.event_queue.put(error_event)
+                except Exception:
+                    # If we can't even create an error event, just continue
+                    pass
 
     def _execute_node(self, node: Node) -> None:
         """
