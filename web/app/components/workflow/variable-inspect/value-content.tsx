@@ -21,6 +21,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import LargeDataAlert from './large-data-alert'
 
 type Props = {
   currentVar: VarInInspect
@@ -169,19 +170,22 @@ const ValueContent = ({
       ref={contentContainerRef}
       className='flex h-full flex-col'
     >
-      <div className={cn('grow')} style={{ height: `${editorHeight}px` }}>
+      <div className={cn('relative grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
+          <>
+          {isTruncated && <LargeDataAlert className='absolute left-3 right-3 top-1' />}
           <Textarea
             readOnly={textEditorDisabled}
-            disabled={textEditorDisabled}
-            className='h-full'
+            disabled={textEditorDisabled || isTruncated}
+            className={cn('h-full', isTruncated && 'pt-[48px]')}
             value={value as any}
             onChange={e => handleTextChange(e.target.value)}
           />
+          </>
         )}
         {showJSONEditor && (
           <SchemaEditor
-            readonly={JSONEditorDisabled}
+            readonly={JSONEditorDisabled || isTruncated}
             className='overflow-y-auto'
             hideTopMenu
             schema={json}

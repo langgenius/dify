@@ -988,6 +988,9 @@ const translation = {
       chatNode: 'Conversation',
       systemNode: 'System',
       exportToolTip: 'Export Variable as File',
+      largeData: 'Large data, read-only preview. Export to view all.',
+      largeDataNoExport: 'Large data - partial preview only',
+      export: 'export',
     },
     lastOutput: 'Last Output',
     relations: {
