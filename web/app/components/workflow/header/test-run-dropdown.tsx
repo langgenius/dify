@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Home from '@/app/components/base/icons/src/vender/workflow/Home'
 import Google from '@/app/components/base/icons/src/public/plugins/Google'
 import {
@@ -115,6 +116,7 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
   onSelect,
   children,
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const handleSelect = (option: TriggerOption) => {
@@ -159,7 +161,7 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
       <PortalToFollowElemContent>
         <div className='w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg'>
           <div className='mb-2 px-3 pt-2 text-sm font-medium text-text-primary'>
-            Choose the start node to run
+            {t('workflow.common.chooseStartNodeToRun')}
           </div>
           <div>
             {hasUserInput && renderOption(options.userInput!, '~')}

@@ -11,6 +11,7 @@ const translation = {
     publishUpdate: '发布更新',
     run: '测试运行',
     running: '运行中',
+    chooseStartNodeToRun: '选择启动节点进行运行',
     inRunMode: '在运行模式中',
     inPreview: '预览中',
     inPreviewMode: '预览中',
