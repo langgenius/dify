@@ -253,7 +253,7 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Enter 0 for unlimited',
   maxActiveRequestsTip: 'Maximum number of concurrent active requests per app (0 for unlimited)',
   gotoAnything: {
-    searchPlaceholder: 'Search or type @ for commands...',
+    searchPlaceholder: 'Search or type @ or / for commands...',
     searchTitle: 'Search for anything',
     searching: 'Searching...',
     noResults: 'No results found',
@@ -292,13 +292,14 @@ const translation = {
       languageCategoryTitle: 'Language',
       languageCategoryDesc: 'Switch interface language',
       languageChangeDesc: 'Change UI language',
+      slashDesc: 'Execute commands like /theme, /lang',
     },
     emptyState: {
       noAppsFound: 'No apps found',
       noPluginsFound: 'No plugins found',
       noKnowledgeBasesFound: 'No knowledge bases found',
       noWorkflowNodesFound: 'No workflow nodes found',
-      tryDifferentTerm: 'Try a different search term or remove the {{mode}} filter',
+      tryDifferentTerm: 'Try a different search term',
       trySpecificSearch: 'Try {{shortcuts}} for specific searches',
     },
     groups: {
@@ -306,6 +307,7 @@ const translation = {
       plugins: 'Plugins',
       knowledgeBases: 'Knowledge Bases',
       workflowNodes: 'Workflow Nodes',
+      commands: 'Commands',
     },
     noMatchingCommands: 'No matching commands found',
     tryDifferentSearch: 'Try a different search term',
