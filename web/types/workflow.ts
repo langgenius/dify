@@ -378,6 +378,11 @@ export enum VarInInspectType {
   system = 'sys',
 }
 
+export type FullContent = {
+  size_bytes: number
+  download_url: string
+}
+
 export type VarInInspect = {
   id: string
   type: VarInInspectType
@@ -388,6 +393,8 @@ export type VarInInspect = {
   value: any
   edited: boolean
   visible: boolean
+  is_truncated: boolean
+  full_content: FullContent
 }
 
 export type NodeWithVar = {

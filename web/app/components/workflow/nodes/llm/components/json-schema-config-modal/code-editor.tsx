@@ -15,6 +15,7 @@ type CodeEditorProps = {
   editorWrapperClassName?: string
   readOnly?: boolean
   hideTopMenu?: boolean
+  topContent?: React.ReactNode
 } & React.HTMLAttributes<HTMLDivElement>
 
 const CodeEditor: FC<CodeEditorProps> = ({
@@ -24,6 +25,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   editorWrapperClassName,
   readOnly = false,
   hideTopMenu = false,
+  topContent,
   className,
 }) => {
   const { t } = useTranslation()
@@ -127,6 +129,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </div>
         </div>
       )}
+      {topContent}
       <div className={classNames('relative overflow-hidden', editorWrapperClassName)}>
         <Editor
           defaultLanguage='json'

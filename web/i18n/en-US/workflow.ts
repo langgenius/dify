@@ -987,6 +987,7 @@ const translation = {
       envNode: 'Environment',
       chatNode: 'Conversation',
       systemNode: 'System',
+      exportToolTip: 'Export Variable as File',
     },
     lastOutput: 'Last Output',
     relations: {

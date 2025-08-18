@@ -25,11 +25,13 @@ import cn from '@/utils/classnames'
 type Props = {
   currentVar: VarInInspect
   handleValueChange: (varId: string, value: any) => void
+  isTruncated: boolean
 }
 
 const ValueContent = ({
   currentVar,
   handleValueChange,
+  isTruncated,
 }: Props) => {
   const contentContainerRef = useRef<HTMLDivElement>(null)
   const errorMessageRef = useRef<HTMLDivElement>(null)
@@ -72,7 +74,6 @@ const ValueContent = ({
 
     if (showFileEditor)
       setFileValue(formatFileValue(currentVar))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVar.id, currentVar.value])
 
   const handleTextChange = (value: string) => {
@@ -185,6 +186,7 @@ const ValueContent = ({
             hideTopMenu
             schema={json}
             onUpdate={handleEditorChange}
+            isTruncated={isTruncated}
           />
         )}
         {showFileEditor && (

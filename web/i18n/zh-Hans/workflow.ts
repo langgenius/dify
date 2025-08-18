@@ -987,6 +987,7 @@ const translation = {
       envNode: '环境变量',
       chatNode: '会话变量',
       systemNode: '系统变量',
+      exportToolTip: '导出变量为文件',
     },
     lastOutput: '上次输出',
     relations: {
