@@ -20,6 +20,7 @@ import type { NodeProps } from '../../types'
 import {
   BlockEnum,
   NodeRunningStatus,
+  TRIGGER_NODE_TYPES,
 } from '../../types'
 import {
   useNodesReadOnly,
@@ -42,6 +43,7 @@ import NodeControl from './components/node-control'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
 import RetryOnNode from './components/retry/retry-on-node'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
+import TriggerContainer from './components/trigger-container'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
@@ -136,7 +138,9 @@ const BaseNode: FC<BaseNodeProps> = ({
     return null
   }, [data._loopIndex, data._runningStatus, t])
 
-  return (
+  const isTriggerNode = TRIGGER_NODE_TYPES.includes(data.type as any)
+
+  const nodeContent = (
     <div
       className={cn(
         'flex rounded-2xl border-[2px]',
@@ -291,13 +295,13 @@ const BaseNode: FC<BaseNodeProps> = ({
         </div>
         {
           data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
-            cloneElement(children, { id, data })
+            cloneElement(children, { data } as any)
           )
         }
         {
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && (
             <div className='grow pb-1 pl-1 pr-1'>
-              {cloneElement(children, { id, data })}
+              {cloneElement(children, { data } as any)}
             </div>
           )
         }
@@ -332,6 +336,12 @@ const BaseNode: FC<BaseNodeProps> = ({
       </div>
     </div>
   )
+
+  return isTriggerNode ? (
+    <TriggerContainer status="enabled">
+      {nodeContent}
+    </TriggerContainer>
+  ) : nodeContent
 }
 
 export default memo(BaseNode)

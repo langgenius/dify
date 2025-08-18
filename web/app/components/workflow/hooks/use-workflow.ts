@@ -29,6 +29,10 @@ import {
   getParallelInfo,
 } from '../utils'
 import {
+  getWorkflowEntryNode,
+  isWorkflowEntryNode,
+} from '../utils/workflow-entry'
+import {
   PARALLEL_DEPTH_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
@@ -67,7 +71,7 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
-    let startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    let startNode = getWorkflowEntryNode(nodes)
     const currentNode = nodes.find(node => node.id === nodeId)
 
     if (currentNode?.parentId)
@@ -238,14 +242,14 @@ export const useWorkflow = () => {
     if (!currentNode)
       return false
 
-    if (currentNode.data.type === BlockEnum.Start)
+    if (isWorkflowEntryNode(currentNode.data.type))
       return true
 
     const checkPreviousNodes = (node: Node) => {
       const previousNodes = getBeforeNodeById(node.id)
 
       for (const prevNode of previousNodes) {
-        if (prevNode.data.type === BlockEnum.Start)
+        if (isWorkflowEntryNode(prevNode.data.type))
           return true
         if (checkPreviousNodes(prevNode))
           return true
@@ -390,7 +394,7 @@ export const useWorkflow = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-    return nodes.find(node => node.id === nodeId) || nodes.find(node => node.data.type === BlockEnum.Start)
+    return nodes.find(node => node.id === nodeId) || getWorkflowEntryNode(nodes)
   }, [store])
 
   return {
