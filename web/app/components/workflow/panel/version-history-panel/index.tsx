@@ -11,7 +11,7 @@ import Filter from './filter'
 import type { VersionHistory } from '@/types/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
-import { useWorkflowAliasList } from '@/service/use-workflow-alias'
+import { useWorkflowAliasListPaginated } from '@/service/use-workflow-alias'
 import type { WorkflowAlias } from '@/app/components/workflow/types'
 import Divider from '@/app/components/base/divider'
 import Loading from './loading'
@@ -68,20 +68,30 @@ const VersionHistoryPanel = () => {
   ) || []
 
   // Batch query aliases for all workflow versions (only when we have workflow IDs)
-  const { data: allAliases, refetch: refetchAliases } = useWorkflowAliasList({
+  const { data: allAliases, refetch: refetchAliases, fetchNextPage: fetchNextAliasesPage, hasNextPage: hasNextAliasesPage } = useWorkflowAliasListPaginated({
     appId: appDetail!.id,
     workflowIds: allWorkflowIds,
+    limit: 100,
   })
+
+  React.useEffect(() => {
+    if (hasNextAliasesPage && allWorkflowIds.length > 0)
+      fetchNextAliasesPage()
+  }, [allAliases?.pages?.length, hasNextAliasesPage, allWorkflowIds.length, fetchNextAliasesPage])
 
   // Create a map of workflow_id -> aliases for efficient lookup
   const aliasesMap = React.useMemo(() => {
     const map = new Map<string, WorkflowAlias[]>()
-    if (allAliases?.items) {
-      allAliases.items.forEach((alias) => {
-        if (!map.has(alias.workflow_id))
-          map.set(alias.workflow_id, [])
+    if (allAliases?.pages) {
+      allAliases.pages.forEach((page) => {
+        if (page.items) {
+          page.items.forEach((alias: WorkflowAlias) => {
+            if (!map.has(alias.workflow_id))
+              map.set(alias.workflow_id, [])
 
-        map.get(alias.workflow_id)!.push(alias)
+            map.get(alias.workflow_id)!.push(alias)
+          })
+        }
       })
     }
     return map

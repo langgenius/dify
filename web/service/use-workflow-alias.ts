@@ -1,23 +1,70 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, post } from './base'
 import type { WorkflowAlias, WorkflowAliasList } from '@/app/components/workflow/types'
 
-export const useWorkflowAliasList = ({ appId, workflowIds }: {
+export const useWorkflowAliasList = ({
+  appId,
+  workflowIds,
+  limit = 100,
+  offset = 0,
+}: {
   appId: string
   workflowIds?: string[]
+  limit?: number
+  offset?: number
 }) => {
   return useQuery<WorkflowAliasList>({
-    queryKey: ['workflow-aliases', appId, workflowIds],
+    queryKey: ['workflow-aliases', appId, workflowIds, limit, offset],
     queryFn: async () => {
-      if (workflowIds && workflowIds.length > 0) {
-        const workflowIdsParam = workflowIds.join(',')
-        return get<WorkflowAliasList>(`/apps/${appId}/workflow-aliases?workflow_ids=${workflowIdsParam}`)
-      }
- else {
-        // When no workflow IDs, get all aliases for the app
-        return get<WorkflowAliasList>(`/apps/${appId}/workflow-aliases`)
-      }
+      const params = new URLSearchParams()
+
+      if (workflowIds && workflowIds.length > 0)
+        params.append('workflow_ids', workflowIds.join(','))
+
+      params.append('limit', limit.toString())
+      params.append('offset', offset.toString())
+
+      const queryString = params.toString()
+      const url = `/apps/${appId}/workflow-aliases${queryString ? `?${queryString}` : ''}`
+
+      return get<WorkflowAliasList>(url)
     },
+    enabled: !!appId && (workflowIds === undefined || workflowIds.length > 0),
+  })
+}
+
+export const useWorkflowAliasListPaginated = ({
+  appId,
+  workflowIds,
+  limit = 100,
+}: {
+  appId: string
+  workflowIds?: string[]
+  limit?: number
+}) => {
+  return useInfiniteQuery<WorkflowAliasList>({
+    queryKey: ['workflow-aliases-paginated', appId, workflowIds, limit],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams()
+
+      if (workflowIds && workflowIds.length > 0)
+        params.append('workflow_ids', workflowIds.join(','))
+
+      params.append('limit', limit.toString())
+      params.append('offset', ((pageParam as number) * limit).toString())
+
+      const queryString = params.toString()
+      const url = `/apps/${appId}/workflow-aliases?${queryString}`
+
+                       const response = await get<WorkflowAliasList>(url)
+                 return response
+    },
+                   getNextPageParam: (lastPage, allPages) => {
+                 if (lastPage.has_more)
+                   return allPages.length
+                 return undefined
+               },
     enabled: !!appId && (workflowIds === undefined || workflowIds.length > 0),
   })
 }

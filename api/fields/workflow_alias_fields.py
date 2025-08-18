@@ -19,7 +19,9 @@ workflow_alias_fields = {
 
 workflow_alias_list_fields = {
     "items": fields.List(fields.Nested(workflow_alias_fields)),
-    "total": fields.Integer,
+    "page": fields.Integer,
+    "limit": fields.Integer,
+    "has_more": fields.Boolean,
 }
 
 workflow_alias_create_fields = {
