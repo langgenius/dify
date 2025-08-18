@@ -507,19 +507,9 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       console.error(error)
       setHasMore(false)
     }
-    catch (error) {
-      console.error(error)
-      setHasMore(false)
-    }
     finally {
       setIsLoading(false)
-catch (error) {
-  console.error(error)
-  setHasMore(false)
-}
-finally {
-  setIsLoading(false)
-}
+    }
   }, [allChatItems, detail.id, hasMore, isLoading, timezone, t, appDetail])
 
   useEffect(() => {
@@ -532,13 +522,7 @@ finally {
     if (outerDiv && outerDiv.scrollHeight > outerDiv.clientHeight) {
       scrollContainer = outerDiv
     }
- else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
-      scrollContainer = scrollableDiv
-    }
- else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
-      scrollContainer = chatContainer
-    }
-    else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
+     else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
       scrollContainer = scrollableDiv
     }
     else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
@@ -553,16 +537,7 @@ finally {
           break
         }
       }
-  else {
-    const possibleContainers = document.querySelectorAll('.overflow-auto, .overflow-y-auto')
-    for (let i = 0; i < possibleContainers.length; i++) {
-      const container = possibleContainers[i] as HTMLElement
-      if (container.scrollHeight > container.clientHeight) {
-        scrollContainer = container
-        break
-      }
     }
-  }
 
     if (!scrollContainer)
       return
