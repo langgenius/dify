@@ -268,7 +268,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       setChatItemTree(tree)
 
-      setThreadChatItems(getThreadMessages(tree))
+      const lastMessageId = newAllChatItems.length > 0 ? newAllChatItems[newAllChatItems.length - 1].id : undefined;
+      setThreadChatItems(getThreadMessages(tree, lastMessageId))
     }
     catch (err) {
       console.error('fetchData execution failed:', err)
