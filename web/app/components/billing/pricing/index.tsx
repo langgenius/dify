@@ -41,7 +41,7 @@ const Pricing: FC<PricingProps> = ({
       onClick={e => e.stopPropagation()}
     >
       <div className='relative grid min-h-full min-w-[1200px] grid-rows-[1fr_auto_auto_1fr] overflow-hidden'>
-        <div className='absolute -top-12 left-0 right-0'>
+        <div className='absolute -top-12 left-0 right-0 -z-10'>
           <NoiseTop />
         </div>
         <Header onClose={onCancel} />
@@ -58,7 +58,7 @@ const Pricing: FC<PricingProps> = ({
           canPay={canPay}
         />
         <Footer pricingPageURL={pricingPageURL} />
-        <div className='absolute -bottom-12 left-0 right-0'>
+        <div className='absolute -bottom-12 left-0 right-0 -z-10'>
           <NoiseBottom />
         </div>
       </div>

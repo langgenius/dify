@@ -255,10 +255,12 @@ const Popup = () => {
           disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
           <div className='flex grow items-center gap-x-2'>
-            <RiHammerLine className='h-4 w-4' />
-            {t('pipeline.common.publishAs')}
+            <RiHammerLine className='h-4 w-4 shrink-0' />
+            <span className='grow truncate text-left' title={t('pipeline.common.publishAs')}>
+              {t('pipeline.common.publishAs')}
+            </span>
             {!isAllowPublishAsKnowledgePipeline && (
-              <PremiumBadge className='cursor-pointer select-none' size='s' color='indigo'>
+              <PremiumBadge className='shrink-0 cursor-pointer select-none' size='s' color='indigo'>
                 <SparklesSoft className='flex size-3 items-center text-components-premium-badge-indigo-text-stop-0' />
                 <span className='system-2xs-medium p-0.5'>
                   {t('billing.upgradeBtn.encourageShort')}
