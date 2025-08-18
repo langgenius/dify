@@ -82,6 +82,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
     return () => {
       const newPayload = produce(tempPayload, (draft) => {
         draft.type = type
+        // Clear default value when switching types
+        draft.default = undefined
         if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
           (Object.keys(DEFAULT_FILE_UPLOAD_SETTING)).forEach((key) => {
             if (key !== 'max_length')
