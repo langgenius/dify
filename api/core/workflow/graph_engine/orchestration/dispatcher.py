@@ -6,10 +6,13 @@ import logging
 import queue
 import threading
 import time
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from ..event_management import EventEmitter, EventRouter
+from ..event_management import EventCollector, EventEmitter
 from .execution_coordinator import ExecutionCoordinator
+
+if TYPE_CHECKING:
+    from ..event_management import EventHandlerRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +28,8 @@ class Dispatcher:
     def __init__(
         self,
         event_queue: queue.Queue,
-        event_router: EventRouter,
+        event_handler: "EventHandlerRegistry",
+        event_collector: EventCollector,
         execution_coordinator: ExecutionCoordinator,
         max_execution_time: int,
         event_emitter: Optional[EventEmitter] = None,
@@ -35,13 +39,15 @@ class Dispatcher:
 
         Args:
             event_queue: Queue of events from workers
-            event_router: Router for dispatching events
+            event_handler: Event handler registry for processing events
+            event_collector: Event collector for collecting unhandled events
             execution_coordinator: Coordinator for execution flow
             max_execution_time: Maximum execution time in seconds
             event_emitter: Optional event emitter to signal completion
         """
         self.event_queue = event_queue
-        self.event_router = event_router
+        self.event_handler = event_handler
+        self.event_collector = event_collector
         self.execution_coordinator = execution_coordinator
         self.max_execution_time = max_execution_time
         self.event_emitter = event_emitter
@@ -83,7 +89,8 @@ class Dispatcher:
                 # Process events
                 try:
                     event = self.event_queue.get(timeout=0.1)
-                    self.event_router.route_event(event)
+                    # Route to the event handler
+                    self.event_handler.handle_event(event)
                     self.event_queue.task_done()
                 except queue.Empty:
                     # Check if execution is complete

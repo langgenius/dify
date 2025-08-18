@@ -2,11 +2,16 @@
 Execution coordinator for managing overall workflow execution.
 """
 
+from typing import TYPE_CHECKING
+
 from ..command_processing import CommandProcessor
 from ..domain import GraphExecution
-from ..event_management import EventRouter
+from ..event_management import EventCollector
 from ..state_management import ExecutionTracker, NodeStateManager
 from ..worker_management import WorkerPool
+
+if TYPE_CHECKING:
+    from ..event_management import EventHandlerRegistry
 
 
 class ExecutionCoordinator:
@@ -22,7 +27,8 @@ class ExecutionCoordinator:
         graph_execution: GraphExecution,
         node_state_manager: NodeStateManager,
         execution_tracker: ExecutionTracker,
-        event_router: EventRouter,
+        event_handler: "EventHandlerRegistry",
+        event_collector: EventCollector,
         command_processor: CommandProcessor,
         worker_pool: WorkerPool,
     ) -> None:
@@ -33,14 +39,16 @@ class ExecutionCoordinator:
             graph_execution: Graph execution aggregate
             node_state_manager: Manager for node states
             execution_tracker: Tracker for executing nodes
-            event_router: Router for events
+            event_handler: Event handler registry for processing events
+            event_collector: Event collector for collecting events
             command_processor: Processor for commands
             worker_pool: Pool of workers
         """
         self.graph_execution = graph_execution
         self.node_state_manager = node_state_manager
         self.execution_tracker = execution_tracker
-        self.event_router = event_router
+        self.event_handler = event_handler
+        self.event_collector = event_collector
         self.command_processor = command_processor
         self.worker_pool = worker_pool
 

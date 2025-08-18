@@ -24,10 +24,6 @@ from core.workflow.graph_events import (
     GraphRunFailedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
-    NodeRunFailedEvent,
-    NodeRunStartedEvent,
-    NodeRunStreamChunkEvent,
-    NodeRunSucceededEvent,
 )
 from models.enums import UserFrom
 
@@ -35,7 +31,7 @@ from .command_processing import AbortCommandHandler, CommandProcessor
 from .domain import ExecutionContext, GraphExecution
 from .entities.commands import AbortCommand
 from .error_handling import ErrorHandler
-from .event_management import EventCollector, EventEmitter, EventHandlerRegistry, EventRouter
+from .event_management import EventCollector, EventEmitter, EventHandlerRegistry
 from .graph_traversal import BranchHandler, EdgeProcessor, NodeReadinessChecker, SkipPropagator
 from .layers.base import Layer
 from .orchestration import Dispatcher, ExecutionCoordinator
@@ -133,18 +129,9 @@ class GraphEngine:
         # Event management
         self.event_collector = EventCollector()
         self.event_emitter = EventEmitter(self.event_collector)
-        self.event_handler_registry = EventHandlerRegistry(
-            graph=self.graph,
-            graph_runtime_state=self.graph_runtime_state,
-            graph_execution=self.graph_execution,
-            response_coordinator=self.response_coordinator,
-            event_collector=self.event_collector,
-        )
-        self.event_router = EventRouter(self.event_collector)
-        self._setup_event_routing()
 
         # Error handling
-        self.error_handler = ErrorHandler(self.graph)
+        self.error_handler = ErrorHandler(self.graph, self.graph_execution)
 
         # Graph traversal
         self.node_readiness_checker = NodeReadinessChecker(self.graph)
@@ -166,6 +153,20 @@ class GraphEngine:
             edge_state_manager=self.edge_state_manager,
         )
 
+        # Event handler registry with all dependencies
+        self.event_handler_registry = EventHandlerRegistry(
+            graph=self.graph,
+            graph_runtime_state=self.graph_runtime_state,
+            graph_execution=self.graph_execution,
+            response_coordinator=self.response_coordinator,
+            event_collector=self.event_collector,
+            branch_handler=self.branch_handler,
+            edge_processor=self.edge_processor,
+            node_state_manager=self.node_state_manager,
+            execution_tracker=self.execution_tracker,
+            error_handler=self.error_handler,
+        )
+
         # Command processing
         self.command_processor = CommandProcessor(
             command_channel=self.command_channel,
@@ -181,29 +182,20 @@ class GraphEngine:
             graph_execution=self.graph_execution,
             node_state_manager=self.node_state_manager,
             execution_tracker=self.execution_tracker,
-            event_router=self.event_router,
+            event_handler=self.event_handler_registry,
+            event_collector=self.event_collector,
             command_processor=self.command_processor,
             worker_pool=self.worker_pool,
         )
 
         self.dispatcher = Dispatcher(
             event_queue=self.event_queue,
-            event_router=self.event_router,
+            event_handler=self.event_handler_registry,
+            event_collector=self.event_collector,
             execution_coordinator=self.execution_coordinator,
             max_execution_time=self.execution_context.max_execution_time,
             event_emitter=self.event_emitter,
         )
-
-    def _setup_event_routing(self) -> None:
-        """Configure event routing to appropriate handlers."""
-
-        self.event_router.register_handler(NodeRunStartedEvent, self.event_handler_registry.handle_node_started)
-        self.event_router.register_handler(
-            NodeRunStreamChunkEvent,
-            self._handle_stream_chunk,
-        )
-        self.event_router.register_handler(NodeRunSucceededEvent, self._handle_node_succeeded)
-        self.event_router.register_handler(NodeRunFailedEvent, self._handle_node_failed)
 
     def _setup_command_handlers(self) -> None:
         """Configure command handlers."""
@@ -251,88 +243,6 @@ class GraphEngine:
             dynamic_scaler=self.dynamic_scaler,
             activity_tracker=self.activity_tracker,
         )
-
-    def _handle_stream_chunk(self, event: NodeRunStreamChunkEvent) -> None:
-        """
-        Handle stream chunk event.
-
-        Args:
-            event: The stream chunk event
-        """
-        # Process with handler registry
-        streaming_events = self.event_handler_registry.handle_stream_chunk(event)
-
-        # Collect all events
-        for stream_event in streaming_events:
-            self.event_collector.collect(stream_event)
-
-    def _handle_node_succeeded(self, event: NodeRunSucceededEvent) -> None:
-        """
-        Handle node success by coordinating subsystems.
-
-        This method coordinates between different subsystems to process
-        node completion, handle edges, and trigger downstream execution.
-        """
-        # Let event handler registry process the event
-        streaming_events, is_response = self.event_handler_registry.handle_node_succeeded(event)
-
-        # Emit streaming events
-        for stream_event in streaming_events:
-            self.event_collector.collect(stream_event)
-
-        # Process edges and get ready nodes
-        node = self.graph.nodes[event.node_id]
-        if node.execution_type == NodeExecutionType.BRANCH:
-            ready_nodes, edge_streaming_events = self.branch_handler.handle_branch_completion(
-                event.node_id, event.node_run_result.edge_source_handle
-            )
-        else:
-            ready_nodes, edge_streaming_events = self.edge_processor.process_node_success(event.node_id)
-
-        # Collect streaming events from edge processing
-        for edge_event in edge_streaming_events:
-            self.event_collector.collect(edge_event)
-
-        # Enqueue ready nodes
-        for node_id in ready_nodes:
-            self.node_state_manager.enqueue_node(node_id)
-            self.execution_tracker.add(node_id)
-
-        # Update execution tracking
-        self.execution_tracker.remove(event.node_id)
-        self.error_handler.reset_retry_count(event.node_id)
-
-        # Handle response node outputs
-        if is_response:
-            self._update_response_outputs(event)
-
-        # Collect the event
-        self.event_collector.collect(event)
-
-    def _handle_node_failed(self, event: NodeRunFailedEvent) -> None:
-        """Handle node failure using error handler."""
-        result = self.error_handler.handle_node_failure(event)
-
-        if result:
-            # Process the resulting event (retry, exception, etc.)
-            self.event_router.route_event(result)
-        else:
-            # Abort execution
-            self.graph_execution.fail(RuntimeError(event.error))
-            self.event_collector.collect(event)
-            self.execution_tracker.remove(event.node_id)
-
-    def _update_response_outputs(self, event: NodeRunSucceededEvent) -> None:
-        """Update response outputs for response nodes."""
-        for key, value in event.node_run_result.outputs.items():
-            if key == "answer":
-                existing = self.graph_runtime_state.outputs.get("answer", "")
-                if existing:
-                    self.graph_runtime_state.outputs["answer"] = f"{existing}{value}"
-                else:
-                    self.graph_runtime_state.outputs["answer"] = value
-            else:
-                self.graph_runtime_state.outputs[key] = value
 
     def _validate_graph_state_consistency(self) -> None:
         """Validate that all nodes share the same GraphRuntimeState."""

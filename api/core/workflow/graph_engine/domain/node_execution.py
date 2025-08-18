@@ -28,7 +28,7 @@ class NodeExecution:
         self.state = NodeState.TAKEN
         self.execution_id = execution_id
 
-    def mark_succeeded(self) -> None:
+    def mark_taken(self) -> None:
         """Mark the node as successfully completed."""
         self.state = NodeState.TAKEN
         self.error = None
@@ -44,12 +44,3 @@ class NodeExecution:
     def increment_retry(self) -> None:
         """Increment the retry count for this node."""
         self.retry_count += 1
-
-    def reset_retry(self) -> None:
-        """Reset the retry count."""
-        self.retry_count = 0
-
-    @property
-    def is_executing(self) -> bool:
-        """Check if the node is currently executing."""
-        return self.state == NodeState.TAKEN and self.execution_id is not None

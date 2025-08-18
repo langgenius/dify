@@ -9,7 +9,7 @@ The engine uses a modular architecture with specialized packages:
 ### Core Components
 
 - **Domain** (`domain/`) - Core models: ExecutionContext, GraphExecution, NodeExecution
-- **Event Management** (`event_management/`) - Event routing, collection, and emission
+- **Event Management** (`event_management/`) - Event handling, collection, and emission
 - **State Management** (`state_management/`) - Thread-safe state tracking for nodes and edges
 - **Error Handling** (`error_handling/`) - Strategy-based error recovery (retry, abort, fail-branch, default-value)
 - **Graph Traversal** (`graph_traversal/`) - Node readiness, edge processing, branch handling
@@ -40,7 +40,7 @@ classDiagram
     }
     
     class EventManagement {
-        EventRouter
+        EventHandlerRegistry
         EventCollector
         EventEmitter
     }
@@ -147,7 +147,7 @@ classDiagram
 ### Data Flow
 
 1. **Commands** flow from CommandChannels → CommandProcessing → Domain
-2. **Events** flow from Workers → EventManagement → Handlers → State updates
+2. **Events** flow from Workers → EventHandlerRegistry → State updates
 3. **Node outputs** flow from Workers → OutputRegistry → ResponseCoordinator
 4. **Ready nodes** flow from GraphTraversal → StateManagement → WorkerManagement
 
@@ -184,13 +184,4 @@ engine = GraphEngine(
 # Stream execution events
 for event in engine.run():
     handle_event(event)
-```
-
-## External Control
-
-```python
-from core.workflow.graph_engine.manager import GraphEngineManager
-
-manager = GraphEngineManager()
-manager.stop_workflow(workflow_id="workflow_123")
 ```
