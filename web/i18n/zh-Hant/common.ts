@@ -715,6 +715,10 @@ const translation = {
     dropImageHere: '將您的圖片放在這裡，或',
   },
   you: '你',
+  avatar: {
+    deleteTitle: '移除頭像',
+    deleteDescription: '您確定要刪除您的個人資料照片嗎？您的帳戶將使用默認的初始頭像。',
+  },
 }
 
 export default translation
