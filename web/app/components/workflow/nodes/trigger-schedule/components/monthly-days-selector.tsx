@@ -39,7 +39,7 @@ const MonthlyDaysSelector = ({ selectedDay, onChange }: MonthlyDaysSelectorProps
                 } ${
                   selectedDay === day
                     ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                    : 'border-components-input-border-normal text-text-tertiary hover:border-components-input-border-hover hover:text-text-secondary'
+                    : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
                 }`}
               >
                 {day === 'last' ? (
