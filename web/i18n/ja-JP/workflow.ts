@@ -1047,6 +1047,7 @@ const translation = {
     copyLastRunError: '最後の実行の入力をコピーできませんでした',
     noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
     lastRunInputsCopied: '前回の実行から{{count}}個の入力をコピーしました',
+    lastOutput: '最後の出力',
   },
   triggerStatus: {
     enabled: 'トリガー',

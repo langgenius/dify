@@ -1022,6 +1022,7 @@ const translation = {
     noMatchingInputsFound: 'Nessun input corrispondente trovato dall\'ultimo funzionamento.',
     copyLastRunError: 'Impossibile copiare gli input dell\'ultima esecuzione',
     noLastRunFound: 'Nessuna esecuzione precedente trovata',
+    lastOutput: 'Ultimo output',
   },
 }
 

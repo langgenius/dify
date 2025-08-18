@@ -997,6 +997,7 @@ const translation = {
     noLastRunFound: 'Önceki çalışmaya rastlanmadı.',
     noMatchingInputsFound: 'Son çalışmadan eşleşen giriş bulunamadı.',
     copyLastRunError: 'Son çalışma girdilerini kopyalamak başarısız oldu.',
+    lastOutput: 'Son Çıktı',
   },
 }
 
