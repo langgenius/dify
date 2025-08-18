@@ -20,6 +20,7 @@ type SegmentedControlProps<T extends string | number | symbol> = {
   onChange: (value: T) => void
   className?: string
   activeClassName?: string
+  btnClassName?: string
 }
 
 const SegmentedControlVariants = cva(
@@ -90,6 +91,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
   padding,
   activeState,
   activeClassName,
+  btnClassName,
 }: SegmentedControlProps<T>
   & VariantProps<typeof SegmentedControlVariants>
   & VariantProps<typeof SegmentedControlItemVariants>
@@ -115,6 +117,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
               SegmentedControlItemVariants({ size, activeState: isSelected ? activeState : 'default' }),
               isSelected && activeClassName,
               disabled && 'disabled',
+              btnClassName,
             )}
             onClick={() => {
               if (!isSelected)
