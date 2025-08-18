@@ -128,7 +128,8 @@ class InstructionGenerateApi(Resource):
         args = parser.parse_args()
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
         code_provider: type[CodeNodeProvider] | None = next(
-            (p for p in providers if p.is_accept_language(args["language"])), None
+            (p for p in providers if p.is_accept_language(args["language"])),
+            None
         )
         code_template = code_provider.get_default_code() if code_provider else ""
         try:
