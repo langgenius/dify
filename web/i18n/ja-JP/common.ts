@@ -715,6 +715,10 @@ const translation = {
     supportedFormats: 'PNG、JPG、JPEG、WEBP、および GIF をサポートしています。',
     dropImageHere: 'ここに画像をドロップするか、',
   },
+  avatar: {
+    deleteTitle: 'アバターを削除する',
+    deleteDescription: '本当にプロフィール写真を削除してもよろしいですか？あなたのアカウントはデフォルトの初期アバターを使用します。',
+  },
 }
 
 export default translation
