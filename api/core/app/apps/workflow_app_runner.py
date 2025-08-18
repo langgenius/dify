@@ -49,6 +49,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.graph_events.graph import GraphRunAbortedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
@@ -365,6 +366,8 @@ class WorkflowBasedAppRunner:
             )
         elif isinstance(event, GraphRunFailedEvent):
             self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
+        elif isinstance(event, GraphRunAbortedEvent):
+            self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
         elif isinstance(event, NodeRunRetryEvent):
             node_run_result = event.node_run_result
             inputs = node_run_result.inputs

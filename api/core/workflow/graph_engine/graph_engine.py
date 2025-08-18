@@ -280,8 +280,11 @@ class GraphEngine:
 
             # Handle completion
             if self.graph_execution.aborted:
+                abort_reason = "Workflow execution aborted by user command"
+                if self.graph_execution.error:
+                    abort_reason = str(self.graph_execution.error)
                 yield GraphRunAbortedEvent(
-                    reason="Workflow execution aborted by user command",
+                    reason=abort_reason,
                     outputs=self.graph_runtime_state.outputs,
                 )
             elif self.graph_execution.has_error:

@@ -10,16 +10,23 @@ When limits are exceeded, the layer automatically aborts execution.
 
 import logging
 import time
+from enum import Enum
 from typing import Optional
 
-from pydantic import PositiveInt
-
-from core.workflow.graph_engine.entities.commands import AbortCommand
+from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType
 from core.workflow.graph_engine.layers import Layer
 from core.workflow.graph_events import (
     GraphEngineEvent,
     NodeRunStartedEvent,
 )
+from core.workflow.graph_events.node import NodeRunFailedEvent, NodeRunSucceededEvent
+
+
+class LimitType(Enum):
+    """Types of execution limits that can be exceeded."""
+
+    STEP_LIMIT = "step_limit"
+    TIME_LIMIT = "time_limit"
 
 
 class ExecutionLimitsLayer(Layer):
@@ -33,7 +40,7 @@ class ExecutionLimitsLayer(Layer):
     Automatically aborts execution when limits are exceeded.
     """
 
-    def __init__(self, max_steps: PositiveInt, max_time: PositiveInt) -> None:
+    def __init__(self, max_steps: int, max_time: int) -> None:
         """
         Initialize the execution limits layer.
 
@@ -76,10 +83,17 @@ class ExecutionLimitsLayer(Layer):
 
         # Track step count for node execution events
         if isinstance(event, NodeRunStartedEvent):
-            self._handle_node_execution_event(event)
+            self.step_count += 1
+            self.logger.debug("Step %d started: %s", self.step_count, event.node_id)
 
-        # Check limits after each event
-        self._check_limits()
+        # Check step limit when node execution completes
+        if isinstance(event, NodeRunSucceededEvent | NodeRunFailedEvent):
+            if self.step_count > self.max_steps:
+                self._abort_execution(LimitType.STEP_LIMIT)
+
+            # Check time limits after each event
+            if self.start_time and (time.time() - self.start_time) > self.max_time:
+                self._abort_execution(LimitType.TIME_LIMIT)
 
     def on_graph_end(self, error: Optional[Exception]) -> None:
         """Called when graph execution ends."""
@@ -90,44 +104,28 @@ class ExecutionLimitsLayer(Layer):
                 total_time = time.time() - self.start_time
                 self.logger.debug("Execution completed: %d steps in %.2f seconds", self.step_count, total_time)
 
-    def _handle_node_execution_event(self, event: GraphEngineEvent) -> None:
-        """Handle node execution events to track step count."""
-        if isinstance(event, NodeRunStartedEvent):
-            # Only count started events to avoid double-counting
-            self.step_count += 1
-            self.logger.debug("Step %d started: %s", self.step_count, event.node_id)
-
-    def _check_limits(self) -> None:
-        """Check if execution limits have been exceeded."""
-        if not self.command_channel or not self._execution_started or self._execution_ended or self._abort_sent:
-            return
-
-        # Check step limit
-        if self.step_count > self.max_steps:
-            self._abort_execution(f"Maximum execution steps exceeded: {self.step_count} > {self.max_steps}")
-            return
-
-        # Check time limit
-        if self.start_time:
-            elapsed_time = time.time() - self.start_time
-            if elapsed_time > self.max_time:
-                self._abort_execution(f"Maximum execution time exceeded: {elapsed_time:.2f}s > {self.max_time}s")
-
-    def _abort_execution(self, reason: str) -> None:
+    def _abort_execution(self, limit_type: LimitType) -> None:
         """
         Abort execution due to limit violation.
 
         Args:
-            reason: Description of why execution was aborted
+            limit_type: Type of limit exceeded
         """
-        if not self.command_channel or self._abort_sent:
+        if not self.command_channel or not self._execution_started or self._execution_ended or self._abort_sent:
             return
+
+        # Format detailed reason message
+        if limit_type == LimitType.STEP_LIMIT:
+            reason = f"Maximum execution steps exceeded: {self.step_count} > {self.max_steps}"
+        elif limit_type == LimitType.TIME_LIMIT:
+            elapsed_time = time.time() - self.start_time if self.start_time else 0
+            reason = f"Maximum execution time exceeded: {elapsed_time:.2f}s > {self.max_time}s"
 
         self.logger.warning("Execution limit exceeded: %s", reason)
 
         try:
             # Send abort command to the engine
-            abort_command = AbortCommand(reason=reason)
+            abort_command = AbortCommand(command_type=CommandType.ABORT, reason=reason)
             self.command_channel.send_command(abort_command)
 
             # Mark that abort has been sent to prevent duplicate commands

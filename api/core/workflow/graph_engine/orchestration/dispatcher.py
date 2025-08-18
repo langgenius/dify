@@ -76,10 +76,6 @@ class Dispatcher:
         """Main dispatcher loop."""
         try:
             while not self._stop_event.is_set():
-                # Check timeout
-                if self._check_timeout():
-                    break
-
                 # Check for commands
                 self.execution_coordinator.check_commands()
 
@@ -106,14 +102,3 @@ class Dispatcher:
             # Signal the event emitter that execution is complete
             if self.event_emitter:
                 self.event_emitter.mark_complete()
-
-    def _check_timeout(self) -> bool:
-        """
-        Check if execution has timed out.
-
-        Returns:
-            True if timed out
-        """
-        if self._start_time and time.time() - self._start_time > self.max_execution_time:
-            raise TimeoutError(f"Execution exceeded maximum time of {self.max_execution_time} seconds")
-        return False

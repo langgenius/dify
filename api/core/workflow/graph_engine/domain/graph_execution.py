@@ -63,3 +63,10 @@ class GraphExecution:
     def has_error(self) -> bool:
         """Check if the execution has encountered an error."""
         return self.error is not None
+
+    @property
+    def error_message(self) -> str | None:
+        """Get the error message if an error exists."""
+        if not self.error:
+            return None
+        return str(self.error)
