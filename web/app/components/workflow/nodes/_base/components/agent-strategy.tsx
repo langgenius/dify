@@ -87,6 +87,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
             containerBackgroundClassName='bg-transparent'
             gradientBorder={false}
+            nodeId={nodeId}
             isSupportPromptGenerator={!!def.auto_generate?.type}
             titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
             editorContainerClassName='px-0'
