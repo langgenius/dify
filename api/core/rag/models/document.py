@@ -15,7 +15,7 @@ class ChildDocument(BaseModel):
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
-    metadata: dict = Field(default_factory = dict)
+    metadata: dict = Field(default_factory=dict)
 
 
 class Document(BaseModel):
@@ -28,7 +28,7 @@ class Document(BaseModel):
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
-    metadata: dict = Field(default_factory = dict)
+    metadata: dict = Field(default_factory=dict)
 
     provider: Optional[str] = "dify"
 
