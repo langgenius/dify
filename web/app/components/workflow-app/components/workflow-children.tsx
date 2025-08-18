@@ -14,10 +14,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import WorkflowHeader from './workflow-header'
 import WorkflowPanel from './workflow-panel'
 import dynamic from 'next/dynamic'
-
-const Features = dynamic(() => import('@/app/components/workflow/features'), {
-  ssr: false,
-})
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
   ssr: false,
 })
@@ -28,7 +24,6 @@ const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/ds
 const WorkflowChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
-  const showFeaturesPanel = useStore(s => s.showFeaturesPanel)
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const {
@@ -47,9 +42,6 @@ const WorkflowChildren = () => {
   return (
     <>
       <PluginDependency />
-      {
-        showFeaturesPanel && <Features />
-      }
       {
         showImportDSLModal && (
           <UpdateDSLModal
