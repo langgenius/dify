@@ -6,7 +6,6 @@ import {
 } from '@remixicon/react'
 import type {
   Credential,
-  CustomConfigurationModelFixedFields,
   ModelItem,
   ModelProvider,
 } from '../declarations'
@@ -17,33 +16,30 @@ import {
 import ModelListItem from './model-list-item'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useAppContext } from '@/context/app-context'
-import { useCustomModels } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import { AddCustomModel } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 type ModelListProps = {
   provider: ModelProvider
   models: ModelItem[]
   onCollapse: () => void
-  onConfig: (currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
   onChange?: (provider: string) => void
 }
 const ModelList: FC<ModelListProps> = ({
   provider,
   models,
   onCollapse,
-  onConfig,
   onChange,
 }) => {
   const { t } = useTranslation()
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const { isCurrentWorkspaceManager } = useAppContext()
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
-  const customModels = useCustomModels(provider)
   const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
   const onModifyLoadBalancing = useCallback((model: ModelItem, credential?: Credential) => {
     setShowModelLoadBalancingModal({
       provider,
       credential,
+      configurateMethod: model.fetch_from,
       model: model!,
       open: !!model,
       onClose: () => setShowModelLoadBalancingModal(null),
@@ -75,7 +71,6 @@ const ModelList: FC<ModelListProps> = ({
                   provider={provider}
                   configurationMethod={ConfigurationMethodEnum.customizableModel}
                   currentCustomConfigurationModelFixedFields={undefined}
-                  models={customModels}
                 />
               </div>
             )
@@ -84,12 +79,11 @@ const ModelList: FC<ModelListProps> = ({
         {
           models.map(model => (
             <ModelListItem
-              key={model.model}
+              key={`${model.model}-${model.fetch_from}`}
               {...{
                 model,
                 provider,
                 isConfigurable,
-                onConfig,
                 onModifyLoadBalancing,
               }}
             />

@@ -15,10 +15,10 @@ import type {
   CustomModel,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-export const useGetCredential = (provider: string, credentialId?: string, model?: CustomModel, configFrom?: string) => {
-  const providerData = useGetProviderCredential(!model && !!credentialId, provider, credentialId)
-  const modelData = useGetModelCredential(!!model && !!credentialId, provider, credentialId, model?.model, model?.model_type, configFrom)
-  return model ? modelData : providerData
+export const useGetCredential = (provider: string, isModelCredential?: boolean, credentialId?: string, model?: CustomModel, configFrom?: string) => {
+  const providerData = useGetProviderCredential(!isModelCredential && !!credentialId, provider, credentialId)
+  const modelData = useGetModelCredential(!!isModelCredential && !!credentialId, provider, credentialId, model?.model, model?.model_type, configFrom)
+  return isModelCredential ? modelData : providerData
 }
 
 export const useAuthService = (provider: string) => {

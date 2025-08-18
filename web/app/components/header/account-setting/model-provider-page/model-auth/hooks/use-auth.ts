@@ -22,6 +22,7 @@ export const useAuth = (
   provider: ModelProvider,
   configurationMethod: ConfigurationMethodEnum,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  isModelCredential?: boolean,
   onUpdate?: () => void,
 ) => {
   const { t } = useTranslation()
@@ -37,9 +38,9 @@ export const useAuth = (
   const pendingOperationCredentialId = useRef<string | null>(null)
   const pendingOperationModel = useRef<CustomModel | null>(null)
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
-  const openConfirmDelete = useCallback((credentialId?: string, model?: CustomModel) => {
-    if (credentialId)
-      pendingOperationCredentialId.current = credentialId
+  const openConfirmDelete = useCallback((credential?: Credential, model?: CustomModel) => {
+    if (credential)
+      pendingOperationCredentialId.current = credential.credential_id
     if (model)
       pendingOperationModel.current = model
 
@@ -55,13 +56,13 @@ export const useAuth = (
     doingActionRef.current = doing
     setDoingAction(doing)
   }, [])
-  const handleActiveCredential = useCallback(async (id: string, model?: CustomModel) => {
+  const handleActiveCredential = useCallback(async (credential: Credential, model?: CustomModel) => {
     if (doingActionRef.current)
       return
     try {
       handleSetDoingAction(true)
       await getActiveCredentialService(!!model)({
-        credential_id: id,
+        credential_id: credential.credential_id,
         model: model?.model,
         model_type: model?.model_type,
       })
@@ -70,6 +71,7 @@ export const useAuth = (
         message: t('common.api.actionSuccess'),
       })
       onUpdate?.()
+      handleRefreshModel(provider, configurationMethod, undefined)
     }
     finally {
       handleSetDoingAction(false)
@@ -84,7 +86,7 @@ export const useAuth = (
     }
     try {
       handleSetDoingAction(true)
-      await getDeleteCredentialService(!!pendingOperationModel.current)({
+      await getDeleteCredentialService(!!isModelCredential)({
         credential_id: pendingOperationCredentialId.current,
         model: pendingOperationModel.current?.model,
         model_type: pendingOperationModel.current?.model_type,
@@ -97,11 +99,12 @@ export const useAuth = (
       handleRefreshModel(provider, configurationMethod, undefined)
       setDeleteCredentialId(null)
       pendingOperationCredentialId.current = null
+      pendingOperationModel.current = null
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [onUpdate, notify, t, handleSetDoingAction, getDeleteCredentialService])
+  }, [onUpdate, notify, t, handleSetDoingAction, getDeleteCredentialService, isModelCredential])
   const handleAddCredential = useCallback((model?: CustomModel) => {
     if (model)
       pendingOperationModel.current = model
@@ -114,9 +117,9 @@ export const useAuth = (
 
       let res: { result?: string } = {}
       if (payload.credential_id)
-        res = await getEditCredentialService(!!payload.model)(payload as any)
+        res = await getEditCredentialService(!!isModelCredential)(payload as any)
       else
-        res = await getAddCredentialService(!!payload.model)(payload as any)
+        res = await getAddCredentialService(!!isModelCredential)(payload as any)
 
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -127,15 +130,16 @@ export const useAuth = (
       handleSetDoingAction(false)
     }
   }, [onUpdate, notify, t, handleSetDoingAction, getEditCredentialService, getAddCredentialService])
-  const handleOpenModal = useCallback((model?: CustomModel, credential?: Credential) => {
+  const handleOpenModal = useCallback((credential?: Credential, model?: CustomModel) => {
     handleOpenModelModal(
       provider,
       configurationMethod,
       currentCustomConfigurationModelFixedFields,
+      isModelCredential,
       credential,
       model,
     )
-  }, [handleOpenModelModal, provider, configurationMethod, currentCustomConfigurationModelFixedFields])
+  }, [handleOpenModelModal, provider, configurationMethod, currentCustomConfigurationModelFixedFields, isModelCredential])
 
   return {
     pendingOperationCredentialId,
