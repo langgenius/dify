@@ -268,7 +268,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       setChatItemTree(tree)
 
-      const lastMessageId = newAllChatItems.length > 0 ? newAllChatItems[newAllChatItems.length - 1].id : undefined;
+      const lastMessageId = newAllChatItems.length > 0 ? newAllChatItems[newAllChatItems.length - 1].id : undefined
       setThreadChatItems(getThreadMessages(tree, lastMessageId))
     }
     catch (err) {
@@ -557,7 +557,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       const now = Date.now()
 
       const isNearTop = distanceFromTop < 30
-      const isNearBottom = distanceFromBottom < 30
+      // eslint-disable-next-line sonarjs/no-unused-vars
+      const _distanceFromBottom = distanceFromBottom < 30
 
       if (isNearTop && hasMore && !isLoading && (now - lastLoadTime > throttleDelay)) {
         lastLoadTime = now
@@ -622,9 +623,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             if (loadingTimeout)
               clearTimeout(loadingTimeout)
 
-            loadingTimeout = setTimeout(() => {
-              fetchData()
-            }, SCROLL_DEBOUNCE_MS) // 200ms debounce
+            loadingTimeout = setTimeout(fetchData, SCROLL_DEBOUNCE_MS) // 200ms debounce
           }
         }
 
