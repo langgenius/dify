@@ -1,3 +1,4 @@
+import contextlib
 import mimetypes
 import os
 import platform
@@ -5,7 +6,7 @@ import re
 import urllib.parse
 import warnings
 from uuid import uuid4
-import contextlib
+
 import httpx
 
 try:
