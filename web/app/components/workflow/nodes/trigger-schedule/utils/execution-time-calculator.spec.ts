@@ -314,6 +314,135 @@ describe('execution-time-calculator', () => {
         expect(timeDiff).toBe(3 * 60 * 60 * 1000) // 3 hours in milliseconds
       }
     })
+
+    test('uses time field when datetime is not available for hourly frequency', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 9, 0, 0)) // 9:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 3)
+
+      expect(result).toHaveLength(3)
+      expect(result[0].getHours()).toBe(12) // next hour after 11:30 AM
+      expect(result[0].getMinutes()).toBe(30)
+      expect(result[1].getHours()).toBe(13)
+      expect(result[1].getMinutes()).toBe(30)
+      expect(result[2].getHours()).toBe(14)
+      expect(result[2].getMinutes()).toBe(30)
+    })
+
+    test('prioritizes datetime over time field for hourly frequency', () => {
+      const specificDateTime = new Date(2024, 0, 15, 14, 15, 0)
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          datetime: specificDateTime.toISOString(),
+          recur_every: 2,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      expect(result[0].getHours()).toBe(16) // 2 hours after 14:15
+      expect(result[0].getMinutes()).toBe(15)
+      expect(result[1].getHours()).toBe(18) // 4 hours after 14:15
+      expect(result[1].getMinutes()).toBe(15)
+    })
+
+    test('handles past time correctly when using time field for hourly frequency', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 13, 0, 0)) // 1:00 PM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '11:30 AM',
+          recur_every: 2,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      expect(result[0].getTime()).toBeGreaterThan(Date.now())
+
+      const timeDiff = result[1].getTime() - result[0].getTime()
+      expect(timeDiff).toBe(2 * 60 * 60 * 1000) // 2 hours
+    })
+
+    test('handles PM times correctly when using time field for hourly frequency', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 9, 0, 0)) // 9:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '2:30 PM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      expect(result[0].getHours()).toBe(15) // next hour after 2:30 PM
+      expect(result[0].getMinutes()).toBe(30)
+      expect(result[1].getHours()).toBe(16)
+      expect(result[1].getMinutes()).toBe(30)
+    })
+
+    test('handles 12 AM correctly when using time field for hourly frequency', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 22, 0, 0)) // 10:00 PM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '12:00 AM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      expect(result[0].getHours()).toBe(23) // next hour after 12:00 AM (next day)
+      expect(result[0].getMinutes()).toBe(0)
+      expect(result[1].getHours()).toBe(0) // following hour (next day)
+      expect(result[1].getMinutes()).toBe(0)
+    })
+
+    test('handles 12 PM correctly when using time field for hourly frequency', () => {
+      jest.setSystemTime(new Date(2024, 0, 15, 9, 0, 0)) // 9:00 AM
+
+      const data = createMockData({
+        frequency: 'hourly',
+        visual_config: {
+          time: '12:00 PM',
+          recur_every: 1,
+          recur_unit: 'hours',
+        },
+      })
+
+      const result = getNextExecutionTimes(data, 2)
+
+      expect(result).toHaveLength(2)
+      expect(result[0].getHours()).toBe(13) // next hour after 12:00 PM
+      expect(result[0].getMinutes()).toBe(0)
+      expect(result[1].getHours()).toBe(14)
+      expect(result[1].getMinutes()).toBe(0)
+    })
   })
 
   describe('getNextExecutionTimes - cron mode', () => {
