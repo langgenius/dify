@@ -1801,10 +1801,7 @@ class DocumentService:
 
     @staticmethod
     def batch_update_document_status(
-        dataset: Dataset,
-        document_ids: list[str],
-        action: Literal["enable", "disable", "archive", "un_archive"],
-        user
+        dataset: Dataset, document_ids: list[str], action: Literal["enable", "disable", "archive", "un_archive"], user
     ):
         """
         Batch update document status.
