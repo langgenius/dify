@@ -11,6 +11,7 @@ const translation = {
     publishUpdate: 'Publish Update',
     run: 'Test Run',
     running: 'Running',
+    chooseStartNodeToRun: 'Choose the start node to run',
     inRunMode: 'In Run Mode',
     inPreview: 'In Preview',
     inPreviewMode: 'In Preview Mode',

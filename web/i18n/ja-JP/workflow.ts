@@ -11,6 +11,7 @@ const translation = {
     publishUpdate: '更新を公開',
     run: 'テスト実行',
     running: '実行中',
+    chooseStartNodeToRun: '実行する開始ノードを選択',
     inRunMode: '実行モード中',
     inPreview: 'プレビュー中',
     inPreviewMode: 'プレビューモード中',
