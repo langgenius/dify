@@ -1800,14 +1800,19 @@ class DocumentService:
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @staticmethod
-    def batch_update_document_status(dataset: Dataset, document_ids: list[str], action: str, user):
+    def batch_update_document_status(
+        dataset: Dataset,
+        document_ids: list[str],
+        action: Literal["enable", "disable", "archive", "un_archive"],
+        user
+    ):
         """
         Batch update document status.
 
         Args:
             dataset (Dataset): The dataset object
             document_ids (list[str]): List of document IDs to update
-            action (str): Action to perform (enable, disable, archive, un_archive)
+            action (Literal["enable", "disable", "archive", "un_archive"]): Action to perform
             user: Current user performing the action
 
         Raises:
