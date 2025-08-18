@@ -15,7 +15,7 @@ from core.workflow.entities.variable_pool import VariablePool
 from .stream import Stream
 
 if TYPE_CHECKING:
-    from core.workflow.graph_events.node import NodeRunStreamChunkEvent
+    from core.workflow.graph_events import NodeRunStreamChunkEvent
 
 
 class OutputRegistry:

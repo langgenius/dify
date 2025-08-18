@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from pydantic import Field
 
-from core.workflow.graph_events.base import BaseGraphEvent
+from core.workflow.graph_events import BaseGraphEvent
 
 
 class GraphRunStartedEvent(BaseGraphEvent):

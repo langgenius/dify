@@ -18,8 +18,7 @@ from core.workflow.graph_events import (
     NodeRunFailedEvent,
     NodeRunStreamChunkEvent,
 )
-from core.workflow.graph_events.node import NodeRunStreamChunkEvent
-from core.workflow.node_events.node import NodeRunResult, StreamCompletedEvent
+from core.workflow.node_events import NodeRunResult, StreamCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable

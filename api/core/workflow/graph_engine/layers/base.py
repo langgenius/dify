@@ -10,7 +10,7 @@ from typing import Optional
 
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events.base import GraphEngineEvent
+from core.workflow.graph_events import GraphEngineEvent
 
 
 class Layer(ABC):

@@ -7,7 +7,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
-from core.workflow.node_events.node import StreamCompletedEvent
+from core.workflow.node_events import StreamCompletedEvent
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom

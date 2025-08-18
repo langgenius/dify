@@ -5,7 +5,7 @@ import pytest
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.output_registry import OutputRegistry
-from core.workflow.graph_events.node import NodeRunStreamChunkEvent
+from core.workflow.graph_events import NodeRunStreamChunkEvent
 
 
 class TestOutputRegistry:

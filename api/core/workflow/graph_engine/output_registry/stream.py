@@ -8,7 +8,7 @@ to manage streaming data chunks.
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from core.workflow.graph_events.node import NodeRunStreamChunkEvent
+    from core.workflow.graph_events import NodeRunStreamChunkEvent
 
 
 class Stream:
