@@ -92,7 +92,7 @@ const GotoAnything: FC<Props> = ({
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
     return action
-      ? (action.key === '/' ? 'Command' : action.key)
+      ? (action.key === '/' ? '@command' : action.key)
       : 'general'
   }, [searchQueryDebouncedValue, Actions, isCommandsMode])
 

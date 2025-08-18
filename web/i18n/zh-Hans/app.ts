@@ -252,7 +252,7 @@ const translation = {
   maxActiveRequestsPlaceholder: '0 表示不限制',
   maxActiveRequestsTip: '当前应用的最大活跃请求数（0 表示不限制）',
   gotoAnything: {
-    searchPlaceholder: '搜索或输入 @ 以使用命令...',
+    searchPlaceholder: '搜索或输入 @ 或 / 以使用命令...',
     searchTitle: '搜索任何内容',
     searching: '搜索中...',
     noResults: '未找到结果',

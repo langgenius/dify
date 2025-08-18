@@ -253,7 +253,7 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Enter 0 for unlimited',
   maxActiveRequestsTip: 'Maximum number of concurrent active requests per app (0 for unlimited)',
   gotoAnything: {
-    searchPlaceholder: 'Search or type @ for commands...',
+    searchPlaceholder: 'Search or type @ or / for commands...',
     searchTitle: 'Search for anything',
     searching: 'Searching...',
     noResults: 'No results found',
