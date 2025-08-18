@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal, marshal_with, reqparse
@@ -24,7 +26,7 @@ class AnnotationReplyActionApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
-    def post(self, app_id, action):
+    def post(self, app_id, action: Literal["enable", "disable"]):
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -38,8 +40,6 @@ class AnnotationReplyActionApi(Resource):
             result = AppAnnotationService.enable_app_annotation(args, app_id)
         elif action == "disable":
             result = AppAnnotationService.disable_app_annotation(app_id)
-        else:
-            raise ValueError("Unsupported annotation reply action")
         return result, 200
 
 

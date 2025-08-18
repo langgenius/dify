@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Literal
 
 import click
 from celery import shared_task  # type: ignore
@@ -13,7 +14,7 @@ from models.dataset import Document as DatasetDocument
 
 
 @shared_task(queue="dataset")
-def deal_dataset_vector_index_task(dataset_id: str, action: str):
+def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "add", "update"]):
     """
     Async deal dataset from index
     :param dataset_id: dataset_id
