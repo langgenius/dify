@@ -68,11 +68,6 @@ const CreateFromDSLModal = ({
       setFileContent('')
   }
 
-  // todo: TBD billing plan
-  // const plan = useProviderContextSelector(state => state.plan)
-  // const enableBilling = useProviderContextSelector(state => state.enableBilling)
-  // const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-
   const isCreatingRef = useRef(false)
 
   const { mutateAsync: importDSL } = useImportPipelineDSL()

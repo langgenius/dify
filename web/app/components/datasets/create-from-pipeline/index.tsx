@@ -1,8 +1,8 @@
 'use client'
 import Header from './header'
-import CreateOptions from './create-options'
 import List from './list'
 import Effect from '../../base/effect'
+import Footer from './footer'
 
 const CreateFromPipeline = () => {
   return (
@@ -11,8 +11,8 @@ const CreateFromPipeline = () => {
     >
       <Effect className='left-8 top-[-34px] opacity-20' />
       <Header />
-      <CreateOptions />
       <List />
+      <Footer />
     </div>
   )
 }

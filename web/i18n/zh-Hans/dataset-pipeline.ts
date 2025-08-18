@@ -1,21 +1,17 @@
 const translation = {
   creation: {
-    title: '创建知识库 pipeline',
+    title: '创建知识流水线',
     createFromScratch: {
-      title: '从零开始创建',
-      description: '空白知识库 pipeline',
+      title: '空白知识流水线',
+      description: '从零开始创建一个自定义知识流水线，对数据处理和结构拥有完全控制权。',
     },
-    ImportDSL: {
-      title: '导入',
-      description: '从 DSL 文件导入',
-    },
-    createKnowledge: '创建知识库',
-    errorTip: '创建知识库',
-    successTip: '成功创建知识库',
+    importDSL: '从 DSL 文件导入',
+    createKnowledge: '创建知识流水线',
+    errorTip: '创建知识流水线失败',
+    successTip: '成功创建知识流水线',
     caution: '注意',
   },
-  tabs: {
-    builtInPipeline: '内置 pipeline',
+  templates: {
     customized: '自定义',
   },
   operations: {
@@ -23,13 +19,13 @@ const translation = {
     details: '详情',
     editInfo: '编辑信息',
     exportDSL: '导出 DSL',
-    useTemplate: '使用此知识库 pipeline',
+    useTemplate: '使用此知识流水线',
     backToDataSource: '返回数据源',
     process: '处理',
     dataSource: '数据源',
     saveAndProcess: '保存并处理',
     preview: '预览',
-    exportPipeline: '导出 pipeline',
+    exportPipeline: '导出知识流水线',
     convert: '转换',
   },
   knowledgeNameAndIcon: '知识库名称和图标',
@@ -37,15 +33,15 @@ const translation = {
   knowledgeDescription: '知识库描述',
   knowledgeDescriptionPlaceholder: '描述知识库中的内容。详细的描述可以让 AI 更准确地访问数据集的内容。如果为空，Dify 将使用默认的命中策略。（可选）',
   knowledgePermissions: '权限',
-  editPipelineInfo: '编辑 pipeline 信息',
-  pipelineNameAndIcon: 'pipeline 名称和图标',
+  editPipelineInfo: '编辑知识流水线信息',
+  pipelineNameAndIcon: '知识流水线名称和图标',
   deletePipeline: {
-    title: '要删除此 pipeline 模板吗？',
-    content: '删除 pipeline 模板是不可逆的。',
+    title: '要删除此知识流水线模板吗？',
+    content: '删除知识流水线模板是不可逆的。',
   },
   exportDSL: {
-    successTip: '成功导出 pipeline DSL',
-    errorTip: '导出 pipeline DSL 失败',
+    successTip: '成功导出知识流水线 DSL',
+    errorTip: '导出知识流水线 DSL 失败',
   },
   details: {
     createdBy: '由 {{author}} 创建',
@@ -70,7 +66,7 @@ const translation = {
   inputField: '输入字段',
   inputFieldPanel: {
     title: '用户输入字段',
-    description: '用户输入字段用于定义和收集 pipeline 执行过程中所需的变量，用户可以自定义字段类型，并灵活配置输入，以满足不同数据源或文档处理的需求。',
+    description: '用户输入字段用于定义和收集知识流水线执行过程中所需的变量，用户可以自定义字段类型，并灵活配置输入，以满足不同数据源或文档处理的需求。',
     uniqueInputs: {
       title: '非共享输入',
       tooltip: '非共享输入只能被选定的数据源及其下游节点访问。用户在选择其他数据源时不需要填写它。只有数据源变量引用的输入字段才会出现在第一步（数据源）中。所有其他字段将在第二步（Process Documents）中显示。',
@@ -136,16 +132,16 @@ const translation = {
   },
   configurationTip: '配置 {{pluginName}}',
   conversion: {
-    title: '转换为知识库 pipeline',
-    descriptionChunk1: '您现在可以将现有知识库转换为使用知识库 pipeline 来处理文档',
+    title: '转换为知识流水线',
+    descriptionChunk1: '您现在可以将现有知识库转换为使用知识流水线来处理文档',
     descriptionChunk2: ' —— 这是一种更开放、更灵活的方式，可以访问我们市场中的插件。新的处理方式将应用到后续添加的所有文档。',
     warning: '此操作无法撤销。',
     confirm: {
       title: '确认',
       content: '此操作是永久性的。您将无法恢复到之前的方式。请确认转换。',
     },
-    errorMessage: '转换数据集为 pipeline 失败',
-    successMessage: '成功将数据集转换为 pipeline',
+    errorMessage: '转换数据集为知识流水线失败',
+    successMessage: '成功将数据集转换为知识流水线',
   },
 }
 

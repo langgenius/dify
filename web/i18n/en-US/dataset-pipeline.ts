@@ -1,21 +1,17 @@
 const translation = {
   creation: {
-    title: 'Create knowledge pipeline',
+    title: 'Blank Knowledge Pipeline',
     createFromScratch: {
-      title: 'Create from scratch',
-      description: 'Blank knowledge pipeline',
+      title: 'Blank knowledge pipeline',
+      description: 'Create a custom pipeline from scratch with full control over data processing and structure.',
     },
-    ImportDSL: {
-      title: 'Import',
-      description: 'Import from a DSL file',
-    },
+    importDSL: 'Import from a DSL file',
     createKnowledge: 'Create Knowledge',
     errorTip: 'Failed to create a Knowledge Base',
     successTip: 'Successfully created a Knowledge Base',
     caution: 'Caution',
   },
-  tabs: {
-    builtInPipeline: 'Built-in pipeline',
+  templates: {
     customized: 'Customized',
   },
   operations: {
