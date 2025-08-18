@@ -306,6 +306,7 @@ const translation = {
       plugins: '插件',
       knowledgeBases: '知识库',
       workflowNodes: '工作流节点',
+      commands: '命令',
     },
     noMatchingCommands: '未找到匹配的命令',
     tryDifferentSearch: '请尝试不同的搜索词',

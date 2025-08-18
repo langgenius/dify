@@ -328,6 +328,7 @@ const GotoAnything: FC<Props> = ({
                           'plugin': 'app.gotoAnything.groups.plugins',
                           'knowledge': 'app.gotoAnything.groups.knowledgeBases',
                           'workflow-node': 'app.gotoAnything.groups.workflowNodes',
+                          'command': 'app.gotoAnything.groups.commands',
                         }
                         return t(typeMap[type] || `${type}s`)
                       })()} className='p-2 capitalize text-text-secondary'>

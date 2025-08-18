@@ -307,6 +307,7 @@ const translation = {
       plugins: 'Plugins',
       knowledgeBases: 'Knowledge Bases',
       workflowNodes: 'Workflow Nodes',
+      commands: 'Commands',
     },
     noMatchingCommands: 'No matching commands found',
     tryDifferentSearch: 'Try a different search term',
