@@ -584,7 +584,6 @@ finally {
       const isNearTop = distanceFromTop < 30
       // eslint-disable-next-line sonarjs/no-unused-vars
       const _distanceFromBottom = distanceFromBottom < 30
-
       if (isNearTop && hasMore && !isLoading && (now - lastLoadTime > throttleDelay)) {
         lastLoadTime = now
         loadMoreMessages()
