@@ -1,6 +1,6 @@
 .dot-flashing {
   position: relative;
-  animation: 1s infinite linear alternate;
+  animation: dot-flashing 1s infinite linear alternate;
   animation-delay: 0.5s;
 }
 
@@ -10,7 +10,7 @@
   display: inline-block;
   position: absolute;
   top: 0;
-  animation: 1s infinite linear alternate;
+  animation: dot-flashing 1s infinite linear alternate;
 }
 
 .dot-flashing::before {
