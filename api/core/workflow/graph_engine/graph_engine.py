@@ -6,6 +6,7 @@ Domain-Driven Design principles for improved maintainability and testability.
 """
 
 import contextvars
+import logging
 import queue
 from collections.abc import Generator, Mapping
 from typing import Any, Optional
@@ -15,6 +16,7 @@ from flask import Flask, current_app
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
+from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphEngineEvent,
@@ -23,6 +25,7 @@ from core.workflow.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunFailedEvent,
+    NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
@@ -41,6 +44,8 @@ from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
 from .state_management import EdgeStateManager, ExecutionTracker, NodeStateManager
 from .worker_management import ActivityTracker, DynamicScaler, WorkerFactory, WorkerPool
+
+logger = logging.getLogger(__name__)
 
 
 class GraphEngine:
@@ -191,12 +196,6 @@ class GraphEngine:
 
     def _setup_event_routing(self) -> None:
         """Configure event routing to appropriate handlers."""
-        from core.workflow.graph_events import (
-            NodeRunFailedEvent,
-            NodeRunStartedEvent,
-            NodeRunStreamChunkEvent,
-            NodeRunSucceededEvent,
-        )
 
         self.event_router.register_handler(NodeRunStartedEvent, self.event_handler_registry.handle_node_started)
         self.event_router.register_handler(
@@ -283,8 +282,6 @@ class GraphEngine:
 
         # Process edges and get ready nodes
         node = self.graph.nodes[event.node_id]
-        from core.workflow.enums import NodeExecutionType
-
         if node.execution_type == NodeExecutionType.BRANCH:
             ready_nodes, edge_streaming_events = self.branch_handler.handle_branch_completion(
                 event.node_id, event.node_run_result.edge_source_handle
@@ -394,10 +391,6 @@ class GraphEngine:
 
     def _initialize_layers(self) -> None:
         """Initialize layers with context."""
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         self.event_collector.set_layers(self._layers)
         for layer in self._layers:
             try:
@@ -419,8 +412,6 @@ class GraphEngine:
         self.worker_pool.start(initial_workers)
 
         # Register response nodes
-        from core.workflow.enums import NodeExecutionType
-
         for node in self.graph.nodes.values():
             if node.execution_type == NodeExecutionType.RESPONSE:
                 self.response_coordinator.register(node.id)
@@ -440,8 +431,6 @@ class GraphEngine:
         # Don't mark complete here as the dispatcher already does it
 
         # Notify layers
-        import logging
-
         logger = logging.getLogger(__name__)
 
         for layer in self._layers:

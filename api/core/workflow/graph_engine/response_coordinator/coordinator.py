@@ -216,7 +216,6 @@ class ResponseStreamCoordinator:
                     # Pass the node_id to the activation method
                     # The method will handle checking and removing from map
                     events.extend(self._active_or_queue_session(response_node_id))
-
         return events
 
     def _active_or_queue_session(self, node_id: str) -> Sequence[NodeRunStreamChunkEvent]:
@@ -389,7 +388,7 @@ class ResponseStreamCoordinator:
         # Use get_or_create_execution_id to ensure we have a consistent ID
         execution_id = self._get_or_create_execution_id(current_response_node.id)
 
-        is_last_segment = self.active_session.index == len(self.active_session.template.segments)
+        is_last_segment = self.active_session.index == len(self.active_session.template.segments) - 1
         event = self._create_stream_chunk_event(
             node_id=current_response_node.id,
             execution_id=execution_id,
@@ -441,7 +440,9 @@ class ResponseStreamCoordinator:
                     self.active_session.index += 1
 
             if self.active_session.is_complete():
-                self.end_session(response_node_id)
+                # End current session and get events from starting next session
+                next_session_events = self.end_session(response_node_id)
+                events.extend(next_session_events)
 
             return events
 

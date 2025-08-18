@@ -129,8 +129,16 @@ class MockLLMNode(MockNodeMixin, LLMNode):
         # Simulate streaming if text output exists
         if "text" in outputs:
             text = str(outputs["text"])
-            # Send chunks
-            for chunk in text.split(" "):
+            # Split text into words and stream with spaces between them
+            # To match test expectation of text.count(" ") + 2 chunks
+            words = text.split(" ")
+            for i, word in enumerate(words):
+                # Add space before word (except for first word) to reconstruct text properly
+                if i > 0:
+                    chunk = " " + word
+                else:
+                    chunk = word
+
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],
                     chunk=chunk,

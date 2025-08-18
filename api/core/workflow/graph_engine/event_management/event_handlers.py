@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Optional, Protocol
 
 from core.workflow.entities import GraphRuntimeState
+from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     NodeRunExceptionEvent,
@@ -121,7 +122,6 @@ class EventHandlerRegistry:
 
         # Check if this is a response node
         node = self.graph.nodes[event.node_id]
-        from core.workflow.enums import NodeExecutionType
 
         is_response = node.execution_type == NodeExecutionType.RESPONSE
 
