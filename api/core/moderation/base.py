@@ -16,7 +16,7 @@ class ModerationInputsResult(BaseModel):
     flagged: bool = False
     action: ModerationAction
     preset_response: str = ""
-    inputs: dict = {}
+    inputs: dict = Field(default_factory = dict)
     query: str = ""
 
 

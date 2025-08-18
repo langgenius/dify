@@ -11,7 +11,7 @@ from models.api_based_extension import APIBasedExtension
 
 class ModerationInputParams(BaseModel):
     app_id: str = ""
-    inputs: dict = {}
+    inputs: dict = Field(default_factory = dict)
     query: str = ""
 
 
