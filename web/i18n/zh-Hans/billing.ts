@@ -17,8 +17,8 @@ const translation = {
   buyPermissionDeniedTip: '请联系企业管理员订阅',
   plansCommon: {
     title: {
-      plans: '方案',
-      description: '选择最适合您团队需求的方案。',
+      plans: '套餐',
+      description: '选择最适合您团队需求的套餐。',
     },
     freeTrialTipPrefix: '注册即可',
     freeTrialTip: '免费试用 200 个 OpenAI 消息额度',
