@@ -153,7 +153,7 @@ class SMTPClient:
             logging.exception("Timeout occurred while sending email")
             raise
         except Exception:
-            logging.exception("Unexpected error occurred while sending email to %s", mail['to'])
+            logging.exception("Unexpected error occurred while sending email to %s", mail["to"])
             raise
         finally:
             if connection:
