@@ -9,6 +9,11 @@ class PGVectorConfig(BaseSettings):
     Configuration settings for PGVector (PostgreSQL with vector extension)
     """
 
+    PGVECTOR_IS_OWNER: Optional[bool] = Field(
+        description="Whether the PGVector is the owner of the database",
+        default=True,
+    )
+
     PGVECTOR_HOST: Optional[str] = Field(
         description="Hostname or IP address of the PostgreSQL server with PGVector extension (e.g., 'localhost')",
         default=None,
