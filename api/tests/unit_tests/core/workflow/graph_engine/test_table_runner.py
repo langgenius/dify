@@ -242,18 +242,32 @@ class TableTestRunner:
         max_workers: int = 4,
         enable_logging: bool = False,
         log_level: str = "INFO",
+        graph_engine_min_workers: int = 1,
+        graph_engine_max_workers: int = 1,
+        graph_engine_scale_up_threshold: int = 5,
+        graph_engine_scale_down_idle_time: float = 30.0,
     ):
         """
         Initialize the table test runner.
 
         Args:
             fixtures_dir: Directory containing fixture files
-            max_workers: Maximum number of parallel workers
+            max_workers: Maximum number of parallel workers for test execution
             enable_logging: Enable detailed logging
             log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
+            graph_engine_min_workers: Minimum workers for GraphEngine (default: 1)
+            graph_engine_max_workers: Maximum workers for GraphEngine (default: 1)
+            graph_engine_scale_up_threshold: Queue depth to trigger scale up
+            graph_engine_scale_down_idle_time: Idle time before scaling down
         """
         self.workflow_runner = WorkflowRunner(fixtures_dir)
         self.max_workers = max_workers
+
+        # Store GraphEngine worker configuration
+        self.graph_engine_min_workers = graph_engine_min_workers
+        self.graph_engine_max_workers = graph_engine_max_workers
+        self.graph_engine_scale_up_threshold = graph_engine_scale_up_threshold
+        self.graph_engine_scale_down_idle_time = graph_engine_scale_down_idle_time
 
         if enable_logging:
             logging.basicConfig(
@@ -360,7 +374,7 @@ class TableTestRunner:
             workflow_config = fixture_data.get("workflow", {})
             graph_config = workflow_config.get("graph", {})
 
-            # Create and run the engine
+            # Create and run the engine with configured worker settings
             engine = GraphEngine(
                 tenant_id="test_tenant",
                 app_id="test_app",
@@ -375,6 +389,10 @@ class TableTestRunner:
                 max_execution_steps=500,
                 max_execution_time=int(test_case.timeout),
                 command_channel=InMemoryChannel(),
+                min_workers=self.graph_engine_min_workers,
+                max_workers=self.graph_engine_max_workers,
+                scale_up_threshold=self.graph_engine_scale_up_threshold,
+                scale_down_idle_time=self.graph_engine_scale_down_idle_time,
             )
 
             # Execute and collect events

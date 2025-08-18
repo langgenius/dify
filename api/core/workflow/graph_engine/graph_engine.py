@@ -66,6 +66,10 @@ class GraphEngine:
         max_execution_steps: int,
         max_execution_time: int,
         command_channel: CommandChannel,
+        min_workers: int | None = None,
+        max_workers: int | None = None,
+        scale_up_threshold: int | None = None,
+        scale_down_idle_time: float | None = None,
     ) -> None:
         """Initialize the graph engine with separated concerns."""
 
@@ -89,6 +93,12 @@ class GraphEngine:
         self.graph_config = graph_config
         self.graph_runtime_state = graph_runtime_state
         self.command_channel = command_channel
+
+        # Store worker management parameters
+        self._min_workers = min_workers
+        self._max_workers = max_workers
+        self._scale_up_threshold = scale_up_threshold
+        self._scale_down_idle_time = scale_down_idle_time
 
         # Initialize queues
         self.ready_queue: queue.Queue[str] = queue.Queue()
@@ -219,10 +229,18 @@ class GraphEngine:
         # Create worker management components
         self.activity_tracker = ActivityTracker()
         self.dynamic_scaler = DynamicScaler(
-            min_workers=dify_config.GRAPH_ENGINE_MIN_WORKERS,
-            max_workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
-            scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
-            scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
+            min_workers=(self._min_workers if self._min_workers is not None else dify_config.GRAPH_ENGINE_MIN_WORKERS),
+            max_workers=(self._max_workers if self._max_workers is not None else dify_config.GRAPH_ENGINE_MAX_WORKERS),
+            scale_up_threshold=(
+                self._scale_up_threshold
+                if self._scale_up_threshold is not None
+                else dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD
+            ),
+            scale_down_idle_time=(
+                self._scale_down_idle_time
+                if self._scale_down_idle_time is not None
+                else dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME
+            ),
         )
         self.worker_factory = WorkerFactory(flask_app, context_vars)
 
