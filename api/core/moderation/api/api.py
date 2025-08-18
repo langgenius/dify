@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.helper.encrypter import decrypt_token
