@@ -995,6 +995,7 @@ const translation = {
     noMatchingInputsFound: 'Không tìm thấy đầu vào nào khớp từ lần chạy trước',
     copyLastRun: 'Sao chép lần chạy cuối',
     copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
+    lastOutput: 'Đầu ra cuối cùng',
   },
 }
 

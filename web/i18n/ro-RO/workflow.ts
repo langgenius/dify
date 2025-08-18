@@ -995,6 +995,7 @@ const translation = {
     copyLastRun: 'Copiază ultima execuție',
     noLastRunFound: 'Niciun rulament anterior găsit',
     copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
+    lastOutput: 'Ultimul rezultat',
   },
 }
 
