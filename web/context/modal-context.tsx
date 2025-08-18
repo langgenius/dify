@@ -18,6 +18,7 @@ import type {
   ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
+import type { WorkspaceApiKeyData } from '@/app/components/header/account-setting/workspace-apikey-page/modal'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
@@ -63,6 +64,9 @@ const OpeningSettingModal = dynamic(() => import('@/app/components/base/features
 const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugin'), {
   ssr: false,
 })
+const WorkspaceApiKeyModal = dynamic(() => import('@/app/components/header/account-setting/workspace-apikey-page/modal'), {
+  ssr: false,
+})
 
 export type ModalState<T> = {
   payload: T
@@ -96,6 +100,7 @@ export type ModalContextState = {
   setShowExternalKnowledgeAPIModal: Dispatch<SetStateAction<ModalState<CreateExternalAPIReq> | null>>
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
+  setShowWorkspaceApiKeyModal: Dispatch<SetStateAction<ModalState<WorkspaceApiKeyData> | null>>
   setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement & {
     promptVariables?: PromptVariable[]
     workflowVariables?: InputVar[]
@@ -114,6 +119,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowExternalKnowledgeAPIModal: noop,
   setShowModelLoadBalancingModal: noop,
   setShowModelLoadBalancingEntryModal: noop,
+  setShowWorkspaceApiKeyModal: noop,
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
 })
@@ -139,6 +145,7 @@ export const ModalContextProvider = ({
   const [showExternalKnowledgeAPIModal, setShowExternalKnowledgeAPIModal] = useState<ModalState<CreateExternalAPIReq> | null>(null)
   const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
+  const [showWorkspaceApiKeyModal, setShowWorkspaceApiKeyModal] = useState<ModalState<WorkspaceApiKeyData> | null>(null)
   const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement & {
     promptVariables?: PromptVariable[]
     workflowVariables?: InputVar[]
@@ -270,6 +277,7 @@ export const ModalContextProvider = ({
       setShowExternalKnowledgeAPIModal,
       setShowModelLoadBalancingModal,
       setShowModelLoadBalancingEntryModal,
+      setShowWorkspaceApiKeyModal,
       setShowOpeningModal,
       setShowUpdatePluginModal,
     }}>
@@ -394,6 +402,22 @@ export const ModalContextProvider = ({
               onSave={() => {
                 setShowUpdatePluginModal(null)
                 showUpdatePluginModal.onSaveCallback?.({} as any)
+              }}
+            />
+          )
+        }
+
+        {
+          !!showWorkspaceApiKeyModal && (
+            <WorkspaceApiKeyModal
+              data={showWorkspaceApiKeyModal.payload}
+              onCancel={() => {
+                setShowWorkspaceApiKeyModal(null)
+                showWorkspaceApiKeyModal.onCancelCallback?.()
+              }}
+              onSave={(newData: WorkspaceApiKeyData) => {
+                setShowWorkspaceApiKeyModal(null)
+                showWorkspaceApiKeyModal.onSaveCallback?.(newData)
               }}
             />
           )
