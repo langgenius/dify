@@ -42,8 +42,6 @@ const InstructionEditor: FC<Props> = ({
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
 
-  const isBasicMode = !!getVarType
-
   const isCode = generatorType === 'code'
   const placeholder = isCode ? <div className='system-sm-regular whitespace-break-spaces !leading-6 text-text-placeholder'>
     {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`)}
