@@ -12,6 +12,7 @@ from core.workflow.graph import Graph
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
@@ -30,8 +31,6 @@ def init_code_node(code_config: dict):
         ],
         "nodes": [{"data": {"type": "start"}, "id": "start"}, code_config],
     }
-
-    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
         tenant_id="1",
@@ -54,11 +53,21 @@ def init_code_node(code_config: dict):
     variable_pool.add(["code", "args1"], 1)
     variable_pool.add(["code", "args2"], 2)
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node = CodeNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=code_config,
     )
 

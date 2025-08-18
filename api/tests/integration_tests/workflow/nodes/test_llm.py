@@ -11,6 +11,7 @@ from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import StreamCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
@@ -29,8 +30,6 @@ def init_llm_node(config: dict) -> LLMNode:
         ],
         "nodes": [{"data": {"type": "start"}, "id": "start"}, config],
     }
-
-    graph = Graph.init(graph_config=graph_config)
 
     # Use proper UUIDs for database compatibility
     tenant_id = "9d2074fc-6f86-45a9-b09d-6ecc63b9056b"
@@ -65,11 +64,21 @@ def init_llm_node(config: dict) -> LLMNode:
     )
     variable_pool.add(["abc", "output"], "sunny")
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node = LLMNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=config,
     )
 

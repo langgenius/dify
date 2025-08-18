@@ -7,6 +7,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
@@ -42,8 +43,6 @@ def test_execute_code(setup_code_executor_mock):
         "nodes": [{"data": {"type": "start"}, "id": "start"}, config],
     }
 
-    graph = Graph.init(graph_config=graph_config)
-
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
@@ -65,11 +64,21 @@ def test_execute_code(setup_code_executor_mock):
     variable_pool.add(["1", "args1"], 1)
     variable_pool.add(["1", "args2"], 3)
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node = TemplateTransformNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=config,
     )
     node.init_node_data(config.get("data", {}))
