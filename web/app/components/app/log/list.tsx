@@ -8,7 +8,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import { get } from 'lodash-es'
-// import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
