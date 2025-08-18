@@ -225,7 +225,8 @@ GitHub-এ ডিফাইকে স্টার দিয়ে রাখুন �
 
 ##### AWS
 
-- [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud ব্যবহার করে ডিপ্লয়
 

@@ -118,6 +118,8 @@ const translation = {
     addBlock: 'Aggiungi nodo',
     needAnswerNode: 'Deve essere aggiunto il nodo di risposta',
     tagBound: 'Numero di app che utilizzano questo tag',
+    currentWorkflow: 'Flusso di lavoro corrente',
+    currentView: 'Vista corrente',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -1015,6 +1017,10 @@ const translation = {
       dependenciesDescription: 'Nodi su cui si basa questo nodo',
     },
     relationsTab: 'Relazioni',
+    copyLastRun: 'Copia ultimo eseguito',
+    noMatchingInputsFound: 'Nessun input corrispondente trovato dall\'ultimo funzionamento.',
+    copyLastRunError: 'Impossibile copiare gli input dell\'ultima esecuzione',
+    noLastRunFound: 'Nessuna esecuzione precedente trovata',
   },
 }
 

@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'کلید Http Header، می‌توانید آن را با "Authorization" ترک کنید اگر نمی‌دانید چیست یا آن را به یک مقدار سفارشی تنظیم کنید',
       types: {
         none: 'هیچ',
-        api_key: 'کلید API',
         apiKeyPlaceholder: 'نام هدر HTTP برای کلید API',
         apiValuePlaceholder: 'کلید API را وارد کنید',
         api_key_header: 'عنوان',
@@ -192,6 +191,8 @@ const translation = {
       cancel: 'لغو',
       save: 'ذخیره',
       confirm: 'افزودن و مجوزدهی',
+      timeout: 'مهلت',
+      sseReadTimeout: 'زمان.out خواندن SSE',
     },
     delete: 'حذف سرور MCP',
     deleteConfirmTitle: 'آیا مایل به حذف {mcp} هستید؟',

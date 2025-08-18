@@ -32,6 +32,13 @@ const translation = {
     pickTime: 'Alegeți timpul',
   },
   defaultPlaceholder: 'Alege o oră...',
+  dateFormats: {
+    display: 'MMMM D, YYYY',
+    input: 'AAAA-LL-ZZ',
+    output: 'AAAA-LL-ZZ',
+    displayWithTime: 'MMMM D, YYYY hh:mm A',
+    outputWithTime: 'AAAA-LL-ZZSS:mm:ss.SSSZ',
+  },
 }
 
 export default translation
