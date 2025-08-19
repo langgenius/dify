@@ -131,17 +131,44 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           }
         }
 
-        if (errorMessage || !validNodes.find(n => n.id === node.id)) {
+        // Start nodes and Trigger nodes should not show unConnected error if they have validation errors
+        // or if they are valid start nodes (even without incoming connections)
+        const isStartNode = node.data.type === BlockEnum.Start
+          || node.data.type === BlockEnum.TriggerSchedule
+          || node.data.type === BlockEnum.TriggerWebhook
+          || node.data.type === BlockEnum.TriggerPlugin
+
+        const isUnconnected = !validNodes.find(n => n.id === node.id)
+        const shouldShowError = errorMessage || (isUnconnected && !isStartNode)
+
+        if (shouldShowError) {
           list.push({
             id: node.id,
             type: node.data.type,
             title: node.data.title,
             toolIcon,
-            unConnected: !validNodes.find(n => n.id === node.id),
+            unConnected: isUnconnected && !isStartNode,
             errorMessage,
           })
         }
       }
+    }
+
+    // Check for start nodes (including triggers)
+    const startNodes = nodes.filter(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    )
+
+    if (startNodes.length === 0) {
+      list.push({
+        id: 'start-node-required',
+        type: BlockEnum.Start,
+        title: t('workflow.blocks.start'),
+        errorMessage: t('workflow.common.needStartNode'),
+      })
     }
 
     if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
@@ -268,6 +295,18 @@ export const useChecklistBeforePublish = () => {
         notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnectTip')}` })
         return false
       }
+    }
+
+    const startNodes = nodes.filter(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    )
+
+    if (startNodes.length === 0) {
+      notify({ type: 'error', message: t('workflow.common.needStartNode') })
+      return false
     }
 
     if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
