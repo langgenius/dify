@@ -13,7 +13,6 @@ import requests
 from pptx import Presentation
 
 from configs import dify_config
-from core.helper import ssrf_proxy
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -109,7 +108,9 @@ class PPTXExtractor(BaseExtractor):
 
                     db.session.add(upload_file)
                     db.session.commit()
-                    image_map[(slide_idx, shape.shape_id)] = f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
+                    image_map[(slide_idx, shape.shape_id)] = (
+                        f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
+                    )
 
         return image_map
 
@@ -129,7 +130,6 @@ class PPTXExtractor(BaseExtractor):
         return "\n".join(markdown)
 
     def parse_pptx(self, pptx_path):
-
         prs = Presentation(pptx_path)
 
         content = []
@@ -166,5 +166,5 @@ class PPTXExtractor(BaseExtractor):
                     table_md = self._table_to_markdown(shape.table)
                     slide_content.append(table_md)
             if slide_content:
-                content.append(f"# Slide {slide_idx+1}\n" + "\n".join(slide_content))
+                content.append(f"# Slide {slide_idx + 1}\n" + "\n".join(slide_content))
         return "\n\n".join(content)
