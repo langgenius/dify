@@ -125,8 +125,13 @@ class InstructionGenerateApi(Resource):
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("ideal_output", type=str, required=False, default="", location="json")
         args = parser.parse_args()
-        code_template = Python3CodeProvider.get_default_code() if args["language"] == "python" else (
-            JavascriptCodeProvider.get_default_code()) if args["language"] == "javascript" else ""
+        code_template = (
+            Python3CodeProvider.get_default_code()
+            if args["language"] == "python"
+            else (JavascriptCodeProvider.get_default_code())
+            if args["language"] == "javascript"
+            else ""
+        )
         try:
             # Generate from nothing for a workflow node
             if (args["current"] == code_template or args["current"] == "") and args["node_id"] != "":
