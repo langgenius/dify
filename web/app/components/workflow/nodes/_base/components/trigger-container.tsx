@@ -1,7 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import Indicator from '@/app/components/header/indicator'
 
 export type TriggerStatus = 'enabled' | 'disabled'
 
@@ -23,14 +23,17 @@ const TriggerContainer: FC<TriggerContainerProps> = ({
 
     return {
       label: customLabel || (isDisabled ? t('workflow.triggerStatus.disabled') : t('workflow.triggerStatus.enabled')),
-      dotColor: isDisabled ? 'bg-text-tertiary' : 'bg-green-500',
+      indicatorColor: isDisabled ? 'gray' : 'green',
     }
   }, [status, customLabel, t])
 
   return (
     <div className="w-[242px] rounded-2xl bg-workflow-block-wrapper-bg-1 px-0 pb-0 pt-0.5">
       <div className="mb-0.5 flex items-center px-1.5 pt-0.5">
-        <div className={cn('ml-0.5 mr-0.5 h-1.5 w-1.5 rounded-sm border border-black/15', statusConfig.dotColor)} />
+        <Indicator
+          color={statusConfig.indicatorColor as 'green' | 'gray'}
+          className="ml-0.5 mr-0.5"
+        />
         <span className="text-2xs font-semibold uppercase text-text-tertiary">
           {statusConfig.label}
         </span>
