@@ -50,38 +50,34 @@ export const AuthorizedItem = ({
 
   return (
     <div className='p-1'>
-      {
-        model && (
-          <div
-            className='flex h-9 items-center'
-          >
-            <div className='h-5 w-5 shrink-0'></div>
-            <div
-              className='system-md-medium mx-1 grow truncate text-text-primary'
-              title={model.model}
+      <div
+        className='flex h-9 items-center'
+      >
+        <div className='h-5 w-5 shrink-0'></div>
+        <div
+          className='system-md-medium mx-1 grow truncate text-text-primary'
+          title={title ?? model?.model}
+        >
+          {title ?? model?.model}
+        </div>
+        {
+          enableAddModelCredential && (
+            <Tooltip
+              asChild
+              popupContent={t('common.modelProvider.auth.addModelCredential')}
             >
-              {title ?? model.model}
-            </div>
-            {
-              enableAddModelCredential && (
-                <Tooltip
-                  asChild
-                  popupContent={t('common.modelProvider.auth.addModelCredential')}
-                >
-                  <Button
-                    className='h-6 w-6 shrink-0 rounded-full p-0'
-                    size='small'
-                    variant='secondary-accent'
-                    onClick={() => handleEdit?.()}
-                  >
-                    <RiAddLine className='h-4 w-4' />
-                  </Button>
-                </Tooltip>
-              )
-            }
-          </div>
-        )
-      }
+              <Button
+                className='h-6 w-6 shrink-0 rounded-full p-0'
+                size='small'
+                variant='secondary-accent'
+                onClick={() => handleEdit?.()}
+              >
+                <RiAddLine className='h-4 w-4' />
+              </Button>
+            </Tooltip>
+          )
+        }
+      </div>
       {
         credentials.map(credential => (
           <CredentialItem

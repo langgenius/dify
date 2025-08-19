@@ -35,6 +35,7 @@ type AuthorizedProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   isModelCredential?: boolean
   items: {
+    title?: string
     model?: CustomModel
     credentials: Credential[]
   }[]
@@ -142,6 +143,7 @@ const Authorized = ({
                 items.map((item, index) => (
                   <AuthorizedItem
                     key={index}
+                    title={item.title}
                     model={item.model}
                     credentials={item.credentials}
                     disabled={disabled}
