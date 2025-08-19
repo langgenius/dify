@@ -74,6 +74,8 @@ const translation = {
     exportPNG: 'PNG で出力',
     exportJPEG: 'JPEG で出力',
     exportSVG: 'SVG で出力',
+    currentView: '現在のビュー',
+    currentWorkflow: '現在のワークフロー',
     model: 'モデル',
     workflowAsTool: 'ワークフローをツールとして公開する',
     configureRequired: '設定が必要',
@@ -989,6 +991,12 @@ const translation = {
       noDependencies: '依存元なし',
       noDependents: '依存先なし',
     },
+    copyLastRun: '最後の実行をコピー',
+    noLastRunFound: '以前の実行が見つかりませんでした。',
+    copyLastRunError: '最後の実行の入力をコピーできませんでした',
+    noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
+    lastRunInputsCopied: '前回の実行から{{count}}個の入力をコピーしました',
+    lastOutput: '最後の出力',
   },
 }
 

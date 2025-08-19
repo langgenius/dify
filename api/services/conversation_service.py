@@ -50,12 +50,16 @@ class ConversationService:
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
         )
-        # Check if include_ids is not None and not empty to avoid WHERE false condition
-        if include_ids is not None and len(include_ids) > 0:
+        # Check if include_ids is not None to apply filter
+        if include_ids is not None:
+            if len(include_ids) == 0:
+                # If include_ids is empty, return empty result
+                return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
             stmt = stmt.where(Conversation.id.in_(include_ids))
-        # Check if exclude_ids is not None and not empty to avoid WHERE false condition
-        if exclude_ids is not None and len(exclude_ids) > 0:
-            stmt = stmt.where(~Conversation.id.in_(exclude_ids))
+        # Check if exclude_ids is not None to apply filter
+        if exclude_ids is not None:
+            if len(exclude_ids) > 0:
+                stmt = stmt.where(~Conversation.id.in_(exclude_ids))
 
         # define sort fields and directions
         sort_field, sort_direction = cls._get_sort_params(sort_by)
@@ -99,10 +103,10 @@ class ConversationService:
     @classmethod
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
         field_value = getattr(reference_conversation, sort_field)
-        if sort_direction == desc:
+        if sort_direction is desc:
             return getattr(Conversation, sort_field) < field_value
-        else:
-            return getattr(Conversation, sort_field) > field_value
+
+        return getattr(Conversation, sort_field) > field_value
 
     @classmethod
     def rename(
@@ -143,7 +147,7 @@ class ConversationService:
                 app_model.tenant_id, message.query, conversation.id, app_model.id
             )
             conversation.name = name
-        except:
+        except Exception:
             pass
 
         db.session.commit()
@@ -273,6 +277,11 @@ class ConversationService:
 
             # Validate that the new value type matches the expected variable type
             expected_type = SegmentType(current_variable.value_type)
+
+            # There is showing number in web ui but int in db
+            if expected_type == SegmentType.INTEGER:
+                expected_type = SegmentType.NUMBER
+
             if not expected_type.is_valid(new_value):
                 inferred_type = SegmentType.infer_segment_type(new_value)
                 raise ConversationVariableTypeMismatchError(

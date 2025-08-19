@@ -709,6 +709,10 @@ const translation = {
   pagination: {
     perPage: 'Items per page',
   },
+  avatar: {
+    deleteTitle: 'Remove Avatar',
+    deleteDescription: 'Are you sure you want to remove your profile picture? Your account will use the default initial avatar.',
+  },
   imageInput: {
     dropImageHere: 'Drop your image here, or',
     browse: 'browse',

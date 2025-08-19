@@ -1,5 +1,3 @@
-import json
-
 from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session
@@ -136,12 +134,15 @@ class ConversationVariableDetailApi(Resource):
         variable_id = str(variable_id)
 
         parser = reqparse.RequestParser()
-        parser.add_argument("value", required=True, location="json")
+        # using lambda is for passing the already-typed value without modification
+        # if no lambda, it will be converted to string
+        # the string cannot be converted using json.loads
+        parser.add_argument("value", required=True, location="json", type=lambda x: x)
         args = parser.parse_args()
 
         try:
             return ConversationService.update_conversation_variable(
-                app_model, conversation_id, variable_id, end_user, json.loads(args["value"])
+                app_model, conversation_id, variable_id, end_user, args["value"]
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

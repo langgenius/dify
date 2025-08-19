@@ -82,7 +82,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: web/package.json
           run_install: false
 
       - name: Setup NodeJS
@@ -95,10 +95,12 @@ jobs:
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm run lint
 
   docker-compose-template:

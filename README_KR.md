@@ -212,7 +212,8 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 [CDK](https://aws.amazon.com/cdk/)를 사용하여 AWS에 Dify 배포
 
 ##### AWS 
-- [KevinZhao의 AWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [KevinZhao의 AWS CDK (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [tmokmss의 AWS CDK (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
 

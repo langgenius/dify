@@ -211,7 +211,8 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 [CDK](https://aws.amazon.com/cdk/) kullanarak Dify'ı AWS'ye dağıtın
 
 ##### AWS 
-- [AWS CDK tarafından @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK tarafından @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK tarafından @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
 

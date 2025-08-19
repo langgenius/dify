@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'Der Endknoten muss hinzugefügt werden.',
     needAnswerNode: 'Der Antwortknoten muss hinzugefügt werden.',
     tagBound: 'Anzahl der Apps, die dieses Tag verwenden',
+    currentWorkflow: 'Aktueller Arbeitsablauf',
+    currentView: 'Aktuelle Ansicht',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -989,6 +991,11 @@ const translation = {
       noDependents: 'Keine Angehörigen',
     },
     relationsTab: 'Beziehungen',
+    copyLastRun: 'Letzte Ausführung kopieren',
+    copyLastRunError: 'Fehler beim Kopieren der letzten Lauf-Eingaben',
+    noMatchingInputsFound: 'Keine übereinstimmenden Eingaben aus dem letzten Lauf gefunden.',
+    noLastRunFound: 'Kein vorheriger Lauf gefunden',
+    lastOutput: 'Letzte Ausgabe',
   },
 }
 

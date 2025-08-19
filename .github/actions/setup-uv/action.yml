@@ -8,7 +8,7 @@ inputs:
   uv-version:
     description: UV version to set up
     required: true
-    default: '~=0.7.11'
+    default: '0.8.9'
   uv-lockfile:
     description: Path to the UV lockfile to restore cache from
     required: true
@@ -26,7 +26,7 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v6
       with:
         version: ${{ inputs.uv-version }}
         python-version: ${{ inputs.python-version }}
