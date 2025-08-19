@@ -21,6 +21,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { SimpleSelect } from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -241,6 +242,29 @@ const ConfigModal: FC<IConfigModalProps> = ({
           {type === InputVarType.textInput && (
             <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Input
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {/* Default value for paragraph */}
+          {type === InputVarType.paragraph && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Textarea
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {/* Default value for number input */}
+          {type === InputVarType.number && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Input
+                type="number"
                 value={tempPayload.default || ''}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('appDebug.variableConfig.inputPlaceholder')!}

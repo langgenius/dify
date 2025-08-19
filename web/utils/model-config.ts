@@ -52,6 +52,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         type,
         options: [],
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'select') {

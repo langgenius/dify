@@ -70,6 +70,8 @@ const RunOnce: FC<IRunOnceProps> = ({
         newInputs[item.key] = item.default
       else if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = item.default
+      else if (item.type === 'number')
+        newInputs[item.key] = item.default
       else
         newInputs[item.key] = undefined
     })
