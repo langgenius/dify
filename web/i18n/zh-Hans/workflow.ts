@@ -1071,6 +1071,10 @@ const translation = {
     enabled: '触发器',
     disabled: '触发器 • 已禁用',
   },
+  entryNodeStatus: {
+    enabled: '开始',
+    disabled: '开始 • 已禁用',
+  },
 }
 
 export default translation

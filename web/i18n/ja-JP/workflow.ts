@@ -1071,6 +1071,10 @@ const translation = {
     enabled: 'トリガー',
     disabled: 'トリガー • 無効',
   },
+  entryNodeStatus: {
+    enabled: 'スタート',
+    disabled: '開始 • 無効',
+  },
 }
 
 export default translation
