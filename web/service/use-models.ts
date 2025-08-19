@@ -85,6 +85,7 @@ export const useGetModelCredential = (
     queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId],
     queryFn: () => get<ModelCredential>(`/workspaces/current/model-providers/${provider}/models/credentials?model=${model}&model_type=${modelType}&config_from=${configFrom}${credentialId ? `&credential_id=${credentialId}` : ''}`),
     staleTime: 0,
+    gcTime: 0,
   })
 }
 

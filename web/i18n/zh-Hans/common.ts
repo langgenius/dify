@@ -498,6 +498,7 @@ const translation = {
       modelCredentials: '模型凭据',
       configModel: '配置模型',
       configLoadBalancing: '配置负载均衡',
+      authorizationError: '授权错误',
     },
   },
   dataSource: {

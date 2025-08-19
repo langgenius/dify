@@ -58,11 +58,15 @@ const AddCredentialInLoadBalancing = ({
       items={[
         {
           title: customModel ? t('common.modelProvider.auth.modelCredentials') : t('common.modelProvider.auth.apiKeys'),
-          model,
+          model: customModel ? model : undefined,
           credentials: available_credentials ?? [],
         },
       ]}
       configurationMethod={configurationMethod}
+      currentCustomConfigurationModelFixedFields={customModel ? {
+        __model_name: model.model,
+        __model_type: model.model_type,
+      } : undefined}
       onItemClick={onSelectCredential}
       placement='bottom-start'
       onUpdate={onUpdate}

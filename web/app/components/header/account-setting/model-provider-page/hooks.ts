@@ -357,6 +357,7 @@ export const useModelModalHandler = () => {
     isModelCredential?: boolean,
     credential?: Credential,
     model?: CustomModel,
+    onUpdate?: () => void,
   ) => {
     setShowModelModal({
       payload: {
@@ -369,6 +370,7 @@ export const useModelModalHandler = () => {
       },
       onSaveCallback: () => {
         handleRefreshModel(provider, configurationMethod, CustomConfigurationModelFixedFields)
+        onUpdate?.()
       },
     })
   }

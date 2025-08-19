@@ -76,6 +76,8 @@ const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing 
             <ConfigModel
               className='hidden group-hover:flex'
               onClick={() => onModifyLoadBalancing?.(model)}
+              loadBalancingEnabled={model.load_balancing_enabled}
+              loadBalancingInvalid={model.has_invalid_load_balancing_configs}
             />
           )
         }
