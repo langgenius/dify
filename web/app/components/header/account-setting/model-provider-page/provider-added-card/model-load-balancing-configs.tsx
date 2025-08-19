@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
@@ -122,6 +122,20 @@ const ModelLoadBalancingConfigs = ({
     })
   }, [updateConfigEntry])
 
+  const validDraftConfigList = useMemo(() => {
+    if (!draftConfig)
+      return []
+    return draftConfig.configs.filter((config) => {
+      if (config.name === '__inherit__')
+        return true
+
+      if (config.credential_id)
+        return true
+
+      return false
+    })
+  }, [draftConfig])
+
   if (!draftConfig)
     return null
 
@@ -165,15 +179,7 @@ const ModelLoadBalancingConfigs = ({
         </div>
         {draftConfig.enabled && (
           <div className='flex flex-col gap-1 px-3 pb-3'>
-            {draftConfig.configs.filter((config) => {
-              if (config.name === '__inherit__')
-                return true
-
-              if (config.credential_id)
-                return true
-
-              return false
-            }).map((config, index) => {
+            {validDraftConfigList.map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
               return (
                 <div key={config.id || index} className='group flex h-10 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 shadow-xs'>
@@ -249,7 +255,7 @@ const ModelLoadBalancingConfigs = ({
           </div>
         )}
         {
-          draftConfig.enabled && draftConfig.configs.length < 2 && (
+          draftConfig.enabled && validDraftConfigList.length < 2 && (
             <div className='flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary'>
               <AlertTriangle className='mr-1 h-3 w-3 text-[#f79009]' />
               {t('common.modelProvider.loadBalancingLeastKeyWarning')}

@@ -147,6 +147,7 @@ export const useUpdateModelLoadBalancingConfig = (provider: string) => {
       model: string
       model_type: ModelTypeEnum
       load_balancing: ModelLoadBalancingConfig
+      credential_id?: string
     }) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models`, {
       body: data,
     }),

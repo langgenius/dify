@@ -86,6 +86,7 @@ export enum ModelStatusEnum {
   quotaExceeded = 'quota-exceeded',
   noPermission = 'no-permission',
   disabled = 'disabled',
+  credentialRemoved = 'credential-removed',
 }
 
 export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
@@ -185,6 +186,8 @@ export type QuotaConfiguration = {
 export type Credential = {
   credential_id: string
   credential_name?: string
+  from_enterprise?: boolean
+  allowed_to_use?: boolean
 }
 
 export type CustomModel = {
@@ -316,4 +319,6 @@ export type ModelCredential = {
   credentials: Record<string, any>
   load_balancing: ModelLoadBalancingConfig
   available_credentials: Credential[]
+  current_credential_id?: string
+  current_credential_name?: string
 }

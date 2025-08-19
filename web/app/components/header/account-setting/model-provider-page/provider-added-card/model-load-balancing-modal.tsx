@@ -19,7 +19,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { useToastContext } from '@/app/components/base/toast'
-// import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import {
   useGetModelCredential,
   useUpdateModelLoadBalancingConfig,
@@ -59,6 +59,9 @@ const ModelLoadBalancingModal = ({
   const modelCredential = data
   const {
     load_balancing,
+    current_credential_id,
+    available_credentials,
+    current_credential_name,
   } = modelCredential ?? {}
   const originalConfig = load_balancing
   const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
@@ -102,11 +105,21 @@ const ModelLoadBalancingModal = ({
   }, [extendedSecretFormSchemas, originalConfigMap])
 
   const { mutateAsync: updateModelLoadBalancingConfig } = useUpdateModelLoadBalancingConfig(provider.provider)
+  const initialCustomModelCredential = useMemo(() => {
+    if (!current_credential_id)
+      return undefined
+    return {
+      credential_id: current_credential_id,
+      credential_name: current_credential_name,
+    }
+  }, [current_credential_id, current_credential_name])
+  const [customModelCredential, setCustomModelCredential] = useState<Credential | undefined>(initialCustomModelCredential)
   const handleSave = async () => {
     try {
       setLoading(true)
       const res = await updateModelLoadBalancingConfig(
         {
+          credential_id: customModelCredential?.credential_id || current_credential_id,
           config_from: configFrom,
           model: model.model,
           model_type: model.model_type,
@@ -178,14 +191,28 @@ const ModelLoadBalancingModal = ({
                     )}
                   </div>
                   <div className='grow'>
-                    <div className='text-sm text-text-secondary'>{t('common.modelProvider.providerManaged')}</div>
-                    <div className='text-xs text-text-tertiary'>{t('common.modelProvider.providerManagedDescription')}</div>
+                    <div className='text-sm text-text-secondary'>{
+                      providerFormSchemaPredefined
+                       ? t('common.modelProvider.auth.providerManaged')
+                       : t('common.modelProvider.auth.specifyModelCredential')
+                    }</div>
+                    <div className='text-xs text-text-tertiary'>{
+                      providerFormSchemaPredefined
+                        ? t('common.modelProvider.auth.providerManagedTip')
+                        : t('common.modelProvider.auth.specifyModelCredentialTip')
+                    }</div>
                   </div>
-                  {/* <SwitchCredentialInLoadBalancing
-                    draftConfig={draftConfig}
-                    setDraftConfig={setDraftConfig}
-                    provider={provider}
-                  /> */}
+                  {
+                    !providerFormSchemaPredefined && (
+                      <SwitchCredentialInLoadBalancing
+                        provider={provider}
+                        customModelCredential={initialCustomModelCredential ?? customModelCredential}
+                        setCustomModelCredential={setCustomModelCredential}
+                        model={model}
+                        credentials={available_credentials}
+                      />
+                    )
+                  }
                 </div>
               </div>
               {

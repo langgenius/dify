@@ -7,40 +7,38 @@ import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
-import Badge from '@/app/components/base/badge'
 import Authorized from './authorized'
 import type {
-  ModelLoadBalancingConfig,
+  Credential,
+  CustomModel,
   ModelProvider,
 } from '../declarations'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useCredentialStatus } from './hooks'
 import cn from '@/utils/classnames'
 
 type SwitchCredentialInLoadBalancingProps = {
   provider: ModelProvider
-  draftConfig?: ModelLoadBalancingConfig
-  setDraftConfig: Dispatch<SetStateAction<ModelLoadBalancingConfig | undefined>>
+  model: CustomModel
+  credentials?: Credential[]
+  customModelCredential?: Credential
+  setCustomModelCredential: Dispatch<SetStateAction<Credential | undefined>>
 }
 const SwitchCredentialInLoadBalancing = ({
   provider,
-  draftConfig,
+  model,
+  customModelCredential,
+  setCustomModelCredential,
+  credentials,
 }: SwitchCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
-  const {
-    available_credentials,
-    current_credential_name,
-  } = useCredentialStatus(provider)
 
-  const handleItemClick = useCallback(() => {
-    console.log('handleItemClick', draftConfig)
-  }, [])
+  const handleItemClick = useCallback((credential: Credential) => {
+    setCustomModelCredential(credential)
+  }, [setCustomModelCredential])
 
   const renderTrigger = useCallback(() => {
-    const selectedCredentialId = draftConfig?.configs.find(config => config.name === '__inherit__')?.credential_id
-    const selectedCredential = available_credentials?.find(credential => credential.credential_id === selectedCredentialId)
-    const name = selectedCredential?.credential_name || current_credential_name
-    const authRemoved = !!selectedCredentialId && !selectedCredential
+    const selectedCredentialId = customModelCredential?.credential_id
+    const authRemoved = !selectedCredentialId && !!credentials?.length
     return (
       <Button
         variant='secondary'
@@ -54,17 +52,12 @@ const SwitchCredentialInLoadBalancing = ({
           color={authRemoved ? 'red' : 'green'}
         />
         {
-          authRemoved ? t('common.model.authRemoved') : name
-        }
-        {
-          !authRemoved && (
-            <Badge>enterprise</Badge>
-          )
+          authRemoved ? t('common.modelProvider.auth.authRemoved') : customModelCredential?.credential_name
         }
         <RiArrowDownSLine className='h-4 w-4' />
       </Button>
     )
-  }, [current_credential_name, t, draftConfig, available_credentials])
+  }, [customModelCredential, t, credentials])
 
   return (
     <Authorized
@@ -72,17 +65,25 @@ const SwitchCredentialInLoadBalancing = ({
       configurationMethod={ConfigurationMethodEnum.customizableModel}
       items={[
         {
-          model: {
-            model: t('common.modelProvider.modelCredentials'),
-          } as any,
-          credentials: available_credentials || [],
+          title: t('common.modelProvider.auth.modelCredentials'),
+          model,
+          credentials: credentials || [],
         },
       ]}
       renderTrigger={renderTrigger}
       onItemClick={handleItemClick}
       isModelCredential
       enableAddModelCredential
-      bottomAddModelCredentialText={t('common.modelProvider.addModelCredential')}
+      bottomAddModelCredentialText={t('common.modelProvider.auth.addModelCredential')}
+      selectedCredential={
+        customModelCredential
+          ? {
+            credential_id: customModelCredential?.credential_id || '',
+            credential_name: customModelCredential?.credential_name || '',
+          }
+          : undefined
+      }
+      showItemSelectedIcon
     />
   )
 }
