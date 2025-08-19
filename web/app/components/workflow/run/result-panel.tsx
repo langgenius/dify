@@ -16,6 +16,7 @@ import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import LargeDataAlert from '../variable-inspect/large-data-alert'
 
 export type ResultPanelProps = {
   nodeInfo?: NodeTracing
@@ -118,6 +119,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
+          footer={<LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2' />}
         />
         {process_data && (
           <CodeEditor
@@ -136,6 +138,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
+            footer={<LargeDataAlert textHasNoExport downloadUrl='xxx' className='mx-1 mb-1 mt-2' />}
           />
         )}
       </div>

@@ -39,6 +39,7 @@ export type Props = {
   showCodeGenerator?: boolean
   className?: string
   tip?: React.JSX.Element
+  footer?: React.ReactNode
 }
 
 export const languageMap = {
@@ -67,6 +68,7 @@ const CodeEditor: FC<Props> = ({
   showCodeGenerator = false,
   className,
   tip,
+  footer,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -191,6 +193,7 @@ const CodeEditor: FC<Props> = ({
             showFileList={showFileList}
             showCodeGenerator={showCodeGenerator}
             tip={tip}
+            footer={footer}
           >
             {main}
           </Base>
