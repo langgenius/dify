@@ -89,7 +89,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
           </div>
         </div>
         {/* Price */}
-        <div className='mx-1 mb-8 mt-4 flex items-end gap-x-2'>
+        <div className='flex items-end gap-x-2 px-1 pb-8 pt-4'>
           <div className='title-4xl-semi-bold shrink-0 text-text-primary'>{t(`${i18nPrefix}.price`)}</div>
           {!isFreePlan && (
             <span className='system-md-regular pb-0.5 text-text-tertiary'>

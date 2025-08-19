@@ -104,7 +104,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           </div>
         </div>
         {/* Price */}
-        <div className='mb-8 mt-4 flex items-end gap-x-2'>
+        <div className='flex items-end gap-x-2 px-1 pb-8 pt-4'>
           {isFreePlan && (
             <span className='title-4xl-semi-bold text-text-primary'>{t('billing.plansCommon.free')}</span>
           )}
