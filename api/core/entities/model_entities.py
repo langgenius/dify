@@ -19,6 +19,7 @@ class ModelStatus(Enum):
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
     DISABLED = "disabled"
+    CREDENTIAL_REMOVED = "credential-removed"
 
 
 class SimpleModelProviderEntity(BaseModel):
