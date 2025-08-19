@@ -959,7 +959,6 @@ const translation = {
       visualConfig: '可视化配置',
       monthlyDay: '月份日期',
       executionTime: '执行时间',
-      weekdays: '工作日',
       invalidTimezone: '无效的时区',
       invalidCronExpression: '无效的 Cron 表达式',
       noValidExecutionTime: '无法计算有效的执行时间',
