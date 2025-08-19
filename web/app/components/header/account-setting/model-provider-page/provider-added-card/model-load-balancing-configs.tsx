@@ -165,7 +165,15 @@ const ModelLoadBalancingConfigs = ({
         </div>
         {draftConfig.enabled && (
           <div className='flex flex-col gap-1 px-3 pb-3'>
-            {draftConfig.configs.map((config, index) => {
+            {draftConfig.configs.filter((config) => {
+              if (config.name === '__inherit__')
+                return true
+
+              if (config.credential_id)
+                return true
+
+              return false
+            }).map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
               return (
                 <div key={config.id || index} className='group flex h-10 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 shadow-xs'>

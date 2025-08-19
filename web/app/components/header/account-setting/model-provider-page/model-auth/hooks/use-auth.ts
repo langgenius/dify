@@ -138,8 +138,9 @@ export const useAuth = (
       isModelCredential,
       credential,
       model,
+      onUpdate,
     )
-  }, [handleOpenModelModal, provider, configurationMethod, currentCustomConfigurationModelFixedFields, isModelCredential])
+  }, [handleOpenModelModal, provider, configurationMethod, currentCustomConfigurationModelFixedFields, isModelCredential, onUpdate])
 
   return {
     pendingOperationCredentialId,

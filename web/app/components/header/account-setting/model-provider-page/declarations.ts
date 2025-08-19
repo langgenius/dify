@@ -153,6 +153,7 @@ export type ModelItem = {
   model_properties: Record<string, string | number>
   load_balancing_enabled: boolean
   deprecated?: boolean
+  has_invalid_load_balancing_configs?: boolean
 }
 
 export enum PreferredProviderTypeEnum {

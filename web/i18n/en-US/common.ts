@@ -498,6 +498,7 @@ const translation = {
       modelCredentials: 'Model credentials',
       configModel: 'Config model',
       configLoadBalancing: 'Config Load Balancing',
+      authorizationError: 'Authorization error',
     },
   },
   dataSource: {
