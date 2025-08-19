@@ -184,21 +184,25 @@ class ExtractProcessor:
                             or dify_config.UNSTRUCTURED_API_URL
                             or "(not set)"
                         )
-                        hint = (
-                            "Unstructured document extraction failed: unable to resolve or connect to the Unstructured API host.\n"
-                            f"UNSTRUCTURED_API_URL={api_url_hint}\n"
-                            "Possible causes:\n"
-                            " 1) 'unstructured' service is defined under 'profiles' but the profile was NOT enabled (container never started, so DNS name is unknown).\n"
-                            " 2) UNSTRUCTURED_API_URL is misspelled or its DNS record is not resolvable from the container.\n"
-                            " 3) Container network / DNS configuration issue.\n"
-                            "Troubleshooting steps:\n"
-                            " a) docker compose ps | grep unstructured  (ensure it shows Up).\n"
-                            " b) Inside API container: getent hosts <host>  or  ping -c1 <host>.\n"
-                            " c) Confirm ETL_TYPE=Unstructured and UNSTRUCTURED_API_URL point to the intended host.\n"
-                            " d) If using profiles: docker compose --profile unstructured up -d  (or remove the 'profiles' line to always start).\n"
-                            f"Original error: {e}"
-                        )
-                        logger.error(hint)
+                        hint_lines = [
+                            "Unstructured document extraction failed: unable to resolve or connect to the",
+                            "Unstructured API host.",
+                            f"UNSTRUCTURED_API_URL={api_url_hint}",
+                            "Possible causes:",
+                            " 1) 'unstructured' service defined under 'profiles' but profile not enabled (container",
+                            "    never started, DNS name unknown).",
+                            " 2) UNSTRUCTURED_API_URL misspelled or DNS not resolvable from container.",
+                            " 3) Container network / DNS configuration issue.",
+                            "Troubleshooting steps:",
+                            " a) docker compose ps | grep unstructured  (ensure status is Up).",
+                            " b) Inside API container: getent hosts <host>  or  ping -c1 <host>.",
+                            " c) Confirm ETL_TYPE=Unstructured and UNSTRUCTURED_API_URL point to intended host.",
+                            " d) If using profiles: docker compose --profile unstructured up -d  (or remove",
+                            "    the 'profiles' line to always start).",
+                            f"Original error: {e}",
+                        ]
+                        hint = "\n".join(hint_lines) + "\n"
+                        logger.exception(hint)
                         raise RuntimeError(hint) from e
                     raise
         elif extract_setting.datasource_type == DatasourceType.NOTION.value:
