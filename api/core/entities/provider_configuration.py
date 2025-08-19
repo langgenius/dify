@@ -979,7 +979,7 @@ class ProviderConfiguration(BaseModel):
                     lb_config.enabled = False
                     lb_config.name = "__delete__"
                     lb_config.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-                    db.session.add(lb_config)
+                    session.add(lb_config)
 
                 # Check if this is the currently active credential
                 provider_model_record = self._get_custom_model_record(model_type, model, session=session)
