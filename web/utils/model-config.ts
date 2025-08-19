@@ -80,6 +80,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           number_limits: 1,
         },
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'file-list') {
@@ -95,6 +96,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           number_limits: content.max_length,
         },
         hide: content.hide,
+        default: content.default,
       })
     }
     else {

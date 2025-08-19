@@ -22,6 +22,9 @@ import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { SimpleSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { TransferMethod } from '@/types/app'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -47,6 +50,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
+  console.log({ tempPayload })
   const modalRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // To fix the first input element auto focus, then directly close modal will raise error
@@ -301,11 +305,30 @@ const ConfigModal: FC<IConfigModalProps> = ({
           )}
 
           {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
-            <FileUploadSetting
-              payload={tempPayload as UploadFileSetting}
-              onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
-              isMultiple={type === InputVarType.multiFiles}
-            />
+            <>
+              <FileUploadSetting
+                payload={tempPayload as UploadFileSetting}
+                onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
+                isMultiple={type === InputVarType.multiFiles}
+              />
+              <Field title={t('appDebug.variableConfig.defaultValue')}>
+                <FileUploaderInAttachmentWrapper
+                  value={(type === InputVarType.singleFile ? (tempPayload.default ? [tempPayload.default] : []) : (tempPayload.default || [])) as unknown as FileEntity[]}
+                  onChange={(files) => {
+                    if (type === InputVarType.singleFile)
+                      handlePayloadChange('default')(files?.[0] || undefined)
+                    else
+                      handlePayloadChange('default')(files || undefined)
+                  }}
+                  fileConfig={{
+                    allowed_file_types: tempPayload.allowed_file_types || [SupportUploadFileTypes.document],
+                    allowed_file_extensions: tempPayload.allowed_file_extensions || [],
+                    allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [TransferMethod.remote_url],
+                    number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
+                  }}
+                />
+              </Field>
+            </>
           )}
 
           <div className='!mt-5 flex h-6 items-center space-x-2'>
