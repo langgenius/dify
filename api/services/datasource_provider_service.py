@@ -2,7 +2,6 @@ import logging
 import time
 from typing import Any
 
-from api.services.plugin.plugin_service import PluginService
 from flask_login import current_user
 from sqlalchemy.orm import Session
 
@@ -20,6 +19,7 @@ from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
