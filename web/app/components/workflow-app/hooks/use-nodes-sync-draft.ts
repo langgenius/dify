@@ -93,7 +93,7 @@ export const useNodesSyncDraft = () => {
                 name: item.name,
                 value_type: item.value_type,
                 from_version: restoredSecretsInfo[item.id].from_version,
-                // Add missing properties to satisfy the EnvironmentVariable type
+                // value and description are required by type but not used by backend for restored secrets
                 value: '',
                 description: '',
               }

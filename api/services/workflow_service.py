@@ -212,11 +212,13 @@ class WorkflowService:
         if not published_workflow or published_workflow.version == Workflow.VERSION_DRAFT:
             raise ValueError(f"Published workflow version {from_version} not found.")
 
-        # Find the specific secret environment variable
-        for env_var in published_workflow.environment_variables:
-            if env_var.id == env_var_id and env_var.value_type == SegmentType.SECRET.value:
-                # Return the original encrypted value
-                return cast(str, env_var.value)
+        # Find the specific secret environment variable using a dictionary lookup for efficiency
+        env_var_dict = {env_var.id: env_var for env_var in published_workflow.environment_variables}
+        env_var = env_var_dict.get(env_var_id)
+
+        if env_var and env_var.value_type == SegmentType.SECRET.value:
+            # Return the original encrypted value
+            return cast(str, env_var.value)
 
         raise ValueError(f"Secret environment variable with id {env_var_id} not found in version {from_version}.")
 
@@ -250,7 +252,7 @@ class WorkflowService:
                 from_version = var_dict.get("from_version")
 
                 if not env_var_id or not from_version:
-                    # Skip if essential info is missing
+                    # If essential info is missing, set value to empty string
                     var_dict["value"] = ""
                 else:
                     try:
