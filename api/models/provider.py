@@ -134,7 +134,7 @@ class ProviderModel(Base):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
     credential_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    is_valid: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=text("false"))
+    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -290,8 +290,8 @@ class ProviderModelCredential(Base):
 
     __tablename__ = "provider_model_credentials"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="provider_model_credential_pkey"),
-        db.Index(
+        sa.PrimaryKeyConstraint("id", name="provider_model_credential_pkey"),
+        sa.Index(
             "provider_model_credential_tenant_provider_model_idx",
             "tenant_id",
             "provider_name",
