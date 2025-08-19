@@ -1,9 +1,9 @@
 const translation = {
   common: {
     goToAddDocuments: '去添加文档',
-    publishAs: '发布为知识管道',
+    publishAs: '发布为知识流水线',
     confirmPublish: '确认发布',
-    confirmPublishContent: '成功发布知识管道后，此知识库的分段结构将无法修改。您确定要发布吗？',
+    confirmPublishContent: '成功发布知识流水线后，此知识库的分段结构将无法修改。您确定要发布吗？',
     publishAsPipeline: {
       name: 'Pipeline 名称和图标',
       namePlaceholder: '请输入此 Pipeline 的名称。 (必填)',
