@@ -64,6 +64,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.Agent]: <Agent className={className} />,
     [BlockEnum.TriggerSchedule]: <Schedule className={className} />,
     [BlockEnum.TriggerWebhook]: <WebhookLine className={className} />,
+    [BlockEnum.TriggerPlugin]: null,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
@@ -89,6 +90,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.TriggerSchedule]: 'bg-util-colors-violet-violet-500',
   [BlockEnum.TriggerWebhook]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.TriggerPlugin]: 'bg-util-colors-white-white-500',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,
@@ -107,7 +109,11 @@ const BlockIcon: FC<BlockIconProps> = ({
     >
       {
         type !== BlockEnum.Tool && (
-          getIcon(type, size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5')
+          getIcon(type,
+            (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
+              ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
+              : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'),
+          )
         )
       }
       {
