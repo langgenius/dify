@@ -238,7 +238,7 @@ def refresh_authorization(
         params["client_secret"] = client_information.client_secret
 
     response = httpx.post(token_url, data=params)
-    if not response.ok:
+    if not response.is_success:
         raise ValueError(f"Token refresh failed: HTTP {response.status_code}")
     return OAuthTokens.model_validate(response.json())
 
