@@ -27,7 +27,7 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
 
   return (
     <div className="space-y-2">
-      <label className="mb-2 block text-xs font-medium text-gray-500">
+      <label className="mb-2 block text-xs font-medium text-text-tertiary">
         {t('workflow.nodes.triggerSchedule.weekdays')}
       </label>
       <div className="flex gap-1.5">
@@ -35,10 +35,10 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
           <button
             key={day.key}
             type="button"
-            className={`flex-1 rounded-lg py-1.5 text-xs transition-colors ${
+            className={`flex-1 rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
               selectedDay === day.key
-                ? 'border-2 border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                : 'border-components-input-border-normal border text-text-tertiary hover:border-components-input-border-hover hover:text-text-secondary'
+                ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
+                : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
             }`}
             onClick={() => handleDaySelect(day.key)}
           >

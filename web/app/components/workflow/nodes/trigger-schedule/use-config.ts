@@ -33,6 +33,15 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     const newInputs = {
       ...inputs,
       frequency,
+      visual_config: {
+        ...inputs.visual_config,
+        ...(frequency === 'hourly' || frequency === 'once') && !inputs.visual_config?.datetime && {
+          datetime: new Date().toISOString(),
+        },
+        ...(frequency !== 'hourly' && frequency !== 'once') && {
+          datetime: undefined,
+        },
+      },
     }
     setInputs(newInputs)
   }, [inputs, setInputs])

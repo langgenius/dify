@@ -22,7 +22,7 @@ const MonthlyDaysSelector = ({ selectedDay, onChange }: MonthlyDaysSelectorProps
 
   return (
     <div className="space-y-2">
-      <label className="mb-2 block text-xs font-medium text-gray-500">
+      <label className="mb-2 block text-xs font-medium text-text-tertiary">
         {t('workflow.nodes.triggerSchedule.days')}
       </label>
 
@@ -34,12 +34,12 @@ const MonthlyDaysSelector = ({ selectedDay, onChange }: MonthlyDaysSelectorProps
                 key={day}
                 type="button"
                 onClick={() => onChange(day)}
-                className={`rounded-lg py-1.5 text-xs transition-colors ${
+                className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
                   day === 'last' ? 'col-span-2 min-w-0' : ''
                 } ${
                   selectedDay === day
-                    ? 'border-2 border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                    : 'border-components-input-border-normal border text-text-tertiary hover:border-components-input-border-hover hover:text-text-secondary'
+                    ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
+                    : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
                 }`}
               >
                 {day === 'last' ? (
