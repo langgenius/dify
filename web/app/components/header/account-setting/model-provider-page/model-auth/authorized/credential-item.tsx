@@ -13,6 +13,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import type { Credential } from '../../declarations'
+import Badge from '@/app/components/base/badge'
 
 type CredentialItemProps = {
   credential: Credential
@@ -49,7 +50,9 @@ const CredentialItem = ({
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
       )}
-      onClick={() => onItemClick?.(credential)}
+      onClick={() => {
+        onItemClick?.(credential)
+      }}
     >
       <div className='flex w-0 grow items-center space-x-1.5'>
         {
@@ -71,6 +74,13 @@ const CredentialItem = ({
           {credential.credential_name}
         </div>
       </div>
+      {
+        credential.from_enterprise && (
+          <Badge className='shrink-0'>
+            Enterprise
+          </Badge>
+        )
+      }
       {
         showAction && (
           <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>

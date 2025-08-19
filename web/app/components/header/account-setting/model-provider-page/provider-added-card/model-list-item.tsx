@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import type { ModelItem, ModelProvider } from '../declarations'
 import { ModelStatusEnum } from '../declarations'
-import ModelBadge from '../model-badge'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import classNames from '@/utils/classnames'
@@ -15,6 +14,7 @@ import { disableModel, enableModel } from '@/service/common'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { ConfigModel } from '../model-auth'
+import Badge from '@/app/components/base/badge'
 
 export type ModelListItemProps = {
   model: ModelItem
@@ -63,21 +63,20 @@ const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing 
         showMode
         showContextSize
       >
-        {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && (
-          <ModelBadge className='ml-1 border-text-accent-secondary uppercase text-text-accent-secondary'>
-            <Balance className='mr-0.5 h-3 w-3' />
-            {t('common.modelProvider.loadBalancingHeadline')}
-          </ModelBadge>
-        )}
       </ModelName>
       <div className='flex shrink-0 items-center'>
+        {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && (
+          <Badge className='mr-1 h-[18px] w-[18px] items-center justify-center border-text-accent-secondary p-0'>
+            <Balance className='h-3 w-3 text-text-accent-secondary' />
+          </Badge>
+        )}
         {
           (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)) && (
             <ConfigModel
-              className='hidden group-hover:flex'
               onClick={() => onModifyLoadBalancing?.(model)}
               loadBalancingEnabled={model.load_balancing_enabled}
               loadBalancingInvalid={model.has_invalid_load_balancing_configs}
+              credentialRemoved={model.status === ModelStatusEnum.credentialRemoved}
             />
           )
         }
