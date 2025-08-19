@@ -114,7 +114,6 @@ const StatusItem = ({
           <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='text-text-secondary system-xs-medium'
-            needsDelay
             disabled={!archived}
           >
             <Switch

@@ -3,7 +3,18 @@ import { useContext } from 'use-context-selector'
 import { ToastContext } from '../../base/toast'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
+import {
+  useDocumentArchive,
+  useDocumentDelete,
+  useDocumentDisable,
+  useDocumentDownload,
+  useDocumentEnable,
+  useDocumentPause,
+  useDocumentResume,
+  useDocumentUnArchive,
+  useSyncDocument,
+  useSyncWebsite,
+} from '@/service/knowledge/use-document'
 import type { OperationName } from './types'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
@@ -13,7 +24,17 @@ import { noop } from 'lodash-es'
 import Tooltip from '../../base/tooltip'
 import Divider from '../../base/divider'
 import cn from '@/utils/classnames'
-import { RiArchive2Line, RiDeleteBinLine, RiEditLine, RiEqualizer2Line, RiLoopLeftLine, RiMoreFill, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
+import {
+  RiArchive2Line,
+  RiDeleteBinLine,
+  RiDownloadLine,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiLoopLeftLine,
+  RiMoreFill,
+  RiPauseCircleLine,
+  RiPlayCircleLine,
+} from '@remixicon/react'
 import CustomPopover from '../../base/popover'
 import s from './style.module.css'
 import { DataSourceType } from '@/models/datasets'
@@ -60,6 +81,7 @@ const Operations = ({
   const { mutateAsync: syncWebsite } = useSyncWebsite()
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
+  const downloadDocument = useDocumentDownload()
   const isListScene = scene === 'list'
 
   const onOperate = async (operationName: OperationName) => {
@@ -141,7 +163,6 @@ const Operations = ({
           ? <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='!font-semibold'
-            needsDelay
           >
             <div>
               <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
@@ -155,8 +176,35 @@ const Operations = ({
     {embeddingAvailable && (
       <>
         <Tooltip
+          popupContent={t('datasetDocuments.list.action.download')}
+          popupClassName='text-text-secondary system-xs-medium'
+          needsDelay={false}
+        >
+          <button
+            className={cn('mr-2 cursor-pointer rounded-lg',
+              !isListScene
+                ? 'shadow-shadow-3 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
+                : 'p-0.5 hover:bg-state-base-hover')}
+            onClick={() => {
+              downloadDocument.mutateAsync({
+                datasetId,
+                documentId: detail.id,
+              }).then((response) => {
+                if (response.download_url)
+                  window.location.href = response.download_url
+              }).catch((error) => {
+                console.error(error)
+                notify({ type: 'error', message: t('common.actionMsg.downloadFailed') })
+              })
+            }}
+          >
+            <RiDownloadLine className='h-4 w-4 text-components-button-secondary-text' />
+          </button>
+        </Tooltip>
+        <Tooltip
           popupContent={t('datasetDocuments.list.action.settings')}
           popupClassName='text-text-secondary system-xs-medium'
+          needsDelay={false}
         >
           <button
             className={cn('mr-2 cursor-pointer rounded-lg',
