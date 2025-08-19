@@ -11,7 +11,7 @@ const translation = {
     publishUpdate: 'Publish Update',
     run: 'Test Run',
     running: 'Running',
-    chooseStartNodeToRun: 'Choose the start node to run',
+    chooseStartNodeToRun: 'Choose the entry node to run',
     inRunMode: 'In Run Mode',
     inPreview: 'In Preview',
     inPreviewMode: 'In Preview Mode',
@@ -45,7 +45,7 @@ const translation = {
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
     needEndNode: 'The End node must be added',
-    needStartNode: 'A start node (Start or Trigger) must be added',
+    needStartNode: 'An entry node (User Input or Trigger) must be added',
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
@@ -221,7 +221,7 @@ const translation = {
   },
   tabs: {
     'searchBlock': 'Search node',
-    'start': 'Start',
+    'start': 'User Input',
     'blocks': 'Nodes',
     'searchTool': 'Search tool',
     'tools': 'Tools',
@@ -989,6 +989,10 @@ const translation = {
   triggerStatus: {
     enabled: 'TRIGGER',
     disabled: 'TRIGGER • DISABLED',
+  },
+  entryNodeStatus: {
+    enabled: 'START',
+    disabled: 'START • DISABLED',
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
