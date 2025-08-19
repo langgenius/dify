@@ -711,6 +711,10 @@ const translation = {
     dropImageHere: '여기에 이미지를 드롭하거나',
   },
   you: '너',
+  avatar: {
+    deleteTitle: '아바타 제거하기',
+    deleteDescription: '프로필 사진을 제거하시겠습니까? 귀하의 계정은 기본 초기 아바타를 사용하게 됩니다.',
+  },
 }
 
 export default translation

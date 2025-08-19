@@ -145,13 +145,19 @@ def init_app(app: DifyApp) -> Celery:
                 minutes=dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30
             ),
         }
-    if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:
+    if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),
         }
-
+    if dify_config.WORKFLOW_LOG_CLEANUP_ENABLED:
+        # 2:00 AM every day
+        imports.append("schedule.clean_workflow_runlogs_precise")
+        beat_schedule["clean_workflow_runlogs_precise"] = {
+            "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
+            "schedule": crontab(minute="0", hour="2"),
+        }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app
