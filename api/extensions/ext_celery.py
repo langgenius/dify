@@ -151,7 +151,13 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),
         }
-
+    if dify_config.WORKFLOW_LOG_CLEANUP_ENABLED:
+        # 2:00 AM every day
+        imports.append("schedule.clean_workflow_runlogs_precise")
+        beat_schedule["clean_workflow_runlogs_precise"] = {
+            "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
+            "schedule": crontab(minute="0", hour="2"),
+        }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app
