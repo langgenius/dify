@@ -33,7 +33,7 @@ const translation = {
   appCount: ' 关联应用',
   updated: '更新于',
   createDataset: '创建知识库',
-  createFromPipeline: '通过 RAG Pipeline 创建知识库',
+  createFromPipeline: '通过知识流水线创建知识库',
   noExternalKnowledge: '还没有外部知识库 API，点击此处创建',
   createExternalAPI: '添加外部知识库 API',
   createNewExternalAPI: '创建新的外部知识库 API',

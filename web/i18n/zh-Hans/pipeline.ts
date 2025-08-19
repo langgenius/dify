@@ -5,10 +5,10 @@ const translation = {
     confirmPublish: '确认发布',
     confirmPublishContent: '成功发布知识流水线后，此知识库的分段结构将无法修改。您确定要发布吗？',
     publishAsPipeline: {
-      name: 'Pipeline 名称和图标',
-      namePlaceholder: '请输入此 Pipeline 的名称。 (必填)',
-      description: 'Pipeline 描述',
-      descriptionPlaceholder: '请输入此 Pipeline 的描述。 (可选)',
+      name: '知识流水线名称和图标',
+      namePlaceholder: '请输入此知识流水线的名称。 (必填)',
+      description: '知识流水线描述',
+      descriptionPlaceholder: '请输入此知识流水线的描述。 (可选)',
     },
   },
   inputField: {
@@ -16,8 +16,8 @@ const translation = {
     manage: '管理',
   },
   publishToast: {
-    title: '此 Pipeline 尚未发布',
-    desc: '当 Pipeline 未发布时，您可以修改知识库节点中的分块结构，Pipeline 编排和更改将自动保存为草稿。',
+    title: '此知识流水线尚未发布',
+    desc: '当知识流水线未发布时，您可以修改知识库节点中的分块结构，知识流水线编排和更改将自动保存为草稿。',
   },
 }
 
