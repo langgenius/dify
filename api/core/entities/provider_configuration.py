@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Optional, Any
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
