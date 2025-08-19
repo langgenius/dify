@@ -87,7 +87,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
 
     res = FULL_TEMPLATE.format(
         title=article.title,
-        author=article.auther,
+        author=article.author,
         text=article.text,
     )
 
@@ -97,7 +97,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
 @dataclass
 class Article:
     title: str
-    auther: str
+    author: str
     text: Sequence[dict]
 
 
@@ -105,7 +105,7 @@ def extract_using_readabilipy(html: str):
     json_article: dict[str, Any] = simple_json_from_html_string(html, use_readability=True)
     article = Article(
         title=json_article.get("title") or "",
-        auther=json_article.get("byline") or "",
+        author=json_article.get("byline") or "",
         text=json_article.get("plain_text") or [],
     )
 
