@@ -31,7 +31,6 @@ type Props = {
   condition: Condition
   varType: VarType
   onChange: (condition: Condition) => void
-  varType: VarType
   hasSubVariable: boolean
   readOnly: boolean
   nodeId: string
