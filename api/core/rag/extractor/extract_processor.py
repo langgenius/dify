@@ -1,7 +1,7 @@
-import re
-import tempfile
 import logging
+import re
 import socket
+import tempfile
 from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import unquote
@@ -171,18 +171,13 @@ class ExtractProcessor:
                     return extractor.extract()
                 except Exception as e:  # unified enhanced error handling
                     # Provide friendly guidance for typical Unstructured remote DNS/connection failures
-                    if (
-                        dify_config.ETL_TYPE == "Unstructured"
-                        and (
-                            isinstance(e, socket.gaierror)
-                            or "Name or service not known" in str(e)
-                            or "[Errno -2]" in str(e)
-                        )
+                    if dify_config.ETL_TYPE == "Unstructured" and (
+                        isinstance(e, socket.gaierror)
+                        or "Name or service not known" in str(e)
+                        or "[Errno -2]" in str(e)
                     ):
                         api_url_hint = (
-                            locals().get("unstructured_api_url")
-                            or dify_config.UNSTRUCTURED_API_URL
-                            or "(not set)"
+                            locals().get("unstructured_api_url") or dify_config.UNSTRUCTURED_API_URL or "(not set)"
                         )
                         hint = (
                             "Unstructured document extraction failed: unable to resolve or connect to the Unstructured API host.\n"
