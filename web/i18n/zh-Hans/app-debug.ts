@@ -372,6 +372,7 @@ const translation = {
     'paragraph': '段落',
     'select': '下拉选项',
     'number': '数字',
+    'json': 'JSON 对象',
     'single-file': '单文件',
     'multi-files': '文件列表',
     'notSet': '未设置，在 Prompt 中输入 {{input}} 试试',
