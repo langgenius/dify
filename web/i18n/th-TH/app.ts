@@ -272,6 +272,7 @@ const translation = {
       languageCategoryDesc: 'เปลี่ยนภาษาของอินเทอร์เฟซ',
       themeLightDesc: 'ใช้รูปลักษณ์ที่มีความสว่าง',
       themeSystemDesc: 'ติดตามรูปลักษณ์ของระบบปฏิบัติการของคุณ',
+      slashDesc: 'ใช้คำสั่งเช่น /theme, /lang',
     },
     emptyState: {
       noPluginsFound: 'ไม่พบปลั๊กอิน',
@@ -286,6 +287,7 @@ const translation = {
       knowledgeBases: 'ฐานความรู้',
       plugins: 'ปลั๊กอิน',
       workflowNodes: 'โหนดเวิร์กโฟลว์',
+      commands: 'คำสั่ง',
     },
     searchTitle: 'ค้นหาอะไรก็ได้',
     searchFailed: 'การค้นหาล้มเหลว',
