@@ -223,7 +223,8 @@ docker compose up -d
 使用 [CDK](https://aws.amazon.com/cdk/) 将 Dify 部署到 AWS
 
 ##### AWS 
-- [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### 使用 阿里云计算巢 部署
 
@@ -233,6 +234,9 @@ docker compose up -d
 
 使用 [阿里云数据管理DMS](https://help.aliyun.com/zh/dms/dify-in-invitational-preview) 将 Dify 一键部署到 阿里云
 
+#### 使用 Azure Devops Pipeline 部署到AKS
+
+使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 将 Dify 一键部署到 AKS
 
 ## Star History
 

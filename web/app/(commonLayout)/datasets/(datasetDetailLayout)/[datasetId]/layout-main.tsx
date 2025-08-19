@@ -4,7 +4,6 @@ import React, { useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -44,45 +43,57 @@ type IExtraInfoProps = {
 }
 
 const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
   const docLink = useDocLink()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
 
-  useEffect(() => {
-    setShowTips(!isMobile)
-  }, [isMobile, setShowTips])
-
   return <div>
-    {hasRelatedApps && (
-      <>
-        {!isMobile && (
-          <Tooltip
-            position='right'
-            noDecoration
-            popupContent={
-              <LinkedAppsPanel
-                relatedApps={relatedApps.data}
-                isMobile={isMobile}
-              />
-            }
-          >
-            <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
-              <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
-              <RiInformation2Line className='h-4 w-4' />
-            </div>
-          </Tooltip>
-        )}
+    {/* Related apps for desktop */}
+    <div className={classNames(
+      'transition-all duration-200 ease-in-out',
+      (hasRelatedApps && !isMobile)
+        ? 'w-auto opacity-100'
+        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
+    )}>
+      <Tooltip
+        position='right'
+        noDecoration
+        popupContent={
+          <LinkedAppsPanel
+            relatedApps={relatedApps?.data || []}
+            isMobile={isMobile}
+          />
+        }
+      >
+        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 whitespace-nowrap text-text-secondary'>
+          <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
+          <RiInformation2Line className='h-4 w-4' />
+        </div>
+      </Tooltip>
+    </div>
 
-        {isMobile && <div className={classNames('pb-2 pt-4 text-xs font-medium uppercase text-text-tertiary', 'flex items-center justify-center gap-1 !px-0')}>
-          {relatedAppsTotal || '--'}
-          <PaperClipIcon className='h-4 w-4 text-text-secondary' />
-        </div>}
-      </>
-    )}
-    {!hasRelatedApps && !expand && (
+    {/* Related apps for mobile */}
+    <div className={classNames(
+      'transition-all duration-200 ease-in-out',
+      (hasRelatedApps && isMobile)
+        ? 'w-auto opacity-100'
+        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
+    )}>
+      <div className={classNames('pb-2 pt-4 text-xs font-medium uppercase text-text-tertiary', 'flex items-center justify-center gap-1 whitespace-nowrap !px-0')}>
+        {relatedAppsTotal || '--'}
+        <PaperClipIcon className='h-4 w-4 text-text-secondary' />
+      </div>
+    </div>
+
+    {/* No related apps tooltip */}
+    <div className={classNames(
+      'transition-all duration-200 ease-in-out',
+      (!hasRelatedApps && !expand)
+        ? 'w-auto opacity-100'
+        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
+    )}>
       <Tooltip
         position='right'
         noDecoration
@@ -103,12 +114,12 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           </div>
         }
       >
-        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
+        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 whitespace-nowrap text-text-secondary'>
           <span>{t('common.datasetMenus.noRelatedApp')}</span>
           <RiInformation2Line className='h-4 w-4' />
         </div>
       </Tooltip>
-    )}
+    </div>
   </div>
 }
 

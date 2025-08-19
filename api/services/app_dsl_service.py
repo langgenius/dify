@@ -12,6 +12,7 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging import version
+from packaging.version import parse as parse_version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -269,7 +270,7 @@ class AppDslService:
             check_dependencies_pending_data = None
             if dependencies:
                 check_dependencies_pending_data = [PluginDependency.model_validate(d) for d in dependencies]
-            elif imported_version <= "0.1.5":
+            elif parse_version(imported_version) <= parse_version("0.1.5"):
                 if "workflow" in data:
                     graph = data.get("workflow", {}).get("graph", {})
                     dependencies_list = self._extract_dependencies_from_workflow_graph(graph)

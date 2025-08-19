@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid, { type MermaidConfig } from 'mermaid'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
@@ -117,19 +117,11 @@ const Flowchart = React.forwardRef((props: {
   const [isInitialized, setIsInitialized] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(props.theme || 'light')
   const containerRef = useRef<HTMLDivElement>(null)
-  const chartId = useRef(`mermaid-chart-${Math.random().toString(36).substr(2, 9)}`).current
+  const chartId = useRef(`mermaid-chart-${Math.random().toString(36).slice(2, 11)}`).current
   const [isLoading, setIsLoading] = useState(true)
   const renderTimeoutRef = useRef<NodeJS.Timeout>()
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
-  const [isCodeComplete, setIsCodeComplete] = useState(false)
-  const codeCompletionCheckRef = useRef<NodeJS.Timeout>()
-  const prevCodeRef = useRef<string>()
-
-  // Create cache key from code, style and theme
-  const cacheKey = useMemo(() => {
-    return `${props.PrimitiveCode}-${look}-${currentTheme}`
-  }, [props.PrimitiveCode, look, currentTheme])
 
   /**
    * Renders Mermaid chart
@@ -537,11 +529,9 @@ const Flowchart = React.forwardRef((props: {
       {isLoading && !svgString && (
         <div className='px-[26px] py-4'>
           <LoadingAnim type='text'/>
-          {!isCodeComplete && (
             <div className="mt-2 text-sm text-gray-500">
               {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
             </div>
-          )}
         </div>
       )}
 

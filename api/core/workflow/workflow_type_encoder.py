@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel
@@ -17,6 +18,9 @@ class WorkflowRuntimeTypeConverter:
             return value
         if isinstance(value, (bool, int, str, float)):
             return value
+        if isinstance(value, Decimal):
+            # Convert Decimal to float for JSON serialization
+            return float(value)
         if isinstance(value, Segment):
             return self._to_json_encodable_recursive(value.value)
         if isinstance(value, File):

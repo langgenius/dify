@@ -137,7 +137,7 @@ const translation = {
   menus: {
     status: 'Beta',
     explore: 'สํารวจ',
-    apps: 'เรียน',
+    apps: 'สตูดิโอ',
     plugins: 'ปลั๊กอิน',
     pluginsTips: 'รวมปลั๊กอินของบุคคลที่สามหรือสร้างปลั๊กอิน AI ที่เข้ากันได้กับ ChatGPT',
     datasets: 'ความรู้',
@@ -711,6 +711,10 @@ const translation = {
     supportedFormats: 'รองรับ PNG, JPG, JPEG, WEBP และ GIF',
   },
   you: 'คุณ',
+  avatar: {
+    deleteTitle: 'ลบอวตาร',
+    deleteDescription: 'คุณแน่ใจหรือไม่ว่าต้องการลบรูปโปรไฟล์ของคุณ? บัญชีของคุณจะใช้รูปโปรไฟล์เริ่มต้นตามค่าเริ่มต้น.',
+  },
 }
 
 export default translation

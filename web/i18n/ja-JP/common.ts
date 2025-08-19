@@ -215,7 +215,6 @@ const translation = {
     showAppLength: '{{length}}アプリを表示',
     delete: 'アカウントを削除',
     deleteTip: 'アカウントを削除すると、すべてのデータが完全に消去され、復元できなくなります。',
-    deleteConfirmTip: '確認のため、登録したメールから次の内容をに送信してください ',
     account: 'アカウント',
     myAccount: 'マイアカウント',
     studio: 'スタジオ',
@@ -566,7 +565,7 @@ const translation = {
     overview: '監視',
     promptEng: 'オーケストレート',
     apiAccess: 'API アクセス',
-    logAndAnn: 'ログ＆アナウンス',
+    logAndAnn: 'ログ＆注釈',
     logs: 'ログ',
   },
   environment: {
@@ -715,6 +714,10 @@ const translation = {
     browse: 'ブラウズする',
     supportedFormats: 'PNG、JPG、JPEG、WEBP、および GIF をサポートしています。',
     dropImageHere: 'ここに画像をドロップするか、',
+  },
+  avatar: {
+    deleteTitle: 'アバターを削除する',
+    deleteDescription: '本当にプロフィール写真を削除してもよろしいですか？あなたのアカウントはデフォルトの初期アバターを使用します。',
   },
 }
 

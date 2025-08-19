@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 
 import click
+import sqlalchemy as sa
 from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,7 +33,11 @@ from models import (
 )
 from models.tools import WorkflowToolProvider
 from models.web import PinnedConversation, SavedMessage
-from models.workflow import ConversationVariable, Workflow, WorkflowAppLog
+from models.workflow import (
+    ConversationVariable,
+    Workflow,
+    WorkflowAppLog,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -61,6 +66,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_end_users(tenant_id, app_id)
         _delete_trace_app_configs(tenant_id, app_id)
         _delete_conversation_variables(app_id=app_id)
+        _delete_draft_variables(app_id)
 
         end_at = time.perf_counter()
         logging.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
@@ -90,7 +96,12 @@ def _delete_app_site(tenant_id: str, app_id: str):
     def del_site(site_id: str):
         db.session.query(Site).where(Site.id == site_id).delete(synchronize_session=False)
 
-    _delete_records("""select id from sites where app_id=:app_id limit 1000""", {"app_id": app_id}, del_site, "site")
+    _delete_records(
+        """select id from sites where app_id=:app_id limit 1000""",
+        {"app_id": app_id},
+        del_site,
+        "site",
+    )
 
 
 def _delete_app_mcp_servers(tenant_id: str, app_id: str):
@@ -110,7 +121,10 @@ def _delete_app_api_tokens(tenant_id: str, app_id: str):
         db.session.query(ApiToken).where(ApiToken.id == api_token_id).delete(synchronize_session=False)
 
     _delete_records(
-        """select id from api_tokens where app_id=:app_id limit 1000""", {"app_id": app_id}, del_api_token, "api token"
+        """select id from api_tokens where app_id=:app_id limit 1000""",
+        {"app_id": app_id},
+        del_api_token,
+        "api token",
     )
 
 
@@ -272,7 +286,10 @@ def _delete_app_messages(tenant_id: str, app_id: str):
         db.session.query(Message).where(Message.id == message_id).delete()
 
     _delete_records(
-        """select id from messages where app_id=:app_id limit 1000""", {"app_id": app_id}, del_message, "message"
+        """select id from messages where app_id=:app_id limit 1000""",
+        {"app_id": app_id},
+        del_message,
+        "message",
     )
 
 
@@ -328,10 +345,60 @@ def _delete_trace_app_configs(tenant_id: str, app_id: str):
     )
 
 
+def _delete_draft_variables(app_id: str):
+    """Delete all workflow draft variables for an app in batches."""
+    return delete_draft_variables_batch(app_id, batch_size=1000)
+
+
+def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
+    """
+    Delete draft variables for an app in batches.
+
+    Args:
+        app_id: The ID of the app whose draft variables should be deleted
+        batch_size: Number of records to delete per batch
+
+    Returns:
+        Total number of records deleted
+    """
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+
+    total_deleted = 0
+
+    while True:
+        with db.engine.begin() as conn:
+            # Get a batch of draft variable IDs
+            query_sql = """
+                SELECT id FROM workflow_draft_variables 
+                WHERE app_id = :app_id 
+                LIMIT :batch_size
+            """
+            result = conn.execute(sa.text(query_sql), {"app_id": app_id, "batch_size": batch_size})
+
+            draft_var_ids = [row[0] for row in result]
+            if not draft_var_ids:
+                break
+
+            # Delete the batch
+            delete_sql = """
+                DELETE FROM workflow_draft_variables 
+                WHERE id IN :ids
+            """
+            deleted_result = conn.execute(sa.text(delete_sql), {"ids": tuple(draft_var_ids)})
+            batch_deleted = deleted_result.rowcount
+            total_deleted += batch_deleted
+
+            logging.info(click.style(f"Deleted {batch_deleted} draft variables (batch) for app {app_id}", fg="green"))
+
+    logging.info(click.style(f"Deleted {total_deleted} total draft variables for app {app_id}", fg="green"))
+    return total_deleted
+
+
 def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str) -> None:
     while True:
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(query_sql), params)
+            rs = conn.execute(sa.text(query_sql), params)
             if rs.rowcount == 0:
                 break
 

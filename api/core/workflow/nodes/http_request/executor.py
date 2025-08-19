@@ -91,7 +91,7 @@ class Executor:
         self.auth = node_data.authorization
         self.timeout = timeout
         self.ssl_verify = node_data.ssl_verify
-        self.params = []
+        self.params = None
         self.headers = {}
         self.content = None
         self.files = None
@@ -139,7 +139,8 @@ class Executor:
                 (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value_str).text)
             )
 
-        self.params = result
+        if result:
+            self.params = result
 
     def _init_headers(self):
         """
@@ -265,9 +266,9 @@ class Executor:
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
 
-            if self.auth.config.type == "bearer":
+            if self.auth.config.type == "bearer" and authorization.config.api_key:
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
-            elif self.auth.config.type == "basic":
+            elif self.auth.config.type == "basic" and authorization.config.api_key:
                 credentials = authorization.config.api_key
                 if ":" in credentials:
                     encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
@@ -275,7 +276,32 @@ class Executor:
                     encoded_credentials = credentials
                 headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
-                headers[authorization.config.header] = authorization.config.api_key or ""
+                if authorization.config.header and authorization.config.api_key:
+                    headers[authorization.config.header] = authorization.config.api_key
+
+        # Handle Content-Type for multipart/form-data requests
+        # Fix for issue #23829: Missing boundary when using multipart/form-data
+        body = self.node_data.body
+        if body and body.type == "form-data":
+            # For multipart/form-data with files (including placeholder files),
+            # remove any manually set Content-Type header to let httpx handle
+            # For multipart/form-data, if any files are present (including placeholder files),
+            # we must remove any manually set Content-Type header. This is because httpx needs to
+            # automatically set the Content-Type and boundary for multipart encoding whenever files
+            # are included, even if they are placeholders, to avoid boundary issues and ensure correct
+            # file upload behaviour. Manually setting Content-Type can cause httpx to fail to set the
+            # boundary, resulting in invalid requests.
+            if self.files:
+                # Remove Content-Type if it was manually set to avoid boundary issues
+                headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
+            else:
+                # No files at all, set Content-Type manually
+                if "content-type" not in (k.lower() for k in headers):
+                    headers["Content-Type"] = "multipart/form-data"
+        elif body and body.type in BODY_TYPE_TO_CONTENT_TYPE:
+            # Set Content-Type for other body types
+            if "content-type" not in (k.lower() for k in headers):
+                headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
 
         return headers
 
@@ -384,15 +410,24 @@ class Executor:
         # '__multipart_placeholder__' is inserted to force multipart encoding but is not a real file.
         # This prevents logging meaningless placeholder entries.
         if self.files and not all(f[0] == "__multipart_placeholder__" for f in self.files):
-            for key, (filename, content, mime_type) in self.files:
+            for file_entry in self.files:
+                # file_entry should be (key, (filename, content, mime_type)), but handle edge cases
+                if len(file_entry) != 2 or not isinstance(file_entry[1], tuple) or len(file_entry[1]) < 2:
+                    continue  # skip malformed entries
+                key = file_entry[0]
+                content = file_entry[1][1]
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                # decode content
-                try:
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
-                    # fix: decode binary content
-                    pass
+                # decode content safely
+                if isinstance(content, bytes):
+                    try:
+                        body_string += content.decode("utf-8")
+                    except UnicodeDecodeError:
+                        body_string += content.decode("utf-8", errors="replace")
+                elif isinstance(content, str):
+                    body_string += content
+                else:
+                    body_string += f"[Unsupported content type: {type(content).__name__}]"
                 body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:

@@ -70,7 +70,6 @@ const translation = {
   activated: 'Jetzt anmelden',
   adminInitPassword: 'Admin-Initialpasswort',
   validate: 'Validieren',
-  sso: 'Mit SSO fortfahren',
   checkCode: {
     didNotReceiveCode: 'Sie haben den Code nicht erhalten?',
     verificationCodePlaceholder: 'Geben Sie den 6-stelligen Code ein',
@@ -80,9 +79,9 @@ const translation = {
     useAnotherMethod: 'Verwenden Sie eine andere Methode',
     validTime: 'Beachten Sie, dass der Code 5 Minuten lang gültig ist',
     emptyCode: 'Code ist erforderlich',
-    tips: 'Wir senden einen Verifizierungscode an <strong>{{email}}</strong>',
     invalidCode: 'Ungültiger Code',
     resend: 'Wieder senden',
+    tipsPrefix: 'Wir senden einen Bestätigungscode an',
   },
   or: 'ODER',
   back: 'Zurück',

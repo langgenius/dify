@@ -35,7 +35,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: web/package.json
           run_install: false
 
       - name: Setup Node.js
@@ -48,8 +48,10 @@ jobs:
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm test

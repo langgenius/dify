@@ -203,7 +203,7 @@ const ConditionItem = ({
       onRemoveCondition?.(caseId, condition.id)
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
-  const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+  const handleVarChange = useCallback((valueSelector: ValueSelector, _varItem: Var) => {
     const {
       conversationVariables,
     } = workflowStore.getState()

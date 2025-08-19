@@ -32,6 +32,7 @@ const translation = {
       sync: '同期',
       pause: '一時停止',
       resume: '再開',
+      download: 'ファイルをダウンロード',
     },
     index: {
       enable: '有効にする',

@@ -26,6 +26,7 @@ type TagSelectorProps = {
   selectedTags: Tag[]
   onCacheUpdate: (tags: Tag[]) => void
   onChange?: () => void
+  minWidth?: string
 }
 
 type PanelProps = {
@@ -213,6 +214,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   selectedTags,
   onCacheUpdate,
   onChange,
+  minWidth,
 }) => {
   const { t } = useTranslation()
 
@@ -220,8 +222,13 @@ const TagSelector: FC<TagSelectorProps> = ({
   const setTagList = useTagStore(s => s.setTagList)
 
   const getTagList = async () => {
-    const res = await fetchTagList(type)
-    setTagList(res)
+    try {
+      const res = await fetchTagList(type)
+      setTagList(res)
+    }
+ catch (error) {
+      setTagList([])
+    }
   }
 
   const triggerContent = useMemo(() => {
@@ -231,12 +238,16 @@ const TagSelector: FC<TagSelectorProps> = ({
   }, [selectedTags, tagList])
 
   const Trigger = () => {
+    const hasNoTags = !triggerContent
     return (
       <div className={cn(
         'group/tip relative flex w-full cursor-pointer items-center gap-1 rounded-md px-2 py-[7px] hover:bg-state-base-hover',
       )}>
         <Tag01 className='h-3 w-3 shrink-0 text-components-input-text-placeholder' />
-        <div className='system-sm-regular grow truncate  text-start text-components-input-text-placeholder'>
+        <div className={cn(
+          'system-sm-regular grow truncate text-start',
+          hasNoTags ? 'italic text-components-input-text-placeholder' : 'font-medium text-components-input-text-placeholder',
+        )}>
           {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
       </div>
@@ -266,7 +277,7 @@ const TagSelector: FC<TagSelectorProps> = ({
               '!w-full !border-0 !p-0 !text-text-tertiary hover:!bg-state-base-hover hover:!text-text-secondary',
             )
           }
-          popupClassName='!w-full !ring-0'
+          popupClassName={cn('!w-full !ring-0', minWidth && '!min-w-80')}
           className={'!z-20 h-fit !w-full'}
         />
       )}
