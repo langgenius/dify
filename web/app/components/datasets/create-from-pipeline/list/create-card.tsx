@@ -2,11 +2,42 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddCircleLine } from '@remixicon/react'
 import CreateFromScratchModal from '../create-options/create-from-scratch-modal'
+// import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
+// import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+// import Toast from '@/app/components/base/toast'
+// import { useRouter } from 'next/navigation'
 
 const CreateCard = () => {
   const { t } = useTranslation()
+  // const { push } = useRouter()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
+  // const resetDatasetList = useResetDatasetList()
+
+  // todo: Directly create a pipeline dataset, no need to fill in the form
+  // const handleCreate = useCallback(async () => {
+  //   await createEmptyDataset({}, {
+  //     onSuccess: (data) => {
+  //       if (data) {
+  //         const { id } = data
+  //         Toast.notify({
+  //           type: 'success',
+  //           message: t('datasetPipeline.creation.successTip'),
+  //         })
+  //         resetDatasetList()
+  //         push(`/datasets/${id}/pipeline`)
+  //       }
+  //     },
+  //     onError: () => {
+  //       Toast.notify({
+  //         type: 'error',
+  //         message: t('datasetPipeline.creation.errorTip'),
+  //       })
+  //     },
+  //   })
+  // }, [createEmptyDataset, push, resetDatasetList, t])
 
   const openCreateFromScratch = useCallback(() => {
     setShowCreateModal(true)

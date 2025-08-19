@@ -53,6 +53,7 @@ const TemplateCard = ({
     setShowCreateModal(true)
   }, [])
 
+  // todo: Directly create a pipeline dataset, no need to fill in the form
   const handleUseTemplate = useCallback(async (payload: Omit<CreateDatasetReq, 'yaml_content'>) => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
