@@ -26,13 +26,17 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
 
   if (avatar_url && avatar_url !== 'default') {
     return (
-      <img
-        src={avatar_url}
-        alt={`${name} logo`}
-        width={size}
-        height={size}
-        className={cn('shrink-0 rounded-md border border-divider-regular object-contain', className)}
-      />
+      <div
+        className='flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-divider-regular'
+        style={{ width: `${size}px`, height: `${size}px` }}
+      >
+        <img
+          src={avatar_url}
+          width={size}
+          height={size}
+          className={cn('shrink-0 object-contain', className)}
+        />
+      </div>
     )
   }
 

@@ -107,10 +107,12 @@ const TestRunPanel = () => {
       })
     }
     if (datasourceType === DatasourceType.onlineDrive) {
-      const { bucket } = dataSourceStore.getState()
+      const { bucket, fileList } = dataSourceStore.getState()
+      const file = fileList.find(file => file.id === selectedFileIds[0])
       datasourceInfoList.push({
         bucket,
-        id: selectedFileIds[0],
+        id: file?.id,
+        type: file?.type,
         credential_id: credentialId,
       })
     }

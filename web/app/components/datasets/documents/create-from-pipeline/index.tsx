@@ -209,10 +209,11 @@ const CreateFormPipeline = () => {
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       const { bucket } = dataSourceStore.getState()
-      const { id } = previewOnlineDriveFileRef.current!
+      const { id, type } = previewOnlineDriveFileRef.current!
       datasourceInfoList.push({
         bucket,
         id,
+        type,
         credential_id: currentCredentialId,
       })
     }
@@ -233,7 +234,7 @@ const CreateFormPipeline = () => {
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
       return
-    const { bucket, currentCredentialId } = dataSourceStore.getState()
+    const { bucket, currentCredentialId, fileList: onlineDriveFileList } = dataSourceStore.getState()
     const datasourceInfoList: Record<string, any>[] = []
     if (datasourceType === DatasourceType.localFile) {
       fileList.forEach((file) => {
@@ -273,10 +274,12 @@ const CreateFormPipeline = () => {
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       if (datasourceType === DatasourceType.onlineDrive) {
-        selectedFileIds.forEach((key) => {
+        selectedFileIds.forEach((id) => {
+          const file = onlineDriveFileList.find(file => file.id === id)
           datasourceInfoList.push({
             bucket,
-            key,
+            id: file?.id,
+            type: file?.type,
             credential_id: currentCredentialId,
           })
         })
