@@ -726,7 +726,7 @@ class ProviderManager:
             # Get cached provider model credentials
             cached_provider_model_credentials = provider_model_credentials_cache.get()
 
-            if not cached_provider_model_credentials:
+            if not cached_provider_model_credentials and provider_model_record.encrypted_config:
                 try:
                     provider_model_credentials = json.loads(provider_model_record.encrypted_config)
                 except JSONDecodeError:

@@ -1598,6 +1598,9 @@ class ProviderConfiguration(BaseModel):
                 if len(model_setting.load_balancing_configs) > 1:
                     load_balancing_enabled = True
 
+            if len(model_configuration.available_model_credentials) > 0 and not model_configuration.credentials:
+                status = ModelStatus.CREDENTIAL_REMOVED
+
             provider_models.append(
                 ModelWithProviderEntity(
                     model=custom_model_schema.model,
