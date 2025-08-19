@@ -276,6 +276,7 @@ const translation = {
       themeSystemDesc: 'Theo giao diện của hệ điều hành của bạn',
       runDesc: 'Chạy các lệnh nhanh (chủ đề, ngôn ngữ, ... )',
       themeCategoryDesc: 'Chuyển đổi giao diện ứng dụng',
+      slashDesc: 'Thực hiện các lệnh như /theme, /lang',
     },
     emptyState: {
       noWorkflowNodesFound: 'Không tìm thấy nút quy trình làm việc',
@@ -290,6 +291,7 @@ const translation = {
       workflowNodes: 'Nút quy trình làm việc',
       knowledgeBases: 'Cơ sở kiến thức',
       apps: 'Ứng dụng',
+      commands: 'Lệnh',
     },
     searchTemporarilyUnavailable: 'Tìm kiếm tạm thời không khả dụng',
     clearToSearchAll: 'Xóa @ để tìm kiếm tất cả',

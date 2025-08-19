@@ -717,6 +717,10 @@ const translation = {
     dropImageHere: 'Перетягніть зображення сюди або',
   },
   you: 'Ти',
+  avatar: {
+    deleteTitle: 'Видалити аватар',
+    deleteDescription: 'Ви впевнені, що хочете видалити своє фото профілю? Ваш обліковий запис використовуватиме стандартний початковий аватар.',
+  },
 }
 
 export default translation
