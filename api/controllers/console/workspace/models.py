@@ -117,7 +117,20 @@ class ModelProviderModelApi(Resource):
         )
         parser.add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
         parser.add_argument("config_from", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
         args = parser.parse_args()
+
+        if args.get("config_from", "") == "custom-model":
+            if not args.get("credential_id"):
+                raise ValueError("credential_id is required when configuring a custom-model")
+            service = ModelProviderService()
+            service.switch_active_custom_model_credential(
+                tenant_id=current_user.current_tenant_id,
+                provider=provider,
+                model_type=args["model_type"],
+                model=args["model"],
+                credential_id=args["credential_id"],
+            )
 
         model_load_balancing_service = ModelLoadBalancingService()
 
@@ -375,7 +388,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
         args = parser.parse_args()
 
         service = ModelProviderService()
-        service.switch_active_provider_model_credential(
+        service.add_model_credential_to_model_list(
             tenant_id=current_user.current_tenant_id,
             provider=provider,
             model_type=args["model_type"],
