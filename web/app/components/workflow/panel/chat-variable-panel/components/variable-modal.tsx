@@ -127,7 +127,7 @@ const ChatVariableModal = ({
       case ChatVarType.ArrayString:
       case ChatVarType.ArrayNumber:
       case ChatVarType.ArrayObject:
-        return value?.filter(Boolean) || []
+        return value?.filter((item: any) => item !== null && item !== undefined && item !== '') || []
     }
   }
 
