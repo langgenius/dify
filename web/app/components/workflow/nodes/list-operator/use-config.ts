@@ -45,7 +45,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       isChatMode,
       isConstant: false,
     })
-    let itemVarType = varType
+    let itemVarType
     switch (varType) {
       case VarType.arrayNumber:
         itemVarType = VarType.number

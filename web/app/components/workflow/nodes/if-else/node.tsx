@@ -24,17 +24,14 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         if (!c.comparison_operator)
           return false
 
-        if (isEmptyRelatedOperator(c.comparison_operator!))
-          return true
-
-        return c.varType === VarType.boolean ? true : !!c.value
+        return (c.varType === VarType.boolean || c.varType === VarType.arrayBoolean) ? true : !!c.value
       })
       return isSet
     }
     else {
       if (isEmptyRelatedOperator(condition.comparison_operator!))
         return true
-      return condition.varType === VarType.boolean ? true : !!condition.value
+      return (condition.varType === VarType.boolean || condition.varType === VarType.arrayBoolean) ? true : !!condition.value
     }
   }, [])
   const conditionNotSet = (<div className='flex h-6 items-center space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary'>
