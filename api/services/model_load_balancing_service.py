@@ -333,6 +333,7 @@ class ModelLoadBalancingService:
             enabled = config.get("enabled")
 
             if credential_id:
+                credential_record: ProviderCredential | ProviderModelCredential | None = None
                 if config_from == "predefined-model":
                     credential_record = (
                         db.session.query(ProviderCredential)
@@ -407,6 +408,7 @@ class ModelLoadBalancingService:
 
                 if credential_id:
                     credential_source = "provider" if config_from == "predefined-model" else "custom_model"
+                    assert credential_record is not None
                     load_balancing_model_config = LoadBalancingModelConfig(
                         tenant_id=tenant_id,
                         provider_name=provider_configuration.provider.provider,
