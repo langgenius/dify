@@ -127,7 +127,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          footer={inputs_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2' />}
+          footer={inputs_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2 h-7' />}
         />
         {process_data && (
           <CodeEditor
@@ -146,7 +146,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
-            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className='mx-1 mb-1 mt-2' />}
+            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className='mx-1 mb-1 mt-2 h-7' />}
           />
         )}
       </div>
