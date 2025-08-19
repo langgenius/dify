@@ -203,7 +203,7 @@ class ModelProviderModelCredentialApi(Resource):
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
-        credentials = model_provider_service.get_model_credential(
+        current_credential = model_provider_service.get_model_credential(
             tenant_id=tenant_id,
             provider=provider,
             model_type=args["model_type"],
@@ -228,7 +228,13 @@ class ModelProviderModelCredentialApi(Resource):
 
         return jsonable_encoder(
             {
-                "credentials": credentials,
+                "credentials": current_credential.get("credentials") if current_credential else {},
+                "current_credential_id": current_credential.get("current_credential_id")
+                if current_credential
+                else None,
+                "current_credential_name": current_credential.get("current_credential_name")
+                if current_credential
+                else None,
                 "load_balancing": {"enabled": is_load_balancing_enabled, "configs": load_balancing_configs},
                 "available_credentials": available_credentials,
             }

@@ -758,6 +758,7 @@ class ProviderManager:
                     model_type=ModelType.value_of(provider_model_record.model_type),
                     credentials=provider_model_credentials,
                     current_credential_id=provider_model_record.credential_id,
+                    current_credential_name=provider_model_record.credential_name,
                     available_model_credentials=available_model_credentials,
                 )
             )
