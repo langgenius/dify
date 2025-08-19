@@ -23,6 +23,9 @@ jobs:
           uv run ruff check --fix-only .
           # Format code
           uv run ruff format .
+      - name: ast-grep
+        run: |
+          uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
 
