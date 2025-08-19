@@ -41,6 +41,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         options: [],
         is_context_var,
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'number') {

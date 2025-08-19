@@ -236,6 +236,18 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </Field>
 
           )}
+
+          {/* Default value for text input */}
+          {type === InputVarType.textInput && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Input
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
           {type === InputVarType.select && (
             <>
               <Field title={t('appDebug.variableConfig.options')}>

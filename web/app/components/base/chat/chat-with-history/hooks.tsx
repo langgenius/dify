@@ -251,7 +251,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
       return {
         ...item['text-input'],
-        default: value || item.default,
+        default: value || item.default || item['text-input'].default,
         type: 'text-input',
       }
     })
