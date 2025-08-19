@@ -54,6 +54,7 @@ class ProviderModelWithStatusEntity(ProviderModel):
 
     status: ModelStatus
     load_balancing_enabled: bool = False
+    has_invalid_load_balancing_configs: bool = False
 
     def raise_for_status(self) -> None:
         """
