@@ -656,13 +656,13 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             )
 
-            credential = session.execute(stmt).scalar_one_or_none()
+            credential_record = session.execute(stmt).scalar_one_or_none()
 
-        if not credential or not credential.encrypted_config:
+        if not credential_record or not credential_record.encrypted_config:
             raise ValueError(f"Credential with id {credential_id} not found.")
 
         try:
-            credentials = json.loads(credential.encrypted_config)
+            credentials = json.loads(credential_record.encrypted_config)
         except JSONDecodeError:
             credentials = {}
 
@@ -674,12 +674,20 @@ class ProviderConfiguration(BaseModel):
                 except Exception:
                     pass
 
-        return self.obfuscated_credentials(
+        current_credential_id = credential_record.id
+        current_credential_name = credential_record.credential_name
+        credentials = self.obfuscated_credentials(
             credentials=credentials,
             credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
             if self.provider.model_credential_schema
             else [],
         )
+
+        return {
+            "current_credential_id": current_credential_id,
+            "current_credential_name": current_credential_name,
+            "credentials": credentials,
+        }
 
     def _check_custom_model_credential_name_exists(
         self, model_type: ModelType, model: str, credential_name: str, session: Session, exclude_id: str | None = None
@@ -715,15 +723,24 @@ class ProviderConfiguration(BaseModel):
             )
 
         for model_configuration in self.custom_configuration.models:
-            if model_configuration.model_type == model_type and model_configuration.model == model:
-                credentials = model_configuration.credentials
-
-                return self.obfuscated_credentials(
-                    credentials=credentials,
+            if (
+                model_configuration.model_type == model_type
+                and model_configuration.model == model
+                and model_configuration.credentials
+            ):
+                current_credential_id = model_configuration.current_credential_id
+                current_credential_name = model_configuration.current_credential_name
+                credentials = self.obfuscated_credentials(
+                    credentials=model_configuration.credentials,
                     credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
                     if self.provider.model_credential_schema
                     else [],
                 )
+                return {
+                    "current_credential_id": current_credential_id,
+                    "current_credential_name": current_credential_name,
+                    "credentials": credentials,
+                }
         return None
 
     def validate_custom_model_credentials(
