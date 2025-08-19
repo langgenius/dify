@@ -37,8 +37,13 @@ export type NodeTracing = {
   node_type: BlockEnum
   title: string
   inputs: any
+  inputs_truncated: boolean
   process_data: any
   outputs?: Record<string, any>
+  outputs_truncated: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   status: string
   parallel_run_id?: string
   error?: string

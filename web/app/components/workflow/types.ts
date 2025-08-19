@@ -375,8 +375,13 @@ export type WorkflowRunningData = {
   result: {
     workflow_id?: string
     inputs?: string
+    inputs_truncated: boolean
     process_data?: string
     outputs?: string
+    outputs_truncated: boolean
+    outputs_full_content?: {
+      download_url: string
+    }
     status: string
     error?: string
     elapsed_time?: number

@@ -21,8 +21,13 @@ import LargeDataAlert from '../variable-inspect/large-data-alert'
 export type ResultPanelProps = {
   nodeInfo?: NodeTracing
   inputs?: string
+  inputs_truncated?: boolean
   process_data?: string
   outputs?: string | Record<string, any>
+  outputs_truncated?: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   status: string
   error?: string
   elapsed_time?: number
@@ -43,8 +48,11 @@ export type ResultPanelProps = {
 const ResultPanel: FC<ResultPanelProps> = ({
   nodeInfo,
   inputs,
+  inputs_truncated,
   process_data,
   outputs,
+  outputs_truncated,
+  outputs_full_content,
   status,
   error,
   elapsed_time,
@@ -119,7 +127,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          footer={<LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2' />}
+          footer={inputs_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2' />}
         />
         {process_data && (
           <CodeEditor
@@ -138,7 +146,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
-            footer={<LargeDataAlert textHasNoExport downloadUrl='xxx' className='mx-1 mb-1 mt-2' />}
+            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className='mx-1 mb-1 mt-2' />}
           />
         )}
       </div>
