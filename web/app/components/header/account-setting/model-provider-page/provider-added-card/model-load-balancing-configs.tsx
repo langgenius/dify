@@ -3,22 +3,32 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
+  RiEqualizer2Line,
 } from '@remixicon/react'
-import type { ConfigurationMethodEnum, CustomConfigurationModelFixedFields, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
+import type {
+  Credential,
+  CustomConfigurationModelFixedFields,
+  CustomModelCredential,
+  ModelCredential,
+  ModelLoadBalancingConfig,
+  ModelLoadBalancingConfigEntry,
+  ModelProvider,
+} from '../declarations'
+import { ConfigurationMethodEnum } from '../declarations'
 import Indicator from '../../../indicator'
 import CooldownTimer from './cooldown-timer'
 import classNames from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Edit02, Plus02 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import { useModalContextSelector } from '@/context/modal-context'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import GridMask from '@/app/components/base/grid-mask'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { IS_CE_EDITION } from '@/config'
+import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { useModelModalHandler } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig
@@ -28,19 +38,26 @@ export type ModelLoadBalancingConfigsProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   withSwitch?: boolean
   className?: string
+  modelCredential: ModelCredential
+  onUpdate?: () => void
+  model: CustomModelCredential
 }
 
 const ModelLoadBalancingConfigs = ({
   draftConfig,
   setDraftConfig,
   provider,
+  model,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
   withSwitch = false,
   className,
+  modelCredential,
+  onUpdate,
 }: ModelLoadBalancingConfigsProps) => {
   const { t } = useTranslation()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
+  const handleOpenModal = useModelModalHandler()
 
   const updateConfigEntry = useCallback(
     (
@@ -65,6 +82,21 @@ const ModelLoadBalancingConfigs = ({
     [setDraftConfig],
   )
 
+  const addConfigEntry = useCallback((credential: Credential) => {
+    setDraftConfig((prev: any) => {
+      if (!prev)
+        return prev
+      return {
+        ...prev,
+        configs: [...prev.configs, {
+          credential_id: credential.credential_id,
+          enabled: true,
+          name: credential.credential_name,
+        }],
+      }
+    })
+  }, [setDraftConfig])
+
   const toggleModalBalancing = useCallback((enabled: boolean) => {
     if ((modelLoadBalancingEnabled || !enabled) && draftConfig) {
       setDraftConfig({
@@ -80,54 +112,6 @@ const ModelLoadBalancingConfigs = ({
       enabled: typeof state === 'boolean' ? state : !entry.enabled,
     }))
   }, [updateConfigEntry])
-
-  const setShowModelLoadBalancingEntryModal = useModalContextSelector(state => state.setShowModelLoadBalancingEntryModal)
-
-  const toggleEntryModal = useCallback((index?: number, entry?: ModelLoadBalancingConfigEntry) => {
-    setShowModelLoadBalancingEntryModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields,
-        entry,
-        index,
-      },
-      onSaveCallback: ({ entry: result }) => {
-        if (entry) {
-          // edit
-          setDraftConfig(prev => ({
-            ...prev,
-            enabled: !!prev?.enabled,
-            configs: prev?.configs.map((config, i) => i === index ? result! : config) || [],
-          }))
-        }
-        else {
-          // add
-          setDraftConfig(prev => ({
-            ...prev,
-            enabled: !!prev?.enabled,
-            configs: (prev?.configs || []).concat([{ ...result!, enabled: true }]),
-          }))
-        }
-      },
-      onRemoveCallback: ({ index }) => {
-        if (index !== undefined && (draftConfig?.configs?.length ?? 0) > index) {
-          setDraftConfig(prev => ({
-            ...prev,
-            enabled: !!prev?.enabled,
-            configs: prev?.configs.filter((_, i) => i !== index) || [],
-          }))
-        }
-      },
-    })
-  }, [
-    configurationMethod,
-    currentCustomConfigurationModelFixedFields,
-    draftConfig?.configs?.length,
-    provider,
-    setDraftConfig,
-    setShowModelLoadBalancingEntryModal,
-  ])
 
   const clearCountdown = useCallback((index: number) => {
     updateConfigEntry(index, ({ ttl: _, ...entry }) => {
@@ -210,9 +194,21 @@ const ModelLoadBalancingConfigs = ({
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
                           <span
                             className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
-                            onClick={() => toggleEntryModal(index, config)}
+                            onClick={() => {
+                              handleOpenModal(
+                                provider,
+                                configurationMethod,
+                                currentCustomConfigurationModelFixedFields,
+                                configurationMethod === ConfigurationMethodEnum.customizableModel,
+                                (config.credential_id && config.name) ? {
+                                  credential_id: config.credential_id,
+                                  credential_name: config.name,
+                                } : undefined,
+                                model,
+                              )
+                            }}
                           >
-                            <Edit02 className='h-4 w-4' />
+                            <RiEqualizer2Line className='h-4 w-4' />
                           </span>
                           <span
                             className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
@@ -234,20 +230,19 @@ const ModelLoadBalancingConfigs = ({
                 </div>
               )
             })}
-
-            <div
-              className='mt-1 flex h-8 items-center px-3 text-[13px] font-medium text-primary-600'
-              onClick={() => toggleEntryModal()}
-            >
-              <div className='flex cursor-pointer items-center'>
-                <Plus02 className='mr-2 h-3 w-3' />{t('common.modelProvider.addConfig')}
-              </div>
-            </div>
+            <AddCredentialInLoadBalancing
+              provider={provider}
+              model={model}
+              configurationMethod={configurationMethod}
+              modelCredential={modelCredential}
+              onSelectCredential={addConfigEntry}
+              onUpdate={onUpdate}
+            />
           </div>
         )}
         {
           draftConfig.enabled && draftConfig.configs.length < 2 && (
-            <div className='flex h-[34px] items-center border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary'>
+            <div className='flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary'>
               <AlertTriangle className='mr-1 h-3 w-3 text-[#f79009]' />
               {t('common.modelProvider.loadBalancingLeastKeyWarning')}
             </div>

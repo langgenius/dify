@@ -181,6 +181,27 @@ export type QuotaConfiguration = {
   is_valid: boolean
 }
 
+export type Credential = {
+  credential_id: string
+  credential_name?: string
+}
+
+export type CustomModel = {
+  model: string
+  model_type: ModelTypeEnum
+}
+
+export type CustomModelCredential = CustomModel & {
+  credentials?: Record<string, any>
+  available_model_credentials?: Credential[]
+  current_credential_id?: string
+}
+
+export type CredentialWithModel = Credential & {
+  model: string
+  model_type: ModelTypeEnum
+}
+
 export type ModelProvider = {
   provider: string
   label: TypeWithI18N
@@ -207,6 +228,10 @@ export type ModelProvider = {
   preferred_provider_type: PreferredProviderTypeEnum
   custom_configuration: {
     status: CustomConfigurationStatusEnum
+    current_credential_id?: string
+    current_credential_name?: string
+    available_credentials?: Credential[]
+    custom_models?: CustomModelCredential[]
   }
   system_configuration: {
     enabled: boolean
@@ -272,9 +297,22 @@ export type ModelLoadBalancingConfigEntry = {
   in_cooldown?: boolean
   /** cooldown time (in seconds) */
   ttl?: number
+  credential_id?: string
 }
 
 export type ModelLoadBalancingConfig = {
   enabled: boolean
   configs: ModelLoadBalancingConfigEntry[]
+}
+
+export type ProviderCredential = {
+  credentials: Record<string, any>
+  name: string
+  credential_id: string
+}
+
+export type ModelCredential = {
+  credentials: Record<string, any>
+  load_balancing: ModelLoadBalancingConfig
+  available_credentials: Credential[]
 }

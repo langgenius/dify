@@ -2,43 +2,20 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
-  useEffect,
-  useMemo,
-  useState,
+  useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiErrorWarningFill,
-} from '@remixicon/react'
 import type {
-  CredentialFormSchema,
-  CredentialFormSchemaRadio,
-  CredentialFormSchemaSelect,
   CustomConfigurationModelFixedFields,
-  FormValue,
-  ModelLoadBalancingConfig,
-  ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
 import {
   ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
   FormTypeEnum,
 } from '../declarations'
 import {
-  genModelNameFormSchema,
-  genModelTypeFormSchema,
-  removeCredentials,
-  saveCredentials,
-} from '../utils'
-import {
   useLanguage,
-  useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
-import { useValidate } from '../../key-validator/hooks'
-import { ValidatedStatus } from '../../key-validator/declarations'
-import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
-import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -46,9 +23,23 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
 import { useAppContext } from '@/context/app-context'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
+import { useModelFormSchemas } from '../model-auth/hooks'
+import type {
+  Credential,
+  CustomModel,
+} from '../declarations'
+import Loading from '@/app/components/base/loading'
+import {
+  useAuth,
+  useCredentialData,
+} from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -56,6 +47,9 @@ type ModelModalProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   onCancel: () => void
   onSave: () => void
+  model?: CustomModel
+  credential?: Credential
+  isModelCredential?: boolean
 }
 
 const ModelModal: FC<ModelModalProps> = ({
@@ -64,210 +58,71 @@ const ModelModal: FC<ModelModalProps> = ({
   currentCustomConfigurationModelFixedFields,
   onCancel,
   onSave,
+  model,
+  credential,
+  isModelCredential,
 }) => {
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const {
+    isLoading,
+    credentialData,
+  } = useCredentialData(provider, providerFormSchemaPredefined, isModelCredential, credential, model)
+  const {
+    handleSaveCredential,
+    handleConfirmDelete,
+    deleteCredentialId,
+    closeConfirmDelete,
+    openConfirmDelete,
+    doingAction,
+  } = useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, isModelCredential, onSave)
+  const {
     credentials: formSchemasValue,
-    loadBalancing: originalConfig,
-    mutate,
-  } = useProviderCredentialsAndLoadBalancing(
-    provider.provider,
-    configurateMethod,
-    providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
-    currentCustomConfigurationModelFixedFields,
-  )
+  } = credentialData as any
+
   const { isCurrentWorkspaceManager } = useAppContext()
   const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const language = useLanguage()
-  const [loading, setLoading] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
+  const {
+    formSchemas,
+    formValues,
+  } = useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
+  const formRef = useRef<FormRefObject>(null)
 
-  const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
-  const originalConfigMap = useMemo(() => {
-    if (!originalConfig)
-      return {}
-    return originalConfig?.configs.reduce((prev, config) => {
-      if (config.id)
-        prev[config.id] = config
-      return prev
-    }, {} as Record<string, ModelLoadBalancingConfigEntry>)
-  }, [originalConfig])
-  useEffect(() => {
-    if (originalConfig && !draftConfig)
-      setDraftConfig(originalConfig)
-  }, [draftConfig, originalConfig])
+  const handleSave = useCallback(async () => {
+    const {
+      isCheckValidated,
+      values,
+    } = formRef.current?.getFormValues({
+      needCheckValidatedValues: true,
+      needTransformWhenSecretFieldIsPristine: true,
+    }) || { isCheckValidated: false, values: {} }
+    if (!isCheckValidated)
+      return
 
-  const formSchemas = useMemo(() => {
-    return providerFormSchemaPredefined
-      ? provider.provider_credential_schema.credential_form_schemas
-      : [
-        genModelTypeFormSchema(provider.supported_model_types),
-        genModelNameFormSchema(provider.model_credential_schema?.model),
-        ...(draftConfig?.enabled ? [] : provider.model_credential_schema.credential_form_schemas),
-      ]
-  }, [
-    providerFormSchemaPredefined,
-    provider.provider_credential_schema?.credential_form_schemas,
-    provider.supported_model_types,
-    provider.model_credential_schema?.credential_form_schemas,
-    provider.model_credential_schema?.model,
-    draftConfig?.enabled,
-  ])
-  const [
-    requiredFormSchemas,
-    defaultFormSchemaValue,
-    showOnVariableMap,
-  ] = useMemo(() => {
-    const requiredFormSchemas: CredentialFormSchema[] = []
-    const defaultFormSchemaValue: Record<string, string | number> = {}
-    const showOnVariableMap: Record<string, string[]> = {}
-
-    formSchemas.forEach((formSchema) => {
-      if (formSchema.required)
-        requiredFormSchemas.push(formSchema)
-
-      if (formSchema.default)
-        defaultFormSchemaValue[formSchema.variable] = formSchema.default
-
-      if (formSchema.show_on.length) {
-        formSchema.show_on.forEach((showOnItem) => {
-          if (!showOnVariableMap[showOnItem.variable])
-            showOnVariableMap[showOnItem.variable] = []
-
-          if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-            showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-        })
-      }
-
-      if (formSchema.type === FormTypeEnum.select || formSchema.type === FormTypeEnum.radio) {
-        (formSchema as (CredentialFormSchemaRadio | CredentialFormSchemaSelect)).options.forEach((option) => {
-          if (option.show_on.length) {
-            option.show_on.forEach((showOnItem) => {
-              if (!showOnVariableMap[showOnItem.variable])
-                showOnVariableMap[showOnItem.variable] = []
-
-              if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-                showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-            })
-          }
-        })
-      }
-    })
-
-    return [
-      requiredFormSchemas,
-      defaultFormSchemaValue,
-      showOnVariableMap,
-    ]
-  }, [formSchemas])
-  const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
-    return {
-      ...defaultFormSchemaValue,
-      ...formSchemasValue,
-    } as unknown as Record<string, string | number>
-  }, [formSchemasValue, defaultFormSchemaValue])
-  const [value, setValue] = useState(initialFormSchemasValue)
-  useEffect(() => {
-    setValue(initialFormSchemasValue)
-  }, [initialFormSchemasValue])
-  const [_, validating, validatedStatusState] = useValidate(value)
-  const filteredRequiredFormSchemas = requiredFormSchemas.filter((requiredFormSchema) => {
-    if (requiredFormSchema.show_on.length && requiredFormSchema.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
-      return true
-
-    if (!requiredFormSchema.show_on.length)
-      return true
-
-    return false
-  })
-
-  const handleValueChange = (v: FormValue) => {
-    setValue(v)
-  }
-
-  const extendedSecretFormSchemas = useMemo(
-    () =>
-      (providerFormSchemaPredefined
-        ? provider.provider_credential_schema.credential_form_schemas
-        : [
-          genModelTypeFormSchema(provider.supported_model_types),
-          genModelNameFormSchema(provider.model_credential_schema?.model),
-          ...provider.model_credential_schema.credential_form_schemas,
-        ]).filter(({ type }) => type === FormTypeEnum.secretInput),
-    [
-      provider.model_credential_schema?.credential_form_schemas,
-      provider.model_credential_schema?.model,
-      provider.provider_credential_schema?.credential_form_schemas,
-      provider.supported_model_types,
-      providerFormSchemaPredefined,
-    ],
-  )
-
-  const encodeSecretValues = useCallback((v: FormValue) => {
-    const result = { ...v }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (result[variable] === formSchemasValue?.[variable] && result[variable] !== undefined)
-        result[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, formSchemasValue])
-
-  const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
-    const result = { ...entry }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (entry.id && result.credentials[variable] === originalConfigMap[entry.id]?.credentials?.[variable])
-        result.credentials[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, originalConfigMap])
-
-  const handleSave = async () => {
-    try {
-      setLoading(true)
-      const res = await saveCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        encodeSecretValues(value),
-        {
-          ...draftConfig,
-          enabled: Boolean(draftConfig?.enabled),
-          configs: draftConfig?.configs.map(encodeConfigEntrySecretValues) || [],
-        },
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
-        onSave()
-        onCancel()
-      }
+    const {
+      __authorization_name__,
+      __model_name,
+      __model_type,
+      ...rest
+    } = values
+    if (__model_name && __model_type) {
+      handleSaveCredential({
+        credential_id: credential?.credential_id,
+        credentials: rest,
+        name: __authorization_name__,
+        model: __model_name,
+        model_type: __model_type,
+      })
     }
-    finally {
-      setLoading(false)
+    else {
+      handleSaveCredential({
+        credential_id: credential?.credential_id,
+        credentials: rest,
+        name: __authorization_name__,
+      })
     }
-  }
-
-  const handleRemove = async () => {
-    try {
-      setLoading(true)
-
-      const res = await removeCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        value,
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
-        onSave()
-        onCancel()
-      }
-    }
-    finally {
-      setLoading(false)
-    }
-  }
+  }, [handleSaveCredential, credential?.credential_id, model])
 
   const renderTitlePrefix = () => {
     const prefix = isEditMode ? t('common.operation.setup') : t('common.operation.add')
@@ -285,23 +140,29 @@ const ModelModal: FC<ModelModalProps> = ({
               </div>
 
               <div className='max-h-[calc(100vh-320px)] overflow-y-auto'>
-                <Form
-                  value={value}
-                  onChange={handleValueChange}
-                  formSchemas={formSchemas}
-                  validating={validating}
-                  validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
-                  showOnVariableMap={showOnVariableMap}
-                  isEditMode={isEditMode}
-                />
-                <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
-                <ModelLoadBalancingConfigs withSwitch {...{
-                  draftConfig,
-                  setDraftConfig,
-                  provider,
-                  currentCustomConfigurationModelFixedFields,
-                  configurationMethod: configurateMethod,
-                }} />
+                {
+                  isLoading && (
+                    <div className='flex items-center justify-center'>
+                      <Loading />
+                    </div>
+                  )
+                }
+                {
+                  !isLoading && (
+                    <AuthForm
+                      formSchemas={formSchemas.map((formSchema) => {
+                        return {
+                          ...formSchema,
+                          name: formSchema.variable,
+                          showRadioUI: formSchema.type === FormTypeEnum.radio,
+                        }
+                      }) as FormSchema[]}
+                      defaultValues={formValues}
+                      inputClassName='justify-start'
+                      ref={formRef}
+                    />
+                  )
+                }
               </div>
 
               <div className='sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-between gap-y-2 bg-components-panel-bg px-2 pb-6 pt-4'>
@@ -327,7 +188,7 @@ const ModelModal: FC<ModelModalProps> = ({
                         variant='warning'
                         size='large'
                         className='mr-2'
-                        onClick={() => setShowConfirm(true)}
+                        onClick={() => openConfirmDelete(credential, model)}
                       >
                         {t('common.operation.remove')}
                       </Button>
@@ -344,12 +205,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     size='large'
                     variant='primary'
                     onClick={handleSave}
-                    disabled={
-                      loading
-                      || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)
-                      || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
-                    }
-
+                    disabled={isLoading || doingAction}
                   >
                     {t('common.operation.save')}
                   </Button>
@@ -357,38 +213,28 @@ const ModelModal: FC<ModelModalProps> = ({
               </div>
             </div>
             <div className='border-t-[0.5px] border-t-divider-regular'>
-              {
-                (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
-                  ? (
-                    <div className='flex bg-background-section-burn px-[10px] py-3 text-xs text-[#D92D20]'>
-                      <RiErrorWarningFill className='mr-2 mt-[1px] h-[14px] w-[14px]' />
-                      {validatedStatusState.message}
-                    </div>
-                  )
-                  : (
-                    <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
-                      <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
-                      {t('common.modelProvider.encrypted.front')}
-                      <a
-                        className='mx-1 text-text-accent'
-                        target='_blank' rel='noopener noreferrer'
-                        href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-                      >
-                        PKCS1_OAEP
-                      </a>
-                      {t('common.modelProvider.encrypted.back')}
-                    </div>
-                  )
-              }
+              <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
+                <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
+                {t('common.modelProvider.encrypted.front')}
+                <a
+                  className='mx-1 text-text-accent'
+                  target='_blank' rel='noopener noreferrer'
+                  href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
+                >
+                  PKCS1_OAEP
+                </a>
+                {t('common.modelProvider.encrypted.back')}
+              </div>
             </div>
           </div>
           {
-            showConfirm && (
+            deleteCredentialId && (
               <Confirm
+                isShow
                 title={t('common.modelProvider.confirmDelete')}
-                isShow={showConfirm}
-                onCancel={() => setShowConfirm(false)}
-                onConfirm={handleRemove}
+                isDisabled={doingAction}
+                onCancel={closeConfirmDelete}
+                onConfirm={handleConfirmDelete}
               />
             )
           }
