@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 
 export type EntryNodeStatus = 'enabled' | 'disabled'
 
@@ -27,7 +28,7 @@ const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
 
     return {
       label: customLabel || (isDisabled ? t(`workflow.${translationKey}.disabled`) : t(`workflow.${translationKey}.enabled`)),
-      indicatorColor: isDisabled ? 'gray' : 'green',
+      dotColor: isDisabled ? 'bg-text-tertiary' : 'bg-green-500',
     }
   }, [status, customLabel, nodeType, t])
 
@@ -35,13 +36,9 @@ const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
     <div className="w-[242px] rounded-2xl bg-workflow-block-wrapper-bg-1 px-0 pb-0 pt-0.5">
       <div className="mb-0.5 flex items-center px-1.5 pt-0.5">
         {showIndicator && (
-          <div className={`mr-0.5 h-2 w-2 rounded-[3px] border border-solid ${
-            statusConfig.indicatorColor === 'gray'
-              ? 'border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg'
-              : 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg'
-          }`} />
+          <div className={cn('ml-0.5 mr-0.5 h-1.5 w-1.5 rounded-sm border border-black/15', statusConfig.dotColor)} />
         )}
-        <span className="text-2xs font-semibold uppercase text-text-tertiary">
+        <span className={`text-2xs font-semibold uppercase text-text-tertiary ${!showIndicator ? 'ml-1.5' : ''}`}>
           {statusConfig.label}
         </span>
       </div>

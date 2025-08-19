@@ -239,7 +239,7 @@ const translation = {
     'addAll': 'Add all',
   },
   blocks: {
-    'start': 'Start',
+    'start': 'User Input',
     'end': 'End',
     'answer': 'Answer',
     'llm': 'LLM',
