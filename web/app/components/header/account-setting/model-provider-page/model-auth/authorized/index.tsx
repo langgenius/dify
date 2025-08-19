@@ -100,11 +100,13 @@ const Authorized = ({
   }, [handleOpenModal, setMergedIsOpen])
 
   const handleItemClick = useCallback((credential: Credential, model?: CustomModel) => {
-    if (!onItemClick)
-      return handleActiveCredential(credential, model)
+    if (onItemClick)
+      onItemClick(credential, model)
+    else
+      handleActiveCredential(credential, model)
 
-    onItemClick?.(credential, model)
-  }, [handleActiveCredential, onItemClick])
+    setMergedIsOpen(false)
+  }, [handleActiveCredential, onItemClick, setMergedIsOpen])
 
   return (
     <>
