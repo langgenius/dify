@@ -37,7 +37,7 @@ def clean_workflow_runlogs_precise():
     cutoff_date = datetime.datetime.now() - datetime.timedelta(days=retention_days)
 
     try:
-        total_workflow_runs = db.session.query(WorkflowRun).filter(WorkflowRun.created_at < cutoff_date).count()
+        total_workflow_runs = db.session.query(WorkflowRun).where(WorkflowRun.created_at < cutoff_date).count()
         if total_workflow_runs == 0:
             _logger.info("No expired workflow run logs found")
             return
@@ -49,7 +49,7 @@ def clean_workflow_runlogs_precise():
 
         while True:
             workflow_runs = (
-                db.session.query(WorkflowRun.id).filter(WorkflowRun.created_at < cutoff_date).limit(BATCH_SIZE).all()
+                db.session.query(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).limit(BATCH_SIZE).all()
             )
 
             if not workflow_runs:
@@ -99,52 +99,44 @@ def _delete_batch_with_retry(workflow_run_ids: list[str], attempt_count: int) ->
             message_id_list = [msg.id for msg in message_data]
             conversation_id_list = list({msg.conversation_id for msg in message_data if msg.conversation_id})
             if message_id_list:
-                db.session.query(AppAnnotationHitHistory).filter(
-                    AppAnnotationHitHistory.message_id.in_(message_id_list)
-                ).delete(synchronize_session=False)
+                db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id.in_(message_id_list)).delete(synchronize_session=False)
 
-                db.session.query(MessageAgentThought).filter(
-                    MessageAgentThought.message_id.in_(message_id_list)
-                ).delete(synchronize_session=False)
+                db.session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(message_id_list)).delete(synchronize_session=False)
 
-                db.session.query(MessageChain).filter(MessageChain.message_id.in_(message_id_list)).delete(
+                db.session.query(MessageChain).where(MessageChain.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(MessageFile).filter(MessageFile.message_id.in_(message_id_list)).delete(
+                db.session.query(MessageFile).where(MessageFile.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(MessageAnnotation).filter(MessageAnnotation.message_id.in_(message_id_list)).delete(
+                db.session.query(MessageAnnotation).where(MessageAnnotation.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(MessageFeedback).filter(MessageFeedback.message_id.in_(message_id_list)).delete(
+                db.session.query(MessageFeedback).where(MessageFeedback.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(Message).filter(Message.workflow_run_id.in_(workflow_run_ids)).delete(
+                db.session.query(Message).where(Message.workflow_run_id.in_(workflow_run_ids)).delete(
                     synchronize_session=False
                 )
 
-            db.session.query(WorkflowAppLog).filter(WorkflowAppLog.workflow_run_id.in_(workflow_run_ids)).delete(
+            db.session.query(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(workflow_run_ids)).delete(
                 synchronize_session=False
             )
 
-            db.session.query(WorkflowNodeExecutionModel).filter(
-                WorkflowNodeExecutionModel.workflow_run_id.in_(workflow_run_ids)
-            ).delete(synchronize_session=False)
+            db.session.query(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id.in_(workflow_run_ids)).delete(synchronize_session=False)
 
             if conversation_id_list:
-                db.session.query(ConversationVariable).filter(
-                    ConversationVariable.conversation_id.in_(conversation_id_list)
-                ).delete(synchronize_session=False)
+                db.session.query(ConversationVariable).where(ConversationVariable.conversation_id.in_(conversation_id_list)).delete(synchronize_session=False)
 
-                db.session.query(Conversation).filter(Conversation.id.in_(conversation_id_list)).delete(
+                db.session.query(Conversation).where(Conversation.id.in_(conversation_id_list)).delete(
                     synchronize_session=False
                 )
 
-            db.session.query(WorkflowRun).filter(WorkflowRun.id.in_(workflow_run_ids)).delete(synchronize_session=False)
+            db.session.query(WorkflowRun).where(WorkflowRun.id.in_(workflow_run_ids)).delete(synchronize_session=False)
 
         db.session.commit()
         return True
