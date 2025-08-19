@@ -3,7 +3,7 @@ import type { HeaderProps } from '@/app/components/workflow/header'
 import Header from '@/app/components/workflow/header'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ChatVariableTrigger from './chat-variable-trigger'
-import FeaturesTrigger from './features-trigger'
+import AppPublisherTrigger from './app-publisher-trigger'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const WorkflowHeader = () => {
@@ -15,7 +15,7 @@ const WorkflowHeader = () => {
       normal: {
         components: {
           left: <ChatVariableTrigger />,
-          middle: <FeaturesTrigger />,
+          middle: <AppPublisherTrigger />,
         },
       },
       restoring: {
