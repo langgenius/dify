@@ -28,6 +28,7 @@ from core.rag.extractor.unstructured.unstructured_pptx_extractor import Unstruct
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
 from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
+from core.rag.extractor.pptx_extractor import PPTXExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
 from models.model import UploadFile
@@ -155,6 +156,8 @@ class ExtractProcessor:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                    elif file_extension == ".pptx":
+                        extractor = PPTXExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":

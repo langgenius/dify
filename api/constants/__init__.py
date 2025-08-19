@@ -34,6 +34,7 @@ else:
         "xlsx",
         "xls",
         "docx",
+        "pptx",
         "csv",
         "vtt",
         "properties",
