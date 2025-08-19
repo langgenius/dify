@@ -221,7 +221,7 @@ const translation = {
   },
   tabs: {
     'searchBlock': 'Search node',
-    'start': 'User Input',
+    'start': 'Start',
     'blocks': 'Nodes',
     'searchTool': 'Search tool',
     'tools': 'Tools',
