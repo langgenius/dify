@@ -1,5 +1,7 @@
 import re
 import tempfile
+import logging
+import socket
 from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import unquote
@@ -37,6 +39,9 @@ USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124"
     " Safari/537.36"
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExtractProcessor:
@@ -162,7 +167,36 @@ class ExtractProcessor:
                     else:
                         # txt
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
-                return extractor.extract()
+                try:
+                    return extractor.extract()
+                except Exception as e:  # 统一增强错误信息
+                    # 针对 Unstructured 远程调用的典型 DNS/连接失败，提供友好指引
+                    if (
+                        dify_config.ETL_TYPE == "Unstructured"
+                        and (
+                            isinstance(e, socket.gaierror)
+                            or "Name or service not known" in str(e)
+                            or "[Errno -2]" in str(e)
+                        )
+                    ):
+                        api_url_hint = locals().get("unstructured_api_url") or dify_config.UNSTRUCTURED_API_URL or "(未配置)"
+                        hint = (
+                            "Unstructured document extraction failed: unable to resolve or connect to the Unstructured API host.\n"
+                            f"UNSTRUCTURED_API_URL={api_url_hint}\n"
+                            "Possible causes:\n"
+                            " 1) 'unstructured' service is defined under 'profiles' but the profile was NOT enabled (container never started, so DNS name is unknown).\n"
+                            " 2) UNSTRUCTURED_API_URL is misspelled or its DNS record is not resolvable from the container.\n"
+                            " 3) Container network / DNS configuration issue.\n"
+                            "Troubleshooting steps:\n"
+                            " a) docker compose ps | grep unstructured  (ensure it shows Up).\n"
+                            " b) Inside API container: getent hosts <host>  or  ping -c1 <host>.\n"
+                            " c) Confirm ETL_TYPE=Unstructured and UNSTRUCTURED_API_URL point to the intended host.\n"
+                            " d) If using profiles: docker compose --profile unstructured up -d  (or remove the 'profiles' line to always start).\n"
+                            f"Original error: {e}"
+                        )
+                        logger.error(hint)
+                        raise RuntimeError(hint) from e
+                    raise
         elif extract_setting.datasource_type == DatasourceType.NOTION.value:
             assert extract_setting.notion_info is not None, "notion_info is required"
             extractor = NotionExtractor(
