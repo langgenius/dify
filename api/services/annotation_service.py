@@ -293,7 +293,9 @@ class AppAnnotationService:
         annotation_ids_to_delete = [annotation.id for annotation, _ in annotations_to_delete]
 
         # Step 2: Bulk delete hit histories in a single query
-        db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)).delete(synchronize_session=False)
+        db.session.query(AppAnnotationHitHistory).where(
+            AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)
+        ).delete(synchronize_session=False)
 
         # Step 3: Trigger async tasks for search index deletion
         for annotation, annotation_setting in annotations_to_delete:
@@ -304,7 +306,8 @@ class AppAnnotationService:
 
         # Step 4: Bulk delete annotations in a single query
         deleted_count = (
-            db.session.query(MessageAnnotation).where(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            db.session.query(MessageAnnotation)
+            .where(MessageAnnotation.id.in_(annotation_ids_to_delete))
             .delete(synchronize_session=False)
         )
 
@@ -504,7 +507,9 @@ class AppAnnotationService:
 
         annotations_query = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id)
         for annotation in annotations_query.yield_per(100):
-            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation.id)
+            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).where(
+                AppAnnotationHitHistory.annotation_id == annotation.id
+            )
             for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
                 db.session.delete(annotation_hit_history)
 

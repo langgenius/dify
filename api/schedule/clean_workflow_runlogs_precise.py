@@ -99,9 +99,13 @@ def _delete_batch_with_retry(workflow_run_ids: list[str], attempt_count: int) ->
             message_id_list = [msg.id for msg in message_data]
             conversation_id_list = list({msg.conversation_id for msg in message_data if msg.conversation_id})
             if message_id_list:
-                db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id.in_(message_id_list)).delete(synchronize_session=False)
+                db.session.query(AppAnnotationHitHistory).where(
+                    AppAnnotationHitHistory.message_id.in_(message_id_list)
+                ).delete(synchronize_session=False)
 
-                db.session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(message_id_list)).delete(synchronize_session=False)
+                db.session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(message_id_list)).delete(
+                    synchronize_session=False
+                )
 
                 db.session.query(MessageChain).where(MessageChain.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
@@ -127,10 +131,14 @@ def _delete_batch_with_retry(workflow_run_ids: list[str], attempt_count: int) ->
                 synchronize_session=False
             )
 
-            db.session.query(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id.in_(workflow_run_ids)).delete(synchronize_session=False)
+            db.session.query(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.workflow_run_id.in_(workflow_run_ids)
+            ).delete(synchronize_session=False)
 
             if conversation_id_list:
-                db.session.query(ConversationVariable).where(ConversationVariable.conversation_id.in_(conversation_id_list)).delete(synchronize_session=False)
+                db.session.query(ConversationVariable).where(
+                    ConversationVariable.conversation_id.in_(conversation_id_list)
+                ).delete(synchronize_session=False)
 
                 db.session.query(Conversation).where(Conversation.id.in_(conversation_id_list)).delete(
                     synchronize_session=False
