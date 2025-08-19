@@ -959,7 +959,6 @@ const translation = {
       visualConfig: 'ビジュアル設定',
       monthlyDay: '月の日',
       executionTime: '実行時間',
-      weekdays: '曜日',
       invalidTimezone: '無効なタイムゾーン',
       invalidCronExpression: '無効なCron式',
       noValidExecutionTime: '有効な実行時間を計算できません',

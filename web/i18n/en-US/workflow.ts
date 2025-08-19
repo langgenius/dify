@@ -959,7 +959,6 @@ const translation = {
       visualConfig: 'Visual Configuration',
       monthlyDay: 'Monthly Day',
       executionTime: 'Execution Time',
-      weekdays: 'Weekdays',
       invalidTimezone: 'Invalid timezone',
       invalidCronExpression: 'Invalid cron expression',
       noValidExecutionTime: 'No valid execution time can be calculated',
