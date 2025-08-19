@@ -39,6 +39,16 @@ const translation = {
     title: 'Are you sure to delete this pipeline template?',
     content: 'Deleting the pipeline template is irreversible.',
   },
+  publishTemplate: {
+    success: {
+      message: 'Pipeline Template Published',
+      tip: 'You can use this template on the creation page.',
+      learnMore: 'Learn more',
+    },
+    error: {
+      message: 'Failed to Publish Pipeline Template',
+    },
+  },
   exportDSL: {
     successTip: 'Export pipeline DSL successfully',
     errorTip: 'Failed to export pipeline DSL',

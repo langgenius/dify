@@ -39,6 +39,16 @@ const translation = {
     title: '要删除此知识流水线模板吗？',
     content: '删除知识流水线模板是不可逆的。',
   },
+  publishTemplate: {
+    success: {
+      message: '知识流水线模板发布成功',
+      tip: '您可以在创建页使用该模板。',
+      learnMore: '了解更多',
+    },
+    error: {
+      message: '知识流水线模板发布失败',
+    },
+  },
   exportDSL: {
     successTip: '成功导出知识流水线 DSL',
     errorTip: '导出知识流水线 DSL 失败',

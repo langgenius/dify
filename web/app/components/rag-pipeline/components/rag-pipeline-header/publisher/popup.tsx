@@ -44,6 +44,7 @@ import classNames from '@/utils/classnames'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContextSelector } from '@/context/modal-context'
+import Link from 'next/link'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
@@ -150,7 +151,27 @@ const Popup = () => {
         icon_info: icon,
         description,
       })
-      notify({ type: 'success', message: t('common.api.actionSuccess') })
+      notify({
+        type: 'success',
+        message: t('datasetPipeline.publishTemplate.success.message'),
+        children: (
+          <div className='flex flex-col gap-y-1'>
+            <span className='system-xs-regular text-text-secondary'>
+              {t('datasetPipeline.publishTemplate.success.tip')}
+            </span>
+            <Link
+              href='https://docs.dify.ai'
+              target='_blank'
+              className='system-xs-medium-uppercase inline-block text-text-accent'
+            >
+              {t('datasetPipeline.publishTemplate.success.learnMore')}
+            </Link>
+          </div>
+        ),
+      })
+    }
+    catch {
+      notify({ type: 'error', message: t('datasetPipeline.publishTemplate.error.message') })
     }
     finally {
       hidePublishingAsCustomizedPipeline()
