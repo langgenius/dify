@@ -738,6 +738,10 @@ const translation = {
     dropImageHere: 'अपनी छवि यहाँ छोड़ें, या',
   },
   you: 'आप',
+  avatar: {
+    deleteTitle: 'अवतार हटाएँ',
+    deleteDescription: 'क्या आप सुनिश्चित हैं कि आप अपनी प्रोफ़ाइल तस्वीर को हटाना चाहते हैं? आपका खाता डिफ़ॉल्ट प्रारंभिक अवतार का उपयोग करेगा।',
+  },
 }
 
 export default translation

@@ -301,6 +301,7 @@ export const OperationAction: FC<{
         <Tooltip
           popupContent={t('datasetDocuments.list.action.download')}
           popupClassName='text-text-secondary system-xs-medium'
+          needsDelay={false}
         >
           <button
             className={cn('mr-2 cursor-pointer rounded-lg',
@@ -311,9 +312,9 @@ export const OperationAction: FC<{
               downloadDocument.mutateAsync({
                 datasetId,
                 documentId: detail.id,
-                  }).then((response) => {
-                    if (response.download_url)
-                      window.location.href = response.download_url
+              }).then((response) => {
+                if (response.download_url)
+                  window.location.href = response.download_url
               }).catch((error) => {
                 console.error(error)
                 notify({ type: 'error', message: t('common.actionMsg.downloadFailed') })
@@ -326,6 +327,7 @@ export const OperationAction: FC<{
         <Tooltip
           popupContent={t('datasetDocuments.list.action.settings')}
           popupClassName='text-text-secondary system-xs-medium'
+          needsDelay={false}
         >
           <button
             className={cn('mr-2 cursor-pointer rounded-lg',
@@ -526,7 +528,7 @@ const DocumentList: FC<IDocumentListProps> = ({
         const result = aValue.localeCompare(bValue)
         return sortOrder === 'asc' ? result : -result
       }
- else {
+      else {
         const result = aValue - bValue
         return sortOrder === 'asc' ? result : -result
       }
@@ -539,7 +541,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     }
- else {
+    else {
       setSortField(field)
       setSortOrder('desc')
     }

@@ -276,6 +276,7 @@ const translation = {
       languageChangeDesc: 'زبان رابط کاربری را تغییر دهید',
       themeSystemDesc: 'به ظاهر سیستم‌عامل خود پایبند باشید',
       runDesc: 'دستورات سریع اجرا کنید (موضوع، زبان، ...)',
+      slashDesc: 'دستورات را مانند /theme، /lang اجرا کنید',
     },
     emptyState: {
       noKnowledgeBasesFound: 'هیچ پایگاه دانش یافت نشد',
@@ -290,6 +291,7 @@ const translation = {
       apps: 'برنامه‌ها',
       knowledgeBases: 'پایگاه های دانش',
       workflowNodes: 'گره های گردش کار',
+      commands: 'دستورات',
     },
     searching: 'جستجو...',
     searchFailed: 'جستجو انجام نشد',

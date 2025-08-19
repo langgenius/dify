@@ -271,6 +271,8 @@ const translation = {
       themeDarkDesc: 'Koyu görünümü kullan',
       themeCategoryDesc: 'Uygulama temasını değiştir',
       runDesc: 'Hızlı komutlar çalıştır (tema, dil, ...)',
+      searchPluginsDesc: 'Eklentilerinizi arayın ve gezinin',
+      slashDesc: '/tema, /dil gibi komutları çalıştırın',
     },
     emptyState: {
       noAppsFound: 'Uygulama bulunamadı',
@@ -285,6 +287,7 @@ const translation = {
       plugins: 'Eklentiler',
       knowledgeBases: 'Bilgi Tabanları',
       workflowNodes: 'İş Akışı Düğümleri',
+      commands: 'Komutlar',
     },
     searchFailed: 'Arama başarısız oldu',
     clearToSearchAll: 'Tümünü aramak için @ işaretini kaldırın',

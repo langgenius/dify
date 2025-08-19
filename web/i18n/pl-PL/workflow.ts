@@ -995,6 +995,7 @@ const translation = {
     noLastRunFound: 'Nie znaleziono poprzedniego biegu.',
     noMatchingInputsFound: 'Nie znaleziono pasujących danych wejściowych z ostatniego uruchomienia',
     copyLastRunError: 'Nie udało się skopiować danych wejściowych z ostatniego uruchomienia',
+    lastOutput: 'Ostatni wynik',
   },
 }
 
