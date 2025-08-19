@@ -169,8 +169,8 @@ class ExtractProcessor:
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
                 try:
                     return extractor.extract()
-                except Exception as e:  # 统一增强错误信息
-                    # 针对 Unstructured 远程调用的典型 DNS/连接失败，提供友好指引
+                except Exception as e:  # unified enhanced error handling
+                    # Provide friendly guidance for typical Unstructured remote DNS/connection failures
                     if (
                         dify_config.ETL_TYPE == "Unstructured"
                         and (
@@ -179,7 +179,11 @@ class ExtractProcessor:
                             or "[Errno -2]" in str(e)
                         )
                     ):
-                        api_url_hint = locals().get("unstructured_api_url") or dify_config.UNSTRUCTURED_API_URL or "(未配置)"
+                        api_url_hint = (
+                            locals().get("unstructured_api_url")
+                            or dify_config.UNSTRUCTURED_API_URL
+                            or "(not set)"
+                        )
                         hint = (
                             "Unstructured document extraction failed: unable to resolve or connect to the Unstructured API host.\n"
                             f"UNSTRUCTURED_API_URL={api_url_hint}\n"
