@@ -319,7 +319,7 @@ class ModelProviderService:
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 
-    def switch_active_provider_model_credential(
+    def switch_active_custom_model_credential(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
     ) -> None:
         """
@@ -334,6 +334,24 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.switch_custom_model_credential(
+            model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
+        )
+
+    def add_model_credential_to_model_list(
+        self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
+    ) -> None:
+        """
+        add model credentials to model list.
+
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param model_type: model type
+        :param model: model name
+        :param credential_id: credential id
+        :return:
+        """
+        provider_configuration = self._get_provider_configuration(tenant_id, provider)
+        provider_configuration.add_model_credential_to_model(
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 
