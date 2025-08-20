@@ -56,6 +56,7 @@ import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
 import OnBlurBlock from './plugins/on-blur-or-focus-block'
 import UpdateBlock from './plugins/update-block'
+import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
 import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
@@ -196,6 +197,20 @@ const PromptEditor: FC<PromptEditorProps> = ({
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
+        {floatingAnchorElem && (
+          <ShortcutsPopupPlugin
+            container={floatingAnchorElem}
+          >
+            {closePortal => (
+              <div>
+                <div>test content</div>
+                <button className='text-xs text-text-primary' onClick={closePortal}>
+                  close
+                </button>
+              </div>
+            )}
+          </ShortcutsPopupPlugin>
+        )}
         <ComponentPickerBlock
           triggerString='/'
           contextBlock={contextBlock}
@@ -285,8 +300,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <UpdateBlock instanceId={instanceId} />
         <HistoryPlugin />
         {floatingAnchorElem && (
-            <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
-          )}
+          <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
+        )}
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>
