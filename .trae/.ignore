@@ -1,1 +1,4 @@
 *.md
+.idea/
+.trae/
+.vscode/
