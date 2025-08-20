@@ -149,7 +149,7 @@ export const useEducationInit = () => {
   const { mutateAsync } = useEducationVerify()
   const handleVerify = async () => {
     const { token } = await mutateAsync()
-    if(token)
+    if (token)
       router.push(`/education-apply?token=${token}`)
   }
 
