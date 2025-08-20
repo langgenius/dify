@@ -320,7 +320,7 @@ class LoopNode(BaseNode):
                     variable = self.graph_runtime_state.variable_pool.get(condition.variable_selector)
                     if variable:
                         available_conditions.append(condition)
-                
+
                 # Process conditions if at least one variable is available
                 if available_conditions:
                     input_conditions, group_result, check_break_result = condition_processor.process_conditions(
