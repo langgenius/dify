@@ -45,7 +45,7 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) 
   }
 }
 
-export const checkKey = (key: string, canBeEmpty?: boolean) => {
+export const checkKey = (key: string, canBeEmpty?: boolean, keys?: string[]) => {
   if (key.length === 0 && !canBeEmpty)
     return 'canNoBeEmpty'
 
@@ -80,6 +80,17 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
     }
   })
   return { isValid, errorKey, errorMessageKey }
+}
+
+export const hasDuplicateStr = (strArr: string[]) => {
+  const strObj: Record<string, number> = {}
+  strArr.forEach((str) => {
+    if (strObj[str])
+      strObj[str] += 1
+    else
+      strObj[str] = 1
+  })
+  return !!Object.keys(strObj).find(key => strObj[key] > 1)
 }
 
 const varRegex = /\{\{([a-zA-Z_]\w*)\}\}/g
