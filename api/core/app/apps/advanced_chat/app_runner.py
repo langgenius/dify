@@ -89,6 +89,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_inputs=dict(self.application_generate_entity.single_iteration_run.inputs),
                 graph_runtime_state=graph_runtime_state,
             )
+            graph_runtime_state.variable_pool = variable_pool
         elif self.application_generate_entity.single_loop_run:
             # if only single loop run is requested
             graph_runtime_state = GraphRuntimeState(
@@ -101,6 +102,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_inputs=dict(self.application_generate_entity.single_loop_run.inputs),
                 graph_runtime_state=graph_runtime_state,
             )
+            graph_runtime_state.variable_pool = variable_pool
         else:
             inputs = self.application_generate_entity.inputs
             query = self.application_generate_entity.query
