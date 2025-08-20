@@ -979,11 +979,6 @@ const translation = {
       nodeTitle: '🔗 Webhook Trigger',
       configPlaceholder: 'Webhook trigger configuration will be implemented here',
     },
-    triggerPlugin: {
-      title: 'Plugin Trigger',
-      nodeTitle: '🔌 Plugin Trigger',
-      configPlaceholder: 'Plugin trigger configuration will be implemented here',
-    },
   },
   triggerStatus: {
     enabled: 'TRIGGER',

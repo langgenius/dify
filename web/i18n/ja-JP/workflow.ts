@@ -979,11 +979,6 @@ const translation = {
       nodeTitle: '🔗 Webhook トリガー',
       configPlaceholder: 'Webhook トリガーの設定がここに実装されます',
     },
-    triggerPlugin: {
-      title: 'プラグイントリガー',
-      nodeTitle: '🔌 プラグイントリガー',
-      configPlaceholder: 'プラグイントリガーの設定がここに実装されます',
-    },
   },
   tracing: {
     stopBy: '{{user}}によって停止',

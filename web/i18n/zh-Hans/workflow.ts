@@ -979,11 +979,6 @@ const translation = {
       title: 'Webhook 触发器',
       nodeTitle: '🔗 Webhook 触发器',
     },
-    triggerPlugin: {
-      title: '插件触发器',
-      nodeTitle: '🔌 插件触发器',
-      configPlaceholder: '插件触发器配置将在此处实现',
-    },
   },
   tracing: {
     stopBy: '由{{user}}终止',

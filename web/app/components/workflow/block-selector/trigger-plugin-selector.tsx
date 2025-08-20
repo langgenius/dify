@@ -34,13 +34,8 @@ const TriggerPluginSelector = ({
     })
   }, [buildInTools, searchText, language])
 
-  if (!triggerPlugins.length) {
-    return (
-      <div className="p-4 text-center text-sm text-gray-500">
-No trigger plugins available
-      </div>
-    )
-  }
+  if (!triggerPlugins.length)
+    return null
 
   return (
     <div className="border-t border-divider-subtle">
