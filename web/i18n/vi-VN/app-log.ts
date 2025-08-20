@@ -93,6 +93,7 @@ const translation = {
     agentMode: 'Chế độ đại lý',
   },
   agentLog: 'Nhật ký đại lý',
+  dateFormat: 'MM/DD/YYYY',
 }
 
 export default translation

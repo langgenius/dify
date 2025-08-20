@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Dify is an open-source platform for developing LLM applications with an intuitive interface combining agentic AI workflows, RAG pipelines, agent capabilities, and model management.
 
 The codebase consists of:
+
 - **Backend API** (`/api`): Python Flask application with Domain-Driven Design architecture
 - **Frontend Web** (`/web`): Next.js 15 application with TypeScript and React 19
 - **Docker deployment** (`/docker`): Containerized deployment configurations
@@ -46,6 +47,7 @@ pnpm test                         # Run Jest tests
 ## Testing Guidelines
 
 ### Backend Testing
+
 - Use `pytest` for all backend tests
 - Write tests first (TDD approach)
 - Test structure: Arrange-Act-Assert
@@ -53,11 +55,13 @@ pnpm test                         # Run Jest tests
 ## Code Style Requirements
 
 ### Python
+
 - Use type hints for all functions and class attributes
 - No `Any` types unless absolutely necessary
 - Implement special methods (`__repr__`, `__str__`) appropriately
 
-### TypeScript/JavaScript  
+### TypeScript/JavaScript
+
 - Strict TypeScript configuration
 - ESLint with Prettier integration
 - Avoid `any` type
@@ -73,10 +77,11 @@ pnpm test                         # Run Jest tests
 ## Common Development Tasks
 
 ### Adding a New API Endpoint
+
 1. Create controller in `/api/controllers/`
-2. Add service logic in `/api/services/`
-3. Update routes in controller's `__init__.py`
-4. Write tests in `/api/tests/`
+1. Add service logic in `/api/services/`
+1. Update routes in controller's `__init__.py`
+1. Write tests in `/api/tests/`
 
 ## Project-Specific Conventions
 
