@@ -56,10 +56,11 @@
 Dify ist eine Open-Source-Plattform zur Entwicklung von LLM-Anwendungen. Ihre intuitive Benutzeroberfläche vereint agentenbasierte KI-Workflows, RAG-Pipelines, Agentenfunktionen, Modellverwaltung, Überwachungsfunktionen und mehr, sodass Sie schnell von einem Prototyp in die Produktion übergehen können.
 
 ## Schnellstart
+
 > Bevor Sie Dify installieren, stellen Sie sicher, dass Ihr System die folgenden Mindestanforderungen erfüllt:
-> 
->- CPU >= 2 Core
->- RAM >= 4 GiB
+>
+> - CPU >= 2 Core
+> - RAM >= 4 GiB
 
 </br>
 
@@ -75,37 +76,38 @@ docker compose up -d
 Nachdem Sie den Server gestartet haben, können Sie über Ihren Browser auf das Dify Dashboard unter [http://localhost/install](http://localhost/install) zugreifen und den Initialisierungsprozess starten.
 
 #### Hilfe suchen
+
 Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs), wenn Sie Probleme bei der Einrichtung von Dify haben. Wenden Sie sich an [die Community und uns](#community--contact), falls weiterhin Schwierigkeiten auftreten.
 
 > Wenn Sie zu Dify beitragen oder zusätzliche Entwicklungen durchführen möchten, lesen Sie bitte unseren [Leitfaden zur Bereitstellung aus dem Quellcode](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code).
 
 ## Wesentliche Merkmale
-**1. Workflow**: 
-  Erstellen und testen Sie leistungsstarke KI-Workflows auf einer visuellen Oberfläche, wobei Sie alle der folgenden Funktionen und darüber hinaus nutzen können.
 
-**2. Umfassende Modellunterstützung**: 
-  Nahtlose Integration mit Hunderten von proprietären und Open-Source-LLMs von Dutzenden Inferenzanbietern und selbstgehosteten Lösungen, die GPT, Mistral, Llama3 und alle mit der OpenAI API kompatiblen Modelle abdecken. Eine vollständige Liste der unterstützten Modellanbieter finden Sie [hier](https://docs.dify.ai/getting-started/readme/model-providers).
+**1. Workflow**:
+Erstellen und testen Sie leistungsstarke KI-Workflows auf einer visuellen Oberfläche, wobei Sie alle der folgenden Funktionen und darüber hinaus nutzen können.
 
+**2. Umfassende Modellunterstützung**:
+Nahtlose Integration mit Hunderten von proprietären und Open-Source-LLMs von Dutzenden Inferenzanbietern und selbstgehosteten Lösungen, die GPT, Mistral, Llama3 und alle mit der OpenAI API kompatiblen Modelle abdecken. Eine vollständige Liste der unterstützten Modellanbieter finden Sie [hier](https://docs.dify.ai/getting-started/readme/model-providers).
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
+**3. Prompt IDE**:
+Intuitive Benutzeroberfläche zum Erstellen von Prompts, zum Vergleichen der Modellleistung und zum Hinzufügen zusätzlicher Funktionen wie Text-to-Speech in einer chatbasierten Anwendung.
 
-**3. Prompt IDE**: 
-  Intuitive Benutzeroberfläche zum Erstellen von Prompts, zum Vergleichen der Modellleistung und zum Hinzufügen zusätzlicher Funktionen wie Text-to-Speech in einer chatbasierten Anwendung.
+**4. RAG Pipeline**:
+Umfassende RAG-Funktionalitäten, die alles von der Dokumenteneinlesung bis zur -abfrage abdecken, mit sofort einsatzbereiter Unterstützung für die Textextraktion aus PDFs, PPTs und anderen gängigen Dokumentformaten.
 
-**4. RAG Pipeline**: 
-  Umfassende RAG-Funktionalitäten, die alles von der Dokumenteneinlesung bis zur -abfrage abdecken, mit sofort einsatzbereiter Unterstützung für die Textextraktion aus PDFs, PPTs und anderen gängigen Dokumentformaten.
+**5. Fähigkeiten des Agenten**:
+Sie können Agenten basierend auf LLM Function Calling oder ReAct definieren und vorgefertigte oder benutzerdefinierte Tools für den Agenten hinzufügen. Dify stellt über 50 integrierte Tools für KI-Agenten bereit, wie zum Beispiel Google Search, DALL·E, Stable Diffusion und WolframAlpha.
 
-**5. Fähigkeiten des Agenten**: 
-  Sie können Agenten basierend auf LLM Function Calling oder ReAct definieren und vorgefertigte oder benutzerdefinierte Tools für den Agenten hinzufügen. Dify stellt über 50 integrierte Tools für KI-Agenten bereit, wie zum Beispiel Google Search, DALL·E, Stable Diffusion und WolframAlpha.
+**6. LLMOps**:
+Überwachen und analysieren Sie Anwendungsprotokolle und die Leistung im Laufe der Zeit. Sie können kontinuierlich Prompts, Datensätze und Modelle basierend auf Produktionsdaten und Annotationen verbessern.
 
-**6. LLMOps**: 
-  Überwachen und analysieren Sie Anwendungsprotokolle und die Leistung im Laufe der Zeit. Sie können kontinuierlich Prompts, Datensätze und Modelle basierend auf Produktionsdaten und Annotationen verbessern.
-
-**7. Backend-as-a-Service**: 
-  Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in Ihre eigene Geschäftslogik integrieren können.
+**7. Backend-as-a-Service**:
+Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in Ihre eigene Geschäftslogik integrieren können.
 
 ## Vergleich der Merkmale
+
 <table style="width: 100%;">
   <tr>
     <th align="center">Feature</th>
@@ -175,22 +177,21 @@ Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/install-sel
 ## Dify verwenden
 
 - **Cloud </br>**
-Wir hosten einen [Dify Cloud](https://dify.ai)-Service, den jeder ohne Einrichtung ausprobieren kann. Er bietet alle Funktionen der selbstgehosteten Version und beinhaltet 200 kostenlose GPT-4-Aufrufe im Sandbox-Plan.
+  Wir hosten einen [Dify Cloud](https://dify.ai)-Service, den jeder ohne Einrichtung ausprobieren kann. Er bietet alle Funktionen der selbstgehosteten Version und beinhaltet 200 kostenlose GPT-4-Aufrufe im Sandbox-Plan.
 
 - **Selbstgehostete Dify Community Edition</br>**
-Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#quick-start). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai) für weiterführende Informationen und detaillierte Anweisungen.
+  Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#quick-start). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai) für weiterführende Informationen und detaillierte Anweisungen.
 
 - **Dify für Unternehmen / Organisationen</br>**
-Wir bieten zusätzliche, unternehmensspezifische Funktionen. [Über diesen Chatbot können Sie uns Ihre Fragen mitteilen](https://udify.app/chat/22L1zSxg6yW1cWQg) oder [senden Sie uns eine E-Mail](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry), um Ihre unternehmerischen Bedürfnisse zu besprechen. </br>
-  > Für Startups und kleine Unternehmen, die AWS nutzen, schauen Sie sich [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) an und stellen Sie es mit nur einem Klick in Ihrer eigenen AWS VPC bereit. Es handelt sich um ein erschwingliches AMI-Angebot mit der Option, Apps mit individuellem Logo und Branding zu erstellen.
+  Wir bieten zusätzliche, unternehmensspezifische Funktionen. [Über diesen Chatbot können Sie uns Ihre Fragen mitteilen](https://udify.app/chat/22L1zSxg6yW1cWQg) oder [senden Sie uns eine E-Mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry), um Ihre unternehmerischen Bedürfnisse zu besprechen. </br>
 
+  > Für Startups und kleine Unternehmen, die AWS nutzen, schauen Sie sich [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) an und stellen Sie es mit nur einem Klick in Ihrer eigenen AWS VPC bereit. Es handelt sich um ein erschwingliches AMI-Angebot mit der Option, Apps mit individuellem Logo und Branding zu erstellen.
 
 ## Immer einen Schritt voraus
 
 Star Dify auf GitHub und lassen Sie sich sofort über neue Releases benachrichtigen.
 
 ![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
-
 
 ## Erweiterte Einstellungen
 
@@ -210,20 +211,23 @@ Falls Sie eine hochverfügbare Konfiguration einrichten möchten, gibt es von de
 Stellen Sie Dify mit nur einem Klick mithilfe von [terraform](https://www.terraform.io/) auf einer Cloud-Plattform bereit.
 
 ##### Azure Global
+
 - [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 ##### Google Cloud
+
 - [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### Verwendung von AWS CDK für die Bereitstellung
 
 Bereitstellung von Dify auf AWS mit [CDK](https://aws.amazon.com/cdk/)
 
-##### AWS 
+##### AWS
+
 - [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
-#### Alibaba Cloud 
+#### Alibaba Cloud
 
 [Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
 
@@ -235,20 +239,18 @@ Ein-Klick-Bereitstellung von Dify in der Alibaba Cloud mit [Alibaba Cloud Data M
 
 Stellen Sie Dify mit einem Klick in AKS bereit, indem Sie [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) verwenden
 
-
 ## Contributing
 
 Falls Sie Code beitragen möchten, lesen Sie bitte unseren [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). Gleichzeitig bitten wir Sie, Dify zu unterstützen, indem Sie es in den sozialen Medien teilen und auf Veranstaltungen und Konferenzen präsentieren.
-
 
 > Wir suchen Mitwirkende, die dabei helfen, Dify in weitere Sprachen zu übersetzen – außer Mandarin oder Englisch. Wenn Sie Interesse an einer Mitarbeit haben, lesen Sie bitte die [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) für weitere Informationen und hinterlassen Sie einen Kommentar im `global-users`-Kanal unseres [Discord Community Servers](https://discord.gg/8Tpq4AcN9c).
 
 ## Gemeinschaft & Kontakt
 
-* [GitHub Discussion](https://github.com/langgenius/dify/discussions). Am besten geeignet für: den Austausch von Feedback und das Stellen von Fragen.
-* [GitHub Issues](https://github.com/langgenius/dify/issues). Am besten für: Fehler, auf die Sie bei der Verwendung von Dify.AI stoßen, und Funktionsvorschläge. Siehe unseren [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-* [Discord](https://discord.gg/FngNHpbcY7).  Am besten geeignet für: den Austausch von Bewerbungen und den Austausch mit der Community.
-* [X(Twitter)](https://twitter.com/dify_ai). Am besten geeignet für: den Austausch von Bewerbungen und den Austausch mit der Community.
+- [GitHub Discussion](https://github.com/langgenius/dify/discussions). Am besten geeignet für: den Austausch von Feedback und das Stellen von Fragen.
+- [GitHub Issues](https://github.com/langgenius/dify/issues). Am besten für: Fehler, auf die Sie bei der Verwendung von Dify.AI stoßen, und Funktionsvorschläge. Siehe unseren [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
+- [Discord](https://discord.gg/FngNHpbcY7). Am besten geeignet für: den Austausch von Bewerbungen und den Austausch mit der Community.
+- [X(Twitter)](https://twitter.com/dify_ai). Am besten geeignet für: den Austausch von Bewerbungen und den Austausch mit der Community.
 
 **Mitwirkende**
 
@@ -260,7 +262,6 @@ Falls Sie Code beitragen möchten, lesen Sie bitte unseren [Contribution Guide](
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
-
 ## Offenlegung der Sicherheit
 
 Um Ihre Privatsphäre zu schützen, vermeiden Sie es bitte, Sicherheitsprobleme auf GitHub zu posten. Schicken Sie Ihre Fragen stattdessen an security@dify.ai und wir werden Ihnen eine ausführlichere Antwort geben.
@@ -268,4 +269,3 @@ Um Ihre Privatsphäre zu schützen, vermeiden Sie es bitte, Sicherheitsprobleme 
 ## Lizenz
 
 Dieses Repository steht unter der [Dify Open Source License](LICENSE), die im Wesentlichen Apache 2.0 mit einigen zusätzlichen Einschränkungen ist.
-
