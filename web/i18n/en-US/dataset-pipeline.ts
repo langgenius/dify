@@ -39,6 +39,15 @@ const translation = {
     title: 'Are you sure to delete this pipeline template?',
     content: 'Deleting the pipeline template is irreversible.',
   },
+  publishPipeline: {
+    success: {
+      message: 'Knowledge Pipeline Published',
+      tip: '<CustomLink>Go to Documents</CustomLink> to add or manage documents.',
+    },
+    error: {
+      message: 'Failed to Publish Knowledge Pipeline',
+    },
+  },
   publishTemplate: {
     success: {
       message: 'Pipeline Template Published',

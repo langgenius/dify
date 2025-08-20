@@ -13,7 +13,7 @@ import {
   useBoolean,
   useKeyPress,
 } from 'ahooks'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import {
   useStore,
   useWorkflowStore,
@@ -107,7 +107,26 @@ const Popup = () => {
         })
         setPublished(true)
         if (res) {
-          notify({ type: 'success', message: t('common.api.actionSuccess') })
+          notify({
+            type: 'success',
+            message: t('datasetPipeline.publishPipeline.success.message'),
+            children: (
+              <div className='system-xs-regular text-text-secondary'>
+                <Trans
+                  i18nKey='datasetPipeline.publishPipeline.success.tip'
+                  components={{
+                    CustomLink: (
+                      <Link
+                        className='system-xs-medium text-text-accent'
+                        href={`/datasets/${datasetId}/documents`}
+                      >
+                      </Link>
+                    ),
+                  }}
+                />
+              </div>
+            ),
+          })
           workflowStore.getState().setPublishedAt(res.created_at)
           mutateDatasetRes?.()
           invalidPublishedPipelineInfo()
@@ -116,6 +135,7 @@ const Popup = () => {
       }
     }
     catch {
+      notify({ type: 'error', message: t('datasetPipeline.publishPipeline.error.message') })
     }
     finally {
       if (publishing)

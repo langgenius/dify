@@ -39,6 +39,15 @@ const translation = {
     title: '要删除此知识流水线模板吗？',
     content: '删除知识流水线模板是不可逆的。',
   },
+  publishPipeline: {
+    success: {
+      message: '知识流水线发布成功',
+      tip: '<CustomLink>前往文档</CustomLink>添加或管理文档。',
+    },
+    error: {
+      message: '知识流水线发布失败',
+    },
+  },
   publishTemplate: {
     success: {
       message: '知识流水线模板发布成功',
