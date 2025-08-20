@@ -223,6 +223,7 @@ const translation = {
     'searchBlock': 'ブロック検索',
     'blocks': 'ブロック',
     'searchTool': 'ツール検索',
+    'searchTrigger': 'トリガー検索...',
     'tools': 'ツール',
     'allTool': 'すべて',
     'customTool': 'カスタム',

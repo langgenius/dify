@@ -93,7 +93,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   }, [])
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Start)
-      return t('workflow.tabs.searchBlock')
+      return t('workflow.tabs.searchTrigger')
     if (activeTab === TabsEnum.Blocks)
       return t('workflow.tabs.searchBlock')
     if (activeTab === TabsEnum.Tools)
@@ -137,7 +137,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             onActiveTabChange={handleActiveTabChange}
             filterElem={
               <div className='relative m-2' onClick={e => e.stopPropagation()}>
-                {activeTab === TabsEnum.Blocks && (
+                {(activeTab === TabsEnum.Start || activeTab === TabsEnum.Blocks) && (
                   <Input
                     showLeftIcon
                     showClearIcon

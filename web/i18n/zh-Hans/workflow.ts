@@ -223,6 +223,7 @@ const translation = {
     'searchBlock': '搜索节点',
     'blocks': '节点',
     'searchTool': '搜索工具',
+    'searchTrigger': '搜索触发器...',
     'tools': '工具',
     'allTool': '全部',
     'plugin': '插件',

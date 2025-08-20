@@ -6,7 +6,7 @@ import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
-import StartBlocks from './start-blocks'
+import AllStartBlocks from './all-start-blocks'
 import AllTools from './all-tools'
 import cn from '@/utils/classnames'
 
@@ -65,13 +65,11 @@ const Tabs: FC<TabsProps> = ({
       {filterElem}
       {
         activeTab === TabsEnum.Start && !noBlocks && (
-          <div className='border-t border-divider-subtle'>
-            <StartBlocks
-              searchText={searchText}
-              onSelect={onSelect}
-              availableBlocksTypes={availableBlocksTypes}
-            />
-          </div>
+          <AllStartBlocks
+            searchText={searchText}
+            onSelect={onSelect}
+            availableBlocksTypes={availableBlocksTypes}
+          />
         )
       }
       {

@@ -224,6 +224,7 @@ const translation = {
     'start': 'Start',
     'blocks': 'Nodes',
     'searchTool': 'Search tool',
+    'searchTrigger': 'Search triggers...',
     'tools': 'Tools',
     'allTool': 'All',
     'plugin': 'Plugin',
