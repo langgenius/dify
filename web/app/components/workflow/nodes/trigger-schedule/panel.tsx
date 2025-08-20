@@ -141,13 +141,13 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
 
                 {inputs.frequency === 'monthly' && (
                   <MonthlyDaysSelector
-                    selectedDay={inputs.visual_config?.monthly_day || 1}
-                    onChange={(day) => {
+                    selectedDays={inputs.visual_config?.monthly_days || [1]}
+                    onChange={(days) => {
                       const newInputs = {
                         ...inputs,
                         visual_config: {
                           ...inputs.visual_config,
-                          monthly_day: day,
+                          monthly_days: days,
                         },
                       }
                       setInputs(newInputs)
