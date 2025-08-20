@@ -32,7 +32,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const router = useRouter()
   const handleVerify = async () => {
     const { token } = await mutateAsync()
-    if(token)
+    if (token)
       router.push(`/education-apply?token=${token}`)
   }
   const handleConfirm = async () => {

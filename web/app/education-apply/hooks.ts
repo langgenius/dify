@@ -71,7 +71,7 @@ type useEducationReverifyNoticeParams = {
 }
 
 const isExpired = (expireAt?: number, timezone?: string) => {
-  if(!expireAt || !timezone)
+  if (!expireAt || !timezone)
     return false
   const today = dayjs().tz(timezone).startOf('day')
   const expiredDay = dayjs.unix(expireAt).tz(timezone).startOf('day')
@@ -96,27 +96,27 @@ const useEducationReverifyNotice = ({
   })
 
   useEffect(() => {
-    if(isLoading || !timezone)
+    if (isLoading || !timezone)
       return
-    if(allowRefreshEducationVerify) {
+    if (allowRefreshEducationVerify) {
         const expired = isExpired(educationAccountExpireAt!, timezone)
         const isExpireAtChanged = prevExpireAt !== educationAccountExpireAt
-        if(isExpireAtChanged) {
+        if (isExpireAtChanged) {
           setPrevExpireAt(educationAccountExpireAt!)
           setReverifyHasNoticed(false)
           setExpiredHasNoticed(false)
         }
         const shouldNotice = (() => {
-          if(isExpireAtChanged)
+          if (isExpireAtChanged)
             return true
           return expired ? !expiredHasNoticed : !reverifyHasNoticed
         })()
-        if(shouldNotice) {
+        if (shouldNotice) {
           onNotice({
             expireAt: educationAccountExpireAt!,
             expired,
           })
-          if(expired)
+          if (expired)
             setExpiredHasNoticed(true)
           else
             setReverifyHasNoticed(true)
@@ -160,9 +160,9 @@ export const useEducationInit = () => {
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
         localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
     }
-    if(educationVerifyAction === EDUCATION_PRICING_SHOW_ACTION)
+    if (educationVerifyAction === EDUCATION_PRICING_SHOW_ACTION)
       setShowPricingModal()
-    if(educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
+    if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
       handleVerify()
   }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
 }
