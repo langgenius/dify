@@ -3,7 +3,7 @@ import logging
 import ssl
 from collections.abc import Callable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Union, Optional
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import redis
 from redis import RedisError
