@@ -20,7 +20,7 @@ def create_tidb_serverless_task():
     while True:
         try:
             # check the number of idle tidb serverless
-            with Session(db.engine) as session:
+            with Session(db.engine, expire_on_commit=False) as session:
                 idle_tidb_serverless_number = (
                     session.query(TidbAuthBinding).where(TidbAuthBinding.active == False).count()
                 )
@@ -50,7 +50,7 @@ def create_clusters(batch_size):
             private_key=dify_config.TIDB_PRIVATE_KEY or "",
             region=dify_config.TIDB_REGION or "",
         )
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             for new_cluster in new_clusters:
                 tidb_auth_binding = TidbAuthBinding(
                     cluster_id=new_cluster["cluster_id"],

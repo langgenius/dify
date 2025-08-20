@@ -14,6 +14,6 @@ def handle(sender, **kwargs):
         app_id=app.id,
         app_owner_tenant_id=app.tenant_id,
     )
-    with Session(db.engine) as session:
+    with Session(db.engine, expire_on_commit=False) as session:
         session.add(installed_app)
         session.commit()

@@ -24,6 +24,6 @@ def handle(sender, **kwargs):
             updated_by=app.updated_by,
         )
 
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             session.add(site)
             session.commit()

@@ -53,7 +53,7 @@ def reset_password(email, new_password, password_confirm):
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
 
-    with Session(db.engine) as session:
+    with Session(db.engine, expire_on_commit=False) as session:
         account = session.query(Account).where(Account.email == email).one_or_none()
 
         if not account:
@@ -75,7 +75,6 @@ def reset_password(email, new_password, password_confirm):
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
-        session.merge(account)
         session.commit()
     AccountService.reset_login_error_rate_limit(email)
     click.echo(click.style("Password reset successfully.", fg="green"))
@@ -94,7 +93,7 @@ def reset_email(email, new_email, email_confirm):
         click.echo(click.style("New emails do not match.", fg="red"))
         return
 
-    with Session(db.engine) as session:
+    with Session(db.engine, expire_on_commit=False) as session:
         account = session.query(Account).where(Account.email == email).one_or_none()
 
         if not account:
@@ -108,7 +107,6 @@ def reset_email(email, new_email, email_confirm):
             return
 
         account.email = new_email
-        session.merge(account)
         session.commit()
     click.echo(click.style("Email updated successfully.", fg="green"))
 
@@ -135,7 +133,7 @@ def reset_encrypt_key_pair():
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
 
-    with Session(db.engine) as session:
+    with Session(db.engine, expire_on_commit=False) as session:
         tenants = session.query(Tenant).all()
         for tenant in tenants:
             if not tenant:
@@ -146,7 +144,6 @@ def reset_encrypt_key_pair():
 
             session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
             session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
-            session.merge(tenant)
             session.commit()
 
         click.echo(
@@ -179,7 +176,7 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             per_page = 50
-            with Session(db.engine) as session:
+            with Session(db.engine, expire_on_commit=False) as session:
                 apps = (
                     session.query(App)
                     .where(App.status == "normal")
@@ -201,7 +198,7 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                with Session(db.engine) as session:
+                with Session(db.engine, expire_on_commit=False) as session:
                     app_annotation_setting = (
                         session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
                     )
@@ -339,12 +336,11 @@ def migrate_knowledge_vector_database():
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
-                        with Session(db.engine) as session:
-                            dataset_collection_binding = (
-                                session.query(DatasetCollectionBinding)
-                                .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-                                .one_or_none()
-                            )
+                        dataset_collection_binding = (
+                            db.session.query(DatasetCollectionBinding)
+                            .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
+                            .one_or_none()
+                        )
                         if dataset_collection_binding:
                             collection_name = dataset_collection_binding.collection_name
                         else:
@@ -375,31 +371,29 @@ def migrate_knowledge_vector_database():
                     )
                     raise e
 
-                with Session(db.engine) as session:
-                    dataset_documents = (
-                        session.query(DatasetDocument)
-                        .where(
-                            DatasetDocument.dataset_id == dataset.id,
-                            DatasetDocument.indexing_status == "completed",
-                            DatasetDocument.enabled == True,
-                            DatasetDocument.archived == False,
-                        )
-                        .all()
+                dataset_documents = (
+                    db.session.query(DatasetDocument)
+                    .where(
+                        DatasetDocument.dataset_id == dataset.id,
+                        DatasetDocument.indexing_status == "completed",
+                        DatasetDocument.enabled == True,
+                        DatasetDocument.archived == False,
                     )
+                    .all()
+                )
 
                 documents = []
                 segments_count = 0
                 for dataset_document in dataset_documents:
-                    with Session(db.engine) as session:
-                        segments = (
-                            session.query(DocumentSegment)
-                            .where(
-                                DocumentSegment.document_id == dataset_document.id,
-                                DocumentSegment.status == "completed",
-                                DocumentSegment.enabled == True,
-                            )
-                            .all()
+                    segments = (
+                        db.session.query(DocumentSegment)
+                        .where(
+                            DocumentSegment.document_id == dataset_document.id,
+                            DocumentSegment.status == "completed",
+                            DocumentSegment.enabled == True,
                         )
+                        .all()
+                    )
 
                     for segment in segments:
                         document = Document(
@@ -429,13 +423,12 @@ def migrate_knowledge_vector_database():
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
                         raise e
-                with Session(db.engine) as session:
-                    session.merge(dataset)
-                    session.commit()
+                db.session.add(dataset)
+                db.session.commit()
                 click.echo(f"Successfully migrated dataset {dataset.id}.")
                 create_count += 1
             except Exception as e:
-                pass  # Session automatically rolls back on exception
+                db.session.rollback()
                 click.echo(click.style(f"Error creating dataset index: {e.__class__.__name__} {str(e)}", fg="red"))
                 continue
 
@@ -479,7 +472,7 @@ def convert_to_agent_apps():
                 app_id = str(i.id)
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
-                    with Session(db.engine) as session:
+                    with Session(db.engine, expire_on_commit=False) as session:
                         app = session.query(App).where(App.id == app_id).first()
                         if app is not None:
                             apps.append(app)
@@ -491,8 +484,8 @@ def convert_to_agent_apps():
             click.echo(f"Converting app: {app.id}")
 
             try:
-                with Session(db.engine) as session:
-                    session.merge(app)
+                with Session(db.engine, expire_on_commit=False) as session:
+                    app = session.merge(app)
                     app.mode = AppMode.AGENT_CHAT.value
                     session.commit()
 
@@ -517,7 +510,7 @@ def add_qdrant_index(field: str):
     create_count = 0
 
     try:
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             bindings = session.query(DatasetCollectionBinding).all()
         if not bindings:
             click.echo(click.style("No dataset collection bindings found.", fg="red"))
@@ -591,7 +584,7 @@ def old_metadata_migration():
                         if field.value == key:
                             break
                     else:
-                        with Session(db.engine) as session:
+                        with Session(db.engine, expire_on_commit=False) as session:
                             dataset_metadata = (
                                 session.query(DatasetMetadata)
                                 .where(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
@@ -733,7 +726,7 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    with Session(db.engine) as session:
+                    with Session(db.engine, expire_on_commit=False) as session:
                         app = session.query(App).where(App.id == app_id).first()
                     if not app:
                         print(f"App {app_id} not found")
@@ -1203,7 +1196,7 @@ def setup_system_tool_oauth_client(provider, client_params):
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    with Session(db.engine) as session:
+    with Session(db.engine, expire_on_commit=False) as session:
         deleted_count = (
             session.query(ToolOAuthSystemClient)
             .filter_by(

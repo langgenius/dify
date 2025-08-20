@@ -19,7 +19,7 @@ def clean_embedding_cache_task():
     start_at = time.perf_counter()
     thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=clean_days)
     while True:
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             try:
                 embedding_ids = (
                     session.query(Embedding.id)
