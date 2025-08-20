@@ -9,6 +9,8 @@ import { RiExternalLinkLine } from '@remixicon/react'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useModalContextSelector } from '@/context/modal-context'
+import { useEducationVerify } from '@/service/use-education'
+import { useRouter } from 'next/navigation'
 
 export type ExpireNoticeModalPayloadProps = {
   expireAt: number
@@ -16,23 +18,33 @@ export type ExpireNoticeModalPayloadProps = {
 }
 export type Props = {
   onClose: () => void
-  onConfirm: () => void
 } & ExpireNoticeModalPayloadProps
 
 const i18nPrefix = 'education.notice'
 
-const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose, onConfirm }) => {
+const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const eduDocLink = docLink('/getting-started/dify-for-education')
   const { formatTime } = useTimestamp()
-    const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
+  const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
+  const { mutateAsync } = useEducationVerify()
+  const router = useRouter()
+  const handleVerify = async () => {
+    const { token } = await mutateAsync()
+    if(token)
+      router.push(`/education-apply?token=${token}`)
+  }
+  const handleConfirm = async () => {
+    await handleVerify()
+    onClose()
+  }
 
   return (
     <Modal
       isShow
       onClose={onClose}
-      title={expired ? t(`${i18nPrefix}.expired.title`) : t(`${i18nPrefix}.isAboutToExpire.title`, { date: formatTime(expireAt, t('appLog.dateFormat') as string), interpolation: { escapeValue: false } })}
+      title={expired ? t(`${i18nPrefix}.expired.title`) : t(`${i18nPrefix}.isAboutToExpire.title`, { date: formatTime(expireAt, t(`${i18nPrefix}.dateFormat`) as string), interpolation: { escapeValue: false } })}
       closable
       className='max-w-[600px]'
     >
@@ -72,7 +84,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose, onConf
               {t(`${i18nPrefix}.action.dismiss`)}
             </Button>
           )}
-          <Button variant='primary' onClick={onConfirm}>
+          <Button variant='primary' onClick={handleConfirm}>
             {t(`${i18nPrefix}.action.reVerify`)}
           </Button>
         </div>

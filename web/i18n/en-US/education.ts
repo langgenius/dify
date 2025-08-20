@@ -43,6 +43,7 @@ const translation = {
   rejectContent: 'Unfortunately, you are not eligible for Education Verified status and therefore cannot receive the exclusive 100% coupon for the Dify Professional Plan if you use this email address.',
   emailLabel: 'Your current email',
   notice: {
+    dateFormat: 'MM/DD/YYYY',
     expired: {
       title: 'Your education status has expired',
       summary: {

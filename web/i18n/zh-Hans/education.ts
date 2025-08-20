@@ -43,6 +43,7 @@ const translation = {
   rejectContent: '非常遗憾，您无法使用此电子邮件以获得教育版认证资格，也无法领取 Dify Professional 版的 100% 独家优惠券。',
   emailLabel: '您当前的邮箱',
   notice: {
+    dateFormat: 'YYYY/MM/DD',
     expired: {
       title: '您的教育认证已过期',
       summary: {

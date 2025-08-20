@@ -43,6 +43,7 @@ const translation = {
   rejectContent: '申し訳ございませんが、このメールアドレスでは 教育認証 の資格を取得できず、Dify プロフェッショナルプランの 100％割引クーポン を受け取ることはできません。',
   emailLabel: '現在のメールアドレス',
   notice: {
+    dateFormat: 'YYYY/MM/DD',
     expired: {
       title: 'あなたの教育認証は失効しました',
       summary: {
