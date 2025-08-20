@@ -95,6 +95,7 @@ const translation = {
     iteration: 'Iteração',
     toolUsed: 'Ferramenta usada',
   },
+  dateFormat: 'DD/MM/AAAA',
 }
 
 export default translation

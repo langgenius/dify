@@ -93,6 +93,7 @@ const translation = {
     iteration: 'เกิด ซ้ำ',
     finalProcessing: 'การประมวลผลขั้นสุดท้าย',
   },
+  dateFormat: 'วัน/เดือน/ปี',
 }
 
 export default translation

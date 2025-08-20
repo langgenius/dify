@@ -26,6 +26,7 @@ import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import { removeSpecificQueryParam } from '@/utils'
 import { noop } from 'lodash-es'
 import dynamic from 'next/dynamic'
+import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
@@ -61,6 +62,10 @@ const OpeningSettingModal = dynamic(() => import('@/app/components/base/features
   ssr: false,
 })
 const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugin'), {
+  ssr: false,
+})
+
+const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-notice-modal'), {
   ssr: false,
 })
 
@@ -102,6 +107,7 @@ export type ModalContextState = {
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>>
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
+  setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: noop,
@@ -116,6 +122,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowModelLoadBalancingEntryModal: noop,
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
+  setShowEducationExpireNoticeModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -145,6 +152,7 @@ export const ModalContextProvider = ({
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
+  const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -272,6 +280,7 @@ export const ModalContextProvider = ({
       setShowModelLoadBalancingEntryModal,
       setShowOpeningModal,
       setShowUpdatePluginModal,
+      setShowEducationExpireNoticeModal,
     }}>
       <>
         {children}
@@ -318,7 +327,7 @@ export const ModalContextProvider = ({
             <Pricing onCancel={() => {
               if (searchParams.get('show-pricing') === '1')
                 router.push(location.pathname, { forceOptimisticNavigation: true } as any)
-
+              removeSpecificQueryParam('action')
               setShowPricingModal(false)
             }} />
           )
@@ -398,6 +407,13 @@ export const ModalContextProvider = ({
             />
           )
         }
+        {
+          !!showEducationExpireNoticeModal && (
+            <ExpireNoticeModal
+              {...showEducationExpireNoticeModal.payload}
+              onClose={() => setShowEducationExpireNoticeModal(null)}
+            />
+          )}
       </>
     </ModalContext.Provider>
   )
