@@ -11,7 +11,7 @@ This is the PHP SDK for the Dify API, which allows you to easily integrate Dify 
 
 If you want to try the example, you can run `composer install` in this directory.
 
-In exist project, copy the `dify-client.php` to you project, and merge the following to your `composer.json` file, then run `composer install && composer dump-autoload` to install. Guzzle does not require 7.9, other versions have not been tested, but you can try. 
+In exist project, copy the `dify-client.php` to you project, and merge the following to your `composer.json` file, then run `composer install && composer dump-autoload` to install. Guzzle does not require 7.9, other versions have not been tested, but you can try.
 
 ```json
 {
