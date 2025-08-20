@@ -32,11 +32,11 @@ const VarList: FC<Props> = ({
       })
       let errorMsgKey = ''
       let typeName = ''
-      if(hasDuplicateStr(newList.map(item => item.variable))) {
+      if (hasDuplicateStr(newList.map(item => item.variable))) {
         errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
         typeName = 'appDebug.variableConfig.varName'
       }
-      else if(hasDuplicateStr(newList.map(item => item.label as string))) {
+      else if (hasDuplicateStr(newList.map(item => item.label as string))) {
         errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
         typeName = 'appDebug.variableConfig.labelName'
       }

@@ -12,7 +12,7 @@ import SelectVarType from './select-var-type'
 import Tooltip from '@/app/components/base/tooltip'
 import type { PromptVariable } from '@/models/debug'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import { getNewVar } from '@/utils/var'
+import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
 import ConfigContext from '@/context/debug-configuration'
@@ -80,7 +80,28 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         delete draft[currIndex].options
     })
 
+    const newList = newPromptVariables
+    let errorMsgKey = ''
+    let typeName = ''
+    if (hasDuplicateStr(newList.map(item => item.key))) {
+      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+      typeName = 'appDebug.variableConfig.varName'
+    }
+    else if (hasDuplicateStr(newList.map(item => item.name as string))) {
+      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+      typeName = 'appDebug.variableConfig.labelName'
+    }
+
+    if (errorMsgKey) {
+      Toast.notify({
+        type: 'error',
+        message: t(errorMsgKey, { key: t(typeName) }),
+      })
+      return false
+    }
+
     onPromptVariablesChange?.(newPromptVariables)
+    return true
   }
 
   const { setShowExternalDataToolModal } = useModalContext()
@@ -245,7 +266,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           isShow={isShowEditModal}
           onClose={hideEditModal}
           onConfirm={(item) => {
-            updatePromptVariableItem(item)
+            const isValid = updatePromptVariableItem(item)
+            if (!isValid) return
             hideEditModal()
           }}
           varKeys={promptVariables.map(v => v.key)}
