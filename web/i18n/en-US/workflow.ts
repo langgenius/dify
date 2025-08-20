@@ -224,6 +224,7 @@ const translation = {
     'start': 'Start',
     'blocks': 'Nodes',
     'searchTool': 'Search tool',
+    'searchTrigger': 'Search triggers...',
     'tools': 'Tools',
     'allTool': 'All',
     'plugin': 'Plugin',
@@ -240,6 +241,7 @@ const translation = {
   },
   blocks: {
     'start': 'User Input',
+    'originalStartNode': 'original start node',
     'end': 'End',
     'answer': 'Answer',
     'llm': 'LLM',
@@ -978,11 +980,6 @@ const translation = {
       title: 'Webhook Trigger',
       nodeTitle: '🔗 Webhook Trigger',
       configPlaceholder: 'Webhook trigger configuration will be implemented here',
-    },
-    triggerPlugin: {
-      title: 'Plugin Trigger',
-      nodeTitle: '🔌 Plugin Trigger',
-      configPlaceholder: 'Plugin trigger configuration will be implemented here',
     },
   },
   triggerStatus: {

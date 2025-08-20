@@ -506,7 +506,7 @@ export const useToolIcon = (data: Node['data']) => {
   const toolIcon = useMemo(() => {
     if (!data)
       return ''
-    if (data.type === BlockEnum.Tool) {
+    if (data.type === BlockEnum.Tool || data.type === BlockEnum.TriggerPlugin) {
       let targetTools = workflowTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools

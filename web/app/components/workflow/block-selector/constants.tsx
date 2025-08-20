@@ -21,13 +21,15 @@ export const START_BLOCKS: Block[] = [
     title: 'Webhook Trigger',
     description: 'HTTP callback trigger',
   },
-  {
-    classification: BlockClassificationEnum.Default,
-    type: BlockEnum.TriggerPlugin,
-    title: 'Plugin Trigger',
-    description: 'Third-party integration trigger',
-  },
 ]
+
+// Entry node types that can start a workflow
+export const ENTRY_NODE_TYPES = [
+  BlockEnum.Start,
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+] as const
 
 export const BLOCKS: Block[] = [
   {

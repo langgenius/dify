@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
 import type { BlockEnum } from '../types'
+import { BlockEnum as BlockEnumValues } from '../types'
 import { useNodesExtraData } from '../hooks'
 import { START_BLOCKS } from './constants'
 import type { ToolDefaultValue } from './types'
@@ -27,8 +28,12 @@ const StartBlocks = ({
 
   const filteredBlocks = useMemo(() => {
     return START_BLOCKS.filter((block) => {
-      return block.title.toLowerCase().includes(searchText.toLowerCase())
-             && availableBlocksTypes.includes(block.type)
+      // Filter by search text
+      if (!block.title.toLowerCase().includes(searchText.toLowerCase()))
+        return false
+
+      // availableBlocksTypes now contains properly filtered entry node types from parent
+      return availableBlocksTypes.includes(block.type)
     })
   }, [searchText, availableBlocksTypes])
 
@@ -60,13 +65,18 @@ const StartBlocks = ({
           className='mr-2 shrink-0'
           type={block.type}
         />
-        <div className='grow text-sm text-text-secondary'>{block.title}</div>
+        <div className='flex w-0 grow items-center justify-between text-sm text-text-secondary'>
+          <span className='truncate'>{block.title}</span>
+          {block.type === BlockEnumValues.Start && (
+            <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{t('workflow.blocks.originalStartNode')}</span>
+          )}
+        </div>
       </div>
     </Tooltip>
-  ), [nodesExtraData, onSelect])
+  ), [nodesExtraData, onSelect, t])
 
   return (
-    <div className='p-1'>
+    <div className='min-w-[400px] max-w-[500px] p-1'>
       {isEmpty && (
         <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>
           {t('workflow.tabs.noResult')}
@@ -74,7 +84,16 @@ const StartBlocks = ({
       )}
       {!isEmpty && (
         <div className='mb-1'>
-          {filteredBlocks.map(renderBlock)}
+          {filteredBlocks.map((block, index) => (
+            <div key={block.type}>
+              {renderBlock(block)}
+              {block.type === BlockEnumValues.Start && index < filteredBlocks.length - 1 && (
+                <div className='my-1 px-3'>
+                  <div className='border-t border-divider-subtle' />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

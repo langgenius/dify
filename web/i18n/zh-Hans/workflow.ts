@@ -223,6 +223,7 @@ const translation = {
     'searchBlock': '搜索节点',
     'blocks': '节点',
     'searchTool': '搜索工具',
+    'searchTrigger': '搜索触发器...',
     'tools': '工具',
     'allTool': '全部',
     'plugin': '插件',
@@ -240,6 +241,7 @@ const translation = {
   },
   blocks: {
     'start': '开始',
+    'originalStartNode': '原始开始节点',
     'end': '结束',
     'answer': '直接回复',
     'llm': 'LLM',
@@ -978,11 +980,6 @@ const translation = {
       configPlaceholder: 'Webhook 触发器配置将在此处实现',
       title: 'Webhook 触发器',
       nodeTitle: '🔗 Webhook 触发器',
-    },
-    triggerPlugin: {
-      title: '插件触发器',
-      nodeTitle: '🔌 插件触发器',
-      configPlaceholder: '插件触发器配置将在此处实现',
     },
   },
   tracing: {

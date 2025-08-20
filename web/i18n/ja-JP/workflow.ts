@@ -223,6 +223,7 @@ const translation = {
     'searchBlock': 'ブロック検索',
     'blocks': 'ブロック',
     'searchTool': 'ツール検索',
+    'searchTrigger': 'トリガー検索...',
     'tools': 'ツール',
     'allTool': 'すべて',
     'customTool': 'カスタム',
@@ -240,6 +241,7 @@ const translation = {
   },
   blocks: {
     'start': '開始',
+    'originalStartNode': '元の開始ノード',
     'end': '終了',
     'answer': '回答',
     'llm': 'LLM',
@@ -978,11 +980,6 @@ const translation = {
       title: 'Webhook トリガー',
       nodeTitle: '🔗 Webhook トリガー',
       configPlaceholder: 'Webhook トリガーの設定がここに実装されます',
-    },
-    triggerPlugin: {
-      title: 'プラグイントリガー',
-      nodeTitle: '🔌 プラグイントリガー',
-      configPlaceholder: 'プラグイントリガーの設定がここに実装されます',
     },
   },
   tracing: {
