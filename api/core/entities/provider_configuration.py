@@ -553,8 +553,16 @@ class ProviderConfiguration(BaseModel):
                 session.delete(credential_record)
 
                 if provider_record and available_credentials_count <= 1:
-                    # If all credentials are deleted, delete the provider record, switch to system provider type
+                    # If all credentials are deleted, delete the provider record
                     session.delete(provider_record)
+                    
+                    provider_model_credentials_cache = ProviderCredentialsCache(
+                        tenant_id=self.tenant_id,
+                        identity_id=provider_record.id,
+                        cache_type=ProviderCredentialsCacheType.PROVIDER,
+                    )
+                    provider_model_credentials_cache.delete()
+                    self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
                 elif provider_record and provider_record.credential_id == credential_id:
                     provider_record.credential_id = None
                     provider_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
