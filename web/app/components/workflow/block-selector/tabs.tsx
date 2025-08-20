@@ -65,11 +65,13 @@ const Tabs: FC<TabsProps> = ({
       {filterElem}
       {
         activeTab === TabsEnum.Start && !noBlocks && (
-          <AllStartBlocks
-            searchText={searchText}
-            onSelect={onSelect}
-            availableBlocksTypes={availableBlocksTypes}
-          />
+          <div className='border-t border-divider-subtle'>
+            <AllStartBlocks
+              searchText={searchText}
+              onSelect={onSelect}
+              availableBlocksTypes={availableBlocksTypes}
+            />
+          </div>
         )
       }
       {
