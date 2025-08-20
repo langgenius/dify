@@ -12,6 +12,7 @@ from sqlalchemy import DateTime, orm
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
+from core.memory.entities import MemoryBlockSpec
 from core.variables import utils as variable_utils
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -445,6 +446,16 @@ class Workflow(Base):
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
         )
+    @property
+    def memory_blocks(self) -> Sequence[MemoryBlockSpec]:
+        """Memory blocks configuration from graph"""
+
+        if not self.graph_dict:
+            return []
+
+        memory_blocks_config = self.graph_dict.get('memory_blocks', [])
+        results = [MemoryBlockSpec.model_validate(config) for config in memory_blocks_config]
+        return results
 
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
