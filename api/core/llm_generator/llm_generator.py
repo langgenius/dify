@@ -532,7 +532,7 @@ class LLMGenerator:
             model=model_config.get("name", ""),
         )
         match node_type:
-            case "llm", "agent":
+            case "llm" | "agent":
                 system_prompt = LLM_MODIFY_PROMPT_SYSTEM
             case "code":
                 system_prompt = LLM_MODIFY_CODE_SYSTEM
