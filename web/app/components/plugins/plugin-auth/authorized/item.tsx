@@ -136,6 +136,13 @@ const Item = ({
             >
               {credential.name}
             </div>
+            {
+              credential.is_default && (
+                <Badge className='shrink-0'>
+                  {t('plugin.auth.default')}
+                </Badge>
+              )
+            }
           </div>
         )
       }
