@@ -108,7 +108,7 @@ const BlockIcon: FC<BlockIconProps> = ({
     `}
     >
       {
-        type !== BlockEnum.Tool && (
+        type !== BlockEnum.Tool && type !== BlockEnum.TriggerPlugin && (
           getIcon(type,
             (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
               ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
@@ -117,7 +117,7 @@ const BlockIcon: FC<BlockIconProps> = ({
         )
       }
       {
-        type === BlockEnum.Tool && toolIcon && (
+        (type === BlockEnum.Tool || type === BlockEnum.TriggerPlugin) && toolIcon && (
           <>
             {
               typeof toolIcon === 'string'
