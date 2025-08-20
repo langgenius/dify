@@ -6,6 +6,8 @@ import type { OffsetOptions, Placement } from '@floating-ui/react'
 import { RiQuestionLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { tooltipManager } from './TooltipManager'  
+
 export type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
@@ -39,12 +41,12 @@ const Tooltip: FC<TooltipProps> = ({
   const [isHoverPopup, {
     setTrue: setHoverPopup,
     setFalse: setNotHoverPopup,
-  }] = useBoolean(false)
-
+   }] = useBoolean(false)
+  
   const isHoverPopupRef = useRef(isHoverPopup)
-  useEffect(() => {
-    isHoverPopupRef.current = isHoverPopup
-  }, [isHoverPopup])
+    useEffect(() => {
+      isHoverPopupRef.current = isHoverPopup
+    }, [isHoverPopup])
 
   const [isHoverTrigger, {
     setTrue: setHoverTrigger,
@@ -56,22 +58,25 @@ const Tooltip: FC<TooltipProps> = ({
     isHoverTriggerRef.current = isHoverTrigger
   }, [isHoverTrigger])
 
+  const close = () => setOpen(false)   // function to close this tooltip
+
   const handleLeave = (isTrigger: boolean) => {
     if (isTrigger)
       setNotHoverTrigger()
-
     else
       setNotHoverPopup()
 
     // give time to move to the popup
     if (needsDelay) {
       setTimeout(() => {
-        if (!isHoverPopupRef.current && !isHoverTriggerRef.current)
+        if (!isHoverPopupRef.current && !isHoverTriggerRef.current) {
           setOpen(false)
+          tooltipManager.clear(close)   // clear from manager
+        }
       }, 300)
-    }
-    else {
+    } else {
       setOpen(false)
+      tooltipManager.clear(close)
     }
   }
 
@@ -87,6 +92,7 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseEnter={() => {
           if (triggerMethod === 'hover') {
             setHoverTrigger()
+            tooltipManager.register(close)   // register with manager
             setOpen(true)
           }
         }}
@@ -97,18 +103,18 @@ const Tooltip: FC<TooltipProps> = ({
         {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className='h-full w-full text-text-quaternary hover:text-text-tertiary' /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
-        className="z-[9999]"
+      className="z-[9999]"
       >
         {popupContent && (<div
-          className={cn(
-            !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
-            popupClassName,
-          )}
-          onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}
-          onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
-        >
-          {popupContent}
-        </div>)}
+            className={cn(
+              !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
+              popupClassName,
+            )}
+            onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}
+            onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
+          >
+            {popupContent}
+          </div>)}
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
