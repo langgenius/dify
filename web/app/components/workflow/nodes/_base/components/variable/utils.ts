@@ -689,6 +689,8 @@ const getIterationItemType = ({
       return VarType.string
     case VarType.arrayNumber:
       return VarType.number
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
