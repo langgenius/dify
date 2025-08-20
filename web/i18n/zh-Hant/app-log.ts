@@ -93,6 +93,7 @@ const translation = {
     iteration: '迭代',
     finalProcessing: '最終處理',
   },
+  dateFormat: '月/日/年',
 }
 
 export default translation

@@ -50,7 +50,6 @@ const translation = {
         line1: 'Dify は引き続きご利用いただけますが、新しい教育割引クーポンの対象外となります。',
         line2: '',
       },
-
     },
     isAboutToExpire: {
       title: 'あなたの教育認証は {{date}} に有効期限を迎えます',

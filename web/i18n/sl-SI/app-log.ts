@@ -93,6 +93,7 @@ const translation = {
     iteration: 'Iteracija',
     finalProcessing: 'Končna obdelava',
   },
+  dateFormat: 'MM/DD/LETNO',
 }
 
 export default translation
