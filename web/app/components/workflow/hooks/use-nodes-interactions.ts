@@ -39,6 +39,7 @@ import {
 import {
   genNewNodeTitleFromOld,
   generateNewNode,
+  getNestedNodePosition,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
@@ -1354,11 +1355,23 @@ export const useNodesInteractions = () => {
               newNode.data.isInIteration = true
               newNode.data.iteration_id = selectedNode.data.iteration_id
               newNode.parentId = selectedNode.id
+              newNode.positionAbsolute = {
+                x: newNode.position.x,
+                y: newNode.position.y,
+              }
+              // set position base on parent node
+              newNode.position = getNestedNodePosition(newNode, selectedNode)
             }
             else if (selectedNode.data.type === BlockEnum.Loop) {
               newNode.data.isInLoop = true
               newNode.data.loop_id = selectedNode.data.loop_id
               newNode.parentId = selectedNode.id
+              newNode.positionAbsolute = {
+                x: newNode.position.x,
+                y: newNode.position.y,
+              }
+              // set position base on parent node
+              newNode.position = getNestedNodePosition(newNode, selectedNode)
             }
           }
         }
