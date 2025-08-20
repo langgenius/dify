@@ -4,12 +4,22 @@ import { RiQuestionLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 
 type MonthlyDaysSelectorProps = {
-  selectedDay: number | 'last'
-  onChange: (day: number | 'last') => void
+  selectedDays: (number | 'last')[]
+  onChange: (days: (number | 'last')[]) => void
 }
 
-const MonthlyDaysSelector = ({ selectedDay, onChange }: MonthlyDaysSelectorProps) => {
+const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
   const { t } = useTranslation()
+
+  const handleDayClick = (day: number | 'last') => {
+    const current = selectedDays || []
+    const newSelected = current.includes(day)
+      ? current.filter(d => d !== day)
+      : [...current, day]
+    onChange(newSelected)
+  }
+
+  const isDaySelected = (day: number | 'last') => selectedDays?.includes(day) || false
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
   const rows = [
@@ -33,11 +43,11 @@ const MonthlyDaysSelector = ({ selectedDay, onChange }: MonthlyDaysSelectorProps
               <button
                 key={day}
                 type="button"
-                onClick={() => onChange(day)}
+                onClick={() => handleDayClick(day)}
                 className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
                   day === 'last' ? 'col-span-2 min-w-0' : ''
                 } ${
-                  selectedDay === day
+                  isDaySelected(day)
                     ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
                     : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
                 }`}

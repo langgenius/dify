@@ -87,7 +87,14 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     }
   }
   else if (data.frequency === 'monthly') {
-    const selectedDay = data.visual_config?.monthly_day || 1
+    const getSelectedDays = (): (number | 'last')[] => {
+      if (data.visual_config?.monthly_days && data.visual_config.monthly_days.length > 0)
+        return data.visual_config.monthly_days
+
+      return [1]
+    }
+
+    const selectedDays = [...new Set(getSelectedDays())]
     const [time, period] = defaultTime.split(' ')
     const [hour, minute] = time.split(':')
     let displayHour = Number.parseInt(hour)
@@ -97,38 +104,53 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const now = getCurrentTime()
     let monthOffset = 0
 
-    const currentMonthExecution = (() => {
+    const hasValidCurrentMonthExecution = selectedDays.some((selectedDay) => {
       const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
+
       let targetDay: number
+      if (selectedDay === 'last')
+        targetDay = daysInMonth
+       else
+        targetDay = Math.min(selectedDay as number, daysInMonth)
 
-      if (selectedDay === 'last') {
-        const lastDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
-        targetDay = lastDayOfMonth
-      }
- else {
-        targetDay = Math.min(selectedDay as number, new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate())
-      }
+      const execution = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
+      return execution > now
+    })
 
-      return new Date(currentMonth.getFullYear(), currentMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
-    })()
-
-    if (currentMonthExecution <= now)
+    if (!hasValidCurrentMonthExecution)
       monthOffset = 1
 
-    for (let i = 0; i < count; i++) {
-      const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset + i, 1)
-      let targetDay: number
+    let monthsChecked = 0
 
-      if (selectedDay === 'last') {
-        const lastDayOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
-        targetDay = lastDayOfMonth
-      }
- else {
-        targetDay = Math.min(selectedDay as number, new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate())
+    while (times.length < count && monthsChecked < 24) {
+      const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset + monthsChecked, 1)
+      const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+
+      const monthlyExecutions: Date[] = []
+
+      for (const selectedDay of selectedDays) {
+        let targetDay: number
+
+        if (selectedDay === 'last')
+          targetDay = daysInMonth
+         else
+          targetDay = Math.min(selectedDay as number, daysInMonth)
+
+        const nextExecution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
+
+        if (nextExecution > now)
+          monthlyExecutions.push(nextExecution)
       }
 
-      const nextExecution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
-      times.push(nextExecution)
+      monthlyExecutions.sort((a, b) => a.getTime() - b.getTime())
+
+      for (const execution of monthlyExecutions) {
+        if (times.length >= count) break
+        times.push(execution)
+      }
+
+      monthsChecked++
     }
   }
   else if (data.frequency === 'once') {

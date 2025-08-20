@@ -77,14 +77,22 @@ const validateMonthlyConfig = (config: any, t: any): string => {
 
   const i18nPrefix = 'workflow.errorMsg'
 
-  if (!config.monthly_day)
+  const getMonthlyDays = (): (number | 'last')[] => {
+    if (Array.isArray(config.monthly_days) && config.monthly_days.length > 0)
+      return config.monthly_days
+
+    return []
+  }
+
+  const monthlyDays = getMonthlyDays()
+
+  if (monthlyDays.length === 0)
     return t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.monthlyDay') })
 
-  if (config.monthly_day !== 'last'
-      && (typeof config.monthly_day !== 'number'
-       || config.monthly_day < 1
-       || config.monthly_day > 31))
-    return t('workflow.nodes.triggerSchedule.invalidMonthlyDay')
+  for (const day of monthlyDays) {
+    if (day !== 'last' && (typeof day !== 'number' || day < 1 || day > 31))
+      return t('workflow.nodes.triggerSchedule.invalidMonthlyDay')
+  }
 
   return ''
 }
