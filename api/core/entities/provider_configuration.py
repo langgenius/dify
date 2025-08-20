@@ -555,7 +555,7 @@ class ProviderConfiguration(BaseModel):
                 if provider_record and available_credentials_count <= 1:
                     # If all credentials are deleted, delete the provider record
                     session.delete(provider_record)
-                    
+
                     provider_model_credentials_cache = ProviderCredentialsCache(
                         tenant_id=self.tenant_id,
                         identity_id=provider_record.id,
