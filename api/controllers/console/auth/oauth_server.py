@@ -50,15 +50,15 @@ def oauth_server_access_token_required(view):
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
             raise BadRequest("Authorization header is required")
-        
+
         parts = authorization_header.split(" ")
         if len(parts) != 2:
             raise BadRequest("Invalid Authorization header format")
-        
+
         token_type = parts[0]
         if token_type != "Bearer":
             raise BadRequest("token_type is invalid")
-        
+
         access_token = parts[1]
         if not access_token:
             raise BadRequest("access_token is required")
