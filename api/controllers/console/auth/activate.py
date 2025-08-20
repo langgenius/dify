@@ -1,5 +1,6 @@
 from flask import request
 from flask_restful import Resource, reqparse
+from sqlalchemy.orm import Session
 
 from constants.languages import supported_language
 from controllers.console import api
@@ -65,7 +66,10 @@ class ActivateApi(Resource):
         account.interface_theme = "light"
         account.status = AccountStatus.ACTIVE.value
         account.initialized_at = naive_utc_now()
-        db.session.commit()
+        
+        with Session(db.engine) as session:
+            session.merge(account)
+            session.commit()
 
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
 

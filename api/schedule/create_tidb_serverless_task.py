@@ -1,6 +1,7 @@
 import time
 
 import click
+from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
@@ -19,9 +20,10 @@ def create_tidb_serverless_task():
     while True:
         try:
             # check the number of idle tidb serverless
-            idle_tidb_serverless_number = (
-                db.session.query(TidbAuthBinding).where(TidbAuthBinding.active == False).count()
-            )
+            with Session(db.engine) as session:
+                idle_tidb_serverless_number = (
+                    session.query(TidbAuthBinding).where(TidbAuthBinding.active == False).count()
+                )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
             # create tidb serverless
@@ -48,14 +50,15 @@ def create_clusters(batch_size):
             private_key=dify_config.TIDB_PRIVATE_KEY or "",
             region=dify_config.TIDB_REGION or "",
         )
-        for new_cluster in new_clusters:
-            tidb_auth_binding = TidbAuthBinding(
-                cluster_id=new_cluster["cluster_id"],
-                cluster_name=new_cluster["cluster_name"],
-                account=new_cluster["account"],
-                password=new_cluster["password"],
-            )
-            db.session.add(tidb_auth_binding)
-        db.session.commit()
+        with Session(db.engine) as session:
+            for new_cluster in new_clusters:
+                tidb_auth_binding = TidbAuthBinding(
+                    cluster_id=new_cluster["cluster_id"],
+                    cluster_name=new_cluster["cluster_name"],
+                    account=new_cluster["account"],
+                    password=new_cluster["password"],
+                )
+                session.add(tidb_auth_binding)
+            session.commit()
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))

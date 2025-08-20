@@ -1,3 +1,5 @@
+from sqlalchemy.orm import Session
+
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.model import Site
@@ -22,5 +24,6 @@ def handle(sender, **kwargs):
             updated_by=app.updated_by,
         )
 
-        db.session.add(site)
-        db.session.commit()
+        with Session(db.engine) as session:
+            session.add(site)
+            session.commit()
