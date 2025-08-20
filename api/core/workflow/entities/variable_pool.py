@@ -46,6 +46,10 @@ class VariablePool(BaseModel):
         description="Conversation variables.",
         default_factory=list,
     )
+    memory_blocks: Mapping[str, str] = Field(
+        description="Memory blocks.",
+        default_factory=dict,
+    )
 
     def model_post_init(self, context: Any, /) -> None:
         # Create a mapping from field names to SystemVariableKey enum values
@@ -56,6 +60,9 @@ class VariablePool(BaseModel):
         # Add conversation variables to the variable pool
         for var in self.conversation_variables:
             self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
+        # Add memory blocks to the variable pool
+        for memory_id, memory_value in self.memory_blocks.items():
+            self.add(['memory_block', memory_id], memory_value)
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """
