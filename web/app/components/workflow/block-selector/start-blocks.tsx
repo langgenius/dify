@@ -67,7 +67,7 @@ const StartBlocks = ({
   ), [nodesExtraData, onSelect])
 
   return (
-    <div className='p-1'>
+    <div className='min-w-[400px] max-w-[500px] p-1'>
       {isEmpty && (
         <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>
           {t('workflow.tabs.noResult')}

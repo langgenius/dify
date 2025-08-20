@@ -1,6 +1,5 @@
 'use client'
 import { memo, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import Tools from './tools'
 import type { BlockEnum } from '../types'
@@ -17,7 +16,6 @@ const TriggerPluginSelector = ({
   onSelect,
   searchText,
 }: TriggerPluginSelectorProps) => {
-  const { t } = useTranslation()
   const language = useGetLanguage()
   const { data: buildInTools = [] } = useAllBuiltInTools()
 
@@ -39,16 +37,13 @@ const TriggerPluginSelector = ({
   if (!triggerPlugins.length) {
     return (
       <div className="p-4 text-center text-sm text-gray-500">
-        {t('workflow.tabs.noTriggerPlugins')}
+No trigger plugins available
       </div>
     )
   }
 
   return (
     <div className="border-t border-divider-subtle">
-      <div className="bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600">
-        Plugin Triggers
-      </div>
       <Tools
         tools={triggerPlugins}
         onSelect={onSelect}

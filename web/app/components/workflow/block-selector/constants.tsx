@@ -21,12 +21,6 @@ export const START_BLOCKS: Block[] = [
     title: 'Webhook Trigger',
     description: 'HTTP callback trigger',
   },
-  {
-    classification: BlockClassificationEnum.Default,
-    type: BlockEnum.TriggerPlugin,
-    title: 'Plugin Trigger',
-    description: 'Third-party integration trigger',
-  },
 ]
 
 export const BLOCKS: Block[] = [
