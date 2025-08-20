@@ -2,6 +2,7 @@ const translation = {
   title: 'Logs',
   description: 'The logs record the running status of the application, including user inputs and AI replies.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateFormat: 'MM/DD/YYYY',
   table: {
     header: {
       updatedTime: 'Updated time',
