@@ -1592,7 +1592,8 @@ class ProviderConfiguration(BaseModel):
                         status = ModelStatus.DISABLED
 
                     provider_model_lb_configs = [
-                        config for config in model_setting.load_balancing_configs
+                        config
+                        for config in model_setting.load_balancing_configs
                         if config.credential_source_type != "custom_model"
                     ]
 
@@ -1649,7 +1650,8 @@ class ProviderConfiguration(BaseModel):
                     status = ModelStatus.DISABLED
 
                 custom_model_lb_configs = [
-                    config for config in model_setting.load_balancing_configs
+                    config
+                    for config in model_setting.load_balancing_configs
                     if config.credential_source_type != "provider"
                 ]
 
