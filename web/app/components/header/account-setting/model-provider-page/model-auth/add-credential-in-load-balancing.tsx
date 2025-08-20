@@ -13,6 +13,7 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Tooltip from '@/app/components/base/tooltip'
 
 type AddCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -35,11 +36,13 @@ const AddCredentialInLoadBalancing = ({
     available_credentials,
   } = modelCredential
   const customModel = configurationMethod === ConfigurationMethodEnum.customizableModel
+  const notAllowCustomCredential = provider.allow_custom_token === false
   const renderTrigger = useCallback((open?: boolean) => {
-    return (
+    const Item = (
       <div className={cn(
         'system-sm-medium flex h-8 items-center rounded-lg px-3 text-text-accent hover:bg-state-base-hover',
         open && 'bg-state-base-hover',
+        notAllowCustomCredential && 'cursor-not-allowed opacity-50',
       )}>
         <RiAddLine className='mr-2 h-4 w-4' />
         {
@@ -49,7 +52,19 @@ const AddCredentialInLoadBalancing = ({
         }
       </div>
     )
-  }, [])
+
+    if (notAllowCustomCredential) {
+      return (
+        <Tooltip
+          asChild
+          popupContent={t('plugin.auth.credentialUnavailable')}
+        >
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [notAllowCustomCredential, t, customModel])
 
   return (
     <Authorized
