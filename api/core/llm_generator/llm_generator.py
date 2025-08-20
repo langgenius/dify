@@ -6,7 +6,6 @@ from typing import Optional, cast
 
 import json_repair
 
-from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
@@ -15,6 +14,9 @@ from core.llm_generator.prompts import (
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
+    RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,
+    RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
+    RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
@@ -132,8 +134,6 @@ class LLMGenerator:
 
     @classmethod
     def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool) -> dict:
-        output_parser = RuleConfigGeneratorOutputParser()
-
         error = ""
         error_step = ""
         rule_config = {"prompt": "", "variables": [], "opening_statement": "", "error": ""}
@@ -180,13 +180,12 @@ class LLMGenerator:
 
             return rule_config
 
-        # get rule config prompt, parameter and statement
-        prompt_generate, parameter_generate, statement_generate = output_parser.get_format_instructions()
-
+        # get rule prompt, parameter and statement
+        prompt_generate = RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,
+        parameter_generate = RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
+        statement_generate = RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,
         prompt_template = PromptTemplateParser(prompt_generate)
-
         parameter_template = PromptTemplateParser(parameter_generate)
-
         statement_template = PromptTemplateParser(statement_generate)
 
         # format the prompt_generate_prompt
