@@ -9,6 +9,7 @@ from collections import Counter
 from typing import Any, Optional
 
 from flask_login import current_user
+from flask import g
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -1086,6 +1087,10 @@ class DocumentService:
         created_from: str = "web",
     ):
         # check document limit
+        if "current_user" in g:
+            current_user = g.current_user
+        elif "_login_user" in g:
+            current_user = g._login_user
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:

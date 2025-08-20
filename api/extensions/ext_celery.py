@@ -5,6 +5,7 @@ from celery import Celery, Task  # type: ignore
 from celery.schedules import crontab  # type: ignore
 
 from configs import dify_config
+from configs.scheduler_config import upload_scheduler_config
 from dify_app import DifyApp
 
 
@@ -118,6 +119,12 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),
+        }
+    if upload_scheduler_config.enabled:
+        imports.append("schedule.process_upload_queue_task")
+        beat_schedule["process_upload_queue"] = {
+            "task": "process_upload_queue",
+            "schedule": crontab(minute="*"),
         }
 
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)

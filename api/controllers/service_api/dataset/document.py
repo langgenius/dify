@@ -3,7 +3,7 @@ import json
 from flask import request
 from flask_restful import marshal, reqparse
 from sqlalchemy import desc, select
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound, TooManyRequests
 
 import services
 from controllers.common.errors import (
@@ -33,6 +33,8 @@ from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from services.file_service import FileService
+from services.errors.file import UploadQueueFullError
+from services.upload_scheduler_service import UploadSchedulerService
 
 
 class DocumentAddByTextApi(DatasetApiResource):
@@ -279,6 +281,101 @@ class DocumentAddByFileApi(DatasetApiResource):
         document = documents[0]
         documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
         return documents_and_batch_fields, 200
+
+
+class DocumentScheduleByFileApi(DatasetApiResource):
+    """Resource for documents."""
+
+    @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_resource_check("documents", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id, dataset_id):
+        """Create document by upload file."""
+        from configs import dify_config
+        if not dify_config.UPLOAD_SCHEDULER_ENABLED:
+            raise ValueError("Enable UPLOAD_SCHEDULER_ENABLED from configuration.")
+        args = {}
+        if "data" in request.form:
+            args = json.loads(request.form["data"])
+        if "doc_form" not in args:
+            args["doc_form"] = "text_model"
+        if "doc_language" not in args:
+            args["doc_language"] = "English"
+
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+
+        if not dataset:
+            raise ValueError("Dataset does not exist.")
+
+        if dataset.provider == "external":
+            raise ValueError("External datasets are not supported.")
+
+        indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
+        if not indexing_technique:
+            raise ValueError("indexing_technique is required.")
+        args["indexing_technique"] = indexing_technique
+
+        if "embedding_model_provider" in args:
+            DatasetService.check_embedding_model_setting(
+                tenant_id, args["embedding_model_provider"], args["embedding_model"]
+            )
+        if (
+            "retrieval_model" in args
+            and args["retrieval_model"].get("reranking_model")
+            and args["retrieval_model"].get("reranking_model").get("reranking_provider_name")
+        ):
+            DatasetService.check_reranking_model_setting(
+                tenant_id,
+                args["retrieval_model"].get("reranking_model").get("reranking_provider_name"),
+                args["retrieval_model"].get("reranking_model").get("reranking_model_name"),
+            )
+
+        # check file
+        if "file" not in request.files:
+            raise NoFileUploadedError()
+
+        if len(request.files) > 1:
+            raise TooManyFilesError()
+
+        # save file info
+        file = request.files["file"]
+        if not file.filename:
+            raise FilenameNotExistsError
+
+        # Prepare file data for scheduler
+        file_data = {
+            'filename': file.filename,
+            'content': file.read(),
+            'mimetype': file.mimetype,
+            'user': current_user,
+            'source': 'datasets'
+        }
+        knowledge_config = KnowledgeConfig(**args)
+        DocumentService.document_create_args_validate(knowledge_config)
+
+        dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
+        if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
+            raise ValueError("process_rule is required.")
+
+        try:
+            task_id = UploadSchedulerService.enqueue_upload(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                file_data=file_data,
+                upload_args=args
+            )
+
+            return {
+                'task_id': task_id,
+                'message': 'Document scheduled successfully'
+            }, 200
+        except UploadQueueFullError as e:
+            raise TooManyRequests(e.description)
+        except Exception as e:
+            raise InternalServerError(str(e))
 
 
 class DocumentUpdateByFileApi(DatasetApiResource):
@@ -575,6 +672,11 @@ api.add_resource(
     DocumentAddByFileApi,
     "/datasets/<uuid:dataset_id>/document/create_by_file",
     "/datasets/<uuid:dataset_id>/document/create-by-file",
+)
+api.add_resource(
+    DocumentScheduleByFileApi,
+    "/datasets/<uuid:dataset_id>/document/schedule_by_file",
+    "/datasets/<uuid:dataset_id>/document/schedule-by-file",
 )
 api.add_resource(
     DocumentUpdateByTextApi,
