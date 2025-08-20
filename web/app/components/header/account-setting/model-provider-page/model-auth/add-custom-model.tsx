@@ -39,16 +39,20 @@ const AddCustomModel = ({
   const {
     handleOpenModal,
   } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields, true)
-  const handleClick = useCallback(() => {
-    handleOpenModal()
-  }, [handleOpenModal])
   const notAllowCustomCredential = provider.allow_custom_token === false
+  const handleClick = useCallback(() => {
+    if (notAllowCustomCredential)
+      return
+
+    handleOpenModal()
+  }, [handleOpenModal, notAllowCustomCredential])
   const ButtonComponent = useMemo(() => {
     const Item = (
       <Button
         variant='ghost-accent'
         size='small'
         onClick={handleClick}
+        disabled={notAllowCustomCredential}
       >
         <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
         {t('common.modelProvider.addModel')}
@@ -72,24 +76,16 @@ const AddCustomModel = ({
       <Button
         variant='ghost'
         size='small'
-        className={cn(open && 'bg-components-button-ghost-bg-hover')}
+        className={cn(
+          open && 'bg-components-button-ghost-bg-hover',
+        )}
       >
         <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
         {t('common.modelProvider.addModel')}
       </Button>
     )
-    if (notAllowCustomCredential) {
-      return (
-        <Tooltip
-          asChild
-          popupContent={t('plugin.auth.credentialUnavailable')}
-        >
-          {Item}
-        </Tooltip>
-      )
-    }
     return Item
-  }, [notAllowCustomCredential, t])
+  }, [t])
 
   if (noModels)
     return ButtonComponent

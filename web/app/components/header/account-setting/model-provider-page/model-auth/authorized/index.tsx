@@ -112,19 +112,18 @@ const Authorized = ({
   const notAllowCustomCredential = provider.allow_custom_token === false
 
   const Trigger = useMemo(() => {
-    const hasValidCredential = items.some(item => item.credentials.some(credential => !credential.not_allowed_to_use))
     const Item = (
       <Button
         className='grow'
         size='small'
-        disabled={notAllowCustomCredential && !hasValidCredential}
+        disabled={notAllowCustomCredential}
       >
         <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
         {t('common.operation.config')}
       </Button>
     )
 
-    if (notAllowCustomCredential && !hasValidCredential) {
+    if (notAllowCustomCredential) {
       return (
         <Tooltip
           asChild
@@ -135,7 +134,7 @@ const Authorized = ({
       )
     }
     return Item
-  }, [notAllowCustomCredential, t, items])
+  }, [notAllowCustomCredential, t])
 
   return (
     <>
@@ -148,11 +147,6 @@ const Authorized = ({
       >
         <PortalToFollowElemTrigger
           onClick={() => {
-            if (notAllowCustomCredential) {
-              const hasValidCredential = items.some(item => item.credentials.some(credential => !credential.not_allowed_to_use))
-              if (!hasValidCredential)
-                return
-            }
             setMergedIsOpen(!mergedIsOpen)
           }}
           asChild
