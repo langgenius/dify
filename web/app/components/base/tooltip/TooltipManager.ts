@@ -1,18 +1,18 @@
 class TooltipManager {
-  private activeCloser: (() => void) | null = null;
+  private activeCloser: (() => void) | null = null
 
   register(closeFn: () => void) {
-    if (this.activeCloser) {
-      this.activeCloser();
-    }
-    this.activeCloser = closeFn;
+    if (this.activeCloser)
+      this.activeCloser()
+  
+    this.activeCloser = closeFn
   }
 
   clear(closeFn: () => void) {
-    if (this.activeCloser === closeFn) {
-      this.activeCloser = null;
-    }
+    if (this.activeCloser === closeFn) 
+      this.activeCloser = null
+    
   }
 }
 
-export const tooltipManager = new TooltipManager();
+export const tooltipManager = new TooltipManager()

@@ -6,7 +6,7 @@ import type { OffsetOptions, Placement } from '@floating-ui/react'
 import { RiQuestionLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { tooltipManager } from './TooltipManager'  
+import { tooltipManager } from './TooltipManager'
 
 export type TooltipProps = {
   position?: Placement
@@ -42,7 +42,7 @@ const Tooltip: FC<TooltipProps> = ({
     setTrue: setHoverPopup,
     setFalse: setNotHoverPopup,
    }] = useBoolean(false)
-  
+
   const isHoverPopupRef = useRef(isHoverPopup)
     useEffect(() => {
       isHoverPopupRef.current = isHoverPopup
@@ -58,7 +58,7 @@ const Tooltip: FC<TooltipProps> = ({
     isHoverTriggerRef.current = isHoverTrigger
   }, [isHoverTrigger])
 
-  const close = () => setOpen(false)   // function to close this tooltip
+  const close = () => setOpen(false)
 
   const handleLeave = (isTrigger: boolean) => {
     if (isTrigger)
@@ -71,7 +71,7 @@ const Tooltip: FC<TooltipProps> = ({
       setTimeout(() => {
         if (!isHoverPopupRef.current && !isHoverTriggerRef.current) {
           setOpen(false)
-          tooltipManager.clear(close)   // clear from manager
+          tooltipManager.clear(close)
         }
       }, 300)
     } else {
@@ -92,7 +92,7 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseEnter={() => {
           if (triggerMethod === 'hover') {
             setHoverTrigger()
-            tooltipManager.register(close)   // register with manager
+            tooltipManager.register(close)
             setOpen(true)
           }
         }}
