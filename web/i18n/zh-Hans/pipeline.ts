@@ -10,6 +10,10 @@ const translation = {
       description: '知识流水线描述',
       descriptionPlaceholder: '请输入此知识流水线的描述。 (可选)',
     },
+    testRun: '测试运行',
+    preparingDataSource: '准备数据源',
+    reRun: '重新运行',
+    processing: '处理中',
   },
   inputField: {
     create: '创建用户输入字段',
@@ -18,6 +22,14 @@ const translation = {
   publishToast: {
     title: '此知识流水线尚未发布',
     desc: '当知识流水线未发布时，您可以修改知识库节点中的分块结构，知识流水线编排和更改将自动保存为草稿。',
+  },
+  result: {
+    resultPreview: {
+      loading: '处理中...请稍后',
+      error: '执行过程中出现错误',
+      viewDetails: '查看详情',
+      footerTip: '在测试运行模式下，最多预览 {{count}} 个分段',
+    },
   },
 }
 

@@ -87,7 +87,7 @@ const CreateFormPipeline = () => {
     clearOnlineDriveData,
   } = useOnlineDrive()
 
-  const datasourceType = datasource?.nodeData.provider_type
+  const datasourceType = useMemo(() => datasource?.nodeData.provider_type, [datasource])
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = useMemo(() => {
     if (!datasource)
@@ -234,10 +234,13 @@ const CreateFormPipeline = () => {
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
       return
-    const { bucket, currentCredentialId, fileList: onlineDriveFileList } = dataSourceStore.getState()
+    const { currentCredentialId } = dataSourceStore.getState()
     const datasourceInfoList: Record<string, any>[] = []
     if (datasourceType === DatasourceType.localFile) {
-      fileList.forEach((file) => {
+      const {
+        localFileList,
+      } = dataSourceStore.getState()
+      localFileList.forEach((file) => {
         const { id, name, type, size, extension, mime_type } = file.file
         const documentInfo = {
           related_id: id,
@@ -254,6 +257,9 @@ const CreateFormPipeline = () => {
       })
     }
     if (datasourceType === DatasourceType.onlineDocument) {
+      const {
+        onlineDocuments,
+      } = dataSourceStore.getState()
       onlineDocuments.forEach((page) => {
         const { workspace_id, ...rest } = page
         const documentInfo = {
@@ -265,6 +271,9 @@ const CreateFormPipeline = () => {
       })
     }
     if (datasourceType === DatasourceType.websiteCrawl) {
+      const {
+        websitePages,
+      } = dataSourceStore.getState()
       websitePages.forEach((websitePage) => {
         datasourceInfoList.push({
           ...websitePage,
@@ -273,17 +282,20 @@ const CreateFormPipeline = () => {
       })
     }
     if (datasourceType === DatasourceType.onlineDrive) {
-      if (datasourceType === DatasourceType.onlineDrive) {
-        selectedFileIds.forEach((id) => {
-          const file = onlineDriveFileList.find(file => file.id === id)
-          datasourceInfoList.push({
-            bucket,
-            id: file?.id,
-            type: file?.type,
-            credential_id: currentCredentialId,
-          })
+      const {
+        bucket,
+        selectedFileIds,
+        fileList: onlineDriveFileList,
+      } = dataSourceStore.getState()
+      selectedFileIds.forEach((id) => {
+        const file = onlineDriveFileList.find(file => file.id === id)
+        datasourceInfoList.push({
+          bucket,
+          id: file?.id,
+          type: file?.type,
+          credential_id: currentCredentialId,
         })
-      }
+      })
     }
     await runPublishedPipeline({
       pipeline_id: pipelineId!,
@@ -299,7 +311,7 @@ const CreateFormPipeline = () => {
         handleNextStep()
       },
     })
-  }, [dataSourceStore, datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, selectedFileIds, websitePages])
+  }, [dataSourceStore, datasource, datasourceType, handleNextStep, pipelineId, runPublishedPipeline])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false

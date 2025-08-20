@@ -287,9 +287,10 @@ export const usePipelineRun = () => {
   )
 
   const handleStopRun = useCallback((taskId: string) => {
-    const { pipelineId } = workflowStore.getState()
+    const { pipelineId, setShowDebugAndPreviewPanel } = workflowStore.getState()
 
     stopWorkflowRun(`/rag/pipeline/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
+    setShowDebugAndPreviewPanel(false)
   }, [workflowStore])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {

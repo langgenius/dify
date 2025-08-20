@@ -24,20 +24,32 @@ export const usePipelineStartRun = () => {
       return
 
     const {
+      isPreparingDataSource,
+      setIsPreparingDataSource,
       showDebugAndPreviewPanel,
       setShowEnvPanel,
       setShowDebugAndPreviewPanel,
     } = workflowStore.getState()
 
+    if (!isPreparingDataSource && workflowRunningData) {
+      workflowStore.setState({
+        isPreparingDataSource: true,
+        workflowRunningData: undefined,
+      })
+      return
+    }
+
     setShowEnvPanel(false)
     closeAllInputFieldPanels()
 
     if (showDebugAndPreviewPanel) {
+      setIsPreparingDataSource?.(false)
       handleCancelDebugAndPreviewPanel()
       return
     }
 
     await doSyncWorkflowDraft()
+    setIsPreparingDataSource?.(true)
     setShowDebugAndPreviewPanel(true)
   }, [workflowStore, handleCancelDebugAndPreviewPanel, doSyncWorkflowDraft])
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
-import type { Datasource } from '../types'
+import type { Datasource } from '../../types'
 
 type DataSourceOptionsProps = {
   dataSourceNodeId: string
@@ -28,7 +28,6 @@ const DataSourceOptions = ({
   useEffect(() => {
     if (options.length > 0 && !dataSourceNodeId)
       handelSelect(options[0].value)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

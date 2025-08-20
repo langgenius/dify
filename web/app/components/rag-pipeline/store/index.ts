@@ -24,6 +24,8 @@ export type RagPipelineSliceShape = {
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => void
   dataSourceList: ToolWithProvider[]
   setDataSourceList: (dataSourceList: DataSourceItem[]) => void
+  isPreparingDataSource: boolean
+  setIsPreparingDataSource: (isPreparingDataSource: boolean) => void
 }
 
 export type CreateRagPipelineSliceSlice = StateCreator<RagPipelineSliceShape>
@@ -45,4 +47,6 @@ export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = 
     const formattedDataSourceList = dataSourceList.map(item => transformDataSourceToTool(item))
     set(() => ({ dataSourceList: formattedDataSourceList }))
   },
+  isPreparingDataSource: false,
+  setIsPreparingDataSource: isPreparingDataSource => set(() => ({ isPreparingDataSource })),
 })

@@ -212,8 +212,10 @@ const translation = {
     toolParameterRequired: '{{field}}: parameter [{{param}}] is required',
   },
   singleRun: {
-    testRun: 'Test Run ',
+    testRun: 'Test Run',
     startRun: 'Start Run',
+    preparingDataSource: 'Preparing Data Source',
+    reRun: 'Re-run',
     running: 'Running',
     testRunIteration: 'Test Run Iteration',
     back: 'Back',
@@ -974,7 +976,7 @@ const translation = {
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
       copyIdSuccess: 'ID copied to clipboard',
-      },
+    },
   },
   debug: {
     settingsTab: 'Settings',

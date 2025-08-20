@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import type { DataSourceOption } from './types'
-import { TestRunStep } from './types'
+import type { DataSourceOption } from '../types'
+import { TestRunStep } from '../types'
 import { useNodes } from 'reactflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'

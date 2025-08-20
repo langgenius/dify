@@ -72,7 +72,7 @@ const DisplayContent = (props: DisplayContentProps) => {
           btnClassName='!pl-1.5 !pr-0.5 gap-[3px]'
         />
       </div>
-      <div className='flex flex-1 overflow-auto rounded-b-[10px] pb-1 pl-3 pr-1'>
+      <div className='flex flex-1 overflow-auto rounded-b-[10px] pl-3 pr-1'>
         {viewMode === ViewMode.Code && (
           type === ContentType.Markdown
             ? <Textarea

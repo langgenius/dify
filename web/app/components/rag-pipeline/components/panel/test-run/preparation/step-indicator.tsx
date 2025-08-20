@@ -17,7 +17,7 @@ const StepIndicator = ({
   steps,
 }: StepIndicatorProps) => {
   return (
-    <div className='flex items-center gap-x-2 px-1'>
+    <div className='flex items-center gap-x-2 px-4 pb-2'>
       {steps.map((step, index) => {
         const isCurrentStep = index === currentStep - 1
         const isLastStep = index === steps.length - 1
@@ -26,7 +26,7 @@ const StepIndicator = ({
             <div
               className={cn('flex items-center gap-x-1', isCurrentStep ? 'text-state-accent-solid' : 'text-text-tertiary')}
             >
-             {isCurrentStep && <div className='size-1 rounded-full bg-state-accent-solid' />}
+              {isCurrentStep && <div className='size-1 rounded-full bg-state-accent-solid' />}
               <span className='system-2xs-semibold-uppercase'>{step.label}</span>
             </div>
             {!isLastStep && (

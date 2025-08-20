@@ -212,8 +212,10 @@ const translation = {
     toolParameterRequired: '{{field}}: 参数 [{{param}}] 不能为空',
   },
   singleRun: {
-    testRun: '测试运行 ',
+    testRun: '测试运行',
     startRun: '开始运行',
+    preparingDataSource: '准备数据源',
+    reRun: '重新运行',
     running: '运行中',
     testRunIteration: '测试运行迭代',
     back: '返回',
@@ -927,20 +929,6 @@ const translation = {
     dataSource: {
       supportedFileFormats: '支持的文件格式',
       supportedFileFormatsPlaceholder: '文件格式，例如：doc',
-    },
-    knowledgeBase: {
-      chunkStructure: '分段结构',
-      chooseChunkStructure: '选择分段结构',
-      changeChunkStructure: '更改分段结构',
-      aboutRetrieval: '关于知识检索。',
-      chunkIsRequired: '分段结构是必需的',
-      indexMethodIsRequired: '索引方法是必需的',
-      retrievalSettingIsRequired: '检索设置是必需的',
-    },
-    dataSource: {
-      supportedFileFormats: '支持的文件格式',
-      supportedFileFormatsPlaceholder: '文件格式，例如：doc',
-      add: '添加数据源',
     },
     knowledgeBase: {
       chunkStructure: '分段结构',
