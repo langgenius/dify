@@ -66,7 +66,7 @@ class ActivateApi(Resource):
         account.interface_theme = "light"
         account.status = AccountStatus.ACTIVE.value
         account.initialized_at = naive_utc_now()
-        
+
         with Session(db.engine) as session:
             session.merge(account)
             session.commit()
