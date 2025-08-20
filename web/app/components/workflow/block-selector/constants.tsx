@@ -23,6 +23,14 @@ export const START_BLOCKS: Block[] = [
   },
 ]
 
+// Entry node types that can start a workflow
+export const ENTRY_NODE_TYPES = [
+  BlockEnum.Start,
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+] as const
+
 export const BLOCKS: Block[] = [
   {
     classification: BlockClassificationEnum.Default,

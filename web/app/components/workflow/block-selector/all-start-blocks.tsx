@@ -5,6 +5,7 @@ import type { BlockEnum } from '../types'
 import type { ToolDefaultValue } from './types'
 import StartBlocks from './start-blocks'
 import TriggerPluginSelector from './trigger-plugin-selector'
+import { ENTRY_NODE_TYPES } from './constants'
 import cn from '@/utils/classnames'
 import Link from 'next/link'
 import { RiArrowRightUpLine } from '@remixicon/react'
@@ -35,7 +36,7 @@ const AllStartBlocks = ({
         <StartBlocks
           searchText={searchText}
           onSelect={onSelect}
-          availableBlocksTypes={availableBlocksTypes}
+          availableBlocksTypes={ENTRY_NODE_TYPES as BlockEnum[]}
         />
 
         <TriggerPluginSelector
