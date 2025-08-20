@@ -1272,7 +1272,7 @@ class ProviderConfiguration(BaseModel):
         # Get model instance of LLM
         return model_provider_factory.get_model_type_instance(provider=self.provider.provider, model_type=model_type)
 
-    def get_model_schema(self, model_type: ModelType, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_model_schema(self, model_type: ModelType, model: str, credentials: dict | None) -> AIModelEntity | None:
         """
         Get model schema
         """
