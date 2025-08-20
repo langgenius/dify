@@ -159,11 +159,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     documents = []
                 for hit_callback in self.hit_callbacks:
                     hit_callback.on_tool_end(documents)
-                document_score_list = {}
-                if dataset.indexing_technique != "economy":
-                    for item in documents:
-                        if item.metadata is not None and item.metadata.get("score"):
-                            document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
+
                 document_context_list: list[DocumentContext] = []
                 records = RetrievalService.format_retrieval_documents(documents)
                 if records:
