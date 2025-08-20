@@ -509,9 +509,9 @@ const DocumentList: FC<IDocumentListProps> = ({
         'queuing': 3,
         'paused': 4,
         'available': 5,
-        'enabled': 5,
-        'disabled': 6,
-        'archived': 7,
+        'enabled': 6,
+        'disabled': 7,
+        'archived': 8,
       }
 
       switch (sortField) {
