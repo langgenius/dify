@@ -28,9 +28,10 @@ const StartBlocks = ({
   const filteredBlocks = useMemo(() => {
     return START_BLOCKS.filter((block) => {
       return block.title.toLowerCase().includes(searchText.toLowerCase())
-             && availableBlocksTypes.includes(block.type)
+      // Note: Start tab should show all entry nodes, not filtered by connection logic
+      // availableBlocksTypes is for node connections, not for entry point selection
     })
-  }, [searchText, availableBlocksTypes])
+  }, [searchText])
 
   const isEmpty = filteredBlocks.length === 0
 
