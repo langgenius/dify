@@ -100,7 +100,7 @@ def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackSta
     return full_state_data
 
 
-def check_support_resource_discovery(server_url: str) -> bool | str:
+def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
     """Check if the server supports OAuth 2.0 Resource Discovery."""
     b_scheme, b_netloc, b_path, b_params, b_query, b_fragment = urlparse(server_url, '', True)
     url_for_resource_discovery = f"{b_scheme}://{b_netloc}/.well-known/oauth-protected-resource{b_path}"
@@ -114,21 +114,21 @@ def check_support_resource_discovery(server_url: str) -> bool | str:
         if 200 <= response.status_code < 300:
             body = response.json()
             if "authorization_server_url" in body:
-                return body["authorization_server_url"][0]
+                return True, body["authorization_server_url"][0]
             else:
-                return False
-        return False
+                return False, ""
+        return False, ""
     except requests.RequestException as e:
         # Not support resource discovery, fall back to well-known OAuth metadata
-        return False
+        return False, ""
 
 
 def discover_oauth_metadata(server_url: str, protocol_version: Optional[str] = None) -> Optional[OAuthMetadata]:
     """Looks up RFC 8414 OAuth 2.0 Authorization Server Metadata."""
     # First check if the server supports OAuth 2.0 Resource Discovery
-    resource_discovery_result = check_support_resource_discovery(server_url)
-    if resource_discovery_result and resource_discovery_result is not True:
-        url = resource_discovery_result
+    support_resource_discovery, oauth_discovery_url = check_support_resource_discovery(server_url)
+    if support_resource_discovery:
+        url = oauth_discovery_url
     else:
         url = urljoin(server_url, "/.well-known/oauth-authorization-server")
 
