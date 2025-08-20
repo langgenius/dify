@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum, StrEnum
@@ -15,7 +16,8 @@ from core.file.models import File
 from core.memory.entities import MemoryBlockSpec
 from core.variables import utils as variable_utils
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID, \
+    MEMORY_BLOCK_VARIABLE_NODE_ID
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -1267,6 +1269,31 @@ class WorkflowDraftVariable(Base):
         variable.visible = visible
         variable.editable = editable
         return variable
+
+    @staticmethod
+    def new_memory_block_variable(
+        *,
+        app_id: str,
+        node_id: Optional[str] = None,
+        memory_id: str,
+        name: str,
+        value: str,
+        description: str = "",
+    ) -> "WorkflowDraftVariable":
+        """Create a new memory block draft variable."""
+        return WorkflowDraftVariable(
+            id=str(uuid.uuid4()),
+            app_id=app_id,
+            node_id=MEMORY_BLOCK_VARIABLE_NODE_ID,
+            name=name,
+            value=value,
+            description=description,
+            selector=[MEMORY_BLOCK_VARIABLE_NODE_ID, memory_id] if node_id is None else
+            [MEMORY_BLOCK_VARIABLE_NODE_ID, memory_id, node_id],
+            value_type=SegmentType.STRING,
+            visible=True,
+            editable=True,
+        )
 
     @property
     def edited(self):
