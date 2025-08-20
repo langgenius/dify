@@ -9,7 +9,6 @@ import type { BlockEnum } from '../types'
 import { useNodesExtraData } from '../hooks'
 import { START_BLOCKS } from './constants'
 import type { ToolDefaultValue } from './types'
-import TriggerPluginSelector from './trigger-plugin-selector'
 import Tooltip from '@/app/components/base/tooltip'
 
 type StartBlocksProps = {
@@ -78,10 +77,6 @@ const StartBlocks = ({
           {filteredBlocks.map(renderBlock)}
         </div>
       )}
-      <TriggerPluginSelector
-        onSelect={onSelect}
-        searchText={searchText}
-      />
     </div>
   )
 }
