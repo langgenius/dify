@@ -98,14 +98,19 @@ class AnalyticdbVectorBySql:
         try:
             cur.execute(f"CREATE DATABASE {self.databaseName}")
         except Exception as e:
-            if "already exists" in str(e):
-                return
-            raise e
+            if "already exists" not in str(e):
+                raise e
         finally:
             cur.close()
             conn.close()
         self.pool = self._create_connection_pool()
         with self._get_cursor() as cur:
+            try:
+                cur.execute("CREATE EXTENSION IF NOT EXISTS zhparser;")
+            except Exception as e:
+                raise RuntimeError(
+                    "Failed to create zhparser extension. Please ensure it is available in your AnalyticDB."
+                ) from e
             try:
                 cur.execute("CREATE TEXT SEARCH CONFIGURATION zh_cn (PARSER = zhparser)")
                 cur.execute("ALTER TEXT SEARCH CONFIGURATION zh_cn ADD MAPPING FOR n,v,a,i,e,l,x WITH simple")
