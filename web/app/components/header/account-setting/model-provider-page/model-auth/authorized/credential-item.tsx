@@ -44,13 +44,16 @@ const CredentialItem = ({
     return !(disableRename && disableEdit && disableDelete)
   }, [disableRename, disableEdit, disableDelete])
 
-  return (
+  const Item = (
     <div
       key={credential.credential_id}
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
+        (disabled || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
       )}
       onClick={() => {
+        if (disabled || credential.not_allowed_to_use)
+          return
         onItemClick?.(credential)
       }}
     >
@@ -85,7 +88,7 @@ const CredentialItem = ({
         showAction && (
           <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>
             {
-              !disableEdit && (
+              !disableEdit && !credential.not_allowed_to_use && !credential.from_enterprise && (
                 <Tooltip popupContent={t('common.operation.edit')}>
                   <ActionButton
                     disabled={disabled}
@@ -100,7 +103,7 @@ const CredentialItem = ({
               )
             }
             {
-              !disableDelete && (
+              !disableDelete && !credential.from_enterprise && (
                 <Tooltip popupContent={t('common.operation.delete')}>
                   <ActionButton
                     className='hover:bg-transparent'
@@ -120,6 +123,15 @@ const CredentialItem = ({
       }
     </div>
   )
+
+  if (credential.not_allowed_to_use) {
+    return (
+      <Tooltip popupContent={t('plugin.auth.customCredentialUnavailable')}>
+        {Item}
+      </Tooltip>
+    )
+  }
+  return Item
 }
 
 export default memo(CredentialItem)

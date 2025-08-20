@@ -21,6 +21,7 @@ import {
   useCustomModels,
 } from './hooks'
 import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 
 type AddCustomModelProps = {
   provider: ModelProvider,
@@ -41,8 +42,9 @@ const AddCustomModel = ({
   const handleClick = useCallback(() => {
     handleOpenModal()
   }, [handleOpenModal])
+  const notAllowCustomCredential = provider.allow_custom_token === false
   const ButtonComponent = useMemo(() => {
-    return (
+    const Item = (
       <Button
         variant='ghost-accent'
         size='small'
@@ -52,10 +54,21 @@ const AddCustomModel = ({
         {t('common.modelProvider.addModel')}
       </Button>
     )
-  }, [handleClick])
+    if (notAllowCustomCredential) {
+      return (
+        <Tooltip
+          asChild
+          popupContent={t('plugin.auth.credentialUnavailable')}
+        >
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [handleClick, notAllowCustomCredential, t])
 
   const renderTrigger = useCallback((open?: boolean) => {
-    return (
+    const Item = (
       <Button
         variant='ghost'
         size='small'
@@ -65,7 +78,18 @@ const AddCustomModel = ({
         {t('common.modelProvider.addModel')}
       </Button>
     )
-  }, [t])
+    if (notAllowCustomCredential) {
+      return (
+        <Tooltip
+          asChild
+          popupContent={t('plugin.auth.credentialUnavailable')}
+        >
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [notAllowCustomCredential, t])
 
   if (noModels)
     return ButtonComponent

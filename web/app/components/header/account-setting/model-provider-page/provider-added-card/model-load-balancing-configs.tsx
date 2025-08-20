@@ -125,15 +125,7 @@ const ModelLoadBalancingConfigs = ({
   const validDraftConfigList = useMemo(() => {
     if (!draftConfig)
       return []
-    return draftConfig.configs.filter((config) => {
-      if (config.name === '__inherit__')
-        return true
-
-      if (config.credential_id)
-        return true
-
-      return false
-    })
+    return draftConfig.configs
   }, [draftConfig])
 
   if (!draftConfig)
@@ -206,40 +198,50 @@ const ModelLoadBalancingConfigs = ({
                     {!isProviderManaged && (
                       <>
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
-                          <span
-                            className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
-                            onClick={() => {
-                              handleOpenModal(
-                                provider,
-                                configurationMethod,
-                                currentCustomConfigurationModelFixedFields,
-                                configurationMethod === ConfigurationMethodEnum.customizableModel,
-                                (config.credential_id && config.name) ? {
-                                  credential_id: config.credential_id,
-                                  credential_name: config.name,
-                                } : undefined,
-                                model,
-                              )
-                            }}
-                          >
-                            <RiEqualizer2Line className='h-4 w-4' />
-                          </span>
+                          {
+                            config.credential_id && (
+                              <span
+                                className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
+                                onClick={() => {
+                                  handleOpenModal(
+                                    provider,
+                                    configurationMethod,
+                                    currentCustomConfigurationModelFixedFields,
+                                    configurationMethod === ConfigurationMethodEnum.customizableModel,
+                                    (config.credential_id && config.name) ? {
+                                      credential_id: config.credential_id,
+                                      credential_name: config.name,
+                                    } : undefined,
+                                    model,
+                                  )
+                                }}
+                              >
+                                <RiEqualizer2Line className='h-4 w-4' />
+                              </span>
+                            )
+                          }
                           <span
                             className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
                             onClick={() => updateConfigEntry(index, () => undefined)}
                           >
                             <RiDeleteBinLine className='h-4 w-4' />
                           </span>
-                          <span className='mr-2 h-3 border-r border-r-divider-subtle' />
                         </div>
                       </>
                     )}
-                    <Switch
-                      defaultValue={Boolean(config.enabled)}
-                      size='md'
-                      className='justify-self-end'
-                      onChange={value => toggleConfigEntryEnabled(index, value)}
-                    />
+                    {
+                      (config.credential_id || config.name === '__inherit__') && (
+                        <>
+                          <span className='mr-2 h-3 border-r border-r-divider-subtle' />
+                          <Switch
+                            defaultValue={Boolean(config.enabled)}
+                            size='md'
+                            className='justify-self-end'
+                            onChange={value => toggleConfigEntryEnabled(index, value)}
+                          />
+                        </>
+                      )
+                    }
                   </div>
                 </div>
               )

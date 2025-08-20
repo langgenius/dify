@@ -35,10 +35,12 @@ const AuthorizedInNode = ({
     credentials,
     disabled,
     invalidPluginCredentialInfo,
+    notAllowCustomCredential,
   } = usePluginAuth(pluginPayload, isOpen || !!credentialId)
   const renderTrigger = useCallback((open?: boolean) => {
     let label = ''
     let removed = false
+    let unavailable = false
     if (!credentialId) {
       label = t('plugin.auth.workspaceDefault')
     }
@@ -46,6 +48,7 @@ const AuthorizedInNode = ({
       const credential = credentials.find(c => c.id === credentialId)
       label = credential ? credential.name : t('plugin.auth.authRemoved')
       removed = !credential
+      unavailable = !!credential?.not_allowed_to_use
     }
     return (
       <Button
@@ -60,6 +63,9 @@ const AuthorizedInNode = ({
           color={removed ? 'red' : 'green'}
         />
         {label}
+        {
+          !unavailable && t('plugin.auth.unavailable')
+        }
         <RiArrowDownSLine
           className={cn(
             'h-3.5 w-3.5 text-components-button-ghost-text',
@@ -106,6 +112,7 @@ const AuthorizedInNode = ({
       showItemSelectedIcon
       selectedCredentialId={credentialId || '__workspace_default__'}
       onUpdate={invalidPluginCredentialInfo}
+      notAllowCustomCredential={notAllowCustomCredential}
     />
   )
 }

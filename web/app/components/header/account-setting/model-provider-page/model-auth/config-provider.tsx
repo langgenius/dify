@@ -17,6 +17,7 @@ import type {
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
 import { useAuth, useCredentialStatus } from './hooks'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ConfigProviderProps = {
   provider: ModelProvider,
@@ -39,24 +40,36 @@ const ConfigProvider = ({
     current_credential_name,
     available_credentials,
   } = useCredentialStatus(provider)
+  const notAllowCustomCredential = provider.allow_custom_token === false
   const handleClick = useCallback(() => {
-    if (!hasCredential)
+    if (!hasCredential && !notAllowCustomCredential)
       handleOpenModal()
-  }, [handleOpenModal, hasCredential])
-
+  }, [handleOpenModal, hasCredential, notAllowCustomCredential])
   const ButtonComponent = useMemo(() => {
-    return (
+    const Item = (
       <Button
         className='grow'
         size='small'
         onClick={handleClick}
         variant={!authorized ? 'secondary-accent' : 'secondary'}
+        disabled={notAllowCustomCredential}
       >
         <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
         {t('common.operation.setup')}
       </Button>
     )
-  }, [handleClick, authorized])
+    if (notAllowCustomCredential) {
+      return (
+        <Tooltip
+          asChild
+          popupContent={t('plugin.auth.credentialUnavailable')}
+        >
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [handleClick, authorized, notAllowCustomCredential, t])
 
   if (!hasCredential)
     return ButtonComponent

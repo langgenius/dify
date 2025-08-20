@@ -22,7 +22,7 @@ const ConfigModel = ({
 }: ConfigModelProps) => {
   const { t } = useTranslation()
 
-  if (loadBalancingEnabled && loadBalancingInvalid && !credentialRemoved) {
+  if (loadBalancingInvalid) {
     return (
       <div
         className='system-2xs-medium-uppercase relative flex h-[18px] items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 text-text-warning'
@@ -54,7 +54,7 @@ const ConfigModel = ({
         )
       }
       {
-        !loadBalancingEnabled && !credentialRemoved && (
+        !loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
             <RiEqualizer2Line className='mr-1 h-4 w-4' />
             {t('common.operation.config')}
@@ -62,7 +62,7 @@ const ConfigModel = ({
         )
       }
       {
-        loadBalancingEnabled && !loadBalancingInvalid && !credentialRemoved && (
+        loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
             <RiScales3Line className='mr-1 h-4 w-4' />
             {t('common.modelProvider.auth.configLoadBalancing')}

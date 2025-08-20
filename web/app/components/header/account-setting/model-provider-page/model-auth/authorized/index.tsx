@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import {
@@ -28,6 +29,7 @@ import type {
 } from '../../declarations'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
+import Tooltip from '@/app/components/base/tooltip'
 
 type AuthorizedProps = {
   provider: ModelProvider,
@@ -107,6 +109,33 @@ const Authorized = ({
 
     setMergedIsOpen(false)
   }, [handleActiveCredential, onItemClick, setMergedIsOpen])
+  const notAllowCustomCredential = provider.allow_custom_token === false
+
+  const Trigger = useMemo(() => {
+    const hasValidCredential = items.some(item => item.credentials.some(credential => !credential.not_allowed_to_use))
+    const Item = (
+      <Button
+        className='grow'
+        size='small'
+        disabled={notAllowCustomCredential && !hasValidCredential}
+      >
+        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
+        {t('common.operation.config')}
+      </Button>
+    )
+
+    if (notAllowCustomCredential && !hasValidCredential) {
+      return (
+        <Tooltip
+          asChild
+          popupContent={t('plugin.auth.credentialUnavailable')}
+        >
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [notAllowCustomCredential, t, items])
 
   return (
     <>
@@ -118,21 +147,20 @@ const Authorized = ({
         triggerPopupSameWidth={triggerPopupSameWidth}
       >
         <PortalToFollowElemTrigger
-          onClick={() => setMergedIsOpen(!mergedIsOpen)}
+          onClick={() => {
+            if (notAllowCustomCredential) {
+              const hasValidCredential = items.some(item => item.credentials.some(credential => !credential.not_allowed_to_use))
+              if (!hasValidCredential)
+                return
+            }
+            setMergedIsOpen(!mergedIsOpen)
+          }}
           asChild
         >
           {
             renderTrigger
               ? renderTrigger(mergedIsOpen)
-              : (
-                <Button
-                  className='grow'
-                  size='small'
-                >
-                  <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
-                  {t('common.operation.config')}
-                </Button>
-              )
+              : Trigger
           }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[100]'>
@@ -155,13 +183,14 @@ const Authorized = ({
                     selectedCredentialId={selectedCredential?.credential_id}
                     onItemClick={handleItemClick}
                     enableAddModelCredential={enableAddModelCredential}
+                    notAllowCustomCredential={notAllowCustomCredential}
                   />
                 ))
               }
             </div>
             <div className='h-[1px] bg-divider-subtle'></div>
             {
-              isModelCredential && (
+              isModelCredential && !notAllowCustomCredential && (
                 <div
                   onClick={() => handleEdit(
                     undefined,
@@ -180,7 +209,7 @@ const Authorized = ({
               )
             }
             {
-              !isModelCredential && (
+              !isModelCredential && !notAllowCustomCredential && (
                 <div className='p-2'>
                   <Button
                     onClick={() => handleEdit()}

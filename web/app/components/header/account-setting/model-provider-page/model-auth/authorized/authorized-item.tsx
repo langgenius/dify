@@ -24,6 +24,7 @@ type AuthorizedItemProps = {
   credentials: Credential[]
   onItemClick?: (credential: Credential, model?: CustomModel) => void
   enableAddModelCredential?: boolean
+  notAllowCustomCredential?: boolean
 }
 export const AuthorizedItem = ({
   model,
@@ -36,6 +37,7 @@ export const AuthorizedItem = ({
   selectedCredentialId,
   onItemClick,
   enableAddModelCredential,
+  notAllowCustomCredential,
 }: AuthorizedItemProps) => {
   const { t } = useTranslation()
   const handleEdit = useCallback((credential?: Credential) => {
@@ -61,7 +63,7 @@ export const AuthorizedItem = ({
           {title ?? model?.model}
         </div>
         {
-          enableAddModelCredential && (
+          enableAddModelCredential && !notAllowCustomCredential && (
             <Tooltip
               asChild
               popupContent={t('common.modelProvider.auth.addModelCredential')}

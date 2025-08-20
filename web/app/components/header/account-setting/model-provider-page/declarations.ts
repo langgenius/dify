@@ -187,7 +187,7 @@ export type Credential = {
   credential_id: string
   credential_name?: string
   from_enterprise?: boolean
-  allowed_to_use?: boolean
+  not_allowed_to_use?: boolean
 }
 
 export type CustomModel = {
@@ -242,6 +242,7 @@ export type ModelProvider = {
     current_quota_type: CurrentSystemQuotaTypeEnum
     quota_configurations: QuotaConfiguration[]
   }
+  allow_custom_token?: boolean
 }
 
 export type Model = {
