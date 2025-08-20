@@ -478,7 +478,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
-  const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>('created_at')
+  const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | 'display_status' | null>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const {
     isShowEditModal,
@@ -503,6 +503,17 @@ const DocumentList: FC<IDocumentListProps> = ({
       let aValue: any
       let bValue: any
 
+      const statusPriority: Record<string, number> = {
+        'error': 1,
+        'indexing': 2,
+        'queuing': 3,
+        'paused': 4,
+        'available': 5,
+        'enabled': 5,
+        'disabled': 6,
+        'archived': 7,
+      }
+
       switch (sortField) {
         case 'name':
           aValue = a.name?.toLowerCase() || ''
@@ -519,6 +530,10 @@ const DocumentList: FC<IDocumentListProps> = ({
         case 'created_at':
           aValue = a.created_at
           bValue = b.created_at
+          break
+        case 'display_status':
+          aValue = statusPriority[a.display_status?.toLowerCase() || ''] || 999
+          bValue = statusPriority[b.display_status?.toLowerCase() || ''] || 999
           break
         default:
           return 0
@@ -537,7 +552,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     setLocalDocs(sortedDocs)
   }, [documents, sortField, sortOrder])
 
-  const handleSort = (field: 'name' | 'word_count' | 'hit_count' | 'created_at') => {
+  const handleSort = (field: 'name' | 'word_count' | 'hit_count' | 'created_at' | 'display_status') => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     }
@@ -547,7 +562,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     }
   }
 
-  const renderSortHeader = (field: 'name' | 'word_count' | 'hit_count' | 'created_at', label: string) => {
+  const renderSortHeader = (field: 'name' | 'word_count' | 'hit_count' | 'created_at' | 'display_status', label: string) => {
     const isActive = sortField === field
     const isDesc = isActive && sortOrder === 'desc'
 
@@ -655,7 +670,9 @@ const DocumentList: FC<IDocumentListProps> = ({
               <td className='w-44'>
                 {renderSortHeader('created_at', t('datasetDocuments.list.table.header.uploadTime'))}
               </td>
-              <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
+              <td className='w-40'>
+                {renderSortHeader('display_status', t('datasetDocuments.list.table.header.status'))}
+              </td>
               <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
             </tr>
           </thead>
