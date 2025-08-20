@@ -1639,6 +1639,7 @@ class ProviderConfiguration(BaseModel):
 
             status = ModelStatus.ACTIVE
             load_balancing_enabled = False
+            has_invalid_load_balancing_configs = False
             if (
                 custom_model_schema.model_type in model_setting_map
                 and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
