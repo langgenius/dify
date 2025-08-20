@@ -48,7 +48,7 @@ const Result = () => {
           />
         )}
         {currentTab === 'DETAIL' && !workflowRunningData?.result && (
-          <div className='flex h-full items-center justify-center'>
+          <div className='flex grow items-center justify-center'>
             <Loading />
           </div>
         )}
@@ -59,7 +59,7 @@ const Result = () => {
           />
         )}
         {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-          <div className='flex h-full items-center justify-center'>
+          <div className='flex grow items-center justify-center'>
             <Loading />
           </div>
         )}

@@ -34,6 +34,7 @@ export type DataSourceNodeType = CommonNodeType & {
 }
 
 export type CustomRunFormProps = {
+  nodeId: string
   payload: CommonNodeType
   onSuccess: () => void
   onCancel: () => void

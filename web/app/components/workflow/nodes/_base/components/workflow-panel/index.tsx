@@ -308,6 +308,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   if (isShowSingleRun) {
     const form = getCustomRunForm({
+      nodeId: id,
       payload: data,
       onSuccess: handleAfterCustomSingleRun,
       onCancel: hideSingleRun,
