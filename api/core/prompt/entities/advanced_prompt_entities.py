@@ -45,6 +45,13 @@ class MemoryConfig(BaseModel):
         enabled: bool
         size: Optional[int] = None
 
+    mode: Optional[Literal["linear", "block"]] = "linear"
+    block_id: Optional[list[str]] = None  # available only in block mode
+
     role_prefix: Optional[RolePrefix] = None
     window: WindowConfig
     query_prompt_template: Optional[str] = None
+
+    @property
+    def is_block_mode(self) -> bool:
+        return self.mode == "block" and bool(self.block_id)
