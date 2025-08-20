@@ -32,8 +32,8 @@ from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
-from services.file_service import FileService
 from services.errors.file import UploadQueueFullError
+from services.file_service import FileService
 from services.upload_scheduler_service import UploadSchedulerService
 
 
@@ -292,6 +292,7 @@ class DocumentScheduleByFileApi(DatasetApiResource):
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
         from configs import dify_config
+
         if not dify_config.UPLOAD_SCHEDULER_ENABLED:
             raise ValueError("Enable UPLOAD_SCHEDULER_ENABLED from configuration.")
         args = {}
@@ -347,11 +348,11 @@ class DocumentScheduleByFileApi(DatasetApiResource):
 
         # Prepare file data for scheduler
         file_data = {
-            'filename': file.filename,
-            'content': file.read(),
-            'mimetype': file.mimetype,
-            'user': current_user,
-            'source': 'datasets'
+            "filename": file.filename,
+            "content": file.read(),
+            "mimetype": file.mimetype,
+            "user": current_user,
+            "source": "datasets",
         }
         knowledge_config = KnowledgeConfig(**args)
         DocumentService.document_create_args_validate(knowledge_config)
@@ -362,16 +363,10 @@ class DocumentScheduleByFileApi(DatasetApiResource):
 
         try:
             task_id = UploadSchedulerService.enqueue_upload(
-                tenant_id=tenant_id,
-                dataset_id=dataset_id,
-                file_data=file_data,
-                upload_args=args
+                tenant_id=tenant_id, dataset_id=dataset_id, file_data=file_data, upload_args=args
             )
 
-            return {
-                'task_id': task_id,
-                'message': 'Document scheduled successfully'
-            }, 200
+            return {"task_id": task_id, "message": "Document scheduled successfully"}, 200
         except UploadQueueFullError as e:
             raise TooManyRequests(e.description)
         except Exception as e:

@@ -1,8 +1,10 @@
+import logging
+
 from celery import shared_task  # type: ignore
-from services.upload_scheduler_service import UploadSchedulerService
+
 from configs.scheduler_config import upload_scheduler_config
 from extensions.ext_redis import redis_client
-import logging
+from services.upload_scheduler_service import UploadSchedulerService
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +19,14 @@ def process_upload_queue():
     queue_keys = redis_client.keys(queue_pattern)
 
     for queue_key in queue_keys:
-        tenant_id = queue_key.decode('utf-8').replace(
-            UploadSchedulerService.QUEUE_KEY_PREFIX, ''
-        )
+        tenant_id = queue_key.decode("utf-8").replace(UploadSchedulerService.QUEUE_KEY_PREFIX, "")
 
         try:
             processed_tasks = UploadSchedulerService.process_queue(tenant_id)
 
             if processed_tasks:
-                logger.info(
-                    f"Processed {len(processed_tasks)} uploads "
-                    f"for tenant {tenant_id}"
-                )
+                logger.info(f"Processed {len(processed_tasks)} uploads for tenant {tenant_id}")
 
         except Exception as e:
-            logger.error(
-                f"Error processing queue for tenant {tenant_id}: "
-                f"{str(e)}"
-            )
-            continue 
+            logger.error(f"Error processing queue for tenant {tenant_id}: {str(e)}")
+            continue

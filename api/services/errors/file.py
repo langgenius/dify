@@ -15,4 +15,5 @@ class UnsupportedFileTypeError(BaseServiceError):
 
 class UploadQueueFullError(Exception):
     """Raised when upload queue is full."""
+
     description = "Upload queue is full. Please try again later."

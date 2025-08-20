@@ -8,8 +8,8 @@ import uuid
 from collections import Counter
 from typing import Any, Literal, Optional
 
-from flask_login import current_user
 from flask import g
+from flask_login import current_user
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
