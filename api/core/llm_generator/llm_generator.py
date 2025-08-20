@@ -181,9 +181,9 @@ class LLMGenerator:
             return rule_config
 
         # get rule prompt, parameter and statement
-        prompt_generate = RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,
-        parameter_generate = RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
-        statement_generate = RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,
+        prompt_generate = (RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,)
+        parameter_generate = (RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,)
+        statement_generate = (RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,)
         prompt_template = PromptTemplateParser(prompt_generate)
         parameter_template = PromptTemplateParser(parameter_generate)
         statement_template = PromptTemplateParser(statement_generate)
