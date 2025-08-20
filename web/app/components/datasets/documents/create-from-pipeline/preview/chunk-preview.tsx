@@ -121,21 +121,21 @@ const ChunkPreview = ({
             && <PreviewDocumentPicker
               files={
                 onlineDriveFiles.map(file => ({
-                  id: file.key,
-                  name: file.displayName,
-                  extension: getFileExtension(previewOnlineDriveFile?.displayName),
+                  id: file.id,
+                  name: file.name,
+                  extension: getFileExtension(previewOnlineDriveFile?.name),
                 }))
               }
               onChange={(selected) => {
-                const selectedFile = onlineDriveFiles.find(file => file.key === selected.id)
+                const selectedFile = onlineDriveFiles.find(file => file.id === selected.id)
                 setPreviewOnlineDriveFile(selectedFile!)
                 handlePreviewOnlineDriveFileChange(selectedFile!)
               }}
               value={
                 {
-                  id: previewOnlineDriveFile?.key || '',
-                  name: previewOnlineDriveFile?.displayName || '',
-                  extension: getFileExtension(previewOnlineDriveFile?.displayName),
+                  id: previewOnlineDriveFile?.id || '',
+                  name: previewOnlineDriveFile?.name || '',
+                  extension: getFileExtension(previewOnlineDriveFile?.name),
                 }
               }
             />

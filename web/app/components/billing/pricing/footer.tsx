@@ -19,6 +19,7 @@ const Footer = ({
           <Link
             href={pricingPageURL}
             className='system-md-regular'
+            target='_blank'
           >
             {t('billing.plansCommon.comparePlanAndFeatures')}
           </Link>
