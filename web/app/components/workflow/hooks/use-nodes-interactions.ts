@@ -18,6 +18,7 @@ import {
 } from 'reactflow'
 import { unionBy } from 'lodash-es'
 import type { ToolDefaultValue } from '../block-selector/types'
+import { ENTRY_NODE_TYPES } from '../block-selector/constants'
 import type {
   Edge,
   Node,
@@ -62,6 +63,24 @@ import {
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+
+// Helper function to check if a node is an entry node
+const isEntryNode = (nodeType: BlockEnum): boolean => {
+  return ENTRY_NODE_TYPES.includes(nodeType as any)
+}
+
+// Helper function to check if entry node can be deleted
+const canDeleteEntryNode = (nodes: Node[], nodeId: string): boolean => {
+  const targetNode = nodes.find(node => node.id === nodeId)
+  if (!targetNode || !isEntryNode(targetNode.data.type))
+    return true // Non-entry nodes can always be deleted
+
+  // Count all entry nodes
+  const entryNodes = nodes.filter(node => isEntryNode(node.data.type))
+
+  // Can delete if there's more than one entry node
+  return entryNodes.length > 1
+}
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -548,13 +567,15 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
+
+    // Check if entry node can be deleted (must keep at least one entry node)
+    if (!canDeleteEntryNode(nodes, nodeId))
+      return // Cannot delete the last entry node
+
     const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
     const currentNode = nodes[currentNodeIndex]
 
     if (!currentNode)
-      return
-
-    if (currentNode.data.type === BlockEnum.Start)
       return
 
     deleteNodeInspectorVars(nodeId)
@@ -1388,7 +1409,9 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
+    const bundledNodes = nodes.filter(node =>
+      node.data._isBundled && canDeleteEntryNode(nodes, node.id),
+    )
 
     if (bundledNodes.length) {
       bundledNodes.forEach(node => handleNodeDelete(node.id))
@@ -1400,7 +1423,9 @@ export const useNodesInteractions = () => {
     if (edgeSelected)
       return
 
-    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
+    const selectedNode = nodes.find(node =>
+      node.data.selected && canDeleteEntryNode(nodes, node.id),
+    )
 
     if (selectedNode)
       handleNodeDelete(selectedNode.id)
