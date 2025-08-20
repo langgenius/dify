@@ -80,14 +80,14 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
     else:
         content = response.text
 
-    article = extract_using_readabilipy(content)
+    article = extract_using_readability(content)
 
     if not article.text:
         return ""
 
     res = FULL_TEMPLATE.format(
         title=article.title,
-        author=article.auther,
+        author=article.author,
         text=article.text,
     )
 
@@ -97,15 +97,15 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
 @dataclass
 class Article:
     title: str
-    auther: str
+    author: str
     text: Sequence[dict]
 
 
-def extract_using_readabilipy(html: str):
+def extract_using_readability(html: str):
     json_article: dict[str, Any] = simple_json_from_html_string(html, use_readability=True)
     article = Article(
         title=json_article.get("title") or "",
-        auther=json_article.get("byline") or "",
+        author=json_article.get("byline") or "",
         text=json_article.get("plain_text") or [],
     )
 
@@ -113,7 +113,7 @@ def extract_using_readabilipy(html: str):
 
 
 def get_image_upload_file_ids(content):
-    pattern = r"!\[image\]\((http?://.*?(file-preview|image-preview))\)"
+    pattern = r"!\[image\]\((https?://.*?(file-preview|image-preview))\)"
     matches = re.findall(pattern, content)
     image_upload_file_ids = []
     for match in matches:
