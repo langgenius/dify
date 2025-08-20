@@ -50,7 +50,6 @@ const translation = {
         line1: 'You can still access and use Dify. ',
         line2: 'However, you\'re no longer eligible for new education discount coupons.',
       },
-
     },
     isAboutToExpire: {
       title: 'Your education status will expire on {{date}}',
