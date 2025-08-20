@@ -89,10 +89,17 @@ const ModelLoadBalancingModal = ({
   }, [draftConfig])
 
   const extendedSecretFormSchemas = useMemo(
-    () => provider.provider_credential_schema.credential_form_schemas.filter(
-      ({ type }) => type === FormTypeEnum.secretInput,
-    ),
-    [provider.provider_credential_schema.credential_form_schemas],
+    () => {
+      if (providerFormSchemaPredefined) {
+        return provider?.provider_credential_schema?.credential_form_schemas?.filter(
+          ({ type }) => type === FormTypeEnum.secretInput,
+        ) ?? []
+      }
+      return provider?.model_credential_schema?.credential_form_schemas?.filter(
+        ({ type }) => type === FormTypeEnum.secretInput,
+      ) ?? []
+    },
+    [provider?.model_credential_schema?.credential_form_schemas, provider?.provider_credential_schema?.credential_form_schemas, providerFormSchemaPredefined],
   )
 
   const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
