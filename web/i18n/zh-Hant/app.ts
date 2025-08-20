@@ -275,6 +275,7 @@ const translation = {
       themeCategoryDesc: '切換應用程式主題',
       languageChangeDesc: '更改 UI 語言',
       runDesc: '執行快速命令（主題、語言等...）',
+      slashDesc: '執行命令如 /theme, /lang',
     },
     emptyState: {
       noAppsFound: '未找到應用',
@@ -289,6 +290,7 @@ const translation = {
       knowledgeBases: '知識庫',
       plugins: '外掛程式',
       workflowNodes: '工作流節點',
+      commands: '指令',
     },
     searchPlaceholder: '搜尋或鍵入 @ 以取得命令...',
     searching: '搜索中...',

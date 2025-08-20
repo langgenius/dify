@@ -23,6 +23,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
+from core.helper.trace_id_helper import get_external_trace_id
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
@@ -184,6 +185,10 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
 
         args = parser.parse_args()
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         try:
             response = AppGenerateService.generate(
@@ -372,6 +377,10 @@ class DraftWorkflowRunApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("files", type=list, required=False, location="json")
         args = parser.parse_args()
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         try:
             response = AppGenerateService.generate(

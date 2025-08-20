@@ -3,9 +3,10 @@ import {
   RiArrowGoBackLine,
   RiCloseLine,
   RiMenuLine,
+  RiSparklingFill,
 } from '@remixicon/react'
 import { useStore } from '../store'
-import type { BlockEnum } from '../types'
+import { BlockEnum } from '../types'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import Empty from './empty'
 import ValueContent from './value-content'
@@ -18,15 +19,31 @@ import Loading from '@/app/components/base/loading'
 import type { currentVarType } from './panel'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import useNodeInfo from '../nodes/_base/hooks/use-node-info'
+import { useBoolean } from 'ahooks'
+import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
+import { AppType } from '@/types/app'
+import { useHooksStore } from '../hooks-store'
+import { useCallback, useMemo } from 'react'
+import { useNodesInteractions } from '../hooks'
+import { CodeLanguage } from '../nodes/code/types'
+import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
+import type { GenRes } from '@/service/debug'
+import produce from 'immer'
+import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type Props = {
+  nodeId: string
   currentNodeVar?: currentVarType
   handleOpenMenu: () => void
   isValueFetching?: boolean
 }
 
 const Right = ({
+  nodeId,
   currentNodeVar,
   handleOpenMenu,
   isValueFetching,
@@ -73,6 +90,67 @@ const Right = ({
     return String(value)
   }
 
+  const configsMap = useHooksStore(s => s.configsMap)
+  const { eventEmitter } = useEventEmitterContextContext()
+  const { handleNodeSelect } = useNodesInteractions()
+  const { node } = useNodeInfo(nodeId)
+  const { setInputs } = useNodeCrud(nodeId, node?.data)
+  const blockType = node?.data?.type
+  const isCodeBlock = blockType === BlockEnum.Code
+  const canShowPromptGenerator = [BlockEnum.LLM, BlockEnum.Code].includes(blockType)
+  const currentPrompt = useMemo(() => {
+    if (!canShowPromptGenerator)
+      return ''
+    if (blockType === BlockEnum.LLM)
+      return node?.data?.prompt_template?.text || node?.data?.prompt_template?.[0].text
+
+    // if (blockType === BlockEnum.Agent) {
+    //   return node?.data?.agent_parameters?.instruction?.value
+    // }
+    if (blockType === BlockEnum.Code)
+      return node?.data?.code
+  }, [canShowPromptGenerator])
+
+  const [isShowPromptGenerator, {
+    setTrue: doShowPromptGenerator,
+    setFalse: handleHidePromptGenerator,
+  }] = useBoolean(false)
+  const handleShowPromptGenerator = useCallback(() => {
+    handleNodeSelect(nodeId)
+    doShowPromptGenerator()
+  }, [doShowPromptGenerator, handleNodeSelect, nodeId])
+
+  const handleUpdatePrompt = useCallback((res: GenRes) => {
+    const newInputs = produce(node?.data, (draft: any) => {
+      switch (blockType) {
+        case BlockEnum.LLM:
+          if (draft?.prompt_template) {
+            if (Array.isArray(draft.prompt_template))
+              draft.prompt_template[0].text = res.modified
+            else
+              draft.prompt_template.text = res.modified
+          }
+          break
+
+        //  Agent is a plugin, may has many instructions, can not locate which one to update
+        // case BlockEnum.Agent:
+        //   if (draft?.agent_parameters?.instruction) {
+        //     draft.agent_parameters.instruction.value = res.modified
+        //   }
+        //   break
+        case BlockEnum.Code:
+          draft.code = res.modified
+          break
+      }
+    })
+    setInputs(newInputs)
+    eventEmitter?.emit({
+      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+      instanceId: `${nodeId}-chat-workflow-llm-prompt-editor`,
+      payload: res.modified,
+    } as any)
+    handleHidePromptGenerator()
+  }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
@@ -112,6 +190,16 @@ const Right = ({
         <div className='flex shrink-0 items-center gap-1'>
           {currentNodeVar && (
             <>
+              {canShowPromptGenerator && (
+                <Tooltip popupContent={t('appDebug.generate.optimizePromptTooltip')}>
+                  <div
+                    className='cursor-pointer rounded-md p-1 hover:bg-state-accent-active'
+                    onClick={handleShowPromptGenerator}
+                  >
+                    <RiSparklingFill className='size-4 text-components-input-border-active-prompt-1' />
+                  </div>
+                </Tooltip>
+              )}
               {currentNodeVar.var.edited && (
                 <Badge>
                   <span className='ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary'></span>
@@ -152,6 +240,28 @@ const Right = ({
         )}
         {currentNodeVar && !isValueFetching && <ValueContent currentVar={currentNodeVar.var} handleValueChange={handleValueChange} />}
       </div>
+      {isShowPromptGenerator && (
+        isCodeBlock
+          ? <GetCodeGeneratorResModal
+            isShow
+            mode={AppType.chat}
+            onClose={handleHidePromptGenerator}
+            flowId={configsMap?.flowId || ''}
+            nodeId={nodeId}
+            currentCode={currentPrompt}
+            codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
+            onFinished={handleUpdatePrompt}
+          />
+          : <GetAutomaticResModal
+            mode={AppType.chat}
+            isShow
+            onClose={handleHidePromptGenerator}
+            onFinished={handleUpdatePrompt}
+            flowId={configsMap?.flowId || ''}
+            nodeId={nodeId}
+            currentPrompt={currentPrompt}
+          />
+      )}
     </div>
   )
 }

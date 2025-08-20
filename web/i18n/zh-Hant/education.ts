@@ -42,6 +42,34 @@ const translation = {
   submit: '提交',
   successTitle: '您已獲得 Dify 教育認證',
   toVerified: '獲取教育證明',
+  notice: {
+    expired: {
+      summary: {
+        line1: '您仍然可以訪問和使用 Dify。',
+        line2: '然而，您已不再有資格獲得新的教育折扣優惠券。',
+      },
+      title: '您的教育狀態已過期',
+    },
+    isAboutToExpire: {
+      summary: '別擔心 — 這不會影響你當前的訂閱，但當它續訂時，如果你沒有重新確認你的身份，你將不會獲得教育折扣。',
+    },
+    stillInEducation: {
+      title: '仍在接受教育嗎？',
+      expired: '立即重新驗證，以獲得即將到來的學年新優惠券。我們會將其添加到您的帳戶中，您可以用於下一次升級。',
+      isAboutToExpire: '現在重新驗證以獲得即將到來的學年新優惠券。它將保存在您的帳戶中，並在下次續訂時隨時可以使用。',
+    },
+    alreadyGraduated: {
+      expired: '隨時升級即可獲得完整的付費功能訪問權限。',
+      title: '已經畢業了嗎？',
+      isAboutToExpire: '您目前的訂閱將保持有效。當它結束時，您將轉到沙盒計劃，或者您可以隨時升級以恢復對付費功能的完全訪問。',
+    },
+    action: {
+      dismiss: '解散',
+      upgrade: '升級',
+      reVerify: '重新驗證',
+    },
+    dateFormat: '月/日/年',
+  },
 }
 
 export default translation

@@ -103,10 +103,10 @@ class ConversationService:
     @classmethod
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
         field_value = getattr(reference_conversation, sort_field)
-        if sort_direction == desc:
+        if sort_direction is desc:
             return getattr(Conversation, sort_field) < field_value
-        else:
-            return getattr(Conversation, sort_field) > field_value
+
+        return getattr(Conversation, sort_field) > field_value
 
     @classmethod
     def rename(
@@ -147,7 +147,7 @@ class ConversationService:
                 app_model.tenant_id, message.query, conversation.id, app_model.id
             )
             conversation.name = name
-        except:
+        except Exception:
             pass
 
         db.session.commit()
@@ -277,6 +277,11 @@ class ConversationService:
 
             # Validate that the new value type matches the expected variable type
             expected_type = SegmentType(current_variable.value_type)
+
+            # There is showing number in web ui but int in db
+            if expected_type == SegmentType.INTEGER:
+                expected_type = SegmentType.NUMBER
+
             if not expected_type.is_valid(new_value):
                 inferred_type = SegmentType.infer_segment_type(new_value)
                 raise ConversationVariableTypeMismatchError(

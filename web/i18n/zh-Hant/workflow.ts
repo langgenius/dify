@@ -995,6 +995,7 @@ const translation = {
     copyLastRunError: '未能複製上一次運行的輸入',
     noMatchingInputsFound: '在上次運行中未找到匹配的輸入',
     noLastRunFound: '沒有找到之前的運行',
+    lastOutput: '最後的輸出',
   },
 }
 

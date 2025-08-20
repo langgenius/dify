@@ -282,6 +282,7 @@ const translation = {
       languageChangeDesc: 'Cambia lingua dell\'interfaccia',
       runDesc: 'Esegui comandi rapidi (tema, lingua, ...)',
       themeSystemDesc: 'Segui l\'aspetto del tuo sistema operativo',
+      slashDesc: 'Esegui comandi come /theme, /lang',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Nessuna base di conoscenza trovata',
@@ -296,6 +297,7 @@ const translation = {
       workflowNodes: 'Nodi del flusso di lavoro',
       plugins: 'Plugin',
       apps: 'Applicazioni',
+      commands: 'Comandi',
     },
     searchTitle: 'Cerca qualsiasi cosa',
     searchPlaceholder: 'Cerca o digita @ per i comandi...',

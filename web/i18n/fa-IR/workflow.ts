@@ -995,6 +995,7 @@ const translation = {
     noLastRunFound: 'هیچ اجرای قبلی یافت نشد',
     noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
     copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
+    lastOutput: 'آخرین خروجی',
   },
 }
 
