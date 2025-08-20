@@ -48,34 +48,33 @@
     <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
-
-   Dify는 오픈 소스 LLM 앱 개발 플랫폼입니다. 직관적인 인터페이스를 통해 AI 워크플로우, RAG 파이프라인, 에이전트 기능, 모델 관리, 관찰 기능 등을 결합하여 프로토타입에서 프로덕션까지 빠르게 전환할 수 있습니다. 주요 기능 목록은 다음과 같습니다:</br> </br>
+Dify는 오픈 소스 LLM 앱 개발 플랫폼입니다. 직관적인 인터페이스를 통해 AI 워크플로우, RAG 파이프라인, 에이전트 기능, 모델 관리, 관찰 기능 등을 결합하여 프로토타입에서 프로덕션까지 빠르게 전환할 수 있습니다. 주요 기능 목록은 다음과 같습니다:</br> </br>
 
 **1. 워크플로우**:
-    다음 기능들을 비롯한 다양한 기능을 활용하여 시각적 캔버스에서 강력한 AI 워크플로우를 구축하고 테스트하세요.
+다음 기능들을 비롯한 다양한 기능을 활용하여 시각적 캔버스에서 강력한 AI 워크플로우를 구축하고 테스트하세요.
 
-**2. 포괄적인 모델 지원:**: 
+**2. 포괄적인 모델 지원:**:
 
 수십 개의 추론 제공업체와 자체 호스팅 솔루션에서 제공하는 수백 개의 독점 및 오픈 소스 LLM과 원활하게 통합되며, GPT, Mistral, Llama3 및 모든 OpenAI API 호환 모델을 포함합니다. 지원되는 모델 제공업체의 전체 목록은 [여기](https://docs.dify.ai/getting-started/readme/model-providers)에서 확인할 수 있습니다.
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
-
 **3. 통합 개발환경**:
-  프롬프트를 작성하고, 모델 성능을 비교하며, 텍스트-음성 변환과 같은 추가 기능을 채팅 기반 앱에 추가할 수 있는 직관적인 인터페이스를 제공합니다.
+프롬프트를 작성하고, 모델 성능을 비교하며, 텍스트-음성 변환과 같은 추가 기능을 채팅 기반 앱에 추가할 수 있는 직관적인 인터페이스를 제공합니다.
 
-**4. RAG 파이프라인**: 
-  문서 수집부터 검색까지 모든 것을 다루며, PDF, PPT 및 기타 일반적인 문서 형식에서 텍스트 추출을 위한 기본 지원이 포함되어 있는 광범위한 RAG 기능을 제공합니다.
+**4. RAG 파이프라인**:
+문서 수집부터 검색까지 모든 것을 다루며, PDF, PPT 및 기타 일반적인 문서 형식에서 텍스트 추출을 위한 기본 지원이 포함되어 있는 광범위한 RAG 기능을 제공합니다.
 
 **5. 에이전트 기능**:
-  LLM 함수 호출 또는 ReAct를 기반으로 에이전트를 정의하고 에이전트에 대해 사전 구축된 도구나 사용자 정의 도구를 추가할 수 있습니다. Dify는 Google Search, DALL·E, Stable Diffusion, WolframAlpha 등 AI 에이전트를 위한 50개 이상의 내장 도구를 제공합니다.
+LLM 함수 호출 또는 ReAct를 기반으로 에이전트를 정의하고 에이전트에 대해 사전 구축된 도구나 사용자 정의 도구를 추가할 수 있습니다. Dify는 Google Search, DALL·E, Stable Diffusion, WolframAlpha 등 AI 에이전트를 위한 50개 이상의 내장 도구를 제공합니다.
 
 **6. LLMOps**:
-  시간 경과에 따른 애플리케이션 로그와 성능을 모니터링하고 분석합니다. 생산 데이터와 주석을 기반으로 프롬프트, 데이터세트, 모델을 지속적으로 개선할 수 있습니다.
+시간 경과에 따른 애플리케이션 로그와 성능을 모니터링하고 분석합니다. 생산 데이터와 주석을 기반으로 프롬프트, 데이터세트, 모델을 지속적으로 개선할 수 있습니다.
 
 **7. Backend-as-a-Service**:
-  Dify의 모든 제품에는 해당 API가 함께 제공되므로 Dify를 자신의 비즈니스 로직에 쉽게 통합할 수 있습니다.
+Dify의 모든 제품에는 해당 API가 함께 제공되므로 Dify를 자신의 비즈니스 로직에 쉽게 통합할 수 있습니다.
 
 ## 기능 비교
+
 <table style="width: 100%;">
   <tr>
     <th align="center">기능</th>
@@ -148,14 +147,13 @@
   우리는 누구나 설정이 필요 없이 사용해 볼 수 있도록 [Dify 클라우드](https://dify.ai) 서비스를 호스팅합니다. 이는 자체 배포 버전의 모든 기능을 제공하며, 샌드박스 플랜에서 무료로 200회의 GPT-4 호출을 포함합니다.
 
 - **셀프-호스팅 Dify 커뮤니티 에디션</br>**
-  환경에서 Dify를 빠르게 실행하려면 이  [스타터 가이드를](#quick-start) 참조하세요.
+  환경에서 Dify를 빠르게 실행하려면 이 [스타터 가이드를](#quick-start) 참조하세요.
   추가 참조 및 더 심층적인 지침은 [문서](https://docs.dify.ai)를 사용하세요.
 
 - **기업 / 조직을 위한 Dify</br>**
-  우리는 추가적인 기업 중심 기능을 제공합니다. 잡거나  [이메일 보내기](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)를 통해 기업 요구 사항을 논의하십시오. </br>
+  우리는 추가적인 기업 중심 기능을 제공합니다. 잡거나 [이메일 보내기](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry)를 통해 기업 요구 사항을 논의하십시오. </br>
+
   > AWS를 사용하는 스타트업 및 중소기업의 경우 [AWS Marketplace에서 Dify Premium](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)을 확인하고 한 번의 클릭으로 자체 AWS VPC에 배포하십시오. 맞춤형 로고와 브랜딩이 포함된 앱을 생성할 수 있는 옵션이 포함된 저렴한 AMI 제품입니다.
-
-
 
 ## 앞서가기
 
@@ -163,12 +161,12 @@ GitHub에서 Dify에 별표를 찍어 새로운 릴리스를 즉시 알림 받�
 
 ![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
 
-
-
 ## 빠른 시작
->Dify를 설치하기 전에 컴퓨터가 다음과 같은 최소 시스템 요구 사항을 충족하는지 확인하세요 : 
->- CPU >= 2 Core
->- RAM >= 4GB
+
+> Dify를 설치하기 전에 컴퓨터가 다음과 같은 최소 시스템 요구 사항을 충족하는지 확인하세요 :
+>
+> - CPU >= 2 Core
+> - RAM >= 4GB
 
 </br>
 
@@ -202,16 +200,19 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 [terraform](https://www.terraform.io/)을 사용하여 단 한 번의 클릭으로 Dify를 클라우드 플랫폼에 배포하십시오
 
 ##### Azure Global
+
 - [nikawang의 Azure Terraform](https://github.com/nikawang/dify-azure-terraform)
 
 ##### Google Cloud
+
 - [sotazum의 Google Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### AWS CDK를 사용한 배포
 
 [CDK](https://aws.amazon.com/cdk/)를 사용하여 AWS에 Dify 배포
 
-##### AWS 
+##### AWS
+
 - [KevinZhao의 AWS CDK (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [tmokmss의 AWS CDK (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
@@ -227,14 +228,12 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)을 사용하여 Dify를 AKS에 원클릭으로 배포
 
-
 ## 기여
 
 코드에 기여하고 싶은 분들은 [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)를 참조하세요.
 동시에 Dify를 소셜 미디어와 행사 및 컨퍼런스에 공유하여 지원하는 것을 고려해 주시기 바랍니다.
 
-
-> 우리는 Dify를 중국어나 영어 이외의 언어로 번역하는 데 도움을 줄 수 있는 기여자를 찾고 있습니다. 도움을 주고 싶으시다면 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)에서 더 많은 정보를 확인하시고 [Discord 커뮤니티 서버](https://discord.gg/8Tpq4AcN9c)의 `global-users` 채널에 댓글을 남겨주세요. 
+> 우리는 Dify를 중국어나 영어 이외의 언어로 번역하는 데 도움을 줄 수 있는 기여자를 찾고 있습니다. 도움을 주고 싶으시다면 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)에서 더 많은 정보를 확인하시고 [Discord 커뮤니티 서버](https://discord.gg/8Tpq4AcN9c)의 `global-users` 채널에 댓글을 남겨주세요.
 
 **기여자**
 
@@ -244,16 +243,14 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 ## 커뮤니티 & 연락처
 
-* [GitHub 토론](https://github.com/langgenius/dify/discussions). 피드백 공유 및 질문하기에 적합합니다.
-* [GitHub 이슈](https://github.com/langgenius/dify/issues). Dify.AI 사용 중 발견한 버그와 기능 제안에 적합합니다. [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)를 참조하세요. 
-* [디스코드](https://discord.gg/FngNHpbcY7). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.
-* [트위터](https://twitter.com/dify_ai). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.
-
+- [GitHub 토론](https://github.com/langgenius/dify/discussions). 피드백 공유 및 질문하기에 적합합니다.
+- [GitHub 이슈](https://github.com/langgenius/dify/issues). Dify.AI 사용 중 발견한 버그와 기능 제안에 적합합니다. [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)를 참조하세요.
+- [디스코드](https://discord.gg/FngNHpbcY7). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.
+- [트위터](https://twitter.com/dify_ai). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.
 
 ## Star 히스토리
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
-
 
 ## 보안 공개
 
