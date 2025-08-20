@@ -241,6 +241,7 @@ const translation = {
   },
   blocks: {
     'start': 'User Input',
+    'originalStartNode': 'original start node',
     'end': 'End',
     'answer': 'Answer',
     'llm': 'LLM',

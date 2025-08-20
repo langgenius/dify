@@ -241,6 +241,7 @@ const translation = {
   },
   blocks: {
     'start': '开始',
+    'originalStartNode': '原始开始节点',
     'end': '结束',
     'answer': '直接回复',
     'llm': 'LLM',

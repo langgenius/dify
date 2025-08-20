@@ -241,6 +241,7 @@ const translation = {
   },
   blocks: {
     'start': '開始',
+    'originalStartNode': '元の開始ノード',
     'end': '終了',
     'answer': '回答',
     'llm': 'LLM',

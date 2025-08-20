@@ -35,7 +35,7 @@ const TriggerPluginList = ({
     return null
 
   return (
-    <div className="border-t border-divider-subtle p-1">
+    <div className="p-1">
       {triggerPlugins.map(plugin => (
         <TriggerPluginItem
           key={plugin.id}
