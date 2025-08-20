@@ -153,8 +153,11 @@ Runtime Errors:
 - `InvokeConnectionError` Connection error
 
 - `InvokeServerUnavailableError` Service provider unavailable
+
 - `InvokeRateLimitError` Rate limit reached
+
 - `InvokeAuthorizationError` Authorization failed
+
 - `InvokeBadRequestError` Parameter error
 
 ```python

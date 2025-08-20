@@ -92,17 +92,21 @@ Clickzetta supports advanced full-text search with multiple analyzers:
 ### Analyzer Types
 
 1. **keyword**: No tokenization, treats the entire string as a single token
+
    - Best for: Exact matching, IDs, codes
 
-2. **english**: Designed for English text
+1. **english**: Designed for English text
+
    - Features: Recognizes ASCII letters and numbers, converts to lowercase
    - Best for: English content
 
-3. **chinese**: Chinese text tokenizer
+1. **chinese**: Chinese text tokenizer
+
    - Features: Recognizes Chinese and English characters, removes punctuation
    - Best for: Chinese or mixed Chinese-English content
 
-4. **unicode**: Multi-language tokenizer based on Unicode
+1. **unicode**: Multi-language tokenizer based on Unicode
+
    - Features: Recognizes text boundaries in multiple languages
    - Best for: Multi-language content
 
@@ -124,21 +128,25 @@ Clickzetta supports advanced full-text search with multiple analyzers:
 ### Vector Search
 
 1. **Adjust exploration factor** for accuracy vs speed trade-off:
+
    ```sql
    SET cz.vector.index.search.ef=64;
    ```
 
-2. **Use appropriate distance functions**:
+1. **Use appropriate distance functions**:
+
    - `cosine_distance`: Best for normalized embeddings (e.g., from language models)
    - `l2_distance`: Best for raw feature vectors
 
 ### Full-Text Search
 
 1. **Choose the right analyzer**:
+
    - Use `keyword` for exact matching
    - Use language-specific analyzers for better tokenization
 
-2. **Combine with vector search**:
+1. **Combine with vector search**:
+
    - Pre-filter with full-text search for better performance
    - Use hybrid search for improved relevance
 
@@ -147,27 +155,30 @@ Clickzetta supports advanced full-text search with multiple analyzers:
 ### Connection Issues
 
 1. Verify all 7 required configuration parameters are set
-2. Check network connectivity to Clickzetta service
-3. Ensure the user has proper permissions on the schema
+1. Check network connectivity to Clickzetta service
+1. Ensure the user has proper permissions on the schema
 
 ### Search Performance
 
 1. Verify vector index exists:
+
    ```sql
    SHOW INDEX FROM <schema>.<table_name>;
    ```
 
-2. Check if vector index is being used:
+1. Check if vector index is being used:
+
    ```sql
    EXPLAIN SELECT ... WHERE l2_distance(...) < threshold;
    ```
+
    Look for `vector_index_search_type` in the execution plan.
 
 ### Full-Text Search Not Working
 
 1. Verify inverted index is created
-2. Check analyzer configuration matches your content language
-3. Use `TOKENIZE()` function to test tokenization:
+1. Check analyzer configuration matches your content language
+1. Use `TOKENIZE()` function to test tokenization:
    ```sql
    SELECT TOKENIZE('your text', map('analyzer', 'chinese', 'mode', 'smart'));
    ```
@@ -175,13 +186,13 @@ Clickzetta supports advanced full-text search with multiple analyzers:
 ## Limitations
 
 1. Vector operations don't support `ORDER BY` or `GROUP BY` directly on vector columns
-2. Full-text search relevance scores are not provided by Clickzetta
-3. Inverted index creation may fail for very large existing tables (continue without error)
-4. Index naming constraints:
+1. Full-text search relevance scores are not provided by Clickzetta
+1. Inverted index creation may fail for very large existing tables (continue without error)
+1. Index naming constraints:
    - Index names must be unique within a schema
    - Only one vector index can be created per column
    - The implementation uses timestamps to ensure unique index names
-5. A column can only have one vector index at a time
+1. A column can only have one vector index at a time
 
 ## References
 

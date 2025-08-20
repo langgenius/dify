@@ -3,7 +3,7 @@
 ## Usage
 
 > [!IMPORTANT]
-> 
+>
 > In the v1.3.0 release, `poetry` has been replaced with
 > [`uv`](https://docs.astral.sh/uv/) as the package manager
 > for Dify API backend service.
@@ -20,25 +20,29 @@
    cd ../api
    ```
 
-2. Copy `.env.example` to `.env`
+1. Copy `.env.example` to `.env`
 
    ```cli
-   cp .env.example .env 
+   cp .env.example .env
    ```
-3. Generate a `SECRET_KEY` in the `.env` file.
+
+1. Generate a `SECRET_KEY` in the `.env` file.
 
    bash for Linux
+
    ```bash for Linux
    sed -i "/^SECRET_KEY=/c\SECRET_KEY=$(openssl rand -base64 42)" .env
    ```
+
    bash for Mac
+
    ```bash for Mac
    secret_key=$(openssl rand -base64 42)
    sed -i '' "/^SECRET_KEY=/c\\
    SECRET_KEY=${secret_key}" .env
    ```
 
-4. Create environment.
+1. Create environment.
 
    Dify API service uses [UV](https://docs.astral.sh/uv/) to manage dependencies.
    First, you need to add the uv package manager, if you don't have it already.
@@ -49,13 +53,13 @@
    brew install uv
    ```
 
-5. Install dependencies
+1. Install dependencies
 
    ```bash
    uv sync --dev
    ```
 
-6. Run migrate
+1. Run migrate
 
    Before the first launch, migrate the database to the latest version.
 
@@ -63,24 +67,27 @@
    uv run flask db upgrade
    ```
 
-7. Start backend
+1. Start backend
 
    ```bash
    uv run flask run --host 0.0.0.0 --port=5001 --debug
    ```
 
-8. Start Dify [web](../web) service.
-9. Setup your application by visiting `http://localhost:3000`.
-10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
+1. Start Dify [web](../web) service.
 
-   ```bash
-   uv run celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage
-   ```
+1. Setup your application by visiting `http://localhost:3000`.
 
-   Addition, if you want to debug the celery scheduled tasks, you can use the following command in another terminal:
-   ```bash
-   uv run celery -A app.celery beat 
-   ```
+1. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
+
+```bash
+uv run celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage
+```
+
+Addition, if you want to debug the celery scheduled tasks, you can use the following command in another terminal:
+
+```bash
+uv run celery -A app.celery beat
+```
 
 ## Testing
 
@@ -90,9 +97,8 @@
    uv sync --dev
    ```
 
-2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
+1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
 
    ```bash
    uv run -P api bash dev/pytest/pytest_all_tests.sh
    ```
-
