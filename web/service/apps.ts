@@ -157,6 +157,11 @@ export const updateTracingStatus: Fetcher<CommonResponse, { appId: string; body:
   return post(`/apps/${appId}/trace`, { body })
 }
 
+// Webhook Trigger
+export const fetchWebhookUrl: Fetcher<{ serverUrl: string }, { appId: string; nodeId: string }> = ({ appId, nodeId }) => {
+  return get<{ serverUrl: string }>(`apps/${appId}/webhook-url`, { params: { node: nodeId } })
+}
+
 export const fetchTracingConfig: Fetcher<TracingConfig & { has_not_configured: true }, { appId: string; provider: TracingProvider }> = ({ appId, provider }) => {
   return get(`/apps/${appId}/trace-config`, {
     params: {
