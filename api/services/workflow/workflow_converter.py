@@ -402,7 +402,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
-        prompts: Any = None
+        prompts: Optional[Any] = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT.value:

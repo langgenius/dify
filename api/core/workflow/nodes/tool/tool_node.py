@@ -356,29 +356,25 @@ class ToolNode(BaseNode):
                     if dict_metadata.get("provider"):
                         manager = PluginInstaller()
                         plugins = manager.list_plugins(tenant_id)
-                        try:
-                            current_plugin = next(
-                                plugin
+                        current_plugin = next(
+                            (plugin
                                 for plugin in plugins
-                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
+                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]), None
                             )
+                        if current_plugin is not None:
                             icon = current_plugin.declaration.icon
-                        except StopIteration:
-                            pass
                         icon_dark = None
-                        try:
-                            builtin_tool = next(
-                                provider
-                                for provider in BuiltinToolManageService.list_builtin_tools(
-                                    user_id,
-                                    tenant_id,
-                                )
-                                if provider.name == dict_metadata["provider"]
+                        builtin_tool = next(
+                            (provider
+                            for provider in BuiltinToolManageService.list_builtin_tools(
+                                user_id,
+                                tenant_id,
                             )
+                            if provider.name == dict_metadata["provider"]), None
+                        )
+                        if builtin_tool:
                             icon = builtin_tool.icon
                             icon_dark = builtin_tool.icon_dark
-                        except StopIteration:
-                            pass
 
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark

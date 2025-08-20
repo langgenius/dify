@@ -34,11 +34,11 @@ Não se esqueça de vincular um problema existente ou abrir um novo problema na 
 
 Como priorizamos:
 
-  | Tipo de Problema                                              | Prioridade      |
-  | ------------------------------------------------------------ | --------------- |
-  | Bugs em funções centrais (serviço em nuvem, não conseguir fazer login, aplicações não funcionando, falhas de segurança) | Crítica         |
-  | Bugs não críticos, melhorias de desempenho                   | Prioridade Média |
-  | Correções menores (erros de digitação, interface confusa mas funcional) | Prioridade Baixa |
+| Tipo de Problema | Prioridade |
+| ------------------------------------------------------------ | --------------- |
+| Bugs em funções centrais (serviço em nuvem, não conseguir fazer login, aplicações não funcionando, falhas de segurança) | Crítica |
+| Bugs não críticos, melhorias de desempenho | Prioridade Média |
+| Correções menores (erros de digitação, interface confusa mas funcional) | Prioridade Baixa |
 
 ### Solicitações de recursos
 
@@ -52,23 +52,25 @@ Como priorizamos:
 
 Como priorizamos:
 
-  | Tipo de Recurso                                              | Prioridade      |
-  | ------------------------------------------------------------ | --------------- |
-  | Recursos de alta prioridade conforme rotulado por um membro da equipe | Prioridade Alta |
-  | Solicitações populares de recursos do nosso [quadro de feedback da comunidade](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Prioridade Média |
-  | Recursos não essenciais e melhorias menores                  | Prioridade Baixa |
-  | Valiosos mas não imediatos                                  | Recurso Futuro  |
+| Tipo de Recurso | Prioridade |
+| ------------------------------------------------------------ | --------------- |
+| Recursos de alta prioridade conforme rotulado por um membro da equipe | Prioridade Alta |
+| Solicitações populares de recursos do nosso [quadro de feedback da comunidade](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Prioridade Média |
+| Recursos não essenciais e melhorias menores | Prioridade Baixa |
+| Valiosos mas não imediatos | Recurso Futuro |
+
 ## Enviando seu PR
 
 ### Processo de Pull Request
 
 1. Faça um fork do repositório
-2. Antes de elaborar um PR, por favor crie um problema para discutir as mudanças que você quer fazer
-3. Crie um novo branch para suas alterações
-4. Por favor, adicione testes para suas alterações conforme apropriado
-5. Certifique-se de que seu código passa nos testes existentes
-6. Por favor, vincule o problema na descrição do PR, `fixes #<número_do_problema>`
-7. Faça o merge do seu código!
+1. Antes de elaborar um PR, por favor crie um problema para discutir as mudanças que você quer fazer
+1. Crie um novo branch para suas alterações
+1. Por favor, adicione testes para suas alterações conforme apropriado
+1. Certifique-se de que seu código passa nos testes existentes
+1. Por favor, vincule o problema na descrição do PR, `fixes #<número_do_problema>`
+1. Faça o merge do seu código!
+
 ### Configurando o projeto
 
 #### Frontend
@@ -82,12 +84,14 @@ Para configurar o serviço backend, por favor consulte nossas [instruções deta
 #### Outras coisas a observar
 
 Recomendamos revisar este documento cuidadosamente antes de prosseguir com a configuração, pois ele contém informações essenciais sobre:
+
 - Pré-requisitos e dependências
 - Etapas de instalação
 - Detalhes de configuração
 - Dicas comuns de solução de problemas
 
 Sinta-se à vontade para entrar em contato se encontrar quaisquer problemas durante o processo de configuração.
+
 ## Obtendo Ajuda
 
-Se você ficar preso ou tiver uma dúvida urgente enquanto contribui, simplesmente envie suas perguntas através do problema relacionado no GitHub, ou entre no nosso [Discord](https://discord.gg/8Tpq4AcN9c) para uma conversa rápida. 
+Se você ficar preso ou tiver uma dúvida urgente enquanto contribui, simplesmente envie suas perguntas através do problema relacionado no GitHub, ou entre no nosso [Discord](https://discord.gg/8Tpq4AcN9c) para uma conversa rápida.

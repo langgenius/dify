@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import flask_restful
 from flask_login import current_user
@@ -49,7 +49,7 @@ class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: Any = None
+    resource_model: Optional[Any] = None
     resource_id_field: str | None = None
     token_prefix: str | None = None
     max_keys = 10
@@ -102,7 +102,7 @@ class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: Any = None
+    resource_model: Optional[Any] = None
     resource_id_field: str | None = None
 
     def delete(self, resource_id, api_key_id):

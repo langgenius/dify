@@ -180,11 +180,12 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
   我們提供 [Dify Cloud](https://dify.ai) 服務，任何人都可以零配置嘗試。它提供與自部署版本相同的所有功能，並在沙盒計劃中包含 200 次免費 GPT-4 調用。
 
 - **自託管 Dify 社區版</br>**
-  使用這份[快速指南](#快速開始)在您的環境中快速運行 Dify。
+  使用這份[快速指南](#%E5%BF%AB%E9%80%9F%E9%96%8B%E5%A7%8B)在您的環境中快速運行 Dify。
   使用我們的[文檔](https://docs.dify.ai)獲取更多參考和深入指導。
 
 - **企業/組織版 Dify</br>**
-  我們提供額外的企業中心功能。[通過這個聊天機器人記錄您的問題](https://udify.app/chat/22L1zSxg6yW1cWQg)或[發送電子郵件給我們](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)討論企業需求。</br>
+  我們提供額外的企業中心功能。[通過這個聊天機器人記錄您的問題](https://udify.app/chat/22L1zSxg6yW1cWQg)或[發送電子郵件給我們](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry)討論企業需求。</br>
+
   > 對於使用 AWS 的初創企業和小型企業，請查看 [AWS Marketplace 上的 Dify Premium](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)，並一鍵部署到您自己的 AWS VPC。這是一個經濟實惠的 AMI 產品，可選擇使用自定義徽標和品牌創建應用。
 
 ## 保持領先
@@ -237,7 +238,6 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 #### 使用 Azure Devops Pipeline 部署到AKS
 
 使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 將 Dify 一鍵部署到 AKS
-
 
 ## 貢獻
 

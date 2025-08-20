@@ -10,6 +10,22 @@ from extensions.ext_database import db
 from models.model import EndUser
 
 
+def billing_inner_api_only(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        if not dify_config.INNER_API:
+            abort(404)
+
+        # get header 'X-Inner-Api-Key'
+        inner_api_key = request.headers.get("X-Inner-Api-Key")
+        if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY:
+            abort(401)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
 def enterprise_inner_api_only(view):
     @wraps(view)
     def decorated(*args, **kwargs):

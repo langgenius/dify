@@ -73,7 +73,7 @@ const PluginsPanel = () => {
       {!isPluginListLoading && (
         <>
           {(filteredList?.length ?? 0) > 0 ? (
-            <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch px-12'>
+            <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto px-12'>
               <div className='w-full'>
                 <List pluginList={filteredList || []} />
               </div>
