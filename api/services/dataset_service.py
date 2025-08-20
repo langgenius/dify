@@ -6,7 +6,7 @@ import secrets
 import time
 import uuid
 from collections import Counter
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from flask_login import current_user
 from sqlalchemy import func, select
@@ -51,7 +51,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     RetrievalModel,
     SegmentUpdateArgs,
 )
-from services.errors.account import InvalidActionError, NoPermissionError
+from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -266,7 +266,7 @@ class DatasetService:
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -370,7 +370,7 @@ class DatasetService:
             raise ValueError("External knowledge api id is required.")
         # Update metadata fields
         dataset.updated_by = user.id if user else None
-        dataset.updated_at = datetime.datetime.utcnow()
+        dataset.updated_at = naive_utc_now()
         db.session.add(dataset)
 
         # Update external knowledge binding
@@ -1800,14 +1800,16 @@ class DocumentService:
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @staticmethod
-    def batch_update_document_status(dataset: Dataset, document_ids: list[str], action: str, user):
+    def batch_update_document_status(
+        dataset: Dataset, document_ids: list[str], action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
         """
         Batch update document status.
 
         Args:
             dataset (Dataset): The dataset object
             document_ids (list[str]): List of document IDs to update
-            action (str): Action to perform (enable, disable, archive, un_archive)
+            action (Literal["enable", "disable", "archive", "un_archive"]): Action to perform
             user: Current user performing the action
 
         Raises:
@@ -1890,9 +1892,10 @@ class DocumentService:
                 raise propagation_error
 
     @staticmethod
-    def _prepare_document_status_update(document, action: str, user):
-        """
-        Prepare document status update information.
+    def _prepare_document_status_update(
+        document: Document, action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
+        """Prepare document status update information.
 
         Args:
             document: Document object to update
@@ -2355,7 +2358,9 @@ class SegmentService:
         db.session.commit()
 
     @classmethod
-    def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
+    def update_segments_status(
+        cls, segment_ids: list, action: Literal["enable", "disable"], dataset: Dataset, document: Document
+    ):
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
@@ -2372,7 +2377,7 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
                 indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
@@ -2382,10 +2387,10 @@ class SegmentService:
                 segment.disabled_at = None
                 segment.disabled_by = None
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            enable_segments_to_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+            enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         elif action == "disable":
             segments = (
                 db.session.query(DocumentSegment)
@@ -2399,7 +2404,7 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
                 indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
@@ -2409,12 +2414,10 @@ class SegmentService:
                 segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            disable_segments_from_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
-        else:
-            raise InvalidActionError()
+            disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
 
     @classmethod
     def create_child_chunk(
@@ -2670,7 +2673,7 @@ class SegmentService:
         # check segment
         segment = (
             db.session.query(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == user_id)
+            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
             .first()
         )
         if not segment:

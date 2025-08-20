@@ -99,3 +99,6 @@ jobs:
 
       - name: Run Tool
         run: uv run --project api bash dev/pytest/pytest_tools.sh
+
+      - name: Run TestContainers
+        run: uv run --project api bash dev/pytest/pytest_testcontainers.sh

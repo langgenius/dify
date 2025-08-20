@@ -80,6 +80,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       タイトルを自動生成、デフォルトは`true`。
       `false`に設定すると、会話のリネームAPIを呼び出し、`auto_generate`を`true`に設定することで非同期タイトル生成を実現できます。
       </Property>
+      <Property name='workflow_id' type='string' key='workflow_id'>
+      （オプション）ワークフローID、特定のバージョンを指定するために使用、提供されない場合はデフォルトの公開バージョンを使用。
+      </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         （オプション）トレースID。既存の業務システムのトレースコンポーネントと連携し、エンドツーエンドの分散トレーシングを実現するために使用します。指定がない場合、システムが自動的に trace_id を生成します。以下の3つの方法で渡すことができ、優先順位は次のとおりです：<br/>
         - Header：HTTPヘッダー <code>X-Trace-Id</code> で渡す（最優先）。<br/>
@@ -225,6 +228,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - 400, `provider_not_initialize`, 利用可能なモデル資格情報構成がありません
     - 400, `provider_quota_exceeded`, モデル呼び出しクォータが不足しています
     - 400, `model_currently_not_support`, 現在のモデルが利用できません
+    - 400, `workflow_not_found`, 指定されたワークフローバージョンが見つかりません
+    - 400, `draft_workflow_error`, ドラフトワークフローバージョンは使用できません
+    - 400, `workflow_id_format_error`, ワークフローID形式エラー、UUID形式が必要です
     - 400, `completion_request_error`, テキスト生成に失敗しました
     - 500, 内部サーバーエラー
 
@@ -384,6 +390,86 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/files/:file_id/preview'
+  method='GET'
+  title='ファイルプレビュー'
+  name='#file-preview'
+/>
+<Row>
+  <Col>
+    アップロードされたファイルをプレビューまたはダウンロードします。このエンドポイントを使用すると、以前にファイルアップロード API でアップロードされたファイルにアクセスできます。
+    
+    <i>ファイルは、リクエストしているアプリケーションのメッセージ範囲内にある場合のみアクセス可能です。</i>
+
+    ### パスパラメータ
+    - `file_id` (string) 必須
+      プレビューするファイルの一意識別子。ファイルアップロード API レスポンスから取得します。
+
+    ### クエリパラメータ
+    - `as_attachment` (boolean) オプション
+      ファイルを添付ファイルとして強制ダウンロードするかどうか。デフォルトは `false`（ブラウザでプレビュー）。
+
+    ### レスポンス
+    ブラウザ表示またはダウンロード用の適切なヘッダー付きでファイル内容を返します。
+    - `Content-Type` ファイル MIME タイプに基づいて設定
+    - `Content-Length` ファイルサイズ（バイト、利用可能な場合）
+    - `Content-Disposition` `as_attachment=true` の場合は "attachment" に設定
+    - `Cache-Control` パフォーマンス向上のためのキャッシュヘッダー
+    - `Accept-Ranges` 音声/動画ファイルの場合は "bytes" に設定
+
+    ### エラー
+    - 400, `invalid_param`, パラメータ入力異常
+    - 403, `file_access_denied`, ファイルアクセス拒否またはファイルが現在のアプリケーションに属していません
+    - 404, `file_not_found`, ファイルが見つからないか削除されています
+    - 500, サーバー内部エラー
+
+  </Col>
+  <Col sticky>
+    ### リクエスト例
+    <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL - ブラウザプレビュー' }}
+    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    ### 添付ファイルとしてダウンロード
+    <CodeGroup title="Download Request" tag="GET" label="/files/:file_id/preview?as_attachment=true" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\n--header 'Authorization: Bearer {api_key}' \\\n--output downloaded_file.png`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
+    --header 'Authorization: Bearer {api_key}' \
+    --output downloaded_file.png
+    ```
+
+    </CodeGroup>
+
+    ### レスポンスヘッダー例
+    <CodeGroup title="Response Headers">
+    ```http {{ title: 'ヘッダー - 画像プレビュー' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+
+    ### ダウンロードレスポンスヘッダー
+    <CodeGroup title="Download Response Headers">
+    ```http {{ title: 'ヘッダー - ファイルダウンロード' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Content-Disposition: attachment; filename*=UTF-8''example.png
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
 ---
 
 <Heading
@@ -648,7 +734,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `message_files` (array[object]) メッセージファイル
         - `id` (string) ID
         - `type` (string) ファイルタイプ、画像の場合はimage
-        - `url` (string) プレビュー画像URL
+        - `url` (string) ファイルプレビューURL、ファイルアクセスにはファイルプレビューAPI（`/files/{file_id}/preview`）を使用してください
         - `belongs_to` (string) 所属、userまたはassistant
       - `answer` (string) 応答メッセージ内容
       - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
@@ -1130,7 +1216,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   url='/audio-to-text'
   method='POST'
   title='音声からテキストへ'
-  name='#audio'
+  name='#audio-to-text'
 />
 <Row>
   <Col>
@@ -1181,7 +1267,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   url='/text-to-audio'
   method='POST'
   title='テキストから音声へ'
-  name='#audio'
+  name='#text-to-audio'
 />
 <Row>
   <Col>

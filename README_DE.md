@@ -220,7 +220,8 @@ Stellen Sie Dify mit nur einem Klick mithilfe von [terraform](https://www.terraf
 Bereitstellung von Dify auf AWS mit [CDK](https://aws.amazon.com/cdk/)
 
 ##### AWS 
-- [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud 
 
@@ -229,6 +230,10 @@ Bereitstellung von Dify auf AWS mit [CDK](https://aws.amazon.com/cdk/)
 #### Alibaba Cloud Data Management
 
 Ein-Klick-Bereitstellung von Dify in der Alibaba Cloud mit [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
+
+#### Verwendung von Azure Devops Pipeline für AKS-Bereitstellung
+
+Stellen Sie Dify mit einem Klick in AKS bereit, indem Sie [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) verwenden
 
 
 ## Contributing

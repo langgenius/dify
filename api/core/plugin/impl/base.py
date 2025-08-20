@@ -208,6 +208,7 @@ class BasePluginClient:
                     except Exception:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
 
+                    logger.error("Error in stream reponse for plugin %s", rep.__dict__)
                     self._handle_plugin_daemon_error(error.error_type, error.message)
                 raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:

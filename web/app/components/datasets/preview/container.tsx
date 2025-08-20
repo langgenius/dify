@@ -14,13 +14,13 @@ export const PreviewContainer: FC<PreviewContainerProps> = forwardRef((props, re
       {...rest}
       ref={ref}
       className={classNames(
-        'flex flex-col w-full h-full overflow-y-auto rounded-l-xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-background-default-lighter shadow shadow-shadow-shadow-5',
+        'flex h-full w-full flex-col overflow-y-auto rounded-l-xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-background-default-lighter shadow shadow-shadow-shadow-5',
       )}
     >
       <header className='border-b border-divider-subtle pb-3 pl-5 pr-4 pt-4'>
         {header}
       </header>
-      <main className={classNames('py-5 px-6 w-full h-full', mainClassName)}>
+      <main className={classNames('h-full w-full px-6 py-5', mainClassName)}>
         {children}
       </main>
     </div>

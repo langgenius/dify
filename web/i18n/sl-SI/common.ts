@@ -914,6 +914,10 @@ const translation = {
     dropImageHere: 'Tukaj spustite svojo sliko ali',
   },
   you: 'Ti',
+  avatar: {
+    deleteTitle: 'Odstrani avatar',
+    deleteDescription: 'Ali ste prepričani, da želite odstraniti svojo profilno sliko? Vaš račun bo uporabljal privzeti začetni avatar.',
+  },
 }
 
 export default translation

@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'Ključ HTTP glave, pustite kot "Authorization", če ne veste, kaj je to, ali pa nastavite na vrednost po meri',
       types: {
         none: 'Brez',
-        api_key: 'API ključ',
         apiKeyPlaceholder: 'Ime HTTP glave za API ključ',
         apiValuePlaceholder: 'Vnesite API ključ',
         api_key_query: 'Vprašanje Param',
@@ -192,6 +191,8 @@ const translation = {
       cancel: 'Prekliči',
       save: 'Shrani',
       confirm: 'Dodaj in avtoriziraj',
+      timeout: 'Časovna omejitev',
+      sseReadTimeout: 'SSE časovna omejitev branja',
     },
     delete: 'Odstrani strežnik MCP',
     deleteConfirmTitle: 'Odstraniti {mcp}?',

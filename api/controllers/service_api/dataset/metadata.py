@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask_login import current_user  # type: ignore
 from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
@@ -77,7 +79,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
 
 class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, action):
+    def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:

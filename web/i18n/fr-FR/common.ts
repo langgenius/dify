@@ -716,6 +716,10 @@ const translation = {
     supportedFormats: 'Prend en charge PNG, JPG, JPEG, WEBP et GIF',
   },
   you: 'Vous',
+  avatar: {
+    deleteTitle: 'Supprimer l\'avatar',
+    deleteDescription: 'Êtes-vous sûr de vouloir supprimer votre photo de profil ? Votre compte utilisera l\'avatar par défaut.',
+  },
 }
 
 export default translation

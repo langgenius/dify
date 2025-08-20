@@ -716,6 +716,10 @@ const translation = {
     browse: 'tarayıcı',
   },
   you: 'Sen',
+  avatar: {
+    deleteTitle: 'Avatarı kaldır',
+    deleteDescription: 'Profil resminizi kaldırmak istediğinize emin misiniz? Hesabınız varsayılan başlangıç avatarını kullanacaktır.',
+  },
 }
 
 export default translation

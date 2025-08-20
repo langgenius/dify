@@ -31,6 +31,7 @@ const translation = {
       sync: 'सिंक्रोनाइज़ करें',
       resume: 'रिज़्यूमे',
       pause: 'रोकें',
+      download: 'फ़ाइल डाउनलोड करें',
     },
     index: {
       enable: 'सक्रिय करें',

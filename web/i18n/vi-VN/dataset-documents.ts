@@ -30,6 +30,7 @@ const translation = {
       sync: 'Đồng bộ',
       pause: 'Tạm dừng',
       resume: 'Tiếp tục',
+      download: 'Tải xuống tập tin',
     },
     index: {
       enable: 'Kích hoạt',

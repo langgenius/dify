@@ -31,6 +31,7 @@ const translation = {
       sync: 'Sinhroniziraj',
       pause: 'Zaustavi',
       resume: 'Nadaljuj',
+      download: 'Prenesi datoteko',
     },
     index: {
       enable: 'Omogoči',

@@ -7,15 +7,15 @@ from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
 import services
-from controllers.common.errors import FilenameNotExistsError
-from controllers.console import api
-from controllers.console.admin import admin_required
-from controllers.console.datasets.error import (
+from controllers.common.errors import (
+    FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.console import api
+from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -191,9 +191,6 @@ class WebappLogoWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        # get file from request
-        file = request.files["file"]
-
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -201,6 +198,8 @@ class WebappLogoWorkspaceApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
+        # get file from request
+        file = request.files["file"]
         if not file.filename:
             raise FilenameNotExistsError
 

@@ -8,7 +8,13 @@ from werkzeug.exceptions import Forbidden
 import services
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
-from controllers.common.errors import FilenameNotExistsError
+from controllers.common.errors import (
+    FilenameNotExistsError,
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -17,13 +23,6 @@ from controllers.console.wraps import (
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
 from services.file_service import FileService
-
-from .error import (
-    FileTooLargeError,
-    NoFileUploadedError,
-    TooManyFilesError,
-    UnsupportedFileTypeError,
-)
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -49,7 +48,6 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
     def post(self):
-        file = request.files["file"]
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
@@ -58,6 +56,7 @@ class FileApi(Resource):
 
         if len(request.files) > 1:
             raise TooManyFilesError()
+        file = request.files["file"]
 
         if not file.filename:
             raise FilenameNotExistsError

@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from collections.abc import Sequence
 from typing import Optional, cast
 
 import json_repair
@@ -11,6 +12,8 @@ from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
+    LLM_MODIFY_CODE_SYSTEM,
+    LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
@@ -24,6 +27,9 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.graph_engine.entities.event import AgentLogEvent
+from models import App, Message, WorkflowNodeExecutionModel, db
 
 
 class LLMGenerator:
@@ -388,3 +394,181 @@ class LLMGenerator:
         except Exception as e:
             logging.exception("Failed to invoke LLM model, model: %s", model_config.get("name"))
             return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
+
+    @staticmethod
+    def instruction_modify_legacy(
+        tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
+    ) -> dict:
+        app: App | None = db.session.query(App).where(App.id == flow_id).first()
+        last_run: Message | None = (
+            db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
+        )
+        if not last_run:
+            return LLMGenerator.__instruction_modify_common(
+                tenant_id=tenant_id,
+                model_config=model_config,
+                last_run=None,
+                current=current,
+                error_message="",
+                instruction=instruction,
+                node_type="llm",
+                ideal_output=ideal_output,
+            )
+        last_run_dict = {
+            "query": last_run.query,
+            "answer": last_run.answer,
+            "error": last_run.error,
+        }
+        return LLMGenerator.__instruction_modify_common(
+            tenant_id=tenant_id,
+            model_config=model_config,
+            last_run=last_run_dict,
+            current=current,
+            error_message=str(last_run.error),
+            instruction=instruction,
+            node_type="llm",
+            ideal_output=ideal_output,
+        )
+
+    @staticmethod
+    def instruction_modify_workflow(
+        tenant_id: str,
+        flow_id: str,
+        node_id: str,
+        current: str,
+        instruction: str,
+        model_config: dict,
+        ideal_output: str | None,
+    ) -> dict:
+        from services.workflow_service import WorkflowService
+
+        app: App | None = db.session.query(App).where(App.id == flow_id).first()
+        if not app:
+            raise ValueError("App not found.")
+        workflow = WorkflowService().get_draft_workflow(app_model=app)
+        if not workflow:
+            raise ValueError("Workflow not found for the given app model.")
+        last_run = WorkflowService().get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
+        try:
+            node_type = cast(WorkflowNodeExecutionModel, last_run).node_type
+        except Exception:
+            try:
+                node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"][
+                    "type"
+                ]
+            except Exception:
+                node_type = "llm"
+
+        if not last_run:  # Node is not executed yet
+            return LLMGenerator.__instruction_modify_common(
+                tenant_id=tenant_id,
+                model_config=model_config,
+                last_run=None,
+                current=current,
+                error_message="",
+                instruction=instruction,
+                node_type=node_type,
+                ideal_output=ideal_output,
+            )
+
+        def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
+            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+            if not raw_agent_log:
+                return []
+            parsed: Sequence[AgentLogEvent] = json.loads(raw_agent_log)
+
+            def dict_of_event(event: AgentLogEvent) -> dict:
+                return {
+                    "status": event.status,
+                    "error": event.error,
+                    "data": event.data,
+                }
+
+            return [dict_of_event(event) for event in parsed]
+
+        last_run_dict = {
+            "inputs": last_run.inputs_dict,
+            "status": last_run.status,
+            "error": last_run.error,
+            "agent_log": agent_log_of(last_run),
+        }
+
+        return LLMGenerator.__instruction_modify_common(
+            tenant_id=tenant_id,
+            model_config=model_config,
+            last_run=last_run_dict,
+            current=current,
+            error_message=last_run.error,
+            instruction=instruction,
+            node_type=last_run.node_type,
+            ideal_output=ideal_output,
+        )
+
+    @staticmethod
+    def __instruction_modify_common(
+        tenant_id: str,
+        model_config: dict,
+        last_run: dict | None,
+        current: str | None,
+        error_message: str | None,
+        instruction: str,
+        node_type: str,
+        ideal_output: str | None,
+    ) -> dict:
+        LAST_RUN = "{{#last_run#}}"
+        CURRENT = "{{#current#}}"
+        ERROR_MESSAGE = "{{#error_message#}}"
+        injected_instruction = instruction
+        if LAST_RUN in injected_instruction:
+            injected_instruction = injected_instruction.replace(LAST_RUN, json.dumps(last_run))
+        if CURRENT in injected_instruction:
+            injected_instruction = injected_instruction.replace(CURRENT, current or "null")
+        if ERROR_MESSAGE in injected_instruction:
+            injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
+        model_instance = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+        match node_type:
+            case "llm", "agent":
+                system_prompt = LLM_MODIFY_PROMPT_SYSTEM
+            case "code":
+                system_prompt = LLM_MODIFY_CODE_SYSTEM
+            case _:
+                system_prompt = LLM_MODIFY_PROMPT_SYSTEM
+        prompt_messages = [
+            SystemPromptMessage(content=system_prompt),
+            UserPromptMessage(
+                content=json.dumps(
+                    {
+                        "current": current,
+                        "last_run": last_run,
+                        "instruction": injected_instruction,
+                        "ideal_output": ideal_output,
+                    }
+                )
+            ),
+        ]
+        model_parameters = {"temperature": 0.4}
+
+        try:
+            response = cast(
+                LLMResult,
+                model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                ),
+            )
+
+            generated_raw = cast(str, response.message.content)
+            first_brace = generated_raw.find("{")
+            last_brace = generated_raw.rfind("}")
+            return {**json.loads(generated_raw[first_brace : last_brace + 1])}
+
+        except InvokeError as e:
+            error = str(e)
+            return {"error": f"Failed to generate code. Error: {error}"}
+        except Exception as e:
+            logging.exception("Failed to invoke LLM model, model: " + json.dumps(model_config.get("name")), exc_info=e)
+            return {"error": f"An unexpected error occurred: {str(e)}"}

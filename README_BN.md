@@ -225,7 +225,8 @@ GitHub-এ ডিফাইকে স্টার দিয়ে রাখুন �
 
 ##### AWS
 
-- [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud ব্যবহার করে ডিপ্লয়
 
@@ -234,6 +235,10 @@ GitHub-এ ডিফাইকে স্টার দিয়ে রাখুন �
 #### Alibaba Cloud Data Management ব্যবহার করে ডিপ্লয়
 
  [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
+
+ #### AKS-এ ডিপ্লয় করার জন্য Azure Devops Pipeline ব্যবহার
+
+[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) ব্যবহার করে Dify কে AKS-এ এক ক্লিকে ডিপ্লয় করুন
 
 
 ## Contributing
