@@ -38,6 +38,10 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
         ...(frequency === 'hourly' || frequency === 'once') && !inputs.visual_config?.datetime && {
           datetime: new Date().toISOString(),
         },
+        ...(frequency === 'hourly') && {
+          recur_every: inputs.visual_config?.recur_every || 1,
+          recur_unit: inputs.visual_config?.recur_unit || 'hours',
+        },
         ...(frequency !== 'hourly' && frequency !== 'once') && {
           datetime: undefined,
         },
