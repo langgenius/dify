@@ -963,7 +963,6 @@ class ProviderManager:
         if not provider_model_settings:
             return model_settings
 
-        has_invalid_load_balancing_configs = False
         for provider_model_setting in provider_model_settings:
             load_balancing_configs = []
             if provider_model_setting.load_balancing_enabled and load_balancing_model_configs:
@@ -973,7 +972,15 @@ class ProviderManager:
                         and load_balancing_model_config.model_type == provider_model_setting.model_type
                     ):
                         if load_balancing_model_config.name == "__delete__":
-                            has_invalid_load_balancing_configs = True
+                            # to calculate current model whether has invalidate lb configs
+                            load_balancing_configs.append(
+                                ModelLoadBalancingConfiguration(
+                                    id=load_balancing_model_config.id,
+                                    name=load_balancing_model_config.name,
+                                    credentials={},
+                                    credential_source_type=load_balancing_model_config.credential_source_type,
+                                )
+                            )
                             continue
 
                         if not load_balancing_model_config.enabled:
@@ -1032,6 +1039,7 @@ class ProviderManager:
                                 id=load_balancing_model_config.id,
                                 name=load_balancing_model_config.name,
                                 credentials=provider_model_credentials,
+                                credential_source_type=load_balancing_model_config.credential_source_type,
                             )
                         )
 
@@ -1041,7 +1049,6 @@ class ProviderManager:
                     model_type=ModelType.value_of(provider_model_setting.model_type),
                     enabled=provider_model_setting.enabled,
                     load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else [],
-                    has_invalid_load_balancing_configs=has_invalid_load_balancing_configs,
                 )
             )
 

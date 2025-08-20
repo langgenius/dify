@@ -1591,10 +1591,15 @@ class ProviderConfiguration(BaseModel):
                     if model_setting.enabled is False:
                         status = ModelStatus.DISABLED
 
-                    if len(model_setting.load_balancing_configs) > 1:
+                    provider_model_lb_configs = [
+                        config for config in model_setting.load_balancing_configs
+                        if config.credential_source_type != "custom_model"
+                    ]
+
+                    if len(provider_model_lb_configs) > 1:
                         load_balancing_enabled = True
 
-                    if model_setting.has_invalid_load_balancing_configs:
+                    if any(config.name == "__delete__" for config in provider_model_lb_configs):
                         has_invalid_load_balancing_configs = True
 
                 provider_models.append(
@@ -1642,8 +1647,16 @@ class ProviderConfiguration(BaseModel):
                 if model_setting.enabled is False:
                     status = ModelStatus.DISABLED
 
-                if len(model_setting.load_balancing_configs) > 1:
+                custom_model_lb_configs = [
+                    config for config in model_setting.load_balancing_configs
+                    if config.credential_source_type != "provider"
+                ]
+
+                if len(custom_model_lb_configs) > 1:
                     load_balancing_enabled = True
+
+                if any(config.name == "__delete__" for config in custom_model_lb_configs):
+                    has_invalid_load_balancing_configs = True
 
             if len(model_configuration.available_model_credentials) > 0 and not model_configuration.credentials:
                 status = ModelStatus.CREDENTIAL_REMOVED
@@ -1660,6 +1673,7 @@ class ProviderConfiguration(BaseModel):
                     provider=SimpleModelProviderEntity(self.provider),
                     status=status,
                     load_balancing_enabled=load_balancing_enabled,
+                    has_invalid_load_balancing_configs=has_invalid_load_balancing_configs,
                 )
             )
 
