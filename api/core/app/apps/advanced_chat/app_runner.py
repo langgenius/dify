@@ -149,6 +149,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 # Based on the definition of `VariableUnion`,
                 # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
                 conversation_variables=cast(list[VariableUnion], conversation_variables),
+                memory_blocks=self._fetch_memory_blocks(),
             )
 
             # init graph
