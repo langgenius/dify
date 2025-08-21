@@ -28,8 +28,8 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
       disabled={disabled}
       icon={<VectorSearch className='size-4' />}
       iconActiveColor='text-util-colors-purple-purple-600'
-      title={t('dataset.retrieval.invertedIndex.title')}
-      description={t('dataset.retrieval.invertedIndex.description')}
+      title={t('dataset.retrieval.keyword_search.title')}
+      description={t('dataset.retrieval.keyword_search.description')}
       isActive
       effectColor={EffectColor.purple}
       showEffectColor

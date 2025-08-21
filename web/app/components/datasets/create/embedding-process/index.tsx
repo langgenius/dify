@@ -102,7 +102,6 @@ const RuleDetail: FC<{
         break
     }
     return value
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceData])
 
   return <div className='flex flex-col gap-1'>
@@ -131,7 +130,7 @@ const RuleDetail: FC<{
     <FieldInfo
       label={t('datasetSettings.form.retrievalSetting.title')}
       // displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
-      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'invertedIndex' : retrievalMethod}.title`) as string}
+      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
       valueIcon={
         <Image
           className='size-4'
@@ -197,7 +196,6 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return () => {
       stopQueryStatus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // get rule

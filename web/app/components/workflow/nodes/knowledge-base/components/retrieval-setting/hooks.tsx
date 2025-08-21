@@ -48,8 +48,8 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
     return {
       id: RetrievalSearchMethodEnum.keywordSearch,
       icon: HybridSearch as any,
-      title: t('dataset.retrieval.invertedIndex.title'),
-      description: t('dataset.retrieval.invertedIndex.description'),
+      title: t('dataset.retrieval.keyword_search.title'),
+      description: t('dataset.retrieval.keyword_search.description'),
       effectColor: 'purple',
     }
   }, [t])

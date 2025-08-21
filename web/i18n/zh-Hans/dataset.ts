@@ -126,7 +126,7 @@ const translation = {
       description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，用户可以选择设置权重或配置重新排序模型。',
       recommend: '推荐',
     },
-    invertedIndex: {
+    keyword_search: {
       title: '倒排索引',
       description: '倒排索引是一种用于高效检索的结构。按术语组织，每个术语指向包含它的文档或网页',
     },

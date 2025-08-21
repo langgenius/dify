@@ -126,7 +126,7 @@ const translation = {
       description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Users can choose to set weights or configure to a Rerank model.',
       recommend: 'Recommend',
     },
-    invertedIndex: {
+    keyword_search: {
       title: 'Inverted Index',
       description: 'Inverted Index is a structure used for efficient retrieval. Organized by terms, each term points to documents or web pages containing it.',
     },
