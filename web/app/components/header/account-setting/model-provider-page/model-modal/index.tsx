@@ -280,7 +280,7 @@ const ModelModal: FC<ModelModalProps> = ({
               </div>
             </div>
             <div className='border-t-[0.5px] border-t-divider-regular'>
-              <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
+              <div className='flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary'>
                 <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
                 {t('common.modelProvider.encrypted.front')}
                 <a
