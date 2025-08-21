@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import time
 
@@ -38,12 +39,11 @@ def handle(sender, **kwargs):
         db.session.add(document)
     db.session.commit()
 
-    try:
-        indexing_runner = IndexingRunner()
-        indexing_runner.run(documents)
-        end_at = time.perf_counter()
-        logging.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
-    except DocumentIsPausedError as ex:
-        logging.info(click.style(str(ex), fg="yellow"))
-    except Exception:
-        pass
+    with contextlib.suppress(Exception):
+        try:
+            indexing_runner = IndexingRunner()
+            indexing_runner.run(documents)
+            end_at = time.perf_counter()
+            logging.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+        except DocumentIsPausedError as ex:
+            logging.info(click.style(str(ex), fg="yellow"))
