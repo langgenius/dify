@@ -229,14 +229,27 @@ const formatItem = (
         variables,
       } = data as StartNodeType
       res.vars = variables.map((v) => {
-        return {
+        const type = inputVarTypeToVarType(v.type)
+        const varRes: Var = {
           variable: v.variable,
-          type: inputVarTypeToVarType(v.type),
+          type,
           isParagraph: v.type === InputVarType.paragraph,
           isSelect: v.type === InputVarType.select,
           options: v.options,
           required: v.required,
         }
+        try {
+          if(type === VarType.object && v.json_schema) {
+            varRes.children = {
+              schema: JSON.parse(v.json_schema),
+            }
+          }
+        }
+        catch (error) {
+          console.error('Error formatting variable:', error)
+        }
+
+        return varRes
       })
       if (isChatMode) {
         res.vars.push({

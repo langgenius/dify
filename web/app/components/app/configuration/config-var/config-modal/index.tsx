@@ -1,6 +1,6 @@
 'use client'
 import type { ChangeEvent, FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
@@ -24,7 +24,7 @@ import TypeSelector from './type-select'
 import { SimpleSelect } from '@/app/components/base/select'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { jsonConfigPlaceHolder } from './config'
+import { jsonConfigPlaceHolder, jsonObjectWrap } from './config'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -51,6 +51,17 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
+  const jsonSchemaStr = useMemo(() => {
+    const isJsonObject = type === InputVarType.jsonObject
+    if (!isJsonObject || !tempPayload.json_schema)
+      return ''
+    try {
+      return JSON.stringify(JSON.parse(tempPayload.json_schema).properties, null, 2)
+    }
+    catch (_e) {
+      return ''
+    }
+  }, [tempPayload.json_schema])
   useEffect(() => {
     // To fix the first input element auto focus, then directly close modal will raise error
     if (isShow)
@@ -81,6 +92,20 @@ const ConfigModal: FC<IConfigModalProps> = ({
       })
     }
   }, [])
+
+  const handleJSONSchemaChange = useCallback((value: string) => {
+    try {
+      const v = JSON.parse(value)
+      const res = {
+        ...jsonObjectWrap,
+        properties: v,
+      }
+      handlePayloadChange('json_schema')(JSON.stringify(res, null, 2))
+    }
+    catch (_e) {
+      return null
+    }
+  }, [handlePayloadChange])
 
   const selectOptions: SelectItem[] = [
     {
@@ -296,8 +321,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
             <Field title={t('appDebug.variableConfig.jsonSchema')} isOptional>
               <CodeEditor
                 language={CodeLanguage.json}
-                value={tempPayload.json_schema}
-                onChange={value => handlePayloadChange('json_schema')(value)}
+                value={jsonSchemaStr}
+                onChange={handleJSONSchemaChange}
                 noWrapper
                 className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
                 placeholder={
