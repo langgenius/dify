@@ -15,6 +15,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
@@ -255,14 +256,23 @@ class DatasetService:
         tenant_id: str,
         rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
     ):
-        # check if dataset name already exists
-        if (
-            db.session.query(Dataset)
-            .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-            .first()
-        ):
-            raise DatasetNameDuplicateError(
-                f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
+        if rag_pipeline_dataset_create_entity.name:
+            # check if dataset name already exists
+            if (
+                db.session.query(Dataset)
+                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
+                .first()
+            ):
+                raise DatasetNameDuplicateError(
+                    f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
+                )
+        else:
+            # generate a random name as Untitled 1 2 3 ...
+            datasets = db.session.query(Dataset).filter_by(tenant_id=tenant_id).all()
+            names = [dataset.name for dataset in datasets]
+            rag_pipeline_dataset_create_entity.name = generate_incremental_name(
+                names,
+                "Untitled",
             )
 
         pipeline = Pipeline(
