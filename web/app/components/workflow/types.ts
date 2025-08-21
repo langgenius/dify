@@ -184,6 +184,7 @@ export enum InputVarType {
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
+  jsonObject = 'json_object', // only object support define json schema
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
   singleFile = 'file',
@@ -209,6 +210,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
+  json_schema?: string // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {

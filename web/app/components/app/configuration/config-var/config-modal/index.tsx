@@ -22,6 +22,9 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import type { Item as SelectItem } from './type-select'
 import TypeSelector from './type-select'
 import { SimpleSelect } from '@/app/components/base/select'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { jsonConfigPlaceHolder } from './config'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -110,6 +113,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
         value: InputVarType.multiFiles,
       },
     ] : []),
+    {
+      name: t('appDebug.variableConfig.json'),
+      value: InputVarType.jsonObject,
+    },
   ]
 
   const handleTypeChange = useCallback((item: SelectItem) => {
@@ -283,6 +290,21 @@ const ConfigModal: FC<IConfigModalProps> = ({
               onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
               isMultiple={type === InputVarType.multiFiles}
             />
+          )}
+
+          {type === InputVarType.jsonObject && (
+            <Field title={t('appDebug.variableConfig.jsonSchema')} isOptional>
+              <CodeEditor
+                language={CodeLanguage.json}
+                value={tempPayload.json_schema}
+                onChange={value => handlePayloadChange('json_schema')(value)}
+                noWrapper
+                className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
+                placeholder={
+                  <div className='whitespace-pre'>{jsonConfigPlaceHolder}</div>
+                }
+              />
+            </Field>
           )}
 
           <div className='!mt-5 flex h-6 items-center space-x-2'>
