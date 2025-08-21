@@ -17,6 +17,7 @@ import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useConfig } from './hooks/use-config'
 import {
   COMMON_OUTPUT,
+  LOCAL_FILE_OUTPUT,
 } from './constants'
 import { useStore } from '@/app/components/workflow/store'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -114,6 +115,21 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               type={item.type}
               description={item.description}
               isIndent={hasObjectOutput}
+            />
+          ))
+        }
+        {
+          isLocalFile && LOCAL_FILE_OUTPUT.map((item, index) => (
+            <VarItem
+              key={index}
+              name={item.name}
+              type={item.type}
+              description={item.description}
+              subItems={item.subItems.map(item => ({
+                name: item.name,
+                type: item.type,
+                description: item.description,
+              }))}
             />
           ))
         }
