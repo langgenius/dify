@@ -1,3 +1,4 @@
+import contextlib
 import json
 from collections.abc import Generator, Iterable
 from copy import deepcopy
@@ -69,10 +70,8 @@ class ToolEngine:
             if parameters and len(parameters) == 1:
                 tool_parameters = {parameters[0].name: tool_parameters}
             else:
-                try:
+                with contextlib.suppress(Exception):
                     tool_parameters = json.loads(tool_parameters)
-                except Exception:
-                    pass
                 if not isinstance(tool_parameters, dict):
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
@@ -270,14 +269,12 @@ class ToolEngine:
                 if response.meta.get("mime_type"):
                     mimetype = response.meta.get("mime_type")
                 else:
-                    try:
+                    with contextlib.suppress(Exception):
                         url = URL(cast(ToolInvokeMessage.TextMessage, response.message).text)
                         extension = url.suffix
                         guess_type_result, _ = guess_type(f"a{extension}")
                         if guess_type_result:
                             mimetype = guess_type_result
-                    except Exception:
-                        pass
 
                 if not mimetype:
                     mimetype = "image/jpeg"

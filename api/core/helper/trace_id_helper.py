@@ -1,3 +1,4 @@
+import contextlib
 import re
 from collections.abc import Mapping
 from typing import Any, Optional
@@ -97,10 +98,8 @@ def parse_traceparent_header(traceparent: str) -> Optional[str]:
     Reference:
         W3C Trace Context Specification: https://www.w3.org/TR/trace-context/
     """
-    try:
+    with contextlib.suppress(Exception):
         parts = traceparent.split("-")
         if len(parts) == 4 and len(parts[1]) == 32:
             return parts[1]
-    except Exception:
-        pass
     return None
