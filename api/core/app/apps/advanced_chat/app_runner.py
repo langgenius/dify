@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import Any, Optional, cast
 
 from sqlalchemy import select
@@ -20,6 +20,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+from core.memory.entities import MemoryScope
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
@@ -33,6 +34,7 @@ from models import Workflow
 from models.enums import UserFrom
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable, WorkflowType
+from services.chatflow_memory_service import ChatflowMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -371,3 +373,34 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         # Return combined list
         return existing_variables + new_variables
+
+    def _fetch_memory_blocks(self) -> Mapping[str, str]:
+        """fetch all memory blocks for current app"""
+
+        memory_blocks_dict: MutableMapping[str, str] = {}
+        is_draft = (self.application_generate_entity.invoke_from == InvokeFrom.DEBUGGER)
+        conversation_id = self.conversation.id
+        memory_block_specs = self._workflow.memory_blocks
+        # Get runtime memory values
+        memories = ChatflowMemoryService.get_memories_by_specs(
+            memory_block_specs=memory_block_specs,
+            tenant_id=self._workflow.tenant_id,
+            app_id=self._workflow.app_id,
+            conversation_id=conversation_id,
+            is_draft=is_draft
+        )
+
+        # Build memory_id -> value mapping
+        for memory in memories:
+            if memory.scope == MemoryScope.APP:
+                # App level: use memory_id directly
+                memory_blocks_dict[memory.memory_id] = memory.value
+            else:  # NODE scope
+                node_id = memory.node_id
+                if not node_id:
+                    logger.warning("Memory block %s has no node_id, skip.", memory.memory_id)
+                    continue
+                key = f"{node_id}.{memory.memory_id}"
+                memory_blocks_dict[key] = memory.value
+
+        return memory_blocks_dict
