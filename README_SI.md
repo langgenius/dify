@@ -50,14 +50,14 @@
   <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
-
-Dify je odprtokodna platforma za razvoj aplikacij LLM. Njegov intuitivni vmesnik združuje agentski potek dela z umetno inteligenco, cevovod RAG, zmogljivosti agentov, upravljanje modelov, funkcije opazovanja in več, kar vam omogoča hiter prehod od prototipa do proizvodnje. 
+Dify je odprtokodna platforma za razvoj aplikacij LLM. Njegov intuitivni vmesnik združuje agentski potek dela z umetno inteligenco, cevovod RAG, zmogljivosti agentov, upravljanje modelov, funkcije opazovanja in več, kar vam omogoča hiter prehod od prototipa do proizvodnje.
 
 ## Hitri začetek
+
 > Preden namestite Dify, se prepričajte, da vaša naprava izpolnjuje naslednje minimalne sistemske zahteve:
-> 
->- CPU >= 2 Core
->- RAM >= 4 GiB
+>
+> - CPU >= 2 Core
+> - RAM >= 4 GiB
 
 </br>
 
@@ -73,34 +73,35 @@ docker compose up -d
 Po zagonu lahko dostopate do nadzorne plošče Dify v brskalniku na [http://localhost/install](http://localhost/install) in začnete postopek inicializacije.
 
 #### Iskanje pomoči
+
 Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#community--contact).
 
 > Če želite prispevati k Difyju ali narediti dodaten razvoj, glejte naš vodnik za [uvajanje iz izvorne kode](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
 ## Ključne značilnosti
-**1. Potek dela**: 
-  Zgradite in preizkusite zmogljive poteke dela AI na vizualnem platnu, pri čemer izkoristite vse naslednje funkcije in več.
 
-**2. Celovita podpora za modele**: 
-  Brezhibna integracija s stotinami lastniških/odprtokodnih LLM-jev ducatov ponudnikov sklepanja in samostojnih rešitev, ki pokrivajo GPT, Mistral, Llama3 in vse modele, združljive z API-jem OpenAI. Celoten seznam podprtih ponudnikov modelov najdete [tukaj](https://docs.dify.ai/getting-started/readme/model-providers).
+**1. Potek dela**:
+Zgradite in preizkusite zmogljive poteke dela AI na vizualnem platnu, pri čemer izkoristite vse naslednje funkcije in več.
+
+**2. Celovita podpora za modele**:
+Brezhibna integracija s stotinami lastniških/odprtokodnih LLM-jev ducatov ponudnikov sklepanja in samostojnih rešitev, ki pokrivajo GPT, Mistral, Llama3 in vse modele, združljive z API-jem OpenAI. Celoten seznam podprtih ponudnikov modelov najdete [tukaj](https://docs.dify.ai/getting-started/readme/model-providers).
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
+**3. Prompt IDE**:
+intuitivni vmesnik za ustvarjanje pozivov, primerjavo zmogljivosti modela in dodajanje dodatnih funkcij, kot je pretvorba besedila v govor, aplikaciji, ki temelji na klepetu.
 
-**3. Prompt IDE**: 
-  intuitivni vmesnik za ustvarjanje pozivov, primerjavo zmogljivosti modela in dodajanje dodatnih funkcij, kot je pretvorba besedila v govor, aplikaciji, ki temelji na klepetu. 
+**4. RAG Pipeline**:
+E Obsežne zmogljivosti RAG, ki pokrivajo vse od vnosa dokumenta do priklica, s podporo za ekstrakcijo besedila iz datotek PDF, PPT in drugih običajnih formatov dokumentov.
 
-**4. RAG Pipeline**: 
-  E Obsežne zmogljivosti RAG, ki pokrivajo vse od vnosa dokumenta do priklica, s podporo za ekstrakcijo besedila iz datotek PDF, PPT in drugih običajnih formatov dokumentov.
+**5. Agent capabilities**:
+definirate lahko agente, ki temeljijo na klicanju funkcij LLM ali ReAct, in dodate vnaprej izdelana orodja ali orodja po meri za agenta. Dify ponuja več kot 50 vgrajenih orodij za agente AI, kot so Google Search, DALL·E, Stable Diffusion in WolframAlpha.
 
-**5. Agent capabilities**: 
-  definirate lahko agente, ki temeljijo na klicanju funkcij LLM ali ReAct, in dodate vnaprej izdelana orodja ali orodja po meri za agenta. Dify ponuja več kot 50 vgrajenih orodij za agente AI, kot so Google Search, DALL·E, Stable Diffusion in WolframAlpha.
+**6. LLMOps**:
+Spremljajte in analizirajte dnevnike aplikacij in učinkovitost skozi čas. Pozive, nabore podatkov in modele lahko nenehno izboljšujete na podlagi proizvodnih podatkov in opomb.
 
-**6. LLMOps**: 
-  Spremljajte in analizirajte dnevnike aplikacij in učinkovitost skozi čas. Pozive, nabore podatkov in modele lahko nenehno izboljšujete na podlagi proizvodnih podatkov in opomb.
-
-**7. Backend-as-a-Service**: 
-  AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez težav integrirate v svojo poslovno logiko.
+**7. Backend-as-a-Service**:
+AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez težav integrirate v svojo poslovno logiko.
 
 ## Primerjava Funkcij
 
@@ -173,23 +174,21 @@ Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-star
 ## Uporaba Dify
 
 - **Cloud </br>**
-Gostimo storitev Dify Cloud za vsakogar, ki jo lahko preizkusite brez nastavitev. Zagotavlja vse zmožnosti različice za samostojno namestitev in vključuje 200 brezplačnih klicev GPT-4 v načrtu peskovnika.
+  Gostimo storitev Dify Cloud za vsakogar, ki jo lahko preizkusite brez nastavitev. Zagotavlja vse zmožnosti različice za samostojno namestitev in vključuje 200 brezplačnih klicev GPT-4 v načrtu peskovnika.
 
 - **Self-hosting Dify Community Edition</br>**
-Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#quick-start) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
-
+  Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#quick-start) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
 
 - **Dify za podjetja/organizacije</br>**
-Ponujamo dodatne funkcije, osredotočene na podjetja. Zabeležite svoja vprašanja prek tega klepetalnega robota ali nam pošljite e-pošto, da se pogovorimo o potrebah podjetja. </br>
-  > Za novoustanovljena podjetja in mala podjetja, ki uporabljajo AWS, si oglejte Dify Premium na AWS Marketplace in ga z enim klikom uvedite v svoj AWS VPC. To je cenovno ugodna ponudba AMI z možnostjo ustvarjanja aplikacij z logotipom in blagovno znamko po meri.
+  Ponujamo dodatne funkcije, osredotočene na podjetja. Zabeležite svoja vprašanja prek tega klepetalnega robota ali nam pošljite e-pošto, da se pogovorimo o potrebah podjetja. </br>
 
+  > Za novoustanovljena podjetja in mala podjetja, ki uporabljajo AWS, si oglejte Dify Premium na AWS Marketplace in ga z enim klikom uvedite v svoj AWS VPC. To je cenovno ugodna ponudba AMI z možnostjo ustvarjanja aplikacij z logotipom in blagovno znamko po meri.
 
 ## Staying ahead
 
 Star Dify on GitHub and be instantly notified of new releases.
 
 ![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
-
 
 ## Napredne nastavitve
 
@@ -208,16 +207,19 @@ Star Dify on GitHub and be instantly notified of new releases.
 namestite Dify v Cloud Platform z enim klikom z uporabo [terraform](https://www.terraform.io/)
 
 ##### Azure Global
+
 - [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 ##### Google Cloud
+
 - [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### Uporaba AWS CDK za uvajanje
 
 Uvedite Dify v AWS z uporabo [CDK](https://aws.amazon.com/cdk/)
 
-##### AWS 
+##### AWS
+
 - [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
@@ -233,21 +235,18 @@ Z enim klikom namestite Dify na Alibaba Cloud z [Alibaba Cloud Data Management](
 
 Z enim klikom namestite Dify v AKS z uporabo [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
-
 ## Prispevam
 
-Za tiste, ki bi radi prispevali kodo, si oglejte naš vodnik za prispevke . Hkrati vas prosimo, da podprete Dify tako, da ga delite na družbenih medijih ter na dogodkih in konferencah. 
-
-
+Za tiste, ki bi radi prispevali kodo, si oglejte naš vodnik za prispevke . Hkrati vas prosimo, da podprete Dify tako, da ga delite na družbenih medijih ter na dogodkih in konferencah.
 
 > Iščemo sodelavce za pomoč pri prevajanju Difyja v jezike, ki niso mandarinščina ali angleščina. Če želite pomagati, si oglejte i18n README za več informacij in nam pustite komentar v global-userskanalu našega strežnika skupnosti Discord .
 
 ## Skupnost in stik
 
-* [GitHub Discussion](https://github.com/langgenius/dify/discussions). Najboljše za: izmenjavo povratnih informacij in postavljanje vprašanj.
-* [GitHub Issues](https://github.com/langgenius/dify/issues). Najboljše za: hrošče, na katere naletite pri uporabi Dify.AI, in predloge funkcij. Oglejte si naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-* [Discord](https://discord.gg/FngNHpbcY7). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
-* [X(Twitter)](https://twitter.com/dify_ai). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
+- [GitHub Discussion](https://github.com/langgenius/dify/discussions). Najboljše za: izmenjavo povratnih informacij in postavljanje vprašanj.
+- [GitHub Issues](https://github.com/langgenius/dify/issues). Najboljše za: hrošče, na katere naletite pri uporabi Dify.AI, in predloge funkcij. Oglejte si naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
+- [Discord](https://discord.gg/FngNHpbcY7). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
+- [X(Twitter)](https://twitter.com/dify_ai). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
 
 **Contributors**
 
@@ -258,7 +257,6 @@ Za tiste, ki bi radi prispevali kodo, si oglejte naš vodnik za prispevke . Hkra
 ## Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
-
 
 ## Varnostno razkritje
 

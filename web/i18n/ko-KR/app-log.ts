@@ -94,6 +94,7 @@ const translation = {
     iteration: '반복',
     finalProcessing: '최종 처리',
   },
+  dateFormat: 'MM/DD/YYYY',
 }
 
 export default translation

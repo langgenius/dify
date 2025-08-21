@@ -48,6 +48,10 @@ type ProviderContextState = {
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
   isEducationAccount: boolean
+  allowRefreshEducationVerify: boolean
+  educationAccountExpireAt: number | null
+  isLoadingEducationAccountInfo: boolean
+  isFetchingEducationAccountInfo: boolean
   webappCopyrightEnabled: boolean
   licenseLimit: {
     workspace_members: {
@@ -91,6 +95,10 @@ const ProviderContext = createContext<ProviderContextState>({
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,
+  allowRefreshEducationVerify: false,
+  educationAccountExpireAt: null,
+  isLoadingEducationAccountInfo: false,
+  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {
@@ -137,7 +145,7 @@ export const ProviderContextProvider = ({
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const { data: isEducationAccount } = useEducationStatus(!enableEducationPlan)
+  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
   const [isAllowPublishAsKnowledgePipeline, setIsAllowPublishAsKnowledgePipeline] = useState(false)
 
@@ -228,7 +236,11 @@ export const ProviderContextProvider = ({
       datasetOperatorEnabled,
       enableEducationPlan,
       isEducationWorkspace,
-      isEducationAccount: isEducationAccount?.result || false,
+      isEducationAccount: educationAccountInfo?.is_student || false,
+      allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
+      educationAccountExpireAt: educationAccountInfo?.expire_at || null,
+      isLoadingEducationAccountInfo,
+      isFetchingEducationAccountInfo,
       webappCopyrightEnabled,
       licenseLimit,
       refreshLicenseLimit: fetchPlan,
