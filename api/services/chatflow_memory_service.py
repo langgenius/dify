@@ -17,6 +17,7 @@ from core.memory.entities import (
 )
 from core.memory.errors import MemorySyncTimeoutError
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from core.workflow.constants import MEMORY_BLOCK_VARIABLE_NODE_ID
 from core.workflow.entities.variable_pool import VariablePool
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -74,8 +75,12 @@ class ChatflowMemoryService:
         return None
 
     @staticmethod
-    def save_memory(memory: MemoryBlock, tenant_id: str, is_draft: bool = False) -> None:
+    def save_memory(memory: MemoryBlock, tenant_id: str, variable_pool: VariablePool, is_draft: bool = False) -> None:
         """Save or update memory with draft mode support"""
+
+        key =  f"{memory.node_id}:{memory.memory_id}" if memory.node_id else memory.memory_id
+        variable_pool.add([MEMORY_BLOCK_VARIABLE_NODE_ID, key], memory.value)
+
         stmt = select(ChatflowMemoryVariable).where(
             and_(
                 ChatflowMemoryVariable.memory_id == memory.memory_id,
@@ -552,7 +557,7 @@ class ChatflowMemoryService:
             node_id=node_id
         )
 
-        ChatflowMemoryService.save_memory(updated_memory, tenant_id, is_draft)
+        ChatflowMemoryService.save_memory(updated_memory, tenant_id, variable_pool, is_draft)
 
         # Not implemented yet: Send success event
         # self._send_memory_update_event(memory_block_spec.id, "completed", updated_value)
