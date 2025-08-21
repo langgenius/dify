@@ -81,14 +81,11 @@ class ApiTool(Tool):
         return ToolProviderType.API
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
+        headers = {}
         if self.runtime is None:
             raise ToolProviderCredentialValidationError("runtime not initialized")
 
-        headers = {}
-        if self.runtime is None:
-            raise ValueError("runtime is required")
         credentials = self.runtime.credentials or {}
-
         if "auth_type" not in credentials:
             raise ToolProviderCredentialValidationError("Missing auth_type")
 

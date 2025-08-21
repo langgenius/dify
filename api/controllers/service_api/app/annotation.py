@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask import request
 from flask_restful import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
@@ -15,7 +17,7 @@ from services.annotation_service import AppAnnotationService
 
 class AnnotationReplyActionApi(Resource):
     @validate_app_token
-    def post(self, app_model: App, action):
+    def post(self, app_model: App, action: Literal["enable", "disable"]):
         parser = reqparse.RequestParser()
         parser.add_argument("score_threshold", required=True, type=float, location="json")
         parser.add_argument("embedding_provider_name", required=True, type=str, location="json")
@@ -25,8 +27,6 @@ class AnnotationReplyActionApi(Resource):
             result = AppAnnotationService.enable_app_annotation(args, app_model.id)
         elif action == "disable":
             result = AppAnnotationService.disable_app_annotation(app_model.id)
-        else:
-            raise ValueError("Unsupported annotation reply action")
         return result, 200
 
 

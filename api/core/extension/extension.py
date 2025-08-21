@@ -38,6 +38,7 @@ class Extension:
 
     def extension_class(self, module: ExtensionModule, extension_name: str) -> type:
         module_extension = self.module_extension(module, extension_name)
+        assert module_extension.extension_class is not None
         t: type = module_extension.extension_class
         return t
 

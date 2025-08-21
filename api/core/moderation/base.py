@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.extension.extensible import Extensible, ExtensionModule
 
@@ -16,7 +16,7 @@ class ModerationInputsResult(BaseModel):
     flagged: bool = False
     action: ModerationAction
     preset_response: str = ""
-    inputs: dict = {}
+    inputs: dict = Field(default_factory=dict)
     query: str = ""
 
 
