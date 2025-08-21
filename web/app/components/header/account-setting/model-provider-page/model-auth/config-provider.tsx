@@ -18,6 +18,7 @@ import { ConfigurationMethodEnum } from '@/app/components/header/account-setting
 import Authorized from './authorized'
 import { useAuth, useCredentialStatus } from './hooks'
 import Tooltip from '@/app/components/base/tooltip'
+import cn from '@/utils/classnames'
 
 type ConfigProviderProps = {
   provider: ModelProvider,
@@ -48,11 +49,10 @@ const ConfigProvider = ({
   const ButtonComponent = useMemo(() => {
     const Item = (
       <Button
-        className='grow'
+        className={cn('grow', notAllowCustomCredential && 'cursor-not-allowed opacity-50')}
         size='small'
         onClick={handleClick}
         variant={!authorized ? 'secondary-accent' : 'secondary'}
-        disabled={notAllowCustomCredential}
       >
         <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
         {t('common.operation.setup')}

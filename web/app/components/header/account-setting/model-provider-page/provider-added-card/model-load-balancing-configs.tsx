@@ -29,6 +29,7 @@ import { useProviderContextSelector } from '@/context/provider-context'
 import { IS_CE_EDITION } from '@/config'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useModelModalHandler } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import Badge from '@/app/components/base/badge/index'
 
 export type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig
@@ -173,6 +174,7 @@ const ModelLoadBalancingConfigs = ({
           <div className='flex flex-col gap-1 px-3 pb-3'>
             {validDraftConfigList.map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
+              const credential = modelCredential.available_credentials.find(c => c.credential_id === config.credential_id)
               return (
                 <div key={config.id || index} className='group flex h-10 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 shadow-xs'>
                   <div className='flex grow items-center'>
@@ -191,15 +193,20 @@ const ModelLoadBalancingConfigs = ({
                       {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
                     </div>
                     {isProviderManaged && (
-                      <span className='rounded-[5px] border border-divider-regular px-1 text-2xs uppercase text-text-tertiary'>{t('common.modelProvider.providerManaged')}</span>
+                      <Badge className='ml-2'>{t('common.modelProvider.providerManaged')}</Badge>
                     )}
+                    {
+                      credential?.from_enterprise && (
+                        <Badge className='ml-2'>Enterprise</Badge>
+                      )
+                    }
                   </div>
                   <div className='flex items-center gap-1'>
                     {!isProviderManaged && (
                       <>
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
                           {
-                            config.credential_id && (
+                            config.credential_id && !credential?.not_allowed_to_use && (
                               <span
                                 className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
                                 onClick={() => {
@@ -238,6 +245,7 @@ const ModelLoadBalancingConfigs = ({
                             size='md'
                             className='justify-self-end'
                             onChange={value => toggleConfigEntryEnabled(index, value)}
+                            disabled={credential?.not_allowed_to_use}
                           />
                         </>
                       )
