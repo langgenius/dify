@@ -12,6 +12,13 @@ export type WebhookParameter = {
   required: boolean
 }
 
+export type WebhookParam = {
+  key: string
+  type: string
+  value: string
+  required: boolean
+}
+
 export type WebhookHeader = {
   name: string
   required: boolean
