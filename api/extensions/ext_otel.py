@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 import logging
 import os
 import platform
@@ -106,7 +107,7 @@ def init_app(app: DifyApp):
         """Custom logging handler that creates spans for logging.exception() calls"""
 
         def emit(self, record: logging.LogRecord):
-            try:
+            with contextlib.suppress(Exception):
                 if record.exc_info:
                     tracer = get_tracer_provider().get_tracer("dify.exception.logging")
                     with tracer.start_as_current_span(
@@ -125,9 +126,6 @@ def init_app(app: DifyApp):
                             span.set_attribute("exception.message", str(record.exc_info[1]))
                         if record.exc_info[0]:
                             span.set_attribute("exception.type", record.exc_info[0].__name__)
-
-            except Exception:
-                pass
 
     from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
