@@ -503,6 +503,11 @@ const translation = {
       specifyModelCredentialTip: '使用已配置的模型凭据。',
       providerManaged: '由模型供应商管理',
       providerManagedTip: '使用模型供应商提供的单组凭据。',
+      apiKeyModal: {
+        title: 'API 密钥授权配置',
+        desc: '配置凭据后，工作空间中的所有成员都可以在编排应用时使用此模型。',
+        addModel: '添加模型',
+      },
     },
   },
   dataSource: {

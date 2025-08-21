@@ -503,6 +503,11 @@ const translation = {
       specifyModelCredentialTip: 'Use a configured model credential.',
       providerManaged: 'Provider managed',
       providerManagedTip: 'The current configuration is hosted by the provider.',
+      apiKeyModal: {
+        title: 'API Key Authorization Configuration',
+        desc: 'After configuring credentials, all members within the workspace can use this model when orchestrating applications.',
+        addModel: 'Add model',
+      },
     },
   },
   dataSource: {
