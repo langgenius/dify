@@ -114,9 +114,8 @@ const Authorized = ({
   const Trigger = useMemo(() => {
     const Item = (
       <Button
-        className='grow'
+        className={cn('grow', notAllowCustomCredential && 'cursor-not-allowed')}
         size='small'
-        disabled={notAllowCustomCredential}
       >
         <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
         {t('common.operation.config')}

@@ -15,6 +15,7 @@ import type {
 } from '../declarations'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 
 type SwitchCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -39,17 +40,24 @@ const SwitchCredentialInLoadBalancing = ({
   const renderTrigger = useCallback(() => {
     const selectedCredentialId = customModelCredential?.credential_id
     const authRemoved = !selectedCredentialId && !!credentials?.length
-    return (
+    let color = 'green'
+    if (customModelCredential?.not_allowed_to_use)
+      color = 'gray'
+    if (authRemoved)
+      color = 'red'
+
+    const Item = (
       <Button
         variant='secondary'
         className={cn(
           'shrink-0 space-x-1',
           authRemoved && 'text-components-button-destructive-secondary-text',
+          customModelCredential?.not_allowed_to_use && 'cursor-not-allowed opacity-50',
         )}
       >
         <Indicator
           className='mr-2'
-          color={authRemoved ? 'red' : 'green'}
+          color={color as any}
         />
         {
           authRemoved ? t('common.modelProvider.auth.authRemoved') : customModelCredential?.credential_name
@@ -57,6 +65,17 @@ const SwitchCredentialInLoadBalancing = ({
         <RiArrowDownSLine className='h-4 w-4' />
       </Button>
     )
+    if (customModelCredential?.not_allowed_to_use) {
+      return (
+        <Tooltip
+          asChild
+          popupContent={t('plugin.auth.credentialUnavailable')}
+        >
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
   }, [customModelCredential, t, credentials])
 
   return (

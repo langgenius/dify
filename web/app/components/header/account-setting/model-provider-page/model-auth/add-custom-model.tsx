@@ -52,7 +52,9 @@ const AddCustomModel = ({
         variant='ghost-accent'
         size='small'
         onClick={handleClick}
-        disabled={notAllowCustomCredential}
+        className={cn(
+          notAllowCustomCredential && 'cursor-not-allowed opacity-50',
+        )}
       >
         <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
         {t('common.modelProvider.addModel')}
@@ -78,6 +80,7 @@ const AddCustomModel = ({
         size='small'
         className={cn(
           open && 'bg-components-button-ghost-bg-hover',
+          notAllowCustomCredential && 'cursor-not-allowed opacity-50',
         )}
       >
         <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
@@ -85,7 +88,7 @@ const AddCustomModel = ({
       </Button>
     )
     return Item
-  }, [t])
+  }, [t, notAllowCustomCredential])
 
   if (noModels)
     return ButtonComponent
