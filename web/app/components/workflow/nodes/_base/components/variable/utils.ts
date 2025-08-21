@@ -639,6 +639,16 @@ const formatItem = (
 
   return res
 }
+
+export const removeFileVars = (nodeWithVars: NodeOutPutVar[]) => {
+  return nodeWithVars.map((item) => {
+    return {
+      ...item,
+      vars: item.vars.filter(v => v.type !== VarType.file && v.type !== VarType.arrayFile),
+    }
+  }).filter(item => item.vars.length > 0)
+}
+
 export const toNodeOutputVars = (
   nodes: any[],
   isChatMode: boolean,

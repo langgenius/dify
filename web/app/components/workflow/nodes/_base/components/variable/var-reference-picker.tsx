@@ -18,7 +18,7 @@ import {
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, varTypeToStructType } from './utils'
+import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -63,6 +63,7 @@ type Props = {
   defaultVarKindType?: VarKindType
   onlyLeafNodeVar?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  isFilterFileVar?: boolean
   availableNodes?: Node[]
   availableVars?: NodeOutPutVar[]
   isAddBtnTrigger?: boolean
@@ -94,6 +95,7 @@ const VarReferencePicker: FC<Props> = ({
   defaultVarKindType = VarKindType.constant,
   onlyLeafNodeVar,
   filterVar = () => true,
+  isFilterFileVar,
   availableNodes: passedInAvailableNodes,
   availableVars: passedInAvailableVars,
   isAddBtnTrigger,
@@ -146,8 +148,8 @@ const VarReferencePicker: FC<Props> = ({
 
   const outputVars = useMemo(() => {
     const results = passedInAvailableVars || availableVars
-    return results
-  }, [passedInAvailableVars, availableVars])
+    return isFilterFileVar ? removeFileVars(results) : results
+  }, [passedInAvailableVars, availableVars, isFilterFileVar])
 
   const [open, setOpen] = useState(false)
   useEffect(() => {

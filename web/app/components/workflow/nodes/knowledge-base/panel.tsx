@@ -76,6 +76,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
           onChange={handleInputVariableChange}
           readonly={nodesReadOnly}
           filterVar={filterVar}
+          isFilterFileVar
           isSupportFileVar={false}
         />
       </BoxGroupField>
