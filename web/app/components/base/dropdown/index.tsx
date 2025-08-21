@@ -77,7 +77,7 @@ const Dropdown: FC<DropdownProps> = ({
           }
           {
             (!!items.length && !!secondItems?.length) && (
-              <div className='h-[1px] bg-divider-regular' />
+              <div className='h-px bg-divider-regular' />
             )
           }
           {
