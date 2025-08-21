@@ -8,6 +8,7 @@ import {
   LOCAL_FILE_OUTPUT,
 } from './constants'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { getOutputVariableAlias } from '@/app/components/workflow/utils/tool'
 
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -63,12 +64,19 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       Object.keys(payload.output_schema.properties).forEach((outputKey) => {
         const output = payload.output_schema!.properties[outputKey]
         const dataType = output.type
+        const alias = getOutputVariableAlias(output.properties)
+        let type = dataType === 'array'
+          ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+          : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`
+
+        if (type === 'object' && alias === 'file')
+          type = 'file'
+
         dynamicOutputSchema.push({
           variable: outputKey,
-          type: dataType === 'array'
-            ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-            : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`,
+          type,
           description: output.description,
+          alias,
           children: output.type === 'object' ? {
             schema: {
               type: 'object',

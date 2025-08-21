@@ -57,6 +57,8 @@ export const getOutputVariableAlias = (variable: Record<string, any>) => {
     return CHUNK_TYPE_MAP.parent_child_chunks
   if (variable?.qa_chunks)
     return CHUNK_TYPE_MAP.qa_chunks
+  if (variable?.file_type)
+    return 'file'
 }
 export const wrapStructuredVarItem = (outputItem: any): StructuredOutput => {
   const dataType = Type.object

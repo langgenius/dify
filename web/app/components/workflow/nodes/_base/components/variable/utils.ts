@@ -408,13 +408,19 @@ const formatItem = (
         Object.keys(output_schema.properties).forEach((outputKey) => {
           const output = output_schema.properties[outputKey]
           const dataType = output.type
+          const alias = getOutputVariableAlias(output.properties)
+          let type = dataType === 'array'
+            ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+            : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`
+
+          if (type === VarType.object && alias === 'file')
+            type = VarType.file
+
           outputSchema.push({
             variable: outputKey,
-            type: dataType === 'array'
-              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-              : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
+            type,
             description: output.description,
-            alias: getOutputVariableAlias(output.properties),
+            alias,
             children: output.type === 'object' ? {
               schema: {
                 type: 'object',
