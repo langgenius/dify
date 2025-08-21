@@ -21,6 +21,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.memory.entities import MemoryScope
+from core.memory.errors import MemorySyncTimeoutError
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
@@ -71,6 +72,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._app = app
 
     def run(self) -> None:
+        ChatflowMemoryService.wait_for_sync_memory_completion(
+            workflow=self._workflow,
+            conversation_id=self.conversation.id
+        )
+
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
