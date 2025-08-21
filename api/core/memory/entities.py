@@ -92,6 +92,13 @@ class MemoryBlock(BaseModel):
         """Check if this is node-level scope"""
         return self.node_id is not None
 
+class MemoryBlockWithVisibility(BaseModel):
+    id: str
+    name: str
+    value: str
+    end_user_visible: bool
+    end_user_editable: bool
+
 
 class ChatflowConversationMetadata(BaseModel):
     """Metadata for chatflow conversation with visible message count"""

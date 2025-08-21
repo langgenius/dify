@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.memory.entities import (
     MemoryBlock,
     MemoryBlockSpec,
+    MemoryBlockWithVisibility,
     MemoryScheduleMode,
     MemoryScope,
     MemoryStrategy,
@@ -21,14 +22,12 @@ from core.workflow.constants import MEMORY_BLOCK_VARIABLE_NODE_ID
 from core.workflow.entities.variable_pool import VariablePool
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models import App
 from models.chatflow_memory import ChatflowMemoryVariable
 from services.chatflow_history_service import ChatflowHistoryService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
-
-# Important note: Since Dify uses gevent, we don't need an extra task queue (e.g., Celery).
-# Threads created via threading.Thread are automatically patched into greenlets in a gevent environment,
-# enabling efficient asynchronous execution.
 
 def _get_memory_sync_lock_key(app_id: str, conversation_id: str) -> str:
     """Generate Redis lock key for memory sync updates
@@ -47,6 +46,32 @@ class ChatflowMemoryService:
     Memory service class with only static methods.
     All methods are static and do not require instantiation.
     """
+
+    @staticmethod
+    def get_persistent_memories(app: App) -> Sequence[MemoryBlockWithVisibility]:
+        stmt = select(ChatflowMemoryVariable).where(
+            and_(
+                ChatflowMemoryVariable.tenant_id == app.tenant_id,
+                ChatflowMemoryVariable.app_id == app.id,
+                ChatflowMemoryVariable.conversation_id == None
+            )
+        )
+        with db.session() as session:
+            db_results = session.execute(stmt).all()
+        return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
+
+    @staticmethod
+    def get_session_memories(app: App, conversation_id: str) -> Sequence[MemoryBlockWithVisibility]:
+        stmt = select(ChatflowMemoryVariable).where(
+            and_(
+                ChatflowMemoryVariable.tenant_id == app.tenant_id,
+                ChatflowMemoryVariable.app_id == app.id,
+                ChatflowMemoryVariable.conversation_id == conversation_id
+            )
+        )
+        with db.session() as session:
+            db_results = session.execute(stmt).all()
+        return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
 
     @staticmethod
     def get_memory(memory_id: str, tenant_id: str,
@@ -346,6 +371,29 @@ class ChatflowMemoryService:
                 llm_output, str(conversation_id), variable_pool, is_draft
             )
         return True
+
+    @staticmethod
+    def _with_visibility(
+        app: App,
+        raw_results: Sequence[ChatflowMemoryVariable]
+    ) -> Sequence[MemoryBlockWithVisibility]:
+        workflow = WorkflowService().get_published_workflow(app)
+        if not workflow:
+            return []
+        results = []
+        for db_result in raw_results:
+            spec = next((spec for spec in workflow.memory_blocks if spec.id == db_result.memory_id), None)
+            if spec:
+                results.append(
+                    MemoryBlockWithVisibility(
+                        id=db_result.memory_id,
+                        name=db_result.name,
+                        value=db_result.value,
+                        end_user_editable=spec.end_user_editable,
+                        end_user_visible=spec.end_user_visible,
+                    )
+                )
+        return results
 
     @staticmethod
     def _should_update_memory(tenant_id: str, app_id: str,
