@@ -230,7 +230,7 @@ class Executor:
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
                             if file.related_id is not None or (
-                                file.transfer_method == FileTransferMethod.remote_url
+                                file.transfer_method == FileTransferMethod.REMOTE_URL
                                 and file.remote_url is not None
                             ):
                                 file_tuple = (
