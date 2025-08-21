@@ -47,7 +47,7 @@ export const useChunkStructure = () => {
         )}
       />
     ),
-    title: 'Question-Answer',
+    title: 'Q&A',
     description: t('datasetCreation.stepTwo.qaTip'),
     effectColor: 'teal',
   }
