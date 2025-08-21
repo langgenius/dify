@@ -12,6 +12,7 @@ from core.tools.utils.encryption import ProviderConfigEncrypter
 # ---------------------------
 class NoopCache:
     """Simple cache stub: always returns None, does nothing for set/delete."""
+
     def get(self):
         return None
 
@@ -59,6 +60,7 @@ def encrypter_obj(secret_field, normal_field):
 # ProviderConfigEncrypter.encrypt()
 # ============================================================
 
+
 def test_encrypt_only_secret_is_encrypted_and_non_secret_unchanged(encrypter_obj):
     """
     Secret field should be encrypted, non-secret field unchanged.
@@ -88,6 +90,7 @@ def test_encrypt_missing_secret_key_is_ok(encrypter_obj):
 # ============================================================
 # ProviderConfigEncrypter.mask_tool_credentials()
 # ============================================================
+
 
 @pytest.mark.parametrize(
     ("raw", "prefix", "suffix"),
@@ -136,6 +139,7 @@ def test_mask_tool_credentials_missing_key_noop(encrypter_obj):
 # ============================================================
 # ProviderConfigEncrypter.decrypt()
 # ============================================================
+
 
 def test_decrypt_normal_flow(encrypter_obj):
     """
