@@ -1,14 +1,18 @@
 import { RAG_PIPELINE_PREVIEW_CHUNK_NUM } from '@/config'
 import { type ChunkInfo, ChunkType } from '../../../../chunk-card-list'
 
+type GeneralChunkPreview = {
+  content: string
+}
+
 const formatGeneralChunks = (outputs: any) => {
   if (!outputs) return undefined
   const chunkInfo: ChunkInfo = {
     general_chunks: [],
   }
-  const chunks = outputs.preview as string[]
+  const chunks = outputs.preview as GeneralChunkPreview[]
   chunks.slice(0, RAG_PIPELINE_PREVIEW_CHUNK_NUM).forEach((chunk) => {
-    chunkInfo.general_chunks?.push(chunk)
+    chunkInfo.general_chunks?.push(chunk.content)
   })
 
   return chunkInfo
