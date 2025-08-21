@@ -4,14 +4,12 @@ class TooltipManager {
   register(closeFn: () => void) {
     if (this.activeCloser)
       this.activeCloser()
-  
     this.activeCloser = closeFn
   }
 
   clear(closeFn: () => void) {
     if (this.activeCloser === closeFn) 
       this.activeCloser = null
-    
   }
 }
 
