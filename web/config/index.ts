@@ -295,3 +295,5 @@ export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(process.env.NEXT_PUBLI
 export const VALUE_SELECTOR_DELIMITER = '@@@'
 
 export const validPassword = /^(?=.*[a-zA-Z])(?=.*\d)\S{8,}$/
+
+export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20

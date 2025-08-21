@@ -24,7 +24,7 @@ const QAItem = (props: QAItemProps) => {
   </div>
 }
 
-enum ChunkType {
+export enum ChunkType {
   General = 'general',
   Paragraph = 'paragraph',
   FullDoc = 'full-doc',
@@ -145,6 +145,7 @@ export const ChunkCardList = (props: ChunkCardListProps) => {
 
         return (
           <ChunkCard
+            key={`${chunkType}-${index}`}
             type={chunkType}
             content={isParentChildMode ? (seg as ParentChildChunk).child_contents : (seg as string | QAChunk)}
             wordCount={wordCount}
