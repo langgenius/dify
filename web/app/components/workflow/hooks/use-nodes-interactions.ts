@@ -16,7 +16,6 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { unionBy } from 'lodash-es'
 import type { ToolDefaultValue } from '../block-selector/types'
 import type {
   Edge,
@@ -236,23 +235,6 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
-    const connectedEdges = getConnectedEdges([node], edges).filter(edge => edge.target === node.id)
-
-    const targetNodes: Node[] = []
-    for (let i = 0; i < connectedEdges.length; i++) {
-      const sourceConnectedEdges = getConnectedEdges([{ id: connectedEdges[i].source } as Node], edges).filter(edge => edge.source === connectedEdges[i].source && edge.sourceHandle === connectedEdges[i].sourceHandle)
-      targetNodes.push(...sourceConnectedEdges.map(edge => nodes.find(n => n.id === edge.target)!))
-    }
-    const uniqTargetNodes = unionBy(targetNodes, 'id')
-    if (uniqTargetNodes.length > 1) {
-      const newNodes = produce(nodes, (draft) => {
-        draft.forEach((n) => {
-          if (uniqTargetNodes.some(targetNode => n.id === targetNode.id))
-            n.data._inParallelHovering = true
-        })
-      })
-      setNodes(newNodes)
-    }
   }, [store, workflowStore, getNodesReadOnly])
 
   const handleNodeLeave = useCallback<NodeMouseHandler>((_, node) => {
@@ -278,7 +260,6 @@ export const useNodesInteractions = () => {
     const newNodes = produce(getNodes(), (draft) => {
       draft.forEach((node) => {
         node.data._isEntering = false
-        node.data._inParallelHovering = false
       })
     })
     setNodes(newNodes)

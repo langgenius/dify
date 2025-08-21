@@ -59,9 +59,9 @@ export const useLogs = () => {
       agentOrToolLogItemStackRef.current = []
       return
     }
-    const { id, children } = detail
+    const { message_id: id, children } = detail
     let currentAgentOrToolLogItemStack = agentOrToolLogItemStackRef.current.slice()
-    const index = currentAgentOrToolLogItemStack.findIndex(logItem => logItem.id === id)
+    const index = currentAgentOrToolLogItemStack.findIndex(logItem => logItem.message_id === id)
 
     if (index > -1)
       currentAgentOrToolLogItemStack = currentAgentOrToolLogItemStack.slice(0, index + 1)

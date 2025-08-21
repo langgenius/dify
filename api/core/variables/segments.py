@@ -130,7 +130,7 @@ class ArraySegment(Segment):
     def markdown(self) -> str:
         items = []
         for item in self.value:
-            items.append(str(item))
+            items.append(f"- {item}")
         return "\n".join(items)
 
 
