@@ -2,8 +2,10 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
   useRef,
 } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type {
   CustomConfigurationModelFixedFields,
@@ -40,6 +42,9 @@ import {
   useAuth,
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import Badge from '@/app/components/base/badge'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -62,6 +67,7 @@ const ModelModal: FC<ModelModalProps> = ({
   credential,
   isModelCredential,
 }) => {
+  const renderI18nObject = useRenderI18nObject()
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const {
     isLoading,
@@ -124,19 +130,80 @@ const ModelModal: FC<ModelModalProps> = ({
     }
   }, [handleSaveCredential, credential?.credential_id, model])
 
-  const renderTitlePrefix = () => {
-    const prefix = isEditMode ? t('common.operation.setup') : t('common.operation.add')
-    return `${prefix} ${provider.label[language] || provider.label.en_US}`
-  }
+  const modalTitle = useMemo(() => {
+    if (!providerFormSchemaPredefined && !model) {
+      return (
+        <div className='flex items-center'>
+          <ModelIcon
+            className='mr-2 h-10 w-10 shrink-0'
+            iconClassName='h-10 w-10'
+            provider={provider}
+          />
+          <div>
+            <div className='system-xs-medium-uppercase text-text-tertiary'>{t('common.modelProvider.auth.apiKeyModal.addModel')}</div>
+            <div className='system-md-semibold text-text-primary'>{renderI18nObject(provider.label)}</div>
+          </div>
+        </div>
+      )
+    }
+    let label = t('common.modelProvider.auth.apiKeyModal.title')
+
+    if (model)
+      label = t('common.modelProvider.auth.addModelCredential')
+
+    return (
+      <div className='title-2xl-semi-bold text-text-primary'>
+        {label}
+      </div>
+    )
+  }, [providerFormSchemaPredefined, t, model, renderI18nObject])
+
+  const modalDesc = useMemo(() => {
+    if (providerFormSchemaPredefined) {
+      return (
+        <div className='system-xs-regular mt-1 text-text-tertiary'>
+          {t('common.modelProvider.auth.apiKeyModal.desc')}
+        </div>
+      )
+    }
+
+    return null
+  }, [providerFormSchemaPredefined, t])
+
+  const modalModel = useMemo(() => {
+    if (model) {
+      return (
+        <div className='mt-2 flex items-center'>
+          <ModelIcon
+            className='mr-2 h-4 w-4 shrink-0'
+            provider={provider}
+            modelName={model.model}
+          />
+          <div className='system-md-regular mr-1 text-text-secondary'>{model.model}</div>
+          <Badge>{model.model_type}</Badge>
+        </div>
+      )
+    }
+
+    return null
+  }, [model, provider])
 
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] overflow-auto rounded-2xl bg-components-panel-bg shadow-xl'>
-            <div className='px-8 pt-8'>
-              <div className='mb-2 flex items-center'>
-                <div className='text-xl font-semibold text-text-primary'>{renderTitlePrefix()}</div>
+          <div className='relative w-[640px] rounded-2xl bg-components-panel-bg shadow-xl'>
+            <div
+              className='absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center'
+              onClick={onCancel}
+            >
+              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            </div>
+            <div className='px-6 pt-6'>
+              <div className='pb-3'>
+                {modalTitle}
+                {modalDesc}
+                {modalModel}
               </div>
 
               <div className='max-h-[calc(100vh-320px)] overflow-y-auto'>
