@@ -4,10 +4,11 @@ import { CursorService } from '../services/cursor-service'
 import type { CollaborationState } from '../types/collaboration'
 
 export function useCollaboration(appId: string, reactFlowStore?: any) {
-  const [state, setState] = useState<Partial<CollaborationState>>({
+  const [state, setState] = useState<Partial<CollaborationState & { isLeader: boolean }>>({
     isConnected: false,
     onlineUsers: [],
     cursors: {},
+    isLeader: false,
   })
 
   const cursorServiceRef = useRef<CursorService | null>(null)
@@ -35,7 +36,6 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     })
 
     const unsubscribeCursors = collaborationManager.onCursorUpdate((cursors: any) => {
-      console.log('Cursor update received:', cursors)
       setState((prev: any) => ({ ...prev, cursors }))
     })
 
@@ -44,10 +44,16 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
       setState((prev: any) => ({ ...prev, onlineUsers: users }))
     })
 
+    const unsubscribeLeaderChange = collaborationManager.onLeaderChange((isLeader: boolean) => {
+      console.log('Leader status changed:', isLeader)
+      setState((prev: any) => ({ ...prev, isLeader }))
+    })
+
     return () => {
       unsubscribeStateChange()
       unsubscribeCursors()
       unsubscribeUsers()
+      unsubscribeLeaderChange()
       cursorServiceRef.current?.stopTracking()
       collaborationManager.disconnect()
     }
@@ -69,6 +75,8 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     isConnected: state.isConnected || false,
     onlineUsers: state.onlineUsers || [],
     cursors: state.cursors || {},
+    isLeader: state.isLeader || false,
+    leaderId: collaborationManager.getLeaderId(),
     startCursorTracking,
     stopCursorTracking,
   }

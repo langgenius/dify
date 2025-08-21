@@ -15,6 +15,8 @@ export class CollaborationManager {
   private currentAppId: string | null = null
   private reactFlowStore: any = null
   private cursors: Record<string, CursorPosition> = {}
+  private isLeader = false
+  private leaderId: string | null = null
 
   init = (appId: string, reactFlowStore: any): void => {
     if (!reactFlowStore) {
@@ -70,6 +72,8 @@ export class CollaborationManager {
     this.currentAppId = null
     this.reactFlowStore = null
     this.cursors = {}
+    this.isLeader = false
+    this.leaderId = null
     this.eventEmitter.removeAllListeners()
   }
 
@@ -113,6 +117,18 @@ export class CollaborationManager {
 
   onVarsAndFeaturesUpdate(callback: (update: any) => void): () => void {
     return this.eventEmitter.on('varsAndFeaturesUpdate', callback)
+  }
+
+  onLeaderChange(callback: (isLeader: boolean) => void): () => void {
+    return this.eventEmitter.on('leaderChange', callback)
+  }
+
+  getLeaderId(): string | null {
+    return this.leaderId
+  }
+
+  getIsLeader(): boolean {
+    return this.isLeader
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
@@ -203,8 +219,6 @@ export class CollaborationManager {
 
     socket.on('collaboration_update', (update: any) => {
       if (update.type === 'mouseMove') {
-        console.log('Processing mouseMove event:', update)
-
         // Update cursor state for this user
         this.cursors[update.userId] = {
           x: update.data.x,
@@ -213,8 +227,6 @@ export class CollaborationManager {
           timestamp: update.timestamp,
         }
 
-        // Emit the complete cursor state
-        console.log('Emitting complete cursor state:', this.cursors)
         this.eventEmitter.emit('cursors', { ...this.cursors })
       }
       else if (update.type === 'varsAndFeaturesUpdate') {
@@ -223,26 +235,80 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('online_users', (data: { users: OnlineUser[] }) => {
-      const onlineUserIds = new Set(data.users.map(user => user.user_id))
+    socket.on('online_users', (data: { users: OnlineUser[]; leader?: string }) => {
+      try {
+        if (!data || !Array.isArray(data.users)) {
+          console.warn('Invalid online_users data structure:', data)
+          return
+        }
 
-      // Remove cursors for offline users
-      Object.keys(this.cursors).forEach((userId) => {
-        if (!onlineUserIds.has(userId))
-          delete this.cursors[userId]
-      })
+        const onlineUserIds = new Set(data.users.map((user: OnlineUser) => user.user_id))
 
-      console.log('Updated online users and cleaned offline cursors:', data.users)
-      this.eventEmitter.emit('onlineUsers', data.users)
-      this.eventEmitter.emit('cursors', { ...this.cursors })
+        // Remove cursors for offline users
+        Object.keys(this.cursors).forEach((userId) => {
+          if (!onlineUserIds.has(userId))
+            delete this.cursors[userId]
+        })
+
+        // Update leader information
+        if (data.leader && typeof data.leader === 'string')
+          this.leaderId = data.leader
+
+        console.log('Updated online users and leader info:', {
+          users: data.users,
+          leader: data.leader,
+          currentLeader: this.leaderId,
+        })
+
+        this.eventEmitter.emit('onlineUsers', data.users)
+        this.eventEmitter.emit('cursors', { ...this.cursors })
+      }
+ catch (error) {
+        console.error('Error processing online_users update:', error)
+      }
+    })
+
+    socket.on('status', (data: any) => {
+      try {
+        if (!data || typeof data.isLeader !== 'boolean') {
+          console.warn('Invalid status data:', data)
+          return
+        }
+
+        const wasLeader = this.isLeader
+        this.isLeader = data.isLeader
+
+        console.log(`Leader status update: ${wasLeader ? 'was' : 'was not'} leader, ${this.isLeader ? 'now is' : 'now is not'} leader`)
+
+        if (wasLeader !== this.isLeader)
+          this.eventEmitter.emit('leaderChange', this.isLeader)
+      }
+ catch (error) {
+        console.error('Error processing status update:', error)
+      }
     })
 
     socket.on('connect', () => {
+      console.log('WebSocket connected successfully')
       this.eventEmitter.emit('stateChange', { isConnected: true })
     })
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason: string) => {
+      console.log('WebSocket disconnected:', reason)
+      this.cursors = {}
+      this.isLeader = false
+      this.leaderId = null
       this.eventEmitter.emit('stateChange', { isConnected: false })
+      this.eventEmitter.emit('cursors', {})
+    })
+
+    socket.on('connect_error', (error: any) => {
+      console.error('WebSocket connection error:', error)
+      this.eventEmitter.emit('stateChange', { isConnected: false, error: error.message })
+    })
+
+    socket.on('error', (error: any) => {
+      console.error('WebSocket error:', error)
     })
   }
 }
