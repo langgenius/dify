@@ -995,6 +995,7 @@ const translation = {
     noLastRunFound: 'Aucune exécution précédente trouvée',
     noMatchingInputsFound: 'Aucune entrée correspondante trouvée dans la dernière exécution.',
     copyLastRunError: 'Échec de la copie des entrées de la dernière exécution',
+    lastOutput: 'Dernière sortie',
   },
 }
 

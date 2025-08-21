@@ -93,6 +93,7 @@ const translation = {
     iteration: 'Итерация',
     finalProcessing: 'Окончательная обработка',
   },
+  dateFormat: 'ДД/ММ/ГГГГ',
 }
 
 export default translation

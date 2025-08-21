@@ -95,6 +95,7 @@ const translation = {
     finalProcessing: 'अंतिम प्रसंस्करण',
     iteration: 'चलना',
   },
+  dateFormat: 'MM/DD/YYYY',
 }
 
 export default translation

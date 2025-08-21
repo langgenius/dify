@@ -6,7 +6,7 @@ import click
 from celery import shared_task  # type: ignore
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.tools.utils.rag_web_reader import get_image_upload_file_ids
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment

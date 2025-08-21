@@ -97,6 +97,7 @@ const translation = {
     iteration: 'Iterazione',
     finalProcessing: 'Elaborazione Finale',
   },
+  dateFormat: 'GG/MM/AAAA',
 }
 
 export default translation

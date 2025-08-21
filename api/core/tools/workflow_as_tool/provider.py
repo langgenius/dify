@@ -203,9 +203,6 @@ class WorkflowToolProviderController(ToolProviderController):
             raise ValueError("app not found")
 
         app = db_providers.app
-        if not app:
-            raise ValueError("can not read app of workflow")
-
         self.tools = [self._get_db_provider_tool(db_providers, app)]
 
         return self.tools
