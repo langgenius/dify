@@ -197,20 +197,22 @@ const PromptEditor: FC<PromptEditorProps> = ({
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
-        {floatingAnchorElem && (
-          <ShortcutsPopupPlugin
-            container={floatingAnchorElem}
-          >
-            {closePortal => (
-              <div>
-                <div>test content</div>
-                <button className='text-xs text-text-primary' onClick={closePortal}>
-                  close
-                </button>
-              </div>
-            )}
-          </ShortcutsPopupPlugin>
-        )}
+        <ShortcutsPopupPlugin>
+          {closePortal => (
+            <div>
+              <div>test content</div>
+              <button
+                className='rounded border border-text-secondary text-xs text-text-primary'
+                onMouseDown={(e) => {
+                  e.preventDefault() // necessary, otherwise the editor will lose focus
+                  closePortal()
+                }}
+              >
+                close
+              </button>
+            </div>
+          )}
+        </ShortcutsPopupPlugin>
         <ComponentPickerBlock
           triggerString='/'
           contextBlock={contextBlock}

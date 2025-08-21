@@ -13,6 +13,8 @@ import {
 } from 'lexical'
 import cn from '@/utils/classnames'
 
+export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
+
 type Hotkey = string | ((e: KeyboardEvent) => boolean)
 
 type ShortcutPopupPluginProps = {
@@ -119,7 +121,6 @@ export default function ShortcutsPopupPlugin({
   const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
   const useContainer = !!containerEl && containerEl !== document.body
 
-  // 记录最近一次的 DOM 选择范围
   useEffect(() => {
     return editor.registerUpdateListener(({ editorState }) => {
       editorState.read(() => {
@@ -134,26 +135,44 @@ export default function ShortcutsPopupPlugin({
   }, [editor])
 
   const setPositionFromRange = useCallback((range: Range | null) => {
-    if (!range)
-      return
-    const rect = range.getBoundingClientRect()
+    if (!range) return
     const dx = offset?.x ?? 0
     const dy = offset?.y ?? 0
+
+    let rect: DOMRect | null = null
+    const rects = range.getClientRects()
+    if (rects && rects.length) {
+      rect = rects[rects.length - 1]
+    }
+    else {
+      const r = range.getBoundingClientRect()
+      if (!(r.top === 0 && r.left === 0 && r.width === 0 && r.height === 0))
+        rect = r
+    }
+
+    if (!rect) {
+      const root = editor.getRootElement()
+      const sc = range.startContainer
+      const anchorEl = (sc.nodeType === Node.ELEMENT_NODE ? sc as Element : (sc.parentElement || root)) as Element | null
+      if (!anchorEl) return
+      const ar = anchorEl.getBoundingClientRect()
+      rect = new DOMRect(ar.left, ar.top, ar.width, ar.height)
+    }
+
     if (useContainer) {
-      const el = containerEl as HTMLElement
-      const crect = el.getBoundingClientRect()
+      const crect = (containerEl as HTMLElement).getBoundingClientRect()
       setPosition({
-        top: rect.bottom - crect.top + dy,
-        left: rect.left - crect.left + dx,
+        top: rect!.bottom - crect.top + dy,
+        left: rect!.left - crect.left + dx,
       })
     }
     else {
       setPosition({
-        top: rect.bottom + window.scrollY + dy,
-        left: rect.left + window.scrollX + dx,
+        top: rect!.bottom + window.scrollY + dy,
+        left: rect!.left + window.scrollX + dx,
       })
     }
-  }, [offset?.x, offset?.y])
+  }, [editor, containerEl, useContainer, offset?.x, offset?.y])
 
   const isEditorFocused = useCallback(() => {
     const root = editor.getRootElement()
@@ -223,13 +242,13 @@ export default function ShortcutsPopupPlugin({
     <div
       ref={portalRef}
       className={cn(
-        useContainer ? 'absolute' : 'fixed z-[999999]',
-        'rounded-md bg-white shadow-lg',
+        useContainer ? '' : 'z-[999999]',
+        'absolute rounded-md bg-slate-50 shadow-lg',
         className,
       )}
       style={{ top: `${position.top}px`, left: `${position.left}px`, ...style }}
     >
-      {typeof children === 'function' ? children(closePortal) : (children ?? 'empty')}
+      {typeof children === 'function' ? children(closePortal) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
     </div>,
     containerEl,
   )
