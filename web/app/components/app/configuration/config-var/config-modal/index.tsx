@@ -50,7 +50,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
-  console.log({ tempPayload })
   const modalRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // To fix the first input element auto focus, then directly close modal will raise error
