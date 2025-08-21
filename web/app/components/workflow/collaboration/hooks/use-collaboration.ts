@@ -16,6 +16,8 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
   useEffect(() => {
     if (!appId) return
 
+    let connectionId: string | null = null
+
     if (!cursorServiceRef.current) {
       cursorServiceRef.current = new CursorService({
         minMoveDistance: 10,
@@ -24,7 +26,7 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     }
 
     const initCollaboration = async () => {
-      await collaborationManager.connect(appId, reactFlowStore)
+      connectionId = await collaborationManager.connect(appId, reactFlowStore)
       setState((prev: any) => ({ ...prev, appId, isConnected: collaborationManager.isConnected() }))
     }
 
@@ -55,7 +57,8 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
       unsubscribeUsers()
       unsubscribeLeaderChange()
       cursorServiceRef.current?.stopTracking()
-      collaborationManager.disconnect()
+      if (connectionId)
+        collaborationManager.disconnect(connectionId)
     }
   }, [appId, reactFlowStore])
 
@@ -71,7 +74,7 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     cursorServiceRef.current?.stopTracking()
   }
 
-  return {
+  const result = {
     isConnected: state.isConnected || false,
     onlineUsers: state.onlineUsers || [],
     cursors: state.cursors || {},
@@ -80,4 +83,6 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     startCursorTracking,
     stopCursorTracking,
   }
+
+  return result
 }

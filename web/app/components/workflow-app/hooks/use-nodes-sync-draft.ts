@@ -13,6 +13,7 @@ import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
 import { useWorkflowRefreshDraft } from '.'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
@@ -93,9 +94,20 @@ export const useNodesSyncDraft = () => {
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly())
       return
+
+    // Check leader status at sync time
+    const currentIsLeader = collaborationManager.getIsLeader()
+
+    // Only allow leader to sync data
+    if (!currentIsLeader) {
+      console.log('Not leader, skipping sync on page close')
+      return
+    }
+
     const postParams = getPostParams()
 
     if (postParams) {
+      console.log('Leader syncing workflow draft on page close')
       navigator.sendBeacon(
         `${API_PREFIX}/apps/${params.appId}/workflows/draft?_token=${localStorage.getItem('console_token')}`,
         JSON.stringify(postParams.params),
@@ -113,6 +125,18 @@ export const useNodesSyncDraft = () => {
   ) => {
     if (getNodesReadOnly())
       return
+
+    // Check leader status at sync time
+    const currentIsLeader = collaborationManager.getIsLeader()
+
+    // Only allow leader to sync data
+    if (!currentIsLeader) {
+      console.log('Not leader, skipping workflow draft sync')
+      callback?.onSettled?.()
+      return
+    }
+
+    console.log('Leader performing workflow draft sync')
     const postParams = getPostParams()
 
     if (postParams) {
@@ -124,9 +148,11 @@ export const useNodesSyncDraft = () => {
         const res = await syncWorkflowDraft(postParams)
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
+        console.log('Leader successfully synced workflow draft')
         callback?.onSuccess && callback.onSuccess()
       }
       catch (error: any) {
+        console.error('Leader failed to sync workflow draft:', error)
         if (error && error.json && !error.bodyUsed) {
           error.json().then((err: any) => {
             if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)

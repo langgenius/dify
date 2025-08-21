@@ -17,6 +17,7 @@ export class CollaborationManager {
   private cursors: Record<string, CursorPosition> = {}
   private isLeader = false
   private leaderId: string | null = null
+  private activeConnections = new Set<string>()
 
   init = (appId: string, reactFlowStore: any): void => {
     if (!reactFlowStore) {
@@ -42,25 +43,57 @@ export class CollaborationManager {
     this.disconnect()
   }
 
-  async connect(appId: string, reactFlowStore: any): Promise<void> {
-    if (this.currentAppId === appId && this.doc) return
+  async connect(appId: string, reactFlowStore?: any): Promise<string> {
+    const connectionId = Math.random().toString(36).substring(2, 11)
 
-    this.disconnect()
+    this.activeConnections.add(connectionId)
+
+    if (this.currentAppId === appId && this.doc) {
+      // Already connected to the same app, only update store if provided and we don't have one
+      if (reactFlowStore && !this.reactFlowStore)
+        this.reactFlowStore = reactFlowStore
+
+      return connectionId
+    }
+
+    // Only disconnect if switching to a different app
+    if (this.currentAppId && this.currentAppId !== appId)
+      this.forceDisconnect()
 
     this.currentAppId = appId
-    this.reactFlowStore = reactFlowStore
+    // Only set store if provided
+    if (reactFlowStore)
+      this.reactFlowStore = reactFlowStore
 
     const socket = webSocketClient.connect(appId)
+
+    // Setup event listeners BEFORE any other operations
+    this.setupSocketEventListeners(socket)
+
     this.doc = new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes')
     this.edgesMap = this.doc.getMap('edges')
     this.provider = new CRDTProvider(socket, this.doc)
 
     this.setupSubscriptions()
-    this.setupSocketEventListeners(socket)
+
+    // Force user_connect if already connected
+    if (socket.connected)
+      socket.emit('user_connect', { workflow_id: appId })
+
+    return connectionId
   }
 
-  disconnect = (): void => {
+  disconnect = (connectionId?: string): void => {
+    if (connectionId)
+      this.activeConnections.delete(connectionId)
+
+    // Only disconnect when no more connections
+    if (this.activeConnections.size === 0)
+      this.forceDisconnect()
+  }
+
+  private forceDisconnect = (): void => {
     if (this.currentAppId)
       webSocketClient.disconnect(this.currentAppId)
 
@@ -72,8 +105,16 @@ export class CollaborationManager {
     this.currentAppId = null
     this.reactFlowStore = null
     this.cursors = {}
+
+    // Only reset leader status when actually disconnecting
+    const wasLeader = this.isLeader
     this.isLeader = false
     this.leaderId = null
+
+    if (wasLeader)
+      this.eventEmitter.emit('leaderChange', false)
+
+    this.activeConnections.clear()
     this.eventEmitter.removeAllListeners()
   }
 
@@ -129,6 +170,17 @@ export class CollaborationManager {
 
   getIsLeader(): boolean {
     return this.isLeader
+  }
+
+  debugLeaderStatus(): void {
+    console.log('=== Leader Status Debug ===')
+    console.log('Current leader status:', this.isLeader)
+    console.log('Current leader ID:', this.leaderId)
+    console.log('Active connections:', this.activeConnections.size)
+    console.log('Connected:', this.isConnected())
+    console.log('Current app ID:', this.currentAppId)
+    console.log('Has ReactFlow store:', !!this.reactFlowStore)
+    console.log('========================')
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
@@ -254,12 +306,6 @@ export class CollaborationManager {
         if (data.leader && typeof data.leader === 'string')
           this.leaderId = data.leader
 
-        console.log('Updated online users and leader info:', {
-          users: data.users,
-          leader: data.leader,
-          currentLeader: this.leaderId,
-        })
-
         this.eventEmitter.emit('onlineUsers', data.users)
         this.eventEmitter.emit('cursors', { ...this.cursors })
       }
@@ -277,8 +323,6 @@ export class CollaborationManager {
 
         const wasLeader = this.isLeader
         this.isLeader = data.isLeader
-
-        console.log(`Leader status update: ${wasLeader ? 'was' : 'was not'} leader, ${this.isLeader ? 'now is' : 'now is not'} leader`)
 
         if (wasLeader !== this.isLeader)
           this.eventEmitter.emit('leaderChange', this.isLeader)
