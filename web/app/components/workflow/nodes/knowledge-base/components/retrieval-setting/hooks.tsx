@@ -46,7 +46,7 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   }, [t])
   const InvertedIndexOption: Option = useMemo(() => {
     return {
-      id: RetrievalSearchMethodEnum.invertedIndex,
+      id: RetrievalSearchMethodEnum.keywordSearch,
       icon: HybridSearch as any,
       title: t('dataset.retrieval.invertedIndex.title'),
       description: t('dataset.retrieval.invertedIndex.description'),

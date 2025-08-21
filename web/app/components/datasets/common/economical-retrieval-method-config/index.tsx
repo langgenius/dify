@@ -24,7 +24,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 
   return (
     <OptionCard
-      id={RETRIEVE_METHOD.invertedIndex}
+      id={RETRIEVE_METHOD.keywordSearch}
       disabled={disabled}
       icon={<VectorSearch className='size-4' />}
       iconActiveColor='text-util-colors-purple-purple-600'
@@ -37,7 +37,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
       className='gap-x-2'
     >
       <RetrievalParamConfig
-        type={RETRIEVE_METHOD.invertedIndex}
+        type={RETRIEVE_METHOD.keywordSearch}
         value={value}
         onChange={onChange}
       />

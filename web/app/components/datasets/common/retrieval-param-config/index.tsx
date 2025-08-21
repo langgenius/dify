@@ -38,7 +38,7 @@ const RetrievalParamConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
-  const isEconomical = type === RETRIEVE_METHOD.invertedIndex
+  const isEconomical = type === RETRIEVE_METHOD.keywordSearch
   const isHybridSearch = type === RETRIEVE_METHOD.hybrid
   const {
     modelList: rerankModelList,
@@ -61,7 +61,6 @@ const RetrievalParamConfig: FC<Props> = ({
       ...value,
       reranking_enable: enable,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentModel, onChange, value])
 
   const rerankModel = useMemo(() => {

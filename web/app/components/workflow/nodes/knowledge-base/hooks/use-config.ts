@@ -49,7 +49,7 @@ export const useConfig = (id: string) => {
       indexing_technique: (chunkStructure === ChunkStructureEnum.parent_child || chunkStructure === ChunkStructureEnum.question_answer) ? IndexMethodEnum.QUALIFIED : indexing_technique,
       retrieval_model: {
         ...retrieval_model,
-        search_method: ((chunkStructure === ChunkStructureEnum.parent_child || chunkStructure === ChunkStructureEnum.question_answer) && !isHighQualitySearchMethod(search_method)) ? RetrievalSearchMethodEnum.semantic : search_method,
+        search_method: ((chunkStructure === ChunkStructureEnum.parent_child || chunkStructure === ChunkStructureEnum.question_answer) && !isHighQualitySearchMethod(search_method)) ? RetrievalSearchMethodEnum.keywordSearch : search_method,
       },
       index_chunk_variable_selector: chunkStructure === chunk_structure ? index_chunk_variable_selector : [],
     })
@@ -62,7 +62,7 @@ export const useConfig = (id: string) => {
       draft.indexing_technique = indexMethod
 
       if (indexMethod === IndexMethodEnum.ECONOMICAL)
-        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.invertedIndex
+        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.keywordSearch
       else if (indexMethod === IndexMethodEnum.QUALIFIED)
         draft.retrieval_model.search_method = RetrievalSearchMethodEnum.semantic
     }))
