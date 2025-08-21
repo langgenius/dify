@@ -1,15 +1,16 @@
 import pytest
 
 from core.tools.utils.web_reader_tool import (
-    page_result,
     extract_using_readabilipy,
     get_image_upload_file_ids,
     get_url,
+    page_result,
 )
 
 
 class FakeResponse:
     """Minimal fake response object for ssrf_proxy / cloudscraper."""
+
     def __init__(self, *, status_code=200, headers=None, content=b"", text=""):
         self.status_code = status_code
         self.headers = headers or {}
@@ -24,10 +25,10 @@ class FakeResponse:
     "text,cursor,maxlen,expected",
     [
         ("abcdef", 0, 3, "abc"),
-        ("abcdef", 2, 10, "cdef"),   # maxlen beyond end
-        ("abcdef", 6, 5, ""),        # cursor at end
-        ("abcdef", 7, 5, ""),        # cursor beyond end
-        ("", 0, 5, ""),              # empty text
+        ("abcdef", 2, 10, "cdef"),  # maxlen beyond end
+        ("abcdef", 6, 5, ""),  # cursor at end
+        ("abcdef", 7, 5, ""),  # cursor beyond end
+        ("", 0, 5, ""),  # empty text
     ],
 )
 def test_page_result(text, cursor, maxlen, expected):
@@ -41,6 +42,7 @@ def test_page_result(text, cursor, maxlen, expected):
 def stub_support_types(monkeypatch):
     """Stub supported content types list."""
     import core.tools.utils.web_reader_tool as mod
+
     # e.g. binary types supported by ExtractProcessor
     monkeypatch.setattr(mod.extract_processor, "SUPPORT_URL_CONTENT_TYPES", ["application/pdf", "text/plain"])
     return mod
@@ -85,15 +87,17 @@ def test_get_url_supported_binary_type_uses_extract_processor(monkeypatch, stub_
 
 def test_get_url_html_flow_with_chardet_and_readability(monkeypatch, stub_support_types):
     """200 + text/html → GET, chardet detects encoding, readability returns article which is templated."""
+
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(status_code=200, headers={"Content-Type": "text/html"})
 
     def fake_get(url, headers=None, follow_redirects=True, timeout=None):
-        html = "<html><head><title>x</title></head><body>hello</body></html>".encode("utf-8")
+        html = b"<html><head><title>x</title></head><body>hello</body></html>"
         return FakeResponse(status_code=200, headers={"Content-Type": "text/html"}, content=html)
 
     # chardet.detect returns utf-8
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
     monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
@@ -116,6 +120,7 @@ def test_get_url_html_flow_with_chardet_and_readability(monkeypatch, stub_suppor
 
 def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch, stub_support_types):
     """If readability returns no text, should return empty string."""
+
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(status_code=200, headers={"Content-Type": "text/html"})
 
@@ -123,6 +128,7 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch, stub_su
         return FakeResponse(status_code=200, headers={"Content-Type": "text/html"}, content=b"<html/>")
 
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
     monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
@@ -135,6 +141,7 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch, stub_su
 
 def test_get_url_403_cloudscraper_fallback(monkeypatch, stub_support_types):
     """HEAD 403 → use cloudscraper.get via ssrf_proxy.make_request, then proceed."""
+
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(status_code=403, headers={})
 
@@ -145,16 +152,18 @@ def test_get_url_403_cloudscraper_fallback(monkeypatch, stub_support_types):
 
         def get(self, url, headers=None, follow_redirects=True, timeout=None):
             # mimic html 200
-            html = "<html><body>hi</body></html>".encode("utf-8")
+            html = b"<html><body>hi</body></html>"
             return FakeResponse(status_code=200, headers={"Content-Type": "text/html"}, content=html)
 
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.cloudscraper, "create_scraper", lambda: FakeScraper())
     monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
     monkeypatch.setattr(
-        mod, "simple_json_from_html_string",
-        lambda html, use_readability=True: {"title": "T", "byline": "A", "plain_text": [{"type": "text", "text": "X"}]}
+        mod,
+        "simple_json_from_html_string",
+        lambda html, use_readability=True: {"title": "T", "byline": "A", "plain_text": [{"type": "text", "text": "X"}]},
     )
 
     out = get_url("https://x.test/403")
@@ -165,10 +174,12 @@ def test_get_url_403_cloudscraper_fallback(monkeypatch, stub_support_types):
 
 def test_get_url_head_non_200_returns_status(monkeypatch, stub_support_types):
     """HEAD returns non-200 and non-403 → should directly return code message."""
+
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(status_code=500)
 
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
 
     out = get_url("https://x.test/fail")
@@ -183,16 +194,14 @@ def test_get_url_content_disposition_filename_detection(monkeypatch, stub_suppor
     calls = {"load": 0}
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
-        return FakeResponse(
-            status_code=200,
-            headers={"Content-Disposition": 'attachment; filename="doc.pdf"'}
-        )
+        return FakeResponse(status_code=200, headers={"Content-Disposition": 'attachment; filename="doc.pdf"'})
 
     def fake_load_from_url(url, return_text=False):
         calls["load"] += 1
         return "From ExtractProcessor via filename"
 
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.ExtractProcessor, "load_from_url", staticmethod(fake_load_from_url))
 
@@ -205,6 +214,7 @@ def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch, stub_supp
     """
     If chardet returns an encoding but content.decode raises, should fallback to response.text.
     """
+
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(status_code=200, headers={"Content-Type": "text/html"})
 
@@ -218,22 +228,24 @@ def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch, stub_supp
         )
 
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
     monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
     monkeypatch.setattr(
-        mod, "simple_json_from_html_string",
-        lambda html, use_readability=True: {"title": "", "byline": "", "plain_text": [{"type": "text", "text": "ok"}]}
+        mod,
+        "simple_json_from_html_string",
+        lambda html, use_readability=True: {"title": "", "byline": "", "plain_text": [{"type": "text", "text": "ok"}]},
     )
 
     out = get_url("https://x.test/enc-fallback")
     assert "ok" in out
 
 
-
 # ---------------------------
 # Tests: extract_using_readabilipy
 # ---------------------------
+
 
 def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch):
     # stub readabilipy.simple_json_from_html_string
@@ -245,6 +257,7 @@ def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch):
         }
 
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod, "simple_json_from_html_string", fake_simple_json_from_html_string)
 
     article = extract_using_readabilipy("<html>...</html>")
@@ -259,6 +272,7 @@ def test_extract_using_readabilipy_defaults_when_missing(monkeypatch):
         return {}  # all missing
 
     import core.tools.utils.web_reader_tool as mod
+
     monkeypatch.setattr(mod, "simple_json_from_html_string", fake_simple_json_from_html_string)
 
     article = extract_using_readabilipy("<html>...</html>")
