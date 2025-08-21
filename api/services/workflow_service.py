@@ -46,8 +46,8 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
-from .chatflow_memory_service import ChatflowMemoryService
 
+from .chatflow_memory_service import ChatflowMemoryService
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .workflow_draft_variable_service import (
     DraftVariableSaver,
