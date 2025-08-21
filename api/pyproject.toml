@@ -19,7 +19,6 @@ dependencies = [
     "flask-login~=0.6.3",
     "flask-migrate~=4.0.7",
     "flask-orjson~=2.0.0",
-    "flask-restful~=0.3.10",
     "flask-sqlalchemy~=3.1.1",
     "gevent~=24.11.1",
     "gmpy2~=2.2.1",
