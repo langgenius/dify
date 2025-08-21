@@ -1,3 +1,4 @@
+import contextlib
 from collections.abc import Callable, Sequence
 from typing import Any, Optional, Union
 
@@ -142,13 +143,11 @@ class ConversationService:
             raise MessageNotExistsError()
 
         # generate conversation name
-        try:
+        with contextlib.suppress(Exception):
             name = LLMGenerator.generate_conversation_name(
                 app_model.tenant_id, message.query, conversation.id, app_model.id
             )
             conversation.name = name
-        except Exception:
-            pass
 
         db.session.commit()
 
