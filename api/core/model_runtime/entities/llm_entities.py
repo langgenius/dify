@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from enum import StrEnum
