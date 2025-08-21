@@ -2,7 +2,7 @@ import logging
 
 import flask_login
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services

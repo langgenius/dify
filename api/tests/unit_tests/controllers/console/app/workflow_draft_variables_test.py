@@ -2,7 +2,7 @@ import uuid
 from collections import OrderedDict
 from typing import Any, NamedTuple
 
-from flask_restful import marshal
+from flask_restx import marshal
 
 from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_FIELDS,

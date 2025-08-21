@@ -3,7 +3,8 @@ import sys
 from typing import Any
 
 from flask import current_app, got_request_exception
-from flask_restful import Api, http_status_message
+from flask_restful import http_status_message
+from flask_restx import Api
 from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
 
