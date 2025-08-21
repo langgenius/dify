@@ -41,7 +41,17 @@ const WorkflowMain = ({
   const containerRef = useRef<HTMLDivElement>(null)
 
   const store = useStoreApi()
-  const { startCursorTracking, stopCursorTracking, onlineUsers } = useCollaboration(appId, store)
+  const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId, store)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isConnected)
+      setMyUserId('current-user')
+  }, [isConnected])
+
+  const filteredCursors = Object.fromEntries(
+    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
+  )
 
   useEffect(() => {
     if (containerRef.current)
@@ -132,18 +142,6 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
-
-  const { cursors, isConnected } = useCollaboration(appId)
-  const [myUserId, setMyUserId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (isConnected)
-      setMyUserId('current-user')
-  }, [isConnected])
-
-  const filteredCursors = Object.fromEntries(
-    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
-  )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowId: appId,
