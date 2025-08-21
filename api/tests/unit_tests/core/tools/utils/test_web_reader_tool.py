@@ -22,7 +22,7 @@ class FakeResponse:
 # Tests: page_result
 # ---------------------------
 @pytest.mark.parametrize(
-    "text,cursor,maxlen,expected",
+    ("text", "cursor", "maxlen", "expected"),
     [
         ("abcdef", 0, 3, "abc"),
         ("abcdef", 2, 10, "cdef"),  # maxlen beyond end
@@ -63,7 +63,10 @@ def test_get_url_unsupported_content_type(monkeypatch, stub_support_types):
 
 
 def test_get_url_supported_binary_type_uses_extract_processor(monkeypatch, stub_support_types):
-    """When content-type is in SUPPORT_URL_CONTENT_TYPES, should call ExtractProcessor.load_from_url and return its text."""
+    """
+    When content-type is in SUPPORT_URL_CONTENT_TYPES,
+    should call ExtractProcessor.load_from_url and return its text.
+    """
     calls = {"load": 0}
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
@@ -264,7 +267,8 @@ def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch):
     assert article.title == "Hello"
     assert article.author == "Alice"
     assert isinstance(article.text, list)
-    assert article.text and article.text[0]["text"] == "world"
+    assert article.text
+    assert article.text[0]["text"] == "world"
 
 
 def test_extract_using_readabilipy_defaults_when_missing(monkeypatch):
