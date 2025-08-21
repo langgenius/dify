@@ -185,6 +185,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         for event in generator:
             self._handle_event(workflow_entry, event)
 
+        try:
+            self._check_app_memory_updates()
+        except Exception as e:
+            logger.exception("Failed to check app memory updates", exc_info=e)
+
     @override
     def _handle_event(self, workflow_entry: WorkflowEntry, event: Any) -> None:
         super()._handle_event(workflow_entry, event)
@@ -446,4 +451,17 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             conversation_id=self.conversation.id,
             app_id=self._workflow.app_id,
             tenant_id=self._workflow.tenant_id
+        )
+
+    def _check_app_memory_updates(self):
+        from core.app.entities.app_invoke_entities import InvokeFrom
+        from services.chatflow_memory_service import ChatflowMemoryService
+
+        is_draft = (self.application_generate_entity.invoke_from == InvokeFrom.DEBUGGER)
+
+        ChatflowMemoryService.update_app_memory_after_run(
+            workflow=self._workflow,
+            conversation_id=self.conversation.id,
+            variable_pool=VariablePool(),  # Make a fake pool to satisfy the signature
+            is_draft=is_draft
         )
