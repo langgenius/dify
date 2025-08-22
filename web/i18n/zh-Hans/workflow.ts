@@ -974,6 +974,8 @@ const translation = {
         users: '用户',
         prePopulateFieldPlaceholderEnd: '将最初看到，或留空。',
         insert: '插入',
+        useVarInstead: '使用变量代替',
+        useConstantInstead: '使用常量代替',
       },
       editor: {
         notes: ' 笔记',

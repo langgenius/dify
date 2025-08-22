@@ -973,6 +973,8 @@ const translation = {
         users: 'users',
         prePopulateFieldPlaceholderEnd: 'will see initially, or leave empty.',
         insert: 'Insert',
+        useVarInstead: 'Use Variable Instead',
+        useConstantInstead: 'Use Constant Instead',
       },
       editor: {
         notes: 'notes',

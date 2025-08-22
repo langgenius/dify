@@ -35,7 +35,7 @@ const ComponentUI: FC<Props> = ({
       selector: [],
       value: '',
     },
-  },
+  } as FormInputItem,
   onChange,
   onRename,
   onRemove,

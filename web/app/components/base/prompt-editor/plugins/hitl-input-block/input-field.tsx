@@ -5,17 +5,21 @@ import Input from '@/app/components/base/input'
 import Button from '../../../button'
 import { useTranslation } from 'react-i18next'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, FormInputItemPlaceholder } from '@/app/components/workflow/nodes/human-input/types'
+import PrePopulate from './pre-populate'
+import produce from 'immer'
 
 const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
 
 type Props = {
+  nodeId: string
   isEdit: boolean
   payload: FormInputItem
   onChange: (newPayload: FormInputItem) => void
   onCancel: () => void
 }
 const InputField: React.FC<Props> = ({
+  nodeId,
   isEdit,
   payload,
   onChange,
@@ -26,6 +30,17 @@ const InputField: React.FC<Props> = ({
   const handleSave = useCallback(() => {
     onChange(tempPayload)
   }, [tempPayload])
+  const placeholderConfig = payload.placeholder
+  const handlePlaceholderChange = useCallback((key: keyof FormInputItemPlaceholder) => {
+    return (value: any) => {
+      const nextValue = produce(tempPayload, (draft) => {
+        if (!draft.placeholder)
+          draft.placeholder = { type: 'const', selector: [], value: '' }
+        draft.placeholder[key] = value
+      })
+      setTempPayload(nextValue)
+    }
+  }, [])
   return (
     <div className="w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]">
       <div className='system-md-semibold text-text-primary'>{t(`${i18nPrefix}.title`)}</div>
@@ -46,32 +61,23 @@ const InputField: React.FC<Props> = ({
         <div className='system-xs-medium text-text-secondary'>
           {t(`${i18nPrefix}.prePopulateField`)}
         </div>
-        {/* <PromptEditor
-          className='mt-1.5 h-[72px] rounded-lg bg-components-input-bg-normal px-3 py-1'
-          placeholder={
-          <div className='system-sm-regular mt-1 px-3 text-text-tertiary'>
-            <div className="flex h-5 items-center space-x-1">
-              <span>{t(`${i18nPrefix}.add`)}</span>
-              <TagLabel type='edit' text={t(`${i18nPrefix}.staticContent`)} />
-              <span>{t(`${i18nPrefix}.or`)}</span>
-              <TagLabel type='variable' text={t(`${i18nPrefix}.variable`)} />
-              <span>{t(`${i18nPrefix}.users`)}</span>
-            </div>
-            <div className="flex h-5 items-center">{t(`${i18nPrefix}.prePopulateFieldPlaceholderEnd`)}</div>
-          </div>
-          }
-          onChange={
-            (newValue) => {
-              setTempPayload(prev => ({ ...prev, prePopulateField: newValue }))
-            }
-          }
-        /> */}
-        <Input
+        {/* <Input
           className='mt-1.5'
           value={tempPayload.placeholder?.value}
           onChange={(e) => {
             setTempPayload(prev => ({ ...prev, placeholder: { ...(prev.placeholder || {}), value: e.target.value } } as any))
           }}
+        /> */}
+        <PrePopulate
+          isVariable={placeholderConfig?.type === 'variable'}
+          onIsVariableChange={(isVariable) => {
+            handlePlaceholderChange('type')(isVariable ? 'variable' : 'const')
+          }}
+          nodeId={nodeId}
+          valueSelector={placeholderConfig?.selector}
+          onValueSelectorChange={handlePlaceholderChange('selector')}
+          value={placeholderConfig?.value}
+          onValueChange={handlePlaceholderChange('value')}
         />
       </div>
       <div className='mt-4 flex justify-end space-x-2'>

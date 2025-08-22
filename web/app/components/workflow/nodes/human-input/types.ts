@@ -50,8 +50,8 @@ export type FormInputItem = {
   output_variable_name: string
   // only text-input and paragraph support placeholder
   placeholder?: FormInputItemPlaceholder
-  options: any[]
-  max_length: number
+  options?: any[]
+  max_length?: number
   allowed_file_extensions?: string[]
   allowed_file_types?: string[]
   allowed_file_upload_methods?: string[]
