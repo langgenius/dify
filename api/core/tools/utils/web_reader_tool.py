@@ -80,7 +80,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
     else:
         content = response.text
 
-    article = extract_using_readability(content)
+    article = extract_using_readabilipy(content)
 
     if not article.text:
         return ""
@@ -101,7 +101,7 @@ class Article:
     text: Sequence[dict]
 
 
-def extract_using_readability(html: str):
+def extract_using_readabilipy(html: str):
     json_article: dict[str, Any] = simple_json_from_html_string(html, use_readability=True)
     article = Article(
         title=json_article.get("title") or "",
