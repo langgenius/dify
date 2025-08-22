@@ -9,8 +9,8 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
-    AuthenticationFailedError,
     EmailCodeError,
+    EmailOrPasswordMismatchError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
@@ -79,10 +79,13 @@ class LoginApi(Resource):
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
-            raise AuthenticationFailedError()
+            raise EmailOrPasswordMismatchError()
         except services.errors.account.AccountNotFoundError:
-            AccountService.add_login_error_rate_limit(args["email"])
-            raise AuthenticationFailedError()
+            if FeatureService.get_system_features().is_allow_register:
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
+                return {"result": "fail", "data": token, "code": "account_not_found"}
+            else:
+                raise AccountNotFound()
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
