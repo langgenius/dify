@@ -19,6 +19,8 @@ import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -147,6 +149,18 @@ const RunOnce: FC<IRunOnceProps> = ({
                         ...item.config,
                         fileUploadConfig: (visionConfig as any).fileUploadConfig,
                       }}
+                    />
+                  )}
+                  {item.type === 'json_object' && (
+                    <CodeEditor
+                      language={CodeLanguage.json}
+                      value={inputs[item.key]}
+                      onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
+                      noWrapper
+                      className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
+                      placeholder={
+                        <div className='whitespace-pre'>{item.json_schema}</div>
+                      }
                     />
                   )}
                 </div>

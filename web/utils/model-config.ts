@@ -30,6 +30,9 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
       if (item.external_data_tool)
         return [item.external_data_tool.type, item.external_data_tool]
 
+      if (item.json_object)
+        return ['json_object', item.json_object]
+
       return ['select', item.select || {}]
     })()
     const is_context_var = dataset_query_variable === content?.variable
