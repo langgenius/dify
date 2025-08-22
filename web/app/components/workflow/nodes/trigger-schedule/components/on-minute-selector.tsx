@@ -19,14 +19,16 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
         <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-components-input-bg-normal text-[13px] text-components-input-text-filled">
           {value}
         </div>
-        <Slider
-          className="grow"
-          value={value}
-          min={0}
-          max={59}
-          step={1}
-          onChange={onChange}
-        />
+        <div className="flex h-8 grow items-center rounded-lg bg-components-input-bg-normal px-3">
+          <Slider
+            className="w-full"
+            value={value}
+            min={0}
+            max={59}
+            step={1}
+            onChange={onChange}
+          />
+        </div>
       </div>
     </div>
   )
