@@ -25,6 +25,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { jsonConfigPlaceHolder, jsonObjectWrap } from './config'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -51,6 +52,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
+  const appDetail = useAppStore(state => state.appDetail)
+  const isBasicApp = appDetail?.mode !== 'advanced-chat' && appDetail?.mode !== 'workflow'
+
   const jsonSchemaStr = useMemo(() => {
     const isJsonObject = type === InputVarType.jsonObject
     if (!isJsonObject || !tempPayload.json_schema)
@@ -138,10 +142,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
         value: InputVarType.multiFiles,
       },
     ] : []),
-    {
+    ...(!isBasicApp ? [{
       name: t('appDebug.variableConfig.json'),
       value: InputVarType.jsonObject,
-    },
+    }] : []),
   ]
 
   const handleTypeChange = useCallback((item: SelectItem) => {
