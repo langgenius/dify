@@ -954,7 +954,6 @@ const translation = {
       hours: 'Hours',
       minutes: 'Minutes',
       onMinute: 'On Minute',
-      onMinuteDescription: 'Specify which minute of each hour to execute',
       days: 'Days',
       lastDay: 'Last day',
       lastDayTooltip: 'Not all months have 31 days. Use the \'last day\' option to select each month\'s final day.',
