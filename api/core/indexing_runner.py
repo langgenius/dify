@@ -9,7 +9,6 @@ import uuid
 from typing import Any, Optional, cast
 
 from flask import current_app
-from flask_login import current_user
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -295,7 +294,7 @@ class IndexingRunner:
                 text_docs,
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,
             )
