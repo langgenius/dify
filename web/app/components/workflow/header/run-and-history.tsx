@@ -15,8 +15,9 @@ import {
 import { WorkflowRunningStatus } from '../types'
 import ViewHistory from './view-history'
 import Checklist from './checklist'
-import TestRunDropdown, { createMockOptions } from './test-run-dropdown'
+import TestRunDropdown from './test-run-dropdown'
 import type { TriggerOption } from './test-run-dropdown'
+import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import cn from '@/utils/classnames'
 import {
   StopCircle,
@@ -32,13 +33,13 @@ const RunMode = memo(() => {
   const { handleStopRun } = useWorkflowRun()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
+  const dynamicOptions = useDynamicTestRunOptions()
 
   const handleStop = () => {
     handleStopRun(workflowRunningData?.task_id || '')
   }
 
-  const handleTriggerSelect = (option: TriggerOption) => {
-    console.log('Selected trigger:', option)
+  const handleTriggerSelect = (_option: TriggerOption) => {
     handleWorkflowStartRunInWorkflow()
   }
 
@@ -64,7 +65,7 @@ const RunMode = memo(() => {
             </div>
           )
           : (
-            <TestRunDropdown options={createMockOptions()} onSelect={handleTriggerSelect}>
+            <TestRunDropdown options={dynamicOptions} onSelect={handleTriggerSelect}>
               <div
                 className={cn(
                   'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',

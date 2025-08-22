@@ -130,11 +130,13 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
       className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
       onClick={() => handleSelect(option)}
     >
-      <div className='flex items-center space-x-3'>
-        {option.icon}
-        <span>{option.name}</span>
+      <div className='flex min-w-0 flex-1 items-center'>
+        <div className='flex h-6 w-6 shrink-0 items-center justify-center'>
+          {option.icon}
+        </div>
+        <span className='ml-3 truncate'>{option.name}</span>
       </div>
-      <div className='ml-auto flex h-4 w-4 items-center justify-center rounded bg-state-base-hover-alt text-xs font-medium text-text-tertiary'>
+      <div className='ml-2 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-state-base-hover-alt text-xs font-medium text-text-tertiary'>
         {numberDisplay}
       </div>
     </div>
