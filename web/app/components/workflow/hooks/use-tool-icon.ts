@@ -15,7 +15,7 @@ import {
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
 
-export const useToolIcon = (data: Node['data']) => {
+export const useToolIcon = (data?: Node['data']) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
@@ -26,6 +26,7 @@ export const useToolIcon = (data: Node['data']) => {
     if (!data)
       return ''
     if (data.type === BlockEnum.Tool) {
+      // eslint-disable-next-line sonarjs/no-dead-store
       let targetTools = buildInTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools
@@ -55,6 +56,7 @@ export const useGetToolIcon = () => {
     } = workflowStore.getState()
 
     if (data.type === BlockEnum.Tool) {
+      // eslint-disable-next-line sonarjs/no-dead-store
       let targetTools = buildInTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools

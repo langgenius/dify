@@ -14,6 +14,7 @@ import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 
 import cn from '@/utils/classnames'
+import type { NodeProps } from '../types'
 
 export type currentVarType = {
   nodeId: string
@@ -21,6 +22,7 @@ export type currentVarType = {
   title: string
   isValueFetched?: boolean
   var: VarInInspect
+  nodeData: NodeProps['data']
 }
 
 const Panel: FC = () => {
@@ -114,6 +116,7 @@ const Panel: FC = () => {
       title: targetNode.title,
       isSingRunRunning: targetNode.isSingRunRunning,
       isValueFetched: targetNode.isValueFetched,
+      nodeData: targetNode.nodePayload,
       ...(currentVar ? { var: currentVar } : {}),
     }
   }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
