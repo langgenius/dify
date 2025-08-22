@@ -73,6 +73,15 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
           </div>
         ))}
       </div>
+
+      {/* Warning message for day 31 - aligned with grid */}
+      {selectedDays?.includes(31) && (
+        <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+          <div className="col-span-7 text-xs text-gray-500">
+            {t('workflow.nodes.triggerSchedule.lastDayTooltip')}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

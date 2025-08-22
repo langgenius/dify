@@ -136,9 +136,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                     className="font-mono"
                   />
                 </div>
-                <div className="text-xs text-gray-500">
-                  Enter cron expression (minute hour day month weekday)
-                </div>
               </div>
             )}
           </div>
