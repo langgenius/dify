@@ -938,7 +938,6 @@ const translation = {
         daily: 'Daily',
         weekly: 'Weekly',
         monthly: 'Monthly',
-        once: 'One time',
       },
       selectFrequency: 'Select frequency',
       frequencyLabel: 'Frequency',

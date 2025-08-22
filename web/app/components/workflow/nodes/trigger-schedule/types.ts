@@ -11,6 +11,7 @@ export type VisualConfig = {
   weekdays?: string[]
   recur_every?: number
   recur_unit?: 'hours' | 'minutes'
+  on_minute?: number
   monthly_days?: (number | 'last')[]
 }
 

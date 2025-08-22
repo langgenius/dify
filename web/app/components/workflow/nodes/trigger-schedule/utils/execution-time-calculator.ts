@@ -61,9 +61,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     }
   }
   else if (data.frequency === 'weekly') {
-    const selectedDay = data.visual_config?.weekdays?.[0] || 'sun'
+    const selectedDays = data.visual_config?.weekdays || ['sun']
     const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
-    const targetDay = dayMap[selectedDay as keyof typeof dayMap]
 
     const [time, period] = defaultTime.split(' ')
     const [hour, minute] = time.split(':')
@@ -72,19 +71,45 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
     const now = getCurrentTime()
-    const currentDay = now.getDay()
-    let daysUntilNext = (targetDay - currentDay + 7) % 7
+    let weekOffset = 0
 
-    const nextExecutionBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+    const currentWeekExecutions: Date[] = []
+    for (const selectedDay of selectedDays) {
+      const targetDay = dayMap[selectedDay as keyof typeof dayMap]
+      let daysUntilNext = (targetDay - now.getDay() + 7) % 7
 
-    if (daysUntilNext === 0 && nextExecutionBase <= now)
-      daysUntilNext = 7
+      const nextExecutionBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
 
-    for (let i = 0; i < count; i++) {
-      const nextExecution = new Date(nextExecutionBase)
-      nextExecution.setDate(nextExecution.getDate() + daysUntilNext + (i * 7))
-      times.push(nextExecution)
+      if (daysUntilNext === 0 && nextExecutionBase <= now)
+        daysUntilNext = 7
+
+      if (daysUntilNext < 7) {
+        const execution = new Date(nextExecutionBase)
+        execution.setDate(execution.getDate() + daysUntilNext)
+        currentWeekExecutions.push(execution)
+      }
     }
+
+    if (currentWeekExecutions.length === 0)
+      weekOffset = 1
+
+    let weeksChecked = 0
+    while (times.length < count && weeksChecked < 8) {
+      for (const selectedDay of selectedDays) {
+        if (times.length >= count) break
+
+        const targetDay = dayMap[selectedDay as keyof typeof dayMap]
+        const execution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+        execution.setDate(execution.getDate() + (targetDay - now.getDay() + 7) % 7 + (weekOffset + weeksChecked) * 7)
+
+        if (execution > now)
+          times.push(execution)
+      }
+      weeksChecked++
+    }
+
+    times.sort((a, b) => a.getTime() - b.getTime())
+    times.splice(count)
   }
   else if (data.frequency === 'monthly') {
     const getSelectedDays = (): (number | 'last')[] => {
@@ -153,12 +178,6 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       monthsChecked++
     }
   }
-  else if (data.frequency === 'once') {
-    // For 'once' frequency, return the selected datetime
-    const selectedDateTime = data.visual_config?.datetime
-    if (selectedDateTime)
-      times.push(new Date(selectedDateTime))
-  }
   else {
     // Fallback for unknown frequencies
     for (let i = 0; i < count; i++) {
@@ -204,10 +223,6 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   const times = getFormattedExecutionTimes(data, 1)
   if (times.length === 0) {
-    if (data.frequency === 'once') {
-      const defaultDate = getDefaultDateTime()
-      return formatExecutionTime(defaultDate, false)
-    }
     const now = getCurrentTime()
     const includeWeekday = data.frequency === 'weekly'
     return formatExecutionTime(now, includeWeekday)
