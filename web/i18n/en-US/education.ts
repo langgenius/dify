@@ -42,6 +42,35 @@ const translation = {
   rejectTitle: 'Your Dify Educational Verification Has Been Rejected',
   rejectContent: 'Unfortunately, you are not eligible for Education Verified status and therefore cannot receive the exclusive 100% coupon for the Dify Professional Plan if you use this email address.',
   emailLabel: 'Your current email',
+  notice: {
+    dateFormat: 'MM/DD/YYYY',
+    expired: {
+      title: 'Your education status has expired',
+      summary: {
+        line1: 'You can still access and use Dify. ',
+        line2: 'However, you\'re no longer eligible for new education discount coupons.',
+      },
+    },
+    isAboutToExpire: {
+      title: 'Your education status will expire on {{date}}',
+      summary: 'Don\'t worry — this won\'t affect your current subscription, but you won\'t get the education discount when it renews unless you verify your status again.',
+    },
+    stillInEducation: {
+      title: 'Still in education?',
+      expired: 'Re-verify now to get a new coupon for the upcoming academic year. We\'ll add it to your account and you can use it for the next upgrade.',
+      isAboutToExpire: 'Re-verify now to get a new coupon for the upcoming academic year. It\'ll be saved to your account and ready to use at your next renewal.',
+    },
+    alreadyGraduated: {
+      title: 'Already graduated?',
+      expired: 'Feel free to upgrade anytime to get full access to paid features.',
+      isAboutToExpire: 'Your current subscription will still remain active. When it ends, you\'ll be moved to the Sandbox plan, or you can upgrade anytime to restore full access to paid features.',
+    },
+    action: {
+      dismiss: 'Dismiss',
+      upgrade: 'Upgrade',
+      reVerify: 'Re-verify',
+    },
+  },
 }
 
 export default translation

@@ -8,7 +8,13 @@ from werkzeug.exceptions import Forbidden
 import services
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
-from controllers.common.errors import FilenameNotExistsError
+from controllers.common.errors import (
+    FilenameNotExistsError,
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from enum import StrEnum
@@ -54,7 +56,7 @@ class LLMUsage(ModelUsage):
         )
 
     @classmethod
-    def from_metadata(cls, metadata: dict) -> "LLMUsage":
+    def from_metadata(cls, metadata: dict) -> LLMUsage:
         """
         Create LLMUsage instance from metadata dictionary with default values.
 
@@ -84,7 +86,7 @@ class LLMUsage(ModelUsage):
             latency=metadata.get("latency", 0.0),
         )
 
-    def plus(self, other: "LLMUsage") -> "LLMUsage":
+    def plus(self, other: LLMUsage) -> LLMUsage:
         """
         Add two LLMUsage instances together.
 
@@ -109,7 +111,7 @@ class LLMUsage(ModelUsage):
                 latency=self.latency + other.latency,
             )
 
-    def __add__(self, other: "LLMUsage") -> "LLMUsage":
+    def __add__(self, other: LLMUsage) -> LLMUsage:
         """
         Overload the + operator to add two LLMUsage instances.
 

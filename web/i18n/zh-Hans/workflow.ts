@@ -958,6 +958,11 @@ const translation = {
     settingsTab: '设置',
     lastRunTab: '上次运行',
     relationsTab: '关系',
+    copyLastRun: '复制上次运行值',
+    noLastRunFound: '未找到上次运行记录',
+    noMatchingInputsFound: '上次运行中未找到匹配的输入',
+    lastRunInputsCopied: '已复制{{count}}个输入值',
+    copyLastRunError: '复制上次运行输入失败',
     noData: {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
@@ -983,6 +988,7 @@ const translation = {
       chatNode: '会话变量',
       systemNode: '系统变量',
     },
+    lastOutput: '上次输出',
     relations: {
       dependencies: '依赖',
       dependents: '被依赖',

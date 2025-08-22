@@ -716,6 +716,10 @@ const translation = {
     dropImageHere: 'Trageți imaginea aici sau',
   },
   you: 'Tu',
+  avatar: {
+    deleteDescription: 'Ești sigur că vrei să îți ștergi fotografia de profil? Contul tău va folosi avatarul inițial implicit.',
+    deleteTitle: 'Îndepărtează avatarul',
+  },
 }
 
 export default translation

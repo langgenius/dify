@@ -1011,6 +1011,11 @@ const translation = {
       noDependencies: 'कोई निर्भरताएँ नहीं',
     },
     relationsTab: 'रिश्ते',
+    copyLastRun: 'अंतिम रन कॉपी करें',
+    noLastRunFound: 'कोई पिछला रन नहीं मिला',
+    noMatchingInputsFound: 'अंतिम रन से कोई मेल खाने वाले इनपुट नहीं मिले',
+    copyLastRunError: 'अंतिम रन इनपुट को कॉपी करने में विफल',
+    lastOutput: 'अंतिम आउटपुट',
   },
 }
 

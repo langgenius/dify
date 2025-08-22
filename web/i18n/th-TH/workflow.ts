@@ -991,6 +991,11 @@ const translation = {
       dependentsDescription: 'โหนดที่อาศัยโหนดนี้',
     },
     relationsTab: 'สัมพันธ์',
+    copyLastRun: 'คัดลอกการทำงานล่าสุด',
+    noLastRunFound: 'ไม่พบการทำงานก่อนหน้า',
+    copyLastRunError: 'ไม่สามารถคัดลอกข้อมูลการทำงานครั้งสุดท้ายได้',
+    noMatchingInputsFound: 'ไม่พบข้อมูลที่ตรงกันจากการรันครั้งล่าสุด',
+    lastOutput: 'ผลลัพธ์สุดท้าย',
   },
 }
 

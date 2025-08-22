@@ -991,6 +991,11 @@ const translation = {
       dependenciesDescription: 'Noduri pe care se bazează acest nod',
     },
     relationsTab: 'Relații',
+    noMatchingInputsFound: 'Nu s-au găsit intrări corespunzătoare din ultima rulare',
+    copyLastRun: 'Copiază ultima execuție',
+    noLastRunFound: 'Niciun rulament anterior găsit',
+    copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
+    lastOutput: 'Ultimul rezultat',
   },
 }
 

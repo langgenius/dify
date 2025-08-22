@@ -39,7 +39,7 @@ class UploadFileApi(Resource):
         data_source_info = document.data_source_info_dict
         if data_source_info and "upload_file_id" in data_source_info:
             file_id = data_source_info["upload_file_id"]
-            upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+            upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
             if not upload_file:
                 raise NotFound("UploadFile not found.")
         else:

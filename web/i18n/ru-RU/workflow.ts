@@ -991,6 +991,11 @@ const translation = {
       dependenciesDescription: 'Узлы, на которые опирается этот узел',
     },
     relationsTab: 'Отношения',
+    noLastRunFound: 'Предыдущий запуск не найден',
+    copyLastRun: 'Копировать последний запуск',
+    copyLastRunError: 'Не удалось скопировать последние входные данные выполнения',
+    noMatchingInputsFound: 'Не найдено соответствующих входных данных из последнего запуска.',
+    lastOutput: 'Последний вывод',
   },
 }
 

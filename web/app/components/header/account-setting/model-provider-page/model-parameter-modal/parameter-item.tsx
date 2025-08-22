@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import type { ModelParameterRule } from '../declarations'
+import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
 import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
@@ -26,6 +27,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onSwitch,
   isInWorkflow,
 }) => {
+  const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
 

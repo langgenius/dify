@@ -1017,6 +1017,11 @@ const translation = {
       dependenciesDescription: 'Nodi su cui si basa questo nodo',
     },
     relationsTab: 'Relazioni',
+    copyLastRun: 'Copia ultimo eseguito',
+    noMatchingInputsFound: 'Nessun input corrispondente trovato dall\'ultimo funzionamento.',
+    copyLastRunError: 'Impossibile copiare gli input dell\'ultima esecuzione',
+    noLastRunFound: 'Nessuna esecuzione precedente trovata',
+    lastOutput: 'Ultimo output',
   },
 }
 

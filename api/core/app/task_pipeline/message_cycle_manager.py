@@ -181,7 +181,7 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
-        message_file = db.session.query(MessageFile).filter(MessageFile.id == message_id).first()
+        message_file = db.session.query(MessageFile).where(MessageFile.id == message_id).first()
         event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
 
         return MessageStreamResponse(

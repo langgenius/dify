@@ -991,6 +991,11 @@ const translation = {
       dependentsDescription: 'Вузли, які спираються на цей вузол',
     },
     relationsTab: 'Відносин',
+    copyLastRun: 'Копіювати останній запуск',
+    noLastRunFound: 'Жодного попереднього запуску не знайдено.',
+    copyLastRunError: 'Не вдалося скопіювати вхідні дані останнього виконання',
+    noMatchingInputsFound: 'Не знайдено відповідних вхідних даних з останнього запуску',
+    lastOutput: 'Останній вихід',
   },
 }
 

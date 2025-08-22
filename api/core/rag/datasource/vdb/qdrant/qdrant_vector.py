@@ -331,6 +331,12 @@ class QdrantVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
 
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        if score_threshold >= 1:
+            # return empty list because some versions of qdrant may response with 400 bad request，
+            # and at the same time, the score_threshold with value 1 may be valid for other vector stores
+            return []
+
         filter = models.Filter(
             must=[
                 models.FieldCondition(
@@ -355,7 +361,7 @@ class QdrantVector(BaseVector):
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
-            score_threshold=float(kwargs.get("score_threshold") or 0.0),
+            score_threshold=score_threshold,
         )
         docs = []
         for result in results:
@@ -363,7 +369,6 @@ class QdrantVector(BaseVector):
                 continue
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
-            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if result.score > score_threshold:
                 metadata["score"] = result.score
                 doc = Document(

@@ -79,6 +79,9 @@ const SwrInitializer = ({
       <SWRConfig value={{
         shouldRetryOnError: false,
         revalidateOnFocus: false,
+        dedupingInterval: 60000,
+        focusThrottleInterval: 5000,
+        provider: () => new Map(),
       }}>
         {children}
       </SWRConfig>

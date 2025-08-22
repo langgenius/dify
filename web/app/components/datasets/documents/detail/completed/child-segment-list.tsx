@@ -93,7 +93,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       isParagraphMode ? 'pb-2 pt-1' : 'grow px-3',
       (isFullDocMode && isLoading) && 'overflow-y-hidden',
     )}>
-      {isFullDocMode ? <Divider type='horizontal' className='my-1 h-[1px] bg-divider-subtle' /> : null}
+      {isFullDocMode ? <Divider type='horizontal' className='my-1 h-px bg-divider-subtle' /> : null}
       <div className={classNames('flex items-center justify-between', isFullDocMode ? 'sticky -top-2 left-0 bg-background-default pb-3 pt-2' : '')}>
         <div className={classNames(
           'flex h-7 items-center rounded-lg pl-1 pr-3',

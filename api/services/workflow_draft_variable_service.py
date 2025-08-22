@@ -1,5 +1,4 @@
 import dataclasses
-import datetime
 import logging
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
@@ -13,7 +12,7 @@ from sqlalchemy.sql.expression import and_, or_
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.variables import Segment, StringSegment, Variable
-from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -23,6 +22,7 @@ from core.workflow.nodes.variable_assigner.common.helpers import get_updated_var
 from core.workflow.variable_loader import VariableLoader
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
+from libs.datetime_utils import naive_utc_now
 from models import App, Conversation
 from models.enums import DraftVariableType
 from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
@@ -147,7 +147,7 @@ class WorkflowDraftVariableService:
     ) -> list[WorkflowDraftVariable]:
         ors = []
         for selector in selectors:
-            assert len(selector) >= MIN_SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
+            assert len(selector) >= SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
             node_id, name = selector[:2]
             ors.append(and_(WorkflowDraftVariable.node_id == node_id, WorkflowDraftVariable.name == name))
 
@@ -231,7 +231,7 @@ class WorkflowDraftVariableService:
             variable.set_name(name)
         if value is not None:
             variable.set_value(value)
-        variable.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        variable.last_edited_at = naive_utc_now()
         self._session.flush()
         return variable
 
@@ -608,7 +608,7 @@ class DraftVariableSaver:
 
         for item in updated_variables:
             selector = item.selector
-            if len(selector) < MIN_SELECTORS_LENGTH:
+            if len(selector) < SELECTORS_LENGTH:
                 raise Exception("selector too short")
             # NOTE(QuantumGhost): only the following two kinds of variable could be updated by
             # VariableAssigner: ConversationVariable and iteration variable.
