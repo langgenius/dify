@@ -44,6 +44,7 @@ const CredentialPanel = ({
     authorized,
     authRemoved,
     current_credential_name,
+    notAllowedToUse,
   } = useCredentialStatus(provider)
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
@@ -79,6 +80,14 @@ const CredentialPanel = ({
     return ''
   }, [authorized, authRemoved, current_credential_name, hasCredential])
 
+  const color = useMemo(() => {
+    if (authRemoved)
+      return 'red'
+    if (notAllowedToUse)
+      return 'gray'
+    return 'green'
+  }, [authRemoved, notAllowedToUse])
+
   return (
     <>
       {
@@ -97,7 +106,7 @@ const CredentialPanel = ({
               >
                 {credentialLabel}
               </div>
-              <Indicator className='shrink-0' color={authorized ? 'green' : 'red'} />
+              <Indicator className='shrink-0' color={color} />
             </div>
             <div className='flex items-center gap-0.5'>
               <ConfigProvider

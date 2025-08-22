@@ -12,6 +12,7 @@ export const useCredentialStatus = (provider: ModelProvider) => {
   const hasCredential = !!available_credentials?.length
   const authorized = current_credential_id && current_credential_name
   const authRemoved = hasCredential && !current_credential_id && !current_credential_name
+  const currentCredential = available_credentials?.find(credential => credential.credential_id === current_credential_id)
 
   return useMemo(() => ({
     hasCredential,
@@ -20,5 +21,6 @@ export const useCredentialStatus = (provider: ModelProvider) => {
     current_credential_id,
     current_credential_name,
     available_credentials,
+    notAllowedToUse: currentCredential?.not_allowed_to_use,
   }), [hasCredential, authorized, authRemoved, current_credential_id, current_credential_name, available_credentials])
 }

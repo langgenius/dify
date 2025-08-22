@@ -16,6 +16,7 @@ import type {
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
+import Badge from '@/app/components/base/badge'
 
 type SwitchCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -41,10 +42,10 @@ const SwitchCredentialInLoadBalancing = ({
     const selectedCredentialId = customModelCredential?.credential_id
     const authRemoved = !selectedCredentialId && !!credentials?.length
     let color = 'green'
+    if (authRemoved && !customModelCredential?.not_allowed_to_use)
+      color = 'red'
     if (customModelCredential?.not_allowed_to_use)
       color = 'gray'
-    if (authRemoved)
-      color = 'red'
 
     const Item = (
       <Button
@@ -60,7 +61,18 @@ const SwitchCredentialInLoadBalancing = ({
           color={color as any}
         />
         {
-          authRemoved ? t('common.modelProvider.auth.authRemoved') : customModelCredential?.credential_name
+          authRemoved && !customModelCredential?.not_allowed_to_use && t('common.modelProvider.auth.authRemoved')
+        }
+        {
+          !authRemoved && customModelCredential?.not_allowed_to_use && t('plugin.auth.credentialUnavailable')
+        }
+        {
+          !authRemoved && !customModelCredential?.not_allowed_to_use && customModelCredential?.credential_name
+        }
+        {
+          customModelCredential?.from_enterprise && (
+            <Badge className='ml-2'>Enterprise</Badge>
+          )
         }
         <RiArrowDownSLine className='h-4 w-4' />
       </Button>

@@ -29,7 +29,6 @@ import type {
 } from '../../declarations'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
-import Tooltip from '@/app/components/base/tooltip'
 
 type AuthorizedProps = {
   provider: ModelProvider,
@@ -114,26 +113,15 @@ const Authorized = ({
   const Trigger = useMemo(() => {
     const Item = (
       <Button
-        className={cn('grow', notAllowCustomCredential && 'cursor-not-allowed')}
+        className='grow'
         size='small'
       >
         <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
         {t('common.operation.config')}
       </Button>
     )
-
-    if (notAllowCustomCredential) {
-      return (
-        <Tooltip
-          asChild
-          popupContent={t('plugin.auth.credentialUnavailable')}
-        >
-          {Item}
-        </Tooltip>
-      )
-    }
     return Item
-  }, [notAllowCustomCredential, t])
+  }, [t])
 
   return (
     <>
