@@ -77,7 +77,6 @@
 
 1. Setup your application by visiting `http://localhost:3000`.
 
-
 1. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
 ```bash

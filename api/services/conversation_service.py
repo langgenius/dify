@@ -1,5 +1,5 @@
-import logging
 import contextlib
+import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Optional, Union
 
