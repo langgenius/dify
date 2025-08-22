@@ -19,6 +19,17 @@ from core.plugin.impl.base import BasePluginClient
 
 
 class PluginInstaller(BasePluginClient):
+    def fetch_plugin_readme(self, tenant_id: str, plugin_unique_identifier: str, language: str) -> str:
+        """
+        Fetch plugin readme
+        """
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/fetch/readme",
+            str,
+            params={"plugin_unique_identifier": plugin_unique_identifier, "language": language},
+        )
+
     def fetch_plugin_by_identifier(
         self,
         tenant_id: str,
