@@ -17,16 +17,15 @@ if TYPE_CHECKING:
 
 class WorkflowComment(Base):
     """Workflow comment model for canvas commenting functionality.
-    
+
     Comments are associated with apps rather than specific workflow versions,
     since an app has only one draft workflow at a time and comments should persist
     across workflow version changes.
-    
+
     Attributes:
         id: Comment ID
         tenant_id: Workspace ID
         app_id: App ID (primary association, comments belong to apps)
-        node_id: Node ID (optional, for node-specific comments)
         position_x: X coordinate on canvas
         position_y: Y coordinate on canvas
         content: Comment content
@@ -42,26 +41,19 @@ class WorkflowComment(Base):
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="workflow_comments_pkey"),
         Index("workflow_comments_app_idx", "tenant_id", "app_id"),
-        Index("workflow_comments_node_idx", "tenant_id", "node_id"),
         Index("workflow_comments_created_at_idx", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    node_id: Mapped[Optional[str]] = mapped_column(db.String(255))
-    position_x: Mapped[Optional[float]] = mapped_column(db.Float)
-    position_y: Mapped[Optional[float]] = mapped_column(db.Float)
+    position_x: Mapped[float] = mapped_column(db.Float)
+    position_y: Mapped[float] = mapped_column(db.Float)
     content: Mapped[str] = mapped_column(db.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime, 
-        nullable=False, 
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp()
+        db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     resolved: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     resolved_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
@@ -87,10 +79,45 @@ class WorkflowComment(Base):
             return db.session.get(Account, self.resolved_by)
         return None
 
+    @property
+    def reply_count(self):
+        """Get reply count."""
+        return len(self.replies)
+
+    @property
+    def mention_count(self):
+        """Get mention count."""
+        return len(self.mentions)
+
+    @property
+    def participants(self):
+        """Get all participants (creator + repliers + mentioned users)."""
+        participant_ids = set()
+
+        # Add comment creator
+        participant_ids.add(self.created_by)
+
+        # Add reply creators
+        for reply in self.replies:
+            participant_ids.add(reply.created_by)
+
+        # Add mentioned users
+        for mention in self.mentions:
+            participant_ids.add(mention.mentioned_user_id)
+
+        # Get account objects
+        participants = []
+        for user_id in participant_ids:
+            account = db.session.get(Account, user_id)
+            if account:
+                participants.append(account)
+
+        return participants
+
 
 class WorkflowCommentReply(Base):
     """Workflow comment reply model.
-    
+
     Attributes:
         id: Reply ID
         comment_id: Parent comment ID
@@ -107,17 +134,15 @@ class WorkflowCommentReply(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    comment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    comment_id: Mapped[str] = mapped_column(
+        StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
+    )
     content: Mapped[str] = mapped_column(db.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     # Relationships
-    comment: Mapped["WorkflowComment"] = relationship(
-        "WorkflowComment", back_populates="replies"
-    )
+    comment: Mapped["WorkflowComment"] = relationship("WorkflowComment", back_populates="replies")
 
     @property
     def created_by_account(self):
@@ -127,10 +152,10 @@ class WorkflowCommentReply(Base):
 
 class WorkflowCommentMention(Base):
     """Workflow comment mention model.
-    
+
     Mentions are only for internal accounts since end users
     cannot access workflow canvas and commenting features.
-    
+
     Attributes:
         id: Mention ID
         comment_id: Parent comment ID
@@ -145,13 +170,13 @@ class WorkflowCommentMention(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    comment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    comment_id: Mapped[str] = mapped_column(
+        StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
+    )
     mentioned_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # Relationships
-    comment: Mapped["WorkflowComment"] = relationship(
-        "WorkflowComment", back_populates="mentions"
-    )
+    comment: Mapped["WorkflowComment"] = relationship("WorkflowComment", back_populates="mentions")
 
     @property
     def mentioned_user_account(self):

@@ -76,7 +76,7 @@ def handle_user_connect(sid, data):
 
     sio.enter_room(sid, workflow_id)
     broadcast_online_users(workflow_id)
-    
+
     # Notify user of their status
     sio.emit("status", {"isLeader": is_leader}, room=sid)
 
@@ -98,7 +98,7 @@ def handle_disconnect(sid):
 
         # Handle leader re-election if the leader disconnected
         handle_leader_disconnect(workflow_id, user_id)
-        
+
         broadcast_online_users(workflow_id)
 
 
@@ -109,13 +109,13 @@ def get_or_set_leader(workflow_id, user_id):
     """
     leader_key = f"workflow_leader:{workflow_id}"
     current_leader = redis_client.get(leader_key)
-    
+
     if not current_leader:
         # No leader exists, make this user the leader
         redis_client.set(leader_key, user_id, ex=3600)  # Expire in 1 hour
         return user_id
-    
-    return current_leader.decode('utf-8') if isinstance(current_leader, bytes) else current_leader
+
+    return current_leader.decode("utf-8") if isinstance(current_leader, bytes) else current_leader
 
 
 def handle_leader_disconnect(workflow_id, disconnected_user_id):
@@ -124,22 +124,22 @@ def handle_leader_disconnect(workflow_id, disconnected_user_id):
     """
     leader_key = f"workflow_leader:{workflow_id}"
     current_leader = redis_client.get(leader_key)
-    
+
     if current_leader:
-        current_leader = current_leader.decode('utf-8') if isinstance(current_leader, bytes) else current_leader
-        
+        current_leader = current_leader.decode("utf-8") if isinstance(current_leader, bytes) else current_leader
+
         if current_leader == disconnected_user_id:
             # Leader disconnected, elect a new leader
             users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
-            
+
             if users_json:
                 # Get the first remaining user as new leader
                 new_leader_id = list(users_json.keys())[0]
                 if isinstance(new_leader_id, bytes):
-                    new_leader_id = new_leader_id.decode('utf-8')
-                    
+                    new_leader_id = new_leader_id.decode("utf-8")
+
                 redis_client.set(leader_key, new_leader_id, ex=3600)
-                
+
                 # Notify all users about the new leader
                 broadcast_leader_change(workflow_id, new_leader_id)
             else:
@@ -152,13 +152,13 @@ def broadcast_leader_change(workflow_id, new_leader_id):
     Broadcast leader change to all users in the workflow.
     """
     users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
-    
+
     for user_id, user_info_json in users_json.items():
         try:
             user_info = json.loads(user_info_json)
             user_sid = user_info.get("sid")
             if user_sid:
-                is_leader = (user_id.decode('utf-8') if isinstance(user_id, bytes) else user_id) == new_leader_id
+                is_leader = (user_id.decode("utf-8") if isinstance(user_id, bytes) else user_id) == new_leader_id
                 sio.emit("status", {"isLeader": is_leader}, room=user_sid)
         except Exception:
             continue
@@ -170,7 +170,7 @@ def get_current_leader(workflow_id):
     """
     leader_key = f"workflow_leader:{workflow_id}"
     leader = redis_client.get(leader_key)
-    return leader.decode('utf-8') if leader and isinstance(leader, bytes) else leader
+    return leader.decode("utf-8") if leader and isinstance(leader, bytes) else leader
 
 
 def broadcast_online_users(workflow_id):
@@ -184,15 +184,11 @@ def broadcast_online_users(workflow_id):
             users.append(json.loads(user_info_json))
         except Exception:
             continue
-    
+
     # Get current leader
     leader_id = get_current_leader(workflow_id)
-    
-    sio.emit("online_users", {
-        "workflow_id": workflow_id, 
-        "users": users,
-        "leader": leader_id
-    }, room=workflow_id)
+
+    sio.emit("online_users", {"workflow_id": workflow_id, "users": users, "leader": leader_id}, room=workflow_id)
 
 
 @sio.on("collaboration_event")

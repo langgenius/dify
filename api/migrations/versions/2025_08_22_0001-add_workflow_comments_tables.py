@@ -24,9 +24,8 @@ def upgrade():
         sa.Column('id', postgresql.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('tenant_id', postgresql.UUID(), nullable=False),
         sa.Column('app_id', postgresql.UUID(), nullable=False),
-        sa.Column('node_id', sa.String(length=255), nullable=True),
-        sa.Column('position_x', sa.Float(), nullable=True),
-        sa.Column('position_y', sa.Float(), nullable=True),
+        sa.Column('position_x', sa.Float(), nullable=False),
+        sa.Column('position_y', sa.Float(), nullable=False),
         sa.Column('content', sa.Text(), nullable=False),
         sa.Column('created_by', postgresql.UUID(), nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
@@ -39,7 +38,6 @@ def upgrade():
     
     # Create indexes for workflow_comments
     op.create_index('workflow_comments_app_idx', 'workflow_comments', ['tenant_id', 'app_id'])
-    op.create_index('workflow_comments_node_idx', 'workflow_comments', ['tenant_id', 'node_id'])
     op.create_index('workflow_comments_created_at_idx', 'workflow_comments', ['created_at'])
     
     # Create workflow_comment_replies table
