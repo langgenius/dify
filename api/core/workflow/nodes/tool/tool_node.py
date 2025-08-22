@@ -357,20 +357,26 @@ class ToolNode(BaseNode):
                         manager = PluginInstaller()
                         plugins = manager.list_plugins(tenant_id)
                         current_plugin = next(
-                            (plugin
+                            (
+                                plugin
                                 for plugin in plugins
-                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]), None
-                            )
+                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
+                            ),
+                            None,
+                        )
                         if current_plugin is not None:
                             icon = current_plugin.declaration.icon
                         icon_dark = None
                         builtin_tool = next(
-                            (provider
-                            for provider in BuiltinToolManageService.list_builtin_tools(
-                                user_id,
-                                tenant_id,
-                            )
-                            if provider.name == dict_metadata["provider"]), None
+                            (
+                                provider
+                                for provider in BuiltinToolManageService.list_builtin_tools(
+                                    user_id,
+                                    tenant_id,
+                                )
+                                if provider.name == dict_metadata["provider"]
+                            ),
+                            None,
                         )
                         if builtin_tool:
                             icon = builtin_tool.icon

@@ -390,10 +390,13 @@ class AgentNode(BaseNode):
         manager = PluginInstaller()
         plugins = manager.list_plugins(self.tenant_id)
         current_plugin = next(
-            (plugin
-            for plugin in plugins
-            if f"{plugin.plugin_id}/{plugin.name}"
-            == cast(AgentNodeData, self._node_data).agent_strategy_provider_name), None
+            (
+                plugin
+                for plugin in plugins
+                if f"{plugin.plugin_id}/{plugin.name}"
+                == cast(AgentNodeData, self._node_data).agent_strategy_provider_name
+            ),
+            None,
         )
         icon = None if current_plugin is None else current_plugin.declaration.icon
         return icon
@@ -609,21 +612,27 @@ class AgentNode(BaseNode):
                         manager = PluginInstaller()
                         plugins = manager.list_plugins(tenant_id)
                         current_plugin = next(
-                            (plugin
-                            for plugin in plugins
-                            if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]), None
+                            (
+                                plugin
+                                for plugin in plugins
+                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
+                            ),
+                            None,
                         )
-                        if (current_plugin is not None):
+                        if current_plugin is not None:
                             icon = current_plugin.declaration.icon
                         icon_dark = None
                         builtin_tool = next(
-                            (provider
-                            for provider in BuiltinToolManageService.list_builtin_tools(
-                                user_id,
-                                tenant_id,
-                            )
-                            if provider.name == dict_metadata["provider"]), None
-                            )
+                            (
+                                provider
+                                for provider in BuiltinToolManageService.list_builtin_tools(
+                                    user_id,
+                                    tenant_id,
+                                )
+                                if provider.name == dict_metadata["provider"]
+                            ),
+                            None,
+                        )
                         if builtin_tool is not None:
                             icon = builtin_tool.icon
                             icon_dark = builtin_tool.icon_dark
