@@ -56,12 +56,11 @@ const Toast = ({
     'top-0',
     'right-0',
   )}>
-    <div className={`absolute inset-0 -z-10 opacity-40 ${
-      (type === 'success' && 'bg-toast-success-bg')
+    <div className={`absolute inset-0 -z-10 opacity-40 ${(type === 'success' && 'bg-toast-success-bg')
       || (type === 'warning' && 'bg-toast-warning-bg')
       || (type === 'error' && 'bg-toast-error-bg')
       || (type === 'info' && 'bg-toast-info-bg')
-    }`}
+      }`}
     />
     <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
       <div className={`flex items-center justify-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
@@ -162,7 +161,9 @@ Toast.notify = ({
       </ToastContext.Provider>,
     )
     document.body.appendChild(holder)
-    setTimeout(toastHandler.clear, duration || defaultDuring)
+    const d = duration ?? defaultDuring
+    if (d > 0)
+      setTimeout(toastHandler.clear, d)
   }
 
   return toastHandler

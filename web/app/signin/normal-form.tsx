@@ -14,6 +14,7 @@ import { LicenseStatus } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { OAUTH_AUTHORIZE_PENDING_KEY } from '@/app/account/oauth/authorize/page'
 
 const NormalForm = () => {
   const { t } = useTranslation()
@@ -21,6 +22,7 @@ const NormalForm = () => {
   const searchParams = useSearchParams()
   const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
   const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
+  const redirectUrl = decodeURIComponent(searchParams.get('redirect_url') || '')
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isLoading, setIsLoading] = useState(true)
@@ -37,6 +39,22 @@ const NormalForm = () => {
       if (consoleToken && refreshToken) {
         localStorage.setItem('console_token', consoleToken)
         localStorage.setItem('refresh_token', refreshToken)
+        if (redirectUrl) {
+          router.replace(redirectUrl)
+          return
+        }
+        const pendingStr = localStorage.getItem(OAUTH_AUTHORIZE_PENDING_KEY)
+        if (pendingStr) {
+          try {
+            const pending = JSON.parse(pendingStr)
+            if (pending?.returnUrl) {
+              localStorage.removeItem(OAUTH_AUTHORIZE_PENDING_KEY)
+              router.replace(pending.returnUrl)
+              return
+            }
+          }
+          catch { }
+        }
         router.replace('/apps')
         return
       }

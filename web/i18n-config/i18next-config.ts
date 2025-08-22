@@ -34,6 +34,7 @@ const NAMESPACES = [
   'explore',
   'layout',
   'login',
+  'oauth',
   'plugin-tags',
   'plugin',
   'register',
