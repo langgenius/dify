@@ -56,7 +56,7 @@ import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
 import OnBlurBlock from './plugins/on-blur-or-focus-block'
 import UpdateBlock from './plugins/update-block'
-import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
+import ShortcutsPopupPlugin, { type Hotkey } from './plugins/shortcuts-popup-plugin'
 import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
@@ -97,6 +97,7 @@ export type PromptEditorProps = {
   workflowVariableBlock?: WorkflowVariableBlockType
   hitlInputBlock?: HITLInputBlockType
   isSupportFileVar?: boolean
+  shortcutPopups?: Array<{ hotkey: Hotkey; Popup: React.ComponentType<{ onClose: () => void }> }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -121,6 +122,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   workflowVariableBlock,
   hitlInputBlock,
   isSupportFileVar,
+  shortcutPopups = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -197,22 +199,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
-        <ShortcutsPopupPlugin>
-          {closePortal => (
-            <div>
-              <div>test content</div>
-              <button
-                className='rounded border border-text-secondary text-xs text-text-primary'
-                onMouseDown={(e) => {
-                  e.preventDefault() // necessary, otherwise the editor will lose focus
-                  closePortal()
-                }}
-              >
-                close
-              </button>
-            </div>
-          )}
-        </ShortcutsPopupPlugin>
+        {shortcutPopups?.map(({ hotkey, Popup }, idx) => (
+          <ShortcutsPopupPlugin key={idx} hotkey={hotkey} >
+            {closePortal => <Popup onClose={closePortal} />}
+          </ShortcutsPopupPlugin>
+        ))}
         <ComponentPickerBlock
           triggerString='/'
           contextBlock={contextBlock}

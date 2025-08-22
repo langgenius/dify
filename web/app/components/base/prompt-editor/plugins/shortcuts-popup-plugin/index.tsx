@@ -15,7 +15,12 @@ import cn from '@/utils/classnames'
 
 export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
 
-type Hotkey = string | ((e: KeyboardEvent) => boolean)
+// Hotkey can be:
+// - string: 'mod+/'
+// - string[]: ['mod', '/']
+// - string[][]: [['mod', '/'], ['mod', 'shift', '/']] (any combo matches)
+// - function: custom matcher
+export type Hotkey = string | string[] | string[][] | ((e: KeyboardEvent) => boolean)
 
 type ShortcutPopupPluginProps = {
   hotkey?: Hotkey
@@ -48,58 +53,79 @@ function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
   if (typeof hotkey === 'function')
     return hotkey(event)
 
-  const parts = hotkey.toLowerCase().split('+').map(t => t.trim()).filter(Boolean)
-  let expectedKey: string | null = null
+  const matchCombo = (tokens: string[]) => {
+    const parts = tokens.map(t => t.toLowerCase().trim()).filter(Boolean)
+    let expectedKey: string | null = null
 
-  let needMod = false
-  let needCtrl = false
-  let needMeta = false
-  let needAlt = false
-  let needShift = false
+    let needMod = false
+    let needCtrl = false
+    let needMeta = false
+    let needAlt = false
+    let needShift = false
 
-  for (const p of parts) {
-    if (p === 'mod') {
-      needMod = true
-      continue
+    for (const p of parts) {
+      if (p === 'mod') {
+        needMod = true
+        continue
+      }
+      if (CTRL_ALIASES.has(p)) {
+        needCtrl = true
+        continue
+      }
+      if (META_ALIASES.has(p)) {
+        needMeta = true
+        continue
+      }
+      if (ALT_ALIASES.has(p)) {
+        needAlt = true
+        continue
+      }
+      if (SHIFT_ALIASES.has(p)) {
+        needShift = true
+        continue
+      }
+      expectedKey = p
     }
-    if (CTRL_ALIASES.has(p)) {
-      needCtrl = true
-      continue
-    }
-    if (META_ALIASES.has(p)) {
-      needMeta = true
-      continue
-    }
-    if (ALT_ALIASES.has(p)) {
-      needAlt = true
-      continue
-    }
-    if (SHIFT_ALIASES.has(p)) {
-      needShift = true
-      continue
-    }
-    expectedKey = p
-  }
 
-  if (needMod && !(event.metaKey || event.ctrlKey))
-    return false
-  if (needCtrl && !event.ctrlKey)
-    return false
-  if (needMeta && !event.metaKey)
-    return false
-  if (needAlt && !event.altKey)
-    return false
-  if (needShift && !event.shiftKey)
-    return false
-
-  if (expectedKey) {
-    const k = event.key.toLowerCase()
-    const normalized = k === ' ' ? 'space' : k
-    if (normalized !== expectedKey)
+    if (needMod && !(event.metaKey || event.ctrlKey))
       return false
+    if (needCtrl && !event.ctrlKey)
+      return false
+    if (needMeta && !event.metaKey)
+      return false
+    if (needAlt && !event.altKey)
+      return false
+    if (needShift && !event.shiftKey)
+      return false
+
+    if (expectedKey) {
+      const k = event.key.toLowerCase()
+      const normalized = k === ' ' ? 'space' : k
+      if (normalized !== expectedKey)
+        return false
+    }
+
+    return true
   }
 
-  return true
+  if (Array.isArray(hotkey)) {
+    const isNested = hotkey.length > 0 && Array.isArray((hotkey as unknown[])[0])
+    if (isNested) {
+      const combos = hotkey as string[][]
+      return combos.some(tokens => matchCombo(tokens))
+    }
+    else {
+      const tokens = hotkey as string[]
+      return matchCombo(tokens)
+    }
+  }
+
+  const tokensFromString = hotkey
+    .toLowerCase()
+    .split('+')
+    .map(t => t.trim())
+    .filter(Boolean)
+  return matchCombo(tokensFromString)
 }
 
 export default function ShortcutsPopupPlugin({
