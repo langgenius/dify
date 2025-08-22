@@ -2,7 +2,11 @@ from flask_restx import Resource, reqparse
 from jwt import InvalidTokenError  # type: ignore
 
 import services
-from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
+from controllers.console.auth.error import (
+    AuthenticationFailedError,
+    EmailCodeError,
+    InvalidEmailError,
+)
 from controllers.console.error import AccountBannedError, AccountNotFound
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import api
@@ -28,10 +32,8 @@ class LoginApi(Resource):
             account = WebAppAuthService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
-        except services.errors.account.AccountPasswordError:
-            raise EmailOrPasswordMismatchError()
-        except services.errors.account.AccountNotFoundError:
-            raise AccountNotFound()
+        except (services.errors.account.AccountPasswordError, services.errors.account.AccountNotFoundError):
+            raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
         return {"result": "success", "data": {"access_token": token}}
@@ -62,12 +64,14 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "en-US"
 
         account = WebAppAuthService.get_user_through_email(args["email"])
-        if account is None:
-            raise AccountNotFound()
-        else:
+        if account is not None:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
+        else:
+            # Don't reveal whether account exists, but generate a dummy token
+            token = "dummy_token_for_non_existent_account"
 
-        return {"result": "success", "data": token}
+        # Always return success to prevent user enumeration
+        return {"result": "success"}
 
 
 class EmailCodeLoginApi(Resource):

@@ -44,13 +44,15 @@ class ForgotPasswordSendEmailApi(Resource):
 
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
-        token = None
-        if account is None:
-            raise AccountNotFound()
-        else:
-            token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
 
-        return {"result": "success", "data": token}
+        if account is not None:
+            token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
+        else:
+            # Don't reveal whether account exists
+            token = AccountService.send_reset_password_email(email=args["email"], language=language)
+
+        # Always return success to prevent user enumeration
+        return {"result": "success"}
 
 
 class ForgotPasswordCheckApi(Resource):

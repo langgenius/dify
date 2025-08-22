@@ -9,8 +9,8 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
+    AuthenticationFailedError,
     EmailCodeError,
-    EmailOrPasswordMismatchError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
@@ -18,7 +18,6 @@ from controllers.console.auth.error import (
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
-    AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
@@ -77,15 +76,9 @@ class LoginApi(Resource):
                 account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
-        except services.errors.account.AccountPasswordError:
+        except (services.errors.account.AccountPasswordError, services.errors.account.AccountNotFoundError):
             AccountService.add_login_error_rate_limit(args["email"])
-            raise EmailOrPasswordMismatchError()
-        except services.errors.account.AccountNotFoundError:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_reset_password_email(email=args["email"], language=language)
-                return {"result": "fail", "data": token, "code": "account_not_found"}
-            else:
-                raise AccountNotFound()
+            raise AuthenticationFailedError()
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
@@ -132,15 +125,15 @@ class ResetPasswordSendEmailApi(Resource):
             account = AccountService.get_user_through_email(args["email"])
         except AccountRegisterError as are:
             raise AccountInFreezeError()
-        if account is None:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_reset_password_email(email=args["email"], language=language)
-            else:
-                raise AccountNotFound()
-        else:
-            token = AccountService.send_reset_password_email(account=account, language=language)
 
-        return {"result": "success", "data": token}
+        if account is not None:
+            token = AccountService.send_reset_password_email(account=account, language=language)
+        else:
+            # Don't reveal whether account exists
+            token = AccountService.send_reset_password_email(email=args["email"], language=language)
+
+        # Always return success to prevent user enumeration
+        return {"result": "success"}
 
 
 class EmailCodeLoginSendEmailApi(Resource):
@@ -164,15 +157,14 @@ class EmailCodeLoginSendEmailApi(Resource):
         except AccountRegisterError as are:
             raise AccountInFreezeError()
 
-        if account is None:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
-            else:
-                raise AccountNotFound()
-        else:
+        if account is not None:
             token = AccountService.send_email_code_login_email(account=account, language=language)
+        else:
+            # Don't reveal whether account exists
+            token = AccountService.send_email_code_login_email(email=args["email"], language=language)
 
-        return {"result": "success", "data": token}
+        # Always return success to prevent user enumeration
+        return {"result": "success"}
 
 
 class EmailCodeLoginApi(Resource):

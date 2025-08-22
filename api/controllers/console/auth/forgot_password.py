@@ -15,7 +15,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import AccountInFreezeError, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -48,17 +48,15 @@ class ForgotPasswordSendEmailApi(Resource):
 
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
-        token = None
-        if account is None:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_reset_password_email(email=args["email"], language=language)
-                return {"result": "fail", "data": token, "code": "account_not_found"}
-            else:
-                raise AccountNotFound()
-        else:
-            token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
 
-        return {"result": "success", "data": token}
+        if account is not None:
+            token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
+        else:
+            # Don't reveal whether account exists, but still generate a token for consistency
+            token = AccountService.send_reset_password_email(email=args["email"], language=language)
+
+        # Always return success to prevent user enumeration
+        return {"result": "success"}
 
 
 class ForgotPasswordCheckApi(Resource):
