@@ -9,7 +9,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const defaultPayload = {
     ...payload,
     mode: payload.mode || 'visual',
-    frequency: payload.frequency || 'daily',
+    frequency: payload.frequency || 'weekly',
     visual_config: {
       time: '11:30 AM',
       weekdays: ['sun'],

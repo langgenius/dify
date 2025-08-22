@@ -139,7 +139,7 @@ const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string 
 const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
   defaultValue: {
     mode: 'visual',
-    frequency: 'daily',
+    frequency: 'weekly',
     cron_expression: '',
     visual_config: {
       time: '11:30 AM',
