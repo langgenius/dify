@@ -18,6 +18,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
+    AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
