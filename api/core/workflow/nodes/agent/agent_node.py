@@ -619,7 +619,7 @@ class AgentNode(BaseNode):
                             ),
                             None,
                         )
-                        if current_plugin is not None:
+                        if current_plugin:
                             icon = current_plugin.declaration.icon
                         icon_dark = None
                         builtin_tool = next(
@@ -633,7 +633,7 @@ class AgentNode(BaseNode):
                             ),
                             None,
                         )
-                        if builtin_tool is not None:
+                        if builtin_tool:
                             icon = builtin_tool.icon
                             icon_dark = builtin_tool.icon_dark
                         dict_metadata["icon"] = icon
