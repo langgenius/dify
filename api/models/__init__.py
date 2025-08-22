@@ -9,6 +9,7 @@ from .account import (
     TenantStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from .chatflow_memory import ChatflowMemoryVariable, ChatflowConversation, ChatflowMessage
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -177,5 +178,8 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
+    "ChatflowMemoryVariable",
+    "ChatflowConversation",
+    "ChatflowMessage",
     "db",
 ]
