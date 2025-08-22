@@ -271,6 +271,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
             <>
               <HITLInputBlock />
               <HITLInputBlockReplacementBlock
+                nodeId={hitlInputBlock.nodeId}
                 nodeTitle={hitlInputBlock.nodeTitle}
                 formInputs={hitlInputBlock.formInputs}
                 onFormInputsChange={hitlInputBlock.onFormInputsChange}

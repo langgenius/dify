@@ -20,6 +20,7 @@ const REGEX = new RegExp(HITL_INPUT_REG)
 
 const HITLInputReplacementBlock = ({
   // onInsert,
+  nodeId,
   nodeTitle,
   formInputs,
   onFormInputsChange,
@@ -37,6 +38,7 @@ const HITLInputReplacementBlock = ({
     const varName = textNode.getTextContent().split('.')[1].replace(/#}}$/, '')
     return $applyNodeReplacement($createHITLInputNode(
       varName,
+      nodeId,
       nodeTitle,
       formInputs || [],
       onFormInputsChange!,

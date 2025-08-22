@@ -53,6 +53,7 @@ const FormContent: FC<Props> = ({
         hitlInputBlock={{
           show: true,
           formInputs,
+          nodeId,
           nodeTitle,
           onFormInputsChange,
           onFormInputItemRename,

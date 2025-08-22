@@ -14,6 +14,7 @@ import { useBoolean } from 'ahooks'
 import Modal from '../../../modal'
 
 type Props = {
+  nodeId: string
   nodeTitle: string
   varName: string
   isSelected: boolean
@@ -24,6 +25,7 @@ type Props = {
 }
 
 const ComponentUI: FC<Props> = ({
+  nodeId,
   nodeTitle,
   varName,
   // isSelected,
@@ -129,6 +131,7 @@ const ComponentUI: FC<Props> = ({
           className='max-w-[372px] !p-0'
         >
           <InputField
+            nodeId={nodeId}
             isEdit
             payload={formInput}
             onChange={handleChange}

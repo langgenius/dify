@@ -80,6 +80,7 @@ export type WorkflowVariableBlockType = {
 
 export type HITLInputBlockType = {
   show?: boolean
+  nodeId: string
   nodeTitle: string
   formInputs?: FormInputItem[]
   onFormInputsChange?: (inputs: FormInputItem[]) => void

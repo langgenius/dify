@@ -5,6 +5,7 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 
 export type SerializedNode = SerializedLexicalNode & {
   variableName: string
+  nodeId: string
   nodeTitle: string
   formInputs: FormInputItem[]
   onFormInputsChange: (inputs: FormInputItem[]) => void
@@ -14,6 +15,7 @@ export type SerializedNode = SerializedLexicalNode & {
 
 export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __variableName: string
+  __nodeId: string
   __nodeTitle: string
   __formInputs?: FormInputItem[]
   __onFormInputsChange: (inputs: FormInputItem[]) => void
@@ -42,6 +44,11 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__nodeTitle
   }
 
+  getNodeId(): string {
+    const self = this.getLatest()
+    return self.__nodeId
+  }
+
   getFormInputs(): FormInputItem[] {
     const self = this.getLatest()
     return self.__formInputs || []
@@ -65,6 +72,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   static clone(node: HITLInputNode): HITLInputNode {
     return new HITLInputNode(
       node.__variableName,
+      node.__nodeId,
       node.__nodeTitle,
       node.__formInputs || [],
       node.__onFormInputsChange,
@@ -80,6 +88,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
 
   constructor(
     varName: string,
+    nodeId: string,
     nodeTitle: string,
     formInputs: FormInputItem[],
     onFormInputsChange: (inputs: FormInputItem[]) => void,
@@ -90,6 +99,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     super(key)
 
     this.__variableName = varName
+    this.__nodeId = nodeId
     this.__nodeTitle = nodeTitle
     this.__formInputs = formInputs
     this.__onFormInputsChange = onFormInputsChange
@@ -111,6 +121,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return <HILTInputBlockComponent
       nodeKey={this.getKey()}
       varName={this.getVariableName()}
+      nodeId={this.getNodeId()}
       nodeTitle={this.getNodeTitle()}
       formInputs={this.getFormInputs()}
       onChange={this.getOnFormInputsChange()}
@@ -122,6 +133,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   static importJSON(serializedNode: SerializedNode): HITLInputNode {
     const node = $createHITLInputNode(
       serializedNode.variableName,
+      serializedNode.nodeId,
       serializedNode.nodeTitle,
       serializedNode.formInputs,
       serializedNode.onFormInputsChange,
@@ -137,6 +149,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       type: 'hitl-input-block',
       version: 1,
       variableName: this.getVariableName(),
+      nodeId: this.getNodeId(),
       nodeTitle: this.getNodeTitle(),
       formInputs: this.getFormInputs(),
       onFormInputsChange: this.getOnFormInputsChange(),
@@ -152,6 +165,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
 
 export function $createHITLInputNode(
   variableName: string,
+  nodeId: string,
   nodeTitle: string,
   formInputs: FormInputItem[],
   onFormInputsChange: (inputs: FormInputItem[]) => void,
@@ -160,6 +174,7 @@ export function $createHITLInputNode(
 ): HITLInputNode {
   return new HITLInputNode(
     variableName,
+    nodeId,
     nodeTitle,
     formInputs,
     onFormInputsChange,

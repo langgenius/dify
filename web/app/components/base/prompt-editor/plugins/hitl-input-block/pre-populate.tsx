@@ -59,6 +59,7 @@ const PrePopulate: FC<Props> = ({
           value={valueSelector || []}
           onChange={onValueSelectorChange!}
           readonly={false}
+          zIndex={1000}
         />
       )
     }
@@ -72,9 +73,9 @@ const PrePopulate: FC<Props> = ({
   return (
     <div>
       {main}
-      <div className={cn('flex  space-x-1 text-text-tertiary')}>
+      <div className={cn('flex items-center space-x-1 text-text-tertiary')} onClick={() => onIsVariableChange?.(!isVariable)}>
         <Variable02 className='size-3.5' />
-        <div>{t(`${i18nPrefix}.useVarInstead`)}</div>
+        <div className='system-xs-medium'>{t(`${i18nPrefix}.useVarInstead`)}</div>
       </div>
     </div>
   )

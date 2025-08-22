@@ -7,6 +7,7 @@ import produce from 'immer'
 
 type Props = {
   nodeKey: string
+  nodeId: string
   nodeTitle: string
   varName: string
   formInputs?: FormInputItem[]
@@ -17,6 +18,7 @@ type Props = {
 
 const HITLInputComponent: FC<Props> = ({
   nodeKey,
+  nodeId,
   nodeTitle,
   varName,
   formInputs = [],
@@ -45,6 +47,7 @@ const HITLInputComponent: FC<Props> = ({
       className='w-full pb-1 pt-3'
     >
       <ComponentUi
+        nodeId={nodeId}
         nodeTitle={nodeTitle}
         varName={varName}
         isSelected={isSelected}
