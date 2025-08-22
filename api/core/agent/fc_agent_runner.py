@@ -127,7 +127,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
                         except TypeError:
-                            # ensure ascii to avoid encoding error
+                            # fallback: force ASCII to handle non-serializable objects
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                     if chunk.delta.message and chunk.delta.message.content:
@@ -154,7 +154,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
                     except TypeError:
-                        # ensure ascii to avoid encoding error
+                        # fallback: force ASCII to handle non-serializable objects
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                 if result.usage:
