@@ -134,7 +134,7 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
         <div className='flex h-6 w-6 shrink-0 items-center justify-center'>
           {option.icon}
         </div>
-        <span className='ml-3 truncate'>{option.name}</span>
+        <span className='ml-2 truncate'>{option.name}</span>
       </div>
       <div className='ml-2 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-state-base-hover-alt text-xs font-medium text-text-tertiary'>
         {numberDisplay}
@@ -160,8 +160,8 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
           {children}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
-        <div className='w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg'>
+      <PortalToFollowElemContent className='z-[12]'>
+        <div className='w-[284px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg'>
           <div className='mb-2 px-3 pt-2 text-sm font-medium text-text-primary'>
             {t('workflow.common.chooseStartNodeToRun')}
           </div>
