@@ -1,56 +1,44 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddCircleLine } from '@remixicon/react'
-import CreateFromScratchModal from '../create-options/create-from-scratch-modal'
-// import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
-// import { useResetDatasetList } from '@/service/knowledge/use-dataset'
-// import Toast from '@/app/components/base/toast'
-// import { useRouter } from 'next/navigation'
+import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
+import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+import Toast from '@/app/components/base/toast'
+import { useRouter } from 'next/navigation'
 
 const CreateCard = () => {
   const { t } = useTranslation()
-  // const { push } = useRouter()
+  const { push } = useRouter()
 
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
+  const resetDatasetList = useResetDatasetList()
 
-  // const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
-  // const resetDatasetList = useResetDatasetList()
-
-  // todo: Directly create a pipeline dataset, no need to fill in the form
-  // const handleCreate = useCallback(async () => {
-  //   await createEmptyDataset({}, {
-  //     onSuccess: (data) => {
-  //       if (data) {
-  //         const { id } = data
-  //         Toast.notify({
-  //           type: 'success',
-  //           message: t('datasetPipeline.creation.successTip'),
-  //         })
-  //         resetDatasetList()
-  //         push(`/datasets/${id}/pipeline`)
-  //       }
-  //     },
-  //     onError: () => {
-  //       Toast.notify({
-  //         type: 'error',
-  //         message: t('datasetPipeline.creation.errorTip'),
-  //       })
-  //     },
-  //   })
-  // }, [createEmptyDataset, push, resetDatasetList, t])
-
-  const openCreateFromScratch = useCallback(() => {
-    setShowCreateModal(true)
-  }, [])
-
-  const closeCreateFromScratch = useCallback(() => {
-    setShowCreateModal(false)
-  }, [])
+  const handleCreate = useCallback(async () => {
+    await createEmptyDataset(undefined, {
+      onSuccess: (data) => {
+        if (data) {
+          const { id } = data
+          Toast.notify({
+            type: 'success',
+            message: t('datasetPipeline.creation.successTip'),
+          })
+          resetDatasetList()
+          push(`/datasets/${id}/pipeline`)
+        }
+      },
+      onError: () => {
+        Toast.notify({
+          type: 'error',
+          message: t('datasetPipeline.creation.errorTip'),
+        })
+      },
+    })
+  }, [createEmptyDataset, push, resetDatasetList, t])
 
   return (
     <div
       className='group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3'
-      onClick={openCreateFromScratch}
+      onClick={handleCreate}
     >
       <div className='flex items-center gap-x-3 p-4 pb-2'>
         <div className='flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed border-divider-regular bg-background-section group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover'>
@@ -63,10 +51,6 @@ const CreateCard = () => {
       <p className='system-xs-regular line-clamp-3 px-4 py-1 text-text-tertiary'>
         {t('datasetPipeline.creation.createFromScratch.description')}
       </p>
-      <CreateFromScratchModal
-        show={showCreateModal}
-        onClose={closeCreateFromScratch}
-      />
     </div>
   )
 }
