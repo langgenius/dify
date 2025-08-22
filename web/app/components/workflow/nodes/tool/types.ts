@@ -24,4 +24,8 @@ export type ToolNodeType = CommonNodeType & {
   paramSchemas?: Record<string, any>[]
   version?: string
   tool_node_version?: string
+  tool_description?: string
+  is_team_authorization?: boolean
+  params?: Record<string, any>
+  _notInitialized?: boolean
 }
