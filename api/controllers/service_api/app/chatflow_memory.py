@@ -39,17 +39,18 @@ class MemoryEditApi(Resource):
         if not memory_spec:
             return {'error': 'Memory not found'}, 404
         with Session(db.engine) as session:
-            ChatflowMemoryVariable(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                node_id=args['node_id'],
-                memory_id=args['id'],
-                name=memory_spec.name,
-                value=args['update'],
-                scope=memory_spec.scope,
-                term=memory_spec.term,
+            session.merge(
+                ChatflowMemoryVariable(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    node_id=args['node_id'],
+                    memory_id=args['id'],
+                    name=memory_spec.name,
+                    value=args['update'],
+                    scope=memory_spec.scope,
+                    term=memory_spec.term,
+                )
             )
-            session.add(memory_spec)
             session.commit()
         return '', 204
 

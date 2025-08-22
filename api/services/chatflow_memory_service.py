@@ -156,7 +156,7 @@ class ChatflowMemoryService:
                     ChatflowMemoryVariable.tenant_id == tenant_id,
                     ChatflowMemoryVariable.app_id == app_id,
                     ChatflowMemoryVariable.node_id == \
-                        (node_id if spec.term == MemoryScope.NODE else None),
+                        (node_id if spec.scope == MemoryScope.NODE else None),
                     ChatflowMemoryVariable.conversation_id == \
                         (conversation_id if spec.term == MemoryTerm.SESSION else None),
                 )
@@ -344,7 +344,7 @@ class ChatflowMemoryService:
         memory_block: MemoryBlock,
         visible_history: Sequence[PromptMessage]
     ) -> bool:
-        return len(visible_history) > memory_block.spec.update_turns
+        return len(visible_history) >= memory_block.spec.update_turns
 
     @staticmethod
     def _app_submit_async_memory_update(
