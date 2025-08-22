@@ -21,6 +21,7 @@ const NormalForm = () => {
   const searchParams = useSearchParams()
   const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
   const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
+  const redirectUrl = searchParams.get('redirect_url') || ''
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isLoading, setIsLoading] = useState(true)
@@ -37,6 +38,22 @@ const NormalForm = () => {
       if (consoleToken && refreshToken) {
         localStorage.setItem('console_token', consoleToken)
         localStorage.setItem('refresh_token', refreshToken)
+        const pendingStr = localStorage.getItem('oauth_authorize_pending')
+        if (redirectUrl) {
+          router.replace(decodeURIComponent(redirectUrl))
+          return
+        }
+        if (pendingStr) {
+          try {
+            const pending = JSON.parse(pendingStr)
+            if (pending?.returnUrl) {
+              localStorage.removeItem('oauth_authorize_pending')
+              router.replace(pending.returnUrl)
+              return
+            }
+          }
+          catch {}
+        }
         router.replace('/apps')
         return
       }

@@ -2,11 +2,11 @@
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiRobot2Line } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
-import Button from '../components/base/button'
-import Avatar from './avatar'
+import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { useCallback } from 'react'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import Avatar from './avatar'
 
 const Header = () => {
   const { t } = useTranslation()
