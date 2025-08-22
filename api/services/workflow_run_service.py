@@ -8,9 +8,7 @@ import contexts
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import (
-    Account,
     App,
-    EndUser,
     WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowRunTriggeredFrom,
