@@ -32,16 +32,6 @@ class TestWorkflowService:
     and realistic testing environment with actual database interactions.
     """
 
-    @pytest.fixture
-    def mock_external_service_dependencies(self):
-        """
-        Mock setup for external service dependencies.
-
-        WorkflowService doesn't have external dependencies that need mocking,
-        so this fixture returns an empty dictionary to maintain consistency with other test classes.
-        """
-        return {}
-
     def _create_test_account(self, db_session_with_containers, fake=None):
         """
         Helper method to create a test account with realistic data.
@@ -89,13 +79,12 @@ class TestWorkflowService:
 
         return account
 
-    def _create_test_app(self, db_session_with_containers, mock_external_service_dependencies, fake=None):
+    def _create_test_app(self, db_session_with_containers, fake=None):
         """
         Helper method to create a test app with realistic data.
 
         Args:
             db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies (unused in this service)
             fake: Faker instance for generating test data
 
         Returns:
@@ -157,7 +146,7 @@ class TestWorkflowService:
         db.session.commit()
         return workflow
 
-    def test_get_node_last_run_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_node_last_run_success(self, db_session_with_containers):
         """
         Test successful retrieval of the most recent execution for a specific node.
 
@@ -168,7 +157,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         # Create a mock node execution record
@@ -206,7 +195,7 @@ class TestWorkflowService:
         assert result.workflow_id == workflow.id
         assert result.status == "succeeded"
 
-    def test_get_node_last_run_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_node_last_run_not_found(self, db_session_with_containers):
         """
         Test retrieval when no execution record exists for the specified node.
 
@@ -216,7 +205,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         workflow_service = WorkflowService()
@@ -227,7 +216,7 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_is_workflow_exist_true(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_is_workflow_exist_true(self, db_session_with_containers):
         """
         Test workflow existence check when a draft workflow exists.
 
@@ -237,7 +226,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         workflow_service = WorkflowService()
@@ -248,7 +237,7 @@ class TestWorkflowService:
         # Assert
         assert result is True
 
-    def test_is_workflow_exist_false(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_is_workflow_exist_false(self, db_session_with_containers):
         """
         Test workflow existence check when no draft workflow exists.
 
@@ -257,7 +246,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         # Don't create any workflow
 
         workflow_service = WorkflowService()
@@ -268,7 +257,7 @@ class TestWorkflowService:
         # Assert
         assert result is False
 
-    def test_get_draft_workflow_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_draft_workflow_success(self, db_session_with_containers):
         """
         Test successful retrieval of a draft workflow.
 
@@ -279,7 +268,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         workflow_service = WorkflowService()
@@ -294,7 +283,7 @@ class TestWorkflowService:
         assert result.app_id == app.id
         assert result.tenant_id == app.tenant_id
 
-    def test_get_draft_workflow_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_draft_workflow_not_found(self, db_session_with_containers):
         """
         Test draft workflow retrieval when no draft workflow exists.
 
@@ -303,7 +292,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         # Don't create any workflow
 
         workflow_service = WorkflowService()
@@ -314,7 +303,7 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_get_published_workflow_by_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_published_workflow_by_id_success(self, db_session_with_containers):
         """
         Test successful retrieval of a published workflow by ID.
 
@@ -325,7 +314,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create a published workflow (not draft)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -346,9 +335,7 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.app_id == app.id
 
-    def test_get_published_workflow_by_id_draft_error(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_published_workflow_by_id_draft_error(self, db_session_with_containers):
         """
         Test error when trying to retrieve a draft workflow as published.
 
@@ -359,7 +346,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         # Keep as draft version
 
@@ -371,9 +358,7 @@ class TestWorkflowService:
         with pytest.raises(IsDraftWorkflowError):
             workflow_service.get_published_workflow_by_id(app, workflow.id)
 
-    def test_get_published_workflow_by_id_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_published_workflow_by_id_not_found(self, db_session_with_containers):
         """
         Test retrieval when no workflow exists with the specified ID.
 
@@ -382,7 +367,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         non_existent_workflow_id = fake.uuid4()
 
         workflow_service = WorkflowService()
@@ -393,7 +378,7 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_get_published_workflow_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_published_workflow_success(self, db_session_with_containers):
         """
         Test successful retrieval of the current published workflow for an app.
 
@@ -403,7 +388,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create a published workflow and associate it with the app
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -425,9 +410,7 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.app_id == app.id
 
-    def test_get_published_workflow_no_workflow_id(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_published_workflow_no_workflow_id(self, db_session_with_containers):
         """
         Test retrieval when app has no associated workflow ID.
 
@@ -436,7 +419,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         # app.workflow_id is None by default
 
         workflow_service = WorkflowService()
@@ -447,9 +430,7 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_get_all_published_workflow_pagination(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_all_published_workflow_pagination(self, db_session_with_containers):
         """
         Test pagination of published workflows.
 
@@ -460,7 +441,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create multiple published workflows
         workflows = []
@@ -505,9 +486,7 @@ class TestWorkflowService:
         assert len(result_workflows) == 2
         assert has_more is False
 
-    def test_get_all_published_workflow_user_filter(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_all_published_workflow_user_filter(self, db_session_with_containers):
         """
         Test filtering published workflows by user.
 
@@ -519,7 +498,7 @@ class TestWorkflowService:
         fake = Faker()
         account1 = self._create_test_account(db_session_with_containers, fake)
         account2 = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create workflows by different users
         workflow1 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
@@ -548,9 +527,7 @@ class TestWorkflowService:
         assert len(result_workflows) == 1
         assert result_workflows[0].created_by == account1.id
 
-    def test_get_all_published_workflow_named_only_filter(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_all_published_workflow_named_only_filter(self, db_session_with_containers):
         """
         Test filtering published workflows to show only named workflows.
 
@@ -561,7 +538,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create workflows with and without names
         workflow1 = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -594,7 +571,7 @@ class TestWorkflowService:
         assert len(result_workflows) == 2
         assert all(wf.marked_name for wf in result_workflows)
 
-    def test_sync_draft_workflow_create_new(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_sync_draft_workflow_create_new(self, db_session_with_containers):
         """
         Test creating a new draft workflow through sync operation.
 
@@ -604,7 +581,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         graph = {"nodes": [{"id": "start", "type": "start"}], "edges": []}
         features = {"features": ["feature1", "feature2"]}
@@ -637,7 +614,7 @@ class TestWorkflowService:
         assert result.features == json.dumps(features)
         assert result.created_by == account.id
 
-    def test_sync_draft_workflow_update_existing(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_sync_draft_workflow_update_existing(self, db_session_with_containers):
         """
         Test updating an existing draft workflow through sync operation.
 
@@ -647,7 +624,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create existing draft workflow
         existing_workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -683,9 +660,7 @@ class TestWorkflowService:
         assert result.features == json.dumps(new_features)
         assert result.updated_by == account.id
 
-    def test_sync_draft_workflow_hash_mismatch_error(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_sync_draft_workflow_hash_mismatch_error(self, db_session_with_containers):
         """
         Test error when sync is attempted with mismatched hash.
 
@@ -696,7 +671,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create existing draft workflow
         existing_workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -726,7 +701,7 @@ class TestWorkflowService:
                 conversation_variables=conversation_variables,
             )
 
-    def test_publish_workflow_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_publish_workflow_success(self, db_session_with_containers):
         """
         Test successful workflow publishing.
 
@@ -737,7 +712,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create draft workflow
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -765,7 +740,7 @@ class TestWorkflowService:
         assert len(result.version) > 10  # Should be a reasonable timestamp length
         assert result.created_by == account.id
 
-    def test_publish_workflow_no_draft_error(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_publish_workflow_no_draft_error(self, db_session_with_containers):
         """
         Test error when publishing workflow without draft.
 
@@ -775,7 +750,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Don't create any workflow - app should have no draft
 
@@ -785,9 +760,7 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="No valid workflow found"):
             workflow_service.publish_workflow(session=db_session_with_containers, app_model=app, account=account)
 
-    def test_publish_workflow_already_published_error(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_publish_workflow_already_published_error(self, db_session_with_containers):
         """
         Test error when publishing already published workflow.
 
@@ -797,7 +770,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create already published workflow
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -813,7 +786,7 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="No valid workflow found"):
             workflow_service.publish_workflow(session=db_session_with_containers, app_model=app, account=account)
 
-    def test_get_default_block_configs(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_default_block_configs(self, db_session_with_containers):
         """
         Test retrieval of default block configurations for all node types.
 
@@ -837,9 +810,7 @@ class TestWorkflowService:
             assert isinstance(config, dict)
             # The structure can vary, so we just check it's a dict
 
-    def test_get_default_block_config_specific_type(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_default_block_config_specific_type(self, db_session_with_containers):
         """
         Test retrieval of default block configuration for a specific node type.
 
@@ -859,9 +830,7 @@ class TestWorkflowService:
         # This is acceptable behavior
         assert result is None or isinstance(result, dict)
 
-    def test_get_default_block_config_invalid_type(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_default_block_config_invalid_type(self, db_session_with_containers):
         """
         Test retrieval of default block configuration for invalid node type.
 
@@ -881,9 +850,7 @@ class TestWorkflowService:
             # It's also acceptable for the service to raise a ValueError for invalid types
             pass
 
-    def test_get_default_block_config_with_filters(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_get_default_block_config_with_filters(self, db_session_with_containers):
         """
         Test retrieval of default block configuration with filters.
 
@@ -903,9 +870,7 @@ class TestWorkflowService:
         # Result might be None if filters don't match, but should not raise error
         assert result is None or isinstance(result, dict)
 
-    def test_convert_to_workflow_chat_mode_success(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_convert_to_workflow_chat_mode_success(self, db_session_with_containers):
         """
         Test successful conversion from chat mode app to workflow mode.
 
@@ -917,7 +882,7 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
 
         # Create chat mode app
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.CHAT.value
 
         # Create app model config (required for conversion)
@@ -967,9 +932,7 @@ class TestWorkflowService:
         assert result.icon_type == conversion_args["icon_type"]
         assert result.icon_background == conversion_args["icon_background"]
 
-    def test_convert_to_workflow_completion_mode_success(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_convert_to_workflow_completion_mode_success(self, db_session_with_containers):
         """
         Test successful conversion from completion mode app to workflow mode.
 
@@ -981,7 +944,7 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
 
         # Create completion mode app
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.COMPLETION.value
 
         # Create app model config (required for conversion)
@@ -1031,9 +994,7 @@ class TestWorkflowService:
         assert result.icon_type == conversion_args["icon_type"]
         assert result.icon_background == conversion_args["icon_background"]
 
-    def test_convert_to_workflow_unsupported_mode_error(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_convert_to_workflow_unsupported_mode_error(self, db_session_with_containers):
         """
         Test error when attempting to convert unsupported app mode.
 
@@ -1045,7 +1006,7 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
 
         # Create workflow mode app (already in workflow mode)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.WORKFLOW.value
 
         from extensions.ext_database import db
@@ -1059,9 +1020,7 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="Current App mode: workflow is not supported convert to workflow"):
             workflow_service.convert_to_workflow(app_model=app, account=account, args=conversion_args)
 
-    def test_validate_features_structure_advanced_chat(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_validate_features_structure_advanced_chat(self, db_session_with_containers):
         """
         Test feature structure validation for advanced chat mode apps.
 
@@ -1070,7 +1029,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.ADVANCED_CHAT.value
 
         from extensions.ext_database import db
@@ -1092,7 +1051,7 @@ class TestWorkflowService:
         # The exact behavior depends on the AdvancedChatAppConfigManager implementation
         assert result is not None or isinstance(result, dict)
 
-    def test_validate_features_structure_workflow(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_validate_features_structure_workflow(self, db_session_with_containers):
         """
         Test feature structure validation for workflow mode apps.
 
@@ -1101,7 +1060,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.WORKFLOW.value
 
         from extensions.ext_database import db
@@ -1119,9 +1078,7 @@ class TestWorkflowService:
         # The exact behavior depends on the WorkflowAppConfigManager implementation
         assert result is not None or isinstance(result, dict)
 
-    def test_validate_features_structure_invalid_mode(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_validate_features_structure_invalid_mode(self, db_session_with_containers):
         """
         Test error when validating features for invalid app mode.
 
@@ -1130,7 +1087,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         app.mode = "invalid_mode"  # Invalid mode
 
         from extensions.ext_database import db
@@ -1144,7 +1101,7 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="Invalid app mode: invalid_mode"):
             workflow_service.validate_features_structure(app_model=app, features=features)
 
-    def test_update_workflow_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_workflow_success(self, db_session_with_containers):
         """
         Test successful workflow update with allowed fields.
 
@@ -1155,7 +1112,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         from extensions.ext_database import db
@@ -1180,7 +1137,7 @@ class TestWorkflowService:
         assert result.marked_comment == update_data["marked_comment"]
         assert result.updated_by == account.id
 
-    def test_update_workflow_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_workflow_not_found(self, db_session_with_containers):
         """
         Test workflow update when workflow doesn't exist.
 
@@ -1190,7 +1147,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         from extensions.ext_database import db
 
@@ -1210,9 +1167,7 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_update_workflow_ignores_disallowed_fields(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_update_workflow_ignores_disallowed_fields(self, db_session_with_containers):
         """
         Test that workflow update ignores disallowed fields.
 
@@ -1222,7 +1177,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         original_name = workflow.marked_name
 
@@ -1253,7 +1208,7 @@ class TestWorkflowService:
         assert result.graph == workflow.graph
         assert result.features == workflow.features
 
-    def test_delete_workflow_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_workflow_success(self, db_session_with_containers):
         """
         Test successful workflow deletion.
 
@@ -1264,7 +1219,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create a published workflow (not draft)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -1288,7 +1243,7 @@ class TestWorkflowService:
         deleted_workflow = db.session.query(Workflow).filter_by(id=workflow.id).first()
         assert deleted_workflow is None
 
-    def test_delete_workflow_draft_error(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_workflow_draft_error(self, db_session_with_containers):
         """
         Test error when attempting to delete a draft workflow.
 
@@ -1298,7 +1253,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create draft workflow
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -1316,7 +1271,7 @@ class TestWorkflowService:
         with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow versions"):
             workflow_service.delete_workflow(session=db.session, workflow_id=workflow.id, tenant_id=workflow.tenant_id)
 
-    def test_delete_workflow_in_use_error(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_workflow_in_use_error(self, db_session_with_containers):
         """
         Test error when attempting to delete a workflow that's in use by an app.
 
@@ -1326,7 +1281,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
 
         # Create a published workflow
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
@@ -1347,7 +1302,7 @@ class TestWorkflowService:
         with pytest.raises(WorkflowInUseError, match="Cannot delete workflow that is currently in use by app"):
             workflow_service.delete_workflow(session=db.session, workflow_id=workflow.id, tenant_id=workflow.tenant_id)
 
-    def test_delete_workflow_not_found_error(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_workflow_not_found_error(self, db_session_with_containers):
         """
         Test error when attempting to delete a non-existent workflow.
 
@@ -1356,7 +1311,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
         non_existent_workflow_id = fake.uuid4()
 
         from extensions.ext_database import db
@@ -1369,7 +1324,7 @@ class TestWorkflowService:
                 session=db.session, workflow_id=non_existent_workflow_id, tenant_id=app.tenant_id
             )
 
-    def test_run_free_workflow_node_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_run_free_workflow_node_success(self, db_session_with_containers):
         """
         Test successful execution of a free workflow node.
 
@@ -1410,9 +1365,7 @@ class TestWorkflowService:
         assert result.workflow_id == ""  # No workflow ID for free nodes
         assert result.index == 1
 
-    def test_run_free_workflow_node_with_complex_inputs(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_run_free_workflow_node_with_complex_inputs(self, db_session_with_containers):
         """
         Test execution of a free workflow node with complex input data.
 
@@ -1453,7 +1406,7 @@ class TestWorkflowService:
         error_msg = str(exc_info.value).lower()
         assert any(keyword in error_msg for keyword in ["start", "not supported", "external"])
 
-    def test_handle_node_run_result_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_handle_node_run_result_success(self, db_session_with_containers):
         """
         Test successful handling of node run results.
 
@@ -1513,7 +1466,7 @@ class TestWorkflowService:
         assert result.outputs is not None
         assert result.process_data is not None
 
-    def test_handle_node_run_result_failure(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_handle_node_run_result_failure(self, db_session_with_containers):
         """
         Test handling of failed node run results.
 
@@ -1569,9 +1522,7 @@ class TestWorkflowService:
         assert result.error is not None
         assert "Test error message" in str(result.error)
 
-    def test_handle_node_run_result_continue_on_error(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
+    def test_handle_node_run_result_continue_on_error(self, db_session_with_containers):
         """
         Test handling of node run results with continue_on_error strategy.
 
