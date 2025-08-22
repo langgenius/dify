@@ -133,8 +133,51 @@ describe('Monthly Edge Cases', () => {
       expect(februaryExecutions[0].getDate()).toBe(29)
 
       const marchExecutions = times.filter(date => date.getMonth() === 2)
-      expect(marchExecutions).toHaveLength(2)
-      expect(marchExecutions.map(d => d.getDate()).sort()).toEqual([31, 31])
+      expect(marchExecutions).toHaveLength(1)
+      expect(marchExecutions[0].getDate()).toBe(31)
+    })
+
+    test('deduplicates overlapping selections in 31-day months', () => {
+      const config = createMonthlyConfig([31, 'last'])
+      const times = getNextExecutionTimes(config, 12)
+
+      const monthsWith31Days = [0, 2, 4, 6, 7, 9, 11]
+
+      monthsWith31Days.forEach((month) => {
+        const monthExecutions = times.filter(date => date.getMonth() === month)
+        expect(monthExecutions.length).toBeLessThanOrEqual(1)
+
+        if (monthExecutions.length === 1)
+          expect(monthExecutions[0].getDate()).toBe(31)
+      })
+    })
+
+    test('deduplicates overlapping selections in 30-day months', () => {
+      const config = createMonthlyConfig([30, 'last'])
+      const times = getNextExecutionTimes(config, 12)
+
+      const monthsWith30Days = [3, 5, 8, 10]
+
+      monthsWith30Days.forEach((month) => {
+        const monthExecutions = times.filter(date => date.getMonth() === month)
+        expect(monthExecutions.length).toBeLessThanOrEqual(1)
+
+        if (monthExecutions.length === 1)
+          expect(monthExecutions[0].getDate()).toBe(30)
+      })
+    })
+
+    test('handles complex multi-day with last selection', () => {
+      const config = createMonthlyConfig([15, 30, 31, 'last'])
+      const times = getNextExecutionTimes(config, 20)
+
+      const marchExecutions = times.filter(date => date.getMonth() === 2).sort((a, b) => a.getDate() - b.getDate())
+      expect(marchExecutions).toHaveLength(3)
+      expect(marchExecutions.map(d => d.getDate())).toEqual([15, 30, 31])
+
+      const aprilExecutions = times.filter(date => date.getMonth() === 3).sort((a, b) => a.getDate() - b.getDate())
+      expect(aprilExecutions).toHaveLength(2)
+      expect(aprilExecutions.map(d => d.getDate())).toEqual([15, 30])
     })
   })
 

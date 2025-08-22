@@ -160,6 +160,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
 
       const monthlyExecutions: Date[] = []
+      const processedDays = new Set<number>()
 
       for (const selectedDay of selectedDays) {
         let targetDay: number
@@ -174,6 +175,11 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
           targetDay = dayNumber
         }
+
+        if (processedDays.has(targetDay))
+          continue
+
+        processedDays.add(targetDay)
 
         const nextExecution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
 
