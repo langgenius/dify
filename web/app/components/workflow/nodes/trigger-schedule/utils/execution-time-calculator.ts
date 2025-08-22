@@ -6,7 +6,7 @@ const getCurrentTime = (timezone?: string): Date => {
   return timezone ? getCurrentTimeInTimezone(timezone) : new Date()
 }
 
-// Helper function to get default datetime for once/hourly modes - consistent with base DatePicker
+// Helper function to get default datetime - consistent with base DatePicker
 export const getDefaultDateTime = (): Date => {
   const defaultDate = new Date()
   defaultDate.setHours(11, 30, 0, 0)

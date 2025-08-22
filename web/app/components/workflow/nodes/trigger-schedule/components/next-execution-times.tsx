@@ -10,8 +10,7 @@ type NextExecutionTimesProps = {
 const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
   const { t } = useTranslation()
 
-  // Don't show next execution times for 'once' frequency in visual mode
-  if (data.mode === 'visual' && data.frequency === 'once')
+  if (!data.frequency)
     return null
 
   const executionTimes = getFormattedExecutionTimes(data, 5)
