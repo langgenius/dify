@@ -158,13 +158,6 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
             "schedule": crontab(minute="0", hour="2"),
         }
-    # Configure task routing for async workflow queues
-    task_routes = {
-        "tasks.async_workflow_tasks.execute_workflow_professional": {"queue": "workflow_professional"},
-        "tasks.async_workflow_tasks.execute_workflow_team": {"queue": "workflow_team"},
-        "tasks.async_workflow_tasks.execute_workflow_sandbox": {"queue": "workflow_sandbox"},
-    }
-
-    celery_app.conf.update(beat_schedule=beat_schedule, imports=imports, task_routes=task_routes)
+    celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

@@ -12,6 +12,7 @@ from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
@@ -21,34 +22,45 @@ from models.workflow import Workflow, WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.workflow.entities import ExecutionStatus, TriggerData, WorkflowExecutionResult, WorkflowTaskData
 
+# Determine queue names based on edition
+if dify_config.EDITION == "CLOUD":
+    # Cloud edition: separate queues for different tiers
+    PROFESSIONAL_QUEUE = "workflow_professional"
+    TEAM_QUEUE = "workflow_team"
+    SANDBOX_QUEUE = "workflow_sandbox"
+else:
+    # Community edition: single workflow queue (not dataset)
+    PROFESSIONAL_QUEUE = "workflow"
+    TEAM_QUEUE = "workflow"
+    SANDBOX_QUEUE = "workflow"
 
-@shared_task(queue="workflow_professional", bind=True, max_retries=5)
-def execute_workflow_professional(self, task_data_dict: dict) -> dict:
+
+@shared_task(queue=PROFESSIONAL_QUEUE)
+def execute_workflow_professional(task_data_dict: dict) -> dict:
     """Execute workflow for professional tier with highest priority"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    return _execute_workflow_common(self, task_data).model_dump()
+    return _execute_workflow_common(task_data).model_dump()
 
 
-@shared_task(queue="workflow_team", bind=True, max_retries=3)
-def execute_workflow_team(self, task_data_dict: dict) -> dict:
+@shared_task(queue=TEAM_QUEUE)
+def execute_workflow_team(task_data_dict: dict) -> dict:
     """Execute workflow for team tier"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    return _execute_workflow_common(self, task_data).model_dump()
+    return _execute_workflow_common(task_data).model_dump()
 
 
-@shared_task(queue="workflow_sandbox", bind=True, max_retries=2)
-def execute_workflow_sandbox(self, task_data_dict: dict) -> dict:
+@shared_task(queue=SANDBOX_QUEUE)
+def execute_workflow_sandbox(task_data_dict: dict) -> dict:
     """Execute workflow for free tier with lower retry limit"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    return _execute_workflow_common(self, task_data).model_dump()
+    return _execute_workflow_common(task_data).model_dump()
 
 
-def _execute_workflow_common(task, task_data: WorkflowTaskData) -> WorkflowExecutionResult:
+def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionResult:
     """
     Common workflow execution logic with trigger log updates
 
     Args:
-        task: Celery task instance
         task_data: Validated Pydantic model with task data
 
     Returns:
@@ -171,19 +183,9 @@ def _execute_workflow_common(task, task_data: WorkflowTaskData) -> WorkflowExecu
             trigger_log.elapsed_time = elapsed_time
             trigger_log_repo.update(trigger_log)
 
-            if task.request.retries < task.max_retries:
-                # Update retry count in log
-                trigger_log.status = WorkflowTriggerStatus.RETRYING
-                trigger_log.retry_count = task.request.retries + 1
-                trigger_log_repo.update(trigger_log)
-                session.commit()
+            # Final failure - no retry logic (simplified like RAG tasks)
+            session.commit()
 
-                # Retry with exponential backoff
-                raise task.retry(exc=e, countdown=60 * (2**task.request.retries))
-            else:
-                # Max retries reached, final failure
-                session.commit()
-
-                return WorkflowExecutionResult(
-                    execution_id=trigger_log.id, status=ExecutionStatus.FAILED, error=str(e), elapsed_time=elapsed_time
-                )
+            return WorkflowExecutionResult(
+                execution_id=trigger_log.id, status=ExecutionStatus.FAILED, error=str(e), elapsed_time=elapsed_time
+            )
