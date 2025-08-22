@@ -71,7 +71,7 @@ const RunOnce: FC<IRunOnceProps> = ({
       if (item.type === 'select')
         newInputs[item.key] = item.default
       else if (item.type === 'string' || item.type === 'paragraph')
-        newInputs[item.key] = item.default
+        newInputs[item.key] = item.default || ''
       else if (item.type === 'number')
         newInputs[item.key] = item.default
       else if (item.type === 'file')
