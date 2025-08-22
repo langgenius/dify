@@ -23,7 +23,7 @@ const Header = ({
 
   return (
     <div className='flex items-center gap-x-2'>
-      <div className='flex grow items-center gap-x-1'>
+      <div className='flex grow items-center gap-x-1 overflow-hidden'>
         <CredentialSelector
           {...rest}
         />

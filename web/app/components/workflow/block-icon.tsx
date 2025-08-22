@@ -65,6 +65,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.Agent]: <Agent className={className} />,
     [BlockEnum.KnowledgeBase]: <KnowledgeBase className={className} />,
     [BlockEnum.DataSource]: <Datasource className={className} />,
+    [BlockEnum.DataSourceEmpty]: <></>,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {

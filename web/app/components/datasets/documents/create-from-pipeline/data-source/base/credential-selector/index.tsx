@@ -47,7 +47,7 @@ const CredentialSelector = ({
         mainAxis: 4,
       }}
     >
-      <PortalToFollowElemTrigger onClick={toggle}>
+      <PortalToFollowElemTrigger onClick={toggle} className='grow overflow-hidden'>
         <Trigger
           currentCredential={currentCredential}
           pluginName={pluginName}

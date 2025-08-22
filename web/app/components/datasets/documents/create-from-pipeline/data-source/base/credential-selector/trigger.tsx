@@ -35,8 +35,8 @@ const Trigger = ({
         name={name}
         size={20}
       />
-      <div className='flex items-center gap-x-1'>
-        <span className='system-md-semibold min-w-0 truncate text-text-secondary'>
+      <div className='flex grow items-center gap-x-1 overflow-hidden'>
+        <span className='system-md-semibold grow truncate text-text-secondary'>
           {t('datasetPipeline.credentialSelector.name', {
             credentialName: name,
             pluginName,
