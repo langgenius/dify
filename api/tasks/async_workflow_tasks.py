@@ -1,0 +1,189 @@
+"""
+Celery tasks for async workflow execution.
+
+These tasks handle workflow execution for different subscription tiers
+with appropriate retry policies and error handling.
+"""
+
+import json
+from datetime import UTC, datetime
+
+from celery import shared_task
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
+
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.model import App
+from models.workflow import Workflow, WorkflowTriggerStatus
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
+from services.workflow.entities import ExecutionStatus, TriggerData, WorkflowExecutionResult, WorkflowTaskData
+
+
+@shared_task(queue="workflow_professional", bind=True, max_retries=5)
+def execute_workflow_professional(self, task_data_dict: dict) -> dict:
+    """Execute workflow for professional tier with highest priority"""
+    task_data = WorkflowTaskData.model_validate(task_data_dict)
+    return _execute_workflow_common(self, task_data).model_dump()
+
+
+@shared_task(queue="workflow_team", bind=True, max_retries=3)
+def execute_workflow_team(self, task_data_dict: dict) -> dict:
+    """Execute workflow for team tier"""
+    task_data = WorkflowTaskData.model_validate(task_data_dict)
+    return _execute_workflow_common(self, task_data).model_dump()
+
+
+@shared_task(queue="workflow_sandbox", bind=True, max_retries=2)
+def execute_workflow_sandbox(self, task_data_dict: dict) -> dict:
+    """Execute workflow for free tier with lower retry limit"""
+    task_data = WorkflowTaskData.model_validate(task_data_dict)
+    return _execute_workflow_common(self, task_data).model_dump()
+
+
+def _execute_workflow_common(task, task_data: WorkflowTaskData) -> WorkflowExecutionResult:
+    """
+    Common workflow execution logic with trigger log updates
+
+    Args:
+        task: Celery task instance
+        task_data: Validated Pydantic model with task data
+
+    Returns:
+        WorkflowExecutionResult: Pydantic model with execution results
+    """
+    # Create a new session for this task
+    session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+
+    with session_factory() as session:
+        trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
+
+        # Get trigger log
+        trigger_log = trigger_log_repo.get_by_id(task_data.workflow_trigger_log_id)
+
+        if not trigger_log:
+            # This should not happen, but handle gracefully
+            return WorkflowExecutionResult(
+                execution_id=task_data.workflow_trigger_log_id,
+                status=ExecutionStatus.FAILED,
+                error=f"Trigger log not found: {task_data.workflow_trigger_log_id}",
+            )
+
+        # Reconstruct execution data from trigger log
+        trigger_data = TriggerData.model_validate_json(trigger_log.trigger_data)
+
+        # Update status to running
+        trigger_log.status = WorkflowTriggerStatus.RUNNING
+        trigger_log_repo.update(trigger_log)
+        session.commit()
+
+        start_time = datetime.now(UTC)
+
+        try:
+            # Get app and workflow models
+            app_model = session.scalar(select(App).where(App.id == trigger_log.app_id))
+
+            if not app_model:
+                raise ValueError(f"App not found: {trigger_log.app_id}")
+
+            workflow = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
+
+            if not workflow:
+                raise ValueError(f"Workflow not found: {trigger_log.workflow_id}")
+
+            # Get tenant owner as user for triggered workflows
+            tenant_owner = session.scalar(
+                select(Account)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .where(
+                    TenantAccountJoin.tenant_id == trigger_log.tenant_id,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+            )
+
+            if not tenant_owner:
+                raise ValueError(f"Tenant owner not found for tenant: {trigger_log.tenant_id}")
+
+            # Execute workflow using WorkflowAppGenerator
+            generator = WorkflowAppGenerator()
+
+            # Prepare args matching AppGenerateService.generate format
+            args = {"inputs": dict(trigger_data.inputs), "files": list(trigger_data.files)}
+
+            # If workflow_id was specified, add it to args
+            if trigger_data.workflow_id:
+                args["workflow_id"] = trigger_data.workflow_id
+
+            # Execute the workflow
+            result = generator.generate(
+                app_model=app_model,
+                workflow=workflow,
+                user=tenant_owner,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+                call_depth=0,
+                workflow_thread_pool_id=None,
+            )
+
+            # Calculate elapsed time
+            elapsed_time = (datetime.now(UTC) - start_time).total_seconds()
+
+            # Extract relevant data from result
+            if isinstance(result, dict):
+                workflow_run_id = result.get("workflow_run_id")
+                total_tokens = result.get("total_tokens")
+                outputs = result
+            else:
+                # Handle generator result - collect all data
+                workflow_run_id = None
+                total_tokens = None
+                outputs = {"data": "streaming_result"}
+
+            # Update trigger log with success
+            trigger_log.status = WorkflowTriggerStatus.SUCCEEDED
+            trigger_log.workflow_run_id = workflow_run_id
+            trigger_log.outputs = json.dumps(outputs)
+            trigger_log.elapsed_time = elapsed_time
+            trigger_log.total_tokens = total_tokens
+            trigger_log.finished_at = datetime.now(UTC)
+            trigger_log_repo.update(trigger_log)
+            session.commit()
+
+            return WorkflowExecutionResult(
+                execution_id=trigger_log.id,
+                status=ExecutionStatus.COMPLETED,
+                result=outputs,
+                elapsed_time=elapsed_time,
+                total_tokens=total_tokens,
+            )
+
+        except Exception as e:
+            # Calculate elapsed time for failed execution
+            elapsed_time = (datetime.now(UTC) - start_time).total_seconds()
+
+            # Update trigger log with failure
+            trigger_log.status = WorkflowTriggerStatus.FAILED
+            trigger_log.error = str(e)
+            trigger_log.finished_at = datetime.now(UTC)
+            trigger_log.elapsed_time = elapsed_time
+            trigger_log_repo.update(trigger_log)
+
+            if task.request.retries < task.max_retries:
+                # Update retry count in log
+                trigger_log.status = WorkflowTriggerStatus.RETRYING
+                trigger_log.retry_count = task.request.retries + 1
+                trigger_log_repo.update(trigger_log)
+                session.commit()
+
+                # Retry with exponential backoff
+                raise task.retry(exc=e, countdown=60 * (2**task.request.retries))
+            else:
+                # Max retries reached, final failure
+                session.commit()
+
+                return WorkflowExecutionResult(
+                    execution_id=trigger_log.id, status=ExecutionStatus.FAILED, error=str(e), elapsed_time=elapsed_time
+                )
