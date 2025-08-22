@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import type { PluginTriggerNodeType } from './types'
 import useConfig from './use-config'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -12,6 +13,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   id,
   data,
 }) => {
+  const { t } = useTranslation()
   const {
     readOnly,
     currCollection,
@@ -27,9 +29,9 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
     return (
       <div className='mt-2'>
         <div className='space-y-4 px-4 pb-2'>
-          <Field title="Plugin Trigger">
+          <Field title={t('workflow.nodes.triggerPlugin.title')}>
             <div className="text-sm text-gray-500">
-              No plugin selected. Configure this trigger in the workflow canvas.
+              {t('workflow.nodes.triggerPlugin.noPluginSelected')}
             </div>
           </Field>
         </div>
@@ -48,7 +50,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   return (
     <div className='pt-2'>
       {!isShowAuthBtn && formSchemas.length > 0 && (
-        <Field className='px-4' title="Configuration">
+        <Field className='px-4' title={t('workflow.nodes.triggerPlugin.configuration')}>
           <ToolForm
             readOnly={readOnly}
             nodeId={id}
@@ -66,7 +68,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
           <VarItem
             name='trigger_data'
             type='object'
-            description='Data from plugin trigger'
+            description={t('workflow.nodes.triggerPlugin.outputVars.triggerData')}
           />
         </OutputVars>
       </div>

@@ -981,6 +981,14 @@ const translation = {
       nodeTitle: '🔗 Webhook Trigger',
       configPlaceholder: 'Webhook trigger configuration will be implemented here',
     },
+    triggerPlugin: {
+      title: 'Plugin Trigger',
+      configuration: 'Configuration',
+      noPluginSelected: 'No plugin selected. Configure this trigger in the workflow canvas.',
+      outputVars: {
+        triggerData: 'Data from plugin trigger',
+      },
+    },
   },
   triggerStatus: {
     enabled: 'TRIGGER',
