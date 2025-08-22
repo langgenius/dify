@@ -78,6 +78,8 @@ const ValueContent = ({
   }, [currentVar.id, currentVar.value])
 
   const handleTextChange = (value: string) => {
+    if(isTruncated)
+      return
     if (currentVar.value_type === 'string')
       setValue(value)
 
@@ -127,6 +129,8 @@ const ValueContent = ({
   }
 
   const handleEditorChange = (value: string) => {
+    if(isTruncated)
+      return
     setJson(value)
     if (jsonValueValidate(value, currentVar.value_type)) {
       const parsed = JSON.parse(value)
