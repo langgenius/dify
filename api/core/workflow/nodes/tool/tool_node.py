@@ -364,7 +364,7 @@ class ToolNode(BaseNode):
                             ),
                             None,
                         )
-                        if current_plugin is not None:
+                        if current_plugin:
                             icon = current_plugin.declaration.icon
                         icon_dark = None
                         builtin_tool = next(
