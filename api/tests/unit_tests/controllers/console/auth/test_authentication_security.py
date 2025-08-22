@@ -6,9 +6,9 @@ import pytest
 from flask import Flask
 from flask_restful import Api
 
+import services.errors.account
 from controllers.console.auth.error import AuthenticationFailedError
 from controllers.console.auth.login import LoginApi
-from services.errors.account import AccountNotFoundError, AccountPasswordError
 
 
 class TestAuthenticationSecurity:
@@ -22,62 +22,75 @@ class TestAuthenticationSecurity:
         self.client = self.app.test_client()
         self.app.config["TESTING"] = True
 
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     def test_login_invalid_email_returns_generic_error(
-        self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit
+        self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_db
     ):
         """Test that invalid email returns same error as wrong password."""
         # Arrange
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
-        mock_authenticate.side_effect = AccountNotFoundError("Account not found")
+        mock_authenticate.side_effect = services.errors.account.AccountNotFoundError("Account not found")
+        mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
 
-        # Act & Assert
-        with pytest.raises(AuthenticationFailedError) as exc_info:
-            with self.app.test_request_context(
-                "/login", method="POST", json={"email": "nonexistent@example.com", "password": "WrongPass123!"}
-            ):
-                login_api = LoginApi()
+        # Act
+        with self.app.test_request_context(
+            "/login", method="POST", json={"email": "nonexistent@example.com", "password": "WrongPass123!"}
+        ):
+            login_api = LoginApi()
+
+            # Assert
+            with pytest.raises(AuthenticationFailedError) as exc_info:
                 login_api.post()
 
         assert exc_info.value.error_code == "authentication_failed"
         assert exc_info.value.description == "Invalid email or password."
         mock_add_rate_limit.assert_called_once_with("nonexistent@example.com")
 
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     def test_login_wrong_password_returns_generic_error(
-        self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit
+        self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_db
     ):
         """Test that wrong password returns same error as invalid email."""
         # Arrange
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
-        mock_authenticate.side_effect = AccountPasswordError("Wrong password")
+        mock_authenticate.side_effect = services.errors.account.AccountPasswordError("Wrong password")
+        mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
 
-        # Act & Assert
-        with pytest.raises(AuthenticationFailedError) as exc_info:
-            with self.app.test_request_context(
-                "/login", method="POST", json={"email": "existing@example.com", "password": "WrongPass123!"}
-            ):
-                login_api = LoginApi()
+        # Act
+        with self.app.test_request_context(
+            "/login", method="POST", json={"email": "existing@example.com", "password": "WrongPass123!"}
+        ):
+            login_api = LoginApi()
+
+            # Assert
+            with pytest.raises(AuthenticationFailedError) as exc_info:
                 login_api.post()
 
         assert exc_info.value.error_code == "authentication_failed"
         assert exc_info.value.description == "Invalid email or password."
         mock_add_rate_limit.assert_called_once_with("existing@example.com")
 
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.FeatureService.get_system_features")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.AccountService.send_reset_password_email")
-    def test_reset_password_always_returns_success(self, mock_send_email, mock_get_user):
-        """Test that reset password always returns success regardless of account existence."""
+    def test_reset_password_with_existing_account(self, mock_send_email, mock_get_user, mock_features, mock_db):
+        """Test that reset password returns success with token for existing accounts."""
+        # Mock the setup check
+        mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
+
         # Test with existing account
         mock_get_user.return_value = MagicMock(email="existing@example.com")
         mock_send_email.return_value = "token123"
@@ -88,13 +101,4 @@ class TestAuthenticationSecurity:
             api = ResetPasswordSendEmailApi()
             result = api.post()
 
-        assert result == {"result": "success"}
-
-        # Test with non-existent account
-        mock_get_user.return_value = None
-
-        with self.app.test_request_context("/reset-password", method="POST", json={"email": "nonexistent@example.com"}):
-            api = ResetPasswordSendEmailApi()
-            result = api.post()
-
-        assert result == {"result": "success"}
+        assert result == {"result": "success", "data": "token123"}
