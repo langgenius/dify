@@ -117,19 +117,17 @@ class AsyncWorkflowService:
             # 7. Create task data
             queue_name = dispatcher.get_queue_name()
 
-            task_data = WorkflowTaskData(
-                workflow_trigger_log_id=trigger_log.id
-            )
+            task_data = WorkflowTaskData(workflow_trigger_log_id=trigger_log.id)
 
             # 8. Dispatch to appropriate queue
             task_data_dict = task_data.model_dump(mode="json")
 
             if queue_name == QueuePriority.PROFESSIONAL:
-                task = execute_workflow_professional.delay(task_data_dict)
+                task = execute_workflow_professional.delay(task_data_dict)  # type: ignore
             elif queue_name == QueuePriority.TEAM:
-                task = execute_workflow_team.delay(task_data_dict)
+                task = execute_workflow_team.delay(task_data_dict)  # type: ignore
             else:  # SANDBOX
-                task = execute_workflow_sandbox.delay(task_data_dict)
+                task = execute_workflow_sandbox.delay(task_data_dict)  # type: ignore
 
             # 9. Update trigger log with task info
             trigger_log.status = WorkflowTriggerStatus.QUEUED
