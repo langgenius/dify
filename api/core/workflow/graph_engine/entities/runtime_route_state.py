@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 
@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from libs.datetime_utils import naive_utc_now
 
 
 class RouteNodeState(BaseModel):
@@ -71,7 +72,7 @@ class RouteNodeState(BaseModel):
             raise Exception(f"Invalid route status {run_result.status}")
 
         self.node_run_result = run_result
-        self.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        self.finished_at = naive_utc_now()
 
 
 class RuntimeRouteState(BaseModel):
@@ -89,7 +90,7 @@ class RuntimeRouteState(BaseModel):
 
         :param node_id: node id
         """
-        state = RouteNodeState(node_id=node_id, start_at=datetime.now(UTC).replace(tzinfo=None))
+        state = RouteNodeState(node_id=node_id, start_at=naive_utc_now())
         self.node_state_mapping[state.id] = state
         return state
 
