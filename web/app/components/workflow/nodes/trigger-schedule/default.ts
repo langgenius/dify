@@ -22,13 +22,6 @@ const validateHourlyConfig = (config: any, t: any): string => {
   if (config.on_minute === undefined || config.on_minute < 0 || config.on_minute > 59)
     return t('workflow.nodes.triggerSchedule.invalidOnMinute')
 
-  const recurEvery = config.recur_every || 1
-  if (recurEvery < 1 || recurEvery > 999)
-    return t('workflow.nodes.triggerSchedule.invalidRecurEvery')
-
-  if (!config.recur_unit || !['hours', 'minutes'].includes(config.recur_unit))
-    return t('workflow.nodes.triggerSchedule.invalidRecurUnit')
-
   return ''
 }
 

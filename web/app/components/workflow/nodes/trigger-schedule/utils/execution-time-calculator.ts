@@ -26,36 +26,20 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
   if (data.frequency === 'hourly') {
     const onMinute = data.visual_config?.on_minute ?? 0
-    const recurUnit = data.visual_config?.recur_unit || 'hours'
-    const recurEvery = data.visual_config?.recur_every || 1
-
     const now = getCurrentTime(data.timezone)
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
 
     let nextExecution: Date
+    if (currentMinute <= onMinute)
+      nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour, onMinute, 0, 0)
+     else
+      nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour + 1, onMinute, 0, 0)
 
-    if (recurUnit === 'hours') {
-      if (currentMinute <= onMinute)
-        nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour, onMinute, 0, 0)
-       else
-        nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour + recurEvery, onMinute, 0, 0)
-
-      for (let i = 0; i < count; i++) {
-        const execution = new Date(nextExecution)
-        execution.setHours(nextExecution.getHours() + i * recurEvery)
-        times.push(execution)
-      }
-    }
- else {
-      const intervalMs = recurEvery * 60 * 1000
-      nextExecution = new Date(now.getTime() + intervalMs)
-      nextExecution.setSeconds(0, 0)
-
-      for (let i = 0; i < count; i++) {
-        const execution = new Date(nextExecution.getTime() + i * intervalMs)
-        times.push(execution)
-      }
+    for (let i = 0; i < count; i++) {
+      const execution = new Date(nextExecution)
+      execution.setHours(nextExecution.getHours() + i)
+      times.push(execution)
     }
   }
   else if (data.frequency === 'daily') {

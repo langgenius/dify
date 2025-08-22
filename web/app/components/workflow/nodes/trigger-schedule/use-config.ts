@@ -36,8 +36,6 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       visual_config: {
         ...inputs.visual_config,
         ...(frequency === 'hourly') && {
-          recur_every: inputs.visual_config?.recur_every || 1,
-          recur_unit: inputs.visual_config?.recur_unit || 'hours',
           on_minute: inputs.visual_config?.on_minute ?? 0,
         },
       },
@@ -75,28 +73,6 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleRecurEveryChange = useCallback((recur_every: number) => {
-    const newInputs = {
-      ...inputs,
-      visual_config: {
-        ...inputs.visual_config,
-        recur_every,
-      },
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleRecurUnitChange = useCallback((recur_unit: 'hours' | 'minutes') => {
-    const newInputs = {
-      ...inputs,
-      visual_config: {
-        ...inputs.visual_config,
-        recur_unit,
-      },
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
   const handleOnMinuteChange = useCallback((on_minute: number) => {
     const newInputs = {
       ...inputs,
@@ -117,8 +93,6 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     handleCronExpressionChange,
     handleWeekdaysChange,
     handleTimeChange,
-    handleRecurEveryChange,
-    handleRecurUnitChange,
     handleOnMinuteChange,
   }
 }

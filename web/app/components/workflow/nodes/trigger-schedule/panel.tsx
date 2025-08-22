@@ -11,7 +11,6 @@ import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import dayjs from 'dayjs'
 import NextExecutionTimes from './components/next-execution-times'
 import ExecuteNowButton from './components/execute-now-button'
-import RecurConfig from './components/recur-config'
 import MonthlyDaysSelector from './components/monthly-days-selector'
 import OnMinuteSelector from './components/on-minute-selector'
 import Input from '@/app/components/base/input'
@@ -32,8 +31,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
     handleCronExpressionChange,
     handleWeekdaysChange,
     handleTimeChange,
-    handleRecurEveryChange,
-    handleRecurUnitChange,
     handleOnMinuteChange,
   } = useConfig(id, data)
 
@@ -105,15 +102,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                   <WeekdaySelector
                     selectedDays={inputs.visual_config?.weekdays || []}
                     onChange={handleWeekdaysChange}
-                  />
-                )}
-
-                {inputs.frequency === 'hourly' && (
-                  <RecurConfig
-                    recurEvery={inputs.visual_config?.recur_every}
-                    recurUnit={inputs.visual_config?.recur_unit}
-                    onRecurEveryChange={handleRecurEveryChange}
-                    onRecurUnitChange={handleRecurUnitChange}
                   />
                 )}
 
