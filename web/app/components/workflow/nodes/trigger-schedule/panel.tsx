@@ -69,12 +69,12 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                   </div>
                   <div className="col-span-2">
                     <label className="mb-2 block text-xs font-medium text-gray-500">
-                      {inputs.frequency === 'hourly' || inputs.frequency === 'once'
+                      {inputs.frequency === 'hourly'
                         ? t('workflow.nodes.triggerSchedule.startTime')
                         : t('workflow.nodes.triggerSchedule.time')
                       }
                     </label>
-                    {inputs.frequency === 'hourly' || inputs.frequency === 'once' ? (
+                    {inputs.frequency === 'hourly' ? (
                       <DatePicker
                         notClearable={true}
                         value={inputs.visual_config?.datetime ? dayjs(inputs.visual_config.datetime) : dayjs()}

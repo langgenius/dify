@@ -2,7 +2,7 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 
 export type ScheduleMode = 'visual' | 'cron'
 
-export type ScheduleFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'once'
+export type ScheduleFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly'
 
 export type VisualConfig = {
   time?: string

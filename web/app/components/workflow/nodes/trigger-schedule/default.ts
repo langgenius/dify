@@ -97,22 +97,6 @@ const validateMonthlyConfig = (config: any, t: any): string => {
   return ''
 }
 
-const validateOnceConfig = (config: any, t: any): string => {
-  const i18nPrefix = 'workflow.errorMsg'
-
-  if (!config.datetime)
-    return t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.executionTime') })
-
-  const executionTime = new Date(config.datetime)
-  if (Number.isNaN(executionTime.getTime()))
-    return t('workflow.nodes.triggerSchedule.invalidExecutionTime')
-
-  if (executionTime <= new Date())
-    return t('workflow.nodes.triggerSchedule.executionTimeMustBeFuture')
-
-  return ''
-}
-
 const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string => {
   const i18nPrefix = 'workflow.errorMsg'
   const { visual_config } = payload
@@ -129,8 +113,6 @@ const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string 
       return validateWeeklyConfig(visual_config, t)
     case 'monthly':
       return validateMonthlyConfig(visual_config, t)
-    case 'once':
-      return validateOnceConfig(visual_config, t)
     default:
       return t('workflow.nodes.triggerSchedule.invalidFrequency')
   }
