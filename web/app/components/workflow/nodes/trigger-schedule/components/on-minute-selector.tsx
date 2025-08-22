@@ -15,11 +15,12 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
       <label className="mb-2 block text-xs font-medium text-gray-500">
         {t('workflow.nodes.triggerSchedule.onMinute')}
       </label>
-      <div className="flex h-8 items-center justify-between space-x-2">
-        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-components-input-bg-normal text-[13px] text-components-input-text-filled">
+      <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal">
+        <div className="flex h-full w-12 shrink-0 items-center justify-center text-[13px] text-components-input-text-filled">
           {value}
         </div>
-        <div className="flex h-8 grow items-center rounded-lg bg-components-input-bg-normal px-3">
+        <div className="absolute left-12 top-0 h-full w-px bg-components-panel-bg"></div>
+        <div className="flex h-full grow items-center pl-4 pr-3">
           <Slider
             className="w-full"
             value={value}
