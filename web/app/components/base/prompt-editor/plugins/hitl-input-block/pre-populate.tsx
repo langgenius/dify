@@ -73,7 +73,7 @@ const PrePopulate: FC<Props> = ({
   return (
     <div>
       {main}
-      <div className={cn('flex items-center space-x-1 text-text-tertiary')} onClick={() => onIsVariableChange?.(!isVariable)}>
+      <div className={cn('inline-flex h-6 cursor-pointer items-center space-x-1 rounded-md pl-1.5 pr-2 text-text-tertiary hover:bg-components-button-ghost-bg-hover')} onClick={() => onIsVariableChange?.(!isVariable)}>
         <Variable02 className='size-3.5' />
         <div className='system-xs-medium'>{t(`${i18nPrefix}.useVarInstead`)}</div>
       </div>
