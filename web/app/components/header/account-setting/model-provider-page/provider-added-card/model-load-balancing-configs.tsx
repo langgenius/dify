@@ -57,6 +57,7 @@ const ModelLoadBalancingConfigs = ({
   onUpdate,
 }: ModelLoadBalancingConfigsProps) => {
   const { t } = useTranslation()
+  const providerFormSchemaPredefined = configurationMethod === ConfigurationMethodEnum.predefinedModel
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
   const handleOpenModal = useModelModalHandler()
 
@@ -192,7 +193,7 @@ const ModelLoadBalancingConfigs = ({
                     <div className='mr-1 text-[13px]'>
                       {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
                     </div>
-                    {isProviderManaged && (
+                    {isProviderManaged && providerFormSchemaPredefined && (
                       <Badge className='ml-2'>{t('common.modelProvider.providerManaged')}</Badge>
                     )}
                     {
@@ -206,7 +207,7 @@ const ModelLoadBalancingConfigs = ({
                       <>
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
                           {
-                            config.credential_id && !credential?.not_allowed_to_use && (
+                            config.credential_id && !credential?.not_allowed_to_use && !credential?.from_enterprise && (
                               <span
                                 className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
                                 onClick={() => {
