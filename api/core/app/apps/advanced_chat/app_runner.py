@@ -425,25 +425,22 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         # Build memory_id -> value mapping
         for memory in memories:
-            if memory.scope == MemoryScope.APP:
+            if memory.spec.scope == MemoryScope.APP:
                 # App level: use memory_id directly
-                memory_blocks_dict[memory.memory_id] = memory.value
+                memory_blocks_dict[memory.spec.id] = memory.value
             else:  # NODE scope
                 node_id = memory.node_id
                 if not node_id:
-                    logger.warning("Memory block %s has no node_id, skip.", memory.memory_id)
+                    logger.warning("Memory block %s has no node_id, skip.", memory.spec.id)
                     continue
-                key = f"{node_id}.{memory.memory_id}"
+                key = f"{node_id}.{memory.spec.id}"
                 memory_blocks_dict[key] = memory.value
 
         return memory_blocks_dict
 
     def _sync_conversation_to_chatflow_tables(self, assistant_message: str):
-        # Get user input and AI response
-        user_message = self.application_generate_entity.query
-
         ChatflowHistoryService.save_app_message(
-            prompt_message=UserPromptMessage(content=user_message),
+            prompt_message=UserPromptMessage(content=(self.application_generate_entity.query)),
             conversation_id=self.conversation.id,
             app_id=self._workflow.app_id,
             tenant_id=self._workflow.tenant_id
@@ -456,14 +453,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
     def _check_app_memory_updates(self):
-        from core.app.entities.app_invoke_entities import InvokeFrom
-        from services.chatflow_memory_service import ChatflowMemoryService
-
         is_draft = (self.application_generate_entity.invoke_from == InvokeFrom.DEBUGGER)
 
-        ChatflowMemoryService.update_app_memory_after_run(
+        ChatflowMemoryService.update_app_memory_if_needed(
             workflow=self._workflow,
             conversation_id=self.conversation.id,
-            variable_pool=VariablePool(),  # Make a fake pool to satisfy the signature
             is_draft=is_draft
         )

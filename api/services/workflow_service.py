@@ -761,9 +761,9 @@ def _fetch_memory_blocks(workflow: Workflow, conversation_id: str, is_draft: boo
         is_draft=is_draft,
     )
     for memory in memories:
-        if memory.scope == MemoryScope.APP:
-            memory_blocks[memory.memory_id] = memory.value
+        if memory.spec.scope == MemoryScope.APP:
+            memory_blocks[memory.spec.id] = memory.value
         else:  # NODE scope
-            memory_blocks[f"{memory.node_id}.{memory.memory_id}"] = memory.value
+            memory_blocks[f"{memory.node_id}.{memory.spec.id}"] = memory.value
 
     return memory_blocks

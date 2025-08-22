@@ -107,7 +107,6 @@ class ChatflowHistoryService:
         app_id: str,
         tenant_id: str
     ) -> None:
-        """Save PromptMessage to node-specific chatflow conversation."""
         ChatflowHistoryService.save_message(
             prompt_message=prompt_message,
             conversation_id=conversation_id,
@@ -117,50 +116,6 @@ class ChatflowHistoryService:
         )
 
     @staticmethod
-    def save_message_version(
-        prompt_message: PromptMessage,
-        message_index: int,
-        conversation_id: str,
-        app_id: str,
-        tenant_id: str,
-        node_id: Optional[str] = None
-    ) -> None:
-        """
-        Save a new version of an existing message (for message editing scenarios).
-        """
-        with Session(db.engine) as session:
-            chatflow_conv = ChatflowHistoryService._get_or_create_chatflow_conversation(
-                session, conversation_id, app_id, tenant_id, node_id, create_if_missing=True
-            )
-
-            # Get the maximum version number for this index
-            max_version = session.execute(
-                select(func.max(ChatflowMessage.version)).where(
-                    and_(
-                        ChatflowMessage.conversation_id == chatflow_conv.id,
-                        ChatflowMessage.index == message_index
-                    )
-                )
-            ).scalar() or 0
-            next_version = max_version + 1
-
-            # Save new version of the message
-            message_data = {
-                'role': prompt_message.role.value,
-                'content': prompt_message.get_text_content(),
-                'timestamp': time.time()
-            }
-
-            new_message_version = ChatflowMessage(
-                conversation_id=chatflow_conv.id,
-                index=message_index,
-                version=next_version,
-                data=json.dumps(message_data)
-            )
-            session.add(new_message_version)
-            session.commit()
-
-    @staticmethod
     def update_visible_count(
         conversation_id: str,
         node_id: Optional[str],
@@ -168,20 +123,6 @@ class ChatflowHistoryService:
         app_id: str,
         tenant_id: str
     ) -> None:
-        """
-        Update visible_count metadata for specific scope.
-
-        Args:
-            node_id: None for app-level updates, specific node_id for node-level updates
-            new_visible_count: The new visible_count value (typically preserved_turns)
-
-        Usage Examples:
-            # Update app-level visible_count
-            ChatflowHistoryService.update_visible_count(conv_id, None, 10, app_id, tenant_id)
-
-            # Update node-specific visible_count
-            ChatflowHistoryService.update_visible_count(conv_id, "node-123", 8, app_id, tenant_id)
-        """
         with Session(db.engine) as session:
             chatflow_conv = ChatflowHistoryService._get_or_create_chatflow_conversation(
                 session, conversation_id, app_id, tenant_id, node_id, create_if_missing=True

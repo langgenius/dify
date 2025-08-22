@@ -1,4 +1,3 @@
-from datetime import datetime
 from enum import Enum
 from typing import Optional
 from uuid import uuid4
@@ -63,37 +62,12 @@ class MemoryBlock(BaseModel):
 
     These rules implicitly determine scope and term without redundant storage.
     """
-    id: str
-    memory_id: str
-    name: str
+    spec: MemoryBlockSpec
+    tenant_id: str
     value: str
-    scope: MemoryScope  # Derived from node_id: None=APP, str=NODE
-    term: MemoryTerm  # Derived from conversation_id: None=PERSISTENT, str=SESSION
-    app_id: str  # None=global(future), str=app-specific
-    conversation_id: Optional[str] = None  # None=persistent, str=session
-    node_id: Optional[str] = None  # None=app-scope, str=node-scope
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    @property
-    def is_global(self) -> bool:
-        """Check if this is global memory (future feature)"""
-        return self.app_id is None
-
-    @property
-    def is_persistent(self) -> bool:
-        """Check if this is persistent memory (cross-conversation)"""
-        return self.conversation_id is None
-
-    @property
-    def is_app_scope(self) -> bool:
-        """Check if this is app-level scope"""
-        return self.node_id is None
-
-    @property
-    def is_node_scope(self) -> bool:
-        """Check if this is node-level scope"""
-        return self.node_id is not None
+    app_id: str
+    conversation_id: Optional[str] = None
+    node_id: Optional[str] = None
 
 class MemoryBlockWithVisibility(BaseModel):
     id: str
