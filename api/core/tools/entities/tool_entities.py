@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import enum
 from collections.abc import Mapping
 from enum import Enum
@@ -227,10 +228,8 @@ class ToolInvokeMessage(BaseModel):
     @classmethod
     def decode_blob_message(cls, v):
         if isinstance(v, dict) and "blob" in v:
-            try:
+            with contextlib.suppress(Exception):
                 v["blob"] = base64.b64decode(v["blob"])
-            except Exception:
-                pass
         return v
 
     @field_serializer("message")

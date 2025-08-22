@@ -1,3 +1,4 @@
+import contextlib
 from copy import deepcopy
 from typing import Any, Optional, Protocol
 
@@ -111,14 +112,12 @@ class ProviderConfigEncrypter:
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
-                    try:
+                    with contextlib.suppress(Exception):
                         # if the value is None or empty string, skip decrypt
                         if not data[field_name]:
                             continue
 
                         data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
-                    except Exception:
-                        pass
 
         self.provider_config_cache.set(data)
         return data

@@ -126,7 +126,7 @@ class SegmentType(StrEnum):
         """
         if self.is_array_type():
             return self._validate_array(value, array_validation)
-        elif self == SegmentType.NUMBER:
+        elif self in [SegmentType.INTEGER, SegmentType.FLOAT, SegmentType.NUMBER]:
             return isinstance(value, (int, float))
         elif self == SegmentType.STRING:
             return isinstance(value, str)
@@ -165,7 +165,6 @@ _ARRAY_TYPES = frozenset(
         SegmentType.ARRAY_ANY,
     ]
 )
-
 
 _NUMERICAL_TYPES = frozenset(
     [

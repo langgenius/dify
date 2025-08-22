@@ -80,7 +80,7 @@ const PanelOperatorPopup = ({
                 )
               }
             </div>
-            <div className='h-[1px] bg-divider-regular'></div>
+            <div className='h-px bg-divider-regular'></div>
           </>
         )
       }
@@ -109,7 +109,7 @@ const PanelOperatorPopup = ({
                 <ShortcutsName keys={['ctrl', 'd']} />
               </div>
             </div>
-            <div className='h-[1px] bg-divider-regular'></div>
+            <div className='h-px bg-divider-regular'></div>
             {
               !nodeMetaData.isUndeletable && (
                 <>
@@ -125,7 +125,7 @@ const PanelOperatorPopup = ({
                       <ShortcutsName keys={['del']} />
                     </div>
                   </div>
-                  <div className='h-[1px] bg-divider-regular'></div>
+                  <div className='h-px bg-divider-regular'></div>
                 </>
               )
             }
@@ -144,7 +144,7 @@ const PanelOperatorPopup = ({
                 {t('workflow.panel.helpLink')}
               </a>
             </div>
-            <div className='h-[1px] bg-divider-regular'></div>
+            <div className='h-px bg-divider-regular'></div>
           </>
         )
       }

@@ -1,3 +1,4 @@
+import contextlib
 import json
 from collections import defaultdict
 from json import JSONDecodeError
@@ -624,14 +625,12 @@ class ProviderManager:
 
                 for variable in provider_credential_secret_variables:
                     if variable in provider_credentials:
-                        try:
+                        with contextlib.suppress(ValueError):
                             provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                 provider_credentials.get(variable) or "",  # type: ignore
                                 self.decoding_rsa_key,
                                 self.decoding_cipher_rsa,
                             )
-                        except ValueError:
-                            pass
 
                 # cache provider credentials
                 provider_credentials_cache.set(credentials=provider_credentials)
@@ -672,14 +671,12 @@ class ProviderManager:
 
                 for variable in model_credential_secret_variables:
                     if variable in provider_model_credentials:
-                        try:
+                        with contextlib.suppress(ValueError):
                             provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                 provider_model_credentials.get(variable),
                                 self.decoding_rsa_key,
                                 self.decoding_cipher_rsa,
                             )
-                        except ValueError:
-                            pass
 
                 # cache provider model credentials
                 provider_model_credentials_cache.set(credentials=provider_model_credentials)
