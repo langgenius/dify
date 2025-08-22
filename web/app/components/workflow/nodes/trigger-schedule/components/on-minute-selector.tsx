@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputNumber } from '@/app/components/base/input-number'
+import InputNumberWithSlider from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
 
 type OnMinuteSelectorProps = {
   value?: number
@@ -15,18 +15,16 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
       <label className="mb-2 block text-xs font-medium text-gray-500">
         {t('workflow.nodes.triggerSchedule.onMinute')}
       </label>
-      <div className="flex items-center gap-2">
-        <InputNumber
+      <div className="space-y-2">
+        <InputNumberWithSlider
           value={value}
-          onChange={newValue => onChange(newValue || 0)}
           min={0}
           max={59}
-          className="text-center"
-          placeholder="0"
+          onChange={onChange}
         />
-        <span className="text-xs text-gray-500">
-          {t('workflow.nodes.triggerSchedule.minutesLabel')}
-        </span>
+        <div className="text-xs text-gray-500">
+          {t('workflow.nodes.triggerSchedule.onMinuteDescription')}
+        </div>
       </div>
     </div>
   )
