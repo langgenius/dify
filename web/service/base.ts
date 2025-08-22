@@ -299,9 +299,9 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
-    headers: {
+    headers: token ? {
       Authorization: `Bearer ${token}`,
-    },
+    } : {},
     data: {},
   }
   options = {
@@ -366,14 +366,12 @@ export const ssePost = async (
   } = otherOptions
   const abortController = new AbortController()
 
-  const token = localStorage.getItem('console_token')
+  // No need to get token from localStorage, cookies will be sent automatically
 
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
-    headers: new Headers({
-      Authorization: `Bearer ${token}`,
-    }),
+    headers: new Headers({}),
   } as RequestInit, fetchOptions)
 
   const contentType = (options.headers as Headers).get('Content-Type')
@@ -392,7 +390,9 @@ export const ssePost = async (
     options.body = JSON.stringify(body)
 
   const accessToken = await getAccessToken(isPublicAPI)
-    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
+  // Only set Authorization header for public API or if token exists
+  if (accessToken)
+    (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
@@ -501,8 +501,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'unauthorized_and_force_logout') {
-        localStorage.removeItem('console_token')
-        localStorage.removeItem('refresh_token')
+        // Cookies will be cleared by the backend
         globalThis.location.reload()
         return Promise.reject(err)
       }

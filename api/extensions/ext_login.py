@@ -34,7 +34,11 @@ def load_user_from_request(request_from_flask_login):
         if auth_scheme != "bearer":
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
     else:
-        auth_token = request.args.get("_token")
+        # Try to get token from cookie first (for web console)
+        auth_token = request.cookies.get("access_token")
+        if not auth_token:
+            # Fallback to query parameter for backward compatibility
+            auth_token = request.args.get("_token")
 
     # Check for admin API key authentication first
     if dify_config.ADMIN_API_KEY_ENABLE and auth_header:

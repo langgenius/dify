@@ -56,8 +56,7 @@ export default function AppSelector() {
     })
 
     localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
+    // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info
     localStorage.removeItem('education-reverify-prev-expire-at')

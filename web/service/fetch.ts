@@ -86,7 +86,9 @@ export async function getAccessToken(isPublicAPI?: boolean) {
     return accessTokenJson[sharedToken]?.[userId || 'DEFAULT']
   }
   else {
-    return localStorage.getItem('console_token') || ''
+    // For console authentication, cookies will be sent automatically
+    // Return empty string to maintain backward compatibility
+    return ''
   }
 }
 
@@ -96,8 +98,11 @@ const beforeRequestPublicAuthorization: BeforeRequestHook = async (request) => {
 }
 
 const beforeRequestAuthorization: BeforeRequestHook = async (request) => {
+  // For console requests, cookies will be sent automatically
+  // Only set Authorization header if we have a token (for backward compatibility)
   const accessToken = await getAccessToken()
-  request.headers.set('Authorization', `Bearer ${accessToken}`)
+  if (accessToken)
+    request.headers.set('Authorization', `Bearer ${accessToken}`)
 }
 
 const baseHooks: Hooks = {

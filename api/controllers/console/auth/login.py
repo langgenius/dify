@@ -1,7 +1,7 @@
 from typing import cast
 
 import flask_login
-from flask import request
+from flask import make_response, request
 from flask_restx import Resource, reqparse
 
 import services
@@ -101,7 +101,32 @@ class LoginApi(Resource):
 
         token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": token_pair.model_dump()}
+
+        # Create response with cookies instead of returning tokens in body
+        response = make_response({"result": "success"})
+
+        # Set HTTP-only secure cookies for tokens
+        # Max age is 30 days for refresh token
+        response.set_cookie(
+            "access_token",
+            value=token_pair.access_token,
+            httponly=True,
+            secure=request.is_secure,  # Use secure flag in production (HTTPS)
+            samesite="Lax",
+            max_age=60 * 60 * 24,  # 1 day for access token
+            path="/",
+        )
+        response.set_cookie(
+            "refresh_token",
+            value=token_pair.refresh_token,
+            httponly=True,
+            secure=request.is_secure,
+            samesite="Lax",
+            max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
+            path="/",
+        )
+
+        return response
 
 
 class LogoutApi(Resource):
@@ -109,10 +134,17 @@ class LogoutApi(Resource):
     def get(self):
         account = cast(Account, flask_login.current_user)
         if isinstance(account, flask_login.AnonymousUserMixin):
-            return {"result": "success"}
-        AccountService.logout(account=account)
-        flask_login.logout_user()
-        return {"result": "success"}
+            response = make_response({"result": "success"})
+        else:
+            AccountService.logout(account=account)
+            flask_login.logout_user()
+            response = make_response({"result": "success"})
+
+        # Clear cookies on logout
+        response.set_cookie("access_token", "", expires=0, path="/")
+        response.set_cookie("refresh_token", "", expires=0, path="/")
+
+        return response
 
 
 class ResetPasswordSendEmailApi(Resource):
@@ -229,20 +261,70 @@ class EmailCodeLoginApi(Resource):
                 raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": token_pair.model_dump()}
+
+        # Create response with cookies instead of returning tokens in body
+        response = make_response({"result": "success"})
+
+        # Set HTTP-only secure cookies for tokens
+        response.set_cookie(
+            "access_token",
+            value=token_pair.access_token,
+            httponly=True,
+            secure=request.is_secure,
+            samesite="Lax",
+            max_age=60 * 60 * 24,  # 1 day for access token
+            path="/",
+        )
+        response.set_cookie(
+            "refresh_token",
+            value=token_pair.refresh_token,
+            httponly=True,
+            secure=request.is_secure,
+            samesite="Lax",
+            max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
+            path="/",
+        )
+
+        return response
 
 
 class RefreshTokenApi(Resource):
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("refresh_token", type=str, required=True, location="json")
-        args = parser.parse_args()
+        # Get refresh token from cookie instead of request body
+        refresh_token = request.cookies.get("refresh_token")
+
+        if not refresh_token:
+            return {"result": "fail", "message": "No refresh token provided"}, 401
 
         try:
-            new_token_pair = AccountService.refresh_token(args["refresh_token"])
-            return {"result": "success", "data": new_token_pair.model_dump()}
+            new_token_pair = AccountService.refresh_token(refresh_token)
+
+            # Create response with new cookies
+            response = make_response({"result": "success"})
+
+            # Update cookies with new tokens
+            response.set_cookie(
+                "access_token",
+                value=new_token_pair.access_token,
+                httponly=True,
+                secure=request.is_secure,
+                samesite="Lax",
+                max_age=60 * 60 * 24,  # 1 day for access token
+                path="/",
+            )
+            response.set_cookie(
+                "refresh_token",
+                value=new_token_pair.refresh_token,
+                httponly=True,
+                secure=request.is_secure,
+                samesite="Lax",
+                max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
+                path="/",
+            )
+
+            return response
         except Exception as e:
-            return {"result": "fail", "data": str(e)}, 401
+            return {"result": "fail", "message": str(e)}, 401
 
 
 api.add_resource(LoginApi, "/login")

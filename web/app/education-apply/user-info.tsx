@@ -18,8 +18,7 @@ const UserInfo = () => {
     })
 
     localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
+    // Tokens are now stored in cookies and cleared by backend
 
     router.push('/signin')
   }

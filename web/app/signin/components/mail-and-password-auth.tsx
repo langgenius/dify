@@ -73,8 +73,6 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          localStorage.setItem('console_token', res.data.access_token)
-          localStorage.setItem('refresh_token', res.data.refresh_token)
           const redirectUrl = resolvePostLoginRedirect(searchParams)
           router.replace(redirectUrl || '/apps')
         }
