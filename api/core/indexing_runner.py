@@ -9,7 +9,6 @@ import uuid
 from typing import Any, Optional, cast
 
 from flask import current_app
-from flask_login import current_user
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -30,7 +29,7 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from core.tools.utils.rag_web_reader import get_image_upload_file_ids
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -295,7 +294,7 @@ class IndexingRunner:
                 text_docs,
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,
             )

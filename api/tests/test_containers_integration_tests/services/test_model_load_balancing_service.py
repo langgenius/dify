@@ -469,6 +469,6 @@ class TestModelLoadBalancingService:
 
         # Verify inherit config was created in database
         inherit_configs = (
-            db.session.query(LoadBalancingModelConfig).filter(LoadBalancingModelConfig.name == "__inherit__").all()
+            db.session.query(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__").all()
         )
         assert len(inherit_configs) == 1

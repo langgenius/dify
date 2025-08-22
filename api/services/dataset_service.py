@@ -251,6 +251,11 @@ class DatasetService:
         return dataset
 
     @staticmethod
+    def check_doc_form(dataset: Dataset, doc_form: str):
+        if dataset.doc_form and doc_form != dataset.doc_form:
+            raise ValueError("doc_form is different from the dataset doc_form.")
+
+    @staticmethod
     def check_dataset_model_setting(dataset):
         if dataset.indexing_technique == "high_quality":
             try:
@@ -1085,6 +1090,8 @@ class DocumentService:
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
+        # check doc_form
+        DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
         features = FeatureService.get_features(current_user.current_tenant_id)
 

@@ -175,7 +175,7 @@ const WorkflowToolConfigureButton = ({
 
   return (
     <>
-      <Divider type='horizontal' className='h-[1px] bg-divider-subtle' />
+      <Divider type='horizontal' className='h-px bg-divider-subtle' />
       {(!published || !isLoading) && (
         <div className={cn(
           'group rounded-lg bg-background-section-burn transition-colors',
