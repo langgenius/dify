@@ -102,44 +102,70 @@ class WorkflowCommentService:
         comment_id: str,
         user_id: str,
         content: str,
+        position_x: Optional[float] = None,
+        position_y: Optional[float] = None,
         mentioned_user_ids: Optional[list[str]] = None,
-    ) -> WorkflowComment:
+    ) -> dict:
         """Update a workflow comment."""
-
-        comment = WorkflowCommentService.get_comment(tenant_id, app_id, comment_id)
-
-        # Only the creator can update the comment
-        if comment.created_by != user_id:
-            raise Forbidden("Only the comment creator can update it")
-
         if len(content.strip()) == 0:
             raise ValueError("Comment content cannot be empty")
 
         if len(content) > 1000:
             raise ValueError("Comment content cannot exceed 1000 characters")
 
-        comment.content = content
-
-        # Update mentions - first remove existing mentions
-        existing_mentions = (
-            db.session.query(WorkflowCommentMention).filter(WorkflowCommentMention.comment_id == comment.id).all()
-        )
-        for mention in existing_mentions:
-            db.session.delete(mention)
-
-        # Add new mentions
-        mentioned_user_ids = mentioned_user_ids or []
-        for user_id_str in mentioned_user_ids:
-            if isinstance(user_id_str, str) and uuid_value(user_id_str):
-                mention = WorkflowCommentMention(
-                    comment_id=comment.id, 
-                    reply_id=None,  # This is a comment mention
-                    mentioned_user_id=user_id_str
+        with Session(db.engine) as session:
+            # Get comment with validation
+            stmt = (
+                select(WorkflowComment)
+                .where(
+                    WorkflowComment.id == comment_id,
+                    WorkflowComment.tenant_id == tenant_id,
+                    WorkflowComment.app_id == app_id,
                 )
-                db.session.add(mention)
+            )
+            comment = session.scalar(stmt)
+            
+            if not comment:
+                raise NotFound("Comment not found")
 
-        db.session.commit()
-        return comment
+            # Only the creator can update the comment
+            if comment.created_by != user_id:
+                raise Forbidden("Only the comment creator can update it")
+
+            # Update comment fields
+            comment.content = content
+            if position_x is not None:
+                comment.position_x = position_x
+            if position_y is not None:
+                comment.position_y = position_y
+
+            # Update mentions - first remove existing mentions for this comment only (not replies)
+            existing_mentions = session.scalars(
+                select(WorkflowCommentMention).where(
+                    WorkflowCommentMention.comment_id == comment.id,
+                    WorkflowCommentMention.reply_id.is_(None)  # Only comment mentions, not reply mentions
+                )
+            ).all()
+            for mention in existing_mentions:
+                session.delete(mention)
+
+            # Add new mentions
+            mentioned_user_ids = mentioned_user_ids or []
+            for user_id_str in mentioned_user_ids:
+                if isinstance(user_id_str, str) and uuid_value(user_id_str):
+                    mention = WorkflowCommentMention(
+                        comment_id=comment.id, 
+                        reply_id=None,  # This is a comment mention
+                        mentioned_user_id=user_id_str
+                    )
+                    session.add(mention)
+
+            session.commit()
+            
+            return {
+                "id": comment.id,
+                "updated_at": comment.updated_at
+            }
 
     @staticmethod
     def delete_comment(tenant_id: str, app_id: str, comment_id: str, user_id: str) -> None:

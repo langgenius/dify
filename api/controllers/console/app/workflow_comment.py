@@ -87,19 +87,23 @@ class WorkflowCommentDetailApi(Resource):
         """Update a workflow comment."""
         parser = reqparse.RequestParser()
         parser.add_argument("content", type=str, required=True, location="json")
+        parser.add_argument("position_x", type=float, required=False, location="json")
+        parser.add_argument("position_y", type=float, required=False, location="json")
         parser.add_argument("mentioned_user_ids", type=list, location="json", default=[])
         args = parser.parse_args()
 
-        comment = WorkflowCommentService.update_comment(
+        result = WorkflowCommentService.update_comment(
             tenant_id=current_user.current_tenant_id,
             app_id=app_model.id,
             comment_id=comment_id,
             user_id=current_user.id,
             content=args.content,
+            position_x=args.position_x,
+            position_y=args.position_y,
             mentioned_user_ids=args.mentioned_user_ids,
         )
 
-        return comment
+        return result
 
     @login_required
     @setup_required

@@ -72,12 +72,10 @@ workflow_comment_create_fields = {
     "created_at": TimestampField,
 }
 
-# Comment update response fields
+# Comment update response fields (simplified)
 workflow_comment_update_fields = {
     "id": fields.String,
-    "content": fields.String,
     "updated_at": TimestampField,
-    "mentions": fields.List(fields.Nested(workflow_comment_mention_fields)),
 }
 
 # Comment resolve response fields
