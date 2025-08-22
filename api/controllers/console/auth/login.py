@@ -76,7 +76,10 @@ class LoginApi(Resource):
                 account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
-        except (services.errors.account.AccountPasswordError, services.errors.account.AccountNotFoundError):
+        except services.errors.account.AccountPasswordError:
+            AccountService.add_login_error_rate_limit(args["email"])
+            raise AuthenticationFailedError()
+        except services.errors.account.AccountNotFoundError:
             AccountService.add_login_error_rate_limit(args["email"])
             raise AuthenticationFailedError()
         # SELF_HOSTED only have one workspace
@@ -126,14 +129,15 @@ class ResetPasswordSendEmailApi(Resource):
         except AccountRegisterError as are:
             raise AccountInFreezeError()
 
-        if account is not None:
-            token = AccountService.send_reset_password_email(account=account, language=language)
+        if account is None:
+            if FeatureService.get_system_features().is_allow_register:
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
+            else:
+                raise AccountNotFound()
         else:
-            # Don't reveal whether account exists
-            token = AccountService.send_reset_password_email(email=args["email"], language=language)
+            token = AccountService.send_reset_password_email(account=account, language=language)
 
-        # Always return success to prevent user enumeration
-        return {"result": "success"}
+        return {"result": "success", "data": token}
 
 
 class EmailCodeLoginSendEmailApi(Resource):
@@ -157,14 +161,15 @@ class EmailCodeLoginSendEmailApi(Resource):
         except AccountRegisterError as are:
             raise AccountInFreezeError()
 
-        if account is not None:
-            token = AccountService.send_email_code_login_email(account=account, language=language)
+        if account is None:
+            if FeatureService.get_system_features().is_allow_register:
+                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
+            else:
+                raise AccountNotFound()
         else:
-            # Don't reveal whether account exists
-            token = AccountService.send_email_code_login_email(email=args["email"], language=language)
+            token = AccountService.send_email_code_login_email(account=account, language=language)
 
-        # Always return success to prevent user enumeration
-        return {"result": "success"}
+        return {"result": "success", "data": token}
 
 
 class EmailCodeLoginApi(Resource):

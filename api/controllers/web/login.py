@@ -32,7 +32,9 @@ class LoginApi(Resource):
             account = WebAppAuthService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
-        except (services.errors.account.AccountPasswordError, services.errors.account.AccountNotFoundError):
+        except services.errors.account.AccountPasswordError:
+            raise AuthenticationFailedError()
+        except services.errors.account.AccountNotFoundError:
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
@@ -64,14 +66,12 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "en-US"
 
         account = WebAppAuthService.get_user_through_email(args["email"])
-        if account is not None:
-            token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
+        if account is None:
+            raise AccountNotFound()
         else:
-            # Don't reveal whether account exists, but generate a dummy token
-            token = "dummy_token_for_non_existent_account"
+            token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
 
-        # Always return success to prevent user enumeration
-        return {"result": "success"}
+        return {"result": "success", "data": token}
 
 
 class EmailCodeLoginApi(Resource):
