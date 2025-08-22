@@ -35,15 +35,10 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       frequency,
       visual_config: {
         ...inputs.visual_config,
-        ...(frequency === 'hourly') && !inputs.visual_config?.datetime && {
-          datetime: new Date().toISOString(),
-        },
         ...(frequency === 'hourly') && {
           recur_every: inputs.visual_config?.recur_every || 1,
           recur_unit: inputs.visual_config?.recur_unit || 'hours',
-        },
-        ...(frequency !== 'hourly') && {
-          datetime: undefined,
+          on_minute: inputs.visual_config?.on_minute ?? 0,
         },
       },
     }
@@ -102,6 +97,17 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleOnMinuteChange = useCallback((on_minute: number) => {
+    const newInputs = {
+      ...inputs,
+      visual_config: {
+        ...inputs.visual_config,
+        on_minute,
+      },
+    }
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
@@ -113,6 +119,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     handleTimeChange,
     handleRecurEveryChange,
     handleRecurUnitChange,
+    handleOnMinuteChange,
   }
 }
 

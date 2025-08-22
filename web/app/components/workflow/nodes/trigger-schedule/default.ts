@@ -19,17 +19,8 @@ const isValidTimeFormat = (time: string): boolean => {
 }
 
 const validateHourlyConfig = (config: any, t: any): string => {
-  const i18nPrefix = 'workflow.errorMsg'
-
-  if (!config.datetime)
-    return t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.startTime') })
-
-  const startTime = new Date(config.datetime)
-  if (Number.isNaN(startTime.getTime()))
-    return t('workflow.nodes.triggerSchedule.invalidStartTime')
-
-  if (startTime <= new Date())
-    return t('workflow.nodes.triggerSchedule.startTimeMustBeFuture')
+  if (config.on_minute === undefined || config.on_minute < 0 || config.on_minute > 59)
+    return t('workflow.nodes.triggerSchedule.invalidOnMinute')
 
   const recurEvery = config.recur_every || 1
   if (recurEvery < 1 || recurEvery > 999)
