@@ -160,15 +160,11 @@ def init_app(app: DifyApp) -> Celery:
         }
     # Configure task routing for async workflow queues
     task_routes = {
-        'tasks.async_workflow_tasks.execute_workflow_professional': {'queue': 'workflow_professional'},
-        'tasks.async_workflow_tasks.execute_workflow_team': {'queue': 'workflow_team'},
-        'tasks.async_workflow_tasks.execute_workflow_sandbox': {'queue': 'workflow_sandbox'},
+        "tasks.async_workflow_tasks.execute_workflow_professional": {"queue": "workflow_professional"},
+        "tasks.async_workflow_tasks.execute_workflow_team": {"queue": "workflow_team"},
+        "tasks.async_workflow_tasks.execute_workflow_sandbox": {"queue": "workflow_sandbox"},
     }
-    
-    celery_app.conf.update(
-        beat_schedule=beat_schedule, 
-        imports=imports,
-        task_routes=task_routes
-    )
+
+    celery_app.conf.update(beat_schedule=beat_schedule, imports=imports, task_routes=task_routes)
 
     return celery_app

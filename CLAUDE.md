@@ -60,7 +60,7 @@ pnpm test                         # Run Jest tests
 - No `Any` types unless absolutely necessary
 - Implement special methods (`__repr__`, `__str__`) appropriately
 
-### TypeScript/JavaScript  
+### TypeScript/JavaScript
 
 - Strict TypeScript configuration
 - ESLint with Prettier integration
@@ -79,9 +79,9 @@ pnpm test                         # Run Jest tests
 ### Adding a New API Endpoint
 
 1. Create controller in `/api/controllers/`
-2. Add service logic in `/api/services/`
-3. Update routes in controller's `__init__.py`
-4. Write tests in `/api/tests/`
+1. Add service logic in `/api/services/`
+1. Update routes in controller's `__init__.py`
+1. Write tests in `/api/tests/`
 
 ## Project-Specific Conventions
 

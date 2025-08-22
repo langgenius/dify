@@ -1266,6 +1266,7 @@ def is_system_variable_editable(name: str) -> bool:
 
 class WorkflowTriggerStatus(StrEnum):
     """Workflow Trigger Execution Status"""
+
     PENDING = "pending"
     QUEUED = "queued"
     RUNNING = "running"
@@ -1278,9 +1279,9 @@ class WorkflowTriggerStatus(StrEnum):
 class WorkflowTriggerLog(Base):
     """
     Workflow Trigger Log
-    
+
     Track async trigger workflow runs with re-invocation capability
-    
+
     Attributes:
     - id (uuid) Trigger Log ID (used as workflow_trigger_log_id)
     - tenant_id (uuid) Workspace ID
@@ -1302,7 +1303,7 @@ class WorkflowTriggerLog(Base):
     - triggered_at (timestamp) Optional - When actually triggered
     - finished_at (timestamp) Optional - Completion time
     """
-    
+
     __tablename__ = "workflow_trigger_logs"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_trigger_log_pkey"),
@@ -1310,32 +1311,32 @@ class WorkflowTriggerLog(Base):
         sa.Index("workflow_trigger_log_status_idx", "status"),
         sa.Index("workflow_trigger_log_created_at_idx", "created_at"),
     )
-    
+
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    
+
     trigger_type: Mapped[str] = mapped_column(String(50), nullable=False)
     trigger_data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Full TriggerData as JSON
     inputs: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Just inputs for easy viewing
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
-    
+
     status: Mapped[str] = mapped_column(String(50), nullable=False, default=WorkflowTriggerStatus.PENDING)
     error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
-    
+
     queue_name: Mapped[str] = mapped_column(String(100), nullable=False)
     celery_task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     retry_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    
+
     elapsed_time: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
     total_tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    
+
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary for API responses"""
         return {
