@@ -17,9 +17,7 @@ import { useRouter } from 'next/navigation'
 import Details from './details'
 import Content from './content'
 import Actions from './actions'
-import type { CreateDatasetReq } from '@/models/datasets'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
-import CreateModal from './create-modal'
 import { useInvalid } from '@/service/use-base'
 import { useResetDatasetList } from '@/service/knowledge/use-dataset'
 
@@ -39,7 +37,6 @@ const TemplateCard = ({
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById({
     template_id: pipeline.id,
@@ -49,12 +46,7 @@ const TemplateCard = ({
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const resetDatasetList = useResetDatasetList()
 
-  const openCreateModal = useCallback(() => {
-    setShowCreateModal(true)
-  }, [])
-
-  // todo: Directly create a pipeline dataset, no need to fill in the form
-  const handleUseTemplate = useCallback(async (payload: Omit<CreateDatasetReq, 'yaml_content'>) => {
+  const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
       Toast.notify({
@@ -64,7 +56,6 @@ const TemplateCard = ({
       return
     }
     const request = {
-      ...payload,
       yaml_content: pipelineTemplateInfo.export_data,
     }
     await createDataset(request, {
@@ -76,7 +67,6 @@ const TemplateCard = ({
         resetDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
-        setShowCreateModal(false)
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
@@ -158,7 +148,7 @@ const TemplateCard = ({
         chunkStructure={pipeline.chunk_structure}
       />
       <Actions
-        onApplyTemplate={openCreateModal}
+        onApplyTemplate={handleUseTemplate}
         handleShowTemplateDetails={handleShowTemplateDetails}
         showMoreOperations={showMoreOperations}
         openEditModal={openEditModal}
@@ -196,18 +186,10 @@ const TemplateCard = ({
             id={pipeline.id}
             type={type}
             onClose={closeDetailsModal}
-            onApplyTemplate={openCreateModal}
+            onApplyTemplate={handleUseTemplate}
           />
         </Modal>
       )}
-      {showCreateModal && (
-        <CreateModal
-          show={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleUseTemplate}
-        />
-      )
-      }
     </div>
   )
 }

@@ -752,15 +752,6 @@ export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
 }
 
 export type CreateDatasetReq = {
-  name: string
-  description: string
-  icon_info: IconInfo
-  doc_form?: ChunkingMode
-  permission: DatasetPermission
-  partial_member_list?: {
-    user_id: string
-    role?: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
-  }[]
   yaml_content?: string
 }
 

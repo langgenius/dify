@@ -36,7 +36,7 @@ const Content = ({
             <Icon className='size-4' />
           </div>
         </div>
-        <div className='flex grow flex-col gap-y-1 py-px'>
+        <div className='flex grow flex-col gap-y-1 overflow-hidden py-px'>
           <div
             className='system-md-semibold truncate text-text-secondary'
             title={name}
