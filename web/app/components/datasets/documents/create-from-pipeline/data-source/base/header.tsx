@@ -22,8 +22,8 @@ const Header = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center gap-x-2'>
-      <div className='flex grow items-center gap-x-1 overflow-hidden'>
+    <div className='flex items-center justify-between gap-x-2'>
+      <div className='flex items-center gap-x-1 overflow-hidden'>
         <CredentialSelector
           {...rest}
         />
