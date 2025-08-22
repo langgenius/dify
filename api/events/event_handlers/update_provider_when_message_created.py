@@ -188,7 +188,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
     # Use SQLAlchemy's context manager for transaction management
     # This automatically handles commit/rollback
-    with Session(db.engine) as session:
+    with Session(db.engine) as session, session.begin():
         # Use a single transaction for all updates
         for update_operation in updates_to_perform:
             filters = update_operation.filters
