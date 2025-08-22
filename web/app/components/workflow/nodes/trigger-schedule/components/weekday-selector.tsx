@@ -19,11 +19,15 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
     { key: 'sat', label: 'Sat' },
   ]
 
-  const selectedDay = selectedDays.length > 0 ? selectedDays[0] : 'sun'
-
   const handleDaySelect = (dayKey: string) => {
-    onChange([dayKey])
+    const current = selectedDays || []
+    const newSelected = current.includes(dayKey)
+      ? current.filter(d => d !== dayKey)
+      : [...current, dayKey]
+    onChange(newSelected.length > 0 ? newSelected : [dayKey])
   }
+
+  const isDaySelected = (dayKey: string) => selectedDays.includes(dayKey)
 
   return (
     <div className="space-y-2">
@@ -36,7 +40,7 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
             key={day.key}
             type="button"
             className={`flex-1 rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
-              selectedDay === day.key
+              isDaySelected(day.key)
                 ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
                 : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
             }`}
