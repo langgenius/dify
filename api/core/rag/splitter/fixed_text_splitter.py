@@ -90,7 +90,20 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         # Now that we have the separator, split the text
         if separator:
             if separator == " ":
-                splits = text.split()
+                # Handling space separator like in _split_text_with_regex
+                if self._keep_separator:
+                    splits = text.split(" ")
+                    splits = [s for s in splits if s != ""]
+                    # Add space separators back to keep them
+                    final_splits = []
+                    for i, split in enumerate(splits):
+                        if i > 0:
+                            final_splits.append(" ")
+                        final_splits.append(split)
+                    splits = final_splits
+                else:
+                    splits = text.split(" ")
+                    splits = [s for s in splits if s != ""]
             else:
                 splits = text.split(separator)
                 splits = [item + separator if i < len(splits) else item for i, item in enumerate(splits)]
@@ -99,7 +112,11 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         splits = [s for s in splits if (s not in {"", "\n"})]
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
-        _separator = "" if self._keep_separator else separator
+        # When keep_separator=True and separator is space, preserve it for merging
+        if self._keep_separator and separator == " ":
+            _separator = ""
+        else:
+            _separator = "" if self._keep_separator else separator
         s_lens = self._length_function(splits)
         if separator != "":
             for s, s_len in zip(splits, s_lens):
