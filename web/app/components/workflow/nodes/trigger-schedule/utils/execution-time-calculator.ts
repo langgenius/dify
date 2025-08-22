@@ -1,9 +1,9 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import { formatDateInTimezone, getCurrentTimeInTimezone } from './timezone-utils'
 
-// Helper function to get current time - timezone is handled by Date object natively
-const getCurrentTime = (): Date => {
-  return new Date()
+const getCurrentTime = (timezone?: string): Date => {
+  return timezone ? getCurrentTimeInTimezone(timezone) : new Date()
 }
 
 // Helper function to get default datetime for once/hourly modes - consistent with base DatePicker
@@ -29,7 +29,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const recurUnit = data.visual_config?.recur_unit || 'hours'
     const recurEvery = data.visual_config?.recur_every || 1
 
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
 
@@ -65,7 +65,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     const baseExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
 
     // Calculate initial offset: if time has passed today, start from tomorrow
@@ -87,7 +87,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     let weekOffset = 0
 
     const currentWeekExecutions: Date[] = []
@@ -143,7 +143,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     let monthOffset = 0
 
     const hasValidCurrentMonthExecution = selectedDays.some((selectedDay) => {
@@ -198,7 +198,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   else {
     // Fallback for unknown frequencies
     for (let i = 0; i < count; i++) {
-      const now = getCurrentTime()
+      const now = getCurrentTime(data.timezone)
       const nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i + 1)
       times.push(nextExecution)
     }
@@ -207,42 +207,25 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   return times
 }
 
-export const formatExecutionTime = (date: Date, includeWeekday: boolean = true): string => {
-  const dateOptions: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }
-
-  if (includeWeekday)
-    dateOptions.weekday = 'short'
-
-  const timeOptions: Intl.DateTimeFormatOptions = {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }
-
-  // Always use local time for display to match calculation logic
-  return `${date.toLocaleDateString('en-US', dateOptions)} ${date.toLocaleTimeString('en-US', timeOptions)}`
+export const formatExecutionTime = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
+  return formatDateInTimezone(date, timezone, includeWeekday)
 }
 
 export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): string[] => {
   const times = getNextExecutionTimes(data, count)
 
   return times.map((date) => {
-    // Only weekly frequency includes weekday in format
     const includeWeekday = data.frequency === 'weekly'
-    return formatExecutionTime(date, includeWeekday)
+    return formatExecutionTime(date, data.timezone, includeWeekday)
   })
 }
 
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   const times = getFormattedExecutionTimes(data, 1)
   if (times.length === 0) {
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     const includeWeekday = data.frequency === 'weekly'
-    return formatExecutionTime(now, includeWeekday)
+    return formatExecutionTime(now, data.timezone, includeWeekday)
   }
   return times[0]
 }
