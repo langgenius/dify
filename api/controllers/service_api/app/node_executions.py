@@ -21,9 +21,10 @@ class NodeExecutionsApi(Resource):
         try:
             workflow_run_service = WorkflowRunService()
 
-            # Pass end_user to ensure proper access control
+            # Pass tenant_id to ensure proper access control
+            tenant_id = end_user.tenant_id
             node_executions = workflow_run_service.get_workflow_run_node_executions(
-                app_model=app_model, run_id=args["workflow_run_id"], user=end_user
+                app_model=app_model, run_id=args["workflow_run_id"], tenant_id=tenant_id
             )
 
             return {

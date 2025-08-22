@@ -202,7 +202,15 @@ class MessageService:
         is_default_user = isinstance(user, EndUser) and user.session_id == "DEFAULT-USER" and user.type == "service_api"
 
         if is_default_user:
-            # For default user, query messages from API source without user restriction
+            # BYPASS EXPLANATION: When using API keys for authentication, a default user is created
+            # with session_id="DEFAULT-USER" and type="service_api". This user represents the API client
+            # rather than a specific end user. In this case, we need to bypass the normal user-based
+            # filtering because:
+            # 1. The API client should have access to all messages created via API calls
+            # 2. The default user's ID doesn't correspond to actual message ownership
+            # 3. API-based access should be tenant-scoped rather than user-scoped
+            # This ensures API clients can retrieve messages they created without being restricted
+            # by the artificial default user identity.
             message = (
                 db.session.query(Message)
                 .where(Message.id == message_id, Message.app_id == app_model.id, Message.from_source == "api")

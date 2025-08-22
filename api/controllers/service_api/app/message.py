@@ -10,7 +10,7 @@ from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
-from fields.conversation_fields import message_file_fields
+from fields.conversation_fields import message_detail_fields, message_file_fields
 from fields.message_fields import agent_thought_fields, feedback_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
@@ -110,26 +110,8 @@ class AppGetFeedbacksApi(Resource):
 
 
 class MessageDetailApi(Resource):
-    message_detail_fields = {
-        "id": fields.String,
-        "conversation_id": fields.String,
-        "parent_message_id": fields.String,
-        "inputs": FilesContainedField,
-        "query": fields.String,
-        "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "message_files": fields.List(fields.Nested(message_file_fields)),
-        "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.Raw(
-            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
-            if obj.message_metadata
-            else []
-        ),
-        "workflow_run_id": fields.String,
-        "status": fields.String,
-        "error": fields.String,
-        "created_at": TimestampField,
-        "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
-    }
+    # Use the centralized message_detail_fields from conversation_fields.py
+    # This ensures consistency across the application and reduces code duplication
 
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(message_detail_fields)
