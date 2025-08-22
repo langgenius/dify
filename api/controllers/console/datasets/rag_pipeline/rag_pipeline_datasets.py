@@ -37,45 +37,6 @@ class CreateRagPipelineDatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="type is required. Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            type=str,
-            nullable=True,
-            required=False,
-            default="",
-        )
-
-        parser.add_argument(
-            "icon_info",
-            type=dict,
-            nullable=True,
-            required=False,
-            default={},
-        )
-
-        parser.add_argument(
-            "permission",
-            type=str,
-            choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-            nullable=True,
-            required=False,
-            default=DatasetPermissionEnum.ONLY_ME,
-        )
-
-        parser.add_argument(
-            "partial_member_list",
-            type=list,
-            nullable=True,
-            required=False,
-            default=[],
-        )
 
         parser.add_argument(
             "yaml_content",
@@ -90,7 +51,18 @@ class CreateRagPipelineDatasetApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
-        rag_pipeline_dataset_create_entity = RagPipelineDatasetCreateEntity(**args)
+        rag_pipeline_dataset_create_entity = RagPipelineDatasetCreateEntity(
+            name="",
+            description="",
+            icon_info=IconInfo(
+                icon="📙",
+                icon_background="#FFF4ED",
+                icon_type="emoji",
+            ),
+            permission=DatasetPermissionEnum.ONLY_ME,
+            partial_member_list=None,
+            yaml_content=args["yaml_content"],
+        )
         try:
             import_info = RagPipelineDslService.create_rag_pipeline_dataset(
                 tenant_id=current_user.current_tenant_id,

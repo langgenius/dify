@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
+from core.helper.name_generator import generate_incremental_name
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
@@ -898,13 +899,22 @@ class RagPipelineDslService:
         tenant_id: str,
         rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
     ):
-        # check if dataset name already exists
-        if (
-            db.session.query(Dataset)
-            .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-            .first()
-        ):
-            raise ValueError(f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists.")
+        if rag_pipeline_dataset_create_entity.name:
+            # check if dataset name already exists
+            if (
+                db.session.query(Dataset)
+                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
+                .first()
+            ):
+                raise ValueError(f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists.")
+        else:
+            # generate a random name as Untitled 1 2 3 ...
+            datasets = db.session.query(Dataset).filter_by(tenant_id=tenant_id).all()
+            names = [dataset.name for dataset in datasets]
+            rag_pipeline_dataset_create_entity.name = generate_incremental_name(
+                names,
+                "Untitled",
+            )
 
         with Session(db.engine) as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
