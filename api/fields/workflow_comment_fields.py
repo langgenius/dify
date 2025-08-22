@@ -9,6 +9,7 @@ comment_account_fields = {"id": fields.String, "name": fields.String, "email": f
 workflow_comment_mention_fields = {
     "mentioned_user_id": fields.String,
     "mentioned_user_account": fields.Nested(comment_account_fields, allow_null=True),
+    "reply_id": fields.String
 }
 
 # Comment reply fields
@@ -97,12 +98,9 @@ workflow_comment_pagination_fields = {
     "limit": fields.Integer,
 }
 
-# Reply creation response fields
+# Reply creation response fields (simplified)
 workflow_comment_reply_create_fields = {
     "id": fields.String,
-    "content": fields.String,
-    "created_by": fields.String,
-    "created_by_account": fields.Nested(comment_account_fields, allow_null=True),
     "created_at": TimestampField,
 }
 

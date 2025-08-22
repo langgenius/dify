@@ -170,13 +170,17 @@ class WorkflowCommentReplyApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("content", type=str, required=True, location="json")
+        parser.add_argument("mentioned_user_ids", type=list, location="json", default=[])
         args = parser.parse_args()
 
-        reply = WorkflowCommentService.create_reply(
-            comment_id=comment_id, content=args.content, created_by=current_user.id
+        result = WorkflowCommentService.create_reply(
+            comment_id=comment_id, 
+            content=args.content, 
+            created_by=current_user.id,
+            mentioned_user_ids=args.mentioned_user_ids
         )
 
-        return reply, 201
+        return result, 201
 
 
 class WorkflowCommentReplyDetailApi(Resource):
@@ -196,9 +200,15 @@ class WorkflowCommentReplyDetailApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("content", type=str, required=True, location="json")
+        parser.add_argument("mentioned_user_ids", type=list, location="json", default=[])
         args = parser.parse_args()
 
-        reply = WorkflowCommentService.update_reply(reply_id=reply_id, user_id=current_user.id, content=args.content)
+        reply = WorkflowCommentService.update_reply(
+            reply_id=reply_id, 
+            user_id=current_user.id, 
+            content=args.content,
+            mentioned_user_ids=args.mentioned_user_ids
+        )
 
         return reply
 

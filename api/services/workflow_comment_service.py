@@ -83,7 +83,11 @@ class WorkflowCommentService:
             mentioned_user_ids = mentioned_user_ids or []
             for user_id in mentioned_user_ids:
                 if isinstance(user_id, str) and uuid_value(user_id):
-                    mention = WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=user_id)
+                    mention = WorkflowCommentMention(
+                        comment_id=comment.id, 
+                        reply_id=None,  # This is a comment mention, not reply mention
+                        mentioned_user_id=user_id
+                    )
                     session.add(mention)
 
             session.commit()
@@ -127,7 +131,11 @@ class WorkflowCommentService:
         mentioned_user_ids = mentioned_user_ids or []
         for user_id_str in mentioned_user_ids:
             if isinstance(user_id_str, str) and uuid_value(user_id_str):
-                mention = WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=user_id_str)
+                mention = WorkflowCommentMention(
+                    comment_id=comment.id, 
+                    reply_id=None,  # This is a comment mention
+                    mentioned_user_id=user_id_str
+                )
                 db.session.add(mention)
 
         db.session.commit()
@@ -176,27 +184,57 @@ class WorkflowCommentService:
         return comment
 
     @staticmethod
-    def create_reply(comment_id: str, content: str, created_by: str) -> WorkflowCommentReply:
+    def create_reply(
+        comment_id: str, 
+        content: str, 
+        created_by: str,
+        mentioned_user_ids: Optional[list[str]] = None
+    ) -> dict:
         """Add a reply to a workflow comment."""
-        # Check if comment exists
-        comment = db.session.get(WorkflowComment, comment_id)
-        if not comment:
-            raise NotFound("Comment not found")
-
         if len(content.strip()) == 0:
             raise ValueError("Reply content cannot be empty")
 
         if len(content) > 1000:
             raise ValueError("Reply content cannot exceed 1000 characters")
 
-        reply = WorkflowCommentReply(comment_id=comment_id, content=content, created_by=created_by)
+        with Session(db.engine) as session:
+            # Check if comment exists
+            comment = session.get(WorkflowComment, comment_id)
+            if not comment:
+                raise NotFound("Comment not found")
 
-        db.session.add(reply)
-        db.session.commit()
-        return reply
+            reply = WorkflowCommentReply(comment_id=comment_id, content=content, created_by=created_by)
+
+            session.add(reply)
+            session.flush()  # Get the reply ID for mentions
+
+            # Create mentions if specified
+            mentioned_user_ids = mentioned_user_ids or []
+            for user_id in mentioned_user_ids:
+                if isinstance(user_id, str) and uuid_value(user_id):
+                    # Create mention linking to specific reply
+                    mention = WorkflowCommentMention(
+                        comment_id=comment_id,
+                        reply_id=reply.id,  # This is a reply mention
+                        mentioned_user_id=user_id
+                    )
+                    session.add(mention)
+
+            session.commit()
+            
+            # Return only what we need - id and created_at
+            return {
+                "id": reply.id,
+                "created_at": reply.created_at
+            }
 
     @staticmethod
-    def update_reply(reply_id: str, user_id: str, content: str) -> WorkflowCommentReply:
+    def update_reply(
+        reply_id: str, 
+        user_id: str, 
+        content: str,
+        mentioned_user_ids: Optional[list[str]] = None
+    ) -> WorkflowCommentReply:
         """Update a comment reply."""
         reply = db.session.get(WorkflowCommentReply, reply_id)
         if not reply:
@@ -213,6 +251,25 @@ class WorkflowCommentService:
             raise ValueError("Reply content cannot exceed 1000 characters")
 
         reply.content = content
+
+        # Handle mentions for reply updates - add new mentions to parent comment
+        mentioned_user_ids = mentioned_user_ids or []
+        for user_id_str in mentioned_user_ids:
+            if isinstance(user_id_str, str) and uuid_value(user_id_str):
+                # Check if mention already exists to avoid duplicates
+                existing_mention = db.session.query(WorkflowCommentMention).filter(
+                    WorkflowCommentMention.comment_id == reply.comment_id,
+                    WorkflowCommentMention.mentioned_user_id == user_id_str
+                ).first()
+                
+                if not existing_mention:
+                    mention = WorkflowCommentMention(
+                        comment_id=reply.comment_id,
+                        reply_id=reply.id,  # This is a reply mention
+                        mentioned_user_id=user_id_str
+                    )
+                    db.session.add(mention)
+
         db.session.commit()
         return reply
 

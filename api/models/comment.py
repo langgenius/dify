@@ -166,6 +166,7 @@ class WorkflowCommentMention(Base):
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="workflow_comment_mentions_pkey"),
         Index("comment_mentions_comment_idx", "comment_id"),
+        Index("comment_mentions_reply_idx", "reply_id"),
         Index("comment_mentions_user_idx", "mentioned_user_id"),
     )
 
@@ -173,10 +174,14 @@ class WorkflowCommentMention(Base):
     comment_id: Mapped[str] = mapped_column(
         StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
+    reply_id: Mapped[Optional[str]] = mapped_column(
+        StringUUID, db.ForeignKey("workflow_comment_replies.id", ondelete="CASCADE"), nullable=True
+    )
     mentioned_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # Relationships
     comment: Mapped["WorkflowComment"] = relationship("WorkflowComment", back_populates="mentions")
+    reply: Mapped[Optional["WorkflowCommentReply"]] = relationship("WorkflowCommentReply")
 
     @property
     def mentioned_user_account(self):
