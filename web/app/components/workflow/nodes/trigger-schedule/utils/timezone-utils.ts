@@ -1,51 +1,70 @@
-export const convertTimeToUserTimezone = (time: string, userTimezone: string): string => {
+export const convertTimeToUTC = (time: string, userTimezone: string): string => {
   try {
-    const now = new Date()
     const [timePart, period] = time.split(' ')
+    if (!timePart || !period) return time
+
     const [hour, minute] = timePart.split(':')
+    if (!hour || !minute) return time
+
     let hour24 = Number.parseInt(hour, 10)
+    const minuteNum = Number.parseInt(minute, 10)
+
+    if (Number.isNaN(hour24) || Number.isNaN(minuteNum)) return time
 
     if (period === 'PM' && hour24 !== 12) hour24 += 12
     if (period === 'AM' && hour24 === 12) hour24 = 0
 
-    const utcDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour24, Number.parseInt(minute, 10), 0, 0)
+    const today = new Date()
+    const userDate = new Date()
+    userDate.setFullYear(today.getFullYear(), today.getMonth(), today.getDate())
+    userDate.setHours(hour24, minuteNum, 0, 0)
 
-    const userDate = new Date(utcDate.toLocaleString('en-US', { timeZone: userTimezone }))
+    const utcDate = new Date(userDate.toLocaleString('en-US', { timeZone: 'UTC' }))
+    const userTimezoneDate = new Date(userDate.toLocaleString('en-US', { timeZone: userTimezone }))
+    const offset = userTimezoneDate.getTime() - utcDate.getTime()
+    const utcTime = new Date(userDate.getTime() - offset)
 
-    return userDate.toLocaleTimeString('en-US', {
-      hour: 'numeric',
+    const result = utcTime.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
     })
+
+    if (result.includes('Invalid')) return time
+    return result
   }
- catch {
+  catch {
     return time
   }
 }
 
-export const convertTimeToUTC = (time: string, _userTimezone: string): string => {
+export const convertUTCToUserTimezone = (utcTime: string, userTimezone: string): string => {
   try {
-    const now = new Date()
-    const [timePart, period] = time.split(' ')
-    const [hour, minute] = timePart.split(':')
-    let hour24 = Number.parseInt(hour, 10)
+    const [hour, minute] = utcTime.split(':')
+    if (!hour || !minute) return utcTime
 
-    if (period === 'PM' && hour24 !== 12) hour24 += 12
-    if (period === 'AM' && hour24 === 12) hour24 = 0
+    const hourNum = Number.parseInt(hour, 10)
+    const minuteNum = Number.parseInt(minute, 10)
 
-    const userDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour24, Number.parseInt(minute, 10), 0, 0)
+    if (Number.isNaN(hourNum) || Number.isNaN(minuteNum)) return utcTime
 
-    const utcTime = new Date(userDate.getTime() - (userDate.getTimezoneOffset() * 60000))
+    const today = new Date()
+    const utcDate = new Date()
+    utcDate.setUTCFullYear(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+    utcDate.setUTCHours(hourNum, minuteNum, 0, 0)
 
-    return utcTime.toLocaleTimeString('en-US', {
+    const result = utcDate.toLocaleTimeString('en-US', {
+      timeZone: userTimezone,
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
-      timeZone: 'UTC',
     })
+
+    if (result.includes('Invalid')) return utcTime
+    return result
   }
- catch {
-    return time
+  catch {
+    return utcTime
   }
 }
 

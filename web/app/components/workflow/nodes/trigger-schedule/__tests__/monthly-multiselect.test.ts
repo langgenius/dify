@@ -32,11 +32,11 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
       const times = getNextExecutionTimes(config, 5)
 
       expect(times).toHaveLength(5)
-      expect(times[0].getDate()).toBe(30)
+      expect(times[0].getDate()).toBe(15)
       expect(times[0].getMonth()).toBe(0)
-      expect(times[1].getDate()).toBe(1)
-      expect(times[1].getMonth()).toBe(1)
-      expect(times[2].getDate()).toBe(15)
+      expect(times[1].getDate()).toBe(30)
+      expect(times[1].getMonth()).toBe(0)
+      expect(times[2].getDate()).toBe(1)
       expect(times[2].getMonth()).toBe(1)
     })
 
