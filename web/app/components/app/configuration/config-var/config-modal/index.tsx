@@ -21,6 +21,10 @@ import Checkbox from '@/app/components/base/checkbox'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { SimpleSelect } from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { TransferMethod } from '@/types/app'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -82,6 +86,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
     return () => {
       const newPayload = produce(tempPayload, (draft) => {
         draft.type = type
+        // Clear default value when switching types
+        draft.default = undefined
         if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
           (Object.keys(DEFAULT_FILE_UPLOAD_SETTING)).forEach((key) => {
             if (key !== 'max_length')
@@ -234,6 +240,41 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </Field>
 
           )}
+
+          {/* Default value for text input */}
+          {type === InputVarType.textInput && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Input
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {/* Default value for paragraph */}
+          {type === InputVarType.paragraph && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Textarea
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {/* Default value for number input */}
+          {type === InputVarType.number && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Input
+                type="number"
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
           {type === InputVarType.select && (
             <>
               <Field title={t('appDebug.variableConfig.options')}>
@@ -263,11 +304,30 @@ const ConfigModal: FC<IConfigModalProps> = ({
           )}
 
           {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
-            <FileUploadSetting
-              payload={tempPayload as UploadFileSetting}
-              onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
-              isMultiple={type === InputVarType.multiFiles}
-            />
+            <>
+              <FileUploadSetting
+                payload={tempPayload as UploadFileSetting}
+                onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
+                isMultiple={type === InputVarType.multiFiles}
+              />
+              <Field title={t('appDebug.variableConfig.defaultValue')}>
+                <FileUploaderInAttachmentWrapper
+                  value={(type === InputVarType.singleFile ? (tempPayload.default ? [tempPayload.default] : []) : (tempPayload.default || [])) as unknown as FileEntity[]}
+                  onChange={(files) => {
+                    if (type === InputVarType.singleFile)
+                      handlePayloadChange('default')(files?.[0] || undefined)
+                    else
+                      handlePayloadChange('default')(files || undefined)
+                  }}
+                  fileConfig={{
+                    allowed_file_types: tempPayload.allowed_file_types || [SupportUploadFileTypes.document],
+                    allowed_file_extensions: tempPayload.allowed_file_extensions || [],
+                    allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [TransferMethod.remote_url],
+                    number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
+                  }}
+                />
+              </Field>
+            </>
           )}
 
           <div className='!mt-5 flex h-6 items-center space-x-2'>

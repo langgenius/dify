@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +32,7 @@ type Props = {
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
-  const { inputs, setInputs } = useStore(s => ({
+  const { inputs } = useStore(s => ({
     inputs: s.inputs,
     setInputs: s.setInputs,
   }))
@@ -48,23 +47,13 @@ const InputsPanel = ({ onRun }: Props) => {
   const startVariables = startNode?.data.variables
   const { checkInputsForm } = useCheckInputsForms()
 
-  const initialInputs = useMemo(() => {
-    const initInputs: Record<string, any> = {}
-    if (startVariables) {
-      startVariables.forEach((variable) => {
-        if (variable.default)
-          initInputs[variable.variable] = variable.default
-      })
-    }
-    return initInputs
-  }, [startVariables])
-
-  useEffect(() => {
-    setInputs({
-      ...initialInputs,
-      ...inputs,
+  const initialInputs = { ...inputs }
+  if (startVariables) {
+    startVariables.forEach((variable) => {
+      if (variable.default)
+       initialInputs[variable.variable] = variable.default
     })
-  }, [initialInputs])
+  }
 
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -102,11 +91,11 @@ const InputsPanel = ({ onRun }: Props) => {
   }
 
   const doRun = useCallback(() => {
-    if (!checkInputsForm(inputs, variables as any))
+    if (!checkInputsForm(initialInputs, variables as any))
       return
     onRun()
-    handleRun({ inputs: getProcessedInputs(inputs, variables as any), files })
-  }, [files, handleRun, inputs, onRun, variables, checkInputsForm])
+    handleRun({ inputs: getProcessedInputs(initialInputs, variables as any), files })
+  }, [files, handleRun, initialInputs, onRun, variables, checkInputsForm])
 
   const canRun = useMemo(() => {
     if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
@@ -128,7 +117,7 @@ const InputsPanel = ({ onRun }: Props) => {
                 autoFocus={index === 0}
                 className='!block'
                 payload={variable}
-                value={inputs[variable.variable]}
+                value={initialInputs[variable.variable]}
                 onChange={v => handleValueChange(variable.variable, v)}
               />
             </div>
