@@ -51,27 +51,27 @@ MICROSOFT_OAUTH2_TENANT_ID=your-tenant-id
 ### 1. Create Azure AD Application
 
 1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
-2. Click "New registration"
-3. Enter application name (e.g., "Dify Email Service")
-4. Select "Accounts in this organizational directory only"
-5. Click "Register"
+1. Click "New registration"
+1. Enter application name (e.g., "Dify Email Service")
+1. Select "Accounts in this organizational directory only"
+1. Click "Register"
 
 ### 2. Configure API Permissions
 
 1. Go to "API permissions"
-2. Click "Add a permission" → Microsoft Graph
-3. Select "Application permissions"
-4. Add these permissions:
+1. Click "Add a permission" → Microsoft Graph
+1. Select "Application permissions"
+1. Add these permissions:
    - `Mail.Send` - Send mail as any user
    - `SMTP.Send` - Send email via SMTP AUTH
-5. Click "Grant admin consent"
+1. Click "Grant admin consent"
 
 ### 3. Create Client Secret
 
 1. Go to "Certificates & secrets"
-2. Click "New client secret"
-3. Enter description and expiration
-4. Copy the secret value (you won't see it again)
+1. Click "New client secret"
+1. Enter description and expiration
+1. Copy the secret value (you won't see it again)
 
 ### 4. Get Configuration Values
 
@@ -163,7 +163,8 @@ client.send(mail_data)
 Microsoft is retiring Basic Authentication for Exchange Online in September 2025. Follow these steps to migrate:
 
 1. **Set up Azure AD Application** (see setup instructions above)
-2. **Update configuration** to use OAuth 2.0:
+
+1. **Update configuration** to use OAuth 2.0:
 
    ```env
    SMTP_AUTH_TYPE=oauth2
@@ -172,8 +173,9 @@ Microsoft is retiring Basic Authentication for Exchange Online in September 2025
    MICROSOFT_OAUTH2_TENANT_ID=your-tenant-id
    ```
 
-3. **Test the configuration** before the migration deadline
-4. **Remove old password-based settings** once OAuth is working
+1. **Test the configuration** before the migration deadline
+
+1. **Remove old password-based settings** once OAuth is working
 
 ### Backward Compatibility
 
@@ -188,16 +190,19 @@ The system maintains backward compatibility:
 ### Common OAuth Issues
 
 1. **Token acquisition fails**:
+
    - Verify Client ID and Secret are correct
    - Check that admin consent was granted for API permissions
    - Ensure Tenant ID is correct
 
-2. **SMTP authentication fails**:
+1. **SMTP authentication fails**:
+
    - Verify the access token is valid and not expired
    - Check that SMTP.Send permission is granted
    - Ensure the user has Send As permissions
 
-3. **Configuration issues**:
+1. **Configuration issues**:
+
    - Verify all required environment variables are set
    - Check SMTP server and port settings
    - Ensure TLS settings match your server requirements
