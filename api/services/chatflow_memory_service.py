@@ -60,7 +60,7 @@ class ChatflowMemoryService:
 
     @staticmethod
     def save_memory(memory: MemoryBlock, variable_pool: VariablePool, is_draft: bool) -> None:
-        key = f"{memory.node_id}:{memory.spec.id}" if memory.node_id else memory.spec.id
+        key = f"{memory.node_id}.{memory.spec.id}" if memory.node_id else memory.spec.id
         variable_pool.add([MEMORY_BLOCK_VARIABLE_NODE_ID, key], memory.value)
 
         with Session(db.engine) as session:
@@ -280,13 +280,13 @@ class ChatflowMemoryService:
         return True
 
     @staticmethod
-    def wait_for_sync_memory_completion(workflow, conversation_id: str):
+    def wait_for_sync_memory_completion(workflow: Workflow, conversation_id: str):
         """Wait for sync memory update to complete, maximum 50 seconds"""
 
         memory_blocks = workflow.memory_blocks
         sync_memory_blocks = [
             block for block in memory_blocks
-            if block.scope == MemoryScope.APP and block.update_mode == "sync"
+            if block.scope == MemoryScope.APP and block.schedule_mode == MemoryScheduleMode.SYNC
         ]
 
         if not sync_memory_blocks:
