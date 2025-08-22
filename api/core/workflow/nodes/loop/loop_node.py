@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from configs import dify_config
@@ -36,6 +36,7 @@ from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from libs.datetime_utils import naive_utc_now
 
 if TYPE_CHECKING:
     from core.workflow.entities.variable_pool import VariablePool
@@ -143,7 +144,7 @@ class LoopNode(BaseNode):
             thread_pool_id=self.thread_pool_id,
         )
 
-        start_at = datetime.now(UTC).replace(tzinfo=None)
+        start_at = naive_utc_now()
         condition_processor = ConditionProcessor()
 
         # Start Loop event
@@ -171,7 +172,7 @@ class LoopNode(BaseNode):
         try:
             check_break_result = False
             for i in range(loop_count):
-                loop_start_time = datetime.now(UTC).replace(tzinfo=None)
+                loop_start_time = naive_utc_now()
                 # run single loop
                 loop_result = yield from self._run_single_loop(
                     graph_engine=graph_engine,
@@ -185,7 +186,7 @@ class LoopNode(BaseNode):
                     start_at=start_at,
                     inputs=inputs,
                 )
-                loop_end_time = datetime.now(UTC).replace(tzinfo=None)
+                loop_end_time = naive_utc_now()
 
                 single_loop_variable = {}
                 for key, selector in loop_variable_selectors.items():

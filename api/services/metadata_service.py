@@ -1,5 +1,4 @@
 import copy
-import datetime
 import logging
 from typing import Optional
 
@@ -8,6 +7,7 @@ from flask_login import current_user
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -69,7 +69,7 @@ class MetadataService:
             old_name = metadata.name
             metadata.name = name
             metadata.updated_by = current_user.id
-            metadata.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            metadata.updated_at = naive_utc_now()
 
             # update related documents
             dataset_metadata_bindings = (
