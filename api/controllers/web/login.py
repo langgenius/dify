@@ -3,8 +3,8 @@ from jwt import InvalidTokenError  # type: ignore
 
 import services
 from controllers.console.auth.error import (
-    AuthenticationFailedError,
     EmailCodeError,
+    EmailOrPasswordMismatchError,
     InvalidEmailError,
 )
 from controllers.console.error import AccountBannedError, AccountNotFound
@@ -33,9 +33,9 @@ class LoginApi(Resource):
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
-            raise AuthenticationFailedError()
+            raise EmailOrPasswordMismatchError()
         except services.errors.account.AccountNotFoundError:
-            raise AuthenticationFailedError()
+            raise AccountNotFound()
 
         token = WebAppAuthService.login(account=account)
         return {"result": "success", "data": {"access_token": token}}
