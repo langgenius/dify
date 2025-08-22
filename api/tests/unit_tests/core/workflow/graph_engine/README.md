@@ -5,7 +5,7 @@
 This directory contains a comprehensive testing framework for the Graph Engine, including:
 
 1. **TableTestRunner** - Advanced table-driven test framework for workflow testing
-2. **Auto-Mock System** - Powerful mocking framework for testing without external dependencies
+1. **Auto-Mock System** - Powerful mocking framework for testing without external dependencies
 
 ## TableTestRunner Framework
 
@@ -210,7 +210,7 @@ result = runner.run_test_case(test_case)
 The auto-mock system provides a powerful framework for testing workflows that contain nodes requiring third-party services (LLM, APIs, tools, etc.) without making actual external calls. This enables:
 
 - **Fast test execution** - No network latency or API rate limits
-- **Deterministic results** - Consistent outputs for reliable testing  
+- **Deterministic results** - Consistent outputs for reliable testing
 - **Cost savings** - No API usage charges during testing
 - **Offline testing** - Tests can run without internet connectivity
 - **Error simulation** - Test error handling without triggering real failures
@@ -400,11 +400,11 @@ Use `TableTestRunner` to execute test cases and validate results.
 ## Best Practices
 
 1. **Use descriptive mock responses** - Make it clear in outputs that they are mocked
-2. **Test both success and failure paths** - Use error simulation to test error handling
-3. **Keep mock configs close to tests** - Define mocks in the same test file for clarity
-4. **Use custom handlers sparingly** - Only when dynamic behavior is needed
-5. **Document mock behavior** - Comment why specific mock values are chosen
-6. **Validate mock accuracy** - Ensure mocks reflect real service behavior
+1. **Test both success and failure paths** - Use error simulation to test error handling
+1. **Keep mock configs close to tests** - Define mocks in the same test file for clarity
+1. **Use custom handlers sparingly** - Only when dynamic behavior is needed
+1. **Document mock behavior** - Comment why specific mock values are chosen
+1. **Validate mock accuracy** - Ensure mocks reflect real service behavior
 
 ## Examples
 
@@ -481,7 +481,7 @@ uv run pytest api/tests/unit_tests/core/workflow/graph_engine/ -n auto
 Potential improvements to the auto-mock system:
 
 1. **Recording and playback** - Record real API responses for replay in tests
-2. **Mock templates** - Pre-defined mock configurations for common scenarios
-3. **Async support** - Better support for async node execution
-4. **Mock validation** - Validate mock outputs against node schemas
-5. **Performance profiling** - Built-in performance metrics for mocked workflows
+1. **Mock templates** - Pre-defined mock configurations for common scenarios
+1. **Async support** - Better support for async node execution
+1. **Mock validation** - Validate mock outputs against node schemas
+1. **Performance profiling** - Built-in performance metrics for mocked workflows

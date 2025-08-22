@@ -147,9 +147,9 @@ classDiagram
 ### Data Flow
 
 1. **Commands** flow from CommandChannels → CommandProcessing → Domain
-2. **Events** flow from Workers → EventHandlerRegistry → State updates
-3. **Node outputs** flow from Workers → OutputRegistry → ResponseCoordinator
-4. **Ready nodes** flow from GraphTraversal → StateManagement → WorkerManagement
+1. **Events** flow from Workers → EventHandlerRegistry → State updates
+1. **Node outputs** flow from Workers → OutputRegistry → ResponseCoordinator
+1. **Ready nodes** flow from GraphTraversal → StateManagement → WorkerManagement
 
 ### Extension Points
 
@@ -160,11 +160,11 @@ classDiagram
 ## Execution Flow
 
 1. **Initialization**: GraphEngine creates all subsystems with the workflow graph
-2. **Node Discovery**: Traversal components identify ready nodes
-3. **Worker Execution**: Workers pull from ready queue and execute nodes
-4. **Event Processing**: Dispatcher routes events to appropriate handlers
-5. **State Updates**: Managers track node/edge states for next steps
-6. **Completion**: Coordinator detects when all nodes are done
+1. **Node Discovery**: Traversal components identify ready nodes
+1. **Worker Execution**: Workers pull from ready queue and execute nodes
+1. **Event Processing**: Dispatcher routes events to appropriate handlers
+1. **State Updates**: Managers track node/edge states for next steps
+1. **Completion**: Coordinator detects when all nodes are done
 
 ## Usage
 
