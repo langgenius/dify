@@ -29,6 +29,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
+from fields.workflow_run_fields import workflow_run_node_execution_list_fields
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
@@ -37,6 +38,7 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
+from services.workflow_run_service import WorkflowRunService
 
 logger = logging.getLogger(__name__)
 
@@ -245,8 +247,24 @@ class WorkflowAppLogApi(Resource):
             return workflow_app_log_pagination
 
 
+class WorkflowRunNodeExecutionListServiceApi(Resource):
+    @validate_app_token
+    @marshal_with(workflow_run_node_execution_list_fields)
+    def get(self, app_model: App, workflow_run_id: str):
+        """
+        Get workflow run node execution list
+        """
+        run_id = str(workflow_run_id)
+
+        workflow_run_service = WorkflowRunService()
+        node_executions = workflow_run_service.get_workflow_run_node_executions(app_model=app_model, run_id=run_id)
+
+        return {"data": node_executions}
+
+
 api.add_resource(WorkflowRunApi, "/workflows/run")
 api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_run_id>")
 api.add_resource(WorkflowRunByIdApi, "/workflows/<string:workflow_id>/run")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
 api.add_resource(WorkflowAppLogApi, "/workflows/logs")
+api.add_resource(WorkflowRunNodeExecutionListServiceApi, "/workflows/run/<string:workflow_run_id>/node-executions")
