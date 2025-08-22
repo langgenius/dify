@@ -135,10 +135,16 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
 
       let targetDay: number
-      if (selectedDay === 'last')
+      if (selectedDay === 'last') {
         targetDay = daysInMonth
-       else
-        targetDay = Math.min(selectedDay as number, daysInMonth)
+      }
+ else {
+        const dayNumber = selectedDay as number
+        if (dayNumber > daysInMonth)
+          return false
+
+        targetDay = dayNumber
+      }
 
       const execution = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
       return execution > now
@@ -158,10 +164,16 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       for (const selectedDay of selectedDays) {
         let targetDay: number
 
-        if (selectedDay === 'last')
+        if (selectedDay === 'last') {
           targetDay = daysInMonth
-         else
-          targetDay = Math.min(selectedDay as number, daysInMonth)
+        }
+ else {
+          const dayNumber = selectedDay as number
+          if (dayNumber > daysInMonth)
+            continue
+
+          targetDay = dayNumber
+        }
 
         const nextExecution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
 

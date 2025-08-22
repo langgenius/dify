@@ -58,8 +58,12 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
       const times = getNextExecutionTimes(config, 6)
 
       const febTimes = times.filter(t => t.getMonth() === 1)
-      expect(febTimes.length).toBeGreaterThan(0)
-      expect(febTimes[0].getDate()).toBe(29)
+      expect(febTimes.length).toBe(0)
+
+      const marchTimes = times.filter(t => t.getMonth() === 2)
+      expect(marchTimes.length).toBe(2)
+      expect(marchTimes[0].getDate()).toBe(30)
+      expect(marchTimes[1].getDate()).toBe(31)
     })
 
     test('sorts execution times chronologically', () => {
@@ -182,8 +186,8 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
 
       expect(times[0].getDate()).toBe(29)
       expect(times[0].getMonth()).toBe(0)
-      expect(times[1].getDate()).toBe(28)
-      expect(times[1].getMonth()).toBe(1)
+      expect(times[1].getDate()).toBe(29)
+      expect(times[1].getMonth()).toBe(2)
     })
   })
 
