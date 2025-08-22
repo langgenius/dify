@@ -10,6 +10,10 @@ from .types import StringUUID
 
 class ChatflowMemoryVariable(Base):
     __tablename__ = "chatflow_memory_variables"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="chatflow_memory_variables_pkey"),
+        sa.Index("chatflow_memory_variables_memory_id_idx", "tenant_id", "app_id", "node_id", "memory_id"),
+    )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -30,6 +34,13 @@ class ChatflowMemoryVariable(Base):
 
 class ChatflowConversation(Base):
     __tablename__ = "chatflow_conversations"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="chatflow_conversations_pkey"),
+        sa.Index(
+            "chatflow_conversations_original_conversation_id_idx",
+            "tenant_id", "app_id", "node_id", "original_conversation_id"
+        ),
+    )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -46,6 +57,10 @@ class ChatflowConversation(Base):
 
 class ChatflowMessage(Base):
     __tablename__ = "chatflow_messages"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="chatflow_messages_pkey"),
+        sa.Index("chatflow_messages_version_idx", "conversation_id", "index", "version"),
+    )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
