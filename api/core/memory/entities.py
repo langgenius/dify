@@ -1,8 +1,11 @@
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
+
+from core.app.app_config.entities import ModelConfig
 
 
 class MemoryScope(str, Enum):
@@ -42,7 +45,7 @@ class MemoryBlockSpec(BaseModel):
     update_turns: int = Field(gt=0, description="Number of turns between updates")
     preserved_turns: int = Field(gt=0, description="Number of conversation turns to preserve")
     schedule_mode: MemoryScheduleMode = Field(description="Synchronous or asynchronous update mode")
-    model: Optional[dict[str, Any]] = Field(default=None, description="Model configuration for memory updates")
+    model: ModelConfig = Field(description="Model configuration for memory updates")
     end_user_visible: bool = Field(default=False, description="Whether memory is visible to end users")
     end_user_editable: bool = Field(default=False, description="Whether memory is editable by end users")
 
@@ -69,8 +72,8 @@ class MemoryBlock(BaseModel):
     app_id: str  # None=global(future), str=app-specific
     conversation_id: Optional[str] = None  # None=persistent, str=session
     node_id: Optional[str] = None  # None=app-scope, str=node-scope
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     @property
     def is_global(self) -> bool:

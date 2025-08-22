@@ -1147,9 +1147,9 @@ class LLMNode(BaseNode):
                 ChatflowMemoryService.update_node_memory_if_needed(
                     tenant_id=self.tenant_id,
                     app_id=self.app_id,
-                    memory_block_spec=memory_block_spec,
                     node_id=self.node_id,
-                    llm_output=llm_output,
+                    conversation_id=conversation_id,
+                    memory_block_spec=memory_block_spec,
                     variable_pool=variable_pool,
                     is_draft=is_draft
                 )

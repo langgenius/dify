@@ -13,7 +13,6 @@ from core.memory.entities import (
     MemoryBlockWithVisibility,
     MemoryScheduleMode,
     MemoryScope,
-    MemoryStrategy,
     MemoryTerm,
 )
 from core.memory.errors import MemorySyncTimeoutError
@@ -24,7 +23,9 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import App
 from models.chatflow_memory import ChatflowMemoryVariable
+from models.workflow import WorkflowDraftVariable
 from services.chatflow_history_service import ChatflowHistoryService
+from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -42,11 +43,6 @@ def _get_memory_sync_lock_key(app_id: str, conversation_id: str) -> str:
     return f"memory_sync_update:{app_id}:{conversation_id}"
 
 class ChatflowMemoryService:
-    """
-    Memory service class with only static methods.
-    All methods are static and do not require instantiation.
-    """
-
     @staticmethod
     def get_persistent_memories(app: App) -> Sequence[MemoryBlockWithVisibility]:
         stmt = select(ChatflowMemoryVariable).where(
@@ -56,7 +52,7 @@ class ChatflowMemoryService:
                 ChatflowMemoryVariable.conversation_id == None
             )
         )
-        with db.session() as session:
+        with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
         return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
 
@@ -69,94 +65,38 @@ class ChatflowMemoryService:
                 ChatflowMemoryVariable.conversation_id == conversation_id
             )
         )
-        with db.session() as session:
+        with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
         return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
 
     @staticmethod
-    def get_memory(memory_id: str, tenant_id: str,
-                   app_id: Optional[str] = None,
-                   conversation_id: Optional[str] = None,
-                   node_id: Optional[str] = None) -> Optional[MemoryBlock]:
-        """Get single memory by ID"""
-        stmt = select(ChatflowMemoryVariable).where(
-            and_(
-                ChatflowMemoryVariable.memory_id == memory_id,
-                ChatflowMemoryVariable.tenant_id == tenant_id
-            )
-        )
-
-        if app_id:
-            stmt = stmt.where(ChatflowMemoryVariable.app_id == app_id)
-        if conversation_id:
-            stmt = stmt.where(ChatflowMemoryVariable.conversation_id == conversation_id)
-        if node_id:
-            stmt = stmt.where(ChatflowMemoryVariable.node_id == node_id)
-
-        with db.session() as session:
-            result = session.execute(stmt).first()
-            if result:
-                return MemoryBlock.model_validate(result[0].__dict__)
-        return None
-
-    @staticmethod
-    def save_memory(memory: MemoryBlock, tenant_id: str, variable_pool: VariablePool, is_draft: bool = False) -> None:
-        """Save or update memory with draft mode support"""
-
+    def save_memory(memory: MemoryBlock, tenant_id: str, variable_pool: VariablePool, is_draft: bool) -> None:
         key =  f"{memory.node_id}:{memory.memory_id}" if memory.node_id else memory.memory_id
         variable_pool.add([MEMORY_BLOCK_VARIABLE_NODE_ID, key], memory.value)
 
-        stmt = select(ChatflowMemoryVariable).where(
-            and_(
-                ChatflowMemoryVariable.memory_id == memory.memory_id,
-                ChatflowMemoryVariable.tenant_id == tenant_id
-            )
-        )
-
         with db.session() as session:
-            existing = session.execute(stmt).first()
-            if existing:
-                # Update existing
-                for key, value in memory.model_dump(exclude_unset=True).items():
-                    if hasattr(existing[0], key):
-                        setattr(existing[0], key, value)
-            else:
-                # Create new
-                new_memory = ChatflowMemoryVariable(
-                    tenant_id=tenant_id,
-                    **memory.model_dump(exclude={'id'})
-                )
-                session.add(new_memory)
+            session.merge(ChatflowMemoryService._to_chatflow_memory_variable(memory))
             session.commit()
 
-        # In draft mode, also write to workflow_draft_variables
         if is_draft:
-            from models.workflow import WorkflowDraftVariable
-            from services.workflow_draft_variable_service import WorkflowDraftVariableService
             with Session(bind=db.engine) as session:
                 draft_var_service = WorkflowDraftVariableService(session)
-
-                # Try to get existing variables
                 existing_vars = draft_var_service.get_draft_variables_by_selectors(
                     app_id=memory.app_id,
                     selectors=[['memory_block', memory.memory_id]]
                 )
-
                 if existing_vars:
-                    # Update existing draft variable
                     draft_var = existing_vars[0]
                     draft_var.value = memory.value
                 else:
-                    # Create new draft variable
                     draft_var = WorkflowDraftVariable.new_memory_block_variable(
                         app_id=memory.app_id,
                         memory_id=memory.memory_id,
                         name=memory.name,
                         value=memory.value,
-                        description=f"Memory block: {memory.name}"
+                        description=""
                     )
                     session.add(draft_var)
-
                 session.commit()
 
     @staticmethod
@@ -164,104 +104,66 @@ class ChatflowMemoryService:
                               tenant_id: str, app_id: str,
                               conversation_id: Optional[str] = None,
                               node_id: Optional[str] = None,
-                              is_draft: bool = False) -> list[MemoryBlock]:
-        """Get runtime memory values based on MemoryBlockSpecs with draft mode support"""
-        from models.enums import DraftVariableType
+                              is_draft: bool = False) -> Sequence[MemoryBlock]:
+       return [ChatflowMemoryService.get_memory_by_spec(
+            spec, tenant_id, app_id, conversation_id, node_id, is_draft
+        ) for spec in memory_block_specs]
 
-        if not memory_block_specs:
-            return []
-
-        # In draft mode, prefer reading from workflow_draft_variables
-        if is_draft:
-            # Try reading from the draft variables table
-            from services.workflow_draft_variable_service import WorkflowDraftVariableService
-            with Session(bind=db.engine) as session:
+    @staticmethod
+    def get_memory_by_spec(spec: MemoryBlockSpec,
+                           tenant_id: str, app_id: str,
+                           conversation_id: Optional[str] = None,
+                           node_id: Optional[str] = None,
+                           is_draft: bool = False) -> MemoryBlock:
+        with (Session(bind=db.engine) as session):
+            if is_draft:
                 draft_var_service = WorkflowDraftVariableService(session)
-
-                # Build selector list
-                selectors = [['memory_block', spec.id] for spec in memory_block_specs]
-
-                # Fetch draft variables
+                selector = [MEMORY_BLOCK_VARIABLE_NODE_ID, f"{spec.id}.{node_id}"]\
+                    if node_id else [MEMORY_BLOCK_VARIABLE_NODE_ID, spec.id]
                 draft_vars = draft_var_service.get_draft_variables_by_selectors(
                     app_id=app_id,
-                    selectors=selectors
+                    selectors=[selector]
                 )
-
-                # If draft variables exist, prefer using them
                 if draft_vars:
-                    spec_by_id = {spec.id: spec for spec in memory_block_specs}
-                    draft_memories = []
-
-                    for draft_var in draft_vars:
-                        if draft_var.node_id == DraftVariableType.MEMORY_BLOCK:
-                            spec = spec_by_id.get(draft_var.name)
-                            if spec:
-                                memory_block = MemoryBlock(
-                                    id=draft_var.id,
-                                    memory_id=draft_var.name,
-                                    name=spec.name,
-                                    value=draft_var.value,
-                                    scope=spec.scope,
-                                    term=spec.term,
-                                    app_id=app_id,
-                                    conversation_id='draft',
-                                    node_id=node_id
-                                )
-                                draft_memories.append(memory_block)
-
-                    if draft_memories:
-                        return draft_memories
-
-        memory_ids = [spec.id for spec in memory_block_specs]
-
-        stmt = select(ChatflowMemoryVariable).where(
-            and_(
-                ChatflowMemoryVariable.memory_id.in_(memory_ids),
-                ChatflowMemoryVariable.tenant_id == tenant_id,
-                ChatflowMemoryVariable.app_id == app_id
-            )
-        )
-
-        if conversation_id:
-            stmt = stmt.where(ChatflowMemoryVariable.conversation_id == conversation_id)
-        if node_id:
-            stmt = stmt.where(ChatflowMemoryVariable.node_id == node_id)
-
-        with db.session() as session:
-            results = session.execute(stmt).all()
-            found_memories = {row[0].memory_id: MemoryBlock.model_validate(row[0].__dict__) for row in results}
-
-            # Create MemoryBlock objects for specs that don't have runtime values yet
-            all_memories = []
-            for spec in memory_block_specs:
-                if spec.id in found_memories:
-                    all_memories.append(found_memories[spec.id])
-                else:
-                    # Create default memory with template value following design rules
-                    default_memory = MemoryBlock(
-                        id="",  # Will be assigned when saved
-                        memory_id=spec.id,
+                    draft_var = draft_vars[0]
+                    return MemoryBlock(
+                        id=draft_var.id,
+                        memory_id=draft_var.name,
                         name=spec.name,
-                        value=spec.template,
+                        value=draft_var.value,
                         scope=spec.scope,
                         term=spec.term,
-                        # Design rules:
-                        # - app_id=None for global (future), app_id=str for app-specific
-                        app_id=app_id,  # Always app-specific for now
-                        # - conversation_id=None for persistent, conversation_id=str for session
-                        conversation_id=conversation_id if spec.term == MemoryTerm.SESSION else None,
-                        # - node_id=None for app-scope, node_id=str for node-scope
-                        node_id=node_id if spec.scope == MemoryScope.NODE else None
+                        app_id=app_id,
+                        conversation_id=conversation_id,
+                        node_id=node_id
                     )
-                    all_memories.append(default_memory)
-
-            return all_memories
+            stmt = select(ChatflowMemoryVariable).where(
+                and_(
+                    ChatflowMemoryVariable.memory_id == spec.id,
+                    ChatflowMemoryVariable.tenant_id == tenant_id,
+                    ChatflowMemoryVariable.app_id == app_id,
+                    ChatflowMemoryVariable.node_id == node_id,
+                    ChatflowMemoryVariable.conversation_id == conversation_id
+                )
+            )
+            result = session.execute(stmt).scalar()
+            if result:
+                return ChatflowMemoryService._to_memory_block(result)
+            return MemoryBlock(
+                id="",  # Will be assigned when saved
+                memory_id=spec.id,
+                name=spec.name,
+                value=spec.template,
+                scope=spec.scope,
+                term=spec.term,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                node_id=node_id
+            )
 
     @staticmethod
     def get_app_memories_by_workflow(workflow, tenant_id: str,
-                                     conversation_id: Optional[str] = None) -> list[MemoryBlock]:
-        """Get app-scoped memories based on workflow configuration"""
-        from core.memory.entities import MemoryScope
+                                     conversation_id: Optional[str] = None) -> Sequence[MemoryBlock]:
 
         app_memory_specs = [spec for spec in workflow.memory_blocks if spec.scope == MemoryScope.APP]
         return ChatflowMemoryService.get_memories_by_specs(
@@ -272,7 +174,7 @@ class ChatflowMemoryService:
         )
 
     @staticmethod
-    def get_node_memories_by_workflow(workflow, node_id: str, tenant_id: str) -> list[MemoryBlock]:
+    def get_node_memories_by_workflow(workflow, node_id: str, tenant_id: str) -> Sequence[MemoryBlock]:
         """Get node-scoped memories based on workflow configuration"""
         from core.memory.entities import MemoryScope
 
@@ -287,71 +189,21 @@ class ChatflowMemoryService:
             node_id=node_id
         )
 
-    # Core Memory Orchestration features
-
     @staticmethod
-    def update_memory_if_needed(tenant_id: str, app_id: str,
-                                memory_block_spec: MemoryBlockSpec,
-                                conversation_id: str,
-                                variable_pool: VariablePool,
-                                is_draft: bool = False) -> bool:
-        """Update app-level memory if conditions are met
-
-        Args:
-            tenant_id: Tenant ID
-            app_id: Application ID
-            memory_block_spec: Memory block specification
-            conversation_id: Conversation ID
-            variable_pool: Variable pool for context
-            is_draft: Whether in draft mode
-        """
-        if not ChatflowMemoryService._should_update_memory(
-            tenant_id, app_id, memory_block_spec, conversation_id
-        ):
-            return False
-
-        if memory_block_spec.schedule_mode == MemoryScheduleMode.SYNC:
-            # Sync mode: will be processed in batch after the App run completes
-            # This only marks the need; actual update happens in _update_app_memory_after_run
-            return True
-        else:
-            # Async mode: submit asynchronous update immediately
-            ChatflowMemoryService._submit_async_memory_update(
-                tenant_id, app_id, memory_block_spec, conversation_id, variable_pool, is_draft
-            )
-        return True
-
-    @staticmethod
-    def update_node_memory_if_needed(tenant_id: str, app_id: str,
-                                     memory_block_spec: MemoryBlockSpec,
-                                     node_id: str, llm_output: str,
-                                     variable_pool: VariablePool,
-                                     is_draft: bool = False) -> bool:
-        """Update node-level memory after LLM execution
-
-        Args:
-            tenant_id: Tenant ID
-            app_id: Application ID
-            memory_block_spec: Memory block specification
-            node_id: Node ID
-            llm_output: LLM output content
-            variable_pool: Variable pool for context
-            is_draft: Whether in draft mode
-        """
+    def update_node_memory_if_needed(
+        tenant_id: str,
+        app_id: str,
+        node_id: str,
+        conversation_id: str,
+        memory_block_spec: MemoryBlockSpec,
+        variable_pool: VariablePool,
+        is_draft: bool
+    ) -> bool:
+        """Update node-level memory after LLM execution"""
         conversation_id_segment = variable_pool.get(('sys', 'conversation_id'))
         if not conversation_id_segment:
             return False
         conversation_id = conversation_id_segment.value
-
-        # Save LLM output to node conversation history
-        assistant_message = AssistantPromptMessage(content=llm_output)
-        ChatflowHistoryService.save_node_message(
-            prompt_message=assistant_message,
-            node_id=node_id,
-            conversation_id=str(conversation_id),
-            app_id=app_id,
-            tenant_id=tenant_id
-        )
 
         if not ChatflowMemoryService._should_update_memory(
             tenant_id, app_id, memory_block_spec, str(conversation_id), node_id
@@ -371,6 +223,57 @@ class ChatflowMemoryService:
                 llm_output, str(conversation_id), variable_pool, is_draft
             )
         return True
+
+    @staticmethod
+    def _get_memory_from_chatflow_table(memory_id: str, tenant_id: str,
+                                        app_id: Optional[str] = None,
+                                        conversation_id: Optional[str] = None,
+                                        node_id: Optional[str] = None) -> Optional[MemoryBlock]:
+        stmt = select(ChatflowMemoryVariable).where(
+            and_(
+                ChatflowMemoryVariable.app_id == app_id,
+                ChatflowMemoryVariable.memory_id == memory_id,
+                ChatflowMemoryVariable.tenant_id == tenant_id,
+                ChatflowMemoryVariable.conversation_id == conversation_id,
+                ChatflowMemoryVariable.node_id == node_id
+            )
+        )
+
+        with db.session() as session:
+            result = session.execute(stmt).first()
+            return ChatflowMemoryService._to_memory_block(result[0]) if result else None
+
+    @staticmethod
+    def _to_memory_block(entity: ChatflowMemoryVariable) -> MemoryBlock:
+        scope = MemoryScope(entity.scope) if not isinstance(entity.scope, MemoryScope) else entity.scope
+        term = MemoryTerm(entity.term) if not isinstance(entity.term, MemoryTerm) else entity.term
+        return MemoryBlock(
+            id=entity.id,
+            memory_id=entity.memory_id,
+            name=entity.name,
+            value=entity.value,
+            scope=scope,
+            term=term,
+            app_id=cast(str, entity.app_id), # It's supposed to be not nullable for now
+            conversation_id=entity.conversation_id,
+            node_id=entity.node_id,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+        )
+
+    @staticmethod
+    def _to_chatflow_memory_variable(memory_block: MemoryBlock) -> ChatflowMemoryVariable:
+        return ChatflowMemoryVariable(
+            id=memory_block.id,
+            node_id=memory_block.node_id,
+            memory_id=memory_block.memory_id,
+            name=memory_block.name,
+            value=memory_block.value,
+            scope=memory_block.scope,
+            term=memory_block.term,
+            app_id=memory_block.app_id,
+            conversation_id=memory_block.conversation_id,
+        )
 
     @staticmethod
     def _with_visibility(
@@ -400,8 +303,7 @@ class ChatflowMemoryService:
                               memory_block_spec: MemoryBlockSpec,
                               conversation_id: str, node_id: Optional[str] = None) -> bool:
         """Check if memory should be updated based on strategy"""
-        if memory_block_spec.strategy != MemoryStrategy.ON_TURNS:
-            return False
+        # Currently, `memory_block_spec.strategy != MemoryStrategy.ON_TURNS` is not possible, but possible in the future
 
         # Check turn count
         turn_key = f"memory_turn_count:{tenant_id}:{app_id}:{conversation_id}"
@@ -428,7 +330,7 @@ class ChatflowMemoryService:
 
         # Execute update asynchronously using thread
         thread = threading.Thread(
-            target=ChatflowMemoryService._update_single_memory,
+            target=ChatflowMemoryService._update_app_single_memory,
             kwargs={
                 'tenant_id': tenant_id,
                 'app_id': app_id,
@@ -492,28 +394,18 @@ class ChatflowMemoryService:
                                     tenant_id: str, app_id: str, node_id: str,
                                     llm_output: str, variable_pool: VariablePool,
                                     is_draft: bool = False):
-        """Execute node memory update"""
-        try:
-            # Call existing _perform_memory_update method here
-            ChatflowMemoryService._perform_memory_update(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                memory_block_spec=memory_block_spec,
-                conversation_id=str(variable_pool.get(('sys', 'conversation_id'))),
-                variable_pool=variable_pool,
-                node_id=node_id,
-                is_draft=is_draft
-            )
-        except Exception as e:
-            logger.exception(
-                "Failed to update node memory %s for node %s",
-                memory_block_spec.id,
-                node_id,
-                exc_info=e
-            )
+        ChatflowMemoryService._perform_memory_update(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            memory_block_spec=memory_block_spec,
+            conversation_id=str(variable_pool.get(('sys', 'conversation_id'))),
+            variable_pool=variable_pool,
+            node_id=node_id,
+            is_draft=is_draft
+        )
 
     @staticmethod
-    def _update_single_memory(*, tenant_id: str, app_id: str,
+    def _update_app_single_memory(*, tenant_id: str, app_id: str,
                               memory_block_spec: MemoryBlockSpec,
                               conversation_id: str,
                               variable_pool: VariablePool,
@@ -535,62 +427,26 @@ class ChatflowMemoryService:
                                conversation_id: str, variable_pool: VariablePool,
                                node_id: Optional[str] = None,
                                is_draft: bool = False):
-        """Perform the actual memory update using LLM
-
-        Args:
-            tenant_id: Tenant ID
-            app_id: Application ID
-            memory_block_spec: Memory block specification
-            conversation_id: Conversation ID
-            variable_pool: Variable pool for context
-            node_id: Optional node ID for node-level memory updates
-            is_draft: Whether in draft mode
-        """
-        # Get conversation history
+        """Perform the actual memory update using LLM"""
         history = ChatflowHistoryService.get_visible_chat_history(
             conversation_id=conversation_id,
             app_id=app_id,
             tenant_id=tenant_id,
-            node_id=node_id,  # Pass node_id, if None then get app-level history
-            max_visible_count=memory_block_spec.preserved_turns
+            node_id=node_id,
         )
 
         # Get current memory value
-        current_memory = ChatflowMemoryService.get_memory(
+        current_memory = ChatflowMemoryService._get_memory_from_chatflow_table(
             memory_id=memory_block_spec.id,
             tenant_id=tenant_id,
             app_id=app_id,
-            conversation_id=conversation_id if memory_block_spec.term == MemoryTerm.SESSION else None,
+            conversation_id=conversation_id,
             node_id=node_id
         )
 
         current_value = current_memory.value if current_memory else memory_block_spec.template
 
-        # Build update prompt - adjust wording based on whether there's a node_id
-        context_type = "Node conversation history" if node_id else "Conversation history"
-        memory_update_prompt = f"""
-            Based on the following {context_type}, update the memory content:
 
-            Current memory: {current_value}
-
-            {context_type}:
-            {[msg.content for msg in history]}
-
-            Update instruction: {memory_block_spec.instruction}
-
-            Please output the updated memory content:
-            """
-
-        # Invoke LLM to update memory - extracted as a separate method
-        updated_value = ChatflowMemoryService._invoke_llm_for_memory_update(
-            tenant_id,
-            memory_block_spec,
-            memory_update_prompt,
-            current_value
-        )
-
-        if updated_value is None:
-            return  # LLM invocation failed
 
         # Save updated memory
         updated_memory = MemoryBlock(
@@ -720,23 +576,10 @@ class ChatflowMemoryService:
     @staticmethod
     def update_app_memory_after_run(workflow, conversation_id: str, variable_pool: VariablePool,
                                     is_draft: bool = False):
-        """Update app-level memory after run completion
-
-        Args:
-            workflow: Workflow object
-            conversation_id: Conversation ID
-            variable_pool: Variable pool
-            is_draft: Whether in draft mode
-        """
-        from core.memory.entities import MemoryScope
-
-        memory_blocks = workflow.memory_blocks
-
-        # Separate sync and async memory blocks
+        """Update app-level memory after run completion"""
         sync_blocks = []
         async_blocks = []
-
-        for block in memory_blocks:
+        for block in workflow.memory_blocks:
             if block.scope == MemoryScope.APP:
                 if block.update_mode == "sync":
                     sync_blocks.append(block)
@@ -805,7 +648,7 @@ class ChatflowMemoryService:
                     futures = []
                     for block in sync_blocks:
                         future = executor.submit(
-                            ChatflowMemoryService._update_single_memory,
+                            ChatflowMemoryService._update_app_single_memory,
                             tenant_id=workflow.tenant_id,
                             app_id=workflow.app_id,
                             memory_block_spec=block,
