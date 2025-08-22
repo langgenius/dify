@@ -25,20 +25,37 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   const defaultTime = data.visual_config?.time || '11:30 AM'
 
   if (data.frequency === 'hourly') {
-    if (!data.visual_config?.datetime)
-      return []
-
-    const baseTime = new Date(data.visual_config.datetime)
+    const onMinute = data.visual_config?.on_minute ?? 0
     const recurUnit = data.visual_config?.recur_unit || 'hours'
     const recurEvery = data.visual_config?.recur_every || 1
 
-    const intervalMs = recurUnit === 'hours'
-      ? recurEvery * 60 * 60 * 1000
-      : recurEvery * 60 * 1000
+    const now = getCurrentTime()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
 
-    for (let i = 0; i < count; i++) {
-      const executionTime = new Date(baseTime.getTime() + i * intervalMs)
-      times.push(executionTime)
+    let nextExecution: Date
+
+    if (recurUnit === 'hours') {
+      if (currentMinute <= onMinute)
+        nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour, onMinute, 0, 0)
+       else
+        nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour + recurEvery, onMinute, 0, 0)
+
+      for (let i = 0; i < count; i++) {
+        const execution = new Date(nextExecution)
+        execution.setHours(nextExecution.getHours() + i * recurEvery)
+        times.push(execution)
+      }
+    }
+ else {
+      const intervalMs = recurEvery * 60 * 1000
+      nextExecution = new Date(now.getTime() + intervalMs)
+      nextExecution.setSeconds(0, 0)
+
+      for (let i = 0; i < count; i++) {
+        const execution = new Date(nextExecution.getTime() + i * intervalMs)
+        times.push(execution)
+      }
     }
   }
   else if (data.frequency === 'daily') {
