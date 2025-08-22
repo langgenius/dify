@@ -8,7 +8,7 @@ class TooltipManager {
   }
 
   clear(closeFn: () => void) {
-    if (this.activeCloser === closeFn) 
+    if (this.activeCloser === closeFn)
       this.activeCloser = null
   }
 }
