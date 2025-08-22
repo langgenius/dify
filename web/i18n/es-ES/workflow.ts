@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'Se debe agregar el nodo Final',
     addBlock: 'Agregar nodo',
     tagBound: 'Número de aplicaciones que utilizan esta etiqueta',
+    currentView: 'Vista actual',
+    currentWorkflow: 'Flujo de trabajo actual',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -989,6 +991,11 @@ const translation = {
       dependencies: 'Dependencias',
     },
     relationsTab: 'Relaciones',
+    noLastRunFound: 'No se encontró ninguna ejecución anterior',
+    copyLastRunError: 'No se pudo copiar las entradas de la última ejecución',
+    copyLastRun: 'Copiar última ejecución',
+    noMatchingInputsFound: 'No se encontraron entradas coincidentes de la última ejecución.',
+    lastOutput: 'Última salida',
   },
 }
 

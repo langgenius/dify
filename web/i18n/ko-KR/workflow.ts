@@ -118,6 +118,8 @@ const translation = {
     needAnswerNode: '답변 노드를 추가해야 합니다.',
     needEndNode: '종단 노드를 추가해야 합니다.',
     tagBound: '이 태그를 사용하는 앱 수',
+    currentView: '현재 보기',
+    currentWorkflow: '현재 워크플로',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -1040,6 +1042,11 @@ const translation = {
       dependenciesDescription: '이 노드가 의존하는 노드',
     },
     relationsTab: '관계',
+    copyLastRun: '마지막 실행 복사',
+    noLastRunFound: '이전 실행이 없습니다.',
+    noMatchingInputsFound: '지난 실행에서 일치하는 입력을 찾을 수 없습니다.',
+    copyLastRunError: '마지막 실행 입력을 복사하는 데 실패했습니다.',
+    lastOutput: '마지막 출력',
   },
 }
 

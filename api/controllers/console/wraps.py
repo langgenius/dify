@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import time
@@ -178,7 +179,7 @@ def cloud_edition_billing_rate_limit_check(resource: str):
 def cloud_utm_record(view):
     @wraps(view)
     def decorated(*args, **kwargs):
-        try:
+        with contextlib.suppress(Exception):
             features = FeatureService.get_features(current_user.current_tenant_id)
 
             if features.billing.enabled:
@@ -187,8 +188,7 @@ def cloud_utm_record(view):
                 if utm_info:
                     utm_info_dict: dict = json.loads(utm_info)
                     OperationService.record_utm(current_user.current_tenant_id, utm_info_dict)
-        except Exception as e:
-            pass
+
         return view(*args, **kwargs)
 
     return decorated

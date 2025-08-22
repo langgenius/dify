@@ -42,6 +42,34 @@ const translation = {
   emailLabel: 'Email hiện tại của bạn',
   rejectContent: 'Rất tiếc, bạn không đủ điều kiện để nhận trạng thái Xác minh Giáo dục và do đó không thể nhận được mã giảm giá độc quyền 100% cho Kế hoạch Chuyên nghiệp Dify nếu bạn sử dụng địa chỉ email này.',
   submitError: 'Gửi mẫu không thành công. Vui lòng thử lại sau.',
+  notice: {
+    expired: {
+      summary: {
+        line1: 'Bạn vẫn có thể truy cập và sử dụng Dify.',
+        line2: 'Tuy nhiên, bạn không còn đủ điều kiện để nhận phiếu giảm giá giáo dục mới.',
+      },
+      title: 'Tình trạng giáo dục của bạn đã hết hạn',
+    },
+    isAboutToExpire: {
+      summary: 'Đừng lo — điều này sẽ không ảnh hưởng đến gói đăng ký hiện tại của bạn, nhưng bạn sẽ không nhận được giảm giá giáo dục khi nó tự động gia hạn trừ khi bạn xác minh lại trạng thái của mình.',
+    },
+    stillInEducation: {
+      title: 'Vẫn đang học tập?',
+      isAboutToExpire: 'Xác minh lại ngay bây giờ để nhận một phiếu giảm giá mới cho năm học sắp tới. Nó sẽ được lưu vào tài khoản của bạn và sẵn sàng sử dụng khi bạn gia hạn tiếp theo.',
+      expired: 'Xác minh lại ngay bây giờ để nhận một phiếu giảm giá mới cho năm học sắp tới. Chúng tôi sẽ thêm nó vào tài khoản của bạn và bạn có thể sử dụng nó cho lần nâng cấp tiếp theo.',
+    },
+    alreadyGraduated: {
+      title: 'Đã tốt nghiệp rồi sao?',
+      expired: 'Hãy thoải mái nâng cấp bất kỳ lúc nào để có quyền truy cập đầy đủ vào các tính năng trả phí.',
+      isAboutToExpire: 'Gói đăng ký hiện tại của bạn vẫn sẽ hoạt động. Khi nó kết thúc, bạn sẽ được chuyển sang gói Sandbox, hoặc bạn có thể nâng cấp bất cứ lúc nào để khôi phục quyền truy cập đầy đủ vào các tính năng trả phí.',
+    },
+    action: {
+      upgrade: 'Nâng cấp',
+      reVerify: 'Xác minh lại',
+      dismiss: 'Bỏ qua',
+    },
+    dateFormat: 'MM/DD/YYYY',
+  },
 }
 
 export default translation

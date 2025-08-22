@@ -715,6 +715,10 @@ const translation = {
     supportedFormats: 'Unterstützt PNG, JPG, JPEG, WEBP und GIF',
   },
   you: 'Du',
+  avatar: {
+    deleteTitle: 'Avatar entfernen',
+    deleteDescription: 'Bist du sicher, dass du dein Profilbild entfernen möchtest? Dein Konto wird das standardmäßige Anfangs-Avatar verwenden.',
+  },
 }
 
 export default translation

@@ -716,6 +716,10 @@ const translation = {
     browse: 'duyệt',
   },
   you: 'Bạn',
+  avatar: {
+    deleteTitle: 'Xóa Ảnh Đại Diện',
+    deleteDescription: 'Bạn có chắc chắn muốn xóa ảnh đại diện của mình không? Tài khoản của bạn sẽ sử dụng avatar mặc định.',
+  },
 }
 
 export default translation

@@ -114,6 +114,8 @@ const translation = {
     needAnswerNode: 'Le nœud de réponse doit être ajouté.',
     addBlock: 'Ajouter un nœud',
     tagBound: 'Nombre d\'applications utilisant cette étiquette',
+    currentView: 'Vue actuelle',
+    currentWorkflow: 'Flux de travail actuel',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -747,8 +749,8 @@ const translation = {
         continueOnError: 'continuer sur l’erreur',
       },
       comma: ',',
-      error_one: '{{compte}} Erreur',
-      error_other: '{{compte}} Erreurs',
+      error_one: '{{count}} Erreur',
+      error_other: '{{count}} Erreurs',
       parallelModeEnableDesc: 'En mode parallèle, les tâches au sein des itérations prennent en charge l’exécution parallèle. Vous pouvez le configurer dans le panneau des propriétés à droite.',
       parallelModeUpper: 'MODE PARALLÈLE',
       parallelPanelDesc: 'En mode parallèle, les tâches de l’itération prennent en charge l’exécution parallèle.',
@@ -989,6 +991,11 @@ const translation = {
       dependenciesDescription: 'Nœuds sur lesquels repose ce nœud',
     },
     relationsTab: 'Relations',
+    copyLastRun: 'Copier la dernière exécution',
+    noLastRunFound: 'Aucune exécution précédente trouvée',
+    noMatchingInputsFound: 'Aucune entrée correspondante trouvée dans la dernière exécution.',
+    copyLastRunError: 'Échec de la copie des entrées de la dernière exécution',
+    lastOutput: 'Dernière sortie',
   },
 }
 

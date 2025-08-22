@@ -4,8 +4,8 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient  # type: ignore
-from sqlalchemy import JSON, Column, String, func
+from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient, l2_distance  # type: ignore
+from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 from configs import dify_config
@@ -119,14 +119,21 @@ class OceanBaseVector(BaseVector):
             )
             try:
                 if self._hybrid_search_enabled:
-                    self._client.perform_raw_text_sql(f"""ALTER TABLE {self._collection_name}
-                    ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER ik""")
+                    self._client.create_fts_idx_with_fts_index_param(
+                        table_name=self._collection_name,
+                        fts_idx_param=FtsIndexParam(
+                            index_name="fulltext_index_for_col_text",
+                            field_names=["text"],
+                            parser_type=FtsParser.IK,
+                        ),
+                    )
             except Exception as e:
                 raise Exception(
                     "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
                     + "to support fulltext index and vector index in the same table",
                     e,
                 )
+            self._client.refresh_metadata([self._collection_name])
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _check_hybrid_search_support(self) -> bool:
@@ -252,7 +259,7 @@ class OceanBaseVector(BaseVector):
                 vec_column_name="vector",
                 vec_data=query_vector,
                 topk=topk,
-                distance_func=func.l2_distance,
+                distance_func=l2_distance,
                 output_column_names=["text", "metadata"],
                 with_dist=True,
                 where_clause=_where_clause,

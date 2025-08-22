@@ -114,6 +114,8 @@ const translation = {
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
     tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
+    currentWorkflow: 'Quy trình làm việc hiện tại',
+    currentView: 'Hiện tại View',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',
@@ -989,6 +991,11 @@ const translation = {
       dependentsDescription: 'Các nút dựa vào nút này',
     },
     relationsTab: 'Mối quan hệ',
+    noLastRunFound: 'Không tìm thấy lần chạy trước',
+    noMatchingInputsFound: 'Không tìm thấy đầu vào nào khớp từ lần chạy trước',
+    copyLastRun: 'Sao chép lần chạy cuối',
+    copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
+    lastOutput: 'Đầu ra cuối cùng',
   },
 }
 

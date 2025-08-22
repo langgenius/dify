@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound
+from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from constants.languages import languages
@@ -36,6 +36,7 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
+from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -181,8 +182,8 @@ def migrate_annotation_vector_database():
             )
             if not apps:
                 break
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for app in apps:
@@ -308,8 +309,8 @@ def migrate_knowledge_vector_database():
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for dataset in datasets:
@@ -561,8 +562,8 @@ def old_metadata_migration():
                 .order_by(DatasetDocument.created_at.desc())
             )
             documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if not documents:
             break
         for document in documents:
@@ -1202,3 +1203,138 @@ def setup_system_tool_oauth_client(provider, client_params):
     db.session.add(oauth_client)
     db.session.commit()
     click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+
+
+def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:
+    """
+    Find draft variables that reference non-existent apps.
+
+    Args:
+        batch_size: Maximum number of orphaned app IDs to return
+
+    Returns:
+        List of app IDs that have draft variables but don't exist in the apps table
+    """
+    query = """
+        SELECT DISTINCT wdv.app_id
+        FROM workflow_draft_variables AS wdv
+        WHERE NOT EXISTS(
+            SELECT 1 FROM apps WHERE apps.id = wdv.app_id
+        )
+        LIMIT :batch_size
+    """
+
+    with db.engine.connect() as conn:
+        result = conn.execute(sa.text(query), {"batch_size": batch_size})
+        return [row[0] for row in result]
+
+
+def _count_orphaned_draft_variables() -> dict[str, Any]:
+    """
+    Count orphaned draft variables by app.
+
+    Returns:
+        Dictionary with statistics about orphaned variables
+    """
+    query = """
+        SELECT
+            wdv.app_id,
+            COUNT(*) as variable_count
+        FROM workflow_draft_variables AS wdv
+        WHERE NOT EXISTS(
+            SELECT 1 FROM apps WHERE apps.id = wdv.app_id
+        )
+        GROUP BY wdv.app_id
+        ORDER BY variable_count DESC
+    """
+
+    with db.engine.connect() as conn:
+        result = conn.execute(sa.text(query))
+        orphaned_by_app = {row[0]: row[1] for row in result}
+
+        total_orphaned = sum(orphaned_by_app.values())
+        app_count = len(orphaned_by_app)
+
+        return {
+            "total_orphaned_variables": total_orphaned,
+            "orphaned_app_count": app_count,
+            "orphaned_by_app": orphaned_by_app,
+        }
+
+
+@click.command()
+@click.option("--dry-run", is_flag=True, help="Show what would be deleted without actually deleting")
+@click.option("--batch-size", default=1000, help="Number of records to process per batch (default 1000)")
+@click.option("--max-apps", default=None, type=int, help="Maximum number of apps to process (default: no limit)")
+@click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
+def cleanup_orphaned_draft_variables(
+    dry_run: bool,
+    batch_size: int,
+    max_apps: int | None,
+    force: bool = False,
+):
+    """
+    Clean up orphaned draft variables from the database.
+
+    This script finds and removes draft variables that belong to apps
+    that no longer exist in the database.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Get statistics
+    stats = _count_orphaned_draft_variables()
+
+    logger.info("Found %s orphaned draft variables", stats["total_orphaned_variables"])
+    logger.info("Across %s non-existent apps", stats["orphaned_app_count"])
+
+    if stats["total_orphaned_variables"] == 0:
+        logger.info("No orphaned draft variables found. Exiting.")
+        return
+
+    if dry_run:
+        logger.info("DRY RUN: Would delete the following:")
+        for app_id, count in sorted(stats["orphaned_by_app"].items(), key=lambda x: x[1], reverse=True)[
+            :10
+        ]:  # Show top 10
+            logger.info("  App %s: %s variables", app_id, count)
+        if len(stats["orphaned_by_app"]) > 10:
+            logger.info("  ... and %s more apps", len(stats["orphaned_by_app"]) - 10)
+        return
+
+    # Confirm deletion
+    if not force:
+        click.confirm(
+            f"Are you sure you want to delete {stats['total_orphaned_variables']} "
+            f"orphaned draft variables from {stats['orphaned_app_count']} apps?",
+            abort=True,
+        )
+
+    total_deleted = 0
+    processed_apps = 0
+
+    while True:
+        if max_apps and processed_apps >= max_apps:
+            logger.info("Reached maximum app limit (%s). Stopping.", max_apps)
+            break
+
+        orphaned_app_ids = _find_orphaned_draft_variables(batch_size=10)
+        if not orphaned_app_ids:
+            logger.info("No more orphaned draft variables found.")
+            break
+
+        for app_id in orphaned_app_ids:
+            if max_apps and processed_apps >= max_apps:
+                break
+
+            try:
+                deleted_count = delete_draft_variables_batch(app_id, batch_size)
+                total_deleted += deleted_count
+                processed_apps += 1
+
+                logger.info("Deleted %s variables for app %s", deleted_count, app_id)
+
+            except Exception:
+                logger.exception("Error processing app %s", app_id)
+                continue
+
+    logger.info("Cleanup completed. Total deleted: %s variables across %s apps", total_deleted, processed_apps)

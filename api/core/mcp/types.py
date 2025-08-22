@@ -1173,7 +1173,7 @@ class SessionMessage:
     """A message with specific metadata for transport-specific features."""
 
     message: JSONRPCMessage
-    metadata: MessageMetadata = None
+    metadata: Optional[MessageMetadata] = None
 
 
 class OAuthClientMetadata(BaseModel):

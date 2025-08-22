@@ -114,6 +114,8 @@ const translation = {
     needAnswerNode: 'Nodul de răspuns trebuie adăugat',
     needEndNode: 'Nodul de sfârșit trebuie adăugat',
     tagBound: 'Numărul de aplicații care folosesc acest tag',
+    currentView: 'Vizualizare curentă',
+    currentWorkflow: 'Flux de lucru curent',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',
@@ -989,6 +991,11 @@ const translation = {
       dependenciesDescription: 'Noduri pe care se bazează acest nod',
     },
     relationsTab: 'Relații',
+    noMatchingInputsFound: 'Nu s-au găsit intrări corespunzătoare din ultima rulare',
+    copyLastRun: 'Copiază ultima execuție',
+    noLastRunFound: 'Niciun rulament anterior găsit',
+    copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
+    lastOutput: 'Ultimul rezultat',
   },
 }
 

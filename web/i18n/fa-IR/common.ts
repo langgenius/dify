@@ -716,6 +716,10 @@ const translation = {
     browse: 'مرورگر',
   },
   you: 'تو',
+  avatar: {
+    deleteTitle: 'حذف آواتار',
+    deleteDescription: 'آیا مطمئن هستید که می‌خواهید تصویر پروفایل خود را حذف کنید؟ حساب شما از آواتار اولیه پیش‌فرض استفاده خواهد کرد.',
+  },
 }
 
 export default translation

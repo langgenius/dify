@@ -1,11 +1,10 @@
 'use client'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './index.module.css'
 import type { SuccessInvitationResult } from '.'
 import Tooltip from '@/app/components/base/tooltip'
-import { randomString } from '@/utils'
 
 type IInvitationLinkProps = {
   value: SuccessInvitationResult
@@ -15,7 +14,6 @@ const InvitationLink = ({
   value,
 }: IInvitationLinkProps) => {
   const [isCopied, setIsCopied] = useState(false)
-  const selector = useRef(`invite-link-${randomString(4)}`)
 
   const copyHandle = useCallback(() => {
     // No prefix is needed here because the backend has already processed it

@@ -74,6 +74,8 @@ const translation = {
     exportPNG: 'Export as PNG',
     exportJPEG: 'Export as JPEG',
     exportSVG: 'Export as SVG',
+    currentView: 'Current View',
+    currentWorkflow: 'Current Workflow',
     model: 'Model',
     workflowAsTool: 'Workflow as Tool',
     configureRequired: 'Configure Required',
@@ -956,6 +958,11 @@ const translation = {
     settingsTab: 'Settings',
     lastRunTab: 'Last Run',
     relationsTab: 'Relations',
+    copyLastRun: 'Copy Last Run',
+    noLastRunFound: 'No previous run found',
+    noMatchingInputsFound: 'No matching inputs found from last run',
+    lastRunInputsCopied: '{{count}} input(s) copied from last run',
+    copyLastRunError: 'Failed to copy last run inputs',
     noData: {
       description: 'The results of the last run will be displayed here',
       runThisNode: 'Run this node',
@@ -981,6 +988,7 @@ const translation = {
       chatNode: 'Conversation',
       systemNode: 'System',
     },
+    lastOutput: 'Last Output',
     relations: {
       dependencies: 'Dependencies',
       dependents: 'Dependents',

@@ -248,7 +248,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 />
               </div>
               {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
-                <div className='my-3 h-[1px] bg-divider-subtle' />
+                <div className='my-3 h-px bg-divider-subtle' />
               )}
               {currentModel?.model_type === ModelTypeEnum.textGeneration && (
                 <LLMParamsPanel

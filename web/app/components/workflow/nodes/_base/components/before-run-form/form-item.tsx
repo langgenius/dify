@@ -181,7 +181,7 @@ const FormItem: FC<Props> = ({
             value={singleFileValue}
             onChange={handleSingleFileChange}
             fileConfig={{
-              allowed_file_types: inStepRun
+              allowed_file_types: inStepRun && (!payload.allowed_file_types || payload.allowed_file_types.length === 0)
                 ? [
                   SupportUploadFileTypes.image,
                   SupportUploadFileTypes.document,
@@ -189,7 +189,7 @@ const FormItem: FC<Props> = ({
                   SupportUploadFileTypes.video,
                 ]
                 : payload.allowed_file_types,
-              allowed_file_extensions: inStepRun
+              allowed_file_extensions: inStepRun && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
                   ...FILE_EXTS[SupportUploadFileTypes.image],
                   ...FILE_EXTS[SupportUploadFileTypes.document],
@@ -208,7 +208,7 @@ const FormItem: FC<Props> = ({
             value={value}
             onChange={files => onChange(files)}
             fileConfig={{
-              allowed_file_types: (inStepRun || isIteratorItemFile)
+              allowed_file_types: (inStepRun || isIteratorItemFile) && (!payload.allowed_file_types || payload.allowed_file_types.length === 0)
                 ? [
                   SupportUploadFileTypes.image,
                   SupportUploadFileTypes.document,
@@ -216,7 +216,7 @@ const FormItem: FC<Props> = ({
                   SupportUploadFileTypes.video,
                 ]
                 : payload.allowed_file_types,
-              allowed_file_extensions: (inStepRun || isIteratorItemFile)
+              allowed_file_extensions: (inStepRun || isIteratorItemFile) && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
                   ...FILE_EXTS[SupportUploadFileTypes.image],
                   ...FILE_EXTS[SupportUploadFileTypes.document],
