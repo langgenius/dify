@@ -1,9 +1,10 @@
 import logging
 from collections.abc import Mapping, MutableMapping
-from typing import Any, Optional, cast, override
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing_extensions import override
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
@@ -417,6 +418,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             memory_block_specs=memory_block_specs,
             tenant_id=self._workflow.tenant_id,
             app_id=self._workflow.app_id,
+            node_id=None,
             conversation_id=conversation_id,
             is_draft=is_draft
         )

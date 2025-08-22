@@ -1,16 +1,14 @@
 import json
 import time
-from collections.abc import Sequence
-from typing import Literal, Optional, overload, MutableMapping
+from collections.abc import MutableMapping, Sequence
+from typing import Literal, Optional, overload
 
 from sqlalchemy import Row, Select, and_, func, select
 from sqlalchemy.orm import Session
 
 from core.memory.entities import ChatflowConversationMetadata
 from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
     PromptMessage,
-    UserPromptMessage,
 )
 from extensions.ext_database import db
 from models.chatflow_memory import ChatflowConversation, ChatflowMessage

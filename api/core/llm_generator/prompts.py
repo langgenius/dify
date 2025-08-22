@@ -436,4 +436,4 @@ Update instruction:
 {{instruction}}
 
 Please output only the updated memory content, no other text like greeting:
-"""  # noqa: E501
+"""

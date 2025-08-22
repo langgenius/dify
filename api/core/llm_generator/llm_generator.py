@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Optional, cast, Mapping
+from typing import Optional, cast
 
 import json_repair
 
@@ -14,9 +14,10 @@ from core.llm_generator.prompts import (
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
+    MEMORY_UPDATE_PROMPT,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
-    WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE, MEMORY_UPDATE_PROMPT,
+    WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.memory.entities import MemoryBlock, MemoryBlockSpec
 from core.model_manager import ModelManager
@@ -577,7 +578,7 @@ class LLMGenerator:
     @staticmethod
     def update_memory_block(
         tenant_id: str,
-        visible_history: Mapping[str, str],
+        visible_history: Sequence[tuple[str, str]],
         memory_block: MemoryBlock,
         memory_spec: MemoryBlockSpec
     ) -> str:
@@ -588,7 +589,7 @@ class LLMGenerator:
             model_type=ModelType.LLM,
         )
         formatted_history = ""
-        for sender, message in visible_history.items():
+        for sender, message in visible_history:
             formatted_history += f"{sender}: {message}\n"
         formatted_prompt = PromptTemplateParser(MEMORY_UPDATE_PROMPT).format(
             inputs={

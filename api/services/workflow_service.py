@@ -756,6 +756,7 @@ def _fetch_memory_blocks(workflow: Workflow, conversation_id: str, is_draft: boo
         memory_block_specs=memory_block_specs,
         tenant_id=workflow.tenant_id,
         app_id=workflow.app_id,
+        node_id=None,
         conversation_id=conversation_id,
         is_draft=is_draft,
     )
