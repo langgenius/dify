@@ -981,6 +981,14 @@ const translation = {
       nodeTitle: '🔗 Webhook トリガー',
       configPlaceholder: 'Webhook トリガーの設定がここに実装されます',
     },
+    triggerPlugin: {
+      title: 'プラグイントリガー',
+      configuration: '設定',
+      noPluginSelected: 'プラグインが選択されていません。ワークフローキャンバスでこのトリガーを設定してください。',
+      outputVars: {
+        triggerData: 'プラグイントリガーからのデータ',
+      },
+    },
   },
   tracing: {
     stopBy: '{{user}}によって停止',
