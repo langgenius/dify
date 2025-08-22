@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { convertTimeToUTC, convertUTCToUserTimezone } from './utils/timezone-utils'
+import { convertTimeToUTC, convertUTCToUserTimezone, isUTCFormat, isUserFormat } from './utils/timezone-utils'
 
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -16,7 +16,12 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       enabled: payload.enabled !== undefined ? payload.enabled : true,
     }
 
-    if (payload.visual_config?.time && payload.timezone) {
+    // 只有当时间是UTC格式时才需要转换为用户时区格式显示
+    const needsConversion = payload.visual_config?.time
+                          && payload.timezone
+                          && isUTCFormat(payload.visual_config.time)
+
+    if (needsConversion) {
       const userTime = convertUTCToUserTimezone(payload.visual_config.time, payload.timezone)
       return {
         ...basePayload,
@@ -27,6 +32,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       }
     }
 
+    // 默认值或已经是用户格式，直接使用
     return {
       ...basePayload,
       visual_config: {
@@ -39,7 +45,8 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
 
   const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload, {
     beforeSave: (data) => {
-      if (data.visual_config?.time && data.timezone) {
+      // 只转换用户时间格式为UTC，避免重复转换
+      if (data.visual_config?.time && data.timezone && isUserFormat(data.visual_config.time)) {
         const utcTime = convertTimeToUTC(data.visual_config.time, data.timezone)
         return {
           ...data,
