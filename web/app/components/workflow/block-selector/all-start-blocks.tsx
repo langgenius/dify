@@ -36,7 +36,7 @@ const AllStartBlocks = ({
         <StartBlocks
           searchText={searchText}
           onSelect={onSelect}
-          availableBlocksTypes={ENTRY_NODE_TYPES as BlockEnum[]}
+          availableBlocksTypes={ENTRY_NODE_TYPES as unknown as BlockEnum[]}
         />
 
         <TriggerPluginSelector

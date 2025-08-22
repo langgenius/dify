@@ -3,9 +3,10 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
-import type { BlockEnum } from '../types'
+import type { BlockEnum, CommonNodeType } from '../types'
 import { BlockEnum as BlockEnumValues } from '../types'
 import { useNodesExtraData } from '../hooks'
 import { START_BLOCKS } from './constants'
@@ -24,10 +25,18 @@ const StartBlocks = ({
   availableBlocksTypes = [],
 }: StartBlocksProps) => {
   const { t } = useTranslation()
+  const nodes = useNodes()
   const nodesExtraData = useNodesExtraData()
 
   const filteredBlocks = useMemo(() => {
+    // Check if Start node already exists in workflow
+    const hasStartNode = nodes.some(node => (node.data as CommonNodeType)?.type === BlockEnumValues.Start)
+
     return START_BLOCKS.filter((block) => {
+      // Hide User Input (Start) if it already exists in workflow
+      if (block.type === BlockEnumValues.Start && hasStartNode)
+        return false
+
       // Filter by search text
       if (!block.title.toLowerCase().includes(searchText.toLowerCase()))
         return false
@@ -35,7 +44,7 @@ const StartBlocks = ({
       // availableBlocksTypes now contains properly filtered entry node types from parent
       return availableBlocksTypes.includes(block.type)
     })
-  }, [searchText, availableBlocksTypes])
+  }, [searchText, availableBlocksTypes, nodes])
 
   const isEmpty = filteredBlocks.length === 0
 

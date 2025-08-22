@@ -39,8 +39,14 @@ const RunMode = memo(() => {
     handleStopRun(workflowRunningData?.task_id || '')
   }
 
-  const handleTriggerSelect = (_option: TriggerOption) => {
-    handleWorkflowStartRunInWorkflow()
+  const handleTriggerSelect = (option: TriggerOption) => {
+    if (option.type === 'user_input') {
+      handleWorkflowStartRunInWorkflow()
+    }
+ else {
+      // TODO: Implement trigger-specific execution logic for schedule, webhook, plugin types
+      console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
+    }
   }
 
   const { eventEmitter } = useEventEmitterContextContext()
