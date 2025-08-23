@@ -15,6 +15,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.request import InvokeCredentials
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
@@ -692,7 +693,13 @@ class AgentNode(BaseNode):
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
+                outputs={
+                    "text": text,
+                    "usage": jsonable_encoder(llm_usage),
+                    "files": ArrayFileSegment(value=files),
+                    "json": json_output,
+                    **variables,
+                },
                 metadata={
                     **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
