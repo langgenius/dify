@@ -190,6 +190,7 @@ const VarList: FC<Props> = ({
                   )}
                   {assignedVarType === 'object' && (
                     <CodeEditor
+                      nodeId={nodeId}
                       value={item.value as string}
                       language={CodeLanguage.json}
                       onChange={value => handleToAssignedVarChange(index)(value)}

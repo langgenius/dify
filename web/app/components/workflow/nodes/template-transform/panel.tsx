@@ -57,6 +57,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         </Field>
         <Split />
         <CodeEditor
+          nodeId={id}
           availableVars={availableVars}
           varList={inputs.variables}
           onAddVar={handleAddVariable}

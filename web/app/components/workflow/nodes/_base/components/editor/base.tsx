@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import copy from 'copy-to-clipboard'
 import ToggleExpandBtn from '../toggle-expand-btn'
 import CodeGeneratorButton from '../code-generator-button'
@@ -12,11 +13,14 @@ import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
+import Search from '@/app/components/base/icons/src/public/thought/Search'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 import ActionButton from '@/app/components/base/action-button'
+import Tooltip from '@/app/components/base/tooltip'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { useStore } from '@/app/components/workflow/store'
 
 type Props = {
   nodeId?: string
@@ -36,6 +40,7 @@ type Props = {
   }[]
   showFileList?: boolean
   showCodeGenerator?: boolean
+  showVariableInspectButton?: boolean
   tip?: React.JSX.Element
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -56,8 +61,10 @@ const Base: FC<Props> = ({
   fileList = [],
   showFileList,
   showCodeGenerator = false,
+  showVariableInspectButton = false,
   tip,
 }) => {
+  const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const {
     wrapClassName,
@@ -70,6 +77,9 @@ const Base: FC<Props> = ({
   const editorContentMinHeight = minHeight - 28
   const [editorContentHeight, setEditorContentHeight] = useState(editorContentMinHeight)
 
+  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
     copy(value)
@@ -78,6 +88,13 @@ const Base: FC<Props> = ({
       setIsCopied(false)
     }, 2000)
   }, [value])
+
+  const handleOpenVariableInspect = useCallback(() => {
+    if (nodeId) {
+      setCurrentFocusNodeId(nodeId)
+      setShowVariableInspectPanel(true)
+    }
+  }, [nodeId, setCurrentFocusNodeId, setShowVariableInspectPanel])
 
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
@@ -98,6 +115,13 @@ const Base: FC<Props> = ({
                   nodeId={nodeId!}
                 />
               </div>
+            )}
+            {showVariableInspectButton && nodeId && (
+              <Tooltip popupContent={t('workflow.debug.variableInspect.view')}>
+                <ActionButton className='ml-1' onClick={handleOpenVariableInspect}>
+                  <Search className='h-4 w-4' />
+                </ActionButton>
+              </Tooltip>
             )}
             <ActionButton className='ml-1' onClick={handleCopy}>
               {!isCopied
