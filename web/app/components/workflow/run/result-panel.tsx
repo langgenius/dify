@@ -120,8 +120,6 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          showVariableInspectButton={!!nodeId}
-          nodeId={nodeId}
         />
         {process_data && (
           <CodeEditor
@@ -130,8 +128,6 @@ const ResultPanel: FC<ResultPanelProps> = ({
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
-            showVariableInspectButton={!!nodeId}
-            nodeId={nodeId}
           />
         )}
         {(outputs || status === 'running') && (
