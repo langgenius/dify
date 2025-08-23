@@ -1352,6 +1352,7 @@ class WorkflowTriggerLog(Base):
     @property
     def created_by_end_user(self):
         from models.model import EndUser
+
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
