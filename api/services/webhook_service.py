@@ -26,7 +26,6 @@ class WebhookService:
             webhook_trigger = (
                 session.query(WorkflowWebhookTrigger).filter(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
             )
-
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")
 
@@ -39,15 +38,10 @@ class WebhookService:
                 )
                 .first()
             )
-
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
 
-            # Get node configuration
-            try:
-                node_config = workflow.get_node_config_by_id(webhook_trigger.node_id)
-            except Exception as e:
-                raise ValueError(f"Webhook node not found: {webhook_trigger.node_id}")
+            node_config = workflow.get_node_config_by_id(webhook_trigger.node_id)
 
             return webhook_trigger, workflow, node_config
 
