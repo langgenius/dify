@@ -4,12 +4,25 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import GenericTable from './generic-table'
 import type { ColumnConfig, GenericTableRow } from './generic-table'
-import type { WebhookParam } from '../types'
+import type { ParameterType, WebhookParameter } from '../types'
+
+const normalizeParamType = (type: string): ParameterType => {
+  switch (type) {
+    case 'string':
+    case 'number':
+    case 'boolean':
+    case 'array':
+    case 'object':
+      return type
+    default:
+      return 'string'
+  }
+}
 
 type ParameterTableProps = {
   title: string
-  parameters: WebhookParam[]
-  onChange: (params: WebhookParam[]) => void
+  parameters: WebhookParameter[]
+  onChange: (params: WebhookParameter[]) => void
   readonly?: boolean
   placeholder?: string
   showType?: boolean
@@ -70,22 +83,19 @@ const ParameterTable: FC<ParameterTableProps> = ({
     required: false,
   }
 
-  // Convert WebhookParam[] to GenericTableRow[]
   const tableData: GenericTableRow[] = parameters.map(param => ({
-    key: param.key,
+    key: param.name,
     type: param.type,
     required: param.required,
-    value: param.value,
   }))
 
   const handleDataChange = (data: GenericTableRow[]) => {
-    const newParams: WebhookParam[] = data
+    const newParams: WebhookParameter[] = data
       .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
       .map(row => ({
-        key: String(row.key),
-        type: (row.type as string) || 'string',
+        name: String(row.key),
+        type: normalizeParamType((row.type as string) || 'string'),
         required: Boolean(row.required),
-        value: (row.value as string) || '',
       }))
     onChange(newParams)
   }

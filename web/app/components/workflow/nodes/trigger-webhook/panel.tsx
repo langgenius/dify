@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { HttpMethod, WebhookParam, WebhookParameter, WebhookTriggerNodeType } from './types'
+import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import useConfig from './use-config'
 import ParameterTable from './components/parameter-table'
 import HeaderTable from './components/header-table'
@@ -114,8 +114,8 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <ParameterTable
           readonly={readOnly}
           title="Query Parameters"
-          parameters={inputs.params as unknown as WebhookParam[]}
-          onChange={params => handleParamsChange(params as unknown as WebhookParameter[])}
+          parameters={inputs.params}
+          onChange={handleParamsChange}
           placeholder={t(`${i18nPrefix}.noQueryParameters`)}
           showType={false}
         />
@@ -135,8 +135,8 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <ParameterTable
           readonly={readOnly}
           title="Request Body Parameters"
-          parameters={inputs.body as unknown as WebhookParam[]}
-          onChange={params => handleBodyChange(params as unknown as WebhookParameter[])}
+          parameters={inputs.body}
+          onChange={handleBodyChange}
           placeholder={t(`${i18nPrefix}.noBodyParameters`)}
           showType={true}
           isRequestBody={true}
