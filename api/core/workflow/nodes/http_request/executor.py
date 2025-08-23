@@ -12,6 +12,7 @@ from json_repair import repair_json
 
 from configs import dify_config
 from core.file import file_manager
+from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.entities.variable_pool import VariablePool
@@ -228,7 +229,9 @@ class Executor:
                     files: dict[str, list[tuple[str | None, bytes, str]]] = {}
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
-                            if file.related_id is not None:
+                            if file.related_id is not None or (
+                                file.transfer_method == FileTransferMethod.REMOTE_URL and file.remote_url is not None
+                            ):
                                 file_tuple = (
                                     file.filename,
                                     file_manager.download(file),
