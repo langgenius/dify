@@ -128,6 +128,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
                 call_depth=0,
                 workflow_thread_pool_id=None,
                 triggered_from=trigger_data.trigger_type,
+                root_node_id=trigger_data.root_node_id,
             )
 
             # Calculate elapsed time
