@@ -8,17 +8,11 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
-class TriggerType(StrEnum):
-    """Types of workflow triggers"""
-
-    WEBHOOK = "webhook"
-    SCHEDULE = "schedule"
-    PLUGIN = "plugin"
+from models.enums import WorkflowRunTriggeredFrom
 
 
-class ExecutionStatus(StrEnum):
-    """Workflow execution status"""
+class AsyncTriggerStatus(StrEnum):
+    """Async trigger execution status"""
 
     COMPLETED = "completed"
     FAILED = "failed"
@@ -33,7 +27,7 @@ class TriggerData(BaseModel):
     workflow_id: Optional[str] = None
     inputs: Mapping[str, Any]
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
-    trigger_type: TriggerType
+    trigger_type: WorkflowRunTriggeredFrom
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -41,7 +35,7 @@ class TriggerData(BaseModel):
 class WebhookTriggerData(TriggerData):
     """Webhook-specific trigger data"""
 
-    trigger_type: TriggerType = TriggerType.WEBHOOK
+    trigger_type: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.WEBHOOK
     webhook_url: str
     headers: Mapping[str, str] = Field(default_factory=dict)
     method: str = "POST"
@@ -50,7 +44,7 @@ class WebhookTriggerData(TriggerData):
 class ScheduleTriggerData(TriggerData):
     """Schedule-specific trigger data"""
 
-    trigger_type: TriggerType = TriggerType.SCHEDULE
+    trigger_type: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.SCHEDULE
     schedule_id: str
     cron_expression: str
 
@@ -58,7 +52,7 @@ class ScheduleTriggerData(TriggerData):
 class PluginTriggerData(TriggerData):
     """Plugin webhook trigger data"""
 
-    trigger_type: TriggerType = TriggerType.PLUGIN
+    trigger_type: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.PLUGIN
     plugin_id: str
     webhook_url: str
 
@@ -71,11 +65,11 @@ class WorkflowTaskData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class WorkflowExecutionResult(BaseModel):
-    """Result from workflow execution"""
+class AsyncTriggerExecutionResult(BaseModel):
+    """Result from async trigger-based workflow execution"""
 
     execution_id: str
-    status: ExecutionStatus
+    status: AsyncTriggerStatus
     result: Optional[Mapping[str, Any]] = None
     error: Optional[str] = None
     elapsed_time: Optional[float] = None

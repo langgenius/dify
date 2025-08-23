@@ -20,7 +20,7 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.model import App
 from models.workflow import Workflow, WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.workflow.entities import ExecutionStatus, TriggerData, WorkflowExecutionResult, WorkflowTaskData
+from services.workflow.entities import AsyncTriggerExecutionResult, AsyncTriggerStatus, TriggerData, WorkflowTaskData
 
 # Determine queue names based on edition
 if dify_config.EDITION == "CLOUD":
@@ -56,7 +56,7 @@ def execute_workflow_sandbox(task_data_dict: dict) -> dict:
     return _execute_workflow_common(task_data).model_dump()
 
 
-def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionResult:
+def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecutionResult:
     """
     Common workflow execution logic with trigger log updates
 
@@ -64,7 +64,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionRe
         task_data: Validated Pydantic model with task data
 
     Returns:
-        WorkflowExecutionResult: Pydantic model with execution results
+        AsyncTriggerExecutionResult: Pydantic model with execution results
     """
     # Create a new session for this task
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -77,9 +77,9 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionRe
 
         if not trigger_log:
             # This should not happen, but handle gracefully
-            return WorkflowExecutionResult(
+            return AsyncTriggerExecutionResult(
                 execution_id=task_data.workflow_trigger_log_id,
-                status=ExecutionStatus.FAILED,
+                status=AsyncTriggerStatus.FAILED,
                 error=f"Trigger log not found: {task_data.workflow_trigger_log_id}",
             )
 
@@ -128,7 +128,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionRe
             if trigger_data.workflow_id:
                 args["workflow_id"] = trigger_data.workflow_id
 
-            # Execute the workflow
+            # Execute the workflow with the trigger type
             result = generator.generate(
                 app_model=app_model,
                 workflow=workflow,
@@ -138,6 +138,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionRe
                 streaming=False,
                 call_depth=0,
                 workflow_thread_pool_id=None,
+                triggered_from=trigger_data.trigger_type,
             )
 
             # Calculate elapsed time
@@ -164,9 +165,9 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionRe
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            return WorkflowExecutionResult(
+            return AsyncTriggerExecutionResult(
                 execution_id=trigger_log.id,
-                status=ExecutionStatus.COMPLETED,
+                status=AsyncTriggerStatus.COMPLETED,
                 result=outputs,
                 elapsed_time=elapsed_time,
                 total_tokens=total_tokens,
@@ -186,6 +187,6 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> WorkflowExecutionRe
             # Final failure - no retry logic (simplified like RAG tasks)
             session.commit()
 
-            return WorkflowExecutionResult(
-                execution_id=trigger_log.id, status=ExecutionStatus.FAILED, error=str(e), elapsed_time=elapsed_time
+            return AsyncTriggerExecutionResult(
+                execution_id=trigger_log.id, status=AsyncTriggerStatus.FAILED, error=str(e), elapsed_time=elapsed_time
             )
