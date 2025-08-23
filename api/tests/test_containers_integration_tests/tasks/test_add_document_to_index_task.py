@@ -1,14 +1,14 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 from faker import Faker
 
-from models.dataset import Dataset, Document, DocumentSegment, DatasetAutoDisableLog
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from tasks.add_document_to_index_task import add_document_to_index_task
 from core.rag.index_processor.constant.index_type import IndexType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.datetime_utils import naive_utc_now
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.dataset import Dataset, DatasetAutoDisableLog, Document, DocumentSegment
+from tasks.add_document_to_index_task import add_document_to_index_task
 
 
 class TestAddDocumentToIndexTask:
@@ -221,9 +221,7 @@ class TestAddDocumentToIndexTask:
         add_document_to_index_task(document.id)
 
         # Assert: Verify different index type handling
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexType.QA_INDEX
-        )
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexType.QA_INDEX)
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify the load method was called with correct parameters
@@ -376,7 +374,7 @@ class TestAddDocumentToIndexTask:
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Mock the get_child_chunks method for each segment
-        with patch.object(DocumentSegment, 'get_child_chunks') as mock_get_child_chunks:
+        with patch.object(DocumentSegment, "get_child_chunks") as mock_get_child_chunks:
             # Setup mock to return child chunks for each segment
             mock_child_chunks = []
             for i in range(2):  # Each segment has 2 child chunks
@@ -405,7 +403,7 @@ class TestAddDocumentToIndexTask:
 
             # Verify each document has children
             for doc in documents:
-                assert hasattr(doc, 'children')
+                assert hasattr(doc, "children")
                 assert len(doc.children) == 2  # Each document has 2 children
 
             # Verify database state changes
@@ -518,18 +516,18 @@ class TestAddDocumentToIndexTask:
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Verify logs exist before processing
-        existing_logs = db.session.query(DatasetAutoDisableLog).where(
-            DatasetAutoDisableLog.document_id == document.id
-        ).all()
+        existing_logs = (
+            db.session.query(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id).all()
+        )
         assert len(existing_logs) == 2
 
         # Act: Execute the task
         add_document_to_index_task(document.id)
 
         # Assert: Verify auto disable logs were deleted
-        remaining_logs = db.session.query(DatasetAutoDisableLog).where(
-            DatasetAutoDisableLog.document_id == document.id
-        ).all()
+        remaining_logs = (
+            db.session.query(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id).all()
+        )
         assert len(remaining_logs) == 0
 
         # Verify index processing occurred normally
@@ -757,10 +755,7 @@ class TestAddDocumentToIndexTask:
             mock_logging.info.assert_called()
 
             # Find the performance log message
-            performance_log_calls = [
-                call for call in mock_logging.info.call_args_list
-                if "latency:" in str(call)
-            ]
+            performance_log_calls = [call for call in mock_logging.info.call_args_list if "latency:" in str(call)]
             assert len(performance_log_calls) == 1
 
             # Verify the performance message format
