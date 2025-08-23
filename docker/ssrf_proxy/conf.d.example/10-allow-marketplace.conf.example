@@ -1,0 +1,5 @@
+# Example: Allow access to Dify marketplace
+# Copy this file to /etc/squid/conf.d/10-allow-marketplace.conf to enable
+
+acl allowed_marketplace dstdomain .marketplace.dify.ai
+http_access allow allowed_marketplace

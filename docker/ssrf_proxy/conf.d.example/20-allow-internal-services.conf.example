@@ -1,0 +1,15 @@
+# Example: Allow access to internal services (USE WITH CAUTION!)
+# Copy this file to /etc/squid/conf.d/20-allow-internal-services.conf to enable
+# WARNING: This reduces SSRF protection. Only use if you understand the security implications.
+
+# Example: Allow specific internal service
+# acl internal_api_service dst 10.0.1.100
+# http_access allow internal_api_service
+
+# Example: Allow Docker network (172.17.0.0/16 is Docker's default bridge network)
+# acl docker_network dst 172.17.0.0/16
+# http_access allow docker_network
+
+# Example: Allow localhost access (DANGEROUS - can bypass SSRF protection)
+# acl localhost_dst dst 127.0.0.1
+# http_access allow localhost_dst
