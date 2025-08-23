@@ -25,7 +25,14 @@ acl Safe_ports port 80          # http
 acl Safe_ports port 443         # https
 acl CONNECT method CONNECT
 
-################################## Strict Default Rules ##################################
+################################## Access Control Rules ##################################
+# IMPORTANT: Order matters! First matching rule wins.
+
+# Special rule for reverse proxy port (sandbox access)
+# This must come FIRST to bypass other restrictions for sandbox connectivity
+acl reverse_proxy_port myport ${REVERSE_PROXY_PORT}
+http_access allow reverse_proxy_port
+
 # DENY access to all private/local networks - prevents SSRF attacks
 http_access deny private_networks
 
@@ -39,7 +46,10 @@ http_access deny CONNECT !SSL_ports
 http_access allow localhost manager
 http_access deny manager
 
-# DENY all requests by default
+# Allow localhost to access services (needed for integration tests)
+acl localhost src 127.0.0.1/32 ::1
+http_access allow localhost
+
 # User overrides in /etc/squid/conf.d/*.conf should be placed here
 include /etc/squid/conf.d/*.conf
 
@@ -64,12 +74,10 @@ refresh_pattern .		0	20%	4320
 # cache_peer <upstream_proxy_ip> parent 3128 0 no-query no-digest no-netdb-exchange default
 
 ################################## Reverse Proxy To Sandbox ##################################
+# This configuration allows the sandbox to be accessed through the reverse proxy
+# The reverse proxy port is separate from the main proxy port and has different rules
 http_port ${REVERSE_PROXY_PORT} accel vhost
 cache_peer ${SANDBOX_HOST} parent ${SANDBOX_PORT} 0 no-query originserver
-
-# Allow reverse proxy access from all sources (for sandbox connectivity)
-acl reverse_proxy_port myport ${REVERSE_PROXY_PORT}
-http_access allow reverse_proxy_port
 
 # Buffer size for file uploads
 client_request_buffer_max_size 100 MB

@@ -1,0 +1,2 @@
+# Ignore the conf.d directory that's created for testing/local overrides
+conf.d/

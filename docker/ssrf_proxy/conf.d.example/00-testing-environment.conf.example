@@ -1,0 +1,12 @@
+# Configuration for CI/Testing Environment
+# Copy this file to /etc/squid/conf.d/00-testing-environment.conf when running tests
+# WARNING: This configuration is ONLY for testing and should NOT be used in production
+
+# Allow access to sandbox service for integration tests
+acl sandbox_service dst sandbox
+http_access allow sandbox_service
+
+# Allow access to Docker internal networks for testing
+# This is needed when services communicate within Docker networks
+acl docker_internal dst 172.16.0.0/12
+http_access allow docker_internal

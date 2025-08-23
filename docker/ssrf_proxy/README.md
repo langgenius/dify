@@ -61,6 +61,7 @@ spec:
 
 The `conf.d.example/` directory contains example configurations:
 
+- **00-testing-environment.conf.example**: Configuration for CI/testing environments (NOT for production)
 - **10-allow-marketplace.conf.example**: Allow access to Dify marketplace
 - **20-allow-internal-services.conf.example**: Allow internal services (use with caution!)
 - **30-allow-external-domains.conf.example**: Allow specific external domains
