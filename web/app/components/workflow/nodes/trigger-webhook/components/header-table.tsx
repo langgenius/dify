@@ -32,15 +32,11 @@ const HeaderTable: FC<HeaderTableProps> = ({
       key: 'required',
       title: 'Required',
       type: 'switch',
-      width: 'w-[100px]',
+      width: 'w-[48px]',
     },
   ]
 
-  // Default data for the first row
-  const defaultRowData: GenericTableRow = {
-    name: 'variable_1',
-    required: false,
-  }
+  // No default prefilled row; table initializes with one empty row
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
@@ -73,7 +69,6 @@ const HeaderTable: FC<HeaderTableProps> = ({
       onChange={handleDataChange}
       readonly={readonly}
       placeholder={t('workflow.nodes.triggerWebhook.noHeaders')}
-      defaultRowData={defaultRowData}
       emptyRowData={emptyRowData}
       showHeader={true}
     />

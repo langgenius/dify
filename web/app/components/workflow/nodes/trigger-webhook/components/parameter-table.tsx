@@ -45,34 +45,27 @@ const ParameterTable: FC<ParameterTableProps> = ({
       width: 'flex-1',
       placeholder: isRequestBody ? 'Name' : 'Variable Name',
     },
-    ...(showType ? [{
-      key: 'type',
-      title: 'Type',
-      type: isRequestBody ? 'select' as const : 'input' as const,
-      width: 'w-[120px]',
-      placeholder: 'Type',
-      options: isRequestBody ? typeOptions : undefined,
-    }] : []),
+    ...(showType
+      ? [{
+        key: 'type',
+        title: 'Type',
+        type: (isRequestBody ? 'select' : 'input') as ColumnConfig['type'],
+        width: 'w-[96px]',
+        placeholder: 'Type',
+        options: isRequestBody ? typeOptions : undefined,
+      }]
+      : []),
     {
       key: 'required',
       title: 'Required',
       type: 'switch',
-      width: 'w-[100px]',
+      width: 'w-[48px]',
     },
   ]
-
-  // Default data for the first row
-  const defaultRowData: GenericTableRow = {
-    key: 'variable_1',
-    type: 'string',
-    required: false,
-  }
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
     key: '',
-    // IMPORTANT: keep empty so GenericTable's auto-add-empty-row logic does not treat it as filled
-    // When converting back to WebhookParam, we already default missing type to 'string'
     type: '',
     required: false,
   }
@@ -85,15 +78,14 @@ const ParameterTable: FC<ParameterTableProps> = ({
     value: param.value,
   }))
 
-  // Handle data changes and convert back to WebhookParam[]
   const handleDataChange = (data: GenericTableRow[]) => {
     const newParams: WebhookParam[] = data
-      .filter(row => row.key && row.key.trim() !== '')
+      .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
       .map(row => ({
-        key: row.key,
-        type: row.type || 'string',
-        required: !!row.required,
-        value: row.value || '',
+        key: String(row.key),
+        type: (row.type as string) || 'string',
+        required: Boolean(row.required),
+        value: (row.value as string) || '',
       }))
     onChange(newParams)
   }
@@ -106,7 +98,6 @@ const ParameterTable: FC<ParameterTableProps> = ({
       onChange={handleDataChange}
       readonly={readonly}
       placeholder={placeholder || t('workflow.nodes.triggerWebhook.noParameters')}
-      defaultRowData={defaultRowData}
       emptyRowData={emptyRowData}
       showHeader={true}
     />
