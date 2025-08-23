@@ -514,8 +514,8 @@ const DocumentList: FC<IDocumentListProps> = ({
     let filteredDocs = documents
 
     if (statusFilter !== 'all') {
-      filteredDocs = filteredDocs.filter(doc => 
-        doc.display_status?.toLowerCase() === statusFilter.toLowerCase()
+      filteredDocs = filteredDocs.filter(doc =>
+        doc.display_status?.toLowerCase() === statusFilter.toLowerCase(),
       )
     }
 
