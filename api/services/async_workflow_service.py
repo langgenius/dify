@@ -18,7 +18,7 @@ from models.model import App
 from models.workflow import Workflow, WorkflowTriggerLog, WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.llm import InvokeRateLimitError
-from services.workflow.entities import TriggerData, WorkflowTaskData
+from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
 from services.workflow.rate_limiter import TenantDailyRateLimiter
 from services.workflow_service import WorkflowService
@@ -42,142 +42,142 @@ class AsyncWorkflowService:
     """
 
     @classmethod
-    def trigger_workflow_async(cls, trigger_data: TriggerData) -> dict:
+    def trigger_workflow_async(cls, session: Session, trigger_data: TriggerData) -> AsyncTriggerResponse:
         """
         Universal entry point for async workflow execution
 
         Creates a trigger log and dispatches to appropriate queue based on subscription tier
 
         Args:
+            session: Database session to use for operations
             trigger_data: Validated Pydantic model containing trigger information
 
         Returns:
-            dict with workflow_trigger_log_id, execution_id, task_id, status, and queue
+            AsyncTriggerResponse with workflow_trigger_log_id, task_id, status, and queue
 
         Raises:
             ValueError: If app or workflow not found
             InvokeRateLimitError: If daily rate limit exceeded
         """
-        with Session(db.engine) as session:
-            trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
-            dispatcher_manager = QueueDispatcherManager()
-            workflow_service = WorkflowService()
-            rate_limiter = TenantDailyRateLimiter(redis_client)
+        trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
+        dispatcher_manager = QueueDispatcherManager()
+        workflow_service = WorkflowService()
+        rate_limiter = TenantDailyRateLimiter(redis_client)
 
-            # 1. Validate app exists
-            app_model = session.scalar(select(App).where(App.id == trigger_data.app_id))
-            if not app_model:
-                raise ValueError(f"App not found: {trigger_data.app_id}")
+        # 1. Validate app exists
+        app_model = session.scalar(select(App).where(App.id == trigger_data.app_id))
+        if not app_model:
+            raise ValueError(f"App not found: {trigger_data.app_id}")
 
-            # 2. Get workflow
-            workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id)
+        # 2. Get workflow
+        workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id)
 
-            # 3. Get dispatcher based on tenant subscription
-            dispatcher = dispatcher_manager.get_dispatcher(trigger_data.tenant_id)
+        # 3. Get dispatcher based on tenant subscription
+        dispatcher = dispatcher_manager.get_dispatcher(trigger_data.tenant_id)
 
-            # 4. Get tenant owner timezone for rate limiting
-            tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
+        # 4. Get tenant owner timezone for rate limiting
+        tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
 
-            # 5. Create trigger log entry first (for tracking)
-            trigger_log = WorkflowTriggerLog(
-                tenant_id=trigger_data.tenant_id,
-                app_id=trigger_data.app_id,
-                workflow_id=workflow.id,
-                trigger_type=trigger_data.trigger_type,
-                trigger_data=trigger_data.model_dump_json(),
-                inputs=json.dumps(dict(trigger_data.inputs)),
-                status=WorkflowTriggerStatus.PENDING,
-                queue_name=dispatcher.get_queue_name(),
-                retry_count=0,
-            )
+        # 5. Create trigger log entry first (for tracking)
+        trigger_log = WorkflowTriggerLog(
+            tenant_id=trigger_data.tenant_id,
+            app_id=trigger_data.app_id,
+            workflow_id=workflow.id,
+            trigger_type=trigger_data.trigger_type,
+            trigger_data=trigger_data.model_dump_json(),
+            inputs=json.dumps(dict(trigger_data.inputs)),
+            status=WorkflowTriggerStatus.PENDING,
+            queue_name=dispatcher.get_queue_name(),
+            retry_count=0,
+        )
 
-            trigger_log = trigger_log_repo.create(trigger_log)
-            session.commit()
+        trigger_log = trigger_log_repo.create(trigger_log)
+        session.commit()
 
-            # 6. Check and consume daily quota
-            if not dispatcher.consume_quota(trigger_data.tenant_id, tenant_owner_tz):
-                # Update trigger log status
-                trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
-                trigger_log.error = f"Daily limit reached for {dispatcher.get_queue_name()}"
-                trigger_log_repo.update(trigger_log)
-                session.commit()
-
-                remaining = rate_limiter.get_remaining_quota(
-                    trigger_data.tenant_id, dispatcher.get_daily_limit(), tenant_owner_tz
-                )
-
-                reset_time = rate_limiter.get_quota_reset_time(trigger_data.tenant_id, tenant_owner_tz)
-
-                raise InvokeRateLimitError(
-                    f"Daily workflow execution limit reached. "
-                    f"Limit resets at {reset_time.strftime('%Y-%m-%d %H:%M:%S %Z')}. "
-                    f"Remaining quota: {remaining}"
-                )
-
-            # 7. Create task data
-            queue_name = dispatcher.get_queue_name()
-
-            task_data = WorkflowTaskData(workflow_trigger_log_id=trigger_log.id)
-
-            # 8. Dispatch to appropriate queue
-            task_data_dict = task_data.model_dump(mode="json")
-
-            if queue_name == QueuePriority.PROFESSIONAL:
-                task = execute_workflow_professional.delay(task_data_dict)  # type: ignore
-            elif queue_name == QueuePriority.TEAM:
-                task = execute_workflow_team.delay(task_data_dict)  # type: ignore
-            else:  # SANDBOX
-                task = execute_workflow_sandbox.delay(task_data_dict)  # type: ignore
-
-            # 9. Update trigger log with task info
-            trigger_log.status = WorkflowTriggerStatus.QUEUED
-            trigger_log.celery_task_id = task.id
-            trigger_log.triggered_at = datetime.now(UTC)
+        # 6. Check and consume daily quota
+        if not dispatcher.consume_quota(trigger_data.tenant_id, tenant_owner_tz):
+            # Update trigger log status
+            trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
+            trigger_log.error = f"Daily limit reached for {dispatcher.get_queue_name()}"
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            return {
-                "workflow_trigger_log_id": trigger_log.id,
-                "task_id": task.id,
-                "status": "queued",
-                "queue": queue_name,
-            }
+            remaining = rate_limiter.get_remaining_quota(
+                trigger_data.tenant_id, dispatcher.get_daily_limit(), tenant_owner_tz
+            )
+
+            reset_time = rate_limiter.get_quota_reset_time(trigger_data.tenant_id, tenant_owner_tz)
+
+            raise InvokeRateLimitError(
+                f"Daily workflow execution limit reached. "
+                f"Limit resets at {reset_time.strftime('%Y-%m-%d %H:%M:%S %Z')}. "
+                f"Remaining quota: {remaining}"
+            )
+
+        # 7. Create task data
+        queue_name = dispatcher.get_queue_name()
+
+        task_data = WorkflowTaskData(workflow_trigger_log_id=trigger_log.id)
+
+        # 8. Dispatch to appropriate queue
+        task_data_dict = task_data.model_dump(mode="json")
+
+        if queue_name == QueuePriority.PROFESSIONAL:
+            task = execute_workflow_professional.delay(task_data_dict)  # type: ignore
+        elif queue_name == QueuePriority.TEAM:
+            task = execute_workflow_team.delay(task_data_dict)  # type: ignore
+        else:  # SANDBOX
+            task = execute_workflow_sandbox.delay(task_data_dict)  # type: ignore
+
+        # 9. Update trigger log with task info
+        trigger_log.status = WorkflowTriggerStatus.QUEUED
+        trigger_log.celery_task_id = task.id
+        trigger_log.triggered_at = datetime.now(UTC)
+        trigger_log_repo.update(trigger_log)
+        session.commit()
+
+        return AsyncTriggerResponse(
+            workflow_trigger_log_id=trigger_log.id,
+            task_id=task.id,
+            status="queued",
+            queue=queue_name,
+        )
 
     @classmethod
-    def reinvoke_trigger(cls, workflow_trigger_log_id: str) -> dict:
+    def reinvoke_trigger(cls, session: Session, workflow_trigger_log_id: str) -> AsyncTriggerResponse:
         """
         Re-invoke a previously failed or rate-limited trigger
 
         Args:
+            session: Database session to use for operations
             workflow_trigger_log_id: ID of the trigger log to re-invoke
 
         Returns:
-            dict with new execution information
+            AsyncTriggerResponse with new execution information
 
         Raises:
             ValueError: If trigger log not found
         """
-        with Session(db.engine) as session:
-            trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
+        trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
 
-            trigger_log = trigger_log_repo.get_by_id(workflow_trigger_log_id)
+        trigger_log = trigger_log_repo.get_by_id(workflow_trigger_log_id)
 
-            if not trigger_log:
-                raise ValueError(f"Trigger log not found: {workflow_trigger_log_id}")
+        if not trigger_log:
+            raise ValueError(f"Trigger log not found: {workflow_trigger_log_id}")
 
-            # Reconstruct trigger data from log
-            trigger_data = TriggerData.model_validate_json(trigger_log.trigger_data)
+        # Reconstruct trigger data from log
+        trigger_data = TriggerData.model_validate_json(trigger_log.trigger_data)
 
-            # Reset log for retry
-            trigger_log.status = WorkflowTriggerStatus.RETRYING
-            trigger_log.retry_count += 1
-            trigger_log.error = None
-            trigger_log.triggered_at = datetime.now(UTC)
-            trigger_log_repo.update(trigger_log)
-            session.commit()
+        # Reset log for retry
+        trigger_log.status = WorkflowTriggerStatus.RETRYING
+        trigger_log.retry_count += 1
+        trigger_log.error = None
+        trigger_log.triggered_at = datetime.now(UTC)
+        trigger_log_repo.update(trigger_log)
+        session.commit()
 
-            # Re-trigger workflow (this will create a new trigger log)
-            return cls.trigger_workflow_async(trigger_data)
+        # Re-trigger workflow (this will create a new trigger log)
+        return cls.trigger_workflow_async(session, trigger_data)
 
     @classmethod
     def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[dict]:

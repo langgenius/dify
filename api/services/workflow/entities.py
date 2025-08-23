@@ -76,3 +76,38 @@ class AsyncTriggerExecutionResult(BaseModel):
     total_tokens: Optional[int] = None
 
     model_config = ConfigDict(use_enum_values=True)
+
+
+class AsyncTriggerResponse(BaseModel):
+    """Response from triggering an async workflow"""
+
+    workflow_trigger_log_id: str
+    task_id: str
+    status: str
+    queue: str
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class TriggerLogResponse(BaseModel):
+    """Response model for trigger log data"""
+
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    trigger_type: WorkflowRunTriggeredFrom
+    status: str
+    queue_name: str
+    retry_count: int
+    celery_task_id: Optional[str] = None
+    workflow_run_id: Optional[str] = None
+    error: Optional[str] = None
+    outputs: Optional[str] = None
+    elapsed_time: Optional[float] = None
+    total_tokens: Optional[int] = None
+    created_at: Optional[str] = None
+    triggered_at: Optional[str] = None
+    finished_at: Optional[str] = None
+
+    model_config = ConfigDict(use_enum_values=True)
