@@ -885,6 +885,7 @@ const translation = {
         },
         json: '에이전트 생성 JSON',
         text: '상담원이 생성한 콘텐츠',
+        usage: '모델 사용 정보',
       },
       checkList: {
         strategyNotSelected: '전략이 선택되지 않음',

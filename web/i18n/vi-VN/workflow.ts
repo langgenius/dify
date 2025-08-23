@@ -843,6 +843,7 @@ const translation = {
         },
         json: 'JSON do tác nhân tạo',
         text: 'Nội dung do tác nhân tạo',
+        usage: 'Thông tin sử dụng mô hình',
       },
       checkList: {
         strategyNotSelected: 'Chiến lược không được chọn',

@@ -842,6 +842,7 @@ const translation = {
           upload_file_id: '上傳檔 ID',
         },
         text: '代理生成的內容',
+        usage: '模型用量信息',
         json: '代理生成的 JSON',
       },
       checkList: {

@@ -24,6 +24,7 @@ import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/v
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 
 import {
+  AGENT_OUTPUT_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
@@ -498,6 +499,7 @@ const formatItem = (
       res.vars = [
         ...outputs,
         ...TOOL_OUTPUT_STRUCT,
+        ...AGENT_OUTPUT_STRUCT,
       ]
       break
     }

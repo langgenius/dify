@@ -842,6 +842,7 @@ const translation = {
           url: 'Adresa URL a imaginii',
         },
         text: 'Conținut generat de agent',
+        usage: 'Informații de utilizare a modelului',
         json: 'JSON generat de agent',
       },
       checkList: {
