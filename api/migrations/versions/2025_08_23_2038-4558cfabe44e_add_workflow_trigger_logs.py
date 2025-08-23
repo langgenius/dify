@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 994bdf7197ab
+Revision ID: 4558cfabe44e
 Revises: fa8b0fa6f407
-Create Date: 2025-08-23 20:06:35.995973
+Create Date: 2025-08-23 20:38:20.059323
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '994bdf7197ab'
+revision = '4558cfabe44e'
 down_revision = 'fa8b0fa6f407'
 branch_labels = None
 depends_on = None
@@ -25,6 +25,7 @@ def upgrade():
     sa.Column('app_id', models.types.StringUUID(), nullable=False),
     sa.Column('workflow_id', models.types.StringUUID(), nullable=False),
     sa.Column('workflow_run_id', models.types.StringUUID(), nullable=True),
+    sa.Column('root_node_id', sa.String(length=255), nullable=True),
     sa.Column('trigger_type', sa.String(length=50), nullable=False),
     sa.Column('trigger_data', sa.Text(), nullable=False),
     sa.Column('inputs', sa.Text(), nullable=False),

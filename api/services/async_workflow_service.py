@@ -110,6 +110,7 @@ class AsyncWorkflowService:
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
             workflow_id=workflow.id,
+            root_node_id=trigger_data.root_node_id,
             trigger_type=trigger_data.trigger_type,
             trigger_data=trigger_data.model_dump_json(),
             inputs=json.dumps(dict(trigger_data.inputs)),

@@ -1288,6 +1288,7 @@ class WorkflowTriggerLog(Base):
     - app_id (uuid) App ID
     - workflow_id (uuid) Workflow ID
     - workflow_run_id (uuid) Optional - Associated workflow run ID when execution starts
+    - root_node_id (string) Optional - Custom starting node ID for workflow execution
     - trigger_type (string) Type of trigger: webhook, schedule, plugin
     - trigger_data (text) Full trigger data including inputs (JSON)
     - inputs (text) Input parameters (JSON)
@@ -1321,6 +1322,7 @@ class WorkflowTriggerLog(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    root_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     trigger_type: Mapped[str] = mapped_column(String(50), nullable=False)
     trigger_data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Full TriggerData as JSON

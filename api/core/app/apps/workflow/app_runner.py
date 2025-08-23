@@ -34,6 +34,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_thread_pool_id: Optional[str] = None,
         workflow: Workflow,
         system_user_id: str,
+        root_node_id: Optional[str] = None,
     ) -> None:
         super().__init__(
             queue_manager=queue_manager,
@@ -44,6 +45,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self.workflow_thread_pool_id = workflow_thread_pool_id
         self._workflow = workflow
         self._sys_user_id = system_user_id
+        self._root_node_id = root_node_id
 
     def run(self) -> None:
         """
@@ -93,7 +95,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             )
 
             # init graph
-            graph = self._init_graph(graph_config=self._workflow.graph_dict)
+            graph = self._init_graph(graph_config=self._workflow.graph_dict, root_node_id=self._root_node_id)
 
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(

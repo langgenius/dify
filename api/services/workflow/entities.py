@@ -25,6 +25,7 @@ class TriggerData(BaseModel):
     app_id: str
     tenant_id: str
     workflow_id: Optional[str] = None
+    root_node_id: str
     inputs: Mapping[str, Any]
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
     trigger_type: WorkflowRunTriggeredFrom
