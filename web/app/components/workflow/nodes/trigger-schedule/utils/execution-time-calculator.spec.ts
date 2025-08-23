@@ -160,6 +160,36 @@ describe('execution-time-calculator', () => {
       expect(result[0].getDate()).toBe(16)
     })
 
+    test('handles timezone-aware time comparison correctly', () => {
+      // Simulate user scenario: Aug 23, 6:00 PM, setting 11:30 AM
+      jest.setSystemTime(new Date(2024, 7, 23, 18, 0, 0)) // Aug 23, 6:00 PM
+
+      const data = createMockData({
+        frequency: 'daily',
+        visual_config: { time: '11:30 AM' },
+      })
+
+      const result = getNextExecutionTimes(data, 1)
+
+      // Should be tomorrow (Aug 24) since 11:30 AM has already passed today
+      expect(result[0].getDate()).toBe(24)
+    })
+
+    test('handles future time on same day correctly', () => {
+      // Simulate: Aug 23, 11:29 AM, setting 11:30 AM
+      jest.setSystemTime(new Date(2024, 7, 23, 11, 29, 0))
+
+      const data = createMockData({
+        frequency: 'daily',
+        visual_config: { time: '11:30 AM' },
+      })
+
+      const result = getNextExecutionTimes(data, 1)
+
+      // Should be today (Aug 23) since 11:30 AM hasn't passed yet
+      expect(result[0].getDate()).toBe(23)
+    })
+
     test('handles AM/PM conversion correctly', () => {
       const dataAM = createMockData({
         frequency: 'daily',
@@ -352,6 +382,40 @@ describe('execution-time-calculator', () => {
       const result = getNextExecutionTimes(data, 5)
 
       expect(result).toEqual([])
+    })
+
+    test('filters past cron times based on user timezone', () => {
+      // Mock system time to 2 PM (14:00)
+      jest.setSystemTime(new Date(2024, 7, 23, 14, 0, 0))
+
+      const data = createMockData({
+        mode: 'cron',
+        cron_expression: '0 12 * * *', // Every day at 12 PM (noon)
+      })
+
+      const result = getNextExecutionTimes(data, 1, { timezone: 'UTC' })
+
+      // Should get tomorrow at 12 PM since today's 12 PM has passed
+      expect(result).toHaveLength(1)
+      expect(result[0].getDate()).toBe(24) // Tomorrow
+      expect(result[0].getUTCHours()).toBe(12)
+    })
+
+    test('includes today cron time if it has not passed yet', () => {
+      // Mock system time to 10 AM
+      jest.setSystemTime(new Date(2024, 7, 23, 10, 0, 0))
+
+      const data = createMockData({
+        mode: 'cron',
+        cron_expression: '0 12 * * *', // Every day at 12 PM (noon)
+      })
+
+      const result = getNextExecutionTimes(data, 1, { timezone: 'UTC' })
+
+      // Should get today at 12 PM since it hasn't passed yet
+      expect(result).toHaveLength(1)
+      expect(result[0].getDate()).toBe(23) // Today
+      expect(result[0].getUTCHours()).toBe(12)
     })
   })
 

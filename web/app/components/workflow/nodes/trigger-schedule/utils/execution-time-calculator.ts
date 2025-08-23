@@ -13,13 +13,92 @@ import { createTimezoneConverterForSchedule } from './timezone-converter'
  * - Consistent handling of both UTC and user format times
  * - Proper integration with user profile timezone settings
  */
-
-// Helper function to get default datetime - consistent with base DatePicker
 export const getDefaultDateTime = (): Date => {
   const defaultDate = new Date()
   defaultDate.setHours(11, 30, 0, 0)
   defaultDate.setDate(defaultDate.getDate() + 1)
   return defaultDate
+}
+
+/**
+ * Timezone-aware cron expression parser
+ *
+ * This function parses cron expressions with proper timezone awareness:
+ * 1. Uses user timezone for current time calculation
+ * 2. Creates execution times in user timezone
+ * 3. Properly filters past times based on user timezone
+ * 4. Returns execution times as UTC Date objects
+ */
+const parseCronExpressionWithTimezone = (
+  cronExpression: string,
+  converter: ReturnType<typeof createTimezoneConverterForSchedule>,
+  count: number = 5,
+): Date[] => {
+  if (!cronExpression || cronExpression.trim() === '')
+    return []
+
+  const parts = cronExpression.trim().split(/\s+/)
+  if (parts.length !== 5)
+    return []
+
+  try {
+    // Use system cron parser to get base execution times
+    const systemTimes = parseCronExpression(cronExpression)
+
+    if (systemTimes.length === 0)
+      return []
+
+    // Get current user time for proper filtering
+    const nowUserTime = converter.getCurrentUserTime()
+    const filteredTimes: Date[] = []
+
+    // Process each system time with proper timezone handling
+    for (const systemTime of systemTimes) {
+      if (filteredTimes.length >= count) break
+
+      // Extract the time components from the cron-generated time
+      const cronHour = systemTime.getHours()
+      const cronMinute = systemTime.getMinutes()
+      const cronDate = systemTime.getDate()
+      const cronMonth = systemTime.getMonth()
+      const cronYear = systemTime.getFullYear()
+
+      // Create execution time in user timezone
+      const userExecutionTime = new Date(cronYear, cronMonth, cronDate, cronHour, cronMinute, 0, 0)
+
+      // Filter: only include times that haven't passed in user timezone
+      if (userExecutionTime > nowUserTime) {
+        // For UTC timezone, no conversion needed - use the time as is
+        if (converter.getUserTimezone() === 'UTC') {
+          const utcTime = new Date(Date.UTC(cronYear, cronMonth, cronDate, cronHour, cronMinute, 0, 0))
+          filteredTimes.push(utcTime)
+        }
+ else {
+          // For other timezones, convert using the timezone converter
+          const userTimeStr = `${cronHour % 12 || 12}:${cronMinute.toString().padStart(2, '0')} ${cronHour >= 12 ? 'PM' : 'AM'}`
+          const utcTime = converter.toUTC(userTimeStr)
+          const [utcHour, utcMinute] = utcTime.split(':')
+
+          const finalExecutionTime = new Date(Date.UTC(
+            cronYear,
+            cronMonth,
+            cronDate,
+            Number.parseInt(utcHour, 10),
+            Number.parseInt(utcMinute, 10),
+            0,
+            0,
+          ))
+
+          filteredTimes.push(finalExecutionTime)
+        }
+      }
+    }
+
+    return filteredTimes.sort((a, b) => a.getTime() - b.getTime()).slice(0, count)
+  }
+ catch {
+    return []
+  }
 }
 
 export const getNextExecutionTimes = (
@@ -30,7 +109,16 @@ export const getNextExecutionTimes = (
   if (data.mode === 'cron') {
     if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
       return []
-    return parseCronExpression(data.cron_expression).slice(0, count)
+
+    // Create timezone converter for cron mode
+    const converter = createTimezoneConverterForSchedule(userProfile, data.timezone)
+
+    // Parse cron with timezone awareness
+    return parseCronExpressionWithTimezone(
+      data.cron_expression,
+      converter,
+      count,
+    )
   }
 
   // Create timezone converter with proper user profile integration
@@ -75,7 +163,22 @@ export const getNextExecutionTimes = (
 
     const now = converter.getCurrentUserTime()
 
-    // Create execution time in user timezone by converting back to UTC
+    // Create today's execution time in user timezone
+    const todayExecution = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      displayHour,
+      Number.parseInt(minute, 10),
+      0,
+      0,
+    )
+
+    // Calculate initial offset: if time has passed today, start from tomorrow
+    // Compare user timezone times to avoid timezone confusion
+    const initialOffset = todayExecution <= now ? 1 : 0
+
+    // Convert to UTC for final execution times
     const utcTimeForExecution = converter.toUTC(`${displayHour % 12 || 12}:${minute} ${displayHour >= 12 ? 'PM' : 'AM'}`)
     const [utcHour, utcMinute] = utcTimeForExecution.split(':')
 
@@ -88,11 +191,6 @@ export const getNextExecutionTimes = (
       0,
       0,
     ))
-
-    // Calculate initial offset: if time has passed today, start from tomorrow
-    // Compare UTC times to avoid timezone confusion
-    const nowUtc = new Date()
-    const initialOffset = baseExecution <= nowUtc ? 1 : 0
 
     for (let i = 0; i < count; i++) {
       const nextExecution = new Date(baseExecution)

@@ -5,6 +5,7 @@ import type { ScheduleTriggerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { getNextExecutionTime } from './utils/execution-time-calculator'
 import useConfig from './use-config'
+import { useAppContext } from '@/context/app-context'
 
 const i18nPrefix = 'workflow.nodes.triggerSchedule'
 
@@ -13,6 +14,7 @@ const Node: FC<NodeProps<ScheduleTriggerNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const { inputs } = useConfig(id, data)
 
   return (
@@ -21,7 +23,7 @@ const Node: FC<NodeProps<ScheduleTriggerNodeType>> = ({
         {t(`${i18nPrefix}.nextExecutionTime`)}
       </div>
       <div className="flex h-[26px] items-center rounded-md bg-workflow-block-parma-bg px-2 text-xs text-text-secondary">
-        {getNextExecutionTime(inputs)}
+        {getNextExecutionTime(inputs, userProfile)}
       </div>
     </div>
   )
