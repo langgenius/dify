@@ -1310,6 +1310,8 @@ class WorkflowTriggerLog(Base):
         sa.Index("workflow_trigger_log_tenant_app_idx", "tenant_id", "app_id"),
         sa.Index("workflow_trigger_log_status_idx", "status"),
         sa.Index("workflow_trigger_log_created_at_idx", "created_at"),
+        sa.Index("workflow_trigger_log_workflow_run_idx", "workflow_run_id"),
+        sa.Index("workflow_trigger_log_workflow_id_idx", "workflow_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
