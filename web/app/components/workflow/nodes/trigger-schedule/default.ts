@@ -5,17 +5,31 @@ import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/ap
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
 const isValidTimeFormat = (time: string): boolean => {
-  const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
-  if (!timeRegex.test(time)) return false
+  // Check for 12-hour format (user format)
+  const timeRegex12h = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
+  if (timeRegex12h.test(time)) {
+    const [timePart, period] = time.split(' ')
+    const [hour, minute] = timePart.split(':')
+    const hourNum = Number.parseInt(hour, 10)
+    const minuteNum = Number.parseInt(minute, 10)
 
-  const [timePart, period] = time.split(' ')
-  const [hour, minute] = timePart.split(':')
-  const hourNum = Number.parseInt(hour, 10)
-  const minuteNum = Number.parseInt(minute, 10)
+    return hourNum >= 1 && hourNum <= 12
+           && minuteNum >= 0 && minuteNum <= 59
+           && ['AM', 'PM'].includes(period)
+  }
 
-  return hourNum >= 1 && hourNum <= 12
-         && minuteNum >= 0 && minuteNum <= 59
-         && ['AM', 'PM'].includes(period)
+  // Check for 24-hour format (UTC format from backend)
+  const timeRegex24h = /^([01]?\d|2[0-3]):[0-5]\d$/
+  if (timeRegex24h.test(time)) {
+    const [hour, minute] = time.split(':')
+    const hourNum = Number.parseInt(hour, 10)
+    const minuteNum = Number.parseInt(minute, 10)
+
+    return hourNum >= 0 && hourNum <= 23
+           && minuteNum >= 0 && minuteNum <= 59
+  }
+
+  return false
 }
 
 const validateHourlyConfig = (config: any, t: any): string => {

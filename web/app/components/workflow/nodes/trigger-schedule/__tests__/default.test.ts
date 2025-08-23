@@ -48,13 +48,28 @@ describe('Schedule Trigger Node Default', () => {
   })
 
   describe('Validation - checkValid', () => {
-    it('should validate successfully with valid visual config', () => {
+    it('should validate successfully with valid 12-hour format', () => {
       const payload: ScheduleTriggerNodeType = {
         mode: 'visual',
         timezone: 'UTC',
         frequency: 'daily',
         visual_config: {
           time: '9:00 AM',
+        },
+      }
+
+      const result = nodeDefault.checkValid(payload, mockT)
+      expect(result.isValid).toBe(true)
+      expect(result.errorMessage).toBe('')
+    })
+
+    it('should validate successfully with valid 24-hour UTC format', () => {
+      const payload: ScheduleTriggerNodeType = {
+        mode: 'visual',
+        timezone: 'UTC',
+        frequency: 'daily',
+        visual_config: {
+          time: '21:00',
         },
       }
 
