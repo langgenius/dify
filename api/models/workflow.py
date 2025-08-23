@@ -1299,6 +1299,8 @@ class WorkflowTriggerLog(Base):
     - retry_count (int) Number of retry attempts
     - elapsed_time (float) Optional - Time consumption in seconds
     - total_tokens (int) Optional - Total tokens used
+    - created_by_role (string) Creator role: account, end_user
+    - created_by (string) Creator ID
     - created_at (timestamp) Creation time
     - triggered_at (timestamp) Optional - When actually triggered
     - finished_at (timestamp) Optional - Completion time
@@ -1336,8 +1338,22 @@ class WorkflowTriggerLog(Base):
     total_tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
     triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    @property
+    def created_by_account(self):
+        created_by_role = CreatorUserRole(self.created_by_role)
+        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+
+    @property
+    def created_by_end_user(self):
+        from models.model import EndUser
+        created_by_role = CreatorUserRole(self.created_by_role)
+        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for API responses"""
@@ -1358,6 +1374,8 @@ class WorkflowTriggerLog(Base):
             "retry_count": self.retry_count,
             "elapsed_time": self.elapsed_time,
             "total_tokens": self.total_tokens,
+            "created_by_role": self.created_by_role,
+            "created_by": self.created_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "triggered_at": self.triggered_at.isoformat() if self.triggered_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,

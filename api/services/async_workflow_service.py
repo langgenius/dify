@@ -7,7 +7,7 @@ with support for different subscription tiers, rate limiting, and execution trac
 
 import json
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Optional, Union
 
 from celery.result import AsyncResult
 from sqlalchemy import select
@@ -15,7 +15,9 @@ from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.model import App
+from models.account import Account
+from models.enums import CreatorUserRole
+from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowTriggerLog, WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.llm import InvokeRateLimitError
@@ -47,7 +49,9 @@ class AsyncWorkflowService:
     """
 
     @classmethod
-    def trigger_workflow_async(cls, session: Session, trigger_data: TriggerData) -> AsyncTriggerResponse:
+    def trigger_workflow_async(
+        cls, session: Session, user: Union[Account, EndUser], trigger_data: TriggerData
+    ) -> AsyncTriggerResponse:
         """
         Universal entry point for async workflow execution - THIS METHOD WILL NOT BLOCK
 
@@ -57,6 +61,7 @@ class AsyncWorkflowService:
 
         Args:
             session: Database session to use for operations
+            user: User (Account or EndUser) who initiated the workflow trigger
             trigger_data: Validated Pydantic model containing trigger information
 
         Returns:
@@ -92,7 +97,15 @@ class AsyncWorkflowService:
         # 4. Get tenant owner timezone for rate limiting
         tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
 
-        # 5. Create trigger log entry first (for tracking)
+        # 5. Determine user role and ID
+        if isinstance(user, Account):
+            created_by_role = CreatorUserRole.ACCOUNT
+            created_by = user.id
+        else:  # EndUser
+            created_by_role = CreatorUserRole.END_USER
+            created_by = user.id
+
+        # 6. Create trigger log entry first (for tracking)
         trigger_log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -103,12 +116,14 @@ class AsyncWorkflowService:
             status=WorkflowTriggerStatus.PENDING,
             queue_name=dispatcher.get_queue_name(),
             retry_count=0,
+            created_by_role=created_by_role,
+            created_by=created_by,
         )
 
         trigger_log = trigger_log_repo.create(trigger_log)
         session.commit()
 
-        # 6. Check and consume daily quota
+        # 7. Check and consume daily quota
         if not dispatcher.consume_quota(trigger_data.tenant_id, tenant_owner_tz):
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
@@ -128,12 +143,12 @@ class AsyncWorkflowService:
                 f"Remaining quota: {remaining}"
             )
 
-        # 7. Create task data
+        # 8. Create task data
         queue_name = dispatcher.get_queue_name()
 
         task_data = WorkflowTaskData(workflow_trigger_log_id=trigger_log.id)
 
-        # 8. Dispatch to appropriate queue
+        # 9. Dispatch to appropriate queue
         task_data_dict = task_data.model_dump(mode="json")
 
         task: AsyncResult | None = None
@@ -147,7 +162,7 @@ class AsyncWorkflowService:
         if not task:
             raise ValueError(f"Failed to queue task for queue: {queue_name}")
 
-        # 9. Update trigger log with task info
+        # 10. Update trigger log with task info
         trigger_log.status = WorkflowTriggerStatus.QUEUED
         trigger_log.celery_task_id = task.id
         trigger_log.triggered_at = datetime.now(UTC)
@@ -162,7 +177,9 @@ class AsyncWorkflowService:
         )
 
     @classmethod
-    def reinvoke_trigger(cls, session: Session, workflow_trigger_log_id: str) -> AsyncTriggerResponse:
+    def reinvoke_trigger(
+        cls, session: Session, user: Union[Account, EndUser], workflow_trigger_log_id: str
+    ) -> AsyncTriggerResponse:
         """
         Re-invoke a previously failed or rate-limited trigger - THIS METHOD WILL NOT BLOCK
 
@@ -171,6 +188,7 @@ class AsyncWorkflowService:
 
         Args:
             session: Database session to use for operations
+            user: User (Account or EndUser) who initiated the retry
             workflow_trigger_log_id: ID of the trigger log to re-invoke
 
         Returns:
@@ -204,7 +222,7 @@ class AsyncWorkflowService:
         session.commit()
 
         # Re-trigger workflow (this will create a new trigger log)
-        return cls.trigger_workflow_async(session, trigger_data)
+        return cls.trigger_workflow_async(session, user, trigger_data)
 
     @classmethod
     def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[dict]:

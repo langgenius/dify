@@ -10,15 +10,16 @@ from datetime import UTC, datetime
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.model import App
-from models.workflow import Workflow, WorkflowTriggerStatus
+from models.account import Account
+from models.enums import CreatorUserRole
+from models.model import App, EndUser, Tenant
+from models.workflow import Workflow, WorkflowTriggerLog, WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.workflow.entities import AsyncTriggerExecutionResult, AsyncTriggerStatus, TriggerData, WorkflowTaskData
 
@@ -101,22 +102,10 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
                 raise ValueError(f"App not found: {trigger_log.app_id}")
 
             workflow = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
-
             if not workflow:
                 raise ValueError(f"Workflow not found: {trigger_log.workflow_id}")
 
-            # Get tenant owner as user for triggered workflows
-            tenant_owner = session.scalar(
-                select(Account)
-                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                .where(
-                    TenantAccountJoin.tenant_id == trigger_log.tenant_id,
-                    TenantAccountJoin.role == TenantAccountRole.OWNER,
-                )
-            )
-
-            if not tenant_owner:
-                raise ValueError(f"Tenant owner not found for tenant: {trigger_log.tenant_id}")
+            user = _get_user(session, trigger_log)
 
             # Execute workflow using WorkflowAppGenerator
             generator = WorkflowAppGenerator()
@@ -132,7 +121,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
             result = generator.generate(
                 app_model=app_model,
                 workflow=workflow,
-                user=tenant_owner,
+                user=user,
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
@@ -190,3 +179,23 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
             return AsyncTriggerExecutionResult(
                 execution_id=trigger_log.id, status=AsyncTriggerStatus.FAILED, error=str(e), elapsed_time=elapsed_time
             )
+
+
+def _get_user(session: Session, trigger_log: WorkflowTriggerLog) -> Account | EndUser:
+    """Compose user from trigger log"""
+    tenant = session.scalar(select(Tenant).where(Tenant.id == trigger_log.tenant_id))
+    if not tenant:
+        raise ValueError(f"Tenant not found: {trigger_log.tenant_id}")
+
+    # Get user from trigger log
+    if trigger_log.created_by_role == CreatorUserRole.ACCOUNT:
+        user = session.scalar(select(Account).where(Account.id == trigger_log.created_by))
+        if user:
+            user.current_tenant = tenant
+    else:  # CreatorUserRole.END_USER
+        user = session.scalar(select(EndUser).where(EndUser.id == trigger_log.created_by))
+
+    if not user:
+        raise ValueError(f"User not found: {trigger_log.created_by} (role: {trigger_log.created_by_role})")
+
+    return user

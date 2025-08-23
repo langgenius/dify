@@ -96,7 +96,9 @@ def init_app(app: DifyApp) -> Celery:
     celery_app.set_default()
     app.extensions["celery"] = celery_app
 
-    imports = []
+    imports = [
+        "tasks.async_workflow_tasks",  # trigger workers
+    ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
