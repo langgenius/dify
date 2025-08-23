@@ -67,6 +67,7 @@ from .app import (
     workflow_draft_variable,
     workflow_run,
     workflow_statistic,
+    workflow_trigger,
 )
 
 # Import auth controllers
