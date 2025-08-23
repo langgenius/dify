@@ -1,12 +1,12 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import { formatDateInTimezone, getCurrentTimeInTimezone } from './timezone-utils'
 
-// Helper function to get current time - timezone is handled by Date object natively
-const getCurrentTime = (): Date => {
-  return new Date()
+const getCurrentTime = (timezone?: string): Date => {
+  return timezone ? getCurrentTimeInTimezone(timezone) : new Date()
 }
 
-// Helper function to get default datetime for once/hourly modes - consistent with base DatePicker
+// Helper function to get default datetime - consistent with base DatePicker
 export const getDefaultDateTime = (): Date => {
   const defaultDate = new Date()
   defaultDate.setHours(11, 30, 0, 0)
@@ -25,20 +25,21 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   const defaultTime = data.visual_config?.time || '11:30 AM'
 
   if (data.frequency === 'hourly') {
-    if (!data.visual_config?.datetime)
-      return []
+    const onMinute = data.visual_config?.on_minute ?? 0
+    const now = getCurrentTime(data.timezone)
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
 
-    const baseTime = new Date(data.visual_config.datetime)
-    const recurUnit = data.visual_config?.recur_unit || 'hours'
-    const recurEvery = data.visual_config?.recur_every || 1
-
-    const intervalMs = recurUnit === 'hours'
-      ? recurEvery * 60 * 60 * 1000
-      : recurEvery * 60 * 1000
+    let nextExecution: Date
+    if (currentMinute <= onMinute)
+      nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour, onMinute, 0, 0)
+     else
+      nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour + 1, onMinute, 0, 0)
 
     for (let i = 0; i < count; i++) {
-      const executionTime = new Date(baseTime.getTime() + i * intervalMs)
-      times.push(executionTime)
+      const execution = new Date(nextExecution)
+      execution.setHours(nextExecution.getHours() + i)
+      times.push(execution)
     }
   }
   else if (data.frequency === 'daily') {
@@ -48,7 +49,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     const baseExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
 
     // Calculate initial offset: if time has passed today, start from tomorrow
@@ -61,9 +62,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     }
   }
   else if (data.frequency === 'weekly') {
-    const selectedDay = data.visual_config?.weekdays?.[0] || 'sun'
+    const selectedDays = data.visual_config?.weekdays || ['sun']
     const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
-    const targetDay = dayMap[selectedDay as keyof typeof dayMap]
 
     const [time, period] = defaultTime.split(' ')
     const [hour, minute] = time.split(':')
@@ -71,20 +71,46 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime()
-    const currentDay = now.getDay()
-    let daysUntilNext = (targetDay - currentDay + 7) % 7
+    const now = getCurrentTime(data.timezone)
+    let weekOffset = 0
 
-    const nextExecutionBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+    const currentWeekExecutions: Date[] = []
+    for (const selectedDay of selectedDays) {
+      const targetDay = dayMap[selectedDay as keyof typeof dayMap]
+      let daysUntilNext = (targetDay - now.getDay() + 7) % 7
 
-    if (daysUntilNext === 0 && nextExecutionBase <= now)
-      daysUntilNext = 7
+      const nextExecutionBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
 
-    for (let i = 0; i < count; i++) {
-      const nextExecution = new Date(nextExecutionBase)
-      nextExecution.setDate(nextExecution.getDate() + daysUntilNext + (i * 7))
-      times.push(nextExecution)
+      if (daysUntilNext === 0 && nextExecutionBase <= now)
+        daysUntilNext = 7
+
+      if (daysUntilNext < 7) {
+        const execution = new Date(nextExecutionBase)
+        execution.setDate(execution.getDate() + daysUntilNext)
+        currentWeekExecutions.push(execution)
+      }
     }
+
+    if (currentWeekExecutions.length === 0)
+      weekOffset = 1
+
+    let weeksChecked = 0
+    while (times.length < count && weeksChecked < 8) {
+      for (const selectedDay of selectedDays) {
+        if (times.length >= count) break
+
+        const targetDay = dayMap[selectedDay as keyof typeof dayMap]
+        const execution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+        execution.setDate(execution.getDate() + (targetDay - now.getDay() + 7) % 7 + (weekOffset + weeksChecked) * 7)
+
+        if (execution > now)
+          times.push(execution)
+      }
+      weeksChecked++
+    }
+
+    times.sort((a, b) => a.getTime() - b.getTime())
+    times.splice(count)
   }
   else if (data.frequency === 'monthly') {
     const getSelectedDays = (): (number | 'last')[] => {
@@ -101,7 +127,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     let monthOffset = 0
 
     const hasValidCurrentMonthExecution = selectedDays.some((selectedDay) => {
@@ -109,10 +135,16 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
 
       let targetDay: number
-      if (selectedDay === 'last')
+      if (selectedDay === 'last') {
         targetDay = daysInMonth
-       else
-        targetDay = Math.min(selectedDay as number, daysInMonth)
+      }
+ else {
+        const dayNumber = selectedDay as number
+        if (dayNumber > daysInMonth)
+          return false
+
+        targetDay = dayNumber
+      }
 
       const execution = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
       return execution > now
@@ -128,14 +160,26 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
 
       const monthlyExecutions: Date[] = []
+      const processedDays = new Set<number>()
 
       for (const selectedDay of selectedDays) {
         let targetDay: number
 
-        if (selectedDay === 'last')
+        if (selectedDay === 'last') {
           targetDay = daysInMonth
-         else
-          targetDay = Math.min(selectedDay as number, daysInMonth)
+        }
+ else {
+          const dayNumber = selectedDay as number
+          if (dayNumber > daysInMonth)
+            continue
+
+          targetDay = dayNumber
+        }
+
+        if (processedDays.has(targetDay))
+          continue
+
+        processedDays.add(targetDay)
 
         const nextExecution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
 
@@ -153,16 +197,10 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       monthsChecked++
     }
   }
-  else if (data.frequency === 'once') {
-    // For 'once' frequency, return the selected datetime
-    const selectedDateTime = data.visual_config?.datetime
-    if (selectedDateTime)
-      times.push(new Date(selectedDateTime))
-  }
   else {
     // Fallback for unknown frequencies
     for (let i = 0; i < count; i++) {
-      const now = getCurrentTime()
+      const now = getCurrentTime(data.timezone)
       const nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i + 1)
       times.push(nextExecution)
     }
@@ -171,46 +209,25 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   return times
 }
 
-export const formatExecutionTime = (date: Date, includeWeekday: boolean = true): string => {
-  const dateOptions: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }
-
-  if (includeWeekday)
-    dateOptions.weekday = 'short'
-
-  const timeOptions: Intl.DateTimeFormatOptions = {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }
-
-  // Always use local time for display to match calculation logic
-  return `${date.toLocaleDateString('en-US', dateOptions)} ${date.toLocaleTimeString('en-US', timeOptions)}`
+export const formatExecutionTime = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
+  return formatDateInTimezone(date, timezone, includeWeekday)
 }
 
 export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): string[] => {
   const times = getNextExecutionTimes(data, count)
 
   return times.map((date) => {
-    // Only weekly frequency includes weekday in format
     const includeWeekday = data.frequency === 'weekly'
-    return formatExecutionTime(date, includeWeekday)
+    return formatExecutionTime(date, data.timezone, includeWeekday)
   })
 }
 
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   const times = getFormattedExecutionTimes(data, 1)
   if (times.length === 0) {
-    if (data.frequency === 'once') {
-      const defaultDate = getDefaultDateTime()
-      return formatExecutionTime(defaultDate, false)
-    }
-    const now = getCurrentTime()
+    const now = getCurrentTime(data.timezone)
     const includeWeekday = data.frequency === 'weekly'
-    return formatExecutionTime(now, includeWeekday)
+    return formatExecutionTime(now, data.timezone, includeWeekday)
   }
   return times[0]
 }
