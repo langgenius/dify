@@ -154,9 +154,8 @@ const Panel: FC = () => {
       }
 
       const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-      if (targetNode && targetNode.vars.length > 0) {
+      if (targetNode && targetNode.vars.length > 0)
         setCurrentVarId(targetNode.vars[0].id)
-      }
     }
   }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars, setCurrentVarId])
 
