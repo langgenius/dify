@@ -202,6 +202,112 @@ describe('cron-parser', () => {
     })
   })
 
+  describe('edge cases and error handling', () => {
+    test('handles invalid step expressions', () => {
+      // Test step with non-numeric values
+      expect(parseCronExpression('*/abc * * * *')).toEqual([])
+      expect(parseCronExpression('0/NaN * * * *')).toEqual([])
+      expect(parseCronExpression('0/0 * * * *')).toEqual([]) // Zero step
+      expect(parseCronExpression('0/ * * * *')).toEqual([]) // Empty step
+    })
+
+    test('handles invalid range expressions', () => {
+      // Test ranges with non-numeric values
+      expect(parseCronExpression('0 abc-12 * * *')).toEqual([])
+      expect(parseCronExpression('0 9-xyz * * *')).toEqual([])
+      expect(parseCronExpression('0 15-10 * * *')).toEqual([]) // Start > End
+      expect(parseCronExpression('0 - * * *')).toEqual([]) // Empty range parts
+    })
+
+    test('handles complex step expressions with ranges', () => {
+      // Test step with ranges like "2-10/3"
+      const result = parseCronExpression('0 2-10/3 * * *') // Every 3 hours from 2-10
+      expect(result.length).toBeGreaterThan(0)
+      // Just verify the expression works, don't check specific hours due to timezone complexity
+    })
+
+    test('handles expressions with both day of month and day of week', () => {
+      // This should use OR logic
+      const result = parseCronExpression('0 12 15 * 1') // 15th of month OR Monday at noon
+      expect(result.length).toBeGreaterThan(0)
+      result.forEach((date) => {
+        const isMonday = date.getDay() === 1
+        const is15th = date.getDate() === 15
+        expect(isMonday || is15th).toBe(true)
+      })
+    })
+
+    test('handles wildcard minute and hour expressions', () => {
+      // This triggers the fallback path (lines 172-184)
+      const result = parseCronExpression('* * 16 * *') // Any time on 16th
+      expect(result.length).toBeGreaterThan(0)
+      result.forEach((date) => {
+        expect(date.getDate()).toBe(16)
+      })
+    })
+
+    test('handles expressions that require multiple month search', () => {
+      // Test February 30th (impossible date)
+      const result = parseCronExpression('0 12 30 2 *') // Feb 30th (doesn't exist)
+      expect(result).toEqual([])
+    })
+
+    test('handles malformed field splitting', () => {
+      // Test various malformed patterns
+      expect(parseCronExpression('0 12//')).toEqual([]) // Double slash
+      expect(parseCronExpression('0 12--15 * * *')).toEqual([]) // Double dash
+      const result3 = parseCronExpression('0 12,,15 * * *') // Double comma - parser handles it
+      expect(result3.length).toBeGreaterThan(0) // Should work with valid parts
+    })
+
+    test('handles step expressions with invalid base ranges', () => {
+      // Test step with invalid range base
+      const result = parseCronExpression('0 25-30/2 * * *') // Invalid hour range
+      expect(result).toEqual([])
+    })
+
+    test('handles comma-separated expressions with invalid parts', () => {
+      // These work because parser filters valid parts
+      const result1 = parseCronExpression('0 9,25,12 * * *') // 25 filtered out, 9&12 remain
+      expect(result1.length).toBeGreaterThan(0) // Should have results from valid hours
+
+      const result2 = parseCronExpression('0 9,abc,12 * * *') // Parser handles non-numeric gracefully
+      expect(result2.length).toBeGreaterThan(0) // Should have results from valid hours
+    })
+  })
+
+  describe('validation edge cases', () => {
+    test('validates step expressions correctly', () => {
+      expect(isValidCronExpression('*/0 * * * *')).toBe(false) // Zero step
+      expect(isValidCronExpression('*/-1 * * * *')).toBe(false) // Negative step
+      expect(isValidCronExpression('*/abc * * * *')).toBe(false) // Non-numeric step
+      expect(isValidCronExpression('2-10/3 * * * *')).toBe(true) // Valid range with step
+      expect(isValidCronExpression('25-30/2 * * * *')).toBe(true) // Valid syntax, runtime filtering
+    })
+
+    test('validates range expressions correctly', () => {
+      expect(isValidCronExpression('0 10-5 * * *')).toBe(false) // Start > End
+      expect(isValidCronExpression('0 abc-12 * * *')).toBe(false) // Non-numeric start
+      expect(isValidCronExpression('0 9-xyz * * *')).toBe(false) // Non-numeric end
+      expect(isValidCronExpression('0 -10 * * *')).toBe(false) // Empty start
+      expect(isValidCronExpression('0 10- * * *')).toBe(false) // Empty end
+    })
+
+    test('validates comma expressions correctly', () => {
+      expect(isValidCronExpression('0 9,12,15 * * *')).toBe(true) // Valid list
+      expect(isValidCronExpression('0 9,25,15 * * *')).toBe(false) // Invalid item in list
+      expect(isValidCronExpression('0 9,,15 * * *')).toBe(false) // Empty item in list
+      expect(isValidCronExpression('0 ,12,15 * * *')).toBe(false) // Leading comma
+      expect(isValidCronExpression('0 9,12, * * *')).toBe(false) // Trailing comma
+    })
+
+    test('validates complex combined expressions', () => {
+      expect(isValidCronExpression('*/5,30 9-17 1,15 * 1-5')).toBe(true) // Complex valid
+      expect(isValidCronExpression('*/5,60 9-17 1,15 * 1-5')).toBe(false) // Invalid minute in list
+      expect(isValidCronExpression('*/5,30 9-25 1,15 * 1-5')).toBe(false) // Invalid hour range
+    })
+  })
+
   describe('performance tests', () => {
     test('performs well for complex expressions', () => {
       const start = performance.now()
@@ -228,6 +334,24 @@ describe('cron-parser', () => {
 
       // Should complete within reasonable time (less than 100ms for all expressions)
       expect(end - start).toBeLessThan(100)
+    })
+
+    test('handles pathological expressions gracefully', () => {
+      // These should not hang or crash
+      const pathologicalExpressions = [
+        '* * * * *', // Every minute (fallback path)
+        '*/1 */1 */1 */1 */1', // Maximum frequency with steps
+        '0-59 0-23 1-31 1-12 0-6', // Full ranges
+      ]
+
+      pathologicalExpressions.forEach((expr) => {
+        const start = performance.now()
+        const result = parseCronExpression(expr)
+        const end = performance.now()
+
+        expect(result.length).toBeLessThanOrEqual(5)
+        expect(end - start).toBeLessThan(1000) // Should not take more than 1 second
+      })
     })
   })
 })
