@@ -7,6 +7,7 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useAppContext } from '@/context/app-context'
 import { isUTCFormat, isUserFormat } from './utils/timezone-utils'
+import { getDefaultVisualConfig } from './default'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -109,9 +110,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     return {
       ...basePayload,
       visual_config: {
-        time: '11:30 AM',
-        weekdays: ['sun'],
-        monthly_days: [1],
+        ...getDefaultVisualConfig(),
         ...payload.visual_config,
       },
     }
@@ -153,13 +152,13 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       visual_config: {
         ...inputs.visual_config,
         ...(frequency === 'hourly') && {
-          on_minute: inputs.visual_config?.on_minute ?? 0,
+          on_minute: inputs.visual_config?.on_minute ?? getDefaultVisualConfig().on_minute,
         },
         ...(frequency === 'weekly') && {
-          weekdays: inputs.visual_config?.weekdays || ['sun'],
+          weekdays: inputs.visual_config?.weekdays || getDefaultVisualConfig().weekdays,
         },
         ...(frequency === 'monthly') && {
-          monthly_days: inputs.visual_config?.monthly_days || [1],
+          monthly_days: inputs.visual_config?.monthly_days || getDefaultVisualConfig().monthly_days,
         },
       },
     }

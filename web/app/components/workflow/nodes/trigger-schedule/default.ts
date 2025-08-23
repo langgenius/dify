@@ -4,6 +4,13 @@ import type { ScheduleTriggerNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
+
+export const getDefaultVisualConfig = () => ({
+  time: '11:30 AM',
+  weekdays: ['sun'],
+  on_minute: 0,
+  monthly_days: [1] as (number | 'last')[],
+})
 const isValidTimeFormat = (time: string): boolean => {
   // Check for 12-hour format (user format)
   const timeRegex12h = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
@@ -121,10 +128,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
     mode: 'visual',
     frequency: 'weekly',
     cron_expression: '',
-    visual_config: {
-      time: '11:30 AM',
-      weekdays: ['sun'],
-    },
+    visual_config: getDefaultVisualConfig(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     enabled: true,
   },

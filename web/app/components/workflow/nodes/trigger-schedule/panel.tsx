@@ -15,6 +15,7 @@ import MonthlyDaysSelector from './components/monthly-days-selector'
 import OnMinuteSelector from './components/on-minute-selector'
 import Input from '@/app/components/base/input'
 import useConfig from './use-config'
+import { getDefaultVisualConfig } from './default'
 
 const i18nPrefix = 'workflow.nodes.triggerSchedule'
 
@@ -80,7 +81,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                           notClearable={true}
                           value={inputs.visual_config?.time
                             ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
-                            : dayjs('1/1/2000 11:30 AM')
+                            : dayjs(`1/1/2000 ${getDefaultVisualConfig().time}`)
                           }
                           onChange={(time) => {
                             if (time) {
@@ -89,7 +90,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                             }
                           }}
                           onClear={() => {
-                            handleTimeChange('11:30 AM')
+                            handleTimeChange(getDefaultVisualConfig().time)
                           }}
                           placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
                         />
@@ -107,7 +108,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
 
                 {inputs.frequency === 'monthly' && (
                   <MonthlyDaysSelector
-                    selectedDays={inputs.visual_config?.monthly_days || [1]}
+                    selectedDays={inputs.visual_config?.monthly_days || getDefaultVisualConfig().monthly_days}
                     onChange={(days) => {
                       const newInputs = {
                         ...inputs,
