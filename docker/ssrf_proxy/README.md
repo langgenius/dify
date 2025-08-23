@@ -17,8 +17,8 @@ The default configuration (`squid.conf.template`) is **strict by default** to pr
 To allow additional domains or relax restrictions for your local environment:
 
 1. Create a `conf.d` directory in your deployment
-2. Copy example configurations from `conf.d.example/` and modify as needed
-3. Mount the config files to `/etc/squid/conf.d/` in the container
+1. Copy example configurations from `conf.d.example/` and modify as needed
+1. Mount the config files to `/etc/squid/conf.d/` in the container
 
 ### Example: Docker Compose
 
@@ -95,9 +95,9 @@ The following networks are blocked by default to prevent SSRF:
 If your application needs to access a service that's being blocked:
 
 1. Check the Squid logs to identify what's being blocked
-2. Create a custom configuration in `/etc/squid/conf.d/`
-3. Only allow the minimum necessary access
-4. Test thoroughly to ensure security is maintained
+1. Create a custom configuration in `/etc/squid/conf.d/`
+1. Only allow the minimum necessary access
+1. Test thoroughly to ensure security is maintained
 
 ## File Structure
 
