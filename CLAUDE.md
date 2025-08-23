@@ -79,9 +79,9 @@ pnpm test                         # Run Jest tests
 ### Adding a New API Endpoint
 
 1. Create controller in `/api/controllers/`
-1. Add service logic in `/api/services/`
-1. Update routes in controller's `__init__.py`
-1. Write tests in `/api/tests/`
+2. Add service logic in `/api/services/`
+3. Update routes in controller's `__init__.py`
+4. Write tests in `/api/tests/`
 
 ## Project-Specific Conventions
 
