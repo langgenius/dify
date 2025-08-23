@@ -506,7 +506,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   } = useBatchEditDocumentMetadata({
     datasetId,
     docList: documents.filter(doc => selectedIds.includes(doc.id)),
-    selectedDocumentIds: selectedIds,
+    selectedDocumentIds: selectedIds, // Pass all selected IDs separately
     onUpdate,
   })
 
