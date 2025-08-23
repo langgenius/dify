@@ -359,12 +359,20 @@ class DatasetChildChunkApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
 
+        # validate segment belongs to the specified document
+        if segment.document_id != document_id:
+            raise NotFound("Document not found.")
+
         # check child chunk
         child_chunk_id = str(child_chunk_id)
         child_chunk = SegmentService.get_child_chunk_by_id(
             child_chunk_id=child_chunk_id, tenant_id=current_user.current_tenant_id
         )
         if not child_chunk:
+            raise NotFound("Child chunk not found.")
+
+        # validate child chunk belongs to the specified segment
+        if child_chunk.segment_id != segment.id:
             raise NotFound("Child chunk not found.")
 
         try:
@@ -396,11 +404,19 @@ class DatasetChildChunkApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
 
+        # validate segment belongs to the specified document
+        if segment.document_id != document_id:
+            raise NotFound("Segment not found.")
+
         # get child chunk
         child_chunk = SegmentService.get_child_chunk_by_id(
             child_chunk_id=child_chunk_id, tenant_id=current_user.current_tenant_id
         )
         if not child_chunk:
+            raise NotFound("Child chunk not found.")
+
+        # validate child chunk belongs to the specified segment
+        if child_chunk.segment_id != segment.id:
             raise NotFound("Child chunk not found.")
 
         # validate args
