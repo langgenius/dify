@@ -59,6 +59,7 @@ import { useLogs } from '@/app/components/workflow/run/hooks'
 import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import Search from '@/app/components/base/icons/src/public/thought/Search'
 import {
   AuthorizedInNode,
   PluginAuth,
@@ -88,6 +89,8 @@ const BasePanel: FC<BasePanelProps> = ({
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
+  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -248,6 +251,11 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
+  const handleOpenVariableInspect = useCallback(() => {
+    setCurrentFocusNodeId(id)
+    setShowVariableInspectPanel(true)
+  }, [id, setCurrentFocusNodeId, setShowVariableInspectPanel])
+
   if(logParams.showSpecialResultPanel) {
     return (
     <div className={cn(
@@ -358,6 +366,21 @@ const BasePanel: FC<BasePanelProps> = ({
                         isSingleRunning ? <Stop className='h-4 w-4 text-text-tertiary' />
                         : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
                       }
+                    </div>
+                  </Tooltip>
+                )
+              }
+              {
+                !nodesReadOnly && (
+                  <Tooltip
+                    popupContent={t('workflow.debug.variableInspect.view')}
+                    popupClassName='mr-1'
+                  >
+                    <div
+                      className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
+                      onClick={handleOpenVariableInspect}
+                    >
+                      <Search className='h-4 w-4 text-text-tertiary' />
                     </div>
                   </Tooltip>
                 )

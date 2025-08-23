@@ -65,7 +65,7 @@ const Right = ({
   }
 
   const resetValue = () => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar || !currentNodeVar.var) return
     resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.id)
   }
 
@@ -75,7 +75,7 @@ const Right = ({
   }
 
   const handleClear = () => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar || !currentNodeVar.var) return
     resetConversationVar(currentNodeVar.var.id)
   }
 
@@ -161,7 +161,7 @@ const Right = ({
           </ActionButton>
         )}
         <div className='flex w-0 grow items-center gap-1'>
-          {currentNodeVar && (
+          {currentNodeVar && currentNodeVar.var && (
             <>
               {
                 [VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system].includes(currentNodeVar.nodeType as VarInInspectType) && (
@@ -200,27 +200,27 @@ const Right = ({
                   </div>
                 </Tooltip>
               )}
-              {currentNodeVar.var.edited && (
+              {currentNodeVar.var && currentNodeVar.var.edited && (
                 <Badge>
                   <span className='ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary'></span>
                   <span className='system-2xs-semibold-uupercase'>{t('workflow.debug.variableInspect.edited')}</span>
                 </Badge>
               )}
-              {currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
+              {currentNodeVar.var && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
                 <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
                   <ActionButton onClick={resetValue}>
                     <RiArrowGoBackLine className='h-4 w-4' />
                   </ActionButton>
                 </Tooltip>
               )}
-              {currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
+              {currentNodeVar.var && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
                 <Tooltip popupContent={t('workflow.debug.variableInspect.resetConversationVar')}>
                   <ActionButton onClick={handleClear}>
                     <RiArrowGoBackLine className='h-4 w-4' />
                   </ActionButton>
                 </Tooltip>
               )}
-              {currentNodeVar.var.value_type !== 'secret' && (
+              {currentNodeVar.var && currentNodeVar.var.value_type !== 'secret' && (
                 <CopyFeedback content={getCopyContent()} />
               )}
             </>
@@ -238,7 +238,7 @@ const Right = ({
             <Loading />
           </div>
         )}
-        {currentNodeVar && !isValueFetching && <ValueContent currentVar={currentNodeVar.var} handleValueChange={handleValueChange} />}
+        {currentNodeVar && currentNodeVar.var && !isValueFetching && <ValueContent currentVar={currentNodeVar.var} handleValueChange={handleValueChange} />}
       </div>
       {isShowPromptGenerator && (
         isCodeBlock

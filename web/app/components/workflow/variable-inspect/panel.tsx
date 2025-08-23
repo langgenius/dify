@@ -138,6 +138,28 @@ const Panel: FC = () => {
     }
   }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue])
 
+  useEffect(() => {
+    if (currentFocusNodeId && !currentVarId) {
+      if (currentFocusNodeId === VarInInspectType.environment && environmentVariables.length > 0) {
+        setCurrentVarId(environmentVariables[0].id)
+        return
+      }
+      if (currentFocusNodeId === VarInInspectType.conversation && conversationVars.length > 0) {
+        setCurrentVarId(conversationVars[0].id)
+        return
+      }
+      if (currentFocusNodeId === VarInInspectType.system && systemVars.length > 0) {
+        setCurrentVarId(systemVars[0].id)
+        return
+      }
+
+      const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+      if (targetNode && targetNode.vars.length > 0) {
+        setCurrentVarId(targetNode.vars[0].id)
+      }
+    }
+  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars, setCurrentVarId])
+
   if (isEmpty) {
     return (
       <div className={cn('flex h-full flex-col')}>
