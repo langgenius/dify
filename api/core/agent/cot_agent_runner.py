@@ -197,7 +197,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                             final_answer = scratchpad.action.action_input
                         else:
                             final_answer = f"{scratchpad.action.action_input}"
-                    except json.JSONDecodeError:
+                    except TypeError:
                         final_answer = f"{scratchpad.action.action_input}"
                 else:
                     function_call_state = True
