@@ -9,6 +9,7 @@ import json
 from datetime import UTC, datetime
 from typing import Optional
 
+from celery.result import AsyncResult
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -31,7 +32,7 @@ from tasks.async_workflow_tasks import (
 
 class AsyncWorkflowService:
     """
-    Universal entry point for async workflow execution
+    Universal entry point for async workflow execution - ALL METHODS ARE NON-BLOCKING
 
     This service handles:
     - Trigger data validation and processing
@@ -39,25 +40,38 @@ class AsyncWorkflowService:
     - Daily rate limiting with timezone support
     - Execution tracking and logging
     - Retry mechanisms for failed executions
+
+    Important: All trigger methods return immediately after queuing tasks.
+    Actual workflow execution happens asynchronously in background Celery workers.
+    Use trigger log IDs to monitor execution status and results.
     """
 
     @classmethod
     def trigger_workflow_async(cls, session: Session, trigger_data: TriggerData) -> AsyncTriggerResponse:
         """
-        Universal entry point for async workflow execution
+        Universal entry point for async workflow execution - THIS METHOD WILL NOT BLOCK
 
-        Creates a trigger log and dispatches to appropriate queue based on subscription tier
+        Creates a trigger log and dispatches to appropriate queue based on subscription tier.
+        The workflow execution happens asynchronously in the background via Celery workers.
+        This method returns immediately after queuing the task, not after execution completion.
 
         Args:
             session: Database session to use for operations
             trigger_data: Validated Pydantic model containing trigger information
 
         Returns:
-            AsyncTriggerResponse with workflow_trigger_log_id, task_id, status, and queue
+            AsyncTriggerResponse with workflow_trigger_log_id, task_id, status="queued", and queue
+            Note: The actual workflow execution status must be checked separately via workflow_trigger_log_id
 
         Raises:
             ValueError: If app or workflow not found
             InvokeRateLimitError: If daily rate limit exceeded
+
+        Behavior:
+            - Non-blocking: Returns immediately after queuing
+            - Asynchronous: Actual execution happens in background Celery workers
+            - Status tracking: Use workflow_trigger_log_id to monitor progress
+            - Queue-based: Routes to different queues based on subscription tier
         """
         trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         dispatcher_manager = QueueDispatcherManager()
@@ -122,12 +136,16 @@ class AsyncWorkflowService:
         # 8. Dispatch to appropriate queue
         task_data_dict = task_data.model_dump(mode="json")
 
+        task: AsyncResult | None = None
         if queue_name == QueuePriority.PROFESSIONAL:
             task = execute_workflow_professional.delay(task_data_dict)  # type: ignore
         elif queue_name == QueuePriority.TEAM:
             task = execute_workflow_team.delay(task_data_dict)  # type: ignore
         else:  # SANDBOX
             task = execute_workflow_sandbox.delay(task_data_dict)  # type: ignore
+
+        if not task:
+            raise ValueError(f"Failed to queue task for queue: {queue_name}")
 
         # 9. Update trigger log with task info
         trigger_log.status = WorkflowTriggerStatus.QUEUED
@@ -138,7 +156,7 @@ class AsyncWorkflowService:
 
         return AsyncTriggerResponse(
             workflow_trigger_log_id=trigger_log.id,
-            task_id=task.id,
+            task_id=task.id,  # type: ignore
             status="queued",
             queue=queue_name,
         )
@@ -146,17 +164,26 @@ class AsyncWorkflowService:
     @classmethod
     def reinvoke_trigger(cls, session: Session, workflow_trigger_log_id: str) -> AsyncTriggerResponse:
         """
-        Re-invoke a previously failed or rate-limited trigger
+        Re-invoke a previously failed or rate-limited trigger - THIS METHOD WILL NOT BLOCK
+
+        Updates the existing trigger log to retry status and creates a new async execution.
+        Returns immediately after queuing the retry, not after execution completion.
 
         Args:
             session: Database session to use for operations
             workflow_trigger_log_id: ID of the trigger log to re-invoke
 
         Returns:
-            AsyncTriggerResponse with new execution information
+            AsyncTriggerResponse with new execution information (status="queued")
+            Note: This creates a new trigger log entry for the retry attempt
 
         Raises:
             ValueError: If trigger log not found
+
+        Behavior:
+            - Non-blocking: Returns immediately after queuing retry
+            - Creates new trigger log: Original log marked as retrying, new log for execution
+            - Preserves original trigger data: Uses same inputs and configuration
         """
         trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
 
