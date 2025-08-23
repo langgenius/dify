@@ -38,7 +38,7 @@ kind: ConfigMap
 metadata:
   name: squid-custom-config
 data:
-  30-allow-external-domains.conf: |
+  20-allow-external-domains.conf: |
     acl allowed_external dstdomain .example.com
     http_access allow allowed_external
 ---
@@ -63,9 +63,9 @@ spec:
 The `conf.d.example/` directory contains example configurations:
 
 - **00-testing-environment.conf.example**: Configuration for CI/testing environments (NOT for production)
-- **20-allow-internal-services.conf.example**: Allow internal services (use with caution!)
-- **30-allow-external-domains.conf.example**: Allow specific external domains
-- **40-allow-additional-ports.conf.example**: Allow additional ports
+- **10-allow-internal-services.conf.example**: Allow internal services (use with caution!)
+- **20-allow-external-domains.conf.example**: Allow specific external domains
+- **30-allow-additional-ports.conf.example**: Allow additional ports
 
 ## Security Considerations
 
@@ -108,8 +108,8 @@ docker/ssrf_proxy/
 ├── docker-entrypoint.sh      # Container entrypoint script
 ├── conf.d.example/           # Example override configurations
 │   ├── 00-testing-environment.conf.example
-│   ├── 20-allow-internal-services.conf.example
-│   ├── 30-allow-external-domains.conf.example
-│   └── 40-allow-additional-ports.conf.example
+│   ├── 10-allow-internal-services.conf.example
+│   ├── 20-allow-external-domains.conf.example
+│   └── 30-allow-additional-ports.conf.example
 └── README.md                 # This file
 ```
