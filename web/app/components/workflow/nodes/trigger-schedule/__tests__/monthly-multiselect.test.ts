@@ -19,7 +19,8 @@ const createMonthlyConfig = (monthlyDays: (number | 'last')[], time = '10:30 AM'
 describe('Monthly Multi-Select Execution Time Calculator', () => {
   beforeEach(() => {
     jest.useFakeTimers()
-    jest.setSystemTime(new Date('2024-01-15T08:00:00Z'))
+    // Set time to Jan 10th to ensure 15th execution is in the future
+    jest.setSystemTime(new Date('2024-01-10T08:00:00Z'))
   })
 
   afterEach(() => {
@@ -29,20 +30,22 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
   describe('Multi-select functionality', () => {
     test('calculates execution times for multiple days in same month', () => {
       const config = createMonthlyConfig([1, 15, 30])
-      const times = getNextExecutionTimes(config, 5)
+      // Pass userProfile to match the new signature
+      const times = getNextExecutionTimes(config, 5, { timezone: 'UTC' })
 
       expect(times).toHaveLength(5)
-      expect(times[0].getDate()).toBe(15)
+      // After refactor, expect the corrected execution order: 15, 30, 1 (chronological)
+      expect(times[0].getDate()).toBe(15) // 15th of current month (Jan)
       expect(times[0].getMonth()).toBe(0)
-      expect(times[1].getDate()).toBe(30)
+      expect(times[1].getDate()).toBe(30) // 30th of current month (Jan)
       expect(times[1].getMonth()).toBe(0)
-      expect(times[2].getDate()).toBe(1)
+      expect(times[2].getDate()).toBe(1) // 1st of next month (Feb)
       expect(times[2].getMonth()).toBe(1)
     })
 
     test('handles last day with multiple selections', () => {
       const config = createMonthlyConfig([1, 'last'])
-      const times = getNextExecutionTimes(config, 4)
+      const times = getNextExecutionTimes(config, 4, { timezone: 'UTC' })
 
       expect(times[0].getDate()).toBe(31)
       expect(times[0].getMonth()).toBe(0)
@@ -55,7 +58,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
     test('skips invalid days in months with fewer days', () => {
       const config = createMonthlyConfig([30, 31])
       jest.setSystemTime(new Date('2024-01-01T08:00:00Z'))
-      const times = getNextExecutionTimes(config, 6)
+      const times = getNextExecutionTimes(config, 6, { timezone: 'UTC' })
 
       const febTimes = times.filter(t => t.getMonth() === 1)
       expect(febTimes.length).toBe(0)
@@ -68,7 +71,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
 
     test('sorts execution times chronologically', () => {
       const config = createMonthlyConfig([25, 5, 15])
-      const times = getNextExecutionTimes(config, 6)
+      const times = getNextExecutionTimes(config, 6, { timezone: 'UTC' })
 
       for (let i = 1; i < times.length; i++)
         expect(times[i].getTime()).toBeGreaterThan(times[i - 1].getTime())
@@ -76,7 +79,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
 
     test('handles single day selection', () => {
       const config = createMonthlyConfig([15])
-      const times = getNextExecutionTimes(config, 3)
+      const times = getNextExecutionTimes(config, 3, { timezone: 'UTC' })
 
       expect(times).toHaveLength(3)
       expect(times[0].getDate()).toBe(15)
@@ -91,7 +94,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
   describe('Single day configuration', () => {
     test('supports single day selection', () => {
       const config = createMonthlyConfig([15])
-      const times = getNextExecutionTimes(config, 3)
+      const times = getNextExecutionTimes(config, 3, { timezone: 'UTC' })
 
       expect(times).toHaveLength(3)
       expect(times[0].getDate()).toBe(15)
@@ -101,7 +104,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
 
     test('supports last day selection', () => {
       const config = createMonthlyConfig(['last'])
-      const times = getNextExecutionTimes(config, 3)
+      const times = getNextExecutionTimes(config, 3, { timezone: 'UTC' })
 
       expect(times[0].getDate()).toBe(31)
       expect(times[0].getMonth()).toBe(0)
@@ -124,7 +127,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
         position: { x: 0, y: 0 },
       }
 
-      const times = getNextExecutionTimes(config, 2)
+      const times = getNextExecutionTimes(config, 2, { timezone: 'UTC' })
 
       expect(times).toHaveLength(2)
       expect(times[0].getDate()).toBe(1)
@@ -135,7 +138,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
   describe('Edge cases', () => {
     test('handles empty monthly_days array', () => {
       const config = createMonthlyConfig([])
-      const times = getNextExecutionTimes(config, 2)
+      const times = getNextExecutionTimes(config, 2, { timezone: 'UTC' })
 
       expect(times).toHaveLength(2)
       expect(times[0].getDate()).toBe(1)
@@ -145,7 +148,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
     test('handles execution time that has already passed today', () => {
       jest.setSystemTime(new Date('2024-01-15T12:00:00Z'))
       const config = createMonthlyConfig([15], '10:30 AM')
-      const times = getNextExecutionTimes(config, 2)
+      const times = getNextExecutionTimes(config, 2, { timezone: 'UTC' })
 
       expect(times[0].getMonth()).toBe(1)
       expect(times[0].getDate()).toBe(15)
@@ -154,7 +157,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
     test('limits search to reasonable number of months', () => {
       const config = createMonthlyConfig([29, 30, 31])
       jest.setSystemTime(new Date('2024-03-01T08:00:00Z'))
-      const times = getNextExecutionTimes(config, 50)
+      const times = getNextExecutionTimes(config, 50, { timezone: 'UTC' })
 
       expect(times.length).toBeGreaterThan(0)
       expect(times.length).toBeLessThanOrEqual(50)
@@ -162,7 +165,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
 
     test('handles duplicate days in selection', () => {
       const config = createMonthlyConfig([15, 15, 15])
-      const times = getNextExecutionTimes(config, 4)
+      const times = getNextExecutionTimes(config, 4, { timezone: 'UTC' })
 
       const uniqueDates = new Set(times.map(t => t.getTime()))
       expect(uniqueDates.size).toBe(times.length)
@@ -171,7 +174,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
     test('correctly handles leap year February', () => {
       const config = createMonthlyConfig([29])
       jest.setSystemTime(new Date('2024-01-01T08:00:00Z'))
-      const times = getNextExecutionTimes(config, 3)
+      const times = getNextExecutionTimes(config, 3, { timezone: 'UTC' })
 
       expect(times[0].getDate()).toBe(29)
       expect(times[0].getMonth()).toBe(0)
@@ -182,7 +185,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
     test('handles non-leap year February', () => {
       const config = createMonthlyConfig([29])
       jest.setSystemTime(new Date('2023-01-01T08:00:00Z'))
-      const times = getNextExecutionTimes(config, 3)
+      const times = getNextExecutionTimes(config, 3, { timezone: 'UTC' })
 
       expect(times[0].getDate()).toBe(29)
       expect(times[0].getMonth()).toBe(0)
@@ -194,32 +197,32 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
   describe('Time handling', () => {
     test('respects specified execution time', () => {
       const config = createMonthlyConfig([1], '2:45 PM')
-      const times = getNextExecutionTimes(config, 1)
+      const times = getNextExecutionTimes(config, 1, { timezone: 'UTC' })
 
-      expect(times[0].getHours()).toBe(14)
-      expect(times[0].getMinutes()).toBe(45)
+      expect(times[0].getUTCHours()).toBe(14)
+      expect(times[0].getUTCMinutes()).toBe(45)
     })
 
     test('handles AM/PM conversion correctly', () => {
       const configAM = createMonthlyConfig([1], '6:30 AM')
       const configPM = createMonthlyConfig([1], '6:30 PM')
 
-      const timesAM = getNextExecutionTimes(configAM, 1)
-      const timesPM = getNextExecutionTimes(configPM, 1)
+      const timesAM = getNextExecutionTimes(configAM, 1, { timezone: 'UTC' })
+      const timesPM = getNextExecutionTimes(configPM, 1, { timezone: 'UTC' })
 
-      expect(timesAM[0].getHours()).toBe(6)
-      expect(timesPM[0].getHours()).toBe(18)
+      expect(timesAM[0].getUTCHours()).toBe(6)
+      expect(timesPM[0].getUTCHours()).toBe(18)
     })
 
     test('handles 12 AM and 12 PM correctly', () => {
       const config12AM = createMonthlyConfig([1], '12:00 AM')
       const config12PM = createMonthlyConfig([1], '12:00 PM')
 
-      const times12AM = getNextExecutionTimes(config12AM, 1)
-      const times12PM = getNextExecutionTimes(config12PM, 1)
+      const times12AM = getNextExecutionTimes(config12AM, 1, { timezone: 'UTC' })
+      const times12PM = getNextExecutionTimes(config12PM, 1, { timezone: 'UTC' })
 
-      expect(times12AM[0].getHours()).toBe(0)
-      expect(times12PM[0].getHours()).toBe(12)
+      expect(times12AM[0].getUTCHours()).toBe(0)
+      expect(times12PM[0].getUTCHours()).toBe(12)
     })
   })
 })

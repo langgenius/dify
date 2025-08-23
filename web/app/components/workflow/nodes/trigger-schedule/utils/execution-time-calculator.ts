@@ -1,10 +1,18 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
-import { formatDateInTimezone, getCurrentTimeInTimezone } from './timezone-utils'
+import { createTimezoneConverterForSchedule } from './timezone-converter'
 
-const getCurrentTime = (timezone?: string): Date => {
-  return timezone ? getCurrentTimeInTimezone(timezone) : new Date()
-}
+/**
+ * Enhanced execution time calculator using unified timezone converter
+ *
+ * This refactored version eliminates timezone conversion logic from this file
+ * and delegates all timezone operations to the unified TimezoneConverter.
+ *
+ * Key improvements:
+ * - Single source of truth for timezone conversions
+ * - Consistent handling of both UTC and user format times
+ * - Proper integration with user profile timezone settings
+ */
 
 // Helper function to get default datetime - consistent with base DatePicker
 export const getDefaultDateTime = (): Date => {
@@ -14,19 +22,32 @@ export const getDefaultDateTime = (): Date => {
   return defaultDate
 }
 
-export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): Date[] => {
+export const getNextExecutionTimes = (
+  data: ScheduleTriggerNodeType,
+  count: number = 5,
+  userProfile?: { timezone?: string },
+): Date[] => {
   if (data.mode === 'cron') {
     if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
       return []
     return parseCronExpression(data.cron_expression).slice(0, count)
   }
 
+  // Create timezone converter with proper user profile integration
+  const converter = createTimezoneConverterForSchedule(userProfile, data.timezone)
+
   const times: Date[] = []
-  const defaultTime = data.visual_config?.time || '11:30 AM'
+  const configuredTime = data.visual_config?.time || '11:30 AM'
+
+  // Ensure we have user format time for consistent parsing
+  // Convert from UTC to user format if needed for internal calculations
+  const userFormatTime = converter.isUTCFormat(configuredTime)
+    ? converter.fromUTC(configuredTime)
+    : configuredTime
 
   if (data.frequency === 'hourly') {
     const onMinute = data.visual_config?.on_minute ?? 0
-    const now = getCurrentTime(data.timezone)
+    const now = converter.getCurrentUserTime()
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
 
@@ -43,21 +64,39 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     }
   }
   else if (data.frequency === 'daily') {
-    const [time, period] = defaultTime.split(' ')
+    // Parse user format time using consistent logic
+    const [time, period] = userFormatTime.split(' ')
     const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
+    let displayHour = Number.parseInt(hour, 10)
+
+    // Convert to 24-hour format
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime(data.timezone)
-    const baseExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+    const now = converter.getCurrentUserTime()
+
+    // Create execution time in user timezone by converting back to UTC
+    const utcTimeForExecution = converter.toUTC(`${displayHour % 12 || 12}:${minute} ${displayHour >= 12 ? 'PM' : 'AM'}`)
+    const [utcHour, utcMinute] = utcTimeForExecution.split(':')
+
+    const baseExecution = new Date(Date.UTC(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      Number.parseInt(utcHour, 10),
+      Number.parseInt(utcMinute, 10),
+      0,
+      0,
+    ))
 
     // Calculate initial offset: if time has passed today, start from tomorrow
-    const initialOffset = baseExecution <= now ? 1 : 0
+    // Compare UTC times to avoid timezone confusion
+    const nowUtc = new Date()
+    const initialOffset = baseExecution <= nowUtc ? 1 : 0
 
     for (let i = 0; i < count; i++) {
       const nextExecution = new Date(baseExecution)
-      nextExecution.setDate(baseExecution.getDate() + initialOffset + i)
+      nextExecution.setUTCDate(baseExecution.getUTCDate() + initialOffset + i)
       times.push(nextExecution)
     }
   }
@@ -65,28 +104,45 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const selectedDays = data.visual_config?.weekdays || ['sun']
     const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 
-    const [time, period] = defaultTime.split(' ')
+    // Parse user format time using consistent logic
+    const [time, period] = userFormatTime.split(' ')
     const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
+    let displayHour = Number.parseInt(hour, 10)
+
+    // Convert to 24-hour format
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime(data.timezone)
+    const now = converter.getCurrentUserTime()
+
+    // Convert user time to UTC for proper execution scheduling
+    const utcTimeForExecution = converter.toUTC(`${displayHour % 12 || 12}:${minute} ${displayHour >= 12 ? 'PM' : 'AM'}`)
+    const [utcHour, utcMinute] = utcTimeForExecution.split(':')
+
     let weekOffset = 0
 
+    // Check if any execution is possible in current week
     const currentWeekExecutions: Date[] = []
     for (const selectedDay of selectedDays) {
       const targetDay = dayMap[selectedDay as keyof typeof dayMap]
       let daysUntilNext = (targetDay - now.getDay() + 7) % 7
 
-      const nextExecutionBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
+      const nextExecutionBase = new Date(Date.UTC(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        Number.parseInt(utcHour, 10),
+        Number.parseInt(utcMinute, 10),
+        0,
+        0,
+      ))
 
-      if (daysUntilNext === 0 && nextExecutionBase <= now)
+      if (daysUntilNext === 0 && nextExecutionBase <= new Date())
         daysUntilNext = 7
 
       if (daysUntilNext < 7) {
         const execution = new Date(nextExecutionBase)
-        execution.setDate(execution.getDate() + daysUntilNext)
+        execution.setUTCDate(execution.getUTCDate() + daysUntilNext)
         currentWeekExecutions.push(execution)
       }
     }
@@ -100,10 +156,18 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
         if (times.length >= count) break
 
         const targetDay = dayMap[selectedDay as keyof typeof dayMap]
-        const execution = new Date(now.getFullYear(), now.getMonth(), now.getDate(), displayHour, Number.parseInt(minute), 0, 0)
-        execution.setDate(execution.getDate() + (targetDay - now.getDay() + 7) % 7 + (weekOffset + weeksChecked) * 7)
+        const execution = new Date(Date.UTC(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          Number.parseInt(utcHour, 10),
+          Number.parseInt(utcMinute, 10),
+          0,
+          0,
+        ))
+        execution.setUTCDate(execution.getUTCDate() + (targetDay - now.getDay() + 7) % 7 + (weekOffset + weeksChecked) * 7)
 
-        if (execution > now)
+        if (execution > new Date())
           times.push(execution)
       }
       weeksChecked++
@@ -121,15 +185,20 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     }
 
     const selectedDays = [...new Set(getSelectedDays())]
-    const [time, period] = defaultTime.split(' ')
+
+    // Parse user format time using consistent logic
+    const [time, period] = userFormatTime.split(' ')
     const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
+    let displayHour = Number.parseInt(hour, 10)
+
+    // Convert to 24-hour format
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    const now = getCurrentTime(data.timezone)
+    const now = converter.getCurrentUserTime()
     let monthOffset = 0
 
+    // Check if any execution is possible in current month
     const hasValidCurrentMonthExecution = selectedDays.some((selectedDay) => {
       const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
       const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
@@ -146,8 +215,20 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
         targetDay = dayNumber
       }
 
-      const execution = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
-      return execution > now
+      // Convert user time to UTC for proper execution scheduling
+      const utcTimeForExecution = converter.toUTC(`${displayHour % 12 || 12}:${minute} ${displayHour >= 12 ? 'PM' : 'AM'}`)
+      const [utcHour, utcMinute] = utcTimeForExecution.split(':')
+
+      const execution = new Date(Date.UTC(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        targetDay,
+        Number.parseInt(utcHour, 10),
+        Number.parseInt(utcMinute, 10),
+        0,
+        0,
+      ))
+      return execution > new Date()
     })
 
     if (!hasValidCurrentMonthExecution)
@@ -181,9 +262,21 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
         processedDays.add(targetDay)
 
-        const nextExecution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
+        // Convert user time to UTC for proper execution scheduling
+        const utcTimeForExecution = converter.toUTC(`${displayHour % 12 || 12}:${minute} ${displayHour >= 12 ? 'PM' : 'AM'}`)
+        const [utcHour, utcMinute] = utcTimeForExecution.split(':')
 
-        if (nextExecution > now)
+        const nextExecution = new Date(Date.UTC(
+          targetMonth.getFullYear(),
+          targetMonth.getMonth(),
+          targetDay,
+          Number.parseInt(utcHour, 10),
+          Number.parseInt(utcMinute, 10),
+          0,
+          0,
+        ))
+
+        if (nextExecution > new Date())
           monthlyExecutions.push(nextExecution)
       }
 
@@ -198,9 +291,9 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     }
   }
   else {
-    // Fallback for unknown frequencies
+    // Fallback for unknown frequencies - use converter for consistency
+    const now = converter.getCurrentUserTime()
     for (let i = 0; i < count; i++) {
-      const now = getCurrentTime(data.timezone)
       const nextExecution = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i + 1)
       times.push(nextExecution)
     }
@@ -209,25 +302,41 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   return times
 }
 
-export const formatExecutionTime = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
-  return formatDateInTimezone(date, timezone, includeWeekday)
+export const formatExecutionTime = (
+  date: Date,
+  timezone: string,
+  includeWeekday: boolean = true,
+  userProfile?: { timezone?: string },
+): string => {
+  // Use unified timezone converter for consistent formatting
+  const converter = createTimezoneConverterForSchedule(userProfile, timezone)
+  return converter.formatExecutionTime(date, includeWeekday)
 }
 
-export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): string[] => {
-  const times = getNextExecutionTimes(data, count)
+export const getFormattedExecutionTimes = (
+  data: ScheduleTriggerNodeType,
+  count: number = 5,
+  userProfile?: { timezone?: string },
+): string[] => {
+  const times = getNextExecutionTimes(data, count, userProfile)
+  const converter = createTimezoneConverterForSchedule(userProfile, data.timezone)
 
   return times.map((date) => {
     const includeWeekday = data.frequency === 'weekly'
-    return formatExecutionTime(date, data.timezone, includeWeekday)
+    return converter.formatExecutionTime(date, includeWeekday)
   })
 }
 
-export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
-  const times = getFormattedExecutionTimes(data, 1)
+export const getNextExecutionTime = (
+  data: ScheduleTriggerNodeType,
+  userProfile?: { timezone?: string },
+): string => {
+  const times = getFormattedExecutionTimes(data, 1, userProfile)
   if (times.length === 0) {
-    const now = getCurrentTime(data.timezone)
+    const converter = createTimezoneConverterForSchedule(userProfile, data.timezone)
+    const now = converter.getCurrentUserTime()
     const includeWeekday = data.frequency === 'weekly'
-    return formatExecutionTime(now, data.timezone, includeWeekday)
+    return converter.formatExecutionTime(now, includeWeekday)
   }
   return times[0]
 }

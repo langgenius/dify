@@ -25,7 +25,7 @@ describe('Monthly Edge Cases', () => {
   describe('31st day selection logic', () => {
     test('31st day skips months without 31 days', () => {
       const config = createMonthlyConfig([31])
-      const times = getNextExecutionTimes(config, 5)
+      const times = getNextExecutionTimes(config, 5, { timezone: 'UTC' })
 
       const expectedMonths = times.map(date => date.getMonth() + 1)
 
@@ -42,7 +42,7 @@ describe('Monthly Edge Cases', () => {
 
     test('30th day skips February', () => {
       const config = createMonthlyConfig([30])
-      const times = getNextExecutionTimes(config, 5)
+      const times = getNextExecutionTimes(config, 5, { timezone: 'UTC' })
 
       const expectedMonths = times.map(date => date.getMonth() + 1)
       expect(expectedMonths).not.toContain(2)
@@ -54,7 +54,7 @@ describe('Monthly Edge Cases', () => {
 
     test('29th day works in all months', () => {
       const config = createMonthlyConfig([29])
-      const times = getNextExecutionTimes(config, 12)
+      const times = getNextExecutionTimes(config, 12, { timezone: 'UTC' })
 
       const months = times.map(date => date.getMonth() + 1)
       expect(months).toContain(1)
@@ -74,7 +74,7 @@ describe('Monthly Edge Cases', () => {
       jest.setSystemTime(new Date('2023-01-15T08:00:00.000Z'))
 
       const config = createMonthlyConfig([29])
-      const times = getNextExecutionTimes(config, 12)
+      const times = getNextExecutionTimes(config, 12, { timezone: 'UTC' })
 
       const februaryExecutions = times.filter(date => date.getMonth() === 1)
       expect(februaryExecutions).toHaveLength(0)
@@ -84,7 +84,7 @@ describe('Monthly Edge Cases', () => {
       jest.setSystemTime(new Date('2024-01-15T08:00:00.000Z'))
 
       const config = createMonthlyConfig([29])
-      const times = getNextExecutionTimes(config, 12)
+      const times = getNextExecutionTimes(config, 12, { timezone: 'UTC' })
 
       const februaryExecutions = times.filter(date => date.getMonth() === 1)
       expect(februaryExecutions).toHaveLength(1)
@@ -97,8 +97,8 @@ describe('Monthly Edge Cases', () => {
       const config31 = createMonthlyConfig([31])
       const configLast = createMonthlyConfig(['last'])
 
-      const times31 = getNextExecutionTimes(config31, 12)
-      const timesLast = getNextExecutionTimes(configLast, 12)
+      const times31 = getNextExecutionTimes(config31, 12, { timezone: 'UTC' })
+      const timesLast = getNextExecutionTimes(configLast, 12, { timezone: 'UTC' })
 
       const months31 = times31.map(date => date.getMonth() + 1)
       const monthsLast = timesLast.map(date => date.getMonth() + 1)
@@ -114,8 +114,8 @@ describe('Monthly Edge Cases', () => {
       const config31 = createMonthlyConfig([31])
       const configLast = createMonthlyConfig(['last'])
 
-      const times31 = getNextExecutionTimes(config31, 5)
-      const timesLast = getNextExecutionTimes(configLast, 5)
+      const times31 = getNextExecutionTimes(config31, 5, { timezone: 'UTC' })
+      const timesLast = getNextExecutionTimes(configLast, 5, { timezone: 'UTC' })
 
       const march31 = times31.find(date => date.getMonth() === 2)
       const marchLast = timesLast.find(date => date.getMonth() === 2)
@@ -126,7 +126,7 @@ describe('Monthly Edge Cases', () => {
 
     test('mixed selection with 31st and last behaves correctly', () => {
       const config = createMonthlyConfig([31, 'last'])
-      const times = getNextExecutionTimes(config, 12)
+      const times = getNextExecutionTimes(config, 12, { timezone: 'UTC' })
 
       const februaryExecutions = times.filter(date => date.getMonth() === 1)
       expect(februaryExecutions).toHaveLength(1)
@@ -139,7 +139,7 @@ describe('Monthly Edge Cases', () => {
 
     test('deduplicates overlapping selections in 31-day months', () => {
       const config = createMonthlyConfig([31, 'last'])
-      const times = getNextExecutionTimes(config, 12)
+      const times = getNextExecutionTimes(config, 12, { timezone: 'UTC' })
 
       const monthsWith31Days = [0, 2, 4, 6, 7, 9, 11]
 
@@ -154,7 +154,7 @@ describe('Monthly Edge Cases', () => {
 
     test('deduplicates overlapping selections in 30-day months', () => {
       const config = createMonthlyConfig([30, 'last'])
-      const times = getNextExecutionTimes(config, 12)
+      const times = getNextExecutionTimes(config, 12, { timezone: 'UTC' })
 
       const monthsWith30Days = [3, 5, 8, 10]
 
@@ -169,7 +169,7 @@ describe('Monthly Edge Cases', () => {
 
     test('handles complex multi-day with last selection', () => {
       const config = createMonthlyConfig([15, 30, 31, 'last'])
-      const times = getNextExecutionTimes(config, 20)
+      const times = getNextExecutionTimes(config, 20, { timezone: 'UTC' })
 
       const marchExecutions = times.filter(date => date.getMonth() === 2).sort((a, b) => a.getDate() - b.getDate())
       expect(marchExecutions).toHaveLength(3)
@@ -186,7 +186,7 @@ describe('Monthly Edge Cases', () => {
       jest.setSystemTime(new Date('2024-02-15T08:00:00.000Z'))
 
       const config = createMonthlyConfig([31])
-      const times = getNextExecutionTimes(config, 3)
+      const times = getNextExecutionTimes(config, 3, { timezone: 'UTC' })
 
       times.forEach((date) => {
         expect(date.getMonth()).toBeGreaterThan(1)
@@ -197,7 +197,7 @@ describe('Monthly Edge Cases', () => {
       jest.setSystemTime(new Date('2024-03-15T08:00:00.000Z'))
 
       const config = createMonthlyConfig([31])
-      const times = getNextExecutionTimes(config, 3)
+      const times = getNextExecutionTimes(config, 3, { timezone: 'UTC' })
 
       const currentMonthExecution = times.find(date => date.getMonth() === 2)
       expect(currentMonthExecution).toBeDefined()
@@ -208,17 +208,18 @@ describe('Monthly Edge Cases', () => {
   describe('sorting and deduplication', () => {
     test('handles duplicate selections correctly', () => {
       const config = createMonthlyConfig([15, 15, 15])
-      const times = getNextExecutionTimes(config, 5)
+      const times = getNextExecutionTimes(config, 5, { timezone: 'UTC' })
 
       const marchExecutions = times.filter(date => date.getMonth() === 2)
       expect(marchExecutions).toHaveLength(1)
     })
 
     test('sorts multiple days within same month', () => {
-      jest.setSystemTime(new Date('2024-03-01T08:00:00.000Z'))
+      // Set time to February 28th to ensure March executions are in the future
+      jest.setSystemTime(new Date('2024-02-28T08:00:00.000Z'))
 
       const config = createMonthlyConfig([31, 15, 1])
-      const times = getNextExecutionTimes(config, 5)
+      const times = getNextExecutionTimes(config, 5, { timezone: 'UTC' })
 
       const marchExecutions = times.filter(date => date.getMonth() === 2).sort((a, b) => a.getDate() - b.getDate())
       expect(marchExecutions.map(d => d.getDate())).toEqual([1, 15, 31])
