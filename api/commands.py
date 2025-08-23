@@ -10,6 +10,7 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import languages
@@ -52,28 +53,29 @@ def reset_password(email, new_password, password_confirm):
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
 
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+    with Session(db.engine, expire_on_commit=False) as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    try:
-        valid_password(new_password)
-    except:
-        click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
-        return
+        try:
+            valid_password(new_password)
+        except:
+            click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
+            return
 
-    # generate password salt
-    salt = secrets.token_bytes(16)
-    base64_salt = base64.b64encode(salt).decode()
+        # generate password salt
+        salt = secrets.token_bytes(16)
+        base64_salt = base64.b64encode(salt).decode()
 
-    # encrypt password with salt
-    password_hashed = hash_password(new_password, salt)
-    base64_password_hashed = base64.b64encode(password_hashed).decode()
-    account.password = base64_password_hashed
-    account.password_salt = base64_salt
-    db.session.commit()
+        # encrypt password with salt
+        password_hashed = hash_password(new_password, salt)
+        base64_password_hashed = base64.b64encode(password_hashed).decode()
+        account.password = base64_password_hashed
+        account.password_salt = base64_salt
+        session.commit()
     AccountService.reset_login_error_rate_limit(email)
     click.echo(click.style("Password reset successfully.", fg="green"))
 
@@ -91,20 +93,21 @@ def reset_email(email, new_email, email_confirm):
         click.echo(click.style("New emails do not match.", fg="red"))
         return
 
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+    with Session(db.engine, expire_on_commit=False) as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    try:
-        email_validate(new_email)
-    except:
-        click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
-        return
+        try:
+            email_validate(new_email)
+        except:
+            click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
+            return
 
-    account.email = new_email
-    db.session.commit()
+        account.email = new_email
+        session.commit()
     click.echo(click.style("Email updated successfully.", fg="green"))
 
 
@@ -130,17 +133,18 @@ def reset_encrypt_key_pair():
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
 
-    tenants = db.session.query(Tenant).all()
-    for tenant in tenants:
-        if not tenant:
-            click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
-            return
+    with Session(db.engine, expire_on_commit=False) as session:
+        tenants = session.query(Tenant).all()
+        for tenant in tenants:
+            if not tenant:
+                click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
+                return
 
-        tenant.encrypt_public_key = generate_key_pair(tenant.id)
+            tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-        db.session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-        db.session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
-        db.session.commit()
+            session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
+            session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
+            session.commit()
 
         click.echo(
             click.style(
@@ -172,14 +176,15 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             per_page = 50
-            apps = (
-                db.session.query(App)
-                .where(App.status == "normal")
-                .order_by(App.created_at.desc())
-                .limit(per_page)
-                .offset((page - 1) * per_page)
-                .all()
-            )
+            with Session(db.engine, expire_on_commit=False) as session:
+                apps = (
+                    session.query(App)
+                    .where(App.status == "normal")
+                    .order_by(App.created_at.desc())
+                    .limit(per_page)
+                    .offset((page - 1) * per_page)
+                    .all()
+                )
             if not apps:
                 break
         except SQLAlchemyError:
@@ -193,24 +198,25 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                app_annotation_setting = (
-                    db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
-                )
+                with Session(db.engine, expire_on_commit=False) as session:
+                    app_annotation_setting = (
+                        session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
+                    )
 
-                if not app_annotation_setting:
-                    skipped_count = skipped_count + 1
-                    click.echo(f"App annotation setting disabled: {app.id}")
-                    continue
-                # get dataset_collection_binding info
-                dataset_collection_binding = (
-                    db.session.query(DatasetCollectionBinding)
-                    .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
-                    .first()
-                )
-                if not dataset_collection_binding:
-                    click.echo(f"App annotation collection binding not found: {app.id}")
-                    continue
-                annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
+                    if not app_annotation_setting:
+                        skipped_count = skipped_count + 1
+                        click.echo(f"App annotation setting disabled: {app.id}")
+                        continue
+                    # get dataset_collection_binding info
+                    dataset_collection_binding = (
+                        session.query(DatasetCollectionBinding)
+                        .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
+                        .first()
+                    )
+                    if not dataset_collection_binding:
+                        click.echo(f"App annotation collection binding not found: {app.id}")
+                        continue
+                    annotations = session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
@@ -466,9 +472,10 @@ def convert_to_agent_apps():
                 app_id = str(i.id)
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
-                    app = db.session.query(App).where(App.id == app_id).first()
-                    if app is not None:
-                        apps.append(app)
+                    with Session(db.engine, expire_on_commit=False) as session:
+                        app = session.query(App).where(App.id == app_id).first()
+                        if app is not None:
+                            apps.append(app)
 
             if len(apps) == 0:
                 break
@@ -477,15 +484,17 @@ def convert_to_agent_apps():
             click.echo(f"Converting app: {app.id}")
 
             try:
-                app.mode = AppMode.AGENT_CHAT.value
-                db.session.commit()
+                with Session(db.engine, expire_on_commit=False) as session:
+                    app = session.merge(app)
+                    app.mode = AppMode.AGENT_CHAT.value
+                    session.commit()
 
-                # update conversation mode to agent
-                db.session.query(Conversation).where(Conversation.app_id == app.id).update(
-                    {Conversation.mode: AppMode.AGENT_CHAT.value}
-                )
+                    # update conversation mode to agent
+                    session.query(Conversation).where(Conversation.app_id == app.id).update(
+                        {Conversation.mode: AppMode.AGENT_CHAT.value}
+                    )
 
-                db.session.commit()
+                    session.commit()
                 click.echo(click.style(f"Converted app: {app.id}", fg="green"))
             except Exception as e:
                 click.echo(click.style(f"Convert app error: {e.__class__.__name__} {str(e)}", fg="red"))
@@ -501,7 +510,8 @@ def add_qdrant_index(field: str):
     create_count = 0
 
     try:
-        bindings = db.session.query(DatasetCollectionBinding).all()
+        with Session(db.engine, expire_on_commit=False) as session:
+            bindings = session.query(DatasetCollectionBinding).all()
         if not bindings:
             click.echo(click.style("No dataset collection bindings found.", fg="red"))
             return
@@ -574,40 +584,22 @@ def old_metadata_migration():
                         if field.value == key:
                             break
                     else:
-                        dataset_metadata = (
-                            db.session.query(DatasetMetadata)
-                            .where(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
-                            .first()
-                        )
-                        if not dataset_metadata:
-                            dataset_metadata = DatasetMetadata(
-                                tenant_id=document.tenant_id,
-                                dataset_id=document.dataset_id,
-                                name=key,
-                                type="string",
-                                created_by=document.created_by,
-                            )
-                            db.session.add(dataset_metadata)
-                            db.session.flush()
-                            dataset_metadata_binding = DatasetMetadataBinding(
-                                tenant_id=document.tenant_id,
-                                dataset_id=document.dataset_id,
-                                metadata_id=dataset_metadata.id,
-                                document_id=document.id,
-                                created_by=document.created_by,
-                            )
-                            db.session.add(dataset_metadata_binding)
-                        else:
-                            dataset_metadata_binding = (
-                                db.session.query(DatasetMetadataBinding)  # type: ignore
-                                .where(
-                                    DatasetMetadataBinding.dataset_id == document.dataset_id,
-                                    DatasetMetadataBinding.document_id == document.id,
-                                    DatasetMetadataBinding.metadata_id == dataset_metadata.id,
-                                )
+                        with Session(db.engine, expire_on_commit=False) as session:
+                            dataset_metadata = (
+                                session.query(DatasetMetadata)
+                                .where(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
                                 .first()
                             )
-                            if not dataset_metadata_binding:
+                            if not dataset_metadata:
+                                dataset_metadata = DatasetMetadata(
+                                    tenant_id=document.tenant_id,
+                                    dataset_id=document.dataset_id,
+                                    name=key,
+                                    type="string",
+                                    created_by=document.created_by,
+                                )
+                                session.add(dataset_metadata)
+                                session.flush()
                                 dataset_metadata_binding = DatasetMetadataBinding(
                                     tenant_id=document.tenant_id,
                                     dataset_id=document.dataset_id,
@@ -615,8 +607,27 @@ def old_metadata_migration():
                                     document_id=document.id,
                                     created_by=document.created_by,
                                 )
-                                db.session.add(dataset_metadata_binding)
-                        db.session.commit()
+                                session.add(dataset_metadata_binding)
+                            else:
+                                dataset_metadata_binding = (
+                                    session.query(DatasetMetadataBinding)  # type: ignore
+                                    .where(
+                                        DatasetMetadataBinding.dataset_id == document.dataset_id,
+                                        DatasetMetadataBinding.document_id == document.id,
+                                        DatasetMetadataBinding.metadata_id == dataset_metadata.id,
+                                    )
+                                    .first()
+                                )
+                                if not dataset_metadata_binding:
+                                    dataset_metadata_binding = DatasetMetadataBinding(
+                                        tenant_id=document.tenant_id,
+                                        dataset_id=document.dataset_id,
+                                        metadata_id=dataset_metadata.id,
+                                        document_id=document.id,
+                                        created_by=document.created_by,
+                                    )
+                                    session.add(dataset_metadata_binding)
+                            session.commit()
         page += 1
     click.echo(click.style("Old metadata migration completed.", fg="green"))
 
@@ -715,7 +726,8 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    app = db.session.query(App).where(App.id == app_id).first()
+                    with Session(db.engine, expire_on_commit=False) as session:
+                        app = session.query(App).where(App.id == app_id).first()
                     if not app:
                         print(f"App {app_id} not found")
                         continue
@@ -1184,24 +1196,25 @@ def setup_system_tool_oauth_client(provider, client_params):
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    deleted_count = (
-        db.session.query(ToolOAuthSystemClient)
-        .filter_by(
+    with Session(db.engine, expire_on_commit=False) as session:
+        deleted_count = (
+            session.query(ToolOAuthSystemClient)
+            .filter_by(
+                provider=provider_name,
+                plugin_id=plugin_id,
+            )
+            .delete()
+        )
+        if deleted_count > 0:
+            click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+
+        oauth_client = ToolOAuthSystemClient(
             provider=provider_name,
             plugin_id=plugin_id,
+            encrypted_oauth_params=oauth_client_params,
         )
-        .delete()
-    )
-    if deleted_count > 0:
-        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
-
-    oauth_client = ToolOAuthSystemClient(
-        provider=provider_name,
-        plugin_id=plugin_id,
-        encrypted_oauth_params=oauth_client_params,
-    )
-    db.session.add(oauth_client)
-    db.session.commit()
+        session.add(oauth_client)
+        session.commit()
     click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
 
 
