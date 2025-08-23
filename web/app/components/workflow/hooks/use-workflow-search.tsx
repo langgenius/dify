@@ -12,6 +12,7 @@ import { useStore } from '../store'
 import type { Emoji } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
+import type { LLMNodeType } from '../nodes/llm/types'
 
 /**
  * Hook to register workflow nodes search functionality
@@ -26,6 +27,32 @@ export const useWorkflowSearch = () => {
   const workflowTools = useStore(s => s.workflowTools)
   const mcpTools = useStore(s => s.mcpTools)
 
+  // Extract tool icon logic - clean separation of concerns
+  const getToolIcon = useCallback((nodeData: CommonNodeType): string | Emoji | undefined => {
+    if (nodeData?.type !== BlockEnum.Tool) return undefined
+
+    const toolCollections: Record<string, any[]> = {
+      [CollectionType.builtIn]: buildInTools,
+      [CollectionType.custom]: customTools,
+      [CollectionType.mcp]: mcpTools,
+    }
+
+    const targetTools = (nodeData.provider_type && toolCollections[nodeData.provider_type]) || workflowTools
+    return targetTools.find((tool: any) => canFindTool(tool.id, nodeData.provider_id))?.icon
+  }, [buildInTools, customTools, workflowTools, mcpTools])
+
+  // Extract model info logic - clean extraction
+  const getModelInfo = useCallback((nodeData: CommonNodeType) => {
+    if (nodeData?.type !== BlockEnum.LLM) return {}
+
+    const llmNodeData = nodeData as LLMNodeType
+    return llmNodeData.model ? {
+      provider: llmNodeData.model.provider,
+      name: llmNodeData.model.name,
+      mode: llmNodeData.model.mode,
+    } : {}
+  }, [])
+
   const searchableNodes = useMemo(() => {
     const filteredNodes = nodes.filter((node) => {
       if (!node.id || !node.data || node.type === 'sticky') return false
@@ -37,37 +64,58 @@ export const useWorkflowSearch = () => {
       return !internalStartNodes.includes(nodeType)
     })
 
-    const result = filteredNodes
-      .map((node) => {
-        const nodeData = node.data as CommonNodeType
+    return filteredNodes.map((node) => {
+      const nodeData = node.data as CommonNodeType
 
-        // compute tool icon if node is a Tool
-        let toolIcon: string | Emoji | undefined
-        if (nodeData?.type === BlockEnum.Tool) {
-          let targetTools = workflowTools
-          if (nodeData.provider_type === CollectionType.builtIn)
-            targetTools = buildInTools
-          else if (nodeData.provider_type === CollectionType.custom)
-            targetTools = customTools
-          else if (nodeData.provider_type === CollectionType.mcp)
-            targetTools = mcpTools
+      return {
+        id: node.id,
+        title: nodeData?.title || nodeData?.type || 'Untitled',
+        type: nodeData?.type || '',
+        desc: nodeData?.desc || '',
+        blockType: nodeData?.type,
+        nodeData,
+        toolIcon: getToolIcon(nodeData),
+        modelInfo: getModelInfo(nodeData),
+      }
+    })
+  }, [nodes, getToolIcon, getModelInfo])
 
-          toolIcon = targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, nodeData.provider_id))?.icon
-        }
+  // Calculate search score - clean scoring logic
+  const calculateScore = useCallback((node: {
+    title: string;
+    type: string;
+    desc: string;
+    modelInfo: { provider?: string; name?: string; mode?: string }
+  }, searchTerm: string): number => {
+    if (!searchTerm) return 1
 
-        return {
-          id: node.id,
-          title: nodeData?.title || nodeData?.type || 'Untitled',
-          type: nodeData?.type || '',
-          desc: nodeData?.desc || '',
-          blockType: nodeData?.type,
-          nodeData,
-          toolIcon,
-        }
-      })
+    const titleMatch = node.title.toLowerCase()
+    const typeMatch = node.type.toLowerCase()
+    const descMatch = node.desc?.toLowerCase() || ''
+    const modelProviderMatch = node.modelInfo?.provider?.toLowerCase() || ''
+    const modelNameMatch = node.modelInfo?.name?.toLowerCase() || ''
+    const modelModeMatch = node.modelInfo?.mode?.toLowerCase() || ''
 
-    return result
-  }, [nodes, buildInTools, customTools, workflowTools, mcpTools])
+    let score = 0
+
+    // Title matching (exact prefix > partial match)
+    if (titleMatch.startsWith(searchTerm)) score += 100
+    else if (titleMatch.includes(searchTerm)) score += 50
+
+    // Type matching (exact > partial)
+    if (typeMatch === searchTerm) score += 80
+    else if (typeMatch.includes(searchTerm)) score += 30
+
+    // Description matching (additive)
+    if (descMatch.includes(searchTerm)) score += 20
+
+    // LLM model matching (additive - can combine multiple matches)
+    if (modelNameMatch && modelNameMatch.includes(searchTerm)) score += 60
+    if (modelProviderMatch && modelProviderMatch.includes(searchTerm)) score += 40
+    if (modelModeMatch && modelModeMatch.includes(searchTerm)) score += 30
+
+    return score
+  }, [])
 
   // Create search function for workflow nodes
   const searchWorkflowNodes = useCallback((query: string) => {
@@ -77,67 +125,40 @@ export const useWorkflowSearch = () => {
 
     const results = searchableNodes
       .map((node) => {
-        const titleMatch = node.title.toLowerCase()
-        const typeMatch = node.type.toLowerCase()
-        const descMatch = node.desc?.toLowerCase() || ''
+        const score = calculateScore(node, searchTerm)
 
-        let score = 0
-
-        // If no search term, show all nodes with base score
-        if (!searchTerm) {
-          score = 1
-        }
- else {
-          // Score based on search relevance
-          if (titleMatch.startsWith(searchTerm)) score += 100
-          else if (titleMatch.includes(searchTerm)) score += 50
-          else if (typeMatch === searchTerm) score += 80
-          else if (typeMatch.includes(searchTerm)) score += 30
-          else if (descMatch.includes(searchTerm)) score += 20
-        }
-
-        return score > 0
-          ? {
-              id: node.id,
-              title: node.title,
-              description: node.desc || node.type,
-              type: 'workflow-node' as const,
-              path: `#${node.id}`,
-              icon: (
-                <BlockIcon
-                  type={node.blockType}
-                  className="shrink-0"
-                  size="sm"
-                  toolIcon={node.toolIcon}
-                />
-              ),
-              metadata: {
-                nodeId: node.id,
-                nodeData: node.nodeData,
-              },
-              // Add required data property for SearchResult type
-              data: node.nodeData,
-            }
-          : null
+        return score > 0 ? {
+          id: node.id,
+          title: node.title,
+          description: node.desc || node.type,
+          type: 'workflow-node' as const,
+          path: `#${node.id}`,
+          icon: (
+            <BlockIcon
+              type={node.blockType}
+              className="shrink-0"
+              size="sm"
+              toolIcon={node.toolIcon}
+            />
+          ),
+          metadata: {
+            nodeId: node.id,
+            nodeData: node.nodeData,
+          },
+          data: node.nodeData,
+          score,
+        } : null
       })
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => {
         // If no search term, sort alphabetically
-        if (!searchTerm)
-          return a.title.localeCompare(b.title)
-
-        // Sort by relevance when searching
-        const aTitle = a.title.toLowerCase()
-        const bTitle = b.title.toLowerCase()
-
-        if (aTitle.startsWith(searchTerm) && !bTitle.startsWith(searchTerm)) return -1
-        if (!aTitle.startsWith(searchTerm) && bTitle.startsWith(searchTerm)) return 1
-
-        return 0
+        if (!searchTerm) return a.title.localeCompare(b.title)
+        // Sort by relevance score (higher score first)
+        return (b.score || 0) - (a.score || 0)
       })
 
     return results
-  }, [searchableNodes])
+  }, [searchableNodes, calculateScore])
 
   // Directly set the search function on the action object
   useEffect(() => {
