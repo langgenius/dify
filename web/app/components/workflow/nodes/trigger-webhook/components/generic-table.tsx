@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
 import Input from '@/app/components/base/input'
 import Checkbox from '@/app/components/base/checkbox'
-import Select from '@/app/components/base/select'
+import { SimpleSelect } from '@/app/components/base/select'
 import cn from '@/utils/classnames'
 
 // Column configuration types for table components
@@ -104,17 +104,32 @@ const GenericTable: FC<GenericTableProps> = ({
             onChange={e => handleChange(e.target.value)}
             placeholder={column.placeholder}
             disabled={readonly}
+            wrapperClassName="w-full"
+            className={cn(
+              // Ghost/inline style: looks like plain text until focus/hover
+              'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
+              'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
+              'system-sm-regular text-text-secondary placeholder:text-text-tertiary',
+            )}
           />
         )
 
       case 'select':
         return (
-          <Select
+          <SimpleSelect
             items={column.options || []}
             defaultValue={value}
             onSelect={item => handleChange(item.value)}
             disabled={readonly}
-            allowSearch={false}
+            placeholder={column.placeholder}
+            // wrapper provides compact height, trigger is transparent like text
+            wrapperClassName="h-6"
+            className={cn(
+              'h-6 rounded-none bg-transparent px-0 text-text-secondary',
+              'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
+            )}
+            optionWrapClassName="rounded-md"
+            notClearable
           />
         )
 
@@ -125,7 +140,7 @@ const GenericTable: FC<GenericTableProps> = ({
             checked={!!value}
             onCheck={() => handleChange(!value)}
             disabled={readonly}
-            className="!h-4 !w-4"
+            className="!h-4 !w-4 shadow-none"
           />
         )
 
@@ -140,9 +155,9 @@ const GenericTable: FC<GenericTableProps> = ({
   // Render table layout matching the prototype design
   const renderTable = () => {
     return (
-      <div>
+      <div className="rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs">
         {showHeader && (
-          <div className="mb-1 flex items-center gap-2 px-1">
+          <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
             {columns.map(column => (
               <div key={column.key} className={cn('text-xs uppercase text-text-tertiary', column.width || 'flex-1')}>
                 {column.title}
@@ -150,7 +165,7 @@ const GenericTable: FC<GenericTableProps> = ({
             ))}
           </div>
         )}
-        <div className="">
+        <div className="divide-y divide-divider-subtle">
           {data.map((row, rowIndex) => {
             // Don't show empty rows except the last one
             const isEmpty = Object.values(row).every(value =>
@@ -164,23 +179,25 @@ const GenericTable: FC<GenericTableProps> = ({
             return (
               <div
                 key={rowKey}
-                className="group relative flex items-center gap-2 border-b border-divider-subtle py-1.5"
+                className="group relative flex items-center gap-2 px-3 py-1.5 hover:bg-components-panel-on-panel-item-bg-hover"
               >
                 {columns.map(column => (
                   <div key={column.key} className={cn('relative shrink-0', column.width || 'flex-1')}>
                     {renderCell(column, row, rowIndex)}
                   </div>
                 ))}
-                {/* Row-level delete button: only show when row has content and on hover */}
+                {/* Floating delete action overlay (does not take layout width) */}
                 {!readonly && data.length > 1 && !isEmpty && (
-                  <button
-                    type="button"
-                    onClick={() => removeRow(rowIndex)}
-                    className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 text-text-tertiary opacity-0 transition-opacity hover:text-text-destructive group-hover:opacity-100"
-                    aria-label="Delete row"
-                  >
-                    <RiDeleteBinLine className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[119px] items-center justify-end rounded-lg bg-gradient-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-2 group-hover:pointer-events-auto group-hover:flex">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(rowIndex)}
+                      className="text-text-tertiary opacity-70 transition-colors hover:text-text-destructive hover:opacity-100"
+                      aria-label="Delete row"
+                    >
+                      <RiDeleteBinLine className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
               </div>
             )

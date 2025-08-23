@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { HttpMethod, WebhookParam, WebhookParameter, WebhookTriggerNodeType } from './types'
@@ -50,7 +50,17 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleAsyncModeChange,
     handleStatusCodeChange,
     handleResponseBodyChange,
+    generateWebhookUrl,
   } = useConfig(id, data)
+
+  // Ensure we only attempt to generate URL once for a newly created node without url
+  const hasRequestedUrlRef = useRef(false)
+  useEffect(() => {
+    if (!readOnly && !inputs.webhook_url && !hasRequestedUrlRef.current) {
+      hasRequestedUrlRef.current = true
+      void generateWebhookUrl()
+    }
+  }, [readOnly, inputs.webhook_url, generateWebhookUrl])
 
   return (
     <div className='mt-2'>
@@ -68,7 +78,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   allowSearch={false}
                 />
               </div>
-              <div className="flex-1">
+              <div className="flex flex-1 gap-2">
                 <InputWithCopy
                   value={inputs.webhook_url || ''}
                   placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`)}

@@ -6,6 +6,7 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { fetchWebhookUrl } from '@/service/apps'
 
 const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -73,26 +74,45 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   }, [inputs, setInputs])
 
   const generateWebhookUrl = useCallback(async () => {
-    if (!appId) return null
+    // Idempotency: if we already have a URL, just return it.
+    if (inputs.webhook_url && inputs.webhook_url.length > 0)
+      return inputs.webhook_url
 
-    try {
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await fetchWebhookUrl({ appId, nodeId: id })
-      // return response.serverUrl
+    // Helper to build a deterministic mock URL for local/dev usage.
+    const buildMockUrl = () => `https://mock.dify.local/webhook/${appId ?? 'app'}/${id}`
 
-      // Mock implementation for now
-      const mockUrl = `https://api.dify.ai/v1/webhook/${Math.random().toString(36).substring(7)}`
-
+    if (!appId) {
+      // No appId available yet (e.g. during creation): use mock URL.
+      const mockUrl = buildMockUrl()
       const newInputs = produce(inputs, (draft) => {
         draft.webhook_url = mockUrl
       })
       setInputs(newInputs)
-
       return mockUrl
     }
- catch (error) {
+
+    try {
+      // Call backend to generate or fetch webhook url for this node
+      const response = await fetchWebhookUrl({ appId, nodeId: id })
+      const url = response.serverUrl
+
+      const newInputs = produce(inputs, (draft) => {
+        draft.webhook_url = url
+      })
+      setInputs(newInputs)
+
+      return url
+    }
+    catch (error: unknown) {
+      // Fallback to mock URL when API is not ready or request fails
+      // Keep the UI unblocked and allow users to proceed in local/dev environments.
       console.error('Failed to generate webhook URL:', error)
-      return null
+      const mockUrl = buildMockUrl()
+      const newInputs = produce(inputs, (draft) => {
+        draft.webhook_url = mockUrl
+      })
+      setInputs(newInputs)
+      return mockUrl
     }
   }, [appId, id, inputs, setInputs])
 
