@@ -528,17 +528,6 @@ const DocumentList: FC<IDocumentListProps> = ({
       let aValue: any
       let bValue: any
 
-      const statusPriority: Record<string, number> = {
-        'error': 1,
-        'indexing': 2,
-        'queuing': 3,
-        'paused': 4,
-        'available': 5,
-        'enabled': 6,
-        'disabled': 7,
-        'archived': 8,
-      }
-
       switch (sortField) {
         case 'name':
           aValue = a.name?.toLowerCase() || ''
