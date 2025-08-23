@@ -218,3 +218,6 @@ mise.toml
 .roo/
 api/.env.backup
 /clickzetta
+
+# SSRF Proxy - ignore the conf.d directory that's created for testing/local overrides
+docker/ssrf_proxy/conf.d/
