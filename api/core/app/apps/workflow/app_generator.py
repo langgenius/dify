@@ -54,6 +54,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
@@ -68,6 +69,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -82,6 +84,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
@@ -95,6 +98,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -159,7 +163,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        if invoke_from == InvokeFrom.DEBUGGER:
+        if triggered_from is not None:
+            # Use explicitly provided triggered_from (for async triggers)
+            workflow_triggered_from = triggered_from
+        elif invoke_from == InvokeFrom.DEBUGGER:
             workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
         else:
             workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN

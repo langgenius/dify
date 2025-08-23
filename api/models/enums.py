@@ -13,7 +13,10 @@ class UserFrom(StrEnum):
 
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
-    APP_RUN = "app-run"
+    APP_RUN = "app-run"  # webapp / service api
+    WEBHOOK = "webhook"
+    SCHEDULE = "schedule"
+    PLUGIN = "plugin"
 
 
 class DraftVariableType(StrEnum):
