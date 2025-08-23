@@ -8,7 +8,8 @@ The default configuration (`squid.conf.template`) is **strict by default** to pr
 
 - **Blocks all private/internal networks** (RFC 1918, loopback, link-local, etc.)
 - **Only allows HTTP (80) and HTTPS (443) ports**
-- **Denies all requests by default** unless explicitly allowed
+- **Allows access to Dify marketplace** (marketplace.dify.ai) by default
+- **Denies all other requests by default** unless explicitly allowed
 
 ## Customizing the Configuration
 
@@ -37,9 +38,9 @@ kind: ConfigMap
 metadata:
   name: squid-custom-config
 data:
-  10-allow-marketplace.conf: |
-    acl allowed_marketplace dstdomain .marketplace.dify.ai
-    http_access allow allowed_marketplace
+  30-allow-external-domains.conf: |
+    acl allowed_external dstdomain .example.com
+    http_access allow allowed_external
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -62,7 +63,6 @@ spec:
 The `conf.d.example/` directory contains example configurations:
 
 - **00-testing-environment.conf.example**: Configuration for CI/testing environments (NOT for production)
-- **10-allow-marketplace.conf.example**: Allow access to Dify marketplace
 - **20-allow-internal-services.conf.example**: Allow internal services (use with caution!)
 - **30-allow-external-domains.conf.example**: Allow specific external domains
 - **40-allow-additional-ports.conf.example**: Allow additional ports
@@ -107,7 +107,7 @@ docker/ssrf_proxy/
 ├── squid.conf.template       # Strict default configuration
 ├── docker-entrypoint.sh      # Container entrypoint script
 ├── conf.d.example/           # Example override configurations
-│   ├── 10-allow-marketplace.conf.example
+│   ├── 00-testing-environment.conf.example
 │   ├── 20-allow-internal-services.conf.example
 │   ├── 30-allow-external-domains.conf.example
 │   └── 40-allow-additional-ports.conf.example

@@ -33,6 +33,10 @@ acl CONNECT method CONNECT
 acl reverse_proxy_port myport ${REVERSE_PROXY_PORT}
 http_access allow reverse_proxy_port
 
+# Allow access to Dify marketplace (always allowed by default)
+acl allowed_marketplace dstdomain .marketplace.dify.ai
+http_access allow allowed_marketplace
+
 # DENY access to all private/local networks - prevents SSRF attacks
 http_access deny private_networks
 
