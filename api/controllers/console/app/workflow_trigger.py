@@ -1,17 +1,17 @@
 import logging
 import secrets
+
 from flask_restful import Resource, reqparse
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound, BadRequest, Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from configs import dify_config
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from libs.login import current_user, login_required
 from models.workflow import WorkflowWebhookTrigger
-from configs import dify_config
-
 
 logger = logging.getLogger(__name__)
 

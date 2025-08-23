@@ -8,7 +8,7 @@ from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_database import db
 from factories import file_factory
-from models.workflow import WorkflowWebhookTrigger, Workflow
+from models.workflow import Workflow, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
 

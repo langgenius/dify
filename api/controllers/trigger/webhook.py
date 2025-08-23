@@ -1,8 +1,7 @@
 import logging
-from sqlalchemy.orm import Session
 
 from flask import jsonify
-from werkzeug.exceptions import NotFound, BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.trigger import bp
 from services.webhook_service import WebhookService
