@@ -111,6 +111,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       visual_config: {
         time: '11:30 AM',
         weekdays: ['sun'],
+        monthly_days: [1],
         ...payload.visual_config,
       },
     }
@@ -153,6 +154,12 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
         ...inputs.visual_config,
         ...(frequency === 'hourly') && {
           on_minute: inputs.visual_config?.on_minute ?? 0,
+        },
+        ...(frequency === 'weekly') && {
+          weekdays: inputs.visual_config?.weekdays || ['sun'],
+        },
+        ...(frequency === 'monthly') && {
+          monthly_days: inputs.visual_config?.monthly_days || [1],
         },
       },
     }
