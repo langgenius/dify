@@ -16,13 +16,13 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       enabled: payload.enabled !== undefined ? payload.enabled : true,
     }
 
-    // 只有当时间是UTC格式时才需要转换为用户时区格式显示
+    // Only convert time from UTC to user timezone format when needed
     const needsConversion = payload.visual_config?.time
                           && payload.timezone
                           && isUTCFormat(payload.visual_config.time)
 
-    if (needsConversion) {
-      const userTime = convertUTCToUserTimezone(payload.visual_config.time, payload.timezone)
+    if (needsConversion && payload.visual_config) {
+      const userTime = convertUTCToUserTimezone(payload.visual_config.time!, payload.timezone)
       return {
         ...basePayload,
         visual_config: {
@@ -32,7 +32,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       }
     }
 
-    // 默认值或已经是用户格式，直接使用
+    // Use default values or existing user format directly
     return {
       ...basePayload,
       visual_config: {
@@ -43,22 +43,26 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     }
   }, [payload])
 
-  const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload, {
-    beforeSave: (data) => {
-      // 只转换用户时间格式为UTC，避免重复转换
-      if (data.visual_config?.time && data.timezone && isUserFormat(data.visual_config.time)) {
-        const utcTime = convertTimeToUTC(data.visual_config.time, data.timezone)
-        return {
-          ...data,
-          visual_config: {
-            ...data.visual_config,
-            time: utcTime,
-          },
-        }
+  const { inputs, setInputs: originalSetInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload)
+
+  // Enhanced setInputs with beforeSave logic
+  const setInputs = useCallback((data: ScheduleTriggerNodeType) => {
+    // Only convert user time format to UTC to avoid duplicate conversions
+    if (data.visual_config?.time && data.timezone && isUserFormat(data.visual_config.time)) {
+      const utcTime = convertTimeToUTC(data.visual_config.time, data.timezone)
+      const transformedData = {
+        ...data,
+        visual_config: {
+          ...data.visual_config,
+          time: utcTime,
+        },
       }
-      return data
-    },
-  })
+      originalSetInputs(transformedData)
+    }
+ else {
+      originalSetInputs(data)
+    }
+  }, [originalSetInputs])
 
   const handleModeChange = useCallback((mode: ScheduleMode) => {
     const newInputs = {
