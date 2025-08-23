@@ -141,8 +141,8 @@ class LogoutApi(Resource):
             response = make_response({"result": "success"})
 
         # Clear cookies on logout
-        response.set_cookie("access_token", "", expires=0, path="/", secure=True, httponly=True, samesite='Lax')
-        response.set_cookie("refresh_token", "", expires=0, path="/", secure=True, httponly=True, samesite='Lax')
+        response.set_cookie("access_token", "", expires=0, path="/", secure=True, httponly=True, samesite="Lax")
+        response.set_cookie("refresh_token", "", expires=0, path="/", secure=True, httponly=True, samesite="Lax")
 
         return response
 
