@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from flask import request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.file.models import FileTransferMethod
@@ -9,6 +10,10 @@ from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_database import db
 from factories import file_factory
 from models.workflow import Workflow, WorkflowWebhookTrigger
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import WorkflowRunTriggeredFrom
+from services.async_workflow_service import AsyncWorkflowService
+from services.workflow.entities import TriggerData
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +39,9 @@ class WebhookService:
                 session.query(Workflow)
                 .filter(
                     Workflow.app_id == webhook_trigger.app_id,
-                    Workflow.version == "draft",  # Use draft version for active webhooks
+                    Workflow.version != Workflow.VERSION_DRAFT,
                 )
+                .order_by(Workflow.created_at.desc())
                 .first()
             )
             if not workflow:
@@ -178,26 +184,53 @@ class WebhookService:
     def trigger_workflow_execution(
         cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
     ) -> None:
-        """Trigger workflow execution via Celery."""
-        # TODO: Implement Celery task dispatch
-        # This would:
-        # 1. Create a workflow run record
-        # 2. Send task to Celery worker
-        # 3. Pass webhook_data as input to the webhook node
+        """Trigger workflow execution via AsyncWorkflowService."""
+        try:
+            with Session(db.engine) as session:
+                # Get tenant owner as the user for webhook execution
+                tenant_owner = session.scalar(
+                    select(Account)
+                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                    .where(
+                        TenantAccountJoin.tenant_id == webhook_trigger.tenant_id,
+                        TenantAccountJoin.role == TenantAccountRole.OWNER,
+                    )
+                )
 
-        logger.info(
-            f"Triggering workflow execution for webhook {webhook_trigger.webhook_id}, "
-            f"app {webhook_trigger.app_id}, node {webhook_trigger.node_id}"
-        )
+                if not tenant_owner:
+                    logger.error(f"Tenant owner not found for tenant {webhook_trigger.tenant_id}")
+                    raise ValueError("Tenant owner not found")
 
-        # Placeholder for Celery task dispatch
-        # from tasks.workflow_execution_tasks import execute_workflow
-        # execute_workflow.delay(
-        #     workflow_id=workflow.id,
-        #     webhook_data=webhook_data,
-        #     triggered_from="webhook",
-        #     webhook_trigger_id=webhook_trigger.id
-        # )
+                # Prepare inputs for the webhook node
+                # The webhook node expects webhook_data in the inputs
+                workflow_inputs = {
+                    "webhook_data": webhook_data,
+                    "webhook_headers": webhook_data.get("headers", {}),
+                    "webhook_query_params": webhook_data.get("query_params", {}),
+                    "webhook_body": webhook_data.get("body", {}),
+                    "webhook_files": webhook_data.get("files", {}),
+                }
+
+                # Create trigger data
+                trigger_data = TriggerData(
+                    app_id=webhook_trigger.app_id,
+                    workflow_id=workflow.id,
+                    root_node_id=webhook_trigger.node_id,  # Start from the webhook node
+                    trigger_type=WorkflowRunTriggeredFrom.WEBHOOK,
+                    inputs=workflow_inputs,
+                    tenant_id=webhook_trigger.tenant_id,
+                )
+
+                # Trigger workflow execution asynchronously
+                AsyncWorkflowService.trigger_workflow_async(
+                    session,
+                    tenant_owner,
+                    trigger_data,
+                )
+
+        except Exception as e:
+            logger.exception(f"Failed to trigger workflow for webhook {webhook_trigger.webhook_id}: {str(e)}")
+            raise
 
     @classmethod
     def generate_webhook_response(cls, node_config: dict[str, Any]) -> tuple[dict[str, Any], int]:

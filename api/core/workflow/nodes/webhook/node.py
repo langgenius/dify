@@ -4,7 +4,7 @@ from typing import Any, Optional
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
 
 from .entities import WebhookData
@@ -20,6 +20,9 @@ class WebhookNode(BaseNode):
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
         return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
 
     def _get_title(self) -> str:
         return self._node_data.title

@@ -2,7 +2,7 @@
 
 Revision ID: 5871f634954d
 Revises: fa8b0fa6f407
-Create Date: 2025-08-23 11:03:20.704501
+Create Date: 2025-08-23 20:39:20.704501
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '5871f634954d'
-down_revision = 'fa8b0fa6f407'
+down_revision = '4558cfabe44e'
 branch_labels = None
 depends_on = None
 

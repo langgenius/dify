@@ -138,17 +138,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
             **extract_external_trace_id_from_args(args),
         }
         workflow_run_id = str(uuid.uuid4())
+        if triggered_from in (WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN):
+            # start node get inputs
+            inputs = self._prepare_user_inputs(
+                user_inputs=inputs,
+                variables=app_config.variables,
+                tenant_id=app_model.tenant_id,
+                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+            )
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             file_upload_config=file_extra_config,
-            inputs=self._prepare_user_inputs(
-                user_inputs=inputs,
-                variables=app_config.variables,
-                tenant_id=app_model.tenant_id,
-                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
-            ),
+            inputs=inputs,
             files=list(system_files),
             user_id=user.id,
             stream=streaming,
