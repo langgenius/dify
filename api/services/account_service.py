@@ -425,7 +425,7 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
     ):
         account_email = account.email if account else email
         if account_email is None:
@@ -452,7 +452,7 @@ class AccountService:
         account: Optional[Account] = None,
         email: Optional[str] = None,
         old_email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         phase: Optional[str] = None,
     ):
         account_email = account.email if account else email
@@ -480,7 +480,7 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
     ):
         account_email = account.email if account else email
         if account_email is None:
@@ -496,7 +496,7 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         workspace_name: Optional[str] = "",
     ):
         account_email = account.email if account else email
@@ -524,7 +524,7 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         workspace_name: Optional[str] = "",
         new_owner_email: Optional[str] = "",
     ):
@@ -544,7 +544,7 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         workspace_name: Optional[str] = "",
     ):
         account_email = account.email if account else email
@@ -633,7 +633,7 @@ class AccountService:
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+        cls, account: Optional[Account] = None, email: Optional[str] = None, language: str = "en-US",
     ):
         email = account.email if account else email
         if email is None:
@@ -1260,10 +1260,11 @@ class RegisterService:
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
         token = cls.generate_invite_token(tenant, account)
+        language = account.interface_language or "en-US"
 
         # send email
         send_invite_member_mail_task.delay(
-            language=account.interface_language,
+            language=language,
             to=email,
             token=token,
             inviter_name=inviter.name if inviter else "Dify",
