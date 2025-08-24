@@ -68,7 +68,6 @@ class TestBatchCleanDocumentTask:
             status="active",
         )
 
-
         db.session.add(account)
         db.session.commit()
 
@@ -204,6 +203,7 @@ class TestBatchCleanDocumentTask:
         """
         fake = Faker()
         from datetime import datetime
+
         from models.enums import CreatorUserRole
 
         upload_file = UploadFile(
@@ -226,9 +226,7 @@ class TestBatchCleanDocumentTask:
         return upload_file
 
     def test_batch_clean_document_task_successful_cleanup(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test successful cleanup of documents with segments and files.
@@ -256,10 +254,7 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id],
-            dataset_id=dataset.id,
-            doc_form=dataset.doc_form,
-            file_ids=[file_id]
+            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
         )
 
         # Verify that the task completed successfully
@@ -277,9 +272,7 @@ class TestBatchCleanDocumentTask:
         assert deleted_file is None
 
     def test_batch_clean_document_task_with_image_files(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test cleanup of documents containing image references.
@@ -316,10 +309,7 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id],
-            dataset_id=dataset.id,
-            doc_form=dataset.doc_form,
-            file_ids=[]
+            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[]
         )
 
         # Verify database cleanup
@@ -333,9 +323,7 @@ class TestBatchCleanDocumentTask:
         # The task should have processed the segment and cleaned up the database
 
     def test_batch_clean_document_task_no_segments(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test cleanup when document has no segments.
@@ -359,10 +347,7 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id],
-            dataset_id=dataset.id,
-            doc_form=dataset.doc_form,
-            file_ids=[file_id]
+            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
         )
 
         # Verify that the task completed successfully
@@ -383,9 +368,7 @@ class TestBatchCleanDocumentTask:
         assert deleted_file is None
 
     def test_batch_clean_document_task_dataset_not_found(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test cleanup when dataset is not found.
@@ -407,12 +390,7 @@ class TestBatchCleanDocumentTask:
         db.session.commit()
 
         # Execute the task with non-existent dataset
-        batch_clean_document_task(
-            document_ids=[document_id],
-            dataset_id=dataset_id,
-            doc_form="text_model",
-            file_ids=[]
-        )
+        batch_clean_document_task(document_ids=[document_id], dataset_id=dataset_id, doc_form="text_model", file_ids=[])
 
         # Verify that no index processing occurred
         mock_external_service_dependencies["index_processor"].clean.assert_not_called()
@@ -428,9 +406,7 @@ class TestBatchCleanDocumentTask:
         assert existing_document is not None
 
     def test_batch_clean_document_task_storage_cleanup_failure(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test cleanup when storage operations fail.
@@ -459,10 +435,7 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id],
-            dataset_id=dataset.id,
-            doc_form=dataset.doc_form,
-            file_ids=[file_id]
+            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
         )
 
         # Verify that the task completed successfully despite storage failure
@@ -480,9 +453,7 @@ class TestBatchCleanDocumentTask:
         assert deleted_file is None
 
     def test_batch_clean_document_task_multiple_documents(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test cleanup of multiple documents in a single batch operation.
@@ -520,10 +491,7 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with multiple documents
         batch_clean_document_task(
-            document_ids=document_ids,
-            dataset_id=dataset.id,
-            doc_form=dataset.doc_form,
-            file_ids=file_ids
+            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
         )
 
         # Verify that the task completed successfully for all documents
@@ -543,9 +511,7 @@ class TestBatchCleanDocumentTask:
             assert deleted_file is None
 
     def test_batch_clean_document_task_different_doc_forms(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test cleanup with different document form types.
@@ -576,10 +542,7 @@ class TestBatchCleanDocumentTask:
             try:
                 # Execute the task
                 batch_clean_document_task(
-                    document_ids=[document.id],
-                    dataset_id=dataset.id,
-                    doc_form=doc_form,
-                    file_ids=[]
+                    document_ids=[document.id], dataset_id=dataset.id, doc_form=doc_form, file_ids=[]
                 )
 
                 # Verify that the task completed successfully for this doc_form
@@ -609,9 +572,7 @@ class TestBatchCleanDocumentTask:
                     pass
 
     def test_batch_clean_document_task_large_batch_performance(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test cleanup performance with a large batch of documents.
@@ -655,10 +616,7 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with large batch
         batch_clean_document_task(
-            document_ids=document_ids,
-            dataset_id=dataset.id,
-            doc_form=dataset.doc_form,
-            file_ids=file_ids
+            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
         )
 
         end_time = time.perf_counter()
@@ -684,9 +642,7 @@ class TestBatchCleanDocumentTask:
             assert deleted_file is None
 
     def test_batch_clean_document_task_integration_with_real_database(
-        self,
-        db_session_with_containers,
-        mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test full integration with real database operations.
@@ -741,10 +697,7 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id],
-            dataset_id=dataset.id,
-            doc_form=dataset.doc_form,
-            file_ids=[file_id]
+            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
         )
 
         # Verify that the task completed successfully
