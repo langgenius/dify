@@ -79,7 +79,6 @@ Supervisa y analiza registros de aplicaciones y rendimiento a lo largo del tiemp
 **7. Backend como servicio**:
 Todas las ofertas de Dify vienen con APIs correspondientes, por lo que podrías integrar Dify sin esfuerzo en tu propia lógica empresarial.
 
-
 ## Usando Dify
 
 - **Nube </br>**

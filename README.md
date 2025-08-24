@@ -107,7 +107,6 @@ Monitor and analyze application logs and performance over time. You could contin
 **7. Backend-as-a-Service**:
 All of Dify's offerings come with corresponding APIs, so you could effortlessly integrate Dify into your own business logic.
 
-
 ## Using Dify
 
 - **Cloud </br>**

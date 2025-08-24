@@ -79,7 +79,6 @@ Surveillez et analysez les journaux d'application et les performances au fil du 
 **7. Backend-as-a-Service** :
 Toutes les offres de Dify sont accompagnées d'API correspondantes, vous permettant d'intégrer facilement Dify dans votre propre logique métier.
 
-
 ## Utiliser Dify
 
 - **Cloud </br>**

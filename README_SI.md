@@ -103,7 +103,6 @@ Spremljajte in analizirajte dnevnike aplikacij in učinkovitost skozi čas. Pozi
 **7. Backend-as-a-Service**:
 AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez težav integrirate v svojo poslovno logiko.
 
-
 ## Uporaba Dify
 
 - **Cloud </br>**

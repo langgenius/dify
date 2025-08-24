@@ -106,7 +106,6 @@ Sie können Agenten basierend auf LLM Function Calling oder ReAct definieren und
 **7. Backend-as-a-Service**:
 Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in Ihre eigene Geschäftslogik integrieren können.
 
-
 ## Dify verwenden
 
 - **Cloud </br>**

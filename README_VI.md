@@ -74,7 +74,6 @@ Giám sát và phân tích nhật ký và hiệu suất ứng dụng theo thời
 **7. Backend-as-a-Service**:
 Tất cả các dịch vụ của Dify đều đi kèm với các API tương ứng, vì vậy bạn có thể dễ dàng tích hợp Dify vào logic kinh doanh của riêng mình.
 
-
 ## Sử dụng Dify
 
 - **Cloud </br>**

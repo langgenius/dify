@@ -80,7 +80,6 @@ LLM Function CallingやReActに基づくエージェントの定義が可能で�
 **7. Backend-as-a-Service**:
 すべての機能はAPIを提供されており、Difyを自分のビジネスロジックに簡単に統合できます。
 
-
 ## Difyの使用方法
 
 - **クラウド </br>**

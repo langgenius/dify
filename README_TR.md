@@ -74,7 +74,6 @@ Uygulama loglarını ve performans metriklerini zaman içinde izleme ve analiz e
 **7. Hizmet Olarak Backend**:
 Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı kendi iş mantığınıza kolayca entegre edebilirsiniz.
 
-
 ## Dify'ı Kullanma
 
 - **Cloud </br>**
