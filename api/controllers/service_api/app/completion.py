@@ -26,9 +26,9 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from libs import helper
 from libs.helper import uuid_value
-from models import db
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError

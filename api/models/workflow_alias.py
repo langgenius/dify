@@ -43,16 +43,14 @@ class WorkflowAlias(Base):
     __table_args__ = (
         # Ensure alias name is unique within an app
         sa.UniqueConstraint("app_id", "alias_name", name="unique_workflow_alias_app_name"),
-        # Composite index for workflow-level queries
-        sa.Index("tenant_id", "app_id", "workflow_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     alias_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    alias_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=AliasType.CUSTOM, index=True)
+    alias_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=AliasType.CUSTOM)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())

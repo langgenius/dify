@@ -145,5 +145,5 @@ class WorkflowAliasService:
         if len(alias_name) < 1:
             raise ValueError("Alias name must be at least 1 character long")
 
-        if not re.match(r"^[a-zA-Z0-9_-]+$", alias_name):
-            raise ValueError("Alias name can only contain letters, numbers, hyphens, and underscores")
+        if not re.match(r"^[a-zA-Z0-9_.-]+$", alias_name):
+            raise ValueError("Alias name can only contain letters, numbers, hyphens, underscores, and dots")
