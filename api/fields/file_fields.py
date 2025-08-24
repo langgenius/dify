@@ -1,4 +1,4 @@
-from flask_restx import fields
+from flask_restx import Api, Namespace, fields
 
 from libs.helper import TimestampField
 
@@ -10,6 +10,19 @@ upload_config_fields = {
     "audio_file_size_limit": fields.Integer,
     "workflow_file_upload_limit": fields.Integer,
 }
+
+
+def build_upload_config_model(api_or_ns: Api | Namespace):
+    """Build the upload config model for the API or Namespace.
+
+    Args:
+        api_or_ns: Flask-RestX Api or Namespace instance
+
+    Returns:
+        The registered model
+    """
+    return api_or_ns.model("UploadConfig", upload_config_fields)
+
 
 file_fields = {
     "id": fields.String,
@@ -28,6 +41,18 @@ remote_file_info_fields = {
 }
 
 
+def build_remote_file_info_model(api_or_ns: Api | Namespace):
+    """Build the remote file info model for the API or Namespace.
+
+    Args:
+        api_or_ns: Flask-RestX Api or Namespace instance
+
+    Returns:
+        The registered model
+    """
+    return api_or_ns.model("RemoteFileInfo", remote_file_info_fields)
+
+
 file_fields_with_signed_url = {
     "id": fields.String,
     "name": fields.String,
@@ -38,3 +63,15 @@ file_fields_with_signed_url = {
     "created_by": fields.String,
     "created_at": TimestampField,
 }
+
+
+def build_file_with_signed_url_model(api_or_ns: Api | Namespace):
+    """Build the file with signed URL model for the API or Namespace.
+
+    Args:
+        api_or_ns: Flask-RestX Api or Namespace instance
+
+    Returns:
+        The registered model
+    """
+    return api_or_ns.model("FileWithSignedUrl", file_fields_with_signed_url)
