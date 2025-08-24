@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner

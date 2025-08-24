@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from flask import render_template_string
 
 from extensions.ext_mail import mail

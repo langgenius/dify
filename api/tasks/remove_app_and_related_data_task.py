@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import click
 import sqlalchemy as sa
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -370,8 +370,8 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
         with db.engine.begin() as conn:
             # Get a batch of draft variable IDs
             query_sql = """
-                SELECT id FROM workflow_draft_variables 
-                WHERE app_id = :app_id 
+                SELECT id FROM workflow_draft_variables
+                WHERE app_id = :app_id
                 LIMIT :batch_size
             """
             result = conn.execute(sa.text(query_sql), {"app_id": app_id, "batch_size": batch_size})
@@ -382,7 +382,7 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
 
             # Delete the batch
             delete_sql = """
-                DELETE FROM workflow_draft_variables 
+                DELETE FROM workflow_draft_variables
                 WHERE id IN :ids
             """
             deleted_result = conn.execute(sa.text(delete_sql), {"ids": tuple(draft_var_ids)})
