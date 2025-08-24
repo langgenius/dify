@@ -27,9 +27,24 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   if (data.frequency === 'hourly') {
     const onMinute = data.visual_config?.on_minute ?? 0
 
+    // Get current time in user timezone for comparison
+    const userNowTime = new Date()
+    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
+    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
+    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+
+    let hour = userCurrentTime.getHours()
+    if (userCurrentTime.getMinutes() >= onMinute)
+      hour += 1 // Start from next hour if current minute has passed
+
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
-      execution.setHours(i, onMinute, 0, 0)
+      execution.setHours(hour + i, onMinute, 0, 0)
+      // Handle day overflow
+      if (hour + i >= 24) {
+        execution.setDate(userToday.getDate() + Math.floor((hour + i) / 24))
+        execution.setHours((hour + i) % 24, onMinute, 0, 0)
+      }
       times.push(execution)
     }
   }
@@ -40,9 +55,20 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
+    // Check if today's configured time has already passed
+    const todayExecution = new Date(userToday)
+    todayExecution.setHours(displayHour, Number.parseInt(minute), 0, 0)
+
+    const userNowTime = new Date()
+    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
+    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
+    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+
+    const startOffset = todayExecution <= userCurrentTime ? 1 : 0
+
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
-      execution.setDate(userToday.getDate() + i)
+      execution.setDate(userToday.getDate() + startOffset + i)
       execution.setHours(displayHour, Number.parseInt(minute), 0, 0)
       times.push(execution)
     }
@@ -57,6 +83,12 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
+    // Get current time in user timezone for comparison
+    const userNowTime = new Date()
+    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
+    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
+    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+
     let executionCount = 0
     let weekOffset = 0
 
@@ -69,8 +101,11 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
         execution.setDate(userToday.getDate() + targetDay + (weekOffset * 7))
         execution.setHours(displayHour, Number.parseInt(minute), 0, 0)
 
-        times.push(execution)
-        executionCount++
+        // Only add if execution time is in the future
+        if (execution > userCurrentTime) {
+          times.push(execution)
+          executionCount++
+        }
       }
       weekOffset++
     }
@@ -91,6 +126,12 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     let displayHour = Number.parseInt(hour)
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
+
+    // Get current time in user timezone for comparison
+    const userNowTime = new Date()
+    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
+    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
+    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
 
     let executionCount = 0
     let monthOffset = 0
@@ -122,7 +163,10 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
         processedDays.add(targetDay)
 
         const execution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
-        monthlyExecutions.push(execution)
+
+        // Only add if execution time is in the future
+        if (execution > userCurrentTime)
+          monthlyExecutions.push(execution)
       }
 
       monthlyExecutions.sort((a, b) => a.getTime() - b.getTime())
