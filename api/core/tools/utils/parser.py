@@ -6,7 +6,7 @@ from typing import Optional
 
 from flask import request
 from requests import get
-from yaml import YAMLError, safe_load  # type: ignore
+from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
