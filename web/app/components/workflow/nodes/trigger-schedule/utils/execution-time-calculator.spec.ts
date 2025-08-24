@@ -10,7 +10,7 @@ const createMockData = (overrides: Partial<ScheduleTriggerNodeType> = {}): Sched
     time: '11:30 AM',
     weekdays: ['sun'],
   },
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  timezone: 'UTC',
   enabled: true,
   ...overrides,
 })
