@@ -219,7 +219,7 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
   const times = getNextExecutionTimes(data, count)
 
   return times.map((date) => {
-    const includeWeekday = data.frequency === 'weekly'
+    const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
     return formatExecutionTime(date, data.timezone, includeWeekday)
   })
 }
@@ -229,7 +229,7 @@ export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   if (times.length === 0) {
     const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
     const fallbackDate = new Date(userCurrentTime.getFullYear(), userCurrentTime.getMonth(), userCurrentTime.getDate(), 12, 0, 0, 0)
-    const includeWeekday = data.frequency === 'weekly'
+    const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
     return formatExecutionTime(fallbackDate, data.timezone, includeWeekday)
   }
   return times[0]
