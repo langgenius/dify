@@ -1,4 +1,4 @@
-from flask_restx import fields
+from flask_restx import Api, Namespace, fields
 
 from libs.helper import TimestampField
 
@@ -21,6 +21,19 @@ file_fields = {
     "created_at": TimestampField,
     "preview_url": fields.String,
 }
+
+
+def build_file_model(api_or_ns: Api | Namespace):
+    """Build the file model for the API or Namespace.
+
+    Args:
+        api_or_ns: Flask-RestX Api or Namespace instance
+
+    Returns:
+        The registered model
+    """
+    return api_or_ns.model("File", file_fields)
+
 
 remote_file_info_fields = {
     "file_type": fields.String(attribute="file_type"),
