@@ -78,6 +78,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                         </label>
                         <TimePicker
                           notClearable={true}
+                          timezone={inputs.timezone}
                           value={inputs.visual_config?.time
                             ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
                             : dayjs('1/1/2000 11:30 AM')

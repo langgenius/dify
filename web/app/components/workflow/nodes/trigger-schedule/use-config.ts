@@ -2,63 +2,29 @@ import { useCallback, useMemo } from 'react'
 import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { convertTimeToUTC, convertUTCToUserTimezone, isUTCFormat, isUserFormat } from './utils/timezone-utils'
+import { useAppContext } from '@/context/app-context'
+import { getDefaultVisualConfig } from './constants'
 
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
+  const { userProfile } = useAppContext()
+
   const frontendPayload = useMemo(() => {
-    const basePayload = {
+    return {
       ...payload,
       mode: payload.mode || 'visual',
       frequency: payload.frequency || 'weekly',
-      timezone: payload.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: userProfile.timezone || 'UTC',
       enabled: payload.enabled !== undefined ? payload.enabled : true,
-    }
-
-    // 只有当时间是UTC格式时才需要转换为用户时区格式显示
-    const needsConversion = payload.visual_config?.time
-                          && payload.timezone
-                          && isUTCFormat(payload.visual_config.time)
-
-    if (needsConversion) {
-      const userTime = convertUTCToUserTimezone(payload.visual_config.time, payload.timezone)
-      return {
-        ...basePayload,
-        visual_config: {
-          ...payload.visual_config,
-          time: userTime,
-        },
-      }
-    }
-
-    // 默认值或已经是用户格式，直接使用
-    return {
-      ...basePayload,
       visual_config: {
-        time: '11:30 AM',
-        weekdays: ['sun'],
+        ...getDefaultVisualConfig(),
         ...payload.visual_config,
       },
     }
-  }, [payload])
+  }, [payload, userProfile.timezone])
 
-  const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload, {
-    beforeSave: (data) => {
-      // 只转换用户时间格式为UTC，避免重复转换
-      if (data.visual_config?.time && data.timezone && isUserFormat(data.visual_config.time)) {
-        const utcTime = convertTimeToUTC(data.visual_config.time, data.timezone)
-        return {
-          ...data,
-          visual_config: {
-            ...data.visual_config,
-            time: utcTime,
-          },
-        }
-      }
-      return data
-    },
-  })
+  const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload)
 
   const handleModeChange = useCallback((mode: ScheduleMode) => {
     const newInputs = {

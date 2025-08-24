@@ -16,7 +16,8 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
     const newSelected = current.includes(day)
       ? current.filter(d => d !== day)
       : [...current, day]
-    onChange(newSelected)
+    // Ensure at least one day is selected (consistent with WeekdaySelector)
+    onChange(newSelected.length > 0 ? newSelected : [day])
   }
 
   const isDaySelected = (day: number | 'last') => selectedDays?.includes(day) || false
