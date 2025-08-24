@@ -110,7 +110,7 @@ dev = [
     "dotenv-linter~=0.5.0",
     "faker~=32.1.0",
     "lxml-stubs~=0.5.1",
-    "mypy~=1.16.0",
+    "mypy~=1.17.1",
     "ruff~=0.12.3",
     "pytest~=8.3.2",
     "pytest-benchmark~=4.0.0",
@@ -164,6 +164,7 @@ dev = [
     "scipy-stubs>=1.15.3.0",
     "types-python-http-client>=3.3.7.20240910",
     "types-redis>=4.6.0.20241004",
+    "celery-types>=0.23.0",
 ]
 
 ############################################################

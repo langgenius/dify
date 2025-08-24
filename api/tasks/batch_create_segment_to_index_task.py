@@ -6,7 +6,7 @@ from pathlib import Path
 
 import click
 import pandas as pd
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
