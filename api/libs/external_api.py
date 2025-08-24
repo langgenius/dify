@@ -17,6 +17,11 @@ def http_status_message(code):
 
 
 class ExternalApi(Api):
+    def __init__(self, app=None, **kwargs):
+        super().__init__(app, **kwargs)
+        # Initialize errors dict for compatibility with flask_restful style error handling
+        self.errors = {}
+
     def handle_error(self, e):
         """Error handler for the API transforms a raised exception into a Flask
         response, with the appropriate HTTP status code and body.
