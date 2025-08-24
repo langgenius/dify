@@ -1,6 +1,6 @@
 from flask import request
 from flask_login import current_user
-from flask_restful import marshal, reqparse
+from flask_restx import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api

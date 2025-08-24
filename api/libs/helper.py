@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
-from flask_restful import fields
+from flask_restx import fields
 from pydantic import BaseModel
 
 from configs import dify_config

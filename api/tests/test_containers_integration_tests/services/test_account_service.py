@@ -1639,7 +1639,7 @@ class TestTenantService:
         email = fake.email()
         name = fake.name()
         password = fake.password(length=12)
-        invalid_action = fake.word()
+        invalid_action = "invalid_action_that_doesnt_exist"
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
