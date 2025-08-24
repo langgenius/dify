@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import Any, Optional
 
 import pytz
-from celery import Celery, Task  # type: ignore
-from celery.schedules import crontab  # type: ignore
+from celery import Celery, Task
+from celery.schedules import crontab
 
 from configs import dify_config
 from dify_app import DifyApp

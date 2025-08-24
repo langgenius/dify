@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
