@@ -78,9 +78,11 @@ class ExternalApi(Api):
         data = getattr(e, "data", default_data)
 
         error_cls_name = type(e).__name__
-        if error_cls_name in self.errors:
-            custom_data = self.errors.get(error_cls_name, {})
-            custom_data = custom_data.copy()
+        # Flask-RESTX Api does not define `errors` like Flask-RESTful.
+        # Safely access a potential mapping if present (for backward compatibility).
+        errors_mapping = getattr(self, "errors", None)
+        if isinstance(errors_mapping, dict) and error_cls_name in errors_mapping:
+            custom_data = errors_mapping.get(error_cls_name, {}).copy()
             status_code = custom_data.get("status", 500)
 
             if "message" in custom_data:
