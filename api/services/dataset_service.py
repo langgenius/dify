@@ -2334,7 +2334,22 @@ class SegmentService:
         if segment.enabled:
             # send delete segment index task
             redis_client.setex(indexing_cache_key, 600, 1)
-            delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id)
+
+            # Get child chunk IDs before parent segment is deleted
+            child_node_ids = []
+            if segment.index_node_id:
+                child_chunks = (
+                    db.session.query(ChildChunk.index_node_id)
+                    .where(
+                        ChildChunk.segment_id == segment.id,
+                        ChildChunk.dataset_id == dataset.id,
+                    )
+                    .all()
+                )
+                child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
+
+            delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id, child_node_ids)
+
         db.session.delete(segment)
         # update document word count
         assert document.word_count is not None
@@ -2344,9 +2359,13 @@ class SegmentService:
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
-        segments = (
-            db.session.query(DocumentSegment.index_node_id, DocumentSegment.word_count)
-            .filter(
+        # Check if segment_ids is not empty to avoid WHERE false condition
+        if not segment_ids or len(segment_ids) == 0:
+            return
+        index_node_ids = (
+            db.session.query(DocumentSegment)
+            .with_entities(DocumentSegment.index_node_id)
+            .where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
@@ -2355,16 +2374,30 @@ class SegmentService:
             .all()
         )
 
-        if not segments:
+        if not segments_info:
             return
 
-        index_node_ids = [seg.index_node_id for seg in segments]
-        total_words = sum(seg.word_count for seg in segments)
+        index_node_ids = [info[0] for info in segments_info]
+        segment_db_ids = [info[1] for info in segments_info]
 
-        document.word_count -= total_words
-        db.session.add(document)
+        # Get child chunk IDs before parent segments are deleted
+        child_node_ids = []
+        if index_node_ids:
+            child_chunks = (
+                db.session.query(ChildChunk.index_node_id)
+                .where(
+                    ChildChunk.segment_id.in_(segment_db_ids),
+                    ChildChunk.dataset_id == dataset.id,
+                )
+                .all()
+            )
+            child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
 
-        delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
+        # Start async cleanup with both parent and child node IDs
+        if index_node_ids or child_node_ids:
+            delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id, child_node_ids)
+
+        # Delete database records
         db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).delete()
         db.session.commit()
 
