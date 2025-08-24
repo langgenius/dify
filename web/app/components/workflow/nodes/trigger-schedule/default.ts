@@ -4,6 +4,7 @@ import type { ScheduleTriggerNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
+import { getDefaultScheduleConfig } from './constants'
 const isValidTimeFormat = (time: string): boolean => {
   const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
   if (!timeRegex.test(time)) return false
@@ -104,16 +105,10 @@ const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string 
 
 const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
   defaultValue: {
-    mode: 'visual',
-    frequency: 'weekly',
+    ...getDefaultScheduleConfig(),
     cron_expression: '',
-    visual_config: {
-      time: '11:30 AM',
-      weekdays: ['sun'],
-    },
     timezone: 'UTC',
-    enabled: true,
-  },
+  } as ScheduleTriggerNodeType,
   getAvailablePrevNodes(_isChatMode: boolean) {
     return []
   },

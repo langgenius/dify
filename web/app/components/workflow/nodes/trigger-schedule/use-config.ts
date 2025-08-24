@@ -3,6 +3,7 @@ import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from '.
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useAppContext } from '@/context/app-context'
+import { getDefaultVisualConfig } from './constants'
 
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -17,8 +18,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       timezone: userProfile.timezone || 'UTC',
       enabled: payload.enabled !== undefined ? payload.enabled : true,
       visual_config: {
-        time: '11:30 AM',
-        weekdays: ['sun'],
+        ...getDefaultVisualConfig(),
         ...payload.visual_config,
       },
     }
