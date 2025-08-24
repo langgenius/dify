@@ -2,7 +2,7 @@ import uuid
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, reqparse
+from flask_restx import Resource, marshal, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 

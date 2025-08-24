@@ -101,7 +101,7 @@ class MilvusVector(BaseVector):
             if "Zilliz Cloud" in milvus_version:
                 return True
             # For standard Milvus installations, check version number
-            return version.parse(milvus_version).base_version >= version.parse("2.5.0").base_version
+            return version.parse(milvus_version) >= version.parse("2.5.0")
         except Exception as e:
             logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))
             return False

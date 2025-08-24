@@ -3,11 +3,17 @@ import sys
 from typing import Any
 
 from flask import current_app, got_request_exception
-from flask_restful import Api, http_status_message
+from flask_restx import Api
 from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
+from werkzeug.http import HTTP_STATUS_CODES
 
 from core.errors.error import AppInvokeQuotaExceededError
+
+
+def http_status_message(code):
+    """Maps an HTTP status code to the textual status"""
+    return HTTP_STATUS_CODES.get(code, "")
 
 
 class ExternalApi(Api):
@@ -70,18 +76,6 @@ class ExternalApi(Api):
             headers.pop(header, None)
 
         data = getattr(e, "data", default_data)
-
-        error_cls_name = type(e).__name__
-        if error_cls_name in self.errors:
-            custom_data = self.errors.get(error_cls_name, {})
-            custom_data = custom_data.copy()
-            status_code = custom_data.get("status", 500)
-
-            if "message" in custom_data:
-                custom_data["message"] = custom_data["message"].format(
-                    message=str(e.description if hasattr(e, "description") else e)
-                )
-            data.update(custom_data)
 
         # record the exception in the logs when we have a server error of status code: 500
         if status_code and status_code >= 500:

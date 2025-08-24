@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from pydantic import ValidationError
 
 from controllers.console.app.mcp_server import AppMCPServerStatus

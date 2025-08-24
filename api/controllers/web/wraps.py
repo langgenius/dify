@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from functools import wraps
 
 from flask import request
-from flask_restful import Resource
+from flask_restx import Resource
 from sqlalchemy import select
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
