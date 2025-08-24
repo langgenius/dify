@@ -511,6 +511,7 @@ class AccountService:
             raise OwnerTransferRateLimitExceededError()
 
         code, token = cls.generate_owner_transfer_token(account_email, account)
+        workspace_name = workspace_name or ""
 
         send_owner_transfer_confirm_task.delay(
             language=language,
@@ -528,11 +529,12 @@ class AccountService:
         email: Optional[str] = None,
         language: str = "en-US",
         workspace_name: Optional[str] = "",
-        new_owner_email: Optional[str] = "",
+        new_owner_email: str = "",
     ):
         account_email = account.email if account else email
         if account_email is None:
             raise ValueError("Email must be provided.")
+        workspace_name = workspace_name or ""
 
         send_old_owner_transfer_notify_email_task.delay(
             language=language,
@@ -552,6 +554,7 @@ class AccountService:
         account_email = account.email if account else email
         if account_email is None:
             raise ValueError("Email must be provided.")
+        workspace_name = workspace_name or ""
 
         send_new_owner_transfer_notify_email_task.delay(
             language=language,
@@ -635,7 +638,10 @@ class AccountService:
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: str = "en-US",
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: str = "en-US",
     ):
         email = account.email if account else email
         if email is None:
