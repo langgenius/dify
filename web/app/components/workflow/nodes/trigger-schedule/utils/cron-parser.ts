@@ -110,7 +110,7 @@ const matchesCron = (
   }
 }
 
-export const parseCronExpression = (cronExpression: string): Date[] => {
+export const parseCronExpression = (cronExpression: string, timezone: string = 'UTC'): Date[] => {
   if (!cronExpression || cronExpression.trim() === '')
     return []
 
@@ -122,8 +122,13 @@ export const parseCronExpression = (cronExpression: string): Date[] => {
 
   try {
     const nextTimes: Date[] = []
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+
+    // Get user timezone aware current time - consistent with visual modes
+    const userNowTime = new Date()
+    const userTodayStr = userNowTime.toLocaleDateString('en-CA', { timeZone: timezone })
+    const [year, monthNum, day] = userTodayStr.split('-').map(Number)
+    const userToday = new Date(year, monthNum - 1, day, 0, 0, 0, 0)
+    const userCurrentTime = new Date(year, monthNum - 1, day, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
 
     const isMonthlyPattern = dayOfMonth !== '*' && dayOfWeek === '*'
     const isWeeklyPattern = dayOfMonth === '*' && dayOfWeek !== '*'
@@ -133,7 +138,7 @@ export const parseCronExpression = (cronExpression: string): Date[] => {
     else if (!isMonthlyPattern) searchMonths = 2
 
     for (let monthOffset = 0; monthOffset < searchMonths && nextTimes.length < 5; monthOffset++) {
-      const checkMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
+      const checkMonth = new Date(userToday.getFullYear(), userToday.getMonth() + monthOffset, 1)
       const daysInMonth = new Date(checkMonth.getFullYear(), checkMonth.getMonth() + 1, 0).getDate()
 
       for (let day = 1; day <= daysInMonth && nextTimes.length < 5; day++) {
@@ -147,7 +152,8 @@ export const parseCronExpression = (cronExpression: string): Date[] => {
             for (const m of minuteValues) {
               checkDate.setHours(h, m, 0, 0)
 
-              if (matchesCron(checkDate, minute, hour, dayOfMonth, month, dayOfWeek))
+              // Only add if execution time is in the future and matches cron pattern
+              if (checkDate > userCurrentTime && matchesCron(checkDate, minute, hour, dayOfMonth, month, dayOfWeek))
                 nextTimes.push(new Date(checkDate))
             }
           }
@@ -157,7 +163,8 @@ export const parseCronExpression = (cronExpression: string): Date[] => {
             for (let m = 0; m < 60 && nextTimes.length < 5; m++) {
               checkDate.setHours(h, m, 0, 0)
 
-              if (matchesCron(checkDate, minute, hour, dayOfMonth, month, dayOfWeek))
+              // Only add if execution time is in the future and matches cron pattern
+              if (checkDate > userCurrentTime && matchesCron(checkDate, minute, hour, dayOfMonth, month, dayOfWeek))
                 nextTimes.push(new Date(checkDate))
             }
           }

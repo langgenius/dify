@@ -12,7 +12,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   if (data.mode === 'cron') {
     if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
       return []
-    return parseCronExpression(data.cron_expression).slice(0, count)
+    return parseCronExpression(data.cron_expression, data.timezone).slice(0, count)
   }
 
   const times: Date[] = []
