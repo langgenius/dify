@@ -44,6 +44,7 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
+from services.workflow.schedule_sync import ScheduleSyncService
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -285,6 +286,17 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
+        session.flush()
+
+        # Sync schedule configuration from graph
+        ScheduleSyncService.sync_schedule_from_graph(
+            session=session,
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            workflow_id=workflow.id,
+            graph=workflow.graph,
+            created_by=account.id,
+        )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)

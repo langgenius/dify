@@ -34,10 +34,10 @@ if [[ "${MODE}" == "worker" ]]; then
   if [[ -z "${CELERY_QUEUES}" ]]; then
     if [[ "${EDITION}" == "CLOUD" ]]; then
       # Cloud edition: separate queues for dataset and trigger tasks
-      DEFAULT_QUEUES="dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,workflow_professional,workflow_team,workflow_sandbox"
+      DEFAULT_QUEUES="dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,workflow_professional,workflow_team,workflow_sandbox,schedule"
     else
       # Community edition (SELF_HOSTED): dataset and workflow have separate queues
-      DEFAULT_QUEUES="dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,workflow"
+      DEFAULT_QUEUES="dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,workflow,schedule"
     fi
   else
     DEFAULT_QUEUES="${CELERY_QUEUES}"
@@ -68,6 +68,11 @@ if [[ "${MODE}" == "worker" ]]; then
 
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
+elif [[ "${MODE}" == "workflow-scheduler" ]]; then
+  echo "Starting Workflow Scheduler..."
+  exec celery -A app.celery beat \
+    --scheduler schedule.schedule_dispatch:WorkflowScheduler \
+    --loglevel ${LOG_LEVEL:-INFO}
 else
   if [[ "${DEBUG}" == "true" ]]; then
     exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug

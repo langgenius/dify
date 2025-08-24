@@ -649,6 +649,25 @@ services:
       - ssrf_proxy_network
       - default
 
+  # Workflow scheduler service (Required for schedule trigger nodes)
+  # This is a dedicated Celery Beat instance for workflow schedules.
+  workflow_scheduler:
+    image: langgenius/dify-api:1.7.2
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode for workflow scheduler
+      MODE: workflow-scheduler
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # Frontend web application.
   web:
     image: langgenius/dify-web:1.7.2

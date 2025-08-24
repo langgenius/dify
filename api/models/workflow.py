@@ -1383,3 +1383,72 @@ class WorkflowTriggerLog(Base):
             "triggered_at": self.triggered_at.isoformat() if self.triggered_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
         }
+
+
+class WorkflowSchedulePlan(Base):
+    """
+    Workflow Schedule Configuration
+
+    Store schedule configurations for time-based workflow triggers.
+    Uses cron expressions with timezone support for flexible scheduling.
+
+    Attributes:
+        id: UUID primary key
+        tenant_id: Workspace ID for multi-tenancy
+        app_id: Application ID this schedule belongs to
+        workflow_id: Workflow to trigger
+        root_node_id: Starting node ID for workflow execution
+        cron_expression: Cron expression defining schedule pattern
+        timezone: Timezone for cron evaluation (e.g., 'Asia/Shanghai')
+        enabled: Whether schedule is active
+        next_run_at: Next scheduled execution time (timestamptz)
+        created_by: Creator account ID
+        created_at: Creation timestamp
+        updated_at: Last update timestamp
+    """
+
+    __tablename__ = "workflow_schedule_plans"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_schedule_plan_pkey"),
+        sa.Index("workflow_schedule_plan_tenant_enabled_next_idx", "tenant_id", "enabled", "next_run_at"),
+        sa.Index("workflow_schedule_plan_app_workflow_idx", "app_id", "workflow_id"),
+        sa.Index("workflow_schedule_plan_created_at_idx", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+    root_node_id: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # Schedule configuration
+    cron_expression: Mapped[str] = mapped_column(String(255), nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    # Schedule control
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary representation"""
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "app_id": self.app_id,
+            "workflow_id": self.workflow_id,
+            "root_node_id": self.root_node_id,
+            "cron_expression": self.cron_expression,
+            "timezone": self.timezone,
+            "enabled": self.enabled,
+            "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
