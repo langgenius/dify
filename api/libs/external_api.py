@@ -77,18 +77,6 @@ class ExternalApi(Api):
 
         data = getattr(e, "data", default_data)
 
-        error_cls_name = type(e).__name__
-        if error_cls_name in self.errors:
-            custom_data = self.errors.get(error_cls_name, {})
-            custom_data = custom_data.copy()
-            status_code = custom_data.get("status", 500)
-
-            if "message" in custom_data:
-                custom_data["message"] = custom_data["message"].format(
-                    message=str(e.description if hasattr(e, "description") else e)
-                )
-            data.update(custom_data)
-
         # record the exception in the logs when we have a server error of status code: 500
         if status_code and status_code >= 500:
             exc_info: Any = sys.exc_info()

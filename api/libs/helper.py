@@ -57,7 +57,7 @@ def run(script):
 
 
 class AppIconUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 
@@ -72,7 +72,7 @@ class AppIconUrlField(fields.Raw):
 
 
 class AvatarUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 
