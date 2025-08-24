@@ -10,6 +10,11 @@ export const getDefaultDateTime = (): Date => {
   return defaultDate
 }
 
+const getUserTimezoneNow = (timezone: string): Date => {
+  const now = new Date()
+  return new Date(now.toLocaleString('en-US', { timeZone: timezone }))
+}
+
 export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): Date[] => {
   if (data.mode === 'cron') {
     if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
@@ -19,7 +24,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
   const times: Date[] = []
   const defaultTime = data.visual_config?.time || '11:30 AM'
-  const now = new Date()
+  const now = getUserTimezoneNow(data.timezone)
 
   if (data.frequency === 'hourly') {
     const onMinute = data.visual_config?.on_minute ?? 0
@@ -215,7 +220,7 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   const times = getFormattedExecutionTimes(data, 1)
   if (times.length === 0) {
-    const now = new Date()
+    const now = getUserTimezoneNow(data.timezone)
     const includeWeekday = data.frequency === 'weekly'
     return formatExecutionTime(now, data.timezone, includeWeekday)
   }
