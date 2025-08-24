@@ -123,12 +123,17 @@ export const parseCronExpression = (cronExpression: string, timezone: string = '
   try {
     const nextTimes: Date[] = []
 
-    // Get user timezone aware current time - consistent with visual modes
-    const userNowTime = new Date()
-    const userTodayStr = userNowTime.toLocaleDateString('en-CA', { timeZone: timezone })
-    const [year, monthNum, day] = userTodayStr.split('-').map(Number)
+    // Get user timezone current time - no browser timezone involved
+    const now = new Date()
+    const userTimeStr = now.toLocaleString('en-CA', {
+      timeZone: timezone,
+      hour12: false,
+    })
+    const [dateStr, timeStr] = userTimeStr.split(', ')
+    const [year, monthNum, day] = dateStr.split('-').map(Number)
+    const [nowHour, nowMinute, nowSecond] = timeStr.split(':').map(Number)
     const userToday = new Date(year, monthNum - 1, day, 0, 0, 0, 0)
-    const userCurrentTime = new Date(year, monthNum - 1, day, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+    const userCurrentTime = new Date(year, monthNum - 1, day, nowHour, nowMinute, nowSecond)
 
     const isMonthlyPattern = dayOfMonth !== '*' && dayOfWeek === '*'
     const isWeeklyPattern = dayOfMonth === '*' && dayOfWeek !== '*'

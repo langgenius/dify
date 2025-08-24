@@ -1,6 +1,38 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
-import { formatDateInTimezone } from './timezone-utils'
+
+// Get current time completely in user timezone, no browser timezone involved
+const getUserTimezoneCurrentTime = (timezone: string): Date => {
+  const now = new Date()
+  const userTimeStr = now.toLocaleString('en-CA', {
+    timeZone: timezone,
+    hour12: false,
+  })
+  const [dateStr, timeStr] = userTimeStr.split(', ')
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const [hour, minute, second] = timeStr.split(':').map(Number)
+  return new Date(year, month - 1, day, hour, minute, second)
+}
+
+// Format date that is already in user timezone, no timezone conversion
+const formatUserTimezoneDate = (date: Date, includeWeekday: boolean = true): string => {
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }
+
+  if (includeWeekday)
+    dateOptions.weekday = 'short'
+
+  const timeOptions: Intl.DateTimeFormatOptions = {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }
+
+  return `${date.toLocaleDateString('en-US', dateOptions)} ${date.toLocaleTimeString('en-US', timeOptions)}`
+}
 
 // Helper function to get default datetime - consistent with base DatePicker
 export const getDefaultDateTime = (): Date => {
@@ -27,11 +59,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   if (data.frequency === 'hourly') {
     const onMinute = data.visual_config?.on_minute ?? 0
 
-    // Get current time in user timezone for comparison
-    const userNowTime = new Date()
-    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
-    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
-    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+    // Get current time completely in user timezone
+    const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
 
     let hour = userCurrentTime.getHours()
     if (userCurrentTime.getMinutes() >= onMinute)
@@ -59,10 +88,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const todayExecution = new Date(userToday)
     todayExecution.setHours(displayHour, Number.parseInt(minute), 0, 0)
 
-    const userNowTime = new Date()
-    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
-    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
-    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+    const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
 
     const startOffset = todayExecution <= userCurrentTime ? 1 : 0
 
@@ -83,11 +109,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    // Get current time in user timezone for comparison
-    const userNowTime = new Date()
-    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
-    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
-    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+    // Get current time completely in user timezone
+    const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
 
     let executionCount = 0
     let weekOffset = 0
@@ -127,11 +150,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     if (period === 'PM' && displayHour !== 12) displayHour += 12
     if (period === 'AM' && displayHour === 12) displayHour = 0
 
-    // Get current time in user timezone for comparison
-    const userNowTime = new Date()
-    const userNowStr = userNowTime.toLocaleDateString('en-CA', { timeZone: data.timezone })
-    const [nowYear, nowMonth, nowDay] = userNowStr.split('-').map(Number)
-    const userCurrentTime = new Date(nowYear, nowMonth - 1, nowDay, userNowTime.getHours(), userNowTime.getMinutes(), userNowTime.getSeconds())
+    // Get current time completely in user timezone
+    const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
 
     let executionCount = 0
     let monthOffset = 0
@@ -191,8 +211,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   return times
 }
 
-export const formatExecutionTime = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
-  return formatDateInTimezone(date, timezone, includeWeekday)
+export const formatExecutionTime = (date: Date, _timezone: string, includeWeekday: boolean = true): string => {
+  return formatUserTimezoneDate(date, includeWeekday)
 }
 
 export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): string[] => {
@@ -207,10 +227,8 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   const times = getFormattedExecutionTimes(data, 1)
   if (times.length === 0) {
-    const now = new Date()
-    const userTodayStr = now.toLocaleDateString('en-CA', { timeZone: data.timezone })
-    const [year, month, day] = userTodayStr.split('-').map(Number)
-    const fallbackDate = new Date(year, month - 1, day, 12, 0, 0, 0)
+    const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
+    const fallbackDate = new Date(userCurrentTime.getFullYear(), userCurrentTime.getMonth(), userCurrentTime.getDate(), 12, 0, 0, 0)
     const includeWeekday = data.frequency === 'weekly'
     return formatExecutionTime(fallbackDate, data.timezone, includeWeekday)
   }
