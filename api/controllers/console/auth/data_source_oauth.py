@@ -3,7 +3,7 @@ import logging
 import requests
 from flask import current_app, redirect, request
 from flask_login import current_user
-from flask_restful import Resource
+from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config

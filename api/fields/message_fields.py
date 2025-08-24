@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import fields
 
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField

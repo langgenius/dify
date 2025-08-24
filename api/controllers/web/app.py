@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common import fields

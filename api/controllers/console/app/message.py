@@ -1,8 +1,8 @@
 import logging
 
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api

@@ -3,7 +3,7 @@ from typing import Optional
 
 import requests
 from flask import current_app, redirect, request
-from flask_restful import Resource
+from flask_restx import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized

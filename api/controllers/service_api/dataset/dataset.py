@@ -1,7 +1,7 @@
 from typing import Literal
 
 from flask import request
-from flask_restful import marshal, marshal_with, reqparse
+from flask_restx import marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service

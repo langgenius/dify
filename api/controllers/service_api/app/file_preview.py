@@ -2,7 +2,7 @@ import logging
 from urllib.parse import quote
 
 from flask import Response
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.service_api import api
 from controllers.service_api.app.error import (

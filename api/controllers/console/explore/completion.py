@@ -1,7 +1,7 @@
 import logging
 
 from flask_login import current_user
-from flask_restful import reqparse
+from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services

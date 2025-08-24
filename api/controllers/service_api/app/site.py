@@ -1,4 +1,4 @@
-from flask_restful import Resource, marshal_with
+from flask_restx import Resource, marshal_with
 from werkzeug.exceptions import Forbidden
 
 from controllers.common import fields

@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from jwt import InvalidTokenError  # type: ignore
 
 import services

@@ -1,7 +1,7 @@
 import logging
 
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api

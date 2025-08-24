@@ -2,7 +2,7 @@ import base64
 import secrets
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

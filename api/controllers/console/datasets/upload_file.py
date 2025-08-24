@@ -1,5 +1,5 @@
 from flask_login import current_user
-from flask_restful import Resource
+from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
