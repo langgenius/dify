@@ -49,7 +49,10 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boo
 }
 
 export function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
-  return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
+  if (!isInstalledApp) return url
+
+  const cleanUrl = url.startsWith('/') ? url.slice(1) : url
+  return `installed-apps/${installedAppId}/${cleanUrl}`
 }
 
 export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd }: {
@@ -172,8 +175,12 @@ export const generationConversationName = async (isInstalledApp: boolean, instal
   return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } }) as Promise<ConversationItem>
 }
 
-export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
-  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } }) as any
+export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '', limit = 20, firstId?: string) => {
+  const params: any = { conversation_id: conversationId, limit }
+  if (firstId)
+    params.first_id = firstId
+
+  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params }) as any
 }
 
 // Abandoned API interface

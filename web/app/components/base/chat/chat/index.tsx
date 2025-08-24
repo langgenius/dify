@@ -73,6 +73,8 @@ export type ChatProps = {
   inputDisabled?: boolean
   isMobile?: boolean
   sidebarCollapseState?: boolean
+  hasMoreMessages?: boolean
+  onLoadMoreMessages?: () => Promise<void>
 }
 
 const Chat: FC<ChatProps> = ({
@@ -112,6 +114,8 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   isMobile,
   sidebarCollapseState,
+  hasMoreMessages,
+  onLoadMoreMessages,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -195,15 +199,22 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     const chatContainer = chatContainerRef.current
     if (chatContainer) {
-      const setUserScrolled = () => {
-        // eslint-disable-next-line sonarjs/no-gratuitous-expressions
-        if (chatContainer) // its in event callback, chatContainer may be null
-          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop > chatContainer.clientHeight
+      const handleScroll = () => {
+        userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop > chatContainer.clientHeight
+
+        // 检测滚动到顶部加载更多
+        const scrollTop = chatContainer.scrollTop
+        if (scrollTop <= 50 && hasMoreMessages && onLoadMoreMessages)
+          onLoadMoreMessages()
       }
-      chatContainer.addEventListener('scroll', setUserScrolled)
-      return () => chatContainer.removeEventListener('scroll', setUserScrolled)
+      const debouncedScroll = debounce(handleScroll, 200)
+      chatContainer.addEventListener('scroll', debouncedScroll)
+      return () => {
+        chatContainer.removeEventListener('scroll', debouncedScroll)
+        debouncedScroll.cancel?.()
+      }
     }
-  }, [])
+  }, [hasMoreMessages, onLoadMoreMessages])
 
   useEffect(() => {
     if (!sidebarCollapseState)

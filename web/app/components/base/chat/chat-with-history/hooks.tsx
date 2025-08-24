@@ -178,13 +178,62 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   )
 
+  // 滚动加载状态
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [allMessages, setAllMessages] = useState<any[]>([])
+  const [hasMoreMessages, setHasMoreMessages] = useState(false)
+
+  // 初始化消息
+  useEffect(() => {
+    if (chatShouldReloadKey && appChatListData?.data) {
+      setAllMessages(appChatListData.data)
+      setHasMoreMessages(appChatListData.data.length >= 20 || appChatListData.has_more === true)
+    }
+ else if (!chatShouldReloadKey) {
+      setAllMessages([])
+      setHasMoreMessages(false)
+    }
+  }, [chatShouldReloadKey, appChatListData])
+
+  // 滚动加载更多消息
+  const loadMoreMessages = useCallback(async () => {
+    if (!chatShouldReloadKey || loadingMore || !hasMoreMessages) return
+
+    setLoadingMore(true)
+    try {
+      const answerItems = allMessages.filter((item: any) => item.answer)
+      const oldestAnswerItem = answerItems[answerItems.length - 1]
+      const firstId = oldestAnswerItem?.id || (allMessages.length > 0 ? allMessages[allMessages.length - 1]?.id : undefined)
+
+      const response = await fetchChatList(chatShouldReloadKey, isInstalledApp, appId, 20, firstId)
+
+      if (response?.data && response.data.length > 0) {
+        const existingIds = new Set(allMessages.map((m: any) => m.id))
+        const newMessages = response.data.filter((m: any) => !existingIds.has(m.id))
+        if (newMessages.length > 0)
+          setAllMessages(prev => [...prev, ...newMessages])
+
+        setHasMoreMessages(response.has_more === true)
+      }
+ else {
+        setHasMoreMessages(false)
+      }
+    }
+ catch {
+      setHasMoreMessages(false)
+    }
+ finally {
+      setLoadingMore(false)
+    }
+  }, [chatShouldReloadKey, isInstalledApp, appId, allMessages, loadingMore, hasMoreMessages])
+
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   const appPrevChatTree = useMemo(
-    () => (currentConversationId && appChatListData?.data.length)
-      ? buildChatItemTree(getFormattedChatList(appChatListData.data))
+    () => (currentConversationId && allMessages.length > 0)
+      ? buildChatItemTree(getFormattedChatList(allMessages))
       : [],
-    [appChatListData, currentConversationId],
+    [allMessages, currentConversationId],
   )
 
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
@@ -539,5 +588,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    loadMoreMessages,
+    hasMoreMessages,
+    loadingMore,
   }
 }
