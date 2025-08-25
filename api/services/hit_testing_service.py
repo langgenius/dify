@@ -5,12 +5,14 @@ from typing import Any
 from core.app.app_config.entities import ModelConfig
 from core.model_runtime.entities import LLMMode
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.account import Account
-from models.dataset import Dataset, DatasetQuery
+from models.dataset import ChildChunk, Dataset, DatasetQuery, DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -78,6 +80,10 @@ class HitTestingService:
 
         end = time.perf_counter()
         logging.debug("Hit testing retrieve in %s seconds", end - start)
+
+        # Update hit_count for retrieved documents
+        if all_documents:
+            cls._on_retrieval_end(all_documents)
 
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
@@ -163,3 +169,47 @@ class HitTestingService:
     @staticmethod
     def escape_query_for_search(query: str) -> str:
         return query.replace('"', '\\"')
+
+    @classmethod
+    def _on_retrieval_end(cls, documents: list[Document]) -> None:
+        dify_documents = [document for document in documents if document.provider == "dify"]
+        for document in dify_documents:
+            if document.metadata is not None:
+                dataset_document = (
+                    db.session.query(DatasetDocument)
+                    .where(DatasetDocument.id == document.metadata["document_id"])
+                    .first()
+                )
+                if dataset_document:
+                    if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                        child_chunk = (
+                            db.session.query(ChildChunk)
+                            .where(
+                                ChildChunk.index_node_id == document.metadata["doc_id"],
+                                ChildChunk.dataset_id == dataset_document.dataset_id,
+                                ChildChunk.document_id == dataset_document.id,
+                            )
+                            .first()
+                        )
+                        if child_chunk:
+                            db.session.query(DocumentSegment).where(
+                                DocumentSegment.id == child_chunk.segment_id
+                            ).update(
+                                {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
+                                synchronize_session=False,
+                            )
+                            db.session.commit()
+                    else:
+                        query = db.session.query(DocumentSegment).where(
+                            DocumentSegment.index_node_id == document.metadata["doc_id"]
+                        )
+
+                        if "dataset_id" in document.metadata:
+                            query = query.where(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+
+                        # add hit count to document segment
+                        query.update(
+                            {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                        )
+
+                    db.session.commit()
