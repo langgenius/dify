@@ -60,6 +60,7 @@ const translation = {
     format: 'Format',
     selectAll: 'Izberi vse',
     deSelectAll: 'Odberi vse',
+    config: 'Konfiguracija',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -671,6 +672,28 @@ const translation = {
     emptyProviderTip: 'Najprej namestite ponudnika modelov.',
     toBeConfigured: 'Za konfiguracijo',
     configureTip: 'Nastavitev tipke API ali dodajanje modela za uporabo',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Dodaj model',
+        title: 'Konfiguracija avtorizacije ključev API',
+        desc: 'Po konfiguraciji poverilnic lahko vsi člani v delovnem prostoru uporabljajo ta model pri usklajevanju aplikacij.',
+      },
+      apiKeys: 'API ključi',
+      authRemoved: 'Avtor odstranjen',
+      unAuthorized: 'Neavtorizirano',
+      addNewModel: 'Dodaj nov model',
+      addModelCredential: 'Dodajte poverilnice modela',
+      addCredential: 'Dodaj akreditiv',
+      modelCredentials: 'Model akreditivi',
+      configLoadBalancing: 'Nastavitve uravnoteženja obremenitve',
+      providerManagedTip: 'Trenutna konfiguracija je gostovana pri ponudniku.',
+      providerManaged: 'Zagotavlja upravljano',
+      specifyModelCredentialTip: 'Uporabite konfigurirane poverilnice modela.',
+      specifyModelCredential: 'Določite poverilnice modela',
+      addApiKey: 'Dodajte API ključ',
+      configModel: 'Konfiguriraj model',
+      authorizationError: 'Napaka pri avtorizaciji',
+    },
   },
   dataSource: {
     notion: {
