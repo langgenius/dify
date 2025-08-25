@@ -8,7 +8,7 @@ improving performance by offloading storage operations to background workers.
 import json
 import logging
 
-from celery import shared_task  # type: ignore[import-untyped]
+from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 

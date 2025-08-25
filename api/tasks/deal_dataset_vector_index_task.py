@@ -3,7 +3,7 @@ import time
 from typing import Literal
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory

@@ -101,9 +101,9 @@ const FileFromLinkOrLocal = ({
           {
             showFromLink && showFromLocal && (
               <div className='system-2xs-medium-uppercase flex h-7 items-center p-2 text-text-quaternary'>
-                <div className='mr-2 h-[1px] w-[93px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]' />
+                <div className='mr-2 h-px w-[93px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]' />
                 OR
-                <div className='ml-2 h-[1px] w-[93px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]' />
+                <div className='ml-2 h-px w-[93px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]' />
               </div>
             )
           }

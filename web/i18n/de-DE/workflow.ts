@@ -842,6 +842,7 @@ const translation = {
           transfer_method: 'Übertragungsmethode. Wert ist remote_url oder local_file',
         },
         text: 'Von Agenten generierte Inhalte',
+        usage: 'Nutzungsinformationen des Modells',
         json: 'Vom Agenten generiertes JSON',
       },
       checkList: {

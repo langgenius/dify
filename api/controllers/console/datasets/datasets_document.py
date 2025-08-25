@@ -4,7 +4,7 @@ from typing import Literal, cast
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 

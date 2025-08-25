@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import cast
 
 from flask import abort, request
-from flask_restful import Resource, inputs, marshal_with, reqparse
+from flask_restx import Resource, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 

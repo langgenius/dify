@@ -1,7 +1,9 @@
 from mimetypes import guess_extension
+from typing import Optional
 
-from flask import request
-from flask_restful import Resource, marshal_with
+from flask_restx import Resource, reqparse
+from flask_restx.api import HTTPStatus
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -10,37 +12,74 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console.wraps import setup_required
-from controllers.files import api
+from controllers.files import files_ns
 from controllers.inner_api.plugin.wraps import get_user
 from core.file.helpers import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-from fields.file_fields import file_fields
+from fields.file_fields import build_file_model
+
+# Define parser for both documentation and validation
+upload_parser = reqparse.RequestParser()
+upload_parser.add_argument("file", location="files", type=FileStorage, required=True, help="File to upload")
+upload_parser.add_argument(
+    "timestamp", type=str, required=True, location="args", help="Unix timestamp for signature verification"
+)
+upload_parser.add_argument(
+    "nonce", type=str, required=True, location="args", help="Random string for signature verification"
+)
+upload_parser.add_argument(
+    "sign", type=str, required=True, location="args", help="HMAC signature for request validation"
+)
+upload_parser.add_argument("tenant_id", type=str, required=True, location="args", help="Tenant identifier")
+upload_parser.add_argument("user_id", type=str, required=False, location="args", help="User identifier")
 
 
+@files_ns.route("/upload/for-plugin")
 class PluginUploadFileApi(Resource):
     @setup_required
-    @marshal_with(file_fields)
+    @files_ns.expect(upload_parser)
+    @files_ns.doc("upload_plugin_file")
+    @files_ns.doc(description="Upload a file for plugin usage with signature verification")
+    @files_ns.doc(
+        responses={
+            201: "File uploaded successfully",
+            400: "Invalid request parameters",
+            403: "Forbidden - Invalid signature or missing parameters",
+            413: "File too large",
+            415: "Unsupported file type",
+        }
+    )
+    @files_ns.marshal_with(build_file_model(files_ns), code=HTTPStatus.CREATED)
     def post(self):
-        # get file from request
-        file = request.files["file"]
+        """Upload a file for plugin usage.
 
-        timestamp = request.args.get("timestamp")
-        nonce = request.args.get("nonce")
-        sign = request.args.get("sign")
-        tenant_id = request.args.get("tenant_id")
-        if not tenant_id:
-            raise Forbidden("Invalid request.")
+        Accepts a file upload with signature verification for security.
+        The file must be accompanied by valid timestamp, nonce, and signature parameters.
 
-        user_id = request.args.get("user_id")
+        Returns:
+            dict: File metadata including ID, URLs, and properties
+            int: HTTP status code (201 for success)
+
+        Raises:
+            Forbidden: Invalid signature or missing required parameters
+            FileTooLargeError: File exceeds size limit
+            UnsupportedFileTypeError: File type not supported
+        """
+        # Parse and validate all arguments
+        args = upload_parser.parse_args()
+
+        file: FileStorage = args["file"]
+        timestamp: str = args["timestamp"]
+        nonce: str = args["nonce"]
+        sign: str = args["sign"]
+        tenant_id: str = args["tenant_id"]
+        user_id: Optional[str] = args.get("user_id")
         user = get_user(tenant_id, user_id)
 
-        filename = file.filename
-        mimetype = file.mimetype
+        filename: Optional[str] = file.filename
+        mimetype: Optional[str] = file.mimetype
 
         if not filename or not mimetype:
-            raise Forbidden("Invalid request.")
-
-        if not timestamp or not nonce or not sign:
             raise Forbidden("Invalid request.")
 
         if not verify_plugin_file_signature(
@@ -88,6 +127,3 @@ class PluginUploadFileApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-
-
-api.add_resource(PluginUploadFileApi, "/files/upload/for-plugin")

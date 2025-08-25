@@ -1,4 +1,3 @@
-import datetime
 import logging
 import tempfile
 import time
@@ -7,7 +6,7 @@ from pathlib import Path
 
 import click
 import pandas as pd
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -17,6 +16,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
 from services.vector_service import VectorService
@@ -123,9 +123,9 @@ def batch_create_segment_to_index_task(
                 word_count=len(content),
                 tokens=tokens,
                 created_by=user_id,
-                indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                indexing_at=naive_utc_now(),
                 status="completed",
-                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                completed_at=naive_utc_now(),
             )
             if dataset_document.doc_form == "qa_model":
                 segment_document.answer = segment["answer"]
