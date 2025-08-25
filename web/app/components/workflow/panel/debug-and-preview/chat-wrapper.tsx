@@ -88,6 +88,7 @@ const ChatWrapper = (
     handleRestart,
     setTargetMessageId,
     handleSubmitHumanInputForm,
+    getHumanInputNodeData,
   } = useChat(
     config,
     {
@@ -186,6 +187,7 @@ const ChatWrapper = (
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
         onHumanInputFormSubmit={doHumanInputFormSubmit}
+        getHumanInputNodeData={getHumanInputNodeData}
         chatNode={(
           <>
             {showInputsFieldsPanel && <UserInput />}

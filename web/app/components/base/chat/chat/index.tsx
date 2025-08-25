@@ -75,6 +75,7 @@ export type ChatProps = {
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   onHumanInputFormSubmit?: (formID: string, formData: any) => void
+  getHumanInputNodeData?: (nodeID: string) => any
 }
 
 const Chat: FC<ChatProps> = ({
@@ -116,6 +117,7 @@ const Chat: FC<ChatProps> = ({
   sidebarCollapseState,
   hideAvatar,
   onHumanInputFormSubmit,
+  getHumanInputNodeData,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -230,6 +232,7 @@ const Chat: FC<ChatProps> = ({
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
       onFeedback={onFeedback}
+      getHumanInputNodeData={getHumanInputNodeData}
     >
       <div className='relative h-full'>
         <div

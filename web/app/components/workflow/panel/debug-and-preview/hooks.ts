@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
 import { uniqBy } from 'lodash-es'
@@ -36,6 +37,9 @@ import { getThreadMessages } from '@/app/components/base/chat/utils'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useParams } from 'next/navigation'
 import { submitHumanInputForm } from '@/service/workflow'
+import {
+  CUSTOM_NODE,
+} from '@/app/components/workflow/constants'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -68,6 +72,7 @@ export const useChat = (
     setIterTimes,
     setLoopTimes,
   } = workflowStore.getState()
+  const store = useStoreApi()
 
   const handleResponding = useCallback((isResponding: boolean) => {
     setIsResponding(isResponding)
@@ -528,6 +533,15 @@ export const useChat = (
     // TODO deal with success
   }
 
+  const getHumanInputNodeData = (nodeID: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes().filter(node => node.type === CUSTOM_NODE)
+    const node = nodes.find(n => n.id === nodeID)
+    return node
+  }
+
   return {
     conversationId: conversationId.current,
     chatList,
@@ -536,6 +550,7 @@ export const useChat = (
     handleStop,
     handleRestart,
     handleSubmitHumanInputForm,
+    getHumanInputNodeData,
     isResponding,
     suggestedQuestions,
   }
