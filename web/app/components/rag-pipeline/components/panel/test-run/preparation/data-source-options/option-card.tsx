@@ -29,20 +29,23 @@ const OptionCard = ({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-2.5 shadow-shadow-shadow-3',
+        'flex cursor-pointer flex-col gap-1 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-2.5 shadow-shadow-shadow-3',
         selected
           ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs ring-[0.5px] ring-inset ring-components-option-card-option-selected-border'
           : 'hover:bg-components-option-card-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs',
       )}
       onClick={handleClickCard}
     >
-      <div className='flex size-7 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1'>
+      <div className='flex size-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1'>
         <BlockIcon
           type={BlockEnum.DataSource}
           toolIcon={toolIcon}
         />
       </div>
-      <div className={cn('system-sm-medium text-text-secondary', selected && 'text-primary')}>
+      <div
+        className={cn('system-sm-medium line-clamp-2 grow text-text-secondary', selected && 'text-primary')}
+        title={label}
+      >
         {label}
       </div>
     </div>
