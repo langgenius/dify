@@ -9,8 +9,8 @@ This script removes unnecessary development dependencies from the Next.js standa
 The script specifically targets and removes `jest-worker` packages that are bundled with Next.js but not needed in production. These packages are included because:
 
 1. Next.js includes jest-worker in its compiled dependencies
-2. terser-webpack-plugin (used by Next.js for minification) depends on jest-worker
-3. pnpm's dependency resolution creates symlinks to jest-worker in various locations
+1. terser-webpack-plugin (used by Next.js for minification) depends on jest-worker
+1. pnpm's dependency resolution creates symlinks to jest-worker in various locations
 
 ### Usage
 
