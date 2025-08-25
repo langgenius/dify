@@ -14,7 +14,7 @@ const IntersectionLine = ({
   useScrollIntersection(ref, intersectionContainerId)
 
   return (
-    <div ref={ref} className='mb-4 h-[1px] shrink-0 bg-transparent'></div>
+    <div ref={ref} className='mb-4 h-px shrink-0 bg-transparent'></div>
   )
 }
 

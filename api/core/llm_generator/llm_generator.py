@@ -399,9 +399,9 @@ class LLMGenerator:
     def instruction_modify_legacy(
         tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
     ) -> dict:
-        app: App | None = db.session.query(App).filter(App.id == flow_id).first()
+        app: App | None = db.session.query(App).where(App.id == flow_id).first()
         last_run: Message | None = (
-            db.session.query(Message).filter(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
+            db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
         )
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
@@ -442,7 +442,7 @@ class LLMGenerator:
     ) -> dict:
         from services.workflow_service import WorkflowService
 
-        app: App | None = db.session.query(App).filter(App.id == flow_id).first()
+        app: App | None = db.session.query(App).where(App.id == flow_id).first()
         if not app:
             raise ValueError("App not found.")
         workflow = WorkflowService().get_draft_workflow(app_model=app)
@@ -532,7 +532,7 @@ class LLMGenerator:
             model=model_config.get("name", ""),
         )
         match node_type:
-            case "llm", "agent":
+            case "llm" | "agent":
                 system_prompt = LLM_MODIFY_PROMPT_SYSTEM
             case "code":
                 system_prompt = LLM_MODIFY_CODE_SYSTEM

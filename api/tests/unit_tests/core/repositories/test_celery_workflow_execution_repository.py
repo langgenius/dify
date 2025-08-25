@@ -5,7 +5,6 @@ These tests verify the Celery-based asynchronous storage functionality
 for workflow execution data.
 """
 
-from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -13,6 +12,7 @@ import pytest
 
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
+from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
 
@@ -56,7 +56,7 @@ def sample_workflow_execution():
         workflow_version="1.0",
         graph={"nodes": [], "edges": []},
         inputs={"input1": "value1"},
-        started_at=datetime.now(UTC).replace(tzinfo=None),
+        started_at=naive_utc_now(),
     )
 
 
@@ -199,7 +199,7 @@ class TestCeleryWorkflowExecutionRepository:
             workflow_version="1.0",
             graph={"nodes": [], "edges": []},
             inputs={"input1": "value1"},
-            started_at=datetime.now(UTC).replace(tzinfo=None),
+            started_at=naive_utc_now(),
         )
         exec2 = WorkflowExecution.new(
             id_=str(uuid4()),
@@ -208,7 +208,7 @@ class TestCeleryWorkflowExecutionRepository:
             workflow_version="1.0",
             graph={"nodes": [], "edges": []},
             inputs={"input2": "value2"},
-            started_at=datetime.now(UTC).replace(tzinfo=None),
+            started_at=naive_utc_now(),
         )
 
         # Save both executions
@@ -235,7 +235,7 @@ class TestCeleryWorkflowExecutionRepository:
             workflow_version="1.0",
             graph={"nodes": [], "edges": []},
             inputs={"input1": "value1"},
-            started_at=datetime.now(UTC).replace(tzinfo=None),
+            started_at=naive_utc_now(),
         )
 
         repo.save(execution)

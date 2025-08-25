@@ -30,7 +30,7 @@ This module provides the interface for invoking and authenticating various model
 
   In addition, this list also returns configurable parameter information and rules for LLM, as shown below:
 
-  ![image-20231210144814617](./docs/en_US/images/index/image-20231210144814617.png)	
+  ![image-20231210144814617](./docs/en_US/images/index/image-20231210144814617.png)
 
   These parameters are all defined in the backend, allowing different settings for various parameters supported by different models, as detailed in: [Schema](./docs/en_US/schema.md#ParameterRule).
 
@@ -59,8 +59,6 @@ Model Runtime is divided into three layers:
 - The bottom layer is the model layer
 
   It offers direct invocation of various model types, predefined model configuration information, getting predefined/remote model lists, model credential authentication methods. Different models provide additional special methods, like LLM's pre-computed tokens method, cost information obtaining method, etc., **allowing horizontal expansion** for different models under the same provider (within supported model types).
-
-
 
 ## Next Steps
 

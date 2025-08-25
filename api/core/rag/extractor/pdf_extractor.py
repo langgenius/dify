@@ -1,5 +1,6 @@
 """Abstract interface for document loader implementations."""
 
+import contextlib
 from collections.abc import Iterator
 from typing import Optional, cast
 
@@ -25,12 +26,10 @@ class PdfExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         plaintext_file_exists = False
         if self._file_cache_key:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 text = cast(bytes, storage.load(self._file_cache_key)).decode("utf-8")
                 plaintext_file_exists = True
                 return [Document(page_content=text)]
-            except FileNotFoundError:
-                pass
         documents = list(self.load())
         text_list = []
         for document in documents:

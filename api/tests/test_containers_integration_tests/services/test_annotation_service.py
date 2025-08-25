@@ -471,7 +471,7 @@ class TestAnnotationService:
         # Verify annotation was deleted
         from extensions.ext_database import db
 
-        deleted_annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called (when annotation setting exists)
@@ -1175,7 +1175,7 @@ class TestAnnotationService:
         AppAnnotationService.delete_app_annotation(app.id, annotation_id)
 
         # Verify annotation was deleted
-        deleted_annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called

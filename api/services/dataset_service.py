@@ -6,7 +6,7 @@ import secrets
 import time
 import uuid
 from collections import Counter
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from flask_login import current_user
 from sqlalchemy import func, select
@@ -51,7 +51,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     RetrievalModel,
     SegmentUpdateArgs,
 )
-from services.errors.account import InvalidActionError, NoPermissionError
+from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -249,6 +249,11 @@ class DatasetService:
     def get_dataset(dataset_id) -> Optional[Dataset]:
         dataset: Optional[Dataset] = db.session.query(Dataset).filter_by(id=dataset_id).first()
         return dataset
+
+    @staticmethod
+    def check_doc_form(dataset: Dataset, doc_form: str):
+        if dataset.doc_form and doc_form != dataset.doc_form:
+            raise ValueError("doc_form is different from the dataset doc_form.")
 
     @staticmethod
     def check_dataset_model_setting(dataset):
@@ -1085,6 +1090,8 @@ class DocumentService:
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
+        # check doc_form
+        DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
         features = FeatureService.get_features(current_user.current_tenant_id)
 
@@ -1227,7 +1234,7 @@ class DocumentService:
                             )
                             if document:
                                 document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
-                                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                                document.updated_at = naive_utc_now()
                                 document.created_from = created_from
                                 document.doc_form = knowledge_config.doc_form
                                 document.doc_language = knowledge_config.doc_language
@@ -1545,7 +1552,7 @@ class DocumentService:
         document.parsing_completed_at = None
         document.cleaning_completed_at = None
         document.splitting_completed_at = None
-        document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.updated_at = naive_utc_now()
         document.created_from = created_from
         document.doc_form = document_data.doc_form
         db.session.add(document)
@@ -1800,14 +1807,16 @@ class DocumentService:
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @staticmethod
-    def batch_update_document_status(dataset: Dataset, document_ids: list[str], action: str, user):
+    def batch_update_document_status(
+        dataset: Dataset, document_ids: list[str], action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
         """
         Batch update document status.
 
         Args:
             dataset (Dataset): The dataset object
             document_ids (list[str]): List of document IDs to update
-            action (str): Action to perform (enable, disable, archive, un_archive)
+            action (Literal["enable", "disable", "archive", "un_archive"]): Action to perform
             user: Current user performing the action
 
         Raises:
@@ -1890,9 +1899,10 @@ class DocumentService:
                 raise propagation_error
 
     @staticmethod
-    def _prepare_document_status_update(document, action: str, user):
-        """
-        Prepare document status update information.
+    def _prepare_document_status_update(
+        document: Document, action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
+        """Prepare document status update information.
 
         Args:
             document: Document object to update
@@ -1902,7 +1912,7 @@ class DocumentService:
         Returns:
             dict: Update information or None if no update needed
         """
-        now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        now = naive_utc_now()
 
         if action == "enable":
             return DocumentService._prepare_enable_update(document, now)
@@ -2030,8 +2040,8 @@ class SegmentService:
                 word_count=len(content),
                 tokens=tokens,
                 status="completed",
-                indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                indexing_at=naive_utc_now(),
+                completed_at=naive_utc_now(),
                 created_by=current_user.id,
             )
             if document.doc_form == "qa_model":
@@ -2051,7 +2061,7 @@ class SegmentService:
             except Exception as e:
                 logging.exception("create segment index failed")
                 segment_document.enabled = False
-                segment_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment_document.disabled_at = naive_utc_now()
                 segment_document.status = "error"
                 segment_document.error = str(e)
                 db.session.commit()
@@ -2107,8 +2117,8 @@ class SegmentService:
                     tokens=tokens,
                     keywords=segment_item.get("keywords", []),
                     status="completed",
-                    indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                    completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    indexing_at=naive_utc_now(),
+                    completed_at=naive_utc_now(),
                     created_by=current_user.id,
                 )
                 if document.doc_form == "qa_model":
@@ -2135,7 +2145,7 @@ class SegmentService:
                 logging.exception("create segment index failed")
                 for segment_document in segment_data_list:
                     segment_document.enabled = False
-                    segment_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    segment_document.disabled_at = naive_utc_now()
                     segment_document.status = "error"
                     segment_document.error = str(e)
             db.session.commit()
@@ -2152,7 +2162,7 @@ class SegmentService:
             if segment.enabled != action:
                 if not action:
                     segment.enabled = action
-                    segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    segment.disabled_at = naive_utc_now()
                     segment.disabled_by = current_user.id
                     db.session.add(segment)
                     db.session.commit()
@@ -2250,10 +2260,10 @@ class SegmentService:
                 segment.word_count = len(content)
                 segment.tokens = tokens
                 segment.status = "completed"
-                segment.indexing_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-                segment.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment.indexing_at = naive_utc_now()
+                segment.completed_at = naive_utc_now()
                 segment.updated_by = current_user.id
-                segment.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment.updated_at = naive_utc_now()
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -2306,7 +2316,7 @@ class SegmentService:
         except Exception as e:
             logging.exception("update segment index failed")
             segment.enabled = False
-            segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            segment.disabled_at = naive_utc_now()
             segment.status = "error"
             segment.error = str(e)
             db.session.commit()
@@ -2355,7 +2365,9 @@ class SegmentService:
         db.session.commit()
 
     @classmethod
-    def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
+    def update_segments_status(
+        cls, segment_ids: list, action: Literal["enable", "disable"], dataset: Dataset, document: Document
+    ):
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
@@ -2406,15 +2418,13 @@ class SegmentService:
                 if cache_result is not None:
                     continue
                 segment.enabled = False
-                segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment.disabled_at = naive_utc_now()
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
                 real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
             disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
-        else:
-            raise InvalidActionError()
 
     @classmethod
     def create_child_chunk(
@@ -2498,7 +2508,7 @@ class SegmentService:
                         child_chunk.content = child_chunk_update_args.content
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
-                        child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                        child_chunk.updated_at = naive_utc_now()
                         child_chunk.type = "customized"
                         update_child_chunks.append(child_chunk)
             else:
@@ -2555,7 +2565,7 @@ class SegmentService:
             child_chunk.content = content
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
-            child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            child_chunk.updated_at = naive_utc_now()
             child_chunk.type = "customized"
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)

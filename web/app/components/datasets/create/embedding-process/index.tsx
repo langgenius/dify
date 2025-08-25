@@ -332,7 +332,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           </div>
         ))}
       </div>
-      <hr className="my-3 h-[1px] border-0 bg-divider-subtle" />
+      <hr className="my-3 h-px border-0 bg-divider-subtle" />
       <RuleDetail
         sourceData={ruleDetail}
         indexingType={indexingType}

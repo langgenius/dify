@@ -1,10 +1,10 @@
 import logging
 from argparse import ArgumentTypeError
-from typing import cast
+from typing import Literal, cast
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -758,7 +758,7 @@ class DocumentProcessingApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, document_id, action):
+    def patch(self, dataset_id, document_id, action: Literal["pause", "resume"]):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
@@ -784,8 +784,6 @@ class DocumentProcessingApi(DocumentResource):
             document.paused_at = None
             document.is_paused = False
             db.session.commit()
-        else:
-            raise InvalidActionError()
 
         return {"result": "success"}, 200
 
@@ -840,7 +838,7 @@ class DocumentStatusApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, action):
+    def patch(self, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:

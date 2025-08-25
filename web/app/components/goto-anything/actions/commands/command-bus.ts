@@ -2,11 +2,11 @@ export type CommandHandler = (args?: Record<string, any>) => void | Promise<void
 
 const handlers = new Map<string, CommandHandler>()
 
-export const registerCommand = (name: string, handler: CommandHandler) => {
+const registerCommand = (name: string, handler: CommandHandler) => {
   handlers.set(name, handler)
 }
 
-export const unregisterCommand = (name: string) => {
+const unregisterCommand = (name: string) => {
   handlers.delete(name)
 }
 

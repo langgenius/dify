@@ -959,7 +959,7 @@ class ToolManager:
         elif provider_type == ToolProviderType.WORKFLOW:
             return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.PLUGIN:
-            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+            provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
             if isinstance(provider, PluginToolProviderController):
                 try:
                     return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)

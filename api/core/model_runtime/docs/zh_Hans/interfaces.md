@@ -49,7 +49,7 @@ class XinferenceProvider(Provider):
   def validate_credentials(self, model: str, credentials: dict) -> None:
       """
       Validate model credentials
-  
+
       :param model: model name
       :param credentials: model credentials
       :return:
@@ -75,7 +75,7 @@ class XinferenceProvider(Provider):
   - `InvokeConnectionError` 调用连接错误
   - `InvokeServerUnavailableError ` 调用服务方不可用
   - `InvokeRateLimitError ` 调用达到限额
-  - `InvokeAuthorizationError`  调用鉴权失败
+  - `InvokeAuthorizationError` 调用鉴权失败
   - `InvokeBadRequestError ` 调用传参有误
 
   ```python
@@ -86,36 +86,36 @@ class XinferenceProvider(Provider):
       The key is the error type thrown to the caller
       The value is the error type thrown by the model,
       which needs to be converted into a unified error type for the caller.
-  
+
       :return: Invoke error mapping
       """
   ```
 
   也可以直接抛出对应 Errors，并做如下定义，这样在之后的调用中可以直接抛出`InvokeConnectionError`等异常。
-  
-    ```python
-    @property
-    def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-        return {
-            InvokeConnectionError: [
-              InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-              InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-              InvokeRateLimitError
-            ],
-            InvokeAuthorizationError: [
-              InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-              InvokeBadRequestError
-            ],
-        }
-    ```
 
-​	可参考 OpenAI `_invoke_error_mapping`。  
+  ```python
+  @property
+  def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
+      return {
+          InvokeConnectionError: [
+            InvokeConnectionError
+          ],
+          InvokeServerUnavailableError: [
+            InvokeServerUnavailableError
+          ],
+          InvokeRateLimitError: [
+            InvokeRateLimitError
+          ],
+          InvokeAuthorizationError: [
+            InvokeAuthorizationError
+          ],
+          InvokeBadRequestError: [
+            InvokeBadRequestError
+          ],
+      }
+  ```
+
+​ 可参考 OpenAI `_invoke_error_mapping`。
 
 ### LLM
 
@@ -133,7 +133,7 @@ class XinferenceProvider(Provider):
           -> Union[LLMResult, Generator]:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param prompt_messages: prompt messages
@@ -151,38 +151,38 @@ class XinferenceProvider(Provider):
     - `model` (string) 模型名称
 
     - `credentials` (object) 凭据信息
-    
+
       凭据信息的参数由供应商 YAML 配置文件的 `provider_credential_schema` 或 `model_credential_schema` 定义，传入如：`api_key` 等。
 
-    - `prompt_messages` (array[[PromptMessage](#PromptMessage)]) Prompt 列表
-    
+    - `prompt_messages` (array\[[PromptMessage](#PromptMessage)\]) Prompt 列表
+
       若模型为 `Completion` 类型，则列表只需要传入一个 [UserPromptMessage](#UserPromptMessage) 元素即可；
-    
+
       若模型为 `Chat` 类型，需要根据消息不同传入 [SystemPromptMessage](#SystemPromptMessage), [UserPromptMessage](#UserPromptMessage), [AssistantPromptMessage](#AssistantPromptMessage), [ToolPromptMessage](#ToolPromptMessage) 元素列表
 
     - `model_parameters` (object) 模型参数
-    
+
       模型参数由模型 YAML 配置的 `parameter_rules` 定义。
 
-    - `tools` (array[[PromptMessageTool](#PromptMessageTool)]) [optional] 工具列表，等同于 `function calling` 中的 `function`。
-    
+    - `tools` (array\[[PromptMessageTool](#PromptMessageTool)\]) [optional] 工具列表，等同于 `function calling` 中的 `function`。
+
       即传入 tool calling 的工具列表。
 
     - `stop` (array[string]) [optional] 停止序列
-    
+
       模型返回将在停止序列定义的字符串之前停止输出。
 
     - `stream` (bool) 是否流式输出，默认 True
-    
-      流式输出返回 Generator[[LLMResultChunk](#LLMResultChunk)]，非流式输出返回 [LLMResult](#LLMResult)。
+
+      流式输出返回 Generator\[[LLMResultChunk](#LLMResultChunk)\]，非流式输出返回 [LLMResult](#LLMResult)。
 
     - `user` (string) [optional] 用户的唯一标识符
-    
+
       可以帮助供应商监控和检测滥用行为。
 
   - 返回
 
-    流式输出返回 Generator[[LLMResultChunk](#LLMResultChunk)]，非流式输出返回 [LLMResult](#LLMResult)。
+    流式输出返回 Generator\[[LLMResultChunk](#LLMResultChunk)\]，非流式输出返回 [LLMResult](#LLMResult)。
 
 - 预计算输入 tokens
 
@@ -236,7 +236,7 @@ class XinferenceProvider(Provider):
           -> TextEmbeddingResult:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param texts: texts to embed
@@ -294,7 +294,7 @@ class XinferenceProvider(Provider):
           -> RerankResult:
       """
       Invoke rerank model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param query: search query
@@ -342,7 +342,7 @@ class XinferenceProvider(Provider):
           -> str:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param file: audio file
@@ -379,7 +379,7 @@ class XinferenceProvider(Provider):
   def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param content_text: text content to be translated
@@ -421,7 +421,7 @@ class XinferenceProvider(Provider):
           -> bool:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param text: text to moderate
@@ -448,11 +448,9 @@ class XinferenceProvider(Provider):
 
     False 代表传入的文本安全，True 则反之。
 
-
-
 ## 实体
 
-### PromptMessageRole 
+### PromptMessageRole
 
 消息角色
 
@@ -623,7 +621,7 @@ class PromptMessageTool(BaseModel):
     parameters: dict  # 工具参数 dict
 ```
 
----
+______________________________________________________________________
 
 ### LLMResult
 
@@ -690,7 +688,7 @@ class LLMUsage(ModelUsage):
     latency: float  # 请求耗时 (s)
 ```
 
----
+______________________________________________________________________
 
 ### TextEmbeddingResult
 
@@ -720,7 +718,7 @@ class EmbeddingUsage(ModelUsage):
     latency: float  # 请求耗时 (s)
 ```
 
----
+______________________________________________________________________
 
 ### RerankResult
 
