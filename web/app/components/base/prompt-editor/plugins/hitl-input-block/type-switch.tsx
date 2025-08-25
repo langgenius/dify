@@ -18,7 +18,7 @@ const TypeSwitch: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className={cn('inline-flex h-6 cursor-pointer items-center space-x-1 rounded-md pl-1.5 pr-2 text-text-tertiary hover:bg-components-button-ghost-bg-hover', className)} onClick={() => onIsVariableChange?.(!isVariable)}>
+    <div className={cn('inline-flex h-6 cursor-pointer select-none items-center space-x-1 rounded-md pl-1.5 pr-2 text-text-tertiary hover:bg-components-button-ghost-bg-hover', className)} onClick={() => onIsVariableChange?.(!isVariable)}>
       <Variable02 className='size-3.5' />
       <div className='system-xs-medium'>{t(`workflow.nodes.humanInput.insertInputField.${isVariable ? 'useConstantInstead' : 'useVarInstead'}`)}</div>
     </div>

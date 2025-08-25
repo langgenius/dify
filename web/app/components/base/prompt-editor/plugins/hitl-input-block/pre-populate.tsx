@@ -81,25 +81,33 @@ const PrePopulate: FC<Props> = ({
 
   if (isVariable) {
     return (
-      <div>
+      <div className='relative h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2'>
         <VarReferencePicker
           {...varPickerProps}
+          isJustShowValue
         />
-        <TypeSwitch isVariable={isVariable} onIsVariableChange={handleTypeChange} />
+        <TypeSwitch
+          className='absolute bottom-1 left-1.5'
+          isVariable={isVariable}
+          onIsVariableChange={handleTypeChange}
+        />
       </div>
     )
   }
   return (
-    <div className={cn('relative rounded-md border border-transparent bg-components-input-bg-normal pb-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}>
+    <div className={cn('relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal pb-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}>
       <Textarea
         value={value || ''}
-        className='rounded-b-none border-none bg-transparent px-3 pb-8 hover:bg-transparent focus:bg-transparent focus:shadow-none'
+        className='h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none'
         onChange={e => onValueChange?.(e.target.value)}
-        onFocus={() => setIsFocus(true)}
+        onFocus={() => {
+          setOnPlaceholderClicked(true)
+          setIsFocus(true)
+        }}
         onBlur={() => setIsFocus(false)}
       />
       <TypeSwitch
-        className='ml-1.5'
+        className='absolute bottom-1 left-1.5'
         isVariable={isVariable}
         onIsVariableChange={handleTypeChange}
       />
