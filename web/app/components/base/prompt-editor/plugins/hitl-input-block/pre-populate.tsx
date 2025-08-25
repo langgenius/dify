@@ -6,8 +6,8 @@ import React, { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
+import TypeSwitch from './type-switch'
 import cn from '@/utils/classnames'
-import { Variable02 } from '../../../icons/src/vender/solid/development'
 
 type Props = {
   isVariable?: boolean
@@ -52,21 +52,21 @@ const PrePopulate: FC<Props> = ({
   value,
   onValueChange,
 }) => {
-  const { t } = useTranslation()
-
   const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
   const handlePlaceholderTypeClick = useCallback((isVar: boolean) => {
     setOnPlaceholderClicked(true)
     onIsVariableChange?.(isVar)
   }, [onIsVariableChange])
 
+  const [isFocus, setIsFocus] = useState(false)
+
   const isShowPlaceholder = !onPlaceholderClicked && (isVariable ? (!valueSelector || valueSelector.length === 0) : !value)
   if (isShowPlaceholder)
     return <Placeholder onTypeClick={handlePlaceholderTypeClick} />
 
-  const main = (() => {
-    if (isVariable) {
-      return (
+  if (isVariable) {
+    return (
+      <div>
         <VarReferencePicker
           nodeId={nodeId}
           value={valueSelector || []}
@@ -74,22 +74,24 @@ const PrePopulate: FC<Props> = ({
           readonly={false}
           zIndex={1000}
         />
-      )
-    }
-    return (
+        <TypeSwitch isVariable={isVariable} onIsVariableChange={onIsVariableChange} />
+      </div>
+    )
+  }
+  return (
+    <div className={cn('relative rounded-md border border-transparent bg-components-input-bg-normal pb-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}>
       <Textarea
         value={value || ''}
+        className='rounded-b-none border-none bg-transparent px-3 pb-8 hover:bg-transparent focus:bg-transparent focus:shadow-none'
         onChange={e => onValueChange?.(e.target.value)}
+        onFocus={() => setIsFocus(true)}
+        onBlur={() => setIsFocus(false)}
       />
-    )
-  })()
-  return (
-    <div>
-      {main}
-      <div className={cn('inline-flex h-6 cursor-pointer items-center space-x-1 rounded-md pl-1.5 pr-2 text-text-tertiary hover:bg-components-button-ghost-bg-hover')} onClick={() => onIsVariableChange?.(!isVariable)}>
-        <Variable02 className='size-3.5' />
-        <div className='system-xs-medium'>{t(`${i18nPrefix}.useVarInstead`)}</div>
-      </div>
+      <TypeSwitch
+        className='ml-1.5'
+        isVariable={isVariable}
+        onIsVariableChange={onIsVariableChange}
+      />
     </div>
   )
 }

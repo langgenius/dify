@@ -30,7 +30,7 @@ const InputField: React.FC<Props> = ({
   const handleSave = useCallback(() => {
     onChange(tempPayload)
   }, [tempPayload])
-  const placeholderConfig = payload.placeholder
+  const placeholderConfig = tempPayload.placeholder
   const handlePlaceholderChange = useCallback((key: keyof FormInputItemPlaceholder) => {
     return (value: any) => {
       const nextValue = produce(tempPayload, (draft) => {
@@ -40,7 +40,7 @@ const InputField: React.FC<Props> = ({
       })
       setTempPayload(nextValue)
     }
-  }, [])
+  }, [tempPayload])
   return (
     <div className="w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]">
       <div className='system-md-semibold text-text-primary'>{t(`${i18nPrefix}.title`)}</div>
@@ -58,16 +58,9 @@ const InputField: React.FC<Props> = ({
         />
       </div>
       <div className='mt-4'>
-        <div className='system-xs-medium text-text-secondary'>
+        <div className='system-xs-medium mb-1.5 text-text-secondary'>
           {t(`${i18nPrefix}.prePopulateField`)}
         </div>
-        {/* <Input
-          className='mt-1.5'
-          value={tempPayload.placeholder?.value}
-          onChange={(e) => {
-            setTempPayload(prev => ({ ...prev, placeholder: { ...(prev.placeholder || {}), value: e.target.value } } as any))
-          }}
-        /> */}
         <PrePopulate
           isVariable={placeholderConfig?.type === 'variable'}
           onIsVariableChange={(isVariable) => {
