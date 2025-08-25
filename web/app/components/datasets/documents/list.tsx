@@ -10,7 +10,6 @@ import {
   RiDownloadLine,
   RiEditLine,
   RiEqualizer2Line,
-  RiFilter3Line,
   RiLoopLeftLine,
   RiMoreFill,
   RiPauseCircleLine,
@@ -32,7 +31,6 @@ import Popover from '@/app/components/base/popover'
 import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast, { ToastContext } from '@/app/components/base/toast'
-import Chip from '@/app/components/base/chip'
 import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
@@ -457,6 +455,8 @@ type IDocumentListProps = {
   pagination: PaginationProps
   onUpdate: () => void
   onManageMetadata: () => void
+  statusFilter: string
+  onStatusFilterChange: (filter: string) => void
 }
 
 /**
@@ -471,6 +471,8 @@ const DocumentList: FC<IDocumentListProps> = ({
   pagination,
   onUpdate,
   onManageMetadata,
+  statusFilter,
+  onStatusFilterChange,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -482,20 +484,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
-
-  const statusFilterItems = useMemo(() => [
-    { value: 'all', name: 'STATUS: All' },
-    { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
-    { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
-    { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
-    { value: 'error', name: DOC_INDEX_STATUS_MAP.error.text },
-    { value: 'available', name: DOC_INDEX_STATUS_MAP.available.text },
-    { value: 'enabled', name: DOC_INDEX_STATUS_MAP.enabled.text },
-    { value: 'disabled', name: DOC_INDEX_STATUS_MAP.disabled.text },
-    { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
-  ], [DOC_INDEX_STATUS_MAP, t])
 
   const {
     isShowEditModal,
@@ -680,19 +669,7 @@ const DocumentList: FC<IDocumentListProps> = ({
               <td className='w-44'>
                 {renderSortHeader('created_at', t('datasetDocuments.list.table.header.uploadTime'))}
               </td>
-              <td className='w-44'>
-                <Chip
-                  className='min-w-[150px]'
-                  panelClassName='w-[220px]'
-                  leftIcon={<RiFilter3Line className='h-4 w-4 text-text-secondary' />}
-                  value={statusFilter}
-                  onSelect={(item) => {
-                    setStatusFilter(item.value as string)
-                  }}
-                  onClear={() => setStatusFilter('all')}
-                  items={statusFilterItems}
-                />
-              </td>
+              <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
               <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
             </tr>
           </thead>

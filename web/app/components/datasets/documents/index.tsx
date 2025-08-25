@@ -7,12 +7,14 @@ import { useDebounce, useDebounceFn } from 'ahooks'
 import { groupBy } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
+import { RiFilter3Line } from '@remixicon/react'
 import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
 import List from './list'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import Chip from '@/app/components/base/chip'
 import { get } from '@/service/base'
 import { createDocument } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
@@ -24,6 +26,7 @@ import IndexFailed from '@/app/components/datasets/common/document-status-with-a
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
 import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { useIndexStatus } from './list'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import useDocumentListQueryState from './hooks/use-document-list-query-state'
@@ -91,6 +94,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isFreePlan = plan.type === 'sandbox'
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
   // Use the new hook for URL state management
   const { query, updateQuery } = useDocumentListQueryState()
@@ -106,6 +111,18 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isDataSourceFile = dataset?.data_source_type === DataSourceType.FILE
   const embeddingAvailable = !!dataset?.embedding_available
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
+
+  const statusFilterItems = useMemo(() => [
+    { value: 'all', name: 'STATUS: All' },
+    { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
+    { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
+    { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
+    { value: 'error', name: DOC_INDEX_STATUS_MAP.error.text },
+    { value: 'available', name: DOC_INDEX_STATUS_MAP.available.text },
+    { value: 'enabled', name: DOC_INDEX_STATUS_MAP.enabled.text },
+    { value: 'disabled', name: DOC_INDEX_STATUS_MAP.disabled.text },
+    { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
+  ], [DOC_INDEX_STATUS_MAP, t])
 
   // Initialize search value from URL on mount
   useEffect(() => {
@@ -322,14 +339,27 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       </div>
       <div className='flex flex-1 flex-col px-6 py-4'>
         <div className='flex flex-wrap items-center justify-between'>
-          <Input
-            showLeftIcon
-            showClearIcon
-            wrapperClassName='!w-[200px]'
-            value={inputValue}
-            onChange={e => handleInputChange(e.target.value)}
-            onClear={() => handleInputChange('')}
-          />
+          <div className='flex items-center gap-2'>
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName='!w-[200px]'
+              value={inputValue}
+              onChange={e => handleInputChange(e.target.value)}
+              onClear={() => handleInputChange('')}
+            />
+            <Chip
+              className='min-w-[150px]'
+              panelClassName='w-[220px]'
+              leftIcon={<RiFilter3Line className='h-4 w-4 text-text-secondary' />}
+              value={statusFilter}
+              onSelect={(item) => {
+                setStatusFilter(item.value as string)
+              }}
+              onClear={() => setStatusFilter('all')}
+              items={statusFilterItems}
+            />
+          </div>
           <div className='flex !h-8 items-center justify-center gap-2'>
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
@@ -372,6 +402,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               onUpdate={handleUpdate}
               selectedIds={selectedIds}
               onSelectedIdChange={setSelectedIds}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
               pagination={{
                 total,
                 limit,
