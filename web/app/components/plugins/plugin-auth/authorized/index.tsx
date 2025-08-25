@@ -52,6 +52,7 @@ type AuthorizedProps = {
   showItemSelectedIcon?: boolean
   selectedCredentialId?: string
   onUpdate?: () => void
+  notAllowCustomCredential?: boolean
 }
 const Authorized = ({
   pluginPayload,
@@ -72,6 +73,7 @@ const Authorized = ({
   showItemSelectedIcon,
   selectedCredentialId,
   onUpdate,
+  notAllowCustomCredential,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -171,6 +173,7 @@ const Authorized = ({
       handleSetDoingAction(false)
     }
   }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
+  const unavailableCredentials = credentials.filter(credential => credential.not_allowed_to_use)
 
   return (
     <>
@@ -200,6 +203,11 @@ const Authorized = ({
                     credentials.length > 1
                       ? t('plugin.auth.authorizations')
                       : t('plugin.auth.authorization')
+                  }
+                  {
+                    !!unavailableCredentials.length && (
+                      ` (${unavailableCredentials.length} ${t('plugin.auth.unavailable')})`
+                    )
                   }
                   <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
                 </Button>
@@ -294,18 +302,24 @@ const Authorized = ({
                 )
               }
             </div>
-            <div className='h-px bg-divider-subtle'></div>
-            <div className='p-2'>
-              <Authorize
-                pluginPayload={pluginPayload}
-                theme='secondary'
-                showDivider={false}
-                canOAuth={canOAuth}
-                canApiKey={canApiKey}
-                disabled={disabled}
-                onUpdate={onUpdate}
-              />
-            </div>
+            {
+              !notAllowCustomCredential && (
+                <>
+                  <div className='h-[1px] bg-divider-subtle'></div>
+                    <div className='p-2'>
+                      <Authorize
+                        pluginPayload={pluginPayload}
+                        theme='secondary'
+                        showDivider={false}
+                        canOAuth={canOAuth}
+                        canApiKey={canApiKey}
+                        disabled={disabled}
+                        onUpdate={onUpdate}
+                      />
+                    </div>
+                </>
+              )
+            }
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

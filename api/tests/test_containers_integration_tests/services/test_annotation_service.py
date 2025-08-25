@@ -410,18 +410,18 @@ class TestAnnotationService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create annotations with specific keywords
-        unique_keyword = fake.word()
+        unique_keyword = f"unique_{fake.uuid4()[:8]}"
         annotation_args = {
             "question": f"Question with {unique_keyword} keyword",
             "answer": f"Answer with {unique_keyword} keyword",
         }
         AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
-
         # Create another annotation without the keyword
         other_args = {
-            "question": "Question without keyword",
-            "answer": "Answer without keyword",
+            "question": "Different question without special term",
+            "answer": "Different answer without special content",
         }
+
         AppAnnotationService.insert_app_annotation_directly(other_args, app.id)
 
         # Search with keyword

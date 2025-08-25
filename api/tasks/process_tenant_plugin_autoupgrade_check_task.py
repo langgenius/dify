@@ -2,7 +2,7 @@ import traceback
 import typing
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.helper import marketplace
 from core.helper.marketplace import MarketplacePluginDeclaration
