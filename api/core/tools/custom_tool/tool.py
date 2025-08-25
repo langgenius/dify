@@ -282,7 +282,6 @@ class ApiTool(Tool):
             "put": ssrf_proxy.put,
             "delete": ssrf_proxy.delete,
             "patch": ssrf_proxy.patch,
-            "options": ssrf_proxy.options,  # type: ignore
         }
         method_lc = method.lower()
         if method_lc not in _METHOD_MAP:
