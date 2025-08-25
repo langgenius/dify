@@ -339,4 +339,3 @@ class WorkflowAppLogApi(Resource):
             )
 
             return workflow_app_log_pagination
-
