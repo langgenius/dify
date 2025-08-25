@@ -5,7 +5,7 @@ import { BlockEnum, type CommonNodeType } from '../types'
 import { getWorkflowEntryNode } from '../utils/workflow-entry'
 import type { TestRunOptions, TriggerOption } from '../header/test-run-dropdown'
 import Home from '@/app/components/base/icons/src/vender/workflow/Home'
-import { RunAllTriggers, Schedule, WebhookLine } from '@/app/components/base/icons/src/vender/workflow'
+import { Schedule, TriggerAll, WebhookLine } from '@/app/components/base/icons/src/vender/workflow'
 import AppIcon from '@/app/components/base/app-icon'
 import { useStore } from '../store'
 import { canFindTool } from '@/utils'
@@ -155,7 +155,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       name: t('workflow.common.runAllTriggers'),
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 bg-util-colors-purple-purple-500 text-white shadow-md">
-          <RunAllTriggers className="h-4.5 w-4.5" />
+          <TriggerAll className="h-4.5 w-4.5" />
         </div>
       ),
       enabled: true,

@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 
 import * as React from 'react'
-import data from './RunAllTriggers.json'
+import data from './TriggerAll.json'
 import IconBase from '@/app/components/base/icons/IconBase'
 import type { IconData } from '@/app/components/base/icons/IconBase'
 
@@ -15,6 +15,6 @@ const Icon = (
   },
 ) => <IconBase {...props} ref={ref} data={data as IconData} />
 
-Icon.displayName = 'RunAllTriggers'
+Icon.displayName = 'TriggerAll'
 
 export default Icon
