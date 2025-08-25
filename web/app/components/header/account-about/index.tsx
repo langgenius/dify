@@ -31,8 +31,8 @@ export default function AccountAbout({
       className='!w-[480px] !max-w-[480px] !px-6 !py-4'
     >
       <div className='relative'>
-        <div className='absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-divider-subtle transition-colors hover:border-divider-regular hover:bg-state-base-hover' onClick={onCancel}>
-          <RiCloseLine className='h-4 w-4 text-text-secondary hover:text-text-primary' />
+        <div className='absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
         <div className='flex flex-col items-center gap-4 py-8'>
           {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
