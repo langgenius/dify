@@ -281,7 +281,7 @@ class UploadSchedulerService:
 
             except Exception as e:
                 redis_client.srem(processing_key, task_data["task_id"])
-                logger.error(f"Error processing task {task_data['task_id']}: {str(e)}")
+                logger.exception("Error processing task %s: %s", task_data['task_id'], str(e))
                 continue
 
         return processed_tasks

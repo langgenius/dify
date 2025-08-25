@@ -25,8 +25,8 @@ def process_upload_queue():
             processed_tasks = UploadSchedulerService.process_queue(tenant_id)
 
             if processed_tasks:
-                logger.info(f"Processed {len(processed_tasks)} uploads for tenant {tenant_id}")
+                logger.info("Processed %s uploads for tenant %s", str(len(processed_tasks)), tenant_id)
 
         except Exception as e:
-            logger.error(f"Error processing queue for tenant {tenant_id}: {str(e)}")
+            logger.exception("Error processing queue for tenant %s: %s", tenant_id, str(e))
             continue
