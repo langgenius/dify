@@ -134,11 +134,7 @@ class ModelProviderModelApi(Resource):
 
         model_load_balancing_service = ModelLoadBalancingService()
 
-        if (
-            "load_balancing" in args
-            and args["load_balancing"]
-            and "configs" in args["load_balancing"]
-        ):
+        if "load_balancing" in args and args["load_balancing"] and "configs" in args["load_balancing"]:
             # save load balancing configs
             model_load_balancing_service.update_load_balancing_configs(
                 tenant_id=tenant_id,
