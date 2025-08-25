@@ -528,7 +528,7 @@ class TestModelProviderService:
 
         # Act: Execute the method under test
         service = ModelProviderService()
-        with patch.object(service, 'get_provider_credential', return_value=expected_credentials) as mock_method:
+        with patch.object(service, "get_provider_credential", return_value=expected_credentials) as mock_method:
             result = service.get_provider_credential(tenant.id, "openai")
 
             # Assert: Verify the expected outcomes
@@ -541,7 +541,6 @@ class TestModelProviderService:
 
             # Verify the method was called with correct parameters
             mock_method.assert_called_once_with(tenant.id, "openai")
-        
 
     def test_provider_credentials_validate_success(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -858,7 +857,7 @@ class TestModelProviderService:
 
         # Act: Execute the method under test
         service = ModelProviderService()
-        with patch.object(service, 'get_model_credential', return_value=expected_credentials) as mock_method:
+        with patch.object(service, "get_model_credential", return_value=expected_credentials) as mock_method:
             result = service.get_model_credential(tenant.id, "openai", "llm", "gpt-4", None)
 
             # Assert: Verify the expected outcomes
