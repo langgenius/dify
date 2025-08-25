@@ -964,6 +964,38 @@ class RagPipelineTransformApi(Resource):
         return result
 
 
+class RagPipelineDatasourceVariableApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    @marshal_with(workflow_run_node_execution_fields)
+    def post(self, pipeline: Pipeline):
+        """
+        Set datasource variables
+        """
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("datasource_type", type=str, required=True, location="json")
+        parser.add_argument("datasource_info", type=dict, required=True, location="json")
+        parser.add_argument("start_node_id", type=str, required=True, location="json")
+        parser.add_argument("start_node_title", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        rag_pipeline_service = RagPipelineService()
+        workflow_node_execution = rag_pipeline_service.set_datasource_variables(
+            pipeline=pipeline,
+            args=args,
+            current_user=current_user,
+        )
+        return workflow_node_execution
+
+
 api.add_resource(
     DraftRagPipelineApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft",
@@ -1075,4 +1107,8 @@ api.add_resource(
 api.add_resource(
     RagPipelineTransformApi,
     "/rag/pipelines/transform/datasets/<uuid:dataset_id>",
+)
+api.add_resource(
+    RagPipelineDatasourceVariableApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect",
 )

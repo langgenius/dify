@@ -1148,3 +1148,66 @@ class RagPipelineService:
             .first()
         )
         return node_exec
+    
+    def set_datasource_variables(self, pipeline: Pipeline, args: dict, current_user: Account | EndUser):
+        # fetch draft workflow by app_model
+        draft_workflow = self.get_draft_workflow(pipeline=pipeline)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+        workflow_node_execution = WorkflowNodeExecution(
+            id=str(uuid4()),
+            workflow_id=draft_workflow.id,
+            index=1,
+            node_id=args.get("start_node_id", ""),
+            node_type=NodeType.DATASOURCE,
+            title=args.get("start_node_title", "Datasource"),
+            elapsed_time=0,
+            finished_at=datetime.now(UTC).replace(tzinfo=None),
+            created_at=datetime.now(UTC).replace(tzinfo=None),
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs=None,
+            metadata=None,
+        )
+        outputs = {
+            **args.get("datasource_info", {}),
+            "datasource_type": args.get("datasource_type", ""),
+        }
+        workflow_node_execution.outputs = outputs
+        node_config = draft_workflow.get_node_config_by_id(args.get("start_node_id", ""))
+
+        eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+        if eclosing_node_type_and_id:
+            _, enclosing_node_id = eclosing_node_type_and_id
+        else:
+            enclosing_node_id = None
+
+        # Create repository and save the node execution
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=db.engine,
+            user=current_user,
+            app_id=pipeline.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+        )
+        repository.save(workflow_node_execution)
+
+        # Convert node_execution to WorkflowNodeExecution after save
+        workflow_node_execution_db_model = repository.to_db_model(workflow_node_execution)
+
+        with Session(bind=db.engine) as session, session.begin():
+            draft_var_saver = DraftVariableSaver(
+                session=session,
+                app_id=pipeline.id,
+                node_id=workflow_node_execution_db_model.node_id,
+                node_type=NodeType(workflow_node_execution_db_model.node_type),
+                enclosing_node_id=enclosing_node_id,
+                node_execution_id=workflow_node_execution.id,
+            )
+            draft_var_saver.save(
+                process_data=workflow_node_execution.process_data,
+                outputs=workflow_node_execution.outputs,
+            )
+            session.commit()
+        return workflow_node_execution_db_model
+        
+        
+
