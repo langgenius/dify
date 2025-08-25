@@ -19,6 +19,7 @@ class ModelStatus(Enum):
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
     DISABLED = "disabled"
+    CREDENTIAL_REMOVED = "credential-removed"
 
 
 class SimpleModelProviderEntity(BaseModel):
@@ -54,6 +55,7 @@ class ProviderModelWithStatusEntity(ProviderModel):
 
     status: ModelStatus
     load_balancing_enabled: bool = False
+    has_invalid_load_balancing_configs: bool = False
 
     def raise_for_status(self) -> None:
         """

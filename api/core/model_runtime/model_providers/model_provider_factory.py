@@ -201,7 +201,7 @@ class ModelProviderFactory:
         return filtered_credentials
 
     def get_model_schema(
-        self, *, provider: str, model_type: ModelType, model: str, credentials: dict
+        self, *, provider: str, model_type: ModelType, model: str, credentials: dict | None
     ) -> AIModelEntity | None:
         """
         Get model schema
