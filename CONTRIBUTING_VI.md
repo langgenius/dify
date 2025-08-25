@@ -22,7 +22,7 @@ Hãy tham gia, đóng góp và cùng nhau xây dựng điều tuyệt vời! �
 
 ### Báo cáo lỗi
 
-> [!QUAN TRỌNG]  
+> [!QUAN TRỌNG]\
 > Vui lòng đảm bảo cung cấp các thông tin sau khi gửi báo cáo lỗi:
 
 - Tiêu đề rõ ràng và mô tả
@@ -34,11 +34,11 @@ Hãy tham gia, đóng góp và cùng nhau xây dựng điều tuyệt vời! �
 
 Cách chúng tôi ưu tiên:
 
-  | Loại vấn đề | Mức độ ưu tiên |
-  | ----------- | -------------- |
-  | Lỗi trong các chức năng cốt lõi (dịch vụ đám mây, không thể đăng nhập, ứng dụng không hoạt động, lỗ hổng bảo mật) | Quan trọng |
-  | Lỗi không nghiêm trọng, cải thiện hiệu suất | Ưu tiên trung bình |
-  | Sửa lỗi nhỏ (lỗi chính tả, UI gây nhầm lẫn nhưng vẫn hoạt động) | Ưu tiên thấp |
+| Loại vấn đề | Mức độ ưu tiên |
+| ----------- | -------------- |
+| Lỗi trong các chức năng cốt lõi (dịch vụ đám mây, không thể đăng nhập, ứng dụng không hoạt động, lỗ hổng bảo mật) | Quan trọng |
+| Lỗi không nghiêm trọng, cải thiện hiệu suất | Ưu tiên trung bình |
+| Sửa lỗi nhỏ (lỗi chính tả, UI gây nhầm lẫn nhưng vẫn hoạt động) | Ưu tiên thấp |
 
 ### Yêu cầu tính năng
 
@@ -52,24 +52,24 @@ Cách chúng tôi ưu tiên:
 
 Cách chúng tôi ưu tiên:
 
-  | Loại tính năng | Mức độ ưu tiên |
-  | -------------- | -------------- |
-  | Tính năng ưu tiên cao được gắn nhãn bởi thành viên nhóm | Ưu tiên cao |
-  | Yêu cầu tính năng phổ biến từ [bảng phản hồi cộng đồng](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Ưu tiên trung bình |
-  | Tính năng không cốt lõi và cải tiến nhỏ | Ưu tiên thấp |
-  | Có giá trị nhưng không cấp bách | Tính năng tương lai |
+| Loại tính năng | Mức độ ưu tiên |
+| -------------- | -------------- |
+| Tính năng ưu tiên cao được gắn nhãn bởi thành viên nhóm | Ưu tiên cao |
+| Yêu cầu tính năng phổ biến từ [bảng phản hồi cộng đồng](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Ưu tiên trung bình |
+| Tính năng không cốt lõi và cải tiến nhỏ | Ưu tiên thấp |
+| Có giá trị nhưng không cấp bách | Tính năng tương lai |
 
 ## Gửi PR của bạn
 
 ### Quy trình tạo Pull Request
 
 1. Fork repository
-2. Trước khi soạn PR, vui lòng tạo issue để thảo luận về các thay đổi bạn muốn thực hiện
-3. Tạo nhánh mới cho các thay đổi của bạn
-4. Vui lòng thêm test cho các thay đổi tương ứng
-5. Đảm bảo code của bạn vượt qua các test hiện có
-6. Vui lòng liên kết issue trong mô tả PR, `fixes #<số_issue>`
-7. Được merge!
+1. Trước khi soạn PR, vui lòng tạo issue để thảo luận về các thay đổi bạn muốn thực hiện
+1. Tạo nhánh mới cho các thay đổi của bạn
+1. Vui lòng thêm test cho các thay đổi tương ứng
+1. Đảm bảo code của bạn vượt qua các test hiện có
+1. Vui lòng liên kết issue trong mô tả PR, `fixes #<số_issue>`
+1. Được merge!
 
 ### Thiết lập dự án
 
@@ -84,6 +84,7 @@ Cách chúng tôi ưu tiên:
 #### Các điểm cần lưu ý khác
 
 Chúng tôi khuyến nghị xem xét kỹ tài liệu này trước khi tiến hành thiết lập, vì nó chứa thông tin thiết yếu về:
+
 - Điều kiện tiên quyết và dependencies
 - Các bước cài đặt
 - Chi tiết cấu hình
@@ -94,4 +95,3 @@ Chúng tôi khuyến nghị xem xét kỹ tài liệu này trước khi tiến h
 ## Nhận trợ giúp
 
 Nếu bạn bị mắc kẹt hoặc có câu hỏi cấp bách trong quá trình đóng góp, chỉ cần gửi câu hỏi của bạn thông qua issue GitHub liên quan, hoặc tham gia [Discord](https://discord.gg/8Tpq4AcN9c) của chúng tôi để trò chuyện nhanh.
-

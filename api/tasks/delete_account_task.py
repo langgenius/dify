@@ -1,6 +1,6 @@
 import logging
 
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from extensions.ext_database import db
 from models.account import Account

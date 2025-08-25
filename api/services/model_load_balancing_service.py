@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 from json import JSONDecodeError
@@ -397,7 +396,7 @@ class ModelLoadBalancingService:
 
                 load_balancing_config.name = name
                 load_balancing_config.enabled = enabled
-                load_balancing_config.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                load_balancing_config.updated_at = naive_utc_now()
                 db.session.commit()
 
                 self._clear_credentials_cache(tenant_id, config_id)

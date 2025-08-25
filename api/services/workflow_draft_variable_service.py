@@ -1,5 +1,4 @@
 import dataclasses
-import datetime
 import logging
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
@@ -23,6 +22,7 @@ from core.workflow.nodes.variable_assigner.common.helpers import get_updated_var
 from core.workflow.variable_loader import VariableLoader
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
+from libs.datetime_utils import naive_utc_now
 from models import App, Conversation
 from models.enums import DraftVariableType
 from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
@@ -231,7 +231,7 @@ class WorkflowDraftVariableService:
             variable.set_name(name)
         if value is not None:
             variable.set_value(value)
-        variable.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        variable.last_edited_at = naive_utc_now()
         self._session.flush()
         return variable
 

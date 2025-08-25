@@ -1,13 +1,13 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Document, DocumentSegment
 
 
@@ -54,9 +54,9 @@ def remove_document_from_index_task(document_id: str):
         db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).update(
             {
                 DocumentSegment.enabled: False,
-                DocumentSegment.disabled_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.disabled_at: naive_utc_now(),
                 DocumentSegment.disabled_by: document.disabled_by,
-                DocumentSegment.updated_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.updated_at: naive_utc_now(),
             }
         )
         db.session.commit()

@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 from collections import defaultdict
@@ -31,6 +30,7 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.plugin.entities.plugin import ModelProviderID
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,

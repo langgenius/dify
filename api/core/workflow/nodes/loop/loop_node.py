@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from configs import dify_config
@@ -36,6 +36,7 @@ from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from libs.datetime_utils import naive_utc_now
 
 if TYPE_CHECKING:
     from core.workflow.entities.variable_pool import VariablePool
@@ -143,7 +144,7 @@ class LoopNode(BaseNode):
             thread_pool_id=self.thread_pool_id,
         )
 
-        start_at = datetime.now(UTC).replace(tzinfo=None)
+        start_at = naive_utc_now()
         condition_processor = ConditionProcessor()
 
         # Start Loop event
@@ -171,7 +172,7 @@ class LoopNode(BaseNode):
         try:
             check_break_result = False
             for i in range(loop_count):
-                loop_start_time = datetime.now(UTC).replace(tzinfo=None)
+                loop_start_time = naive_utc_now()
                 # run single loop
                 loop_result = yield from self._run_single_loop(
                     graph_engine=graph_engine,
@@ -185,7 +186,7 @@ class LoopNode(BaseNode):
                     start_at=start_at,
                     inputs=inputs,
                 )
-                loop_end_time = datetime.now(UTC).replace(tzinfo=None)
+                loop_end_time = naive_utc_now()
 
                 single_loop_variable = {}
                 for key, selector in loop_variable_selectors.items():
@@ -313,29 +314,30 @@ class LoopNode(BaseNode):
                 and event.node_type == NodeType.LOOP_END
                 and not isinstance(event, NodeRunStreamChunkEvent)
             ):
-                check_break_result = True
+                # Check if variables in break conditions exist and process conditions
+                # Allow loop internal variables to be used in break conditions
+                available_conditions = []
+                for condition in break_conditions:
+                    variable = self.graph_runtime_state.variable_pool.get(condition.variable_selector)
+                    if variable:
+                        available_conditions.append(condition)
+
+                # Process conditions if at least one variable is available
+                if available_conditions:
+                    input_conditions, group_result, check_break_result = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=available_conditions,
+                        operator=logical_operator,
+                    )
+                    if check_break_result:
+                        break
+                else:
+                    check_break_result = True
                 yield self._handle_event_metadata(event=event, iter_run_index=current_index)
                 break
 
             if isinstance(event, NodeRunSucceededEvent):
                 yield self._handle_event_metadata(event=event, iter_run_index=current_index)
-
-                # Check if all variables in break conditions exist
-                exists_variable = False
-                for condition in break_conditions:
-                    if not self.graph_runtime_state.variable_pool.get(condition.variable_selector):
-                        exists_variable = False
-                        break
-                    else:
-                        exists_variable = True
-                if exists_variable:
-                    input_conditions, group_result, check_break_result = condition_processor.process_conditions(
-                        variable_pool=self.graph_runtime_state.variable_pool,
-                        conditions=break_conditions,
-                        operator=logical_operator,
-                    )
-                    if check_break_result:
-                        break
 
             elif isinstance(event, BaseGraphEvent):
                 if isinstance(event, GraphRunFailedEvent):
