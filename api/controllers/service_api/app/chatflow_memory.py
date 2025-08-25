@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from sqlalchemy.orm import Session
 
 from controllers.service_api import api
