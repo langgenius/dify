@@ -21,6 +21,7 @@ from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import App, AppMode, db
+from models.account import Account
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -135,6 +136,7 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def wrapper(*args, **kwargs):
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
         return f(*args, **kwargs)
