@@ -84,7 +84,7 @@ function releaseRefreshLock() {
   }
 }
 
-export async function refreshAccessTokenOrRelogin(timeout: number) {
+export async function refreshAccessTokenOrReLogin(timeout: number) {
   return Promise.race([new Promise<void>((resolve, reject) => setTimeout(() => {
     releaseRefreshLock()
     reject(new Error('request timeout'))

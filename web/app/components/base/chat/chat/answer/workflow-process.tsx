@@ -6,6 +6,7 @@ import {
   RiArrowRightSLine,
   RiErrorWarningFill,
   RiLoader2Line,
+  RiPauseCircleFill,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem, WorkflowProcess } from '../../types'
@@ -34,6 +35,8 @@ const WorkflowProcessItem = ({
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
+  const suspended = data.status === WorkflowRunningStatus.Suspended
+  const latestNode = data.tracing[data.tracing.length - 1]
 
   useEffect(() => {
     setCollapse(!expand)
@@ -47,7 +50,10 @@ const WorkflowProcessItem = ({
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
-        collapse && 'bg-workflow-process-bg',
+        suspended && !collapse && 'bg-state-warning-hover',
+        collapse && !failed && !suspended && 'bg-workflow-process-bg',
+        collapse && suspended && 'bg-workflow-process-suspended-bg',
+        collapse && failed && 'bg-workflow-process-failed-bg',
       )}
     >
       <div
@@ -69,8 +75,13 @@ const WorkflowProcessItem = ({
             <RiErrorWarningFill className='mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive' />
           )
         }
+        {
+          suspended && (
+            <RiPauseCircleFill className='mr-1 h-3.5 w-3.5 shrink-0 text-text-warning-secondary' />
+          )
+        }
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
-          {t('workflow.common.workflowProcess')}
+          {!collapse ? t('workflow.common.workflowProcess') : latestNode?.title}
         </div>
         {!readonly && <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />}
       </div>

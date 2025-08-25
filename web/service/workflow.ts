@@ -99,3 +99,10 @@ export const fetchNodeInspectVars = async (appId: string, nodeId: string): Promi
   const { items } = (await get(`apps/${appId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
   return items
 }
+
+export const submitHumanInputForm = (token: string, data: {
+  inputs: Record<string, any>
+  action: string
+}) => {
+  return post(`/form/human_input/${token}`, { body: data })
+}

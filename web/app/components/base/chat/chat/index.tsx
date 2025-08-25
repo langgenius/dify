@@ -73,6 +73,8 @@ export type ChatProps = {
   inputDisabled?: boolean
   isMobile?: boolean
   sidebarCollapseState?: boolean
+  hideAvatar?: boolean
+  onHumanInputFormSubmit?: (formID: string, formData: any) => void
 }
 
 const Chat: FC<ChatProps> = ({
@@ -112,6 +114,8 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   isMobile,
   sidebarCollapseState,
+  hideAvatar,
+  onHumanInputFormSubmit,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -256,6 +260,8 @@ const Chat: FC<ChatProps> = ({
                       hideProcessDetail={hideProcessDetail}
                       noChatInput={noChatInput}
                       switchSibling={switchSibling}
+                      hideAvatar={hideAvatar}
+                      onHumanInputFormSubmit={onHumanInputFormSubmit}
                     />
                   )
                 }
@@ -267,6 +273,7 @@ const Chat: FC<ChatProps> = ({
                     theme={themeBuilder?.theme}
                     enableEdit={config?.questionEditEnable}
                     switchSibling={switchSibling}
+                    hideAvatar={hideAvatar}
                   />
                 )
               })

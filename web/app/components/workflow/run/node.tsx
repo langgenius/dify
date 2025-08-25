@@ -6,7 +6,7 @@ import {
   RiAlertFill,
   RiArrowRightSLine,
   RiCheckboxCircleFill,
-  RiErrorWarningLine,
+  RiErrorWarningFill,
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
@@ -148,7 +148,7 @@ const NodePanel: FC<Props> = ({
             <RiCheckboxCircleFill className='ml-2 h-3.5 w-3.5 shrink-0 text-text-success' />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningLine className='ml-2 h-3.5 w-3.5 shrink-0 text-text-warning' />
+            <RiErrorWarningFill className='ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive' />
           )}
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { BlockEnum } from '../../types'
+import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import {
   useStore,
   useWorkflowStore,
@@ -87,6 +87,7 @@ const ChatWrapper = (
     handleSend,
     handleRestart,
     setTargetMessageId,
+    handleSubmitHumanInputForm,
   } = useChat(
     config,
     {
@@ -126,6 +127,16 @@ const ChatWrapper = (
       isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
     )
   }, [chatList, doSend])
+
+  const doHumanInputFormSubmit = useCallback(async (formID: string, formData: any) => {
+    // Handle human input form submission
+    await handleSubmitHumanInputForm(formID, formData)
+  }, [handleSubmitHumanInputForm])
+
+  const inputDisabled = useMemo(() => {
+    const latestMessage = chatList[chatList.length - 1]
+    return latestMessage.isAnswer && (latestMessage.workflowProcess?.status === WorkflowRunningStatus.Suspended)
+  }, [chatList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
@@ -174,6 +185,7 @@ const ChatWrapper = (
         inputsForm={(startVariables || []) as any}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
+        onHumanInputFormSubmit={doHumanInputFormSubmit}
         chatNode={(
           <>
             {showInputsFieldsPanel && <UserInput />}
@@ -189,6 +201,8 @@ const ChatWrapper = (
         showPromptLog
         chatAnswerContainerInner='!pr-2'
         switchSibling={setTargetMessageId}
+        inputDisabled={inputDisabled}
+        hideAvatar
       />
       {showConversationVariableModal && (
         <ConversationVariableModal

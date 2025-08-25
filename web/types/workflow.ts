@@ -4,6 +4,7 @@ import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { GeneratedFormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { MutableRefObject } from 'react'
 
 export type AgentLogItem = {
@@ -159,6 +160,18 @@ export type WorkflowStartedResponse = {
   }
 }
 
+export type WorkflowSuspendedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    id: string
+    workflow_id: string
+    created_at: number
+    suspended_at_node_ids: string[]
+  }
+}
+
 export type WorkflowFinishedResponse = {
   task_id: string
   workflow_run_id: string
@@ -288,6 +301,23 @@ export type AgentLogResponse = {
   task_id: string
   event: string
   data: AgentLogItemWithChildren
+}
+
+export type HumanInputFormData = {
+  id: string
+  workflow_id: string
+  form_id: string
+  node_id: string
+  form_content: string
+  inputs: GeneratedFormInputItem[]
+  web_app_form_token: string
+}
+
+export type HumanInputRequiredResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFormData
 }
 
 export type WorkflowRunHistory = {

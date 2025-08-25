@@ -1,11 +1,12 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
-import { refreshAccessTokenOrRelogin } from './refresh-token'
+import { refreshAccessTokenOrReLogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
 import { basePath } from '@/utils/var'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
   AgentLogResponse,
+  HumanInputRequiredResponse,
   IterationFinishedResponse,
   IterationNextResponse,
   IterationStartedResponse,
@@ -20,6 +21,7 @@ import type {
   TextReplaceResponse,
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
+  WorkflowSuspendedResponse,
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
@@ -63,6 +65,9 @@ export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
 export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
+export type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
+export type IOWorkflowSuspended = (workflowSuspended: WorkflowSuspendedResponse) => void
+
 export type IOtherOptions = {
   isPublicAPI?: boolean
   isMarketplaceAPI?: boolean
@@ -97,6 +102,8 @@ export type IOtherOptions = {
   onLoopNext?: IOnLoopNext
   onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
+  onHumanInputRequired?: IOHumanInputRequired
+  onWorkflowSuspended?: IOWorkflowSuspended
 }
 
 function unicodeToChar(text: string) {
@@ -116,6 +123,14 @@ function requiredWebSSOLogin(message?: string, code?: number) {
   if (code)
     params.append('code', String(code))
   globalThis.location.href = `${globalThis.location.origin}${basePath}/webapp-signin?${params.toString()}`
+}
+
+function formatURL(url: string, isPublicAPI: boolean) {
+  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  if (url.startsWith('http://') || url.startsWith('https://'))
+    return url
+  const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
+  return `${urlPrefix}${urlWithoutProtocol}`
 }
 
 export function format(text: string) {
@@ -152,6 +167,8 @@ const handleStream = (
   onTTSEnd?: IOnTTSEnd,
   onTextReplace?: IOnTextReplace,
   onAgentLog?: IOnAgentLog,
+  onHumanInputRequired?: IOHumanInputRequired,
+  onWorkflowSuspended?: IOWorkflowSuspended,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -270,6 +287,12 @@ const handleStream = (
             else if (bufferObj.event === 'tts_message_end') {
               onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
             }
+            else if (bufferObj.event === 'human_input_required') {
+              onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
+            }
+            else if (bufferObj.event === 'workflow_suspended') {
+              onWorkflowSuspended?.(bufferObj as WorkflowSuspendedResponse)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -363,6 +386,8 @@ export const ssePost = async (
     onLoopStart,
     onLoopNext,
     onLoopFinish,
+    onHumanInputRequired,
+    onWorkflowSuspended,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -382,10 +407,7 @@ export const ssePost = async (
 
   getAbortController?.(abortController)
 
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
-    ? url
-    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  const urlWithPrefix = formatURL(url, isPublicAPI)
 
   const { body } = options
   if (body)
@@ -398,7 +420,7 @@ export const ssePost = async (
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
-          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
+          refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
             ssePost(url, fetchOptions, otherOptions)
           }).catch(() => {
             res.json().then((data: any) => {
@@ -460,6 +482,141 @@ export const ssePost = async (
         onTTSEnd,
         onTextReplace,
         onAgentLog,
+        onHumanInputRequired,
+        onWorkflowSuspended,
+      )
+    }).catch((e) => {
+      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
+        Toast.notify({ type: 'error', message: e })
+      onError?.(e)
+    })
+}
+
+export const sseGet = async (
+  url: string,
+  fetchOptions: FetchOptionType,
+  otherOptions: IOtherOptions,
+) => {
+  const {
+    isPublicAPI = false,
+    onData,
+    onCompleted,
+    onThought,
+    onFile,
+    onMessageEnd,
+    onMessageReplace,
+    onWorkflowStarted,
+    onWorkflowFinished,
+    onNodeStarted,
+    onNodeFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
+    onNodeRetry,
+    onParallelBranchStarted,
+    onParallelBranchFinished,
+    onTextChunk,
+    onTTSChunk,
+    onTTSEnd,
+    onTextReplace,
+    onAgentLog,
+    onError,
+    getAbortController,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
+    onHumanInputRequired,
+    onWorkflowSuspended,
+  } = otherOptions
+  const abortController = new AbortController()
+
+  const token = localStorage.getItem('console_token')
+  const options = Object.assign({}, baseOptions, {
+    signal: abortController.signal,
+    headers: new Headers({
+      Authorization: `Bearer ${token}`,
+    }),
+  } as RequestInit, fetchOptions)
+
+  const contentType = (options.headers as Headers).get('Content-Type')
+  if (!contentType)
+    (options.headers as Headers).set('Content-Type', ContentType.json)
+
+  getAbortController?.(abortController)
+
+  const urlWithPrefix = formatURL(url, isPublicAPI)
+
+  const accessToken = await getAccessToken(isPublicAPI)
+    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
+
+  globalThis.fetch(urlWithPrefix, options as RequestInit)
+    .then((res) => {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (res.status === 401) {
+          refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
+            sseGet(url, fetchOptions, otherOptions)
+          }).catch(() => {
+            res.json().then((data: any) => {
+              if (isPublicAPI) {
+                if (data.code === 'web_app_access_denied')
+                  requiredWebSSOLogin(data.message, 403)
+
+                if (data.code === 'web_sso_auth_required') {
+                  removeAccessToken()
+                  requiredWebSSOLogin()
+                }
+
+                if (data.code === 'unauthorized') {
+                  removeAccessToken()
+                  requiredWebSSOLogin()
+                }
+              }
+            })
+          })
+        }
+        else {
+          res.json().then((data) => {
+            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+          })
+          onError?.('Server Error')
+        }
+        return
+      }
+      return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+        if (moreInfo.errorMessage) {
+          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+          // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
+          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+          return
+        }
+        onData?.(str, isFirstMessage, moreInfo)
+      },
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
+        onHumanInputRequired,
+        onWorkflowSuspended,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
@@ -524,7 +681,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       }
 
       // refresh token
-      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrRelogin(TIME_OUT))
+      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
       if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {

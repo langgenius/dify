@@ -60,6 +60,7 @@ const Operation: FC<OperationProps> = ({
     feedback,
     adminFeedback,
     agent_thoughts,
+    humanInputFormData,
   } = item
   const [localFeedback, setLocalFeedback] = useState(config?.supportAnnotation ? adminFeedback : feedback)
 
@@ -115,25 +116,27 @@ const Operation: FC<OperationProps> = ({
         )}
         {!isOpeningStatement && (
           <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
-            {(config?.text_to_speech?.enabled) && (
+            {(config?.text_to_speech?.enabled) && !humanInputFormData && (
               <NewAudioButton
                 id={id}
                 value={content}
                 voice={config?.text_to_speech?.voice}
               />
             )}
-            <ActionButton onClick={() => {
-              copy(content)
-              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-            }}>
-              <RiClipboardLine className='h-4 w-4' />
-            </ActionButton>
-            {!noChatInput && (
+            {!humanInputFormData && (
+              <ActionButton onClick={() => {
+                copy(content)
+                Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+              }}>
+                <RiClipboardLine className='h-4 w-4' />
+              </ActionButton>
+            )}
+            {!noChatInput && !humanInputFormData && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
                 <RiResetLeftLine className='h-4 w-4' />
               </ActionButton>
             )}
-            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
+            {(config?.supportAnnotation && config.annotation_reply?.enabled) && !humanInputFormData && (
               <AnnotationCtrlButton
                 appId={config?.appId || ''}
                 messageId={id}

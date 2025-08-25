@@ -35,6 +35,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useParams } from 'next/navigation'
+import { submitHumanInputForm } from '@/service/workflow'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -499,9 +500,33 @@ export const useChat = (
             })
           }
         },
+        onHumanInputRequired: ({ data }) => {
+          responseItem.humanInputFormData = data
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
+        onWorkflowSuspended: ({ data }) => {
+          console.log(data.suspended_at_node_ids)
+          responseItem.workflowProcess!.status = WorkflowRunningStatus.Suspended
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
       },
     )
   }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled, fetchInspectVars, invalidAllLastRun])
+
+  const handleSubmitHumanInputForm = async (formID: string, formData: any) => {
+    await submitHumanInputForm(formID, formData)
+    // TODO deal with success
+  }
 
   return {
     conversationId: conversationId.current,
@@ -510,6 +535,7 @@ export const useChat = (
     handleSend,
     handleStop,
     handleRestart,
+    handleSubmitHumanInputForm,
     isResponding,
     suggestedQuestions,
   }

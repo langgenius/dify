@@ -22,6 +22,7 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 import ContentSwitch from '../content-switch'
+import HumanInputContent from './human-input-content'
 
 type AnswerProps = {
   item: ChatItem
@@ -36,6 +37,8 @@ type AnswerProps = {
   appData?: AppData
   noChatInput?: boolean
   switchSibling?: (siblingMessageId: string) => void
+  hideAvatar?: boolean
+  onHumanInputFormSubmit?: (formID: string, formData: any) => void
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -50,6 +53,8 @@ const Answer: FC<AnswerProps> = ({
   appData,
   noChatInput,
   switchSibling,
+  hideAvatar,
+  onHumanInputFormSubmit,
 }) => {
   const { t } = useTranslation()
   const {
@@ -61,6 +66,7 @@ const Answer: FC<AnswerProps> = ({
     workflowProcess,
     allFiles,
     message_files,
+    humanInputFormData,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -109,14 +115,16 @@ const Answer: FC<AnswerProps> = ({
 
   return (
     <div className='mb-2 flex last:mb-0'>
-      <div className='relative h-10 w-10 shrink-0'>
-        {answerIcon || <AnswerIcon />}
-        {responding && (
-          <div className='absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
-            <LoadingAnim type='avatar' />
-          </div>
-        )}
-      </div>
+      {!hideAvatar && (
+        <div className='relative h-10 w-10 shrink-0'>
+          {answerIcon || <AnswerIcon />}
+          {responding && (
+            <div className='absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
+              <LoadingAnim type='avatar' />
+            </div>
+          )}
+        </div>
+      )}
       <div className='chat-answer-container group ml-4 w-0 grow pb-4' ref={containerRef}>
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
@@ -170,6 +178,12 @@ const Answer: FC<AnswerProps> = ({
                 <BasicContent item={item} />
               )
             }
+            {humanInputFormData && (
+              <HumanInputContent
+                formData={humanInputFormData as any} // TODO type
+                onSubmit={onHumanInputFormSubmit}
+              />
+            )}
             {
               (hasAgentThoughts) && (
                 <AgentContent

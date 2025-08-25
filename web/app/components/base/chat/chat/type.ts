@@ -2,7 +2,7 @@ import type { TypeWithI18N } from '@/app/components/header/account-setting/model
 import type { Annotation, MessageRating } from '@/models/log'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVarType } from '@/app/components/workflow/types'
-import type { FileResponse } from '@/types/workflow'
+import type { FileResponse, HumanInputFormData } from '@/types/workflow'
 
 export type MessageMore = {
   time: string
@@ -103,6 +103,8 @@ export type IChatItem = {
   siblingIndex?: number
   prevSibling?: string
   nextSibling?: string
+  // for human input
+  humanInputFormData?: HumanInputFormData
 }
 
 export type Metadata = {

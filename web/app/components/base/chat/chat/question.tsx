@@ -32,6 +32,7 @@ type QuestionProps = {
   theme: Theme | null | undefined
   enableEdit?: boolean
   switchSibling?: (siblingMessageId: string) => void
+  hideAvatar?: boolean
 }
 
 const Question: FC<QuestionProps> = ({
@@ -40,6 +41,7 @@ const Question: FC<QuestionProps> = ({
   theme,
   enableEdit = true,
   switchSibling,
+  hideAvatar,
 }) => {
   const { t } = useTranslation()
 
@@ -162,15 +164,17 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div className='mt-1 h-[18px]' />
       </div>
-      <div className='h-10 w-10 shrink-0'>
-        {
-          questionIcon || (
-            <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
-              <User className='h-full w-full' />
-            </div>
-          )
-        }
-      </div>
+      {!hideAvatar && (
+        <div className='h-10 w-10 shrink-0'>
+          {
+            questionIcon || (
+              <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
+                <User className='h-full w-full' />
+              </div>
+            )
+          }
+        </div>
+      )}
     </div>
   )
 }

@@ -324,6 +324,7 @@ export enum WorkflowRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Stopped = 'stopped',
+  Suspended = 'suspended',
 }
 
 export enum WorkflowVersion {
