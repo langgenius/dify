@@ -1,6 +1,6 @@
 import logging
 
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from controllers.console.app.wraps import get_app_model
