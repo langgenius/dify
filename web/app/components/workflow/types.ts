@@ -377,6 +377,7 @@ export type WorkflowRunningData = {
     inputs?: string
     inputs_truncated: boolean
     process_data?: string
+    process_data_truncated: boolean
     outputs?: string
     outputs_truncated: boolean
     outputs_full_content?: {

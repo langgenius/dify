@@ -23,6 +23,7 @@ export type ResultPanelProps = {
   inputs?: string
   inputs_truncated?: boolean
   process_data?: string
+  process_data_truncated?: boolean
   outputs?: string | Record<string, any>
   outputs_truncated?: boolean
   outputs_full_content?: {
@@ -50,6 +51,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   inputs,
   inputs_truncated,
   process_data,
+  process_data_truncated,
   outputs,
   outputs_truncated,
   outputs_full_content,
@@ -136,6 +138,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
+            footer={process_data_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2 h-7' />}
           />
         )}
         {(outputs || status === 'running') && (

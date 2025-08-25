@@ -39,6 +39,7 @@ export type NodeTracing = {
   inputs: any
   inputs_truncated: boolean
   process_data: any
+  process_data_truncated: boolean
   outputs?: Record<string, any>
   outputs_truncated: boolean
   outputs_full_content?: {

@@ -185,6 +185,8 @@ const WorkflowPreview = () => {
             <ResultPanel
               inputs={workflowRunningData?.result?.inputs}
               inputs_truncated={workflowRunningData?.result?.inputs_truncated}
+              process_data={workflowRunningData?.result?.process_data}
+              process_data_truncated={workflowRunningData?.result?.process_data_truncated}
               outputs={workflowRunningData?.result?.outputs}
               outputs_truncated={workflowRunningData?.result?.outputs_truncated}
               outputs_full_content={workflowRunningData?.result?.outputs_full_content}
