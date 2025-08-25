@@ -13,7 +13,7 @@ api = ExternalApi(
     doc="/docs",  # Enable Swagger UI at /files/docs
 )
 
-files_ns = Namespace("files", description="File operations")
+files_ns = Namespace("files", description="File operations", path="/")
 
 from . import image_preview, tool_files, upload
 
