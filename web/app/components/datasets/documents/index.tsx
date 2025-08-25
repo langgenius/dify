@@ -270,7 +270,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     })
     invalidDocumentList()
     setTimerCanRun(true)
-    // mutateDatasetIndexingStatus(undefined, { revalidate: true })
     setNotionPageSelectorModalVisible(false)
   }
 

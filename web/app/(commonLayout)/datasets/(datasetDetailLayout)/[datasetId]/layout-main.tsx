@@ -15,7 +15,6 @@ import {
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
-import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
@@ -138,7 +137,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
                 ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
                 : undefined
             }
-            iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
+            iconType='dataset'
           />
         )}
         <div className='grow overflow-hidden bg-background-default-subtle'>{children}</div>

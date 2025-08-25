@@ -17,7 +17,7 @@ import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 
 export type IAppDetailNavProps = {
-  iconType?: 'app' | 'dataset' | 'notion'
+  iconType?: 'app' | 'dataset'
   navigation: Array<{
     name: string
     href: string
