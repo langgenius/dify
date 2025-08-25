@@ -206,7 +206,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               </div>
               {
                 !!parameterRules.length && (
-                  <div className='my-3 h-[1px] bg-divider-subtle' />
+                  <div className='my-3 h-px bg-divider-subtle' />
                 )
               }
               {

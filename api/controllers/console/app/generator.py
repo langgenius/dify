@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.error import (
@@ -12,6 +12,8 @@ from controllers.console.app.error import (
 )
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
+from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
@@ -123,13 +125,20 @@ class InstructionGenerateApi(Resource):
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("ideal_output", type=str, required=False, default="", location="json")
         args = parser.parse_args()
-
+        code_template = (
+            Python3CodeProvider.get_default_code()
+            if args["language"] == "python"
+            else (JavascriptCodeProvider.get_default_code())
+            if args["language"] == "javascript"
+            else ""
+        )
         try:
-            if args["current"] == "" and args["node_id"] != "":  # Generate from nothing for a workflow node
+            # Generate from nothing for a workflow node
+            if (args["current"] == code_template or args["current"] == "") and args["node_id"] != "":
                 from models import App, db
                 from services.workflow_service import WorkflowService
 
-                app = db.session.query(App).filter(App.id == args["flow_id"]).first()
+                app = db.session.query(App).where(App.id == args["flow_id"]).first()
                 if not app:
                     return {"error": f"app {args['flow_id']} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app)

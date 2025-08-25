@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import Any, Optional
 
 import pytz
-from celery import Celery, Task  # type: ignore
-from celery.schedules import crontab  # type: ignore
+from celery import Celery, Task
+from celery.schedules import crontab
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -66,7 +66,6 @@ def init_app(app: DifyApp) -> Celery:
         task_cls=FlaskTask,
         broker=dify_config.CELERY_BROKER_URL,
         backend=dify_config.CELERY_BACKEND,
-        task_ignore_result=True,
     )
 
     celery_app.conf.update(
@@ -77,6 +76,7 @@ def init_app(app: DifyApp) -> Celery:
         worker_task_log_format=dify_config.LOG_FORMAT,
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
+        task_ignore_result=True,
     )
 
     # Apply SSL configuration if enabled
@@ -145,13 +145,19 @@ def init_app(app: DifyApp) -> Celery:
                 minutes=dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30
             ),
         }
-    if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:
+    if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),
         }
-
+    if dify_config.WORKFLOW_LOG_CLEANUP_ENABLED:
+        # 2:00 AM every day
+        imports.append("schedule.clean_workflow_runlogs_precise")
+        beat_schedule["clean_workflow_runlogs_precise"] = {
+            "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
+            "schedule": crontab(minute="0", hour="2"),
+        }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

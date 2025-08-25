@@ -70,7 +70,7 @@ const Filter: FC<FilterProps> = ({
               })
             }
           </div>
-          <Divider type='horizontal' className='my-0 h-[1px] bg-divider-subtle' />
+          <Divider type='horizontal' className='my-0 h-px bg-divider-subtle' />
           <FilterSwitch enabled={isOnlyShowNamedVersions} handleSwitch={handleSwitch} />
         </div>
       </PortalToFollowElemContent>

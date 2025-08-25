@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from flask_restful import reqparse
+from flask_restx import reqparse
 
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService

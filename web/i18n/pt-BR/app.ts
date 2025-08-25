@@ -276,6 +276,7 @@ const translation = {
       themeLightDesc: 'Use aparência clara',
       themeSystemDesc: 'Siga a aparência do seu sistema operacional',
       languageCategoryDesc: 'Mudar o idioma da interface',
+      slashDesc: 'Execute comandos como /tema, /idioma',
     },
     emptyState: {
       noAppsFound: 'Nenhum aplicativo encontrado',
@@ -290,6 +291,7 @@ const translation = {
       knowledgeBases: 'Bases de conhecimento',
       plugins: 'Plugins',
       workflowNodes: 'Nós de fluxo de trabalho',
+      commands: 'Comandos',
     },
     searching: 'Procurando...',
     searchTitle: 'Pesquisar qualquer coisa',

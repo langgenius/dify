@@ -1,9 +1,8 @@
-import datetime
 import uuid
 from collections import OrderedDict
 from typing import Any, NamedTuple
 
-from flask_restful import marshal
+from flask_restx import marshal
 
 from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_FIELDS,
@@ -13,6 +12,7 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
+from libs.datetime_utils import naive_utc_now
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
@@ -57,7 +57,7 @@ class TestWorkflowDraftVariableFields:
         )
 
         sys_var.id = str(uuid.uuid4())
-        sys_var.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        sys_var.last_edited_at = naive_utc_now()
         sys_var.visible = True
 
         expected_without_value = OrderedDict(
@@ -88,7 +88,7 @@ class TestWorkflowDraftVariableFields:
         )
 
         node_var.id = str(uuid.uuid4())
-        node_var.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        node_var.last_edited_at = naive_utc_now()
 
         expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {

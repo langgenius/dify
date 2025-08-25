@@ -2,7 +2,7 @@ import logging
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
