@@ -12,6 +12,7 @@ from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
+    SensitiveDocumentError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
@@ -23,14 +24,6 @@ from controllers.console.wraps import (
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
 from services.file_service import FileService
-
-from .error import (
-    FileTooLargeError,
-    NoFileUploadedError,
-    SensitiveDocumentError,
-    TooManyFilesError,
-    UnsupportedFileTypeError,
-)
 
 PREVIEW_WORDS_LIMIT = 3000
 
