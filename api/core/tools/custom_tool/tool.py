@@ -286,7 +286,9 @@ class ApiTool(Tool):
         method_lc = method.lower()
         if method_lc not in _METHOD_MAP:
             raise ValueError(f"Invalid http method {method}")
-        response: httpx.Response = _METHOD_MAP[method_lc]( # https://discuss.python.org/t/type-inference-for-function-return-types/42926
+        response: httpx.Response = _METHOD_MAP[
+            method_lc
+        ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,
             params=params,
             headers=headers,
