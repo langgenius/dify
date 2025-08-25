@@ -64,7 +64,9 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // Compute shareCode directly
   const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
-  updateShareCode(shareCode)
+  useEffect(() => {
+    updateShareCode(shareCode)
+  }, [shareCode, updateShareCode])
 
   const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
   const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(false)
