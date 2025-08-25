@@ -3,10 +3,10 @@ import time
 from typing import Optional
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.tools.utils.rag_web_reader import get_image_upload_file_ids
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
@@ -24,7 +24,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
     Usage: clean_document_task.delay(document_id, dataset_id)
     """
-    logging.info(click.style("Start clean document when document deleted: {}".format(document_id), fg="green"))
+    logging.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -51,7 +51,8 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                     except Exception:
                         logging.exception(
                             "Delete image_files failed when storage deleted, \
-                                          image_upload_file_is: {}".format(upload_file_id)
+                                          image_upload_file_is: %s",
+                            upload_file_id,
                         )
                     db.session.delete(image_file)
                 db.session.delete(segment)
@@ -63,7 +64,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 try:
                     storage.delete(file.key)
                 except Exception:
-                    logging.exception("Delete file failed when document deleted, file_id: {}".format(file_id))
+                    logging.exception("Delete file failed when document deleted, file_id: %s", file_id)
                 db.session.delete(file)
                 db.session.commit()
 
@@ -77,7 +78,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Cleaned document when document deleted: {} latency: {}".format(document_id, end_at - start_at),
+                f"Cleaned document when document deleted: {document_id} latency: {end_at - start_at}",
                 fg="green",
             )
         )

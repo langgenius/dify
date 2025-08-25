@@ -101,7 +101,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       })
       setInputs(newInputs)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig, isChatModel])
 
   const [modelChanged, setModelChanged] = useState(false)
@@ -161,7 +160,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   // variables

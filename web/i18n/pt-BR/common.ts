@@ -237,6 +237,7 @@ const translation = {
       newEmail: 'Crie um novo endereço de e-mail',
       content2: 'Seu email atual é <email>{{email}}</email>. O código de verificação foi enviado para este endereço de email.',
       content1: 'Se você continuar, enviaremos um código de verificação para <email>{{email}}</email> para reautenticação.',
+      unAvailableEmail: 'Este e-mail está temporariamente indisponível.',
     },
   },
   members: {
@@ -715,6 +716,10 @@ const translation = {
     browse: 'navegar',
   },
   you: 'Você',
+  avatar: {
+    deleteTitle: 'Remover Avatar',
+    deleteDescription: 'Você tem certeza de que deseja remover sua foto de perfil? Sua conta usará o avatar padrão inicial.',
+  },
 }
 
 export default translation

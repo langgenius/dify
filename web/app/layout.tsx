@@ -3,7 +3,7 @@ import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowserInitializer from './components/browser-initializer'
 import SentryInitializer from './components/sentry-initializer'
-import { getLocaleOnServer } from '@/i18n/server'
+import { getLocaleOnServer } from '@/i18n-config/server'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
 import './styles/globals.css'
@@ -62,24 +62,25 @@ const LocaleLayout = async ({
         className="color-scheme h-full select-auto"
         {...datasetMap}
       >
-        <BrowserInitializer>
-          <SentryInitializer>
-            <TanstackQueryInitializer>
-              <ThemeProvider
-                attribute='data-theme'
-                defaultTheme='system'
-                enableSystem
-                disableTransitionOnChange
-              >
+        <ThemeProvider
+          attribute='data-theme'
+          defaultTheme='system'
+          enableSystem
+          disableTransitionOnChange
+          enableColorScheme={false}
+        >
+          <BrowserInitializer>
+            <SentryInitializer>
+              <TanstackQueryInitializer>
                 <I18nServer>
                   <GlobalPublicStoreProvider>
                     {children}
                   </GlobalPublicStoreProvider>
                 </I18nServer>
-              </ThemeProvider>
-            </TanstackQueryInitializer>
-          </SentryInitializer>
-        </BrowserInitializer>
+              </TanstackQueryInitializer>
+            </SentryInitializer>
+          </BrowserInitializer>
+        </ThemeProvider>
         <RoutePrefixHandle />
       </body>
     </html>

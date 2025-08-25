@@ -106,8 +106,8 @@ const Uploader: FC<Props> = ({
             <div className='flex w-full items-center justify-center space-x-2'>
               <RiUploadCloud2Line className='h-6 w-6 text-text-tertiary' />
               <div className='text-text-tertiary'>
-                {t('datasetCreation.stepOne.uploader.button')}
-                <span className='cursor-pointer pl-1 text-text-accent' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
+                {t('app.dslUploader.button')}
+                <span className='cursor-pointer pl-1 text-text-accent' onClick={selectHandle}>{t('app.dslUploader.browse')}</span>
               </div>
             </div>
             {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}

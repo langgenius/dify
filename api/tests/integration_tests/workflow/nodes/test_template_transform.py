@@ -26,9 +26,9 @@ def test_execute_code(setup_code_executor_mock):
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "template": code,
         },
@@ -66,8 +66,8 @@ def test_execute_code(setup_code_executor_mock):
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(["1", "123", "args1"], 1)
-    variable_pool.add(["1", "123", "args2"], 3)
+    variable_pool.add(["1", "args1"], 1)
+    variable_pool.add(["1", "args2"], 3)
 
     node = TemplateTransformNode(
         id=str(uuid.uuid4()),

@@ -1,7 +1,9 @@
+from datetime import datetime
+
 import pytz
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,14 +11,13 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.auth.error import (
-    AccountInFreezeError,
     EmailAlreadyInUseError,
     EmailChangeLimitError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -328,6 +329,9 @@ class EducationVerifyApi(Resource):
 class EducationApi(Resource):
     status_fields = {
         "result": fields.Boolean,
+        "is_student": fields.Boolean,
+        "expire_at": TimestampField,
+        "allow_refresh": fields.Boolean,
     }
 
     @setup_required
@@ -355,7 +359,11 @@ class EducationApi(Resource):
     def get(self):
         account = current_user
 
-        return BillingService.EducationIdentity.is_active(account.id)
+        res = BillingService.EducationIdentity.status(account.id)
+        # convert expire_at to UTC timestamp from isoformat
+        if res and "expire_at" in res:
+            res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
+        return res
 
 
 class EducationAutoCompleteApi(Resource):
@@ -496,7 +504,7 @@ class ChangeEmailResetApi(Resource):
         if current_user.email != old_email:
             raise AccountNotFound()
 
-        updated_account = AccountService.update_account(current_user, email=args["new_email"])
+        updated_account = AccountService.update_account_email(current_user, email=args["new_email"])
 
         AccountService.send_change_email_completed_notify_email(
             email=args["new_email"],

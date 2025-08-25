@@ -168,7 +168,57 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
-        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
+        case (
+            ".txt"
+            | ".markdown"
+            | ".md"
+            | ".html"
+            | ".htm"
+            | ".xml"
+            | ".c"
+            | ".h"
+            | ".cpp"
+            | ".hpp"
+            | ".cc"
+            | ".cxx"
+            | ".c++"
+            | ".py"
+            | ".js"
+            | ".ts"
+            | ".jsx"
+            | ".tsx"
+            | ".java"
+            | ".php"
+            | ".rb"
+            | ".go"
+            | ".rs"
+            | ".swift"
+            | ".kt"
+            | ".scala"
+            | ".sh"
+            | ".bash"
+            | ".bat"
+            | ".ps1"
+            | ".sql"
+            | ".r"
+            | ".m"
+            | ".pl"
+            | ".lua"
+            | ".vim"
+            | ".asm"
+            | ".s"
+            | ".css"
+            | ".scss"
+            | ".less"
+            | ".sass"
+            | ".ini"
+            | ".cfg"
+            | ".conf"
+            | ".toml"
+            | ".env"
+            | ".log"
+            | ".vtt"
+        ):
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
@@ -194,8 +244,6 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_eml(file_content)
         case ".msg":
             return _extract_text_from_msg(file_content)
-        case ".vtt":
-            return _extract_text_from_vtt(file_content)
         case ".properties":
             return _extract_text_from_properties(file_content)
         case _:
@@ -305,7 +353,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from DOC: {str(e)}") from e
 
 
-def paser_docx_part(block, doc: Document, content_items, i):
+def parser_docx_part(block, doc: Document, content_items, i):
     if isinstance(block, CT_P):
         content_items.append((i, "paragraph", Paragraph(block, doc)))
     elif isinstance(block, CT_Tbl):
@@ -329,7 +377,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         part = next(it, None)
         i = 0
         while part is not None:
-            paser_docx_part(part, doc, content_items, i)
+            parser_docx_part(part, doc, content_items, i)
             i = i + 1
             part = next(it, None)
 
@@ -363,7 +411,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
 
                         text.append(markdown_table)
                 except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC: {e}")
+                    logger.warning("Failed to extract table from DOC: %s", e)
                     continue
 
         return "\n".join(text)
@@ -597,7 +645,7 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
 
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
-            if spk == None:
+            if spk is None:
                 merged_results.append((None, current_text))
                 continue
 

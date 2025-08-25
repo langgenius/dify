@@ -1,6 +1,6 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/i18n/language'
+import type { LanguagesSupported } from '@/i18n-config/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type {
   RerankingModeEnum,
@@ -99,14 +99,6 @@ export type SelectTypeFormItem = {
   variable: string
   required: boolean
   options: string[]
-  hide: boolean
-}
-
-export type ParagraphTypeFormItem = {
-  default: string
-  label: string
-  variable: string
-  required: boolean
   hide: boolean
 }
 /**

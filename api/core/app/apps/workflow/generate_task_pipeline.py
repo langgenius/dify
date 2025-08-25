@@ -246,7 +246,7 @@ class WorkflowAppGenerateTaskPipeline:
                 else:
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception:
-                logger.exception(f"Fails to get audio trunk, task_id: {task_id}")
+                logger.exception("Fails to get audio trunk, task_id: %s", task_id)
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
@@ -711,7 +711,7 @@ class WorkflowAppGenerateTaskPipeline:
         # Initialize graph runtime state
         graph_runtime_state = None
 
-        for queue_message in self._base_task_pipeline._queue_manager.listen():
+        for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
 
             match event:

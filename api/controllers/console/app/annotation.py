@@ -1,11 +1,12 @@
+from typing import Literal
+
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.console import api
-from controllers.console.app.error import NoFileUploadedError
-from controllers.console.datasets.error import TooManyFilesError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -25,7 +26,7 @@ class AnnotationReplyActionApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
-    def post(self, app_id, action):
+    def post(self, app_id, action: Literal["enable", "disable"]):
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -39,8 +40,6 @@ class AnnotationReplyActionApi(Resource):
             result = AppAnnotationService.enable_app_annotation(args, app_id)
         elif action == "disable":
             result = AppAnnotationService.disable_app_annotation(app_id)
-        else:
-            raise ValueError("Unsupported annotation reply action")
         return result, 200
 
 
@@ -86,7 +85,7 @@ class AnnotationReplyActionStatusApi(Resource):
             raise Forbidden()
 
         job_id = str(job_id)
-        app_annotation_job_key = "{}_app_annotation_job_{}".format(action, str(job_id))
+        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -94,13 +93,13 @@ class AnnotationReplyActionStatusApi(Resource):
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            app_annotation_error_key = "{}_app_annotation_error_{}".format(action, str(job_id))
+            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
             error_msg = redis_client.get(app_annotation_error_key).decode()
 
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
 
-class AnnotationListApi(Resource):
+class AnnotationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -123,22 +122,6 @@ class AnnotationListApi(Resource):
         }
         return response, 200
 
-
-class AnnotationExportApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        app_id = str(app_id)
-        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
-        response = {"data": marshal(annotation_list, annotation_fields)}
-        return response, 200
-
-
-class AnnotationCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -155,6 +138,48 @@ class AnnotationCreateApi(Resource):
         args = parser.parse_args()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
         return annotation
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, app_id):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        app_id = str(app_id)
+
+        # Use request.args.getlist to get annotation_ids array directly
+        annotation_ids = request.args.getlist("annotation_id")
+
+        # If annotation_ids are provided, handle batch deletion
+        if annotation_ids:
+            # Check if any annotation_ids contain empty strings or invalid values
+            if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
+                return {
+                    "code": "bad_request",
+                    "message": "annotation_ids are required if the parameter is provided.",
+                }, 400
+
+            result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
+            return result, 204
+        # If no annotation_ids are provided, handle clearing all annotations
+        else:
+            AppAnnotationService.clear_all_annotations(app_id)
+            return {"result": "success"}, 204
+
+
+class AnnotationExportApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, app_id):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        app_id = str(app_id)
+        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
+        response = {"data": marshal(annotation_list, annotation_fields)}
+        return response, 200
 
 
 class AnnotationUpdateDeleteApi(Resource):
@@ -199,14 +224,15 @@ class AnnotationBatchImportApi(Resource):
             raise Forbidden()
 
         app_id = str(app_id)
-        # get file from request
-        file = request.files["file"]
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
 
         if len(request.files) > 1:
             raise TooManyFilesError()
+
+        # get file from request
+        file = request.files["file"]
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
@@ -223,14 +249,14 @@ class AnnotationBatchImportStatusApi(Resource):
             raise Forbidden()
 
         job_id = str(job_id)
-        indexing_cache_key = "app_annotation_batch_import_{}".format(str(job_id))
+        indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            indexing_error_msg_key = "app_annotation_batch_import_error_msg_{}".format(str(job_id))
+            indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
             error_msg = redis_client.get(indexing_error_msg_key).decode()
 
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
@@ -265,7 +291,7 @@ api.add_resource(AnnotationReplyActionApi, "/apps/<uuid:app_id>/annotation-reply
 api.add_resource(
     AnnotationReplyActionStatusApi, "/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>"
 )
-api.add_resource(AnnotationListApi, "/apps/<uuid:app_id>/annotations")
+api.add_resource(AnnotationApi, "/apps/<uuid:app_id>/annotations")
 api.add_resource(AnnotationExportApi, "/apps/<uuid:app_id>/annotations/export")
 api.add_resource(AnnotationUpdateDeleteApi, "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 api.add_resource(AnnotationBatchImportApi, "/apps/<uuid:app_id>/annotations/batch-import")

@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 import logging
 import os
 import platform
@@ -7,7 +8,7 @@ import sys
 from typing import Union
 
 import flask
-from celery.signals import worker_init  # type: ignore
+from celery.signals import worker_init
 from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
 from configs import dify_config
@@ -106,7 +107,7 @@ def init_app(app: DifyApp):
         """Custom logging handler that creates spans for logging.exception() calls"""
 
         def emit(self, record: logging.LogRecord):
-            try:
+            with contextlib.suppress(Exception):
                 if record.exc_info:
                     tracer = get_tracer_provider().get_tracer("dify.exception.logging")
                     with tracer.start_as_current_span(
@@ -126,9 +127,6 @@ def init_app(app: DifyApp):
                         if record.exc_info[0]:
                             span.set_attribute("exception.type", record.exc_info[0].__name__)
 
-            except Exception:
-                pass
-
     from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
@@ -136,6 +134,8 @@ def init_app(app: DifyApp):
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
     from opentelemetry.metrics import get_meter, get_meter_provider, set_meter_provider
     from opentelemetry.propagate import set_global_textmap
@@ -234,6 +234,8 @@ def init_app(app: DifyApp):
         CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)
+    RedisInstrumentor().instrument()
+    RequestsInstrumentor().instrument()
     atexit.register(shutdown_tracer)
 
 

@@ -46,9 +46,9 @@ class ExternalDatasetService:
     def validate_api_list(cls, api_settings: dict):
         if not api_settings:
             raise ValueError("api list is empty")
-        if "endpoint" not in api_settings and not api_settings["endpoint"]:
+        if not api_settings.get("endpoint"):
             raise ValueError("endpoint is required")
-        if "api_key" not in api_settings and not api_settings["api_key"]:
+        if not api_settings.get("api_key"):
             raise ValueError("api_key is required")
 
     @staticmethod

@@ -241,6 +241,7 @@ const translation = {
       newEmail: 'Ustvarite nov e-poštni naslov',
       content2: 'Vaš trenutni elektronski naslov je <email>{{email}}</email>. Koda za preverjanje je bila poslana na ta elektronski naslov.',
       authTip: 'Ko bo vaš e-poštni naslov spremenjen, se računi Google ali GitHub, povezani z vašim starim e-poštnim naslovom, ne bodo mogli več prijaviti v ta račun.',
+      unAvailableEmail: 'Ta e-pošta trenutno ni na voljo.',
     },
   },
   members: {
@@ -913,6 +914,10 @@ const translation = {
     dropImageHere: 'Tukaj spustite svojo sliko ali',
   },
   you: 'Ti',
+  avatar: {
+    deleteTitle: 'Odstrani avatar',
+    deleteDescription: 'Ali ste prepričani, da želite odstraniti svojo profilno sliko? Vaš račun bo uporabljal privzeti začetni avatar.',
+  },
 }
 
 export default translation

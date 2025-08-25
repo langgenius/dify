@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'HTTP ヘッダーキー。アイデアがない場合は "Authorization" として残しておいてもかまいません。またはカスタム値に設定できます。',
       types: {
         none: 'なし',
-        api_key: 'API キー',
         apiKeyPlaceholder: 'API キーの HTTP ヘッダー名',
         apiValuePlaceholder: 'API キーを入力してください',
         api_key_query: 'クエリパラメータ',
@@ -192,6 +191,8 @@ const translation = {
       cancel: 'キャンセル',
       save: '保存',
       confirm: '追加して承認',
+      timeout: 'タイムアウト',
+      sseReadTimeout: 'SSE 読み取りタイムアウト',
     },
     delete: 'MCPサーバーを削除',
     deleteConfirmTitle: '{{mcp}} を削除しますか？',

@@ -41,6 +41,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         options: [],
         is_context_var,
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'number') {
@@ -51,6 +52,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         type,
         options: [],
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'select') {
@@ -62,6 +64,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         options: content.options,
         is_context_var,
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'file') {
@@ -77,6 +80,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           number_limits: 1,
         },
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'file-list') {
@@ -92,6 +96,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           number_limits: content.max_length,
         },
         hide: content.hide,
+        default: content.default,
       })
     }
     else {
@@ -148,7 +153,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           variable: item.key,
           required: item.required !== false, // default true
           options: item.options,
-          default: '',
+          default: item.default ?? '',
           hide: item.hide,
         },
       } as any)

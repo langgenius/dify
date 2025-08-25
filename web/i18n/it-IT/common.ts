@@ -249,6 +249,7 @@ const translation = {
       content4: 'Ti abbiamo appena inviato un codice di verifica temporaneo a <email>{{email}}</email>.',
       content1: 'Se continui, invieremo un codice di verifica a <email>{{email}}</email> per la riautenticazione.',
       sendVerifyCode: 'Invia codice di verifica',
+      unAvailableEmail: 'Questa email è temporaneamente non disponibile.',
     },
   },
   members: {
@@ -746,6 +747,10 @@ const translation = {
     dropImageHere: 'Trascina la tua immagine qui, oppure',
   },
   you: 'Tu',
+  avatar: {
+    deleteTitle: 'Rimuovi avatar',
+    deleteDescription: 'Sei sicuro di voler rimuovere la tua immagine del profilo? Il tuo account utilizzerà l\'avatar iniziale predefinito.',
+  },
 }
 
 export default translation

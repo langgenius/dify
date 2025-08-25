@@ -80,7 +80,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 prompt_messages_tools = []
 
             message_file_ids: list[str] = []
-            agent_thought = self.create_agent_thought(
+            agent_thought_id = self.create_agent_thought(
                 message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
             )
 
@@ -114,7 +114,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 for chunk in chunks:
                     if is_first_chunk:
                         self.queue_manager.publish(
-                            QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                            QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                         )
                         is_first_chunk = False
                     # check if there is any tool call
@@ -126,8 +126,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_call_inputs = json.dumps(
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
-                        except json.JSONDecodeError:
-                            # ensure ascii to avoid encoding error
+                        except TypeError:
+                            # fallback: force ASCII to handle non-serializable objects
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                     if chunk.delta.message and chunk.delta.message.content:
@@ -153,8 +153,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_call_inputs = json.dumps(
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
-                    except json.JSONDecodeError:
-                        # ensure ascii to avoid encoding error
+                    except TypeError:
+                        # fallback: force ASCII to handle non-serializable objects
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                 if result.usage:
@@ -172,7 +172,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     result.message.content = ""
 
                 self.queue_manager.publish(
-                    QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
                 yield LLMResultChunk(
@@ -205,7 +205,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             # save thought
             self.save_agent_thought(
-                agent_thought=agent_thought,
+                agent_thought_id=agent_thought_id,
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
@@ -216,7 +216,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage=current_llm_usage,
             )
             self.queue_manager.publish(
-                QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
             )
 
             final_answer += response + "\n"
@@ -276,7 +276,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             if len(tool_responses) > 0:
                 # save agent thought
                 self.save_agent_thought(
-                    agent_thought=agent_thought,
+                    agent_thought_id=agent_thought_id,
                     tool_name="",
                     tool_input="",
                     thought="",
@@ -291,7 +291,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     messages_ids=message_file_ids,
                 )
                 self.queue_manager.publish(
-                    QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
             # update prompt tool
@@ -395,9 +395,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=query))
-
             # get image detail config
             image_detail_config = (
                 self.application_generate_entity.file_upload_config.image_config.detail
@@ -408,6 +405,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 else None
             )
             image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in self.files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(
@@ -415,6 +414,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         image_detail_config=image_detail_config,
                     )
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:

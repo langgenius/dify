@@ -148,6 +148,8 @@ SupportedComparisonOperator = Literal[
     "is not",
     "empty",
     "not empty",
+    "in",
+    "not in",
     # for number
     "=",
     "≠",
@@ -165,7 +167,7 @@ class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
-    completion_params: dict[str, Any] = {}
+    completion_params: dict[str, Any] = Field(default_factory=dict)
 
 
 class Condition(BaseModel):

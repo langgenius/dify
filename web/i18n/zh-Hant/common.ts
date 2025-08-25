@@ -197,7 +197,6 @@ const translation = {
     showAppLength: '顯示 {{length}} 個應用',
     delete: '刪除帳戶',
     deleteTip: '刪除您的帳戶將永久刪除您的所有資料並且無法恢復。',
-    deleteConfirmTip: '請將以下內容從您的註冊電子郵件發送至 ',
     account: '帳戶',
     myAccount: '我的帳戶',
     studio: '工作室',
@@ -237,6 +236,7 @@ const translation = {
       existingEmail: '此電子郵件的用戶已經存在。',
       authTip: '一旦您的電子郵件更改，與您的舊電子郵件相關聯的 Google 或 GitHub 帳戶將無法再登錄此帳戶。',
       resendTip: '沒有收到代碼嗎？',
+      unAvailableEmail: '此郵件暫時無法使用。',
     },
   },
   members: {
@@ -715,6 +715,10 @@ const translation = {
     dropImageHere: '將您的圖片放在這裡，或',
   },
   you: '你',
+  avatar: {
+    deleteTitle: '移除頭像',
+    deleteDescription: '您確定要刪除您的個人資料照片嗎？您的帳戶將使用默認的初始頭像。',
+  },
 }
 
 export default translation

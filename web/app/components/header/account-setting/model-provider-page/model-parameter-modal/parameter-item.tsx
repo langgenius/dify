@@ -10,7 +10,6 @@ import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
 import TagInput from '@/app/components/base/tag-input'
-import { useTranslation } from 'react-i18next'
 
 export type ParameterValue = number | string | string[] | boolean | undefined
 
@@ -28,7 +27,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onSwitch,
   isInWorkflow,
 }) => {
-  const { t } = useTranslation()
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)

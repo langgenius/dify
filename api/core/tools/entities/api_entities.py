@@ -62,7 +62,7 @@ class ToolProviderApiEntity(BaseModel):
                         parameter.pop("input_schema", None)
         # -------------
         optional_fields = self.optional_field("server_url", self.server_url)
-        if self.type == ToolProviderType.MCP.value:
+        if self.type == ToolProviderType.MCP:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
             optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
         return {

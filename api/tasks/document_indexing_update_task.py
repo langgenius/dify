@@ -1,13 +1,13 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 
 
@@ -20,18 +20,18 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_update_task.delay(dataset_id, document_id)
     """
-    logging.info(click.style("Start update document: {}".format(document_id), fg="green"))
+    logging.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
     document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
     if not document:
-        logging.info(click.style("Document not found: {}".format(document_id), fg="red"))
+        logging.info(click.style(f"Document not found: {document_id}", fg="red"))
         db.session.close()
         return
 
     document.indexing_status = "parsing"
-    document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    document.processing_started_at = naive_utc_now()
     db.session.commit()
 
     # delete all document segment and index
@@ -69,10 +69,10 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         indexing_runner = IndexingRunner()
         indexing_runner.run([document])
         end_at = time.perf_counter()
-        logging.info(click.style("update document: {} latency: {}".format(document.id, end_at - start_at), fg="green"))
+        logging.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logging.info(click.style(str(ex), fg="yellow"))
     except Exception:
-        logging.exception("document_indexing_update_task failed, document_id: {}".format(document_id))
+        logging.exception("document_indexing_update_task failed, document_id: %s", document_id)
     finally:
         db.session.close()

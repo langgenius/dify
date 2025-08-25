@@ -1,4 +1,3 @@
-import datetime
 import uuid
 from typing import cast
 
@@ -10,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -74,14 +74,14 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
-        enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))
+        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        enable_app_annotation_job_key = "enable_app_annotation_job_{}".format(str(job_id))
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
         enable_annotation_reply_task.delay(
@@ -97,14 +97,14 @@ class AppAnnotationService:
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> dict:
-        disable_app_annotation_key = "disable_app_annotation_{}".format(str(app_id))
+        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        disable_app_annotation_job_key = "disable_app_annotation_job_{}".format(str(job_id))
+        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(disable_app_annotation_job_key, "waiting")
         disable_annotation_reply_task.delay(str(job_id), app_id, current_user.current_tenant_id)
@@ -127,8 +127,8 @@ class AppAnnotationService:
                 .where(MessageAnnotation.app_id == app_id)
                 .where(
                     or_(
-                        MessageAnnotation.question.ilike("%{}%".format(keyword)),
-                        MessageAnnotation.content.ilike("%{}%".format(keyword)),
+                        MessageAnnotation.question.ilike(f"%{keyword}%"),
+                        MessageAnnotation.content.ilike(f"%{keyword}%"),
                     )
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
@@ -267,6 +267,54 @@ class AppAnnotationService:
             )
 
     @classmethod
+    def delete_app_annotations_in_batch(cls, app_id: str, annotation_ids: list[str]):
+        # get app info
+        app = (
+            db.session.query(App)
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        # Fetch annotations and their settings in a single query
+        annotations_to_delete = (
+            db.session.query(MessageAnnotation, AppAnnotationSetting)
+            .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
+            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .all()
+        )
+
+        if not annotations_to_delete:
+            return {"deleted_count": 0}
+
+        # Step 1: Extract IDs for bulk operations
+        annotation_ids_to_delete = [annotation.id for annotation, _ in annotations_to_delete]
+
+        # Step 2: Bulk delete hit histories in a single query
+        db.session.query(AppAnnotationHitHistory).where(
+            AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)
+        ).delete(synchronize_session=False)
+
+        # Step 3: Trigger async tasks for search index deletion
+        for annotation, annotation_setting in annotations_to_delete:
+            if annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, annotation_setting.collection_binding_id
+                )
+
+        # Step 4: Bulk delete annotations in a single query
+        deleted_count = (
+            db.session.query(MessageAnnotation)
+            .where(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            .delete(synchronize_session=False)
+        )
+
+        db.session.commit()
+        return {"deleted_count": deleted_count}
+
+    @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
         # get app info
         app = (
@@ -280,7 +328,7 @@ class AppAnnotationService:
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, dtype=str)
             result = []
             for index, row in df.iterrows():
                 content = {"question": row.iloc[0], "answer": row.iloc[1]}
@@ -295,7 +343,7 @@ class AppAnnotationService:
                     raise ValueError("The number of annotations exceeds the limit of your subscription.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = "app_annotation_batch_import_{}".format(str(job_id))
+            indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_import_annotations_task.delay(
@@ -425,7 +473,7 @@ class AppAnnotationService:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        annotation_setting.updated_at = naive_utc_now()
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -440,3 +488,38 @@ class AppAnnotationService:
                 "embedding_model_name": collection_binding_detail.model_name,
             },
         }
+
+    @classmethod
+    def clear_all_annotations(cls, app_id: str) -> dict:
+        app = (
+            db.session.query(App)
+            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        # if annotation reply is enabled, delete annotation index
+        app_annotation_setting = (
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+        )
+
+        annotations_query = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id)
+        for annotation in annotations_query.yield_per(100):
+            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).where(
+                AppAnnotationHitHistory.annotation_id == annotation.id
+            )
+            for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
+                db.session.delete(annotation_hit_history)
+
+            # if annotation reply is enabled, delete annotation index
+            if app_annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, app_annotation_setting.collection_binding_id
+                )
+
+            db.session.delete(annotation)
+
+        db.session.commit()
+        return {"result": "success"}

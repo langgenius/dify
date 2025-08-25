@@ -237,6 +237,7 @@ const translation = {
       verifyEmail: 'Xác minh email hiện tại của bạn',
       codePlaceholder: 'Dán mã 6 chữ số',
       authTip: 'Khi email của bạn được thay đổi, các tài khoản Google hoặc GitHub liên kết với email cũ của bạn sẽ không còn có thể đăng nhập vào tài khoản này.',
+      unAvailableEmail: 'Email này hiện không khả dụng tạm thời.',
     },
   },
   members: {
@@ -715,6 +716,10 @@ const translation = {
     browse: 'duyệt',
   },
   you: 'Bạn',
+  avatar: {
+    deleteTitle: 'Xóa Ảnh Đại Diện',
+    deleteDescription: 'Bạn có chắc chắn muốn xóa ảnh đại diện của mình không? Tài khoản của bạn sẽ sử dụng avatar mặc định.',
+  },
 }
 
 export default translation

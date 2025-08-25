@@ -11,7 +11,9 @@ class ElasticSearchVectorTest(AbstractVectorTest):
         self.attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self.vector = ElasticSearchVector(
             index_name=self.collection_name.lower(),
-            config=ElasticSearchConfig(host="http://localhost", port="9200", username="elastic", password="elastic"),
+            config=ElasticSearchConfig(
+                use_cloud=False, host="http://localhost", port="9200", username="elastic", password="elastic"
+            ),
             attributes=self.attributes,
         )
 

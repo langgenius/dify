@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from werkzeug.exceptions import NotFound
+from sqlalchemy.exc import SQLAlchemyError
 
 import app
 from configs import dify_config
@@ -42,8 +42,8 @@ def clean_messages():
                 .all()
             )
 
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if not messages:
             break
         for message in messages:
@@ -87,4 +87,4 @@ def clean_messages():
                 db.session.query(Message).where(Message.id == message.id).delete()
                 db.session.commit()
     end_at = time.perf_counter()
-    click.echo(click.style("Cleaned messages from db success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style(f"Cleaned messages from db success latency: {end_at - start_at}", fg="green"))

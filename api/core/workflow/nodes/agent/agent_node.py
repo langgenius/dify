@@ -13,8 +13,9 @@ from core.agent.strategy.plugin import PluginAgentStrategy
 from core.file import File, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.request import InvokeCredentials
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
@@ -50,6 +51,7 @@ from .exc import (
     AgentInputTypeError,
     AgentInvocationError,
     AgentMessageTransformError,
+    AgentNodeError,
     AgentVariableNotFoundError,
     AgentVariableTypeError,
     ToolFileNotFoundError,
@@ -557,7 +559,7 @@ class AgentNode(BaseNode):
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == NodeType.AGENT:
                     msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                    llm_usage = LLMUsage.from_metadata(msg_metadata)
+                    llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
                     agent_execution_metadata = {
                         WorkflowNodeExecutionMetadataKey(key): value
                         for key, value in msg_metadata.items()
@@ -593,7 +595,14 @@ class AgentNode(BaseNode):
                     variables[variable_name] = variable_value
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
-                assert isinstance(message.meta, File)
+                assert isinstance(message.meta, dict)
+                # Validate that meta contains a 'file' key
+                if "file" not in message.meta:
+                    raise AgentNodeError("File message is missing 'file' key in meta")
+
+                # Validate that the file is an instance of File
+                if not isinstance(message.meta["file"], File):
+                    raise AgentNodeError(f"Expected File object but got {type(message.meta['file']).__name__}")
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
@@ -684,7 +693,13 @@ class AgentNode(BaseNode):
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
+                outputs={
+                    "text": text,
+                    "usage": jsonable_encoder(llm_usage),
+                    "files": ArrayFileSegment(value=files),
+                    "json": json_output,
+                    **variables,
+                },
                 metadata={
                     **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,

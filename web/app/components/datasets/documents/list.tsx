@@ -17,7 +17,6 @@ import {
 import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import FileTypeIcon from '../../base/file-uploader/file-type-icon'
@@ -299,6 +298,7 @@ export const OperationAction: FC<{
         <Tooltip
           popupContent={t('datasetDocuments.list.action.settings')}
           popupClassName='text-text-secondary system-xs-medium'
+          needsDelay={false}
         >
           <button
             className={cn('mr-2 cursor-pointer rounded-lg',
@@ -449,7 +449,8 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
-  const [enableSort, setEnableSort] = useState(true)
+  const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>('created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const {
     isShowEditModal,
     showEditModal,
@@ -458,23 +459,80 @@ const DocumentList: FC<IDocumentListProps> = ({
     handleSave,
   } = useBatchEditDocumentMetadata({
     datasetId,
-    docList: documents.filter(item => selectedIds.includes(item.id)),
+    docList: documents.filter(doc => selectedIds.includes(doc.id)),
+    selectedDocumentIds: selectedIds, // Pass all selected IDs separately
     onUpdate,
   })
 
   useEffect(() => {
-    setLocalDocs(documents)
-  }, [documents])
+    if (!sortField) {
+      setLocalDocs(documents)
+      return
+    }
 
-  const onClickSort = () => {
-    setEnableSort(!enableSort)
-    if (enableSort) {
-      const sortedDocs = [...localDocs].sort((a, b) => dayjs(a.created_at).isBefore(dayjs(b.created_at)) ? -1 : 1)
-      setLocalDocs(sortedDocs)
+    const sortedDocs = [...documents].sort((a, b) => {
+      let aValue: any
+      let bValue: any
+
+      switch (sortField) {
+        case 'name':
+          aValue = a.name?.toLowerCase() || ''
+          bValue = b.name?.toLowerCase() || ''
+          break
+        case 'word_count':
+          aValue = a.word_count || 0
+          bValue = b.word_count || 0
+          break
+        case 'hit_count':
+          aValue = a.hit_count || 0
+          bValue = b.hit_count || 0
+          break
+        case 'created_at':
+          aValue = a.created_at
+          bValue = b.created_at
+          break
+        default:
+          return 0
+      }
+
+      if (sortField === 'name') {
+        const result = aValue.localeCompare(bValue)
+        return sortOrder === 'asc' ? result : -result
+      }
+      else {
+        const result = aValue - bValue
+        return sortOrder === 'asc' ? result : -result
+      }
+    })
+
+    setLocalDocs(sortedDocs)
+  }, [documents, sortField, sortOrder])
+
+  const handleSort = (field: 'name' | 'word_count' | 'hit_count' | 'created_at') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     }
     else {
-      setLocalDocs(documents)
+      setSortField(field)
+      setSortOrder('desc')
     }
+  }
+
+  const renderSortHeader = (field: 'name' | 'word_count' | 'hit_count' | 'created_at', label: string) => {
+    const isActive = sortField === field
+    const isDesc = isActive && sortOrder === 'desc'
+
+    return (
+      <div className='flex cursor-pointer items-center hover:text-text-secondary' onClick={() => handleSort(field)}>
+        {label}
+        <ArrowDownIcon
+          className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all',
+            isActive ? 'text-text-tertiary' : 'text-text-disabled',
+            isActive && !isDesc ? 'rotate-180' : '',
+          )}
+        />
+      </div>
+    )
   }
 
   const [currDocument, setCurrDocument] = useState<LocalDoc | null>(null)
@@ -556,18 +614,17 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </div>
               </td>
               <td>
-                <div className='flex'>
-                  {t('datasetDocuments.list.table.header.fileName')}
-                </div>
+                {renderSortHeader('name', t('datasetDocuments.list.table.header.fileName'))}
               </td>
               <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
-              <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
-              <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
+              <td className='w-24'>
+                {renderSortHeader('word_count', t('datasetDocuments.list.table.header.words'))}
+              </td>
               <td className='w-44'>
-                <div className='flex items-center' onClick={onClickSort}>
-                  {t('datasetDocuments.list.table.header.uploadTime')}
-                  <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 cursor-pointer stroke-current stroke-2', enableSort ? 'text-text-tertiary' : 'text-text-disabled')} />
-                </div>
+                {renderSortHeader('hit_count', t('datasetDocuments.list.table.header.hitCount'))}
+              </td>
+              <td className='w-44'>
+                {renderSortHeader('created_at', t('datasetDocuments.list.table.header.uploadTime'))}
               </td>
               <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
               <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>

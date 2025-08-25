@@ -11,7 +11,7 @@ import Input from '@/app/components/base/input'
 import Drawer from '@/app/components/base/drawer-plus'
 import I18n from '@/context/i18n'
 import { testAPIAvailable } from '@/service/tools'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 
 type Props = {
   positionCenter?: boolean

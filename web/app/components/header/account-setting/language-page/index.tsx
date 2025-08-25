@@ -10,7 +10,7 @@ import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import I18n from '@/context/i18n'
 import { timezones } from '@/utils/timezone'
-import { languages } from '@/i18n/language'
+import { languages } from '@/i18n-config/language'
 
 const titleClassName = `
   mb-2 system-sm-semibold text-text-secondary
@@ -70,6 +70,7 @@ export default function LanguagePage() {
           items={languages.filter(item => item.supported)}
           onSelect={item => handleSelectLanguage(item)}
           disabled={editing}
+          notClearable={true}
         />
       </div>
       <div className='mb-8'>
@@ -79,6 +80,7 @@ export default function LanguagePage() {
           items={timezones}
           onSelect={item => handleSelectTimezone(item)}
           disabled={editing}
+          notClearable={true}
         />
       </div>
     </>

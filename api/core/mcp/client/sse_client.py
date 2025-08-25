@@ -7,6 +7,7 @@ from typing import Any, TypeAlias, final
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from httpx_sse import EventSource, ServerSentEvent
 from sseclient import SSEClient
 
 from core.mcp import types
@@ -35,11 +36,6 @@ class _StatusError:
 ReadQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
-
-
-def remove_request_params(url: str) -> str:
-    """Remove request parameters from URL, keeping only the path."""
-    return urljoin(url, urlparse(url).path)
 
 
 class SSETransport:
@@ -88,7 +84,7 @@ class SSETransport:
             status_queue: Queue to put status updates.
         """
         endpoint_url = urljoin(self.url, sse_data)
-        logger.info(f"Received endpoint URL: {endpoint_url}")
+        logger.info("Received endpoint URL: %s", endpoint_url)
 
         if not self._validate_endpoint_url(endpoint_url):
             error_msg = f"Endpoint origin does not match connection origin: {endpoint_url}"
@@ -107,14 +103,14 @@ class SSETransport:
         """
         try:
             message = types.JSONRPCMessage.model_validate_json(sse_data)
-            logger.debug(f"Received server message: {message}")
+            logger.debug("Received server message: %s", message)
             session_message = SessionMessage(message)
             read_queue.put(session_message)
         except Exception as exc:
             logger.exception("Error parsing server message")
             read_queue.put(exc)
 
-    def _handle_sse_event(self, sse, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def _handle_sse_event(self, sse: ServerSentEvent, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
         """Handle a single SSE event.
 
         Args:
@@ -128,9 +124,9 @@ class SSETransport:
             case "message":
                 self._handle_message_event(sse.data, read_queue)
             case _:
-                logger.warning(f"Unknown SSE event: {sse.event}")
+                logger.warning("Unknown SSE event: %s", sse.event)
 
-    def sse_reader(self, event_source, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def sse_reader(self, event_source: EventSource, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
         """Read and process SSE events.
 
         Args:
@@ -142,7 +138,7 @@ class SSETransport:
             for sse in event_source.iter_sse():
                 self._handle_sse_event(sse, read_queue, status_queue)
         except httpx.ReadError as exc:
-            logger.debug(f"SSE reader shutting down normally: {exc}")
+            logger.debug("SSE reader shutting down normally: %s", exc)
         except Exception as exc:
             read_queue.put(exc)
         finally:
@@ -165,7 +161,7 @@ class SSETransport:
             ),
         )
         response.raise_for_status()
-        logger.debug(f"Client message sent successfully: {response.status_code}")
+        logger.debug("Client message sent successfully: %s", response.status_code)
 
     def post_writer(self, client: httpx.Client, endpoint_url: str, write_queue: WriteQueue) -> None:
         """Handle writing messages to the server.
@@ -190,7 +186,7 @@ class SSETransport:
                 except queue.Empty:
                     continue
         except httpx.ReadError as exc:
-            logger.debug(f"Post writer shutting down normally: {exc}")
+            logger.debug("Post writer shutting down normally: %s", exc)
         except Exception as exc:
             logger.exception("Error writing messages")
             write_queue.put(exc)
@@ -225,7 +221,7 @@ class SSETransport:
         self,
         executor: ThreadPoolExecutor,
         client: httpx.Client,
-        event_source,
+        event_source: EventSource,
     ) -> tuple[ReadQueue, WriteQueue]:
         """Establish connection and start worker threads.
 
@@ -326,8 +322,8 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
             ),
         )
         response.raise_for_status()
-        logger.debug(f"Client message sent successfully: {response.status_code}")
-    except Exception as exc:
+        logger.debug("Client message sent successfully: %s", response.status_code)
+    except Exception:
         logger.exception("Error sending message")
         raise
 
@@ -349,13 +345,13 @@ def read_messages(
             if sse.event == "message":
                 try:
                     message = types.JSONRPCMessage.model_validate_json(sse.data)
-                    logger.debug(f"Received server message: {message}")
+                    logger.debug("Received server message: %s", message)
                     yield SessionMessage(message)
                 except Exception as exc:
                     logger.exception("Error parsing server message")
                     yield exc
             else:
-                logger.warning(f"Unknown SSE event: {sse.event}")
+                logger.warning("Unknown SSE event: %s", sse.event)
     except Exception as exc:
         logger.exception("Error reading SSE messages")
         yield exc

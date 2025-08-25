@@ -201,7 +201,6 @@ const translation = {
     showAppLength: 'Mostrar {{length}} apps',
     delete: 'Eliminar cuenta',
     deleteTip: 'Eliminar tu cuenta borrará permanentemente todos tus datos y no se podrán recuperar.',
-    deleteConfirmTip: 'Para confirmar, por favor envía lo siguiente desde tu correo electrónico registrado a ',
     account: 'Cuenta',
     myAccount: 'Mi Cuenta',
     studio: 'Estudio Dify',
@@ -241,6 +240,7 @@ const translation = {
       verifyNew: 'Verifica tu nuevo correo electrónico',
       codeLabel: 'Código de verificación',
       authTip: 'Una vez que tu correo electrónico sea cambiado, las cuentas de Google o GitHub vinculadas a tu antiguo correo electrónico ya no podrán iniciar sesión en esta cuenta.',
+      unAvailableEmail: 'Este correo electrónico no está disponible temporalmente.',
     },
   },
   members: {
@@ -715,6 +715,10 @@ const translation = {
     dropImageHere: 'Deja tu imagen aquí, o',
   },
   you: 'Tú',
+  avatar: {
+    deleteTitle: 'Eliminar Avatar',
+    deleteDescription: '¿Estás seguro de que deseas eliminar tu foto de perfil? Tu cuenta usará el avatar inicial predeterminado.',
+  },
 }
 
 export default translation

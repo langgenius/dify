@@ -50,6 +50,22 @@ import {
   RequestURLBlockNode,
   RequestURLBlockReplacementBlock,
 } from './plugins/request-url-block'
+import {
+  CurrentBlock,
+  CurrentBlockNode,
+  CurrentBlockReplacementBlock,
+} from './plugins/current-block'
+import {
+  ErrorMessageBlock,
+  ErrorMessageBlockNode,
+  ErrorMessageBlockReplacementBlock,
+} from './plugins/error-message-block'
+import {
+  LastRunBlock,
+  LastRunBlockNode,
+  LastRunReplacementBlock,
+} from './plugins/last-run-block'
+
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
@@ -60,9 +76,12 @@ import ShortcutsPopupPlugin, { type Hotkey } from './plugins/shortcuts-popup-plu
 import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
+  CurrentBlockType,
+  ErrorMessageBlockType,
   ExternalToolBlockType,
   HITLInputBlockType,
   HistoryBlockType,
+  LastRunBlockType,
   QueryBlockType,
   RequestURLBlockType,
   VariableBlockType,
@@ -96,6 +115,9 @@ export type PromptEditorProps = {
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
   hitlInputBlock?: HITLInputBlockType
+  currentBlock?: CurrentBlockType
+  errorMessageBlock?: ErrorMessageBlockType
+  lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
   shortcutPopups?: Array<{ hotkey: Hotkey; Popup: React.ComponentType<{ onClose: () => void }> }>
 }
@@ -121,6 +143,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
   externalToolBlock,
   workflowVariableBlock,
   hitlInputBlock,
+  currentBlock,
+  errorMessageBlock,
+  lastRunBlock,
   isSupportFileVar,
   shortcutPopups = [],
 }) => {
@@ -141,6 +166,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
       HITLInputNode,
+      CurrentBlockNode,
+      ErrorMessageBlockNode,
+      LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -213,6 +241,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
@@ -224,6 +255,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
         />
         {
@@ -282,11 +316,40 @@ const PromptEditor: FC<PromptEditorProps> = ({
           )
         }
         {
+          currentBlock?.show && (
+            <>
+              <CurrentBlock {...currentBlock} />
+              <CurrentBlockReplacementBlock {...currentBlock} />
+            </>
+          )
+        }
+        {
           requestURLBlock?.show && (
             <>
               <RequestURLBlock {...requestURLBlock} />
               <RequestURLBlockReplacementBlock {...requestURLBlock} />
             </>
+          )
+        }
+        {
+          errorMessageBlock?.show && (
+            <>
+              <ErrorMessageBlock {...errorMessageBlock} />
+              <ErrorMessageBlockReplacementBlock {...errorMessageBlock} />
+            </>
+          )
+        }
+        {
+          lastRunBlock?.show && (
+            <>
+              <LastRunBlock {...lastRunBlock} />
+              <LastRunReplacementBlock {...lastRunBlock} />
+            </>
+          )
+        }
+        {
+          isSupportFileVar && (
+            <VariableValueBlock />
           )
         }
         <OnChangePlugin onChange={handleEditorChange} />

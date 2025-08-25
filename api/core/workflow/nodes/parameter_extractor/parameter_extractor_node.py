@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import uuid
@@ -666,11 +667,9 @@ class ParameterExtractorNode(BaseNode):
             if result[idx] == "{" or result[idx] == "[":
                 json_str = extract_json(result[idx:])
                 if json_str:
-                    try:
+                    with contextlib.suppress(Exception):
                         return cast(dict, json.loads(json_str))
-                    except Exception:
-                        pass
-        logger.info(f"extra error: {result}")
+        logger.info("extra error: %s", result)
         return None
 
     def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> Optional[dict]:
@@ -686,11 +685,10 @@ class ParameterExtractorNode(BaseNode):
             if result[idx] == "{" or result[idx] == "[":
                 json_str = extract_json(result[idx:])
                 if json_str:
-                    try:
+                    with contextlib.suppress(Exception):
                         return cast(dict, json.loads(json_str))
-                    except Exception:
-                        pass
-        logger.info(f"extra error: {result}")
+
+        logger.info("extra error: %s", result)
         return None
 
     def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:
