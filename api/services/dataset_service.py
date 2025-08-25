@@ -2362,9 +2362,9 @@ class SegmentService:
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
-        index_node_ids = (
+        segments_info = (
             db.session.query(DocumentSegment)
-            .with_entities(DocumentSegment.index_node_id)
+            .with_entities(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count)
             .where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
@@ -2379,6 +2379,7 @@ class SegmentService:
 
         index_node_ids = [info[0] for info in segments_info]
         segment_db_ids = [info[1] for info in segments_info]
+        total_words = sum(info[2] for info in segments_info if info[2] is not None)
 
         # Get child chunk IDs before parent segments are deleted
         child_node_ids = []
@@ -2396,6 +2397,9 @@ class SegmentService:
         # Start async cleanup with both parent and child node IDs
         if index_node_ids or child_node_ids:
             delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id, child_node_ids)
+
+        document.word_count -= total_words
+        db.session.add(document)
 
         # Delete database records
         db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).delete()
