@@ -221,7 +221,7 @@ class EmailCodeLoginApi(Resource):
                     email=user_email, name=user_email, interface_language=languages[0]
                 )
             except WorkSpaceNotAllowedCreateError:
-                return NotAllowedCreateWorkspace()
+                raise NotAllowedCreateWorkspace()
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:
