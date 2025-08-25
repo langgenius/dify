@@ -21,6 +21,7 @@ from models.enums import CreatorUserRole
 from models.model import App, EndUser, Tenant
 from models.workflow import Workflow, WorkflowTriggerLog, WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
+from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerExecutionResult, AsyncTriggerStatus, TriggerData, WorkflowTaskData
 
 # Determine queue names based on edition
@@ -99,11 +100,11 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
             app_model = session.scalar(select(App).where(App.id == trigger_log.app_id))
 
             if not app_model:
-                raise ValueError(f"App not found: {trigger_log.app_id}")
+                raise WorkflowNotFoundError(f"App not found: {trigger_log.app_id}")
 
             workflow = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
             if not workflow:
-                raise ValueError(f"Workflow not found: {trigger_log.workflow_id}")
+                raise WorkflowNotFoundError(f"Workflow not found: {trigger_log.workflow_id}")
 
             user = _get_user(session, trigger_log)
 
