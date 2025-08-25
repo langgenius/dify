@@ -663,7 +663,11 @@ const DocumentList: FC<IDocumentListProps> = ({
                       {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
                       {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='mr-1.5 mt-[-3px] inline-flex align-middle' />}
                     </div>
-                    <span className='grow-1 truncate text-sm'>{doc.name}</span>
+                    <Tooltip
+                      popupContent={doc.name}
+                    >
+                      <span className='grow-1 truncate text-sm'>{doc.name}</span>
+                    </Tooltip>
                     <div className='hidden shrink-0 group-hover:ml-auto group-hover:flex'>
                       <Tooltip
                         popupContent={t('datasetDocuments.list.table.rename')}
