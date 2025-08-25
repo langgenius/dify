@@ -28,5 +28,5 @@ def process_upload_queue():
                 logger.info("Processed %s uploads for tenant %s", str(len(processed_tasks)), tenant_id)
 
         except Exception as e:
-            logger.exception("Error processing queue for tenant %s: %s", tenant_id, str(e))
+            logger.exception("Error processing queue for tenant %s", tenant_id)
             continue
