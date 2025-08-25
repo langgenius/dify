@@ -3,11 +3,12 @@ import sys
 from collections.abc import Mapping
 from typing import Any
 
-from flask import current_app, got_request_exception
+from flask import Blueprint, Flask, current_app, got_request_exception
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
+from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
 
 
@@ -118,5 +119,17 @@ class ExternalApi(Api):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
-        super().__init__(*args, **kwargs)
+        bp = args[0]
+        assert isinstance(bp, (Blueprint, Flask))
+
+        kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED
+        if not dify_config.SWAGGER_UI_ENABLED:
+            kwargs["doc"] = False
+        else:
+            kwargs["doc"] = dify_config.SWAGGER_UI_PATH
+
+        # manual separate call on construction and init_app to ensure configs in kwargs effective
+        init_args = args[1:] if len(args) >= 1 else []
+        super().__init__(app=None, *init_args, **kwargs)  # type: ignore
+        self.init_app(bp, **kwargs)
         register_external_error_handlers(self)

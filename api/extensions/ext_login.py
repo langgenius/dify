@@ -21,7 +21,7 @@ login_manager = flask_login.LoginManager()
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
     # Skip authentication for documentation endpoints
-    if request.path.endswith("/docs") or request.path.endswith("/swagger.json"):
+    if dify_config.SWAGGER_UI_ENABLED and request.path.endswith((dify_config.SWAGGER_UI_PATH, "/swagger.json")):
         return None
 
     auth_header = request.headers.get("Authorization", "")
