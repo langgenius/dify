@@ -26,10 +26,12 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 const nextConfig = {
   basePath,
   assetPrefix,
-  turbopack:{
-    rules: codeInspectorPlugin({
-      bundler: 'turbopack',
-    }),
+  turbopack: {
+    rules: {
+      "**/*.{jsx,tsx,js,mjs,mts}": Object.values(codeInspectorPlugin({
+        bundler: 'turbopack',
+      }))[0]
+    }
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
