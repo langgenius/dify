@@ -300,7 +300,6 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -407,7 +406,7 @@ class WorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
-    
+
         if not isinstance(current_user, Account):
             raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
@@ -505,7 +504,6 @@ class PublishedWorkflowApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, default="", location="json")
         parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
@@ -576,7 +574,6 @@ class DefaultBlockConfigApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-
         parser = reqparse.RequestParser()
         parser.add_argument("q", type=str, location="args")
         args = parser.parse_args()
@@ -611,7 +608,6 @@ class ConvertToWorkflowApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-
 
         if request.data:
             parser = reqparse.RequestParser()
@@ -713,7 +709,6 @@ class WorkflowByIdApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, location="json")
         parser.add_argument("marked_comment", type=str, required=False, location="json")
@@ -769,7 +764,6 @@ class WorkflowByIdApi(Resource):
         # Check permission
         if not current_user.is_editor:
             raise Forbidden()
-
 
         workflow_service = WorkflowService()
 
