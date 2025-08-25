@@ -1,5 +1,5 @@
 from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restful import Resource, marshal, reqparse  # type: ignore
+from flask_restx import Resource, marshal, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 import services

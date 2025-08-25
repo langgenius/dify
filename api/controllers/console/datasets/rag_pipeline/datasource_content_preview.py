@@ -1,4 +1,4 @@
-from flask_restful import (  # type: ignore
+from flask_restx import (  # type: ignore
     Resource,  # type: ignore
     reqparse,
 )

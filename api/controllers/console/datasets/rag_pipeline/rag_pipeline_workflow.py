@@ -3,8 +3,8 @@ import logging
 from typing import cast
 
 from flask import abort, request
-from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restx import Resource, inputs, marshal_with, reqparse  # type: ignore  # type: ignore
+from flask_restx.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
