@@ -1,4 +1,3 @@
-from models.account import Account
 from collections.abc import Callable
 from functools import wraps
 from typing import Optional, Union
@@ -7,6 +6,7 @@ from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
 from models import App, AppMode
+from models.account import Account
 
 
 def _load_app_model(app_id: str) -> Optional[App]:

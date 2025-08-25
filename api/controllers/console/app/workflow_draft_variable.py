@@ -1,5 +1,3 @@
-from functools import wraps
-from models.account import Account
 import logging
 from typing import Any, NoReturn
 
@@ -23,6 +21,7 @@ from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import App, AppMode, db
+from models.account import Account
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService

@@ -1,4 +1,3 @@
-from models.account import Account
 from typing import Literal
 
 from flask import request
@@ -11,6 +10,7 @@ from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_fields, build_annotation_model
 from libs.login import current_user
+from models.account import Account
 from models.model import App
 from services.annotation_service import AppAnnotationService
 
