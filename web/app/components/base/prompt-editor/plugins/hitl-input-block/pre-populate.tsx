@@ -53,7 +53,7 @@ const PrePopulate: FC<Props> = ({
   onValueChange,
 }) => {
   const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
-  const handlePlaceholderTypeClick = useCallback((isVar: boolean) => {
+  const handleTypeChange = useCallback((isVar: boolean) => {
     setOnPlaceholderClicked(true)
     onIsVariableChange?.(isVar)
   }, [onIsVariableChange])
@@ -62,7 +62,7 @@ const PrePopulate: FC<Props> = ({
 
   const isShowPlaceholder = !onPlaceholderClicked && (isVariable ? (!valueSelector || valueSelector.length === 0) : !value)
   if (isShowPlaceholder)
-    return <Placeholder onTypeClick={handlePlaceholderTypeClick} />
+    return <Placeholder onTypeClick={handleTypeChange} />
 
   if (isVariable) {
     return (
@@ -74,7 +74,7 @@ const PrePopulate: FC<Props> = ({
           readonly={false}
           zIndex={1000}
         />
-        <TypeSwitch isVariable={isVariable} onIsVariableChange={onIsVariableChange} />
+        <TypeSwitch isVariable={isVariable} onIsVariableChange={handleTypeChange} />
       </div>
     )
   }
@@ -90,7 +90,7 @@ const PrePopulate: FC<Props> = ({
       <TypeSwitch
         className='ml-1.5'
         isVariable={isVariable}
-        onIsVariableChange={onIsVariableChange}
+        onIsVariableChange={handleTypeChange}
       />
     </div>
   )
