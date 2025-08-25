@@ -65,6 +65,13 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Agent, BlockEnum.DataSource,
 ]
 
+export const AGENT_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'usage',
+    type: VarType.object,
+  },
+]
+
 export const LLM_OUTPUT_STRUCT: Var[] = [
   {
     variable: 'text',

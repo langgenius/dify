@@ -63,7 +63,7 @@ class WebAppAuthService:
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+        cls, account: Optional[Account] = None, email: Optional[str] = None, language: str = "en-US"
     ):
         email = account.email if account else email
         if email is None:

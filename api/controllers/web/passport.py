@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from flask import request
-from flask_restful import Resource
+from flask_restx import Resource
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
 
