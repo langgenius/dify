@@ -737,7 +737,7 @@ class LLMNode(BaseNode):
                 and isinstance(prompt_messages[-1], UserPromptMessage)
                 and isinstance(prompt_messages[-1].content, list)
             ):
-                prompt_messages[-1] = UserPromptMessage(content=prompt_messages[-1].content + file_prompts)
+                prompt_messages[-1] = UserPromptMessage(content=file_prompts + prompt_messages[-1].content)
             else:
                 prompt_messages.append(UserPromptMessage(content=file_prompts))
 
