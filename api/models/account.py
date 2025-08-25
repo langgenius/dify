@@ -325,5 +325,5 @@ class TenantPluginAutoUpgradeStrategy(Base):
     upgrade_mode: Mapped[UpgradeMode] = mapped_column(String(16), nullable=False, server_default="exclude")
     exclude_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False)  # plugin_id (author/name)
     include_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False)  # plugin_id (author/name)
-    created_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
