@@ -10,16 +10,12 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
-import csv
-import io
-import tempfile
 import uuid
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
