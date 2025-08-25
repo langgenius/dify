@@ -42,10 +42,8 @@ function removePath(basePath, relativePath) {
         if (fs.existsSync(currentPath)) {
           const entries = fs.readdirSync(currentPath);
 
-          // Create a regex pattern from the wildcard pattern
-          // Replace * with .* for regex
-          // Escape regex metacharacters except for '*', then replace '*' with '.*'
-          const regexPattern = escapeRegexExceptWildcard(part).replace(/\*/g, '.*');
+          // replace '*' with '.*'
+          const regexPattern = part.replace(/\*/g, '.*');
 
           const regex = new RegExp(`^${regexPattern}$`);
 
