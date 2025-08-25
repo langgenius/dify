@@ -429,7 +429,7 @@ class ProviderConfiguration(BaseModel):
                 # Update credential
                 credential_record.encrypted_config = json.dumps(credentials)
                 credential_record.credential_name = credential_name
-                credential_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                credential_record.updated_at = naive_utc_now()
 
                 session.commit()
 
@@ -485,7 +485,7 @@ class ProviderConfiguration(BaseModel):
             # Update the encrypted_config with the new credentials
             lb_config.encrypted_config = credential_record.encrypted_config
             lb_config.name = credential_record.credential_name
-            lb_config.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            lb_config.updated_at = naive_utc_now()
 
             # Clear cache for this load balancing config
             lb_credentials_cache = ProviderCredentialsCache(
@@ -537,7 +537,7 @@ class ProviderConfiguration(BaseModel):
                     lb_config.encrypted_config = None
                     lb_config.enabled = False
                     lb_config.name = "__delete__"
-                    lb_config.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    lb_config.updated_at = naive_utc_now()
                     session.add(lb_config)
 
                 # Check if this is the currently active credential
@@ -565,7 +565,7 @@ class ProviderConfiguration(BaseModel):
                     self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
                 elif provider_record and provider_record.credential_id == credential_id:
                     provider_record.credential_id = None
-                    provider_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    provider_record.updated_at = naive_utc_now()
 
                     provider_model_credentials_cache = ProviderCredentialsCache(
                         tenant_id=self.tenant_id,
@@ -603,7 +603,7 @@ class ProviderConfiguration(BaseModel):
 
             try:
                 provider_record.credential_id = credential_record.id
-                provider_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                provider_record.updated_at = naive_utc_now()
                 session.commit()
 
                 provider_model_credentials_cache = ProviderCredentialsCache(
@@ -926,7 +926,7 @@ class ProviderConfiguration(BaseModel):
                 # Update credential
                 credential_record.encrypted_config = json.dumps(credentials)
                 credential_record.credential_name = credential_name
-                credential_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                credential_record.updated_at = naive_utc_now()
                 session.commit()
 
                 if provider_model_record and provider_model_record.credential_id == credential_id:
@@ -986,7 +986,7 @@ class ProviderConfiguration(BaseModel):
                     lb_config.encrypted_config = None
                     lb_config.enabled = False
                     lb_config.name = "__delete__"
-                    lb_config.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    lb_config.updated_at = naive_utc_now()
                     session.add(lb_config)
 
                 # Check if this is the currently active credential
@@ -1008,7 +1008,7 @@ class ProviderConfiguration(BaseModel):
                     session.delete(provider_model_record)
                 elif provider_model_record and provider_model_record.credential_id == credential_id:
                     provider_model_record.credential_id = None
-                    provider_model_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    provider_model_record.updated_at = naive_utc_now()
                     provider_model_credentials_cache = ProviderCredentialsCache(
                         tenant_id=self.tenant_id,
                         identity_id=provider_model_record.id,
@@ -1060,7 +1060,7 @@ class ProviderConfiguration(BaseModel):
                 if provider_model_record.credential_id == credential_record.id:
                     raise ValueError("Can't add same credential")
                 provider_model_record.credential_id = credential_record.id
-                provider_model_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                provider_model_record.updated_at = naive_utc_now()
             session.add(provider_model_record)
             session.commit()
 
@@ -1090,7 +1090,7 @@ class ProviderConfiguration(BaseModel):
                 raise ValueError("The custom model record not found.")
 
             provider_model_record.credential_id = credential_record.id
-            provider_model_record.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            provider_model_record.updated_at = naive_utc_now()
             session.add(provider_model_record)
             session.commit()
 
@@ -1149,7 +1149,7 @@ class ProviderConfiguration(BaseModel):
 
             if model_setting:
                 model_setting.enabled = True
-                model_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                model_setting.updated_at = naive_utc_now()
 
             else:
                 model_setting = ProviderModelSetting(
@@ -1176,7 +1176,7 @@ class ProviderConfiguration(BaseModel):
 
             if model_setting:
                 model_setting.enabled = False
-                model_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                model_setting.updated_at = naive_utc_now()
             else:
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
@@ -1227,7 +1227,7 @@ class ProviderConfiguration(BaseModel):
 
             if model_setting:
                 model_setting.load_balancing_enabled = True
-                model_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                model_setting.updated_at = naive_utc_now()
             else:
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
@@ -1254,7 +1254,7 @@ class ProviderConfiguration(BaseModel):
 
             if model_setting:
                 model_setting.load_balancing_enabled = False
-                model_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                model_setting.updated_at = naive_utc_now()
             else:
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
