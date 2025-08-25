@@ -1,8 +1,8 @@
 from typing import Any, Optional
 
-import flask_restful
+import flask_restx
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -40,7 +40,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
             ).scalar_one_or_none()
 
     if resource is None:
-        flask_restful.abort(404, message=f"{resource_model.__name__} not found.")
+        flask_restx.abort(404, message=f"{resource_model.__name__} not found.")
 
     return resource
 
@@ -81,7 +81,7 @@ class BaseApiKeyListResource(Resource):
         )
 
         if current_key_count >= self.max_keys:
-            flask_restful.abort(
+            flask_restx.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
@@ -126,7 +126,7 @@ class BaseApiKeyResource(Resource):
         )
 
         if key is None:
-            flask_restful.abort(404, message="API key not found")
+            flask_restx.abort(404, message="API key not found")
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

@@ -1,6 +1,5 @@
 """Abstract interface for document loader implementations."""
 
-import datetime
 import logging
 import mimetypes
 import os
@@ -19,6 +18,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 
@@ -117,10 +117,10 @@ class WordExtractor(BaseExtractor):
                     mime_type=mime_type or "",
                     created_by=self.user_id,
                     created_by_role=CreatorUserRole.ACCOUNT,
-                    created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    created_at=naive_utc_now(),
                     used=True,
                     used_by=self.user_id,
-                    used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    used_at=naive_utc_now(),
                 )
 
                 db.session.add(upload_file)

@@ -1,4 +1,3 @@
-import datetime
 import uuid
 from typing import cast
 
@@ -10,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -473,7 +473,7 @@ class AppAnnotationService:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        annotation_setting.updated_at = naive_utc_now()
         db.session.add(annotation_setting)
         db.session.commit()
 

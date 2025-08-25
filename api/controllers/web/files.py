@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import marshal_with
+from flask_restx import marshal_with
 
 import services
 from controllers.common.errors import (

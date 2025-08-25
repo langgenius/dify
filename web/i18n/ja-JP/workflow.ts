@@ -891,6 +891,7 @@ const translation = {
         },
         text: 'エージェント生成コンテンツ',
         json: 'エージェント生成の JSON',
+        usage: 'モデル使用量',
       },
       checkList: {
         strategyNotSelected: '戦略が選択されていません',
