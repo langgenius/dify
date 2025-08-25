@@ -275,35 +275,29 @@ class ApiTool(Tool):
         if files:
             headers.pop("Content-Type", None)
 
-        if method in {
-            "get",
-            "head",
-            "post",
-            "put",
-            "delete",
-            "patch",
-            "options",
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "HEAD",
-            "OPTIONS",
-        }:
-            response: httpx.Response = getattr(ssrf_proxy, method.lower())(
-                url,
-                params=params,
-                headers=headers,
-                cookies=cookies,
-                data=body,
-                files=files,
-                timeout=API_TOOL_DEFAULT_TIMEOUT,
-                follow_redirects=True,
-            )
-            return response
-        else:
+        _METHOD_MAP = {
+            "get": ssrf_proxy.get,
+            "head": ssrf_proxy.head,
+            "post": ssrf_proxy.post,
+            "put": ssrf_proxy.put,
+            "delete": ssrf_proxy.delete,
+            "patch": ssrf_proxy.patch,
+            "options": ssrf_proxy.options,  # type: ignore
+        }
+        method_lc = method.lower()
+        if method_lc not in _METHOD_MAP:
             raise ValueError(f"Invalid http method {method}")
+        response = _METHOD_MAP[method_lc](
+            url,
+            params=params,
+            headers=headers,
+            cookies=cookies,
+            data=body,
+            files=files,
+            timeout=API_TOOL_DEFAULT_TIMEOUT,
+            follow_redirects=True,
+        )
+        return response
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
