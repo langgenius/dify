@@ -1,3 +1,4 @@
+from models.account import Account
 from typing import Literal
 
 from flask import request
@@ -163,6 +164,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns))
     def put(self, app_model: App, annotation_id):
         """Update an existing annotation."""
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -185,6 +187,8 @@ class AnnotationUpdateDeleteApi(Resource):
     @validate_app_token
     def delete(self, app_model: App, annotation_id):
         """Delete an annotation."""
+        assert isinstance(current_user, Account)
+
         if not current_user.is_editor:
             raise Forbidden()
 

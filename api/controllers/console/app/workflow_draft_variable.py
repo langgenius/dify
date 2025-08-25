@@ -1,3 +1,5 @@
+from functools import wraps
+from models.account import Account
 import logging
 from typing import Any, NoReturn
 
@@ -135,6 +137,7 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def wrapper(*args, **kwargs):
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
         return f(*args, **kwargs)

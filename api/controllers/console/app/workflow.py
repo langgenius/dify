@@ -72,6 +72,7 @@ class DraftWorkflowApi(Resource):
         Get draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -94,6 +95,7 @@ class DraftWorkflowApi(Resource):
         Sync draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -171,6 +173,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -218,11 +221,10 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         """
         Run draft workflow iteration node
         """
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -256,10 +258,9 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
         if not isinstance(current_user, Account):
+            raise Forbidden()
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -292,12 +293,13 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         """
         Run draft workflow loop node
         """
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -329,11 +331,11 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         """
         Run draft workflow loop node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
 
         if not isinstance(current_user, Account):
+            raise Forbidden()
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -366,11 +368,11 @@ class DraftWorkflowRunApi(Resource):
         """
         Run draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
 
         if not isinstance(current_user, Account):
+            raise Forbidden()
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -405,6 +407,9 @@ class WorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
+    
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
@@ -424,11 +429,11 @@ class DraftWorkflowNodeRunApi(Resource):
         """
         Run draft workflow node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
 
         if not isinstance(current_user, Account):
+            raise Forbidden()
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -472,6 +477,9 @@ class PublishedWorkflowApi(Resource):
         """
         Get published workflow
         """
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
@@ -491,12 +499,12 @@ class PublishedWorkflowApi(Resource):
         """
         Publish workflow
         """
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, default="", location="json")
@@ -541,6 +549,9 @@ class DefaultBlockConfigsApi(Resource):
         """
         Get default block config
         """
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
@@ -559,12 +570,12 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("q", type=str, location="args")
@@ -595,12 +606,12 @@ class ConvertToWorkflowApi(Resource):
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
 
         if request.data:
             parser = reqparse.RequestParser()
@@ -645,6 +656,9 @@ class PublishedAllWorkflowApi(Resource):
         """
         Get published workflows
         """
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -693,12 +707,12 @@ class WorkflowByIdApi(Resource):
         """
         Update workflow attributes
         """
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # Check permission
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, location="json")
@@ -750,12 +764,12 @@ class WorkflowByIdApi(Resource):
         """
         Delete workflow
         """
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         # Check permission
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
 
         workflow_service = WorkflowService()
 

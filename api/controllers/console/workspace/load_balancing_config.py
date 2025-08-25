@@ -1,3 +1,4 @@
+from models.account import Account
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
@@ -15,10 +16,12 @@ class LoadBalancingCredentialsValidateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
+        assert isinstance(current_user, Account)
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
+        assert tenant_id is not None
 
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
@@ -64,10 +67,12 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str, config_id: str):
+        assert isinstance(current_user, Account)
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
+        assert tenant_id is not None
 
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")

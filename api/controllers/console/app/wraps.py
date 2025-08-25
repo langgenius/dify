@@ -1,3 +1,4 @@
+from models.account import Account
 from collections.abc import Callable
 from functools import wraps
 from typing import Optional, Union
@@ -9,6 +10,7 @@ from models import App, AppMode
 
 
 def _load_app_model(app_id: str) -> Optional[App]:
+    assert isinstance(current_user, Account)
     app_model = (
         db.session.query(App)
         .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
