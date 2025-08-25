@@ -35,6 +35,7 @@ const PluginAuthInAgent = ({
     credentials,
     disabled,
     invalidPluginCredentialInfo,
+    notAllowCustomCredential,
   } = usePluginAuth(pluginPayload, true)
 
   const extraAuthorizationItems: Credential[] = [
@@ -58,6 +59,8 @@ const PluginAuthInAgent = ({
   const renderTrigger = useCallback((isOpen?: boolean) => {
     let label = ''
     let removed = false
+    let unavailable = false
+    let color = 'green'
     if (!credentialId) {
       label = t('plugin.auth.workspaceDefault')
     }
@@ -65,6 +68,11 @@ const PluginAuthInAgent = ({
       const credential = credentials.find(c => c.id === credentialId)
       label = credential ? credential.name : t('plugin.auth.authRemoved')
       removed = !credential
+      unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
+      if (removed)
+        color = 'red'
+      else if (unavailable)
+        color = 'gray'
     }
     return (
       <Button
@@ -75,9 +83,12 @@ const PluginAuthInAgent = ({
         )}>
         <Indicator
           className='mr-2'
-          color={removed ? 'red' : 'green'}
+          color={color as any}
         />
         {label}
+        {
+          unavailable && t('plugin.auth.unavailable')
+        }
         <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
       </Button>
     )
@@ -93,6 +104,7 @@ const PluginAuthInAgent = ({
             canApiKey={canApiKey}
             disabled={disabled}
             onUpdate={invalidPluginCredentialInfo}
+            notAllowCustomCredential={notAllowCustomCredential}
           />
         )
       }
@@ -113,6 +125,7 @@ const PluginAuthInAgent = ({
             onOpenChange={setIsOpen}
             selectedCredentialId={credentialId || '__workspace_default__'}
             onUpdate={invalidPluginCredentialInfo}
+            notAllowCustomCredential={notAllowCustomCredential}
           />
         )
       }

@@ -19,6 +19,7 @@ export const useGetPluginCredentialInfo = (
     enabled: !!url,
     queryKey: [NAME_SPACE, 'credential-info', url],
     queryFn: () => get<{
+        allow_custom_token?: boolean
         supported_credential_types: string[]
         credentials: Credential[]
         is_oauth_custom_client_enabled: boolean
