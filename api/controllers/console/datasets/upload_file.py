@@ -1,22 +1,27 @@
 from flask_login import current_user
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
+import services
 from controllers.console import api
 from controllers.console.wraps import (
     account_initialization_required,
+    cloud_edition_billing_rate_limit_check,
     setup_required,
 )
 from core.file import helpers as file_helpers
 from extensions.ext_database import db
+from libs.login import login_required
 from models.dataset import Dataset
 from models.model import UploadFile
-from services.dataset_service import DocumentService
+from services.dataset_service import DatasetService, DocumentService
 
 
 class UploadFileApi(Resource):
     @setup_required
+    @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def get(self, dataset_id, document_id):
         """Get upload file."""
         # check dataset
@@ -28,6 +33,12 @@ class UploadFileApi(Resource):
         )
         if not dataset:
             raise NotFound("Dataset not found.")
+
+        # check dataset permission
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
