@@ -13,7 +13,7 @@ api = ExternalApi(
     doc="/docs",  # Enable Swagger UI at /mcp/docs
 )
 
-mcp_ns = Namespace("mcp", description="MCP operations")
+mcp_ns = Namespace("mcp", description="MCP operations", path="/")
 
 from . import mcp
 
