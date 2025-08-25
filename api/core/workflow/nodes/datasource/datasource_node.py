@@ -533,7 +533,7 @@ class DatasourceNode(BaseNode):
                 inputs=parameters_for_log,
                 metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                 outputs={
-                    "file_info": datasource_info,
+                    "file": file,
                     "datasource_type": datasource_type,
                 },
             )
