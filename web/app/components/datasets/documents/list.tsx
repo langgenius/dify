@@ -484,7 +484,6 @@ const DocumentList: FC<IDocumentListProps> = ({
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
   const {
     isShowEditModal,
