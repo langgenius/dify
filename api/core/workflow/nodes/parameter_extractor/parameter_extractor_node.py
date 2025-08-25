@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import uuid
@@ -666,10 +667,8 @@ class ParameterExtractorNode(BaseNode):
             if result[idx] == "{" or result[idx] == "[":
                 json_str = extract_json(result[idx:])
                 if json_str:
-                    try:
+                    with contextlib.suppress(Exception):
                         return cast(dict, json.loads(json_str))
-                    except Exception:
-                        pass
         logger.info("extra error: %s", result)
         return None
 
@@ -686,10 +685,9 @@ class ParameterExtractorNode(BaseNode):
             if result[idx] == "{" or result[idx] == "[":
                 json_str = extract_json(result[idx:])
                 if json_str:
-                    try:
+                    with contextlib.suppress(Exception):
                         return cast(dict, json.loads(json_str))
-                    except Exception:
-                        pass
+
         logger.info("extra error: %s", result)
         return None
 

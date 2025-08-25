@@ -150,7 +150,7 @@ const Panel = (props: PanelProps) => {
         </div>
       )}
       {keywords && notExisted && filteredTagList.length > 0 && (
-        <Divider className='!my-0 !h-[1px]' />
+        <Divider className='!my-0 !h-px' />
       )}
       {(filteredTagList.length > 0 || filteredSelectedTagList.length > 0) && (
         <div className='max-h-[172px] overflow-y-auto p-1'>
@@ -192,7 +192,7 @@ const Panel = (props: PanelProps) => {
           </div>
         </div>
       )}
-      <Divider className='!my-0 !h-[1px]' />
+      <Divider className='!my-0 !h-px' />
       <div className='p-1'>
         <div className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => setShowTagManagementModal(true)}>
           <Tag03 className='h-4 w-4 text-text-tertiary' />

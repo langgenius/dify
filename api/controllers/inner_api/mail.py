@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api

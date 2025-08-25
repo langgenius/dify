@@ -2,12 +2,12 @@ import logging
 
 from dateutil.parser import isoparse
 from flask import request
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Api, Namespace, Resource, fields, reqparse
+from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
-from controllers.service_api import api
+from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     CompletionRequestError,
     NotWorkflowAppError,
@@ -28,7 +28,7 @@ from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
-from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
+from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
@@ -39,6 +39,34 @@ from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
+
+# Define parsers for workflow APIs
+workflow_run_parser = reqparse.RequestParser()
+workflow_run_parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+workflow_run_parser.add_argument("files", type=list, required=False, location="json")
+workflow_run_parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+
+workflow_log_parser = reqparse.RequestParser()
+workflow_log_parser.add_argument("keyword", type=str, location="args")
+workflow_log_parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
+workflow_log_parser.add_argument("created_at__before", type=str, location="args")
+workflow_log_parser.add_argument("created_at__after", type=str, location="args")
+workflow_log_parser.add_argument(
+    "created_by_end_user_session_id",
+    type=str,
+    location="args",
+    required=False,
+    default=None,
+)
+workflow_log_parser.add_argument(
+    "created_by_account",
+    type=str,
+    location="args",
+    required=False,
+    default=None,
+)
+workflow_log_parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
+workflow_log_parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
 
 workflow_run_fields = {
     "id": fields.String,
@@ -55,12 +83,29 @@ workflow_run_fields = {
 }
 
 
+def build_workflow_run_model(api_or_ns: Api | Namespace):
+    """Build the workflow run model for the API or Namespace."""
+    return api_or_ns.model("WorkflowRun", workflow_run_fields)
+
+
+@service_api_ns.route("/workflows/run/<string:workflow_run_id>")
 class WorkflowRunDetailApi(Resource):
+    @service_api_ns.doc("get_workflow_run_detail")
+    @service_api_ns.doc(description="Get workflow run details")
+    @service_api_ns.doc(params={"workflow_run_id": "Workflow run ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Workflow run details retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Workflow run not found",
+        }
+    )
     @validate_app_token
-    @marshal_with(workflow_run_fields)
+    @service_api_ns.marshal_with(build_workflow_run_model(service_api_ns))
     def get(self, app_model: App, workflow_run_id: str):
-        """
-        Get a workflow task running detail
+        """Get a workflow task running detail.
+
+        Returns detailed information about a specific workflow run.
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
@@ -78,21 +123,33 @@ class WorkflowRunDetailApi(Resource):
         return workflow_run
 
 
+@service_api_ns.route("/workflows/run")
 class WorkflowRunApi(Resource):
+    @service_api_ns.expect(workflow_run_parser)
+    @service_api_ns.doc("run_workflow")
+    @service_api_ns.doc(description="Execute a workflow")
+    @service_api_ns.doc(
+        responses={
+            200: "Workflow executed successfully",
+            400: "Bad request - invalid parameters or workflow issues",
+            401: "Unauthorized - invalid API token",
+            404: "Workflow not found",
+            429: "Rate limit exceeded",
+            500: "Internal server error",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
-        """
-        Run workflow
+        """Execute a workflow.
+
+        Runs a workflow with the provided inputs and returns the results.
+        Supports both blocking and streaming response modes.
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        args = parser.parse_args()
+        args = workflow_run_parser.parse_args()
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
@@ -121,21 +178,33 @@ class WorkflowRunApi(Resource):
             raise InternalServerError()
 
 
+@service_api_ns.route("/workflows/<string:workflow_id>/run")
 class WorkflowRunByIdApi(Resource):
+    @service_api_ns.expect(workflow_run_parser)
+    @service_api_ns.doc("run_workflow_by_id")
+    @service_api_ns.doc(description="Execute a specific workflow by ID")
+    @service_api_ns.doc(params={"workflow_id": "Workflow ID to execute"})
+    @service_api_ns.doc(
+        responses={
+            200: "Workflow executed successfully",
+            400: "Bad request - invalid parameters or workflow issues",
+            401: "Unauthorized - invalid API token",
+            404: "Workflow not found",
+            429: "Rate limit exceeded",
+            500: "Internal server error",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, workflow_id: str):
-        """
-        Run specific workflow by ID
+        """Run specific workflow by ID.
+
+        Executes a specific workflow version identified by its ID.
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        args = parser.parse_args()
+        args = workflow_run_parser.parse_args()
 
         # Add workflow_id to args for AppGenerateService
         args["workflow_id"] = workflow_id
@@ -174,12 +243,21 @@ class WorkflowRunByIdApi(Resource):
             raise InternalServerError()
 
 
+@service_api_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
+    @service_api_ns.doc("stop_workflow_task")
+    @service_api_ns.doc(description="Stop a running workflow task")
+    @service_api_ns.doc(params={"task_id": "Task ID to stop"})
+    @service_api_ns.doc(
+        responses={
+            200: "Task stopped successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Task not found",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
-        """
-        Stop workflow task
-        """
+        """Stop a running workflow task."""
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
@@ -189,35 +267,25 @@ class WorkflowTaskStopApi(Resource):
         return {"result": "success"}
 
 
+@service_api_ns.route("/workflows/logs")
 class WorkflowAppLogApi(Resource):
+    @service_api_ns.expect(workflow_log_parser)
+    @service_api_ns.doc("get_workflow_logs")
+    @service_api_ns.doc(description="Get workflow execution logs")
+    @service_api_ns.doc(
+        responses={
+            200: "Logs retrieved successfully",
+            401: "Unauthorized - invalid API token",
+        }
+    )
     @validate_app_token
-    @marshal_with(workflow_app_log_pagination_fields)
+    @service_api_ns.marshal_with(build_workflow_app_log_pagination_model(service_api_ns))
     def get(self, app_model: App):
+        """Get workflow app logs.
+
+        Returns paginated workflow execution logs with filtering options.
         """
-        Get workflow app logs
-        """
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
-        parser.add_argument("created_at__before", type=str, location="args")
-        parser.add_argument("created_at__after", type=str, location="args")
-        parser.add_argument(
-            "created_by_end_user_session_id",
-            type=str,
-            location="args",
-            required=False,
-            default=None,
-        )
-        parser.add_argument(
-            "created_by_account",
-            type=str,
-            location="args",
-            required=False,
-            default=None,
-        )
-        parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
-        args = parser.parse_args()
+        args = workflow_log_parser.parse_args()
 
         args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:
@@ -243,10 +311,3 @@ class WorkflowAppLogApi(Resource):
             )
 
             return workflow_app_log_pagination
-
-
-api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_run_id>")
-api.add_resource(WorkflowRunByIdApi, "/workflows/<string:workflow_id>/run")
-api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
-api.add_resource(WorkflowAppLogApi, "/workflows/logs")

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
 from types import TracebackType
-from typing import Any, Generic, Self, TypeVar
+from typing import Any, Generic, Optional, Self, TypeVar
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -209,7 +209,7 @@ class BaseSession(
         request: SendRequestT,
         result_type: type[ReceiveResultT],
         request_read_timeout_seconds: timedelta | None = None,
-        metadata: MessageMetadata = None,
+        metadata: Optional[MessageMetadata] = None,
     ) -> ReceiveResultT:
         """
         Sends a request and wait for a response. Raises an McpError if the

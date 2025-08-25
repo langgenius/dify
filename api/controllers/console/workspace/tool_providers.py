@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_login import current_user
-from flask_restful import (
+from flask_restx import (
     Resource,
     reqparse,
 )

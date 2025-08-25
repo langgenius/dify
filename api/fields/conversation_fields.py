@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import Api, Namespace, fields
 
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
@@ -44,6 +44,12 @@ message_file_fields = {
     "belongs_to": fields.String(default="user"),
     "upload_file_id": fields.String(default=None),
 }
+
+
+def build_message_file_model(api_or_ns: Api | Namespace):
+    """Build the message file fields for the API or Namespace."""
+    return api_or_ns.model("MessageFile", message_file_fields)
+
 
 agent_thought_fields = {
     "id": fields.String,
@@ -209,3 +215,22 @@ conversation_infinite_scroll_pagination_fields = {
     "has_more": fields.Boolean,
     "data": fields.List(fields.Nested(simple_conversation_fields)),
 }
+
+
+def build_conversation_infinite_scroll_pagination_model(api_or_ns: Api | Namespace):
+    """Build the conversation infinite scroll pagination model for the API or Namespace."""
+    simple_conversation_model = build_simple_conversation_model(api_or_ns)
+
+    copied_fields = conversation_infinite_scroll_pagination_fields.copy()
+    copied_fields["data"] = fields.List(fields.Nested(simple_conversation_model))
+    return api_or_ns.model("ConversationInfiniteScrollPagination", copied_fields)
+
+
+def build_conversation_delete_model(api_or_ns: Api | Namespace):
+    """Build the conversation delete model for the API or Namespace."""
+    return api_or_ns.model("ConversationDelete", conversation_delete_fields)
+
+
+def build_simple_conversation_model(api_or_ns: Api | Namespace):
+    """Build the simple conversation model for the API or Namespace."""
+    return api_or_ns.model("SimpleConversation", simple_conversation_fields)

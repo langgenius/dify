@@ -894,6 +894,7 @@ const translation = {
       },
       outputVars: {
         text: 'agent 生成的内容',
+        usage: '模型用量信息',
         files: {
           title: 'agent 生成的文件',
           type: '支持类型。现在只支持图片',

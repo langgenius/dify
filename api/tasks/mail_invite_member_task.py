@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from configs import dify_config
 from extensions.ext_mail import mail

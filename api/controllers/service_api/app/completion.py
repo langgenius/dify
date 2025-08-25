@@ -1,11 +1,11 @@
 import logging
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.service_api import api
+from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -33,21 +33,68 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
+# Define parser for completion API
+completion_parser = reqparse.RequestParser()
+completion_parser.add_argument(
+    "inputs", type=dict, required=True, location="json", help="Input parameters for completion"
+)
+completion_parser.add_argument("query", type=str, location="json", default="", help="The query string")
+completion_parser.add_argument("files", type=list, required=False, location="json", help="List of file attachments")
+completion_parser.add_argument(
+    "response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode"
+)
+completion_parser.add_argument(
+    "retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source"
+)
 
+# Define parser for chat API
+chat_parser = reqparse.RequestParser()
+chat_parser.add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for chat")
+chat_parser.add_argument("query", type=str, required=True, location="json", help="The chat query")
+chat_parser.add_argument("files", type=list, required=False, location="json", help="List of file attachments")
+chat_parser.add_argument(
+    "response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode"
+)
+chat_parser.add_argument("conversation_id", type=uuid_value, location="json", help="Existing conversation ID")
+chat_parser.add_argument(
+    "retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source"
+)
+chat_parser.add_argument(
+    "auto_generate_name",
+    type=bool,
+    required=False,
+    default=True,
+    location="json",
+    help="Auto generate conversation name",
+)
+chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+
+
+@service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
+    @service_api_ns.expect(completion_parser)
+    @service_api_ns.doc("create_completion")
+    @service_api_ns.doc(description="Create a completion for the given prompt")
+    @service_api_ns.doc(
+        responses={
+            200: "Completion created successfully",
+            400: "Bad request - invalid parameters",
+            401: "Unauthorized - invalid API token",
+            404: "Conversation not found",
+            500: "Internal server error",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
+        """Create a completion for the given prompt.
+
+        This endpoint generates a completion based on the provided inputs and query.
+        Supports both blocking and streaming response modes.
+        """
         if app_model.mode != "completion":
             raise AppUnavailableError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, location="json", default="")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
-
-        args = parser.parse_args()
+        args = completion_parser.parse_args()
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
@@ -88,9 +135,21 @@ class CompletionApi(Resource):
             raise InternalServerError()
 
 
+@service_api_ns.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(Resource):
+    @service_api_ns.doc("stop_completion")
+    @service_api_ns.doc(description="Stop a running completion task")
+    @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})
+    @service_api_ns.doc(
+        responses={
+            200: "Task stopped successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Task not found",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, task_id):
+    def post(self, app_model: App, end_user: EndUser, task_id: str):
+        """Stop a running completion task."""
         if app_model.mode != "completion":
             raise AppUnavailableError()
 
@@ -99,23 +158,33 @@ class CompletionStopApi(Resource):
         return {"result": "success"}, 200
 
 
+@service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
+    @service_api_ns.expect(chat_parser)
+    @service_api_ns.doc("create_chat_message")
+    @service_api_ns.doc(description="Send a message in a chat conversation")
+    @service_api_ns.doc(
+        responses={
+            200: "Message sent successfully",
+            400: "Bad request - invalid parameters or workflow issues",
+            401: "Unauthorized - invalid API token",
+            404: "Conversation or workflow not found",
+            429: "Rate limit exceeded",
+            500: "Internal server error",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
+        """Send a message in a chat conversation.
+
+        This endpoint handles chat messages for chat, agent chat, and advanced chat applications.
+        Supports conversation management and both blocking and streaming response modes.
+        """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, required=True, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
-        parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
-        parser.add_argument("workflow_id", type=str, required=False, location="json")
-        args = parser.parse_args()
+        args = chat_parser.parse_args()
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -159,9 +228,21 @@ class ChatApi(Resource):
             raise InternalServerError()
 
 
+@service_api_ns.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(Resource):
+    @service_api_ns.doc("stop_chat_message")
+    @service_api_ns.doc(description="Stop a running chat message generation")
+    @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})
+    @service_api_ns.doc(
+        responses={
+            200: "Task stopped successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Task not found",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, task_id):
+    def post(self, app_model: App, end_user: EndUser, task_id: str):
+        """Stop a running chat message generation."""
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -169,9 +250,3 @@ class ChatStopApi(Resource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {"result": "success"}, 200
-
-
-api.add_resource(CompletionApi, "/completion-messages")
-api.add_resource(CompletionStopApi, "/completion-messages/<string:task_id>/stop")
-api.add_resource(ChatApi, "/chat-messages")
-api.add_resource(ChatStopApi, "/chat-messages/<string:task_id>/stop")

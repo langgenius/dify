@@ -210,7 +210,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
         return {
           ...item.paragraph,
-          default: value || item.default,
+          default: value || item.default || item.paragraph.default,
           type: 'paragraph',
         }
       }
@@ -218,7 +218,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
         return {
           ...item.number,
-          default: convertedNumber || item.default,
+          default: convertedNumber || item.default || item.number.default,
           type: 'number',
         }
       }
@@ -251,7 +251,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
       return {
         ...item['text-input'],
-        default: value || item.default,
+        default: value || item.default || item['text-input'].default,
         type: 'text-input',
       }
     })
