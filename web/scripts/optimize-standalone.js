@@ -43,10 +43,9 @@ function removePath(basePath, relativePath) {
           const entries = fs.readdirSync(currentPath);
 
           // Create a regex pattern from the wildcard pattern
-          // Replace * with .* for regex and escape special characters
+          // Replace * with .* for regex
           const regexPattern = part
-            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
-            .replace(/\\\*/g, '.*'); // Replace escaped * with .*
+            .replace(/\*/g, '.*');
 
           const regex = new RegExp(`^${regexPattern}$`);
 
