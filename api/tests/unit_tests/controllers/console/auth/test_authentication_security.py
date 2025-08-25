@@ -7,7 +7,7 @@ from flask import Flask
 from flask_restx import Api
 
 import services.errors.account
-from controllers.console.auth.error import EmailOrPasswordMismatchError
+from controllers.console.auth.error import AuthenticationFailedError
 from controllers.console.auth.login import LoginApi
 from controllers.console.error import AccountNotFound
 
@@ -62,7 +62,7 @@ class TestAuthenticationSecurity:
     def test_login_wrong_password_returns_error(
         self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_db
     ):
-        """Test that wrong password returns EmailOrPasswordMismatchError."""
+        """Test that wrong password returns AuthenticationFailedError."""
         # Arrange
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
@@ -76,11 +76,11 @@ class TestAuthenticationSecurity:
             login_api = LoginApi()
 
             # Assert
-            with pytest.raises(EmailOrPasswordMismatchError) as exc_info:
+            with pytest.raises(AuthenticationFailedError) as exc_info:
                 login_api.post()
 
-        assert exc_info.value.error_code == "email_or_password_mismatch"
-        assert exc_info.value.description == "The email or password is mismatched."
+        assert exc_info.value.error_code == "authentication_failed"
+        assert exc_info.value.description == "Invalid email or password."
         mock_add_rate_limit.assert_called_once_with("existing@example.com")
 
     @patch("controllers.console.wraps.db")
