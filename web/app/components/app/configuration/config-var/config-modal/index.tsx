@@ -54,7 +54,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore(state => state.appDetail)
   const isBasicApp = appDetail?.mode !== 'advanced-chat' && appDetail?.mode !== 'workflow'
-
+  const isSupportJSON = false
   const jsonSchemaStr = useMemo(() => {
     const isJsonObject = type === InputVarType.jsonObject
     if (!isJsonObject || !tempPayload.json_schema)
@@ -142,7 +142,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         value: InputVarType.multiFiles,
       },
     ] : []),
-    ...(!isBasicApp ? [{
+    ...((!isBasicApp && isSupportJSON) ? [{
       name: t('appDebug.variableConfig.json'),
       value: InputVarType.jsonObject,
     }] : []),
