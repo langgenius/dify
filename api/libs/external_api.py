@@ -8,7 +8,9 @@ from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
-from core.errors.error import AppInvokeQuotaExceededError
+from core.errors.error import (
+    AppInvokeQuotaExceededError,
+)
 
 
 def http_status_message(code):
@@ -134,6 +136,67 @@ def register_external_error_handlers(api: Api) -> None:
 
 
 class ExternalApi(Api):
+    """Custom API class that fixes the Flask-RestX 1.3.0 handle_error bug."""
+
+    def _remove_duplicate_headers(self, response):
+        """Remove duplicate headers that can cause issues."""
+        if not hasattr(response, "headers"):
+            return response
+
+        # Clean up problematic headers
+        problematic_headers = ["Content-Length", "Transfer-Encoding"]
+        for header in problematic_headers:
+            if response.headers.getlist(header):
+                values = response.headers.getlist(header)
+                if len(values) > 1:
+                    # Keep only the first value
+                    response.headers.pop(header, None)
+                    response.headers[header] = values[0]
+
+        return response
+
+    def make_response(self, data, code=200, headers=None, fallback_mediatype=None):
+        """Override make_response to ensure headers are clean."""
+        # Handle the case where data might be a Response object
+        if hasattr(data, "status_code"):
+            return self._remove_duplicate_headers(data)
+
+        # Create response with proper parameter handling
+        try:
+            response = super().make_response(data, code, headers, fallback_mediatype)
+        except TypeError as e:
+            # Handle parameter mismatch gracefully
+            if "output_json() takes from 2 to 3 positional arguments but 4 were given" in str(e):
+                response = super().make_response(data, code, headers)
+            else:
+                raise
+
+        return self._remove_duplicate_headers(response)
+
+    def handle_error(self, e):
+        """
+        Override handle_error method to fix the Flask-RestX 1.3.0 bug.
+        Only handles the critical type checking issue and header cleanup.
+        """
+
+        # Let Flask-RestX handle most errors normally
+        # We only intercept to fix the specific bug and clean headers
+
+        # Check if this is a Response object (the bug we're fixing)
+        if hasattr(e, "get_response"):
+            response = e.get_response()
+            return self._remove_duplicate_headers(response)
+
+        # For other errors, let the parent handle them but clean headers
+        try:
+            result = super().handle_error(e)
+            return self._remove_duplicate_headers(result)
+        except Exception:
+            # Fallback: create a basic error response
+            data = {"message": str(e), "code": "unknown"}
+            response = self.make_response(data, 500)
+            return self._remove_duplicate_headers(response)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         register_external_error_handlers(self)
