@@ -629,12 +629,12 @@ class TestWebsiteService:
 
         # Mock storage to return existing data
         mock_external_service_dependencies["storage"].exists.return_value = True
-        mock_external_service_dependencies[
-            "storage"
-        ].load_once.return_value = (b'['
-                                    b'{"source_url": "https://example.com", "title": "Test Page", '
-                                    b'"description": "Test Description", "markdown": "# Test Content"}'
-                                    b']')
+        mock_external_service_dependencies["storage"].load_once.return_value = (
+            b"["
+            b'{"source_url": "https://example.com", "title": "Test Page", '
+            b'"description": "Test Description", "markdown": "# Test Content"}'
+            b"]"
+        )
 
         # Act: Get URL data
         result = WebsiteService.get_crawl_url_data(
@@ -1135,14 +1135,14 @@ class TestWebsiteService:
 
         # Mock storage to return existing data
         mock_external_service_dependencies["storage"].exists.return_value = True
-        mock_external_service_dependencies[
-            "storage"
-        ].load_once.return_value = (b'['
-                                    b'{"source_url": "https://example.com/page1", '
-                                    b'"title": "Page 1", "description": "Description 1", "markdown": "# Page 1"}, '
-                                    b'{"source_url": "https://example.com/page2", "title": "Page 2", '
-                                    b'"description": "Description 2", "markdown": "# Page 2"}'
-                                    b']')
+        mock_external_service_dependencies["storage"].load_once.return_value = (
+            b"["
+            b'{"source_url": "https://example.com/page1", '
+            b'"title": "Page 1", "description": "Description 1", "markdown": "# Page 1"}, '
+            b'{"source_url": "https://example.com/page2", "title": "Page 2", '
+            b'"description": "Description 2", "markdown": "# Page 2"}'
+            b"]"
+        )
 
         # Act: Get URL data for specific URL
         result = WebsiteService.get_crawl_url_data(
