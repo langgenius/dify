@@ -1,6 +1,6 @@
 import logging
 
-from flask_restful import reqparse
+from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError
 
 from controllers.web import api

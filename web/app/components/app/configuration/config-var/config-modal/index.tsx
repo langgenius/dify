@@ -26,6 +26,10 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { jsonConfigPlaceHolder, jsonObjectWrap } from './config'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import Textarea from '@/app/components/base/textarea'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { TransferMethod } from '@/types/app'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -285,6 +289,41 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </Field>
 
           )}
+
+          {/* Default value for text input */}
+          {type === InputVarType.textInput && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Input
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {/* Default value for paragraph */}
+          {type === InputVarType.paragraph && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Textarea
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {/* Default value for number input */}
+          {type === InputVarType.number && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <Input
+                type="number"
+                value={tempPayload.default || ''}
+                onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
           {type === InputVarType.select && (
             <>
               <Field title={t('appDebug.variableConfig.options')}>
@@ -314,11 +353,30 @@ const ConfigModal: FC<IConfigModalProps> = ({
           )}
 
           {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
-            <FileUploadSetting
-              payload={tempPayload as UploadFileSetting}
-              onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
-              isMultiple={type === InputVarType.multiFiles}
-            />
+            <>
+              <FileUploadSetting
+                payload={tempPayload as UploadFileSetting}
+                onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
+                isMultiple={type === InputVarType.multiFiles}
+              />
+              <Field title={t('appDebug.variableConfig.defaultValue')}>
+                <FileUploaderInAttachmentWrapper
+                  value={(type === InputVarType.singleFile ? (tempPayload.default ? [tempPayload.default] : []) : (tempPayload.default || [])) as unknown as FileEntity[]}
+                  onChange={(files) => {
+                    if (type === InputVarType.singleFile)
+                      handlePayloadChange('default')(files?.[0] || undefined)
+                    else
+                      handlePayloadChange('default')(files || undefined)
+                  }}
+                  fileConfig={{
+                    allowed_file_types: tempPayload.allowed_file_types || [SupportUploadFileTypes.document],
+                    allowed_file_extensions: tempPayload.allowed_file_extensions || [],
+                    allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [TransferMethod.remote_url],
+                    number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
+                  }}
+                />
+              </Field>
+            </>
           )}
 
           {type === InputVarType.jsonObject && (

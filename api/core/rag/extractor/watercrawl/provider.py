@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from core.rag.extractor.watercrawl.client import WaterCrawlAPIClient
 
@@ -9,7 +9,7 @@ class WaterCrawlProvider:
     def __init__(self, api_key, base_url: str | None = None):
         self.client = WaterCrawlAPIClient(api_key, base_url)
 
-    def crawl_url(self, url, options: dict | Any = None) -> dict:
+    def crawl_url(self, url, options: Optional[dict | Any] = None) -> dict:
         options = options or {}
         spider_options = {
             "max_depth": 1,

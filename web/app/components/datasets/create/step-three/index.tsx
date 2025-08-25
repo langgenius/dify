@@ -39,7 +39,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
                   </div>
                 </div>
               </div>
-              <hr className="my-6 h-[1px] border-0 bg-divider-subtle" />
+              <hr className="my-6 h-px border-0 bg-divider-subtle" />
             </>
           )}
           {datasetId && (

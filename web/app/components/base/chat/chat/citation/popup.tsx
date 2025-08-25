@@ -114,7 +114,7 @@ const Popup: FC<PopupProps> = ({
                     </div>
                     {
                       index !== data.sources.length - 1 && (
-                        <div className='my-1 h-[1px] bg-divider-regular' />
+                        <div className='my-1 h-px bg-divider-regular' />
                       )
                     }
                   </Fragment>

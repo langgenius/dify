@@ -1,5 +1,5 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -44,6 +44,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
+  const [isInitialized, setIsInitialized] = useState(false)
 
   const onClear = () => {
     const newInputs: Record<string, any> = {}
@@ -67,16 +68,24 @@ const RunOnce: FC<IRunOnceProps> = ({
   }, [onInputsChange, inputsRef])
 
   useEffect(() => {
+    if (isInitialized) return
     const newInputs: Record<string, any> = {}
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'select')
         newInputs[item.key] = item.default
       else if (item.type === 'string' || item.type === 'paragraph')
-        newInputs[item.key] = ''
+        newInputs[item.key] = item.default || ''
+      else if (item.type === 'number')
+        newInputs[item.key] = item.default
+      else if (item.type === 'file')
+        newInputs[item.key] = item.default
+      else if (item.type === 'file-list')
+        newInputs[item.key] = item.default || []
       else
         newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
+    setIsInitialized(true)
   }, [promptConfig.prompt_variables, onInputsChange])
 
   return (
@@ -84,7 +93,7 @@ const RunOnce: FC<IRunOnceProps> = ({
       <section>
         {/* input form */}
         <form onSubmit={onSubmit}>
-          {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) ? null
+          {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized ? null
             : promptConfig.prompt_variables.map(item => (
               <div className='mt-4 w-full' key={item.key}>
                 {item.type !== 'boolean' && (
@@ -135,6 +144,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'file' && (
                     <FileUploaderInAttachmentWrapper
+                      value={inputs[item.key] ? [inputs[item.key]] : []}
                       onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
                       fileConfig={{
                         ...item.config,
@@ -144,6 +154,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'file-list' && (
                     <FileUploaderInAttachmentWrapper
+                      value={inputs[item.key]}
                       onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
                       fileConfig={{
                         ...item.config,
