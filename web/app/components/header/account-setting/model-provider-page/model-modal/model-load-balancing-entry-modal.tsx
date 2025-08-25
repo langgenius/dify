@@ -220,7 +220,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
         // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         const { __model_type, __model_name, name, ...credentials } = value
         onSave({
-          ...(entry || {}),
+          ...entry,
           name: name as string,
           credentials: credentials as Record<string, string | boolean | undefined>,
         })
