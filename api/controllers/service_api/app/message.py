@@ -10,7 +10,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
-from fields.conversation_fields import message_detail_fields, message_file_fields, build_message_file_model
+from fields.conversation_fields import build_message_file_model, message_detail_fields
 from fields.message_fields import agent_thought_fields, feedback_fields, build_agent_thought_model, build_feedback_model
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
@@ -251,6 +251,3 @@ class MessageSuggestedApi(Resource):
             raise InternalServerError()
 
         return {"result": "success", "data": questions}
-api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
-api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
-api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")
