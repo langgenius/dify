@@ -10,6 +10,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Literal, Optional, Union, cast, overload
 
 from flask import Flask, current_app
+from flask_login import current_user
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -49,6 +50,7 @@ from models.model import AppMode
 from services.dataset_service import DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
+from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
 
 logger = logging.getLogger(__name__)
 
@@ -220,27 +222,16 @@ class PipelineGenerator(BaseAppGenerator):
                     workflow_thread_pool_id=workflow_thread_pool_id,
                 )
             else:
-                # run in child thread
-                context = contextvars.copy_context()
-
-                worker_thread = threading.Thread(
-                    target=self._generate,
-                    kwargs={
-                        "flask_app": current_app._get_current_object(),  # type: ignore
-                        "context": context,
-                        "pipeline": pipeline,
-                        "workflow_id": workflow.id,
-                        "user": user,
-                        "application_generate_entity": application_generate_entity,
-                        "invoke_from": invoke_from,
-                        "workflow_execution_repository": workflow_execution_repository,
-                        "workflow_node_execution_repository": workflow_node_execution_repository,
-                        "streaming": streaming,
-                        "workflow_thread_pool_id": workflow_thread_pool_id,
-                    },
+                rag_pipeline_run_task.delay(  # type: ignore
+                    pipeline_id=pipeline.id,
+                    user_id=user.id,
+                    tenant_id=pipeline.tenant_id,
+                    workflow_id=workflow.id,
+                    streaming=streaming,
+                    workflow_execution_id=workflow_run_id,
+                    workflow_thread_pool_id=workflow_thread_pool_id,
+                    application_generate_entity=application_generate_entity.model_dump(),
                 )
-
-                worker_thread.start()
         # return batch, dataset, documents
         return {
             "batch": batch,
