@@ -44,8 +44,8 @@ function removePath(basePath, relativePath) {
 
           // Create a regex pattern from the wildcard pattern
           // Replace * with .* for regex
-          const regexPattern = part
-            .replace(/\*/g, '.*');
+          // Escape regex metacharacters except for '*', then replace '*' with '.*'
+          const regexPattern = escapeRegexExceptWildcard(part).replace(/\*/g, '.*');
 
           const regex = new RegExp(`^${regexPattern}$`);
 
