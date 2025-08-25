@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from flask_restful import Api
+from flask_restx import Api
 
 import services.errors.account
 from controllers.console.auth.error import EmailOrPasswordMismatchError
