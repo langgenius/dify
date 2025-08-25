@@ -22,9 +22,11 @@ type Props = {
 const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
 
 type PlaceholderProps = {
+  varPickerProps: any
   onTypeClick: (isVariable: boolean) => void
 }
 const Placeholder = ({
+  varPickerProps,
   onTypeClick,
 }: PlaceholderProps) => {
   const { t } = useTranslation()
@@ -35,7 +37,12 @@ const Placeholder = ({
           i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}
           components={{
             staticContent: <TagLabel type='edit' className='mx-1' onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`)}</TagLabel>,
-            variable: <TagLabel type='variable' className='mx-1' onClick={() => onTypeClick(true)}>{t(`${i18nPrefix}.variable`)}</TagLabel>,
+            variable: <VarReferencePicker
+              {...varPickerProps}
+              trigger={
+                <TagLabel type='variable' className='mx-1'>{t(`${i18nPrefix}.variable`)}</TagLabel>
+              }
+            />,
           }}
         />
       </div>
@@ -60,19 +67,23 @@ const PrePopulate: FC<Props> = ({
 
   const [isFocus, setIsFocus] = useState(false)
 
+  const varPickerProps = {
+    nodeId,
+    value: valueSelector || [],
+    onChange: onValueSelectorChange!,
+    readonly: false,
+    zIndex: 1000,
+  }
+
   const isShowPlaceholder = !onPlaceholderClicked && (isVariable ? (!valueSelector || valueSelector.length === 0) : !value)
   if (isShowPlaceholder)
-    return <Placeholder onTypeClick={handleTypeChange} />
+    return <Placeholder varPickerProps={varPickerProps} onTypeClick={handleTypeChange} />
 
   if (isVariable) {
     return (
       <div>
         <VarReferencePicker
-          nodeId={nodeId}
-          value={valueSelector || []}
-          onChange={onValueSelectorChange!}
-          readonly={false}
-          zIndex={1000}
+          {...varPickerProps}
         />
         <TypeSwitch isVariable={isVariable} onIsVariableChange={handleTypeChange} />
       </div>

@@ -37,6 +37,10 @@ const InputField: React.FC<Props> = ({
         if (!draft.placeholder)
           draft.placeholder = { type: 'const', selector: [], value: '' }
         draft.placeholder[key] = value
+        if(key === 'selector')
+          draft.placeholder.type = 'variable'
+        else if(key === 'value')
+          draft.placeholder.type = 'const'
       })
       setTempPayload(nextValue)
     }
