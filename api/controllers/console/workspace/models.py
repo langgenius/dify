@@ -137,12 +137,8 @@ class ModelProviderModelApi(Resource):
         if (
             "load_balancing" in args
             and args["load_balancing"]
-            and "enabled" in args["load_balancing"]
-            and args["load_balancing"]["enabled"]
+            and "configs" in args["load_balancing"]
         ):
-            if "configs" not in args["load_balancing"]:
-                raise ValueError("invalid load balancing configs")
-
             # save load balancing configs
             model_load_balancing_service.update_load_balancing_configs(
                 tenant_id=tenant_id,
@@ -153,15 +149,14 @@ class ModelProviderModelApi(Resource):
                 config_from=args.get("config_from", ""),
             )
 
-            # enable load balancing
-            model_load_balancing_service.enable_model_load_balancing(
-                tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
-            )
-        else:
-            # disable load balancing
-            model_load_balancing_service.disable_model_load_balancing(
-                tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
-            )
+            if args.get("load_balancing", {}).get("enabled"):
+                model_load_balancing_service.enable_model_load_balancing(
+                    tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+                )
+            else:
+                model_load_balancing_service.disable_model_load_balancing(
+                    tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+                )
 
         return {"result": "success"}, 200
 
