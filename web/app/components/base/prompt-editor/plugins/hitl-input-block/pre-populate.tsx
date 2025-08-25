@@ -2,8 +2,8 @@
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import React, { useCallback, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
 import cn from '@/utils/classnames'
@@ -21,18 +21,24 @@ type Props = {
 
 const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
 
-const Placeholder = () => {
+type PlaceholderProps = {
+  onTypeClick: (isVariable: boolean) => void
+}
+const Placeholder = ({
+  onTypeClick,
+}: PlaceholderProps) => {
   const { t } = useTranslation()
   return (
-    <div className='system-sm-regular mt-1 px-3 text-text-tertiary'>
-      <div className="flex h-5 items-center space-x-1">
-        <span>{t(`${i18nPrefix}.add`)}</span>
-        <TagLabel type='edit' text={t(`${i18nPrefix}.staticContent`)} />
-        <span>{t(`${i18nPrefix}.or`)}</span>
-        <TagLabel type='variable' text={t(`${i18nPrefix}.variable`)} />
-        <span>{t(`${i18nPrefix}.users`)}</span>
+    <div className='system-sm-regular mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 text-text-tertiary'>
+      <div className='flex flex-wrap items-center leading-5'>
+        <Trans
+          i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}
+          components={{
+            staticContent: <TagLabel type='edit' className='mx-1' onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`)}</TagLabel>,
+            variable: <TagLabel type='variable' className='mx-1' onClick={() => onTypeClick(true)}>{t(`${i18nPrefix}.variable`)}</TagLabel>,
+          }}
+        />
       </div>
-      <div className="flex h-5 items-center">{t(`${i18nPrefix}.prePopulateFieldPlaceholderEnd`)}</div>
     </div>
   )
 }
@@ -48,10 +54,17 @@ const PrePopulate: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
+  const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
+  const handlePlaceholderTypeClick = useCallback((isVar: boolean) => {
+    setOnPlaceholderClicked(true)
+    onIsVariableChange?.(isVar)
+  }, [onIsVariableChange])
+
+  const isShowPlaceholder = !onPlaceholderClicked && (isVariable ? (!valueSelector || valueSelector.length === 0) : !value)
+  if (isShowPlaceholder)
+    return <Placeholder onTypeClick={handlePlaceholderTypeClick} />
+
   const main = (() => {
-    const isShowPlaceholder = isVariable ? (!valueSelector || valueSelector.length === 0) : !value
-    if (isShowPlaceholder)
-      return <Placeholder />
     if (isVariable) {
       return (
         <VarReferencePicker
