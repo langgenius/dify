@@ -7,7 +7,6 @@ import {
   useDocumentArchive,
   useDocumentDelete,
   useDocumentDisable,
-  useDocumentDownload,
   useDocumentEnable,
   useDocumentPause,
   useDocumentResume,
@@ -27,7 +26,6 @@ import cn from '@/utils/classnames'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
-  RiDownloadLine,
   RiEditLine,
   RiEqualizer2Line,
   RiLoopLeftLine,
@@ -81,7 +79,6 @@ const Operations = ({
   const { mutateAsync: syncWebsite } = useSyncWebsite()
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
-  const downloadDocument = useDocumentDownload()
   const isListScene = scene === 'list'
 
   const onOperate = async (operationName: OperationName) => {
@@ -175,32 +172,6 @@ const Operations = ({
     )}
     {embeddingAvailable && (
       <>
-        <Tooltip
-          popupContent={t('datasetDocuments.list.action.download')}
-          popupClassName='text-text-secondary system-xs-medium'
-          needsDelay={false}
-        >
-          <button
-            className={cn('mr-2 cursor-pointer rounded-lg',
-              !isListScene
-                ? 'shadow-shadow-3 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
-                : 'p-0.5 hover:bg-state-base-hover')}
-            onClick={() => {
-              downloadDocument.mutateAsync({
-                datasetId,
-                documentId: detail.id,
-              }).then((response) => {
-                if (response.download_url)
-                  window.location.href = response.download_url
-              }).catch((error) => {
-                console.error(error)
-                notify({ type: 'error', message: t('common.actionMsg.downloadFailed') })
-              })
-            }}
-          >
-            <RiDownloadLine className='h-4 w-4 text-components-button-secondary-text' />
-          </button>
-        </Tooltip>
         <Tooltip
           popupContent={t('datasetDocuments.list.action.settings')}
           popupClassName='text-text-secondary system-xs-medium'
