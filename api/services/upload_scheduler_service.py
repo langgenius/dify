@@ -5,7 +5,7 @@ import logging
 import os
 import uuid as uuid_module
 from datetime import UTC, datetime, time
-from typing import Any
+from typing import Any, Optional
 
 from flask import g
 
@@ -80,7 +80,7 @@ class UploadSchedulerService:
         tenant_id: str,
         dataset_id: str,
         file_data: dict[str, Any],
-        upload_args: dict[str, Any] = None,
+        upload_args: Optional[dict[str, Any]] = None,
         priority: int = 0,
     ) -> str:
         # If scheduler is disabled, process immediately
@@ -130,16 +130,16 @@ class UploadSchedulerService:
         current_rate_limit = cls._get_current_rate_limit(now.time(), config)
         window_start = now.timestamp() - (config.time_window_minutes * 60)
         upload_count = redis_client.zcount(counter_key, window_start, float("inf"))
-        return upload_count < current_rate_limit
+        return bool(upload_count < current_rate_limit)
 
     @classmethod
     def _get_current_rate_limit(cls, current_time: time, config) -> int:
         """Get rate limit based on current time."""
         if not config.peak_hours_start or not config.peak_hours_end:
-            return config.off_peak_rate_limit
+            return int(config.off_peak_rate_limit)
         if config.peak_hours_start <= current_time <= config.peak_hours_end:
-            return config.peak_rate_limit
-        return config.off_peak_rate_limit
+            return int(config.peak_rate_limit)
+        return int(config.off_peak_rate_limit)
 
     @classmethod
     def _generate_task_id(cls) -> str:
@@ -162,9 +162,8 @@ class UploadSchedulerService:
         current_timestamp = datetime.now(UTC).replace(tzinfo=None).timestamp()
         redis_client.zadd(counter_key, {str(current_timestamp): current_timestamp})
 
-        window_start = datetime.now(UTC).replace(tzinfo=None).timestamp() - (
-            upload_scheduler_config.time_window_minutes * 60
-        )
+        time_window_minutes = upload_scheduler_config.time_window_minutes or 60
+        window_start = current_timestamp - (time_window_minutes * 60)
         redis_client.zremrangebyscore(counter_key, 0, window_start)
 
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()

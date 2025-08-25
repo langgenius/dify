@@ -1,8 +1,9 @@
 """Configuration for document upload scheduler."""
 
 from datetime import time
+from typing import Optional
 
-from celery.schedules import crontab
+from celery.schedules import crontab  # type: ignore[import-untyped]
 
 from configs import dify_config
 
@@ -19,10 +20,15 @@ class UploadSchedulerConfig:
         peak_start = dify_config.UPLOAD_PEAK_HOURS_START
         peak_end = dify_config.UPLOAD_PEAK_HOURS_END
 
+        self.peak_hours_start: Optional[time] = None
+        self.peak_hours_end: Optional[time] = None
+
         try:
-            self.peak_hours_start = time.fromisoformat(peak_start)
-            self.peak_hours_end = time.fromisoformat(peak_end)
-        except ValueError:
+            if peak_start is not None:
+                self.peak_hours_start = time.fromisoformat(peak_start)
+            if peak_end is not None:
+                self.peak_hours_end = time.fromisoformat(peak_end)
+        except (ValueError, TypeError):
             self.peak_hours_start = None
             self.peak_hours_end = None
 

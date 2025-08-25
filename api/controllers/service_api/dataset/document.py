@@ -3,7 +3,7 @@ import json
 from flask import request
 from flask_restful import marshal, reqparse
 from sqlalchemy import desc, select
-from werkzeug.exceptions import InternalServerError, NotFound, TooManyRequests
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, TooManyRequests
 
 import services
 from controllers.common.errors import (
