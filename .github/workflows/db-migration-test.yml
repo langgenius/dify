@@ -25,9 +25,11 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: ./.github/actions/setup-uv
+        uses: astral-sh/setup-uv@v6
         with:
-          uv-lockfile: api/uv.lock
+          enable-cache: true
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
         run: uv sync --project api
