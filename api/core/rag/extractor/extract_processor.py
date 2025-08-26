@@ -142,7 +142,16 @@ class ExtractProcessor:
                         extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
-                    elif file_extension in {".zip", ".tar", ".gz", ".bz2", ".7z", ".rar", ".tgz", ".tbz2"} or input_file.suffixes[-2:] in [['.tar', '.gz'], ['.tar', '.bz2']]:
+                    elif file_extension in {
+                        ".zip",
+                        ".tar",
+                        ".gz",
+                        ".bz2",
+                        ".7z",
+                        ".rar",
+                        ".tgz",
+                        ".tbz2",
+                    } or input_file.suffixes[-2:] in [[".tar", ".gz"], [".tar", ".bz2"]]:
                         extractor = ArchiveExtractor(file_path)
                     else:
                         # txt
@@ -162,7 +171,16 @@ class ExtractProcessor:
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path)
-                    elif file_extension in {".zip", ".tar", ".gz", ".bz2", ".7z", ".rar", ".tgz", ".tbz2"} or input_file.suffixes[-2:] in [['.tar', '.gz'], ['.tar', '.bz2']]:
+                    elif file_extension in {
+                        ".zip",
+                        ".tar",
+                        ".gz",
+                        ".bz2",
+                        ".7z",
+                        ".rar",
+                        ".tgz",
+                        ".tbz2",
+                    } or input_file.suffixes[-2:] in [[".tar", ".gz"], [".tar", ".bz2"]]:
                         extractor = ArchiveExtractor(file_path)
                     else:
                         # txt
