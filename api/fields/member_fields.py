@@ -1,8 +1,17 @@
-from flask_restful import fields
+from flask_restx import Api, Namespace, fields
 
 from libs.helper import AvatarUrlField, TimestampField
 
-simple_account_fields = {"id": fields.String, "name": fields.String, "email": fields.String}
+simple_account_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "email": fields.String,
+}
+
+
+def build_simple_account_model(api_or_ns: Api | Namespace):
+    return api_or_ns.model("SimpleAccount", simple_account_fields)
+
 
 account_fields = {
     "id": fields.String,

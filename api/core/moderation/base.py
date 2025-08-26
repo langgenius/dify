@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.extension.extensible import Extensible, ExtensionModule
 
@@ -16,7 +16,7 @@ class ModerationInputsResult(BaseModel):
     flagged: bool = False
     action: ModerationAction
     preset_response: str = ""
-    inputs: dict = {}
+    inputs: dict = Field(default_factory=dict)
     query: str = ""
 
 
@@ -100,14 +100,14 @@ class Moderation(Extensible, ABC):
             if not inputs_config.get("preset_response"):
                 raise ValueError("inputs_config.preset_response is required")
 
-            if len(inputs_config.get("preset_response", 0)) > 100:
+            if len(inputs_config.get("preset_response", "0")) > 100:
                 raise ValueError("inputs_config.preset_response must be less than 100 characters")
 
         if outputs_config_enabled:
             if not outputs_config.get("preset_response"):
                 raise ValueError("outputs_config.preset_response is required")
 
-            if len(outputs_config.get("preset_response", 0)) > 100:
+            if len(outputs_config.get("preset_response", "0")) > 100:
                 raise ValueError("outputs_config.preset_response must be less than 100 characters")
 
 

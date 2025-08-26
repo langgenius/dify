@@ -85,6 +85,7 @@ def handle(sender: Message, **kwargs):
         values=_ProviderUpdateValues(last_used=current_time),
         description="basic_last_used_update",
     )
+    logging.info("provider used, tenant_id=%s, provider_name=%s", tenant_id, provider_name)
     updates_to_perform.append(basic_update)
 
     # 2. Check if we need to deduct quota (system provider only)
@@ -186,9 +187,11 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
     if not updates_to_perform:
         return
 
+    updates_to_perform = sorted(updates_to_perform, key=lambda i: (i.filters.tenant_id, i.filters.provider_name))
+
     # Use SQLAlchemy's context manager for transaction management
     # This automatically handles commit/rollback
-    with Session(db.engine) as session:
+    with Session(db.engine) as session, session.begin():
         # Use a single transaction for all updates
         for update_operation in updates_to_perform:
             filters = update_operation.filters
@@ -212,10 +215,13 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
             # Prepare values dict for SQLAlchemy update
             update_values = {}
-            if values.last_used is not None:
-                update_values["last_used"] = values.last_used
+            # updateing to `last_used` is removed due to performance reason.
+            # ref: https://github.com/langgenius/dify/issues/24526
             if values.quota_used is not None:
                 update_values["quota_used"] = values.quota_used
+            # Skip the current update operation if no updates are required.
+            if not update_values:
+                continue
 
             # Build and execute the update statement
             stmt = update(Provider).where(*where_conditions).values(**update_values)

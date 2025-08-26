@@ -114,6 +114,8 @@ const translation = {
     configure: 'Konfiguriraj',
     inRunMode: 'V načinu izvajanja',
     tagBound: 'Število aplikacij, ki uporabljajo to oznako',
+    currentView: 'Trenutni pogled',
+    currentWorkflow: 'Trenutni potek dela',
   },
   env: {
     modal: {
@@ -287,6 +289,18 @@ const translation = {
     zoomIn: 'Zoom in',
     zoomTo50: 'Povečaj na 50%',
     zoomTo100: 'Povečaj na 100%',
+    alignMiddle: 'Sredina',
+    alignBottom: 'Spodaj',
+    alignCenter: 'Center',
+    distributeVertical: 'Razporedi navpično',
+    alignRight: 'Desno',
+    alignTop: 'Vrh',
+    vertical: 'Navpičen',
+    distributeHorizontal: 'Razporedi vodoravno',
+    selectionAlignment: 'Poravnava izbora',
+    alignNodes: 'Poravnava vozlišč',
+    horizontal: 'Vodoraven',
+    alignLeft: 'Levo',
   },
   variableReference: {
     conversationVars: 'pogovorne spremenljivke',
@@ -874,6 +888,7 @@ const translation = {
         },
         json: 'agent generiran json',
         text: 'vsebina, ki jo je ustvaril agent',
+        usage: 'informacije o uporabi modela',
       },
       checkList: {
         strategyNotSelected: 'Strategija ni izbrana',
@@ -933,6 +948,7 @@ const translation = {
       restoreSuccess: 'Obnovljena različica',
       restoreFailure: 'Obnavljanje različice ni uspelo',
       updateSuccess: 'Različica posodobljena',
+      copyIdSuccess: 'ID kopiran v odložišče',
     },
     defaultName: 'Nepodpisana različica',
     deletionTip: 'Izbris je nepovraten, prosim potrdite.',
@@ -943,6 +959,7 @@ const translation = {
     nameThisVersion: 'Poimenujte to različico',
     releaseNotesPlaceholder: 'Opisujte, kaj se je spremenilo',
     restorationTip: 'Po obnovitvi različice bo trenutni osnutek prepisan.',
+    copyId: 'Kopiraj ID',
   },
   debug: {
     noData: {
@@ -972,6 +989,20 @@ const translation = {
     },
     settingsTab: 'Nastavitve',
     lastRunTab: 'Zadnji zagon',
+    relations: {
+      dependencies: 'Odvisnosti',
+      dependents: 'Odvisnim',
+      noDependents: 'Brez vzdrževanih oseb',
+      dependentsDescription: 'Vozlišča, ki se zanašajo na to vozlišče',
+      dependenciesDescription: 'Vozlišča, na katera se zanaša to vozlišče',
+      noDependencies: 'Brez odvisnosti',
+    },
+    relationsTab: 'Odnose',
+    copyLastRun: 'Kopiraj zadnji zagon',
+    copyLastRunError: 'Kopiranje vhodov zadnjega zagona ni uspelo',
+    noLastRunFound: 'Nobenega prejšnjega zagona ni bilo najdenega.',
+    noMatchingInputsFound: 'Ni podatkov, ki bi ustrezali prejšnjemu zagonu',
+    lastOutput: 'Nazadnje izhod',
   },
 }
 

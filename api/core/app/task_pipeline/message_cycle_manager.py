@@ -23,6 +23,7 @@ from core.app.entities.task_entities import (
     MessageFileStreamResponse,
     MessageReplaceStreamResponse,
     MessageStreamResponse,
+    StreamEvent,
     WorkflowTaskState,
 )
 from core.llm_generator.llm_generator import LLMGenerator
@@ -30,6 +31,8 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageCycleManager:
@@ -97,7 +100,7 @@ class MessageCycleManager:
                     conversation.name = name
                 except Exception as e:
                     if dify_config.DEBUG:
-                        logging.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
                     pass
 
                 db.session.merge(conversation)
@@ -180,11 +183,15 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
+        message_file = db.session.query(MessageFile).where(MessageFile.id == message_id).first()
+        event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
+
         return MessageStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
             from_variable_selector=from_variable_selector,
+            event=event_type,
         )
 
     def message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:

@@ -1,11 +1,25 @@
+import json
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 from core.file import FileAttribute, file_manager
 from core.variables import ArrayFileSegment
+from core.variables.segments import ArrayBooleanSegment, BooleanSegment
 from core.workflow.entities.variable_pool import VariablePool
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
+
+
+def _convert_to_bool(value: Any) -> bool:
+    if isinstance(value, int):
+        return bool(value)
+
+    if isinstance(value, str):
+        loaded = json.loads(value)
+        if isinstance(loaded, (int, bool)):
+            return bool(loaded)
+
+    raise TypeError(f"unexpected value: type={type(value)}, value={value}")
 
 
 class ConditionProcessor:
@@ -48,9 +62,16 @@ class ConditionProcessor:
                 )
             else:
                 actual_value = variable.value if variable else None
-                expected_value = condition.value
+                expected_value: str | Sequence[str] | bool | list[bool] | None = condition.value
                 if isinstance(expected_value, str):
                     expected_value = variable_pool.convert_template(expected_value).text
+                # Here we need to explicit convet the input string to boolean.
+                if isinstance(variable, (BooleanSegment, ArrayBooleanSegment)) and expected_value is not None:
+                    # The following two lines is for compatibility with existing workflows.
+                    if isinstance(expected_value, list):
+                        expected_value = [_convert_to_bool(i) for i in expected_value]
+                    else:
+                        expected_value = _convert_to_bool(expected_value)
                 input_conditions.append(
                     {
                         "actual_value": actual_value,
@@ -77,7 +98,7 @@ def _evaluate_condition(
     *,
     operator: SupportedComparisonOperator,
     value: Any,
-    expected: str | Sequence[str] | None,
+    expected: Union[str, Sequence[str], bool | Sequence[bool], None],
 ) -> bool:
     match operator:
         case "contains":
@@ -130,7 +151,7 @@ def _assert_contains(*, value: Any, expected: Any) -> bool:
     if not value:
         return False
 
-    if not isinstance(value, str | list):
+    if not isinstance(value, (str, list)):
         raise ValueError("Invalid actual value type: string or array")
 
     if expected not in value:
@@ -142,7 +163,7 @@ def _assert_not_contains(*, value: Any, expected: Any) -> bool:
     if not value:
         return True
 
-    if not isinstance(value, str | list):
+    if not isinstance(value, (str, list)):
         raise ValueError("Invalid actual value type: string or array")
 
     if expected in value:
@@ -178,8 +199,8 @@ def _assert_is(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, str):
-        raise ValueError("Invalid actual value type: string")
+    if not isinstance(value, (str, bool)):
+        raise ValueError("Invalid actual value type: string or boolean")
 
     if value != expected:
         return False
@@ -190,8 +211,8 @@ def _assert_is_not(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, str):
-        raise ValueError("Invalid actual value type: string")
+    if not isinstance(value, (str, bool)):
+        raise ValueError("Invalid actual value type: string or boolean")
 
     if value == expected:
         return False
@@ -214,10 +235,13 @@ def _assert_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
-        raise ValueError("Invalid actual value type: number")
+    if not isinstance(value, (int, float, bool)):
+        raise ValueError("Invalid actual value type: number or boolean")
 
-    if isinstance(value, int):
+    # Handle boolean comparison
+    if isinstance(value, bool):
+        expected = bool(expected)
+    elif isinstance(value, int):
         expected = int(expected)
     else:
         expected = float(expected)
@@ -231,10 +255,13 @@ def _assert_not_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
-        raise ValueError("Invalid actual value type: number")
+    if not isinstance(value, (int, float, bool)):
+        raise ValueError("Invalid actual value type: number or boolean")
 
-    if isinstance(value, int):
+    # Handle boolean comparison
+    if isinstance(value, bool):
+        expected = bool(expected)
+    elif isinstance(value, int):
         expected = int(expected)
     else:
         expected = float(expected)
@@ -248,7 +275,7 @@ def _assert_greater_than(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):
@@ -265,7 +292,7 @@ def _assert_less_than(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):
@@ -282,7 +309,7 @@ def _assert_greater_than_or_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):
@@ -299,7 +326,7 @@ def _assert_less_than_or_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):

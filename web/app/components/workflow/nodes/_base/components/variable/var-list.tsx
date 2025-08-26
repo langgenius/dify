@@ -8,7 +8,7 @@ import VarReferencePicker from './var-reference-picker'
 import Input from '@/app/components/base/input'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import type { ToastHandle } from '@/app/components/base/toast'
 import Toast from '@/app/components/base/toast'
 import { ReactSortable } from 'react-sortablejs'
@@ -74,7 +74,7 @@ const VarList: FC<Props> = ({
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
-      replaceSpaceWithUnderscreInVarNameInput(e.target)
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
 
       const newKey = e.target.value
 

@@ -3,6 +3,7 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { RiExternalLinkLine } from '@remixicon/react'
 import type { AnyFieldApi } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-form'
 import cn from '@/utils/classnames'
@@ -29,7 +30,7 @@ const BaseField = ({
   inputClassName,
   formSchema,
   field,
-  disabled,
+  disabled: propsDisabled,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -39,7 +40,9 @@ const BaseField = ({
     options,
     labelClassName: formLabelClassName,
     show_on = [],
+    disabled: formSchemaDisabled,
   } = formSchema
+  const disabled = propsDisabled || formSchemaDisabled
 
   const memorizedLabel = useMemo(() => {
     if (isValidElement(label))
@@ -71,7 +74,7 @@ const BaseField = ({
   })
   const memorizedOptions = useMemo(() => {
     return options?.filter((option) => {
-      if (!option.show_on?.length)
+      if (!option.show_on || option.show_on.length === 0)
         return true
 
       return option.show_on.every((condition) => {
@@ -84,7 +87,7 @@ const BaseField = ({
         value: option.value,
       }
     }) || []
-  }, [options, renderI18nObject])
+  }, [options, renderI18nObject, optionValues])
   const value = useStore(field.form.store, s => s.values[field.name])
   const values = useStore(field.form.store, (s) => {
     return show_on.reduce((acc, condition) => {
@@ -181,9 +184,10 @@ const BaseField = ({
                     className={cn(
                       'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
                       value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
+                      disabled && 'cursor-not-allowed opacity-50',
                       inputClassName,
                     )}
-                    onClick={() => field.handleChange(option.value)}
+                    onClick={() => !disabled && field.handleChange(option.value)}
                   >
                     {
                       formSchema.showRadioUI && (
@@ -198,6 +202,22 @@ const BaseField = ({
                 ))
               }
             </div>
+          )
+        }
+        {
+          formSchema.url && (
+            <a
+              className='system-xs-regular mt-4 flex items-center text-text-accent'
+              href={formSchema?.url}
+              target='_blank'
+            >
+              <span className='break-all'>
+                {renderI18nObject(formSchema?.help as any)}
+              </span>
+              {
+                <RiExternalLinkLine className='ml-1 h-3 w-3' />
+              }
+            </a>
           )
         }
       </div>

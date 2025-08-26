@@ -2,18 +2,19 @@ import base64
 import secrets
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.console.auth.error import (
+    AuthenticationFailedError,
     EmailCodeError,
     EmailPasswordResetLimitError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
 from controllers.web import api
 from extensions.ext_database import db
@@ -46,7 +47,7 @@ class ForgotPasswordSendEmailApi(Resource):
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
         token = None
         if account is None:
-            raise AccountNotFound()
+            raise AuthenticationFailedError()
         else:
             token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
 
@@ -131,7 +132,7 @@ class ForgotPasswordResetApi(Resource):
             if account:
                 self._update_existing_account(account, password_hashed, salt, session)
             else:
-                raise AccountNotFound()
+                raise AuthenticationFailedError()
 
         return {"result": "success"}
 

@@ -30,6 +30,7 @@ const translation = {
       sync: 'Синхронізувати',
       pause: 'Пауза',
       resume: 'Продовжити',
+      download: 'Завантажити файл',
     },
     index: {
       enable: 'Активувати',

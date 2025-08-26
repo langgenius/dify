@@ -106,7 +106,7 @@ function SelectedGroupsBreadCrumb() {
     setSelectedGroupsForBreadcrumb([])
   }, [setSelectedGroupsForBreadcrumb])
   return <div className='flex h-7 items-center gap-x-0.5 px-2 py-0.5'>
-    <span className={classNames('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'text-text-accent cursor-pointer')} onClick={handleReset}>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
+    <span className={classNames('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
     {selectedGroupsForBreadcrumb.map((group, index) => {
       return <div key={index} className='system-xs-regular flex items-center gap-x-0.5 text-text-tertiary'>
         <span>/</span>
@@ -198,7 +198,7 @@ type BaseItemProps = {
   children: React.ReactNode
 }
 function BaseItem({ children, className }: BaseItemProps) {
-  return <div className={classNames('p-1 pl-2 flex items-center space-x-2 hover:rounded-lg hover:bg-state-base-hover cursor-pointer', className)}>
+  return <div className={classNames('flex cursor-pointer items-center space-x-2 p-1 pl-2 hover:rounded-lg hover:bg-state-base-hover', className)}>
     {children}
   </div>
 }

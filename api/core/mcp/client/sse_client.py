@@ -7,6 +7,7 @@ from typing import Any, TypeAlias, final
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from httpx_sse import EventSource, ServerSentEvent
 from sseclient import SSEClient
 
 from core.mcp import types
@@ -35,11 +36,6 @@ class _StatusError:
 ReadQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
-
-
-def remove_request_params(url: str) -> str:
-    """Remove request parameters from URL, keeping only the path."""
-    return urljoin(url, urlparse(url).path)
 
 
 class SSETransport:
@@ -114,7 +110,7 @@ class SSETransport:
             logger.exception("Error parsing server message")
             read_queue.put(exc)
 
-    def _handle_sse_event(self, sse, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def _handle_sse_event(self, sse: ServerSentEvent, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
         """Handle a single SSE event.
 
         Args:
@@ -130,7 +126,7 @@ class SSETransport:
             case _:
                 logger.warning("Unknown SSE event: %s", sse.event)
 
-    def sse_reader(self, event_source, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def sse_reader(self, event_source: EventSource, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
         """Read and process SSE events.
 
         Args:
@@ -225,7 +221,7 @@ class SSETransport:
         self,
         executor: ThreadPoolExecutor,
         client: httpx.Client,
-        event_source,
+        event_source: EventSource,
     ) -> tuple[ReadQueue, WriteQueue]:
         """Establish connection and start worker threads.
 
@@ -327,7 +323,7 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
         )
         response.raise_for_status()
         logger.debug("Client message sent successfully: %s", response.status_code)
-    except Exception as exc:
+    except Exception:
         logger.exception("Error sending message")
         raise
 

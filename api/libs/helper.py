@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
-from flask_restful import fields
+from flask_restx import fields
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -26,6 +26,8 @@ from extensions.ext_redis import redis_client
 if TYPE_CHECKING:
     from models.account import Account
     from models.model import EndUser
+
+logger = logging.getLogger(__name__)
 
 
 def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
@@ -57,7 +59,7 @@ def run(script):
 
 
 class AppIconUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 
@@ -72,7 +74,7 @@ class AppIconUrlField(fields.Raw):
 
 
 class AvatarUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 
@@ -321,7 +323,7 @@ class TokenManager:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
-            logging.warning("%s token %s not found with key %s", token_type, token, key)
+            logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
         token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data

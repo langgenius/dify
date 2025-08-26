@@ -9,7 +9,7 @@ import type {
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
-export type Inputs = Record<string, string | number | object>
+export type Inputs = Record<string, string | number | object | boolean>
 
 export enum PromptMode {
   simple = 'simple',
@@ -60,6 +60,7 @@ export type PromptVariable = {
   icon?: string
   icon_background?: string
   hide?: boolean // used in frontend to hide variable
+  json_schema?: string
 }
 
 export type CompletionParams = {
