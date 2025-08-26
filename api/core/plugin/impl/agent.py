@@ -8,6 +8,7 @@ from core.plugin.entities.plugin_daemon import (
 )
 from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.utils.chunk_merger import merge_blob_chunks
 
 
 class PluginAgentClient(BasePluginClient):
@@ -113,4 +114,4 @@ class PluginAgentClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        return response
+        return merge_blob_chunks(response)
