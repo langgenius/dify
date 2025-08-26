@@ -806,7 +806,7 @@ class DatasourceProviderService:
                 "langgenius/jina_datasource",
             ]:
                 default_provider = (
-                    db.session.query(DatasourceProvider.id)
+                    db.session.query(DatasourceProvider)
                     .filter_by(tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id)
                     .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
                     .first()
