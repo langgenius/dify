@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from unittest.mock import patch
 
 import pytest
 
@@ -111,8 +112,11 @@ class TestChunkMerger:
         assert isinstance(result[2].message, ToolInvokeMessage.TextMessage)
         assert result[2].message.text == "World"
 
-    def test_merge_blob_chunks_file_too_large(self):
+    @patch("core.plugin.utils.chunk_merger.dify_config")
+    def test_merge_blob_chunks_file_too_large(self, mock_config):
         """Test that error is raised when file exceeds max size."""
+
+        mock_config.TOOL_FILE_MAX_SIZE = 1000
 
         def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
             # Send a chunk that would exceed the limit
@@ -124,8 +128,8 @@ class TestChunkMerger:
             )
 
         with pytest.raises(ValueError) as exc_info:
-            list(merge_blob_chunks(mock_generator(), max_file_size=1000))
-        assert "File is too large" in str(exc_info.value)
+            list(merge_blob_chunks(mock_generator()))
+        assert "File chunk is too large" in str(exc_info.value)
 
     def test_merge_blob_chunks_chunk_too_large(self):
         """Test that error is raised when chunk exceeds max chunk size."""
@@ -162,10 +166,10 @@ class TestChunkMerger:
                 ),
             )
 
-        result = list(merge_blob_chunks(mock_generator()))
-        assert len(result) == 1
-        assert isinstance(result[0], AgentInvokeMessage)
-        assert result[0].type == AgentInvokeMessage.MessageType.BLOB
+        with pytest.raises(ValueError) as exc_info:
+            list(merge_blob_chunks(mock_generator()))
+
+        assert "File chunk is too large" in str(exc_info.value)
 
     def test_merge_blob_chunks_preserves_meta(self):
         """Test that meta information is preserved in merged messages."""
@@ -183,8 +187,11 @@ class TestChunkMerger:
         assert len(result) == 1
         assert result[0].meta == {"key": "value"}
 
-    def test_merge_blob_chunks_custom_limits(self):
+    @patch("core.plugin.utils.chunk_merger.dify_config")
+    def test_merge_blob_chunks_custom_limits(self, mock_config):
         """Test merge_blob_chunks with custom size limits."""
+
+        mock_config.TOOL_FILE_MAX_SIZE = 1000
 
         def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
             # This should work with custom limits
@@ -202,7 +209,7 @@ class TestChunkMerger:
             )
 
         # Should work with custom limits
-        result = list(merge_blob_chunks(mock_generator(), max_file_size=1000, max_chunk_size=500))
+        result = list(merge_blob_chunks(mock_generator()))
         assert len(result) == 1
 
         # Should fail with smaller file size limit
@@ -214,8 +221,10 @@ class TestChunkMerger:
                 ),
             )
 
+        mock_config.TOOL_FILE_MAX_SIZE = 300
+
         with pytest.raises(ValueError):
-            list(merge_blob_chunks(mock_generator2(), max_file_size=300))
+            list(merge_blob_chunks(mock_generator2()))
 
     def test_merge_blob_chunks_data_integrity(self):
         """Test that merged chunks exactly match the original data."""
