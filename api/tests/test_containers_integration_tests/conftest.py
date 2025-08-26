@@ -27,6 +27,7 @@ from models import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
+
 class DifyTestContainers:
     """
     Manages all test containers required for Dify integration tests.
