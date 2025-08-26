@@ -380,7 +380,7 @@ class ModelProviderService:
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider available models
-        models = provider_configurations.get_models(model_type=ModelType.value_of(model_type))
+        models = provider_configurations.get_models(model_type=ModelType.value_of(model_type), only_active=True)
 
         # Group models by provider
         provider_models: dict[str, list[ModelWithProviderEntity]] = {}
@@ -389,9 +389,6 @@ class ModelProviderService:
                 provider_models[model.provider.provider] = []
 
             if model.deprecated:
-                continue
-
-            if model.status != ModelStatus.ACTIVE:
                 continue
 
             provider_models[model.provider.provider].append(model)
