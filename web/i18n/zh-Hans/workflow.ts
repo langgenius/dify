@@ -1098,6 +1098,17 @@ const translation = {
     enabled: '开始',
     disabled: '开始 • 已禁用',
   },
+  onboarding: {
+    title: '选择开始节点来开始',
+    description: '不同的开始节点具有不同的功能。不用担心，您随时可以更改它们。',
+    userInputFull: '用户输入（原始开始节点）',
+    userInputDescription: '允许设置用户输入变量的开始节点，具有Web应用程序、服务API、MCP服务器和工作流即工具功能。',
+    trigger: '触发器',
+    triggerDescription: '触发器可以作为工作流的开始节点，例如定时任务、自定义webhook或与其他应用程序的集成。',
+    back: '返回',
+    learnMore: '了解更多',
+    aboutStartNode: '关于开始节点。',
+  },
 }
 
 export default translation
