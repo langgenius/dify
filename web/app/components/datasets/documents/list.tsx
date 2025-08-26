@@ -501,9 +501,11 @@ const DocumentList: FC<IDocumentListProps> = ({
   useEffect(() => {
     let filteredDocs = documents
 
-    if (statusFilter !== 'all') {
+    if (statusFilter.value !== 'all') {
       filteredDocs = filteredDocs.filter(doc =>
-        doc.display_status?.toLowerCase() === statusFilter.value.toLowerCase(),
+        typeof doc.display_status === 'string'
+          && typeof statusFilter.value === 'string'
+          && doc.display_status.toLowerCase() === statusFilter.value.toLowerCase(),
       )
     }
 
