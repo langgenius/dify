@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RiArrowLeftLine } from '@remixicon/react'
 import AllStartBlocks from '@/app/components/workflow/block-selector/all-start-blocks'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -20,13 +21,15 @@ const TriggerSelectionPanel: FC<TriggerSelectionPanelProps> = ({
   onSelect,
   onBack,
 }) => {
+  const { t } = useTranslation()
+
   const handleSelect = (type: BlockEnum, toolConfig?: ToolDefaultValue) => {
     if (type !== BlockEnum.Start)
       onSelect(type, toolConfig)
   }
 
   return (
-    <div className="flex h-[600px] w-[500px] flex-col">
+    <div className="flex h-[400px] w-full flex-col">
       <div className="flex items-center border-b border-divider-subtle p-4">
         <button
           onClick={onBack}
@@ -35,7 +38,7 @@ const TriggerSelectionPanel: FC<TriggerSelectionPanelProps> = ({
           <RiArrowLeftLine className="h-4 w-4" />
         </button>
         <h3 className="title-lg-semi-bold text-text-primary">
-          Select Trigger
+          {t('workflow.onboarding.trigger')}
         </h3>
       </div>
 

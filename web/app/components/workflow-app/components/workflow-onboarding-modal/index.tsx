@@ -5,7 +5,7 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { RiCloseLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import Modal from '@/app/components/base/modal'
@@ -23,6 +23,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
   onClose,
   onSelectStartNode,
 }) => {
+  const { t } = useTranslation()
   const [showTriggerPanel, setShowTriggerPanel] = useState(false)
 
   const handleSelectUserInput = useCallback(() => {
@@ -55,41 +56,68 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
     return () => document.removeEventListener('keydown', handleEsc)
   }, [isShow, handleClose])
 
+  // Reset panel state when modal is reopened
+  useEffect(() => {
+    if (isShow)
+      setShowTriggerPanel(false)
+  }, [isShow])
+
   return (
-    <Modal
-      isShow={isShow}
-      onClose={handleClose}
-      closable={false}
-      className="w-auto max-w-none"
-      highPriority={true}
-    >
-      <div className="relative">
-        <button
-          onClick={handleClose}
-          className="absolute right-4 top-4 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-        >
-          <RiCloseLine className="h-4 w-4" />
-        </button>
+    <>
+      <Modal
+        isShow={isShow}
+        onClose={handleClose}
+        className="w-[618px] max-w-[618px] rounded-2xl border border-effects-highlight bg-background-default-subtle shadow-lg"
+        overlayOpacity
+        closable
+      >
+        <div className="pb-4">
+          {/* Header */}
+          <div className="mb-6">
+            <h3 className="title-2xl-semi-bold mb-2 text-text-primary">
+              {t('workflow.onboarding.title')}
+            </h3>
+            <div className="body-xs-regular leading-4 text-text-tertiary">
+              {t('workflow.onboarding.description')}{' '}
+              <button
+                type="button"
+                className="hover:text-text-accent-hover cursor-pointer text-text-accent underline"
+                onClick={() => {
+                  // TODO: Link to workflow start node documentation
+                  console.log('Navigate to start node documentation')
+                }}
+              >
+                Learn more
+              </button> about start node.
+            </div>
+          </div>
 
-        {!showTriggerPanel ? (
-          <StartNodeSelectionPanel
-            onSelectUserInput={handleSelectUserInput}
-            onSelectTrigger={handleSelectTrigger}
-          />
-        ) : (
-          <TriggerSelectionPanel
-            onSelect={handleTriggerSelect}
-            onBack={handleBack}
-          />
-        )}
-      </div>
+          {/* Content */}
+          {!showTriggerPanel ? (
+            <StartNodeSelectionPanel
+              onSelectUserInput={handleSelectUserInput}
+              onSelectTrigger={handleSelectTrigger}
+            />
+          ) : (
+            <TriggerSelectionPanel
+              onSelect={handleTriggerSelect}
+              onBack={handleBack}
+            />
+          )}
+        </div>
+      </Modal>
 
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
-        <span className="text-sm text-text-tertiary">
-          Press <kbd className="inline-flex items-center rounded border border-components-panel-border bg-background-section-burn px-1.5 py-0.5 font-mono text-xs">esc</kbd> to dismiss
-        </span>
-      </div>
-    </Modal>
+      {/* ESC tip below modal */}
+      {isShow && (
+        <div className="body-xs-regular pointer-events-none fixed left-1/2 top-1/2 z-[70] flex -translate-x-1/2 translate-y-[160px] items-center gap-1 text-text-quaternary">
+          <span>Press</span>
+          <kbd className="system-kbd inline-flex h-4 min-w-4 items-center justify-center rounded bg-components-kbd-bg-gray px-1 text-text-tertiary">
+            esc
+          </kbd>
+          <span>to dismiss</span>
+        </div>
+      )}
+    </>
   )
 }
 

@@ -21,32 +21,30 @@ const StartNodeOption: FC<StartNodeOptionProps> = ({
     <div
       onClick={onClick}
       className={cn(
-        'flex max-w-xs flex-col items-center p-6',
-        'rounded-2xl border border-components-panel-border',
-        'bg-components-panel-bg hover:bg-state-base-hover',
-        'cursor-pointer transition-colors',
-        'hover:border-components-panel-border-active',
+        'hover:border-components-panel-border-active flex h-40 w-[280px] cursor-pointer flex-col gap-2 rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-4 shadow-sm transition-all hover:shadow-md',
       )}
     >
-      <div className="mb-4">
+      {/* Icon */}
+      <div className="shrink-0">
         {icon}
       </div>
 
-      <div className="text-center">
-        <div className="mb-1">
-          <h3 className="title-lg-semi-bold text-text-primary">
+      {/* Text content */}
+      <div className="flex h-[74px] flex-col gap-1 py-0.5">
+        <div className="h-5 leading-5">
+          <h3 className="system-md-semi-bold text-text-primary">
             {title}
+            {subtitle && (
+              <span className="system-md-regular text-text-quaternary"> {subtitle}</span>
+            )}
           </h3>
-          {subtitle && (
-            <p className="body-md-regular text-text-tertiary">
-              {subtitle}
-            </p>
-          )}
         </div>
 
-        <p className="body-sm-regular leading-relaxed text-text-secondary">
-          {description}
-        </p>
+        <div className="h-12 leading-4">
+          <p className="system-xs-regular text-text-tertiary">
+            {description}
+          </p>
+        </div>
       </div>
     </div>
   )

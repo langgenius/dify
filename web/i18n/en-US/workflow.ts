@@ -1100,6 +1100,17 @@ const translation = {
       noDependents: 'No dependents',
     },
   },
+  onboarding: {
+    title: 'Select a start node to begin',
+    description: 'Different start nodes have different capabilities. Don\'t worry, you can always change them later.',
+    userInputFull: 'User Input (original start node)',
+    userInputDescription: 'Start node that allows setting user input variables, with web app, service API, MCP server, and workflow as tool capabilities.',
+    trigger: 'Trigger',
+    triggerDescription: 'Triggers can serve as the start node of a workflow, such as scheduled tasks, custom webhooks, or integrations with other apps.',
+    back: 'Back',
+    learnMore: 'Learn more',
+    aboutStartNode: 'about start node.',
+  },
 }
 
 export default translation
