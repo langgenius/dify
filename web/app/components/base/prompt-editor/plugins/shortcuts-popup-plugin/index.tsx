@@ -258,8 +258,8 @@ export default function ShortcutsPopupPlugin({
       if (!portalRef.current.contains(e.target as Node))
         closePortal()
     }
-    document.addEventListener('mousedown', onMouseDown, true)
-    return () => document.removeEventListener('mousedown', onMouseDown, true)
+    document.addEventListener('mousedown', onMouseDown, false)
+    return () => document.removeEventListener('mousedown', onMouseDown, false)
   }, [open, closePortal])
 
   const handleInsert = useCallback((command: LexicalCommand<unknown>, params: any) => {
