@@ -638,7 +638,6 @@ class ProviderConfiguration(BaseModel):
             ProviderModel.model_name == model,
             ProviderModel.model_type == model_type.to_origin_model_type(),
         )
-        provider_model_record = db.session.scalar(stmt)
 
         return session.execute(stmt).scalar_one_or_none()
 
