@@ -31,7 +31,7 @@ export const useInitial = (id: string) => {
 
   const handleInitial = useCallback(() => {
     const nodeData = getNodeData()
-    const { provider_id, tool_name, _notInitialized } = nodeData?.data
+    const { provider_id, tool_name, _notInitialized } = nodeData?.data || {}
     const currCollection = buildInTools.find(item => canFindTool(item.id, provider_id))
     const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
 

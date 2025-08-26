@@ -9,6 +9,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginToolProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
+from core.schemas.resolver import resolve_dify_schema_refs
 from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
 
 
@@ -24,6 +25,9 @@ class PluginToolManager(BasePluginClient):
                 provider_name = declaration.get("identity", {}).get("name")
                 for tool in declaration.get("tools", []):
                     tool["identity"]["provider"] = provider_name
+                    # resolve refs
+                    if tool.get("output_schema"):
+                        tool["output_schema"] = resolve_dify_schema_refs(tool["output_schema"])
 
             return json_response
 
@@ -55,6 +59,9 @@ class PluginToolManager(BasePluginClient):
             if data:
                 for tool in data.get("declaration", {}).get("tools", []):
                     tool["identity"]["provider"] = tool_provider_id.provider_name
+                    # resolve refs
+                    if tool.get("output_schema"):
+                        tool["output_schema"] = resolve_dify_schema_refs(tool["output_schema"])
 
             return json_response
 
