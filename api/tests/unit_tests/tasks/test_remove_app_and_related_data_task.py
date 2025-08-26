@@ -225,8 +225,8 @@ class TestDeleteDraftVariablesBatch:
         assert result == 30
 
         # Verify logging calls
-        assert mock_logger.info.call_count == 2
-        mock_logger.info.assert_any_call(
+        assert mock_logging.info.call_count == 2
+        mock_logging.info.assert_any_call(
             ANY  # click.style call
         )
 
