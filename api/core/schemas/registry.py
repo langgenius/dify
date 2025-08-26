@@ -100,18 +100,8 @@ class SchemaRegistry:
 
     def _parse_uri(self, uri: str) -> tuple[str, str]:
         """Parses a schema URI to extract version and schema name"""
-        import re
-        
-        pattern = r"^https://dify\.ai/schemas/(v\d+)/(.+)\.json$"
-        match = re.match(pattern, uri)
-        
-        if not match:
-            return "", ""
-            
-        version = match.group(1)
-        schema_name = match.group(2)
-        
-        return version, schema_name
+        from core.schemas.resolver import parse_dify_schema_uri
+        return parse_dify_schema_uri(uri)
 
     def list_versions(self) -> list[str]:
         """Returns all available versions"""

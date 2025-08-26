@@ -16,6 +16,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDatasourceProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
+from core.schemas.resolver import resolve_dify_schema_refs
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -32,6 +33,9 @@ class PluginDatasourceManager(BasePluginClient):
                     provider_name = declaration.get("identity", {}).get("name")
                     for datasource in declaration.get("datasources", []):
                         datasource["identity"]["provider"] = provider_name
+                        # resolve refs
+                        if datasource.get("output_schema"):
+                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
 
             return json_response
 
@@ -69,6 +73,9 @@ class PluginDatasourceManager(BasePluginClient):
                     provider_name = declaration.get("identity", {}).get("name")
                     for datasource in declaration.get("datasources", []):
                         datasource["identity"]["provider"] = provider_name
+                        # resolve refs
+                        if datasource.get("output_schema"):
+                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
 
             return json_response
 
@@ -106,7 +113,8 @@ class PluginDatasourceManager(BasePluginClient):
             if data:
                 for datasource in data.get("declaration", {}).get("datasources", []):
                     datasource["identity"]["provider"] = tool_provider_id.provider_name
-
+                    if datasource.get("output_schema"):
+                        datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
             return json_response
 
         response = self._request_with_plugin_daemon_response(
