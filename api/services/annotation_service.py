@@ -1,4 +1,3 @@
-import datetime
 import uuid
 from typing import cast
 
@@ -10,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -267,6 +267,54 @@ class AppAnnotationService:
             )
 
     @classmethod
+    def delete_app_annotations_in_batch(cls, app_id: str, annotation_ids: list[str]):
+        # get app info
+        app = (
+            db.session.query(App)
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        # Fetch annotations and their settings in a single query
+        annotations_to_delete = (
+            db.session.query(MessageAnnotation, AppAnnotationSetting)
+            .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
+            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .all()
+        )
+
+        if not annotations_to_delete:
+            return {"deleted_count": 0}
+
+        # Step 1: Extract IDs for bulk operations
+        annotation_ids_to_delete = [annotation.id for annotation, _ in annotations_to_delete]
+
+        # Step 2: Bulk delete hit histories in a single query
+        db.session.query(AppAnnotationHitHistory).where(
+            AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)
+        ).delete(synchronize_session=False)
+
+        # Step 3: Trigger async tasks for search index deletion
+        for annotation, annotation_setting in annotations_to_delete:
+            if annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, annotation_setting.collection_binding_id
+                )
+
+        # Step 4: Bulk delete annotations in a single query
+        deleted_count = (
+            db.session.query(MessageAnnotation)
+            .where(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            .delete(synchronize_session=False)
+        )
+
+        db.session.commit()
+        return {"deleted_count": deleted_count}
+
+    @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
         # get app info
         app = (
@@ -425,7 +473,7 @@ class AppAnnotationService:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        annotation_setting.updated_at = naive_utc_now()
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -457,9 +505,9 @@ class AppAnnotationService:
             db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         )
 
-        annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
+        annotations_query = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id)
         for annotation in annotations_query.yield_per(100):
-            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).filter(
+            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).where(
                 AppAnnotationHitHistory.annotation_id == annotation.id
             )
             for annotation_hit_history in annotation_hit_histories_query.yield_per(100):

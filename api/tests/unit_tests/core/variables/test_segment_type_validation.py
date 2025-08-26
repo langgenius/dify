@@ -697,15 +697,6 @@ class TestSegmentTypeValidationIntegration:
                 elif segment_type == SegmentType.NONE:
                     assert segment_type.is_valid(None) is True
 
-    def test_integer_and_float_types_not_directly_handled(self):
-        """Test that INTEGER and FLOAT types are not directly handled by is_valid."""
-        # These types should raise AssertionError because they're not in the is_valid switch
-        with pytest.raises(AssertionError, match="this statement should be unreachable"):
-            SegmentType.INTEGER.is_valid(42)
-
-        with pytest.raises(AssertionError, match="this statement should be unreachable"):
-            SegmentType.FLOAT.is_valid(3.14)
-
     def test_boolean_vs_integer_type_distinction(self):
         """Test the important distinction between boolean and integer types in validation."""
         # This tests the comment in the code about bool being a subclass of int

@@ -259,11 +259,11 @@ export const useWorkflow = () => {
 
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
-    const afterNodes = getAfterNodesInSameBranch(nodeId)
-    const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
-    if (effectNodes.length > 0) {
-      const newNodes = getNodes().map((node) => {
-        if (effectNodes.find(n => n.id === node.id))
+    const allNodes = getNodes()
+    const affectedNodes = findUsedVarNodes(oldValeSelector, allNodes)
+    if (affectedNodes.length > 0) {
+      const newNodes = allNodes.map((node) => {
+        if (affectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, oldValeSelector, newVarSelector)
 
         return node
@@ -444,7 +444,7 @@ export const useFetchToolsData = () => {
         workflowTools: workflowTools || [],
       })
     }
-    if(type === 'mcp') {
+    if (type === 'mcp') {
       const mcpTools = await fetchAllMCPTools()
 
       workflowStore.setState({
@@ -500,18 +500,17 @@ export const useToolIcon = (data: Node['data']) => {
   const mcpTools = useStore(s => s.mcpTools)
 
   const toolIcon = useMemo(() => {
-    if(!data)
+    if (!data)
       return ''
     if (data.type === BlockEnum.Tool) {
-      let targetTools = buildInTools
+      let targetTools = workflowTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools
       else if (data.provider_type === CollectionType.custom)
         targetTools = customTools
       else if (data.provider_type === CollectionType.mcp)
         targetTools = mcpTools
-      else
-        targetTools = workflowTools
+
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
   }, [data, buildInTools, customTools, mcpTools, workflowTools])

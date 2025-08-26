@@ -108,14 +108,14 @@ const translation = {
     exitVersions: 'Versiones de salida',
     exportJPEG: 'Exportar como JPEG',
     exportPNG: 'Exportar como PNG',
-    referenceVar: 'Variable de referencia',
     publishUpdate: 'Publicar actualización',
-    noExist: 'No existe tal variable',
     exportImage: 'Exportar imagen',
     needAnswerNode: 'Se debe agregar el nodo de respuesta',
     needEndNode: 'Se debe agregar el nodo Final',
     addBlock: 'Agregar nodo',
     tagBound: 'Número de aplicaciones que utilizan esta etiqueta',
+    currentView: 'Vista actual',
+    currentWorkflow: 'Flujo de trabajo actual',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Herramientas',
     'allTool': 'Todos',
-    'builtInTool': 'Incorporadas',
     'customTool': 'Personalizadas',
     'workflowTool': 'Flujo de trabajo',
     'question-understand': 'Entender pregunta',
@@ -290,6 +289,18 @@ const translation = {
     zoomTo50: 'Zoom al 50%',
     zoomTo100: 'Zoom al 100%',
     zoomToFit: 'Ajustar al tamaño',
+    alignTop: 'Arriba',
+    alignBottom: 'Abajo',
+    alignNodes: 'Alinear nodos',
+    alignCenter: 'Centro',
+    selectionAlignment: 'Alineación de selección',
+    horizontal: 'Horizontal',
+    distributeHorizontal: 'Espaciar horizontalmente',
+    vertical: 'Vertical',
+    distributeVertical: 'Espaciar verticalmente',
+    alignMiddle: 'Centro',
+    alignLeft: 'Izquierda',
+    alignRight: 'Derecha',
   },
   panel: {
     userInputField: 'Campo de entrada del usuario',
@@ -587,7 +598,6 @@ const translation = {
         'not empty': 'no está vacío',
         'null': 'es nulo',
         'not null': 'no es nulo',
-        'regex match': 'Coincidencia de expresiones regulares',
         'not in': 'no en',
         'in': 'en',
         'exists': 'Existe',
@@ -610,7 +620,6 @@ const translation = {
       },
       select: 'Escoger',
       addSubVariable: 'Sub Variable',
-      condition: 'Condición',
     },
     variableAssigner: {
       title: 'Asignar variables',
@@ -771,9 +780,6 @@ const translation = {
         showAuthor: 'Mostrar autor',
       },
     },
-    tracing: {
-      stopBy: 'Detenido por {{user}}',
-    },
     docExtractor: {
       outputVars: {
         text: 'Texto extraído',
@@ -837,6 +843,7 @@ const translation = {
         },
         json: 'JSON generado por el agente',
         text: 'Contenido generado por el agente',
+        usage: 'Información de uso del modelo',
       },
       checkList: {
         strategyNotSelected: 'Estrategia no seleccionada',
@@ -905,7 +912,7 @@ const translation = {
     },
   },
   tracing: {
-    stopBy: 'Pásate por {{usuario}}',
+    stopBy: 'Pásate por {{user}}',
   },
   variableReference: {
     noAvailableVars: 'No hay variables disponibles',
@@ -935,6 +942,7 @@ const translation = {
       deleteFailure: 'Error al eliminar la versión',
       updateFailure: 'Error al actualizar la versión',
       restoreSuccess: 'Versión restaurada',
+      copyIdSuccess: 'ID copiado en el portapapeles',
     },
     releaseNotesPlaceholder: 'Describe lo que cambió',
     restorationTip: 'Después de la restauración de la versión, el borrador actual será sobrescrito.',
@@ -945,6 +953,7 @@ const translation = {
     currentDraft: 'Borrador Actual',
     editVersionInfo: 'Editar información de la versión',
     latest: 'Último',
+    copyId: 'Copiar ID',
   },
   debug: {
     noData: {
@@ -974,6 +983,20 @@ const translation = {
     },
     lastRunTab: 'Última ejecución',
     settingsTab: 'Ajustes',
+    relations: {
+      dependents: 'Dependientes',
+      dependenciesDescription: 'Nodos en los que se basa este nodo',
+      dependentsDescription: 'Nodos que dependen de este nodo',
+      noDependencies: 'Sin dependencias',
+      noDependents: 'Sin dependientes',
+      dependencies: 'Dependencias',
+    },
+    relationsTab: 'Relaciones',
+    noLastRunFound: 'No se encontró ninguna ejecución anterior',
+    copyLastRunError: 'No se pudo copiar las entradas de la última ejecución',
+    copyLastRun: 'Copiar última ejecución',
+    noMatchingInputsFound: 'No se encontraron entradas coincidentes de la última ejecución.',
+    lastOutput: 'Última salida',
   },
 }
 

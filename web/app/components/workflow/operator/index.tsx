@@ -52,7 +52,9 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
       }
     >
       <div className='flex justify-between px-1 pb-2'>
-        <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
+        <div className='flex items-center gap-2'>
+          <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
+        </div>
         <VariableTrigger />
         <div className='relative'>
           <MiniMap

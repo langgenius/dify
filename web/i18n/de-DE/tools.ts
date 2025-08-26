@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Http Header Key, Sie können es bei "Authorization" belassen, wenn Sie nicht wissen, was es ist, oder auf einen benutzerdefinierten Wert setzen',
       types: {
         none: 'Keine',
-        api_key: 'API-Key',
         apiKeyPlaceholder: 'HTTP-Headername für API-Key',
         apiValuePlaceholder: 'API-Key eingeben',
         api_key_header: 'Kopfzeile',
@@ -192,6 +191,8 @@ const translation = {
       cancel: 'Abbrechen',
       save: 'Speichern',
       confirm: 'Hinzufügen & Autorisieren',
+      sseReadTimeout: 'SSE-Lesezeitüberschreitung',
+      timeout: 'Zeitüberschreitung',
     },
     delete: 'MCP-Server entfernen',
     deleteConfirmTitle: 'Möchten Sie {{mcp}} entfernen?',

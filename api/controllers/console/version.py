@@ -2,7 +2,7 @@ import json
 import logging
 
 import requests
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from packaging import version
 
 from configs import dify_config
@@ -32,7 +32,7 @@ class VersionApi(Resource):
             return result
 
         try:
-            response = requests.get(check_update_url, {"current_version": args.get("current_version")})
+            response = requests.get(check_update_url, {"current_version": args.get("current_version")}, timeout=(3, 10))
         except Exception as error:
             logging.warning("Check update version error: %s.", str(error))
             result["version"] = args.get("current_version")

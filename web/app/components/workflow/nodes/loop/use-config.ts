@@ -6,7 +6,6 @@ import produce from 'immer'
 import { v4 as uuid4 } from 'uuid'
 import {
   useIsChatMode,
-  useIsNodeInLoop,
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
@@ -20,10 +19,8 @@ import type { HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCon
 import useIsVarFileAttribute from './use-is-var-file-attribute'
 import { useStore } from '@/app/components/workflow/store'
 
-const DELIMITER = '@@@@@'
 const useConfig = (id: string, payload: LoopNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { isNodeInLoop } = useIsNodeInLoop(id)
   const isChatMode = useIsChatMode()
   const conversationVariables = useStore(s => s.conversationVariables)
 
@@ -39,10 +36,8 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   }, [])
 
   // output
-  const { getLoopNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
-  const beforeNodes = getBeforeNodesInSameBranch(id)
+  const { getLoopNodeChildren } = useWorkflow()
   const loopChildrenNodes = [{ id, data: payload } as any, ...getLoopNodeChildren(id)]
-  const canChooseVarNodes = [...beforeNodes, ...loopChildrenNodes]
   const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables)
 
   const {

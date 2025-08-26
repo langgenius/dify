@@ -101,15 +101,15 @@ export const useEmbeddedChatbot = () => {
 
       if (localeParam) {
         // If locale parameter exists in URL, use it instead of default
-        changeLanguage(localeParam)
+        await changeLanguage(localeParam)
       }
       else if (localeFromSysVar) {
         // If locale is set as a system variable, use that
-        changeLanguage(localeFromSysVar)
+        await changeLanguage(localeFromSysVar)
       }
       else if (appInfo?.site.default_language) {
         // Otherwise use the default from app config
-        changeLanguage(appInfo.site.default_language)
+        await changeLanguage(appInfo.site.default_language)
       }
     }
 
@@ -183,7 +183,7 @@ export const useEmbeddedChatbot = () => {
 
         return {
           ...item.paragraph,
-          default: value || item.default,
+          default: value || item.default || item.paragraph.default,
           type: 'paragraph',
         }
       }
@@ -191,7 +191,7 @@ export const useEmbeddedChatbot = () => {
         const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
         return {
           ...item.number,
-          default: convertedNumber || item.default,
+          default: convertedNumber || item.default || item.number.default,
           type: 'number',
         }
       }
@@ -225,13 +225,20 @@ export const useEmbeddedChatbot = () => {
         }
       }
 
+      if (item.json_object) {
+        return {
+          ...item.json_object,
+          type: 'json_object',
+        }
+      }
+
       let value = initInputs[item['text-input'].variable]
       if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
         value = value.slice(0, item['text-input'].max_length)
 
       return {
         ...item['text-input'],
-        default: value || item.default,
+        default: value || item.default || item['text-input'].default,
         type: 'text-input',
       }
     })

@@ -143,7 +143,7 @@ class SegmentType(StrEnum):
         # as `bool` is a subclass of `int` in Python's type hierarchy.
         elif self == SegmentType.BOOLEAN:
             return isinstance(value, bool)
-        elif self == SegmentType.NUMBER:
+        elif self in [SegmentType.INTEGER, SegmentType.FLOAT, SegmentType.NUMBER]:
             return isinstance(value, (int, float))
         elif self == SegmentType.STRING:
             return isinstance(value, str)
@@ -204,7 +204,7 @@ class SegmentType(StrEnum):
 
 
 _ARRAY_ELEMENT_TYPES_MAPPING: Mapping[SegmentType, SegmentType] = {
-    # ARRAY_ANY does not have correpond element type.
+    # ARRAY_ANY does not have corresponding element type.
     SegmentType.ARRAY_STRING: SegmentType.STRING,
     SegmentType.ARRAY_NUMBER: SegmentType.NUMBER,
     SegmentType.ARRAY_OBJECT: SegmentType.OBJECT,
@@ -218,7 +218,6 @@ _ARRAY_TYPES = frozenset(
         SegmentType.ARRAY_ANY,
     ]
 )
-
 
 _NUMERICAL_TYPES = frozenset(
     [

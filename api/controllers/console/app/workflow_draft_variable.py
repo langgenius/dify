@@ -2,7 +2,7 @@ import logging
 from typing import Any, NoReturn
 
 from flask import Response
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -163,11 +163,11 @@ class WorkflowVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-        workflow_vars = draft_var_srv.list_variables_without_values(
-            app_id=app_model.id,
-            page=args.page,
-            limit=args.limit,
-        )
+            workflow_vars = draft_var_srv.list_variables_without_values(
+                app_id=app_model.id,
+                page=args.page,
+                limit=args.limit,
+            )
 
         return workflow_vars
 

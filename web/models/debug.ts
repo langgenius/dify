@@ -60,6 +60,7 @@ export type PromptVariable = {
   icon?: string
   icon_background?: string
   hide?: boolean // used in frontend to hide variable
+  json_schema?: string
 }
 
 export type CompletionParams = {

@@ -24,6 +24,7 @@ import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/v
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 
 import {
+  AGENT_OUTPUT_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
@@ -62,6 +63,7 @@ export const inputVarTypeToVarType = (type: InputVarType): VarType => {
     [InputVarType.checkbox]: VarType.boolean,
     [InputVarType.singleFile]: VarType.file,
     [InputVarType.multiFiles]: VarType.arrayFile,
+    [InputVarType.jsonObject]: VarType.object,
   } as any)[type] || VarType.string
 }
 
@@ -228,14 +230,27 @@ const formatItem = (
         variables,
       } = data as StartNodeType
       res.vars = variables.map((v) => {
-        return {
+        const type = inputVarTypeToVarType(v.type)
+        const varRes: Var = {
           variable: v.variable,
-          type: inputVarTypeToVarType(v.type),
+          type,
           isParagraph: v.type === InputVarType.paragraph,
           isSelect: v.type === InputVarType.select,
           options: v.options,
           required: v.required,
         }
+        try {
+          if(type === VarType.object && v.json_schema) {
+            varRes.children = {
+              schema: JSON.parse(v.json_schema),
+            }
+          }
+        }
+        catch (error) {
+          console.error('Error formatting variable:', error)
+        }
+
+        return varRes
       })
       if (isChatMode) {
         res.vars.push({
@@ -499,6 +514,7 @@ const formatItem = (
       res.vars = [
         ...outputs,
         ...TOOL_OUTPUT_STRUCT,
+        ...AGENT_OUTPUT_STRUCT,
       ]
       break
     }
@@ -689,6 +705,8 @@ const getIterationItemType = ({
       return VarType.string
     case VarType.arrayNumber:
       return VarType.number
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
@@ -1025,7 +1043,15 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
-      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).map(c => c.variable_selector || []))
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).flatMap((c) => {
+        const selectors: ValueSelector[] = []
+        if (c.variable_selector)
+          selectors.push(c.variable_selector)
+        // Handle sub-variable conditions
+        if (c.sub_variable_condition && c.sub_variable_condition.conditions)
+          selectors.push(...c.sub_variable_condition.conditions.map(subC => subC.variable_selector || []).filter(sel => sel.length > 0))
+        return selectors
+      }))
       break
     }
     case BlockEnum.Code: {
@@ -1260,6 +1286,26 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
             if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
               c.variable_selector = newVarSelector
             return c
+          })
+        }
+        if (payload.cases) {
+          payload.cases = payload.cases.map((caseItem) => {
+            if (caseItem.conditions) {
+              caseItem.conditions = caseItem.conditions.map((c) => {
+                if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
+                  c.variable_selector = newVarSelector
+                // Handle sub-variable conditions
+                if (c.sub_variable_condition && c.sub_variable_condition.conditions) {
+                  c.sub_variable_condition.conditions = c.sub_variable_condition.conditions.map((subC) => {
+                    if (subC.variable_selector?.join('.') === oldVarSelector.join('.'))
+                      subC.variable_selector = newVarSelector
+                    return subC
+                  })
+                }
+                return c
+              })
+            }
+            return caseItem
           })
         }
         break

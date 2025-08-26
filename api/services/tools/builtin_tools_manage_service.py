@@ -508,10 +508,10 @@ class BuiltinToolManageService:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
                 return oauth_params
 
-            # only verified provider can use custom oauth client
-            is_verified = not isinstance(provider, PluginToolProviderController) or PluginService.is_plugin_verified(
-                tenant_id, provider.plugin_unique_identifier
-            )
+            # only verified provider can use official oauth client
+            is_verified = not isinstance(
+                provider_controller, PluginToolProviderController
+            ) or PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
             if not is_verified:
                 return oauth_params
 

@@ -134,7 +134,7 @@ const FormItem = ({
         value_type === ValueType.constant && var_type === VarType.arrayBoolean && (
           <ArrayBoolList
             className='mt-2'
-            list={value || ['false']}
+            list={value || [false]}
             onChange={handleChange}
           />
         )

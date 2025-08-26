@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from sqlalchemy import Float, and_, func, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -175,7 +175,7 @@ class KnowledgeRetrievalNode(BaseNode):
             redis_client.zremrangebyscore(key, 0, current_time - 60000)
             request_count = redis_client.zcard(key)
             if request_count > knowledge_rate_limit.limit:
-                with Session(db.engine) as session:
+                with sessionmaker(db.engine).begin() as session:
                     # add ratelimit record
                     rate_limit_log = RateLimitLog(
                         tenant_id=self.tenant_id,
@@ -183,7 +183,6 @@ class KnowledgeRetrievalNode(BaseNode):
                         operation="knowledge",
                     )
                     session.add(rate_limit_log)
-                    session.commit()
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=variables,
@@ -389,6 +388,15 @@ class KnowledgeRetrievalNode(BaseNode):
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
                                 "score": record.score or 0.0,
+                                "child_chunks": [
+                                    {
+                                        "id": str(getattr(chunk, "id", "")),
+                                        "content": str(getattr(chunk, "content", "")),
+                                        "position": int(getattr(chunk, "position", 0)),
+                                        "score": float(getattr(chunk, "score", 0.0)),
+                                    }
+                                    for chunk in (record.child_chunks or [])
+                                ],
                                 "segment_hit_count": segment.hit_count,
                                 "segment_word_count": segment.word_count,
                                 "segment_position": segment.position,
@@ -572,7 +580,7 @@ class KnowledgeRetrievalNode(BaseNode):
     def _process_metadata_filter_func(
         self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
     ):
-        if value is None:
+        if value is None and condition not in ("empty", "not empty"):
             return
 
         key = f"{metadata_name}_{sequence}"
@@ -600,6 +608,28 @@ class KnowledgeRetrievalNode(BaseNode):
                 filters.append(
                     (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
                         **{key: metadata_name, key_value: f"%{value}"}
+                    )
+                )
+            case "in":
+                if isinstance(value, str):
+                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
+                    escaped_value_str = ",".join(escaped_values)
+                else:
+                    escaped_value_str = str(value)
+                filters.append(
+                    (text(f"documents.doc_metadata ->> :{key} = any(string_to_array(:{key_value},','))")).params(
+                        **{key: metadata_name, key_value: escaped_value_str}
+                    )
+                )
+            case "not in":
+                if isinstance(value, str):
+                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
+                    escaped_value_str = ",".join(escaped_values)
+                else:
+                    escaped_value_str = str(value)
+                filters.append(
+                    (text(f"documents.doc_metadata ->> :{key} != all(string_to_array(:{key_value},','))")).params(
+                        **{key: metadata_name, key_value: escaped_value_str}
                     )
                 )
             case "=" | "is":

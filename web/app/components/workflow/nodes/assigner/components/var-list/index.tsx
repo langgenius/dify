@@ -9,7 +9,8 @@ import { AssignerNodeInputType, WriteMode } from '../../types'
 import type { AssignerNodeOperation } from '../../types'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { ValueSelector, Var, VarType } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
@@ -60,16 +61,20 @@ const VarList: FC<Props> = ({
     }
   }, [list, onChange])
 
-  const handleOperationChange = useCallback((index: number) => {
+  const handleOperationChange = useCallback((index: number, varType: VarType) => {
     return (item: { value: string | number }) => {
       const newList = produce(list, (draft) => {
         draft[index].operation = item.value as WriteMode
         draft[index].value = '' // Clear value when operation changes
         if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
-          || item.value === WriteMode.multiply || item.value === WriteMode.divide)
+          || item.value === WriteMode.multiply || item.value === WriteMode.divide) {
+          if(varType === VarType.boolean)
+              draft[index].value = false
           draft[index].input_type = AssignerNodeInputType.constant
-        else
+        }
+        else {
           draft[index].input_type = AssignerNodeInputType.variable
+        }
       })
       onChange(newList)
     }
@@ -146,7 +151,7 @@ const VarList: FC<Props> = ({
                   value={item.operation}
                   placeholder='Operation'
                   disabled={!item.variable_selector || item.variable_selector.length === 0}
-                  onSelect={handleOperationChange(index)}
+                  onSelect={handleOperationChange(index, assignedVarType!)}
                   assignedVarType={assignedVarType}
                   writeModeTypes={writeModeTypes}
                   writeModeTypesArr={writeModeTypesArr}

@@ -110,6 +110,13 @@ const AppInputsPanel = ({
           }
         }
 
+        if (item.json_object) {
+          return {
+            ...item.json_object,
+            type: 'json_object',
+          }
+        }
+
         return {
           ...item['text-input'],
           type: 'text-input',

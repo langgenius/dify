@@ -57,6 +57,16 @@ const translation = {
     error: '导入出错',
     ok: '确定',
   },
+  list: {
+    delete: {
+      title: '确定删除吗？',
+    },
+  },
+  batchAction: {
+    selected: '已选择',
+    delete: '删除',
+    cancel: '取消',
+  },
   errorMessage: {
     answerRequired: '回复不能为空',
     queryRequired: '提问不能为空',

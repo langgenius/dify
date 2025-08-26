@@ -5,7 +5,7 @@ import { Validator } from 'jsonschema'
 import produce from 'immer'
 import { z } from 'zod'
 
-export const checkNodeValid = (payload: LLMNodeType) => {
+export const checkNodeValid = (_payload: LLMNodeType) => {
   return true
 }
 
@@ -280,7 +280,7 @@ const validator = new Validator()
 
 export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
   const schema = produce(schemaToValidate, (draft: any) => {
-  // Make sure the schema has the $schema property for draft-07
+    // Make sure the schema has the $schema property for draft-07
     if (!draft.$schema)
       draft.$schema = 'http://json-schema.org/draft-07/schema#'
   })

@@ -30,6 +30,9 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
       if (item.external_data_tool)
         return [item.external_data_tool.type, item.external_data_tool]
 
+      if (item.json_object)
+        return ['json_object', item.json_object]
+
       return ['select', item.select || {}]
     })()
     const is_context_var = dataset_query_variable === content?.variable
@@ -44,6 +47,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         options: [],
         is_context_var,
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'number') {
@@ -54,6 +58,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         type,
         options: [],
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'select') {
@@ -81,6 +86,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           number_limits: 1,
         },
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'file-list') {
@@ -96,6 +102,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           number_limits: content.max_length,
         },
         hide: content.hide,
+        default: content.default,
       })
     }
     else {
@@ -134,7 +141,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
       } as any)
       return
     }
-    if (item.type === 'number' || item.type === 'boolean') {
+    if (item.type === 'number' || item.type === 'checkbox') {
       userInputs.push({
         [item.type]: {
           label: item.name,

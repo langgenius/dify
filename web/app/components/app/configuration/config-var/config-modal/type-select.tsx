@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import {
   PortalToFollowElem,
@@ -36,7 +35,6 @@ const TypeSelector: FC<Props> = ({
   popupInnerClassName,
   readonly,
 }) => {
-  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const selectedItem = value ? items.find(item => item.value === value) : undefined
 

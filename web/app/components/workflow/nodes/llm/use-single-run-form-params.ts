@@ -168,7 +168,13 @@ const useSingleRunFormParams = ({
   })()
 
   const getDependentVars = () => {
-    const promptVars = varInputs.map(item => item.variable.slice(1, -1).split('.'))
+    const promptVars = varInputs.map((item) => {
+      // Guard against null/undefined variable to prevent app crash
+      if (!item.variable || typeof item.variable !== 'string')
+        return []
+
+      return item.variable.slice(1, -1).split('.')
+    }).filter(arr => arr.length > 0)
     const contextVar = payload.context.variable_selector
     const vars = [...promptVars, contextVar]
     if (isVisionModel && payload.vision?.enabled && payload.vision?.configs?.variable_selector) {

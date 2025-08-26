@@ -175,7 +175,6 @@ const Completed: FC<ICompletedProps> = ({
       if (totalPages < currentPage)
         setCurrentPage(totalPages === 0 ? 1 : totalPages)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segmentListData])
 
   useEffect(() => {
@@ -214,7 +213,6 @@ const Completed: FC<ICompletedProps> = ({
       if (totalPages < currentPage)
         setCurrentPage(totalPages === 0 ? 1 : totalPages)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childChunkListData])
 
   const resetList = useCallback(() => {
@@ -375,13 +373,11 @@ const Completed: FC<ICompletedProps> = ({
 
   useEffect(() => {
     resetList()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   useEffect(() => {
     if (importStatus === ProcessStatus.COMPLETED)
       resetList()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importStatus])
 
   const onCancelBatchOperation = useCallback(() => {
@@ -655,7 +651,7 @@ const Completed: FC<ICompletedProps> = ({
           />
       }
       {/* Pagination */}
-      <Divider type='horizontal' className='mx-6 my-0 h-[1px] w-auto bg-divider-subtle' />
+      <Divider type='horizontal' className='mx-6 my-0 h-px w-auto bg-divider-subtle' />
       <Pagination
         current={currentPage - 1}
         onChange={cur => setCurrentPage(cur + 1)}

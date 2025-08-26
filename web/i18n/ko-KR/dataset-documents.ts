@@ -28,8 +28,9 @@ const translation = {
       delete: '삭제',
       enableWarning: '아카이브된 파일은 활성화할 수 없습니다.',
       sync: '동기화',
-      resume: '이력서',
+      resume: '재개',
       pause: '일시 중지',
+      download: '파일 다운로드',
     },
     index: {
       enable: '활성화',
@@ -341,7 +342,6 @@ const translation = {
     keywords: '키워드',
     addKeyWord: '키워드 추가',
     keywordError: '키워드 최대 길이는 20 자입니다',
-    characters: '문자',
     hitCount: '검색 횟수',
     vectorHash: '벡터 해시: ',
     questionPlaceholder: '질문을 입력하세요',

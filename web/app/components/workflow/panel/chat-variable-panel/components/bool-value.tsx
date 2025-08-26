@@ -1,25 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback } from 'react'
 import OptionCard from '../../../nodes/_base/components/option-card'
 
 type Props = {
-  value: boolean | string
-  onChange: (value: string) => void
+  value: boolean
+  onChange: (value: boolean) => void
 }
 
 const BoolValue: FC<Props> = ({
   value,
   onChange,
 }) => {
-  const booleanValue = useMemo(() => {
-    if(typeof value === 'boolean')
-      return value
-    return value === 'true'
-  }, [value])
+  const booleanValue = value
   const handleChange = useCallback((newValue: boolean) => {
     return () => {
-      onChange(newValue.toString()) // the backend expects a string value: 'true' or 'false'
+      onChange(newValue)
     }
   }, [onChange])
 

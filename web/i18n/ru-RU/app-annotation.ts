@@ -83,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Сохранить',
   },
   embeddingModelSwitchTip: 'Модель векторизации текста аннотаций, переключение между моделями будет осуществлено повторно, что приведет к дополнительным затратам.',
+  list: {
+    delete: {
+      title: 'Вы уверены, что хотите удалить?',
+    },
+  },
+  batchAction: {
+    cancel: 'Отменить',
+    selected: 'Выбрано',
+    delete: 'Удалить',
+  },
 }
 
 export default translation

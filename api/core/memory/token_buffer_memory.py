@@ -99,13 +99,13 @@ class TokenBufferMemory:
                     prompt_messages.append(UserPromptMessage(content=message.query))
                 else:
                     prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-                    prompt_message_contents.append(TextPromptMessageContent(data=message.query))
                     for file in file_objs:
                         prompt_message = file_manager.to_prompt_message_content(
                             file,
                             image_detail_config=detail,
                         )
                         prompt_message_contents.append(prompt_message)
+                    prompt_message_contents.append(TextPromptMessageContent(data=message.query))
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
 
@@ -121,9 +121,8 @@ class TokenBufferMemory:
         curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         if curr_message_tokens > max_token_limit:
-            pruned_memory = []
             while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
-                pruned_memory.append(prompt_messages.pop(0))
+                prompt_messages.pop(0)
                 curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         return prompt_messages

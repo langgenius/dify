@@ -82,7 +82,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}` })
         handleCompletionParamsChange(filtered)
       }
-      catch (e) {
+      catch {
         Toast.notify({ type: 'error', message: t('common.error') })
         handleCompletionParamsChange({})
       }

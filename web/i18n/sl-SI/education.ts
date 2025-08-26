@@ -42,6 +42,34 @@ const translation = {
   emailLabel: 'Vaš trenutni elektronski naslov',
   currentSigned: 'Trenutno prijavljen kot',
   rejectContent: 'Na žalost niste upravičeni do statusa Verificirane izobrazbe in zato ne morete prejeti ekskluzivnega 100-odstotnega kupona za Dify profesionalni načrt, če uporabljate ta e-poštni naslov.',
+  notice: {
+    expired: {
+      summary: {
+        line1: 'Še vedno lahko dostopate in uporabljate Dify.',
+        line2: 'Vendar pa niste več upravičeni do novih kuponov za popust na izobraževanje.',
+      },
+      title: 'Vaš status izobrazbe je potekel.',
+    },
+    isAboutToExpire: {
+      summary: 'Ne skrbite — to ne bo vplivalo na vaše trenutno naročnino, vendar ne boste dobili izobraževalne popusti, ko se obnovi, razen če ponovno potrdite svoj status.',
+    },
+    stillInEducation: {
+      title: 'Še vedno v izobraževanju?',
+      expired: 'Ponovno preverite zdaj, da pridobite nov kupon za prihajajoče šolsko leto. Dodali ga bomo vašemu računu in lahko ga uporabite za naslednjo nadgradnjo.',
+      isAboutToExpire: 'Ponovno preverite zdaj, da pridobite nov kupon za prihajajoče akademsko leto. Shranjen bo na vašem računu in pripravljen za uporabo ob vaši naslednji obnovitvi.',
+    },
+    alreadyGraduated: {
+      title: 'Že končal?',
+      expired: 'Prosto se lahko nadgradite kadarkoli, da pridobite poln dostop do plačanih funkcij.',
+      isAboutToExpire: 'Vaša trenutna naročnina bo še vedno aktivna. Ko se konča, boste prešli na Sandbox načrt, ali pa lahko kadar koli nadgradite, da obnovite poln dostop do plačanih funkcij.',
+    },
+    action: {
+      reVerify: 'Ponovno preverite',
+      upgrade: 'Nadgradnja',
+      dismiss: 'Odpusti',
+    },
+    dateFormat: 'MM/DD/LETOS',
+  },
 }
 
 export default translation
