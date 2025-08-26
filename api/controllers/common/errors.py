@@ -35,3 +35,9 @@ class NoFileUploadedError(BaseHTTPException):
     error_code = "no_file_uploaded"
     description = "Please upload your file."
     code = 400
+
+
+class SensitiveDocumentError(BaseHTTPException):
+    error_code = "forbidden"
+    description = "Sensitive Document not allowed"
+    code = 404

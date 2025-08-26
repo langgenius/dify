@@ -22,6 +22,7 @@ from libs.helper import extract_tenant_id
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
+from services.document_sensitivity_service import DocumentSensitivityService
 
 from .errors.file import FileTooLargeError, UnsupportedFileTypeError
 
@@ -65,6 +66,9 @@ class FileService:
         current_tenant_id = extract_tenant_id(user)
 
         file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
+
+        if dify_config.ENABLE_DOCUMENT_SENSITIVITY_CHECK:
+            DocumentSensitivityService.check_document_sensitivity(extension=f".{extension}", content=content)
 
         # save file to storage
         storage.save(file_key, content)
