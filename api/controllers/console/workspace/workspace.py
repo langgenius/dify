@@ -1,4 +1,5 @@
 import logging
+
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse

@@ -1,8 +1,10 @@
 """
 Proxy requests to avoid SSRF
 """
+
 import logging
 import time
+
 import httpx
 
 from configs import dify_config

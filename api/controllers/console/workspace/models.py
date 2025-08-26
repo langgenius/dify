@@ -1,4 +1,5 @@
 import logging
+
 from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden

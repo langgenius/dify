@@ -1,4 +1,5 @@
 import logging
+
 from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
