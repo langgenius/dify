@@ -106,15 +106,17 @@ def register_external_error_handlers(api: Api) -> None:
 
 
 class ExternalApi(Api):
-    def __init__(self, *args, **kwargs):
-        kwargs["authorizations"] = {
-            "Bearer": {
-                "type": "apiKey",
-                "in": "header",
-                "name": "Authorization",
-                "description": "Type: Bearer {your-api-key}",
-            }
+    _authorizations = {
+        "Bearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Type: Bearer {your-api-key}",
         }
-        kwargs["security"] = "Bearer"
+    }
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("authorizations", self._authorizations)
+        kwargs.setdefault("security", "Bearer")
         super().__init__(*args, **kwargs)
         register_external_error_handlers(self)
