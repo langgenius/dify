@@ -28,6 +28,7 @@ from core.rag.extractor.unstructured.unstructured_pptx_extractor import Unstruct
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
 from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
+from core.rag.extractor.yaml_extractor import YamlExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
 from models.model import UploadFile
@@ -141,6 +142,8 @@ class ExtractProcessor:
                         extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                    elif file_extension in {".yaml", ".yml"}:
+                        extractor = YamlExtractor(file_path, autodetect_encoding=True)
                     else:
                         # txt
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
@@ -159,6 +162,8 @@ class ExtractProcessor:
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path)
+                    elif file_extension in {".yaml", ".yml"}:
+                        extractor = YamlExtractor(file_path, autodetect_encoding=True)
                     else:
                         # txt
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
