@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from dataclasses import dataclass, field
 from typing import TypeVar, Union, cast
 
 from core.agent.entities import AgentInvokeMessage
@@ -7,19 +8,18 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 MessageType = TypeVar("MessageType", bound=Union[ToolInvokeMessage, AgentInvokeMessage])
 
 
+@dataclass
 class FileChunk:
     """
     Buffer for accumulating file chunks during streaming.
     """
 
-    bytes_written: int
     total_length: int
-    data: bytearray
+    bytes_written: int = field(default=0, init=False)
+    data: bytearray = field(init=False)
 
-    def __init__(self, total_length: int):
-        self.bytes_written = 0
-        self.total_length = total_length
-        self.data = bytearray(total_length)
+    def __post_init__(self) -> None:
+        self.data = bytearray(self.total_length)
 
 
 def merge_blob_chunks(
