@@ -10,6 +10,7 @@ from typing import Optional
 
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.extractor.extractor_base import BaseExtractor
+from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.models.document import Document
 
 
@@ -97,7 +98,7 @@ class ArchiveExtractor(BaseExtractor):
     def _extract_archive(self, archive_format: str) -> list[dict]:
         """Extract archive files with security checks."""
         extracted_files = []
-        total_size = 0
+        total_size = [0]  # Use list to allow modification by reference
         
         if archive_format == 'zip':
             extracted_files = self._extract_zip(total_size)
@@ -112,7 +113,7 @@ class ArchiveExtractor(BaseExtractor):
         
         return extracted_files
 
-    def _extract_zip(self, total_size: int) -> list[dict]:
+    def _extract_zip(self, total_size: list) -> list[dict]:
         """Extract ZIP archive."""
         extracted_files = []
         
@@ -127,8 +128,8 @@ class ArchiveExtractor(BaseExtractor):
                             continue
                         
                         # Check total size
-                        total_size += member.file_size
-                        if total_size > self._max_total_size:
+                        total_size[0] += member.file_size
+                        if total_size[0] > self._max_total_size:
                             print(f"Warning: Total extraction size limit exceeded, stopping extraction")
                             break
                         
@@ -148,7 +149,7 @@ class ArchiveExtractor(BaseExtractor):
         
         return extracted_files
 
-    def _extract_tar(self, archive_format: str, total_size: int) -> list[dict]:
+    def _extract_tar(self, archive_format: str, total_size: list) -> list[dict]:
         """Extract TAR archive (including .tar.gz, .tar.bz2)."""
         extracted_files = []
         
@@ -169,8 +170,8 @@ class ArchiveExtractor(BaseExtractor):
                             continue
                         
                         # Check total size
-                        total_size += member.size
-                        if total_size > self._max_total_size:
+                        total_size[0] += member.size
+                        if total_size[0] > self._max_total_size:
                             print(f"Warning: Total extraction size limit exceeded, stopping extraction")
                             break
                         
@@ -189,7 +190,7 @@ class ArchiveExtractor(BaseExtractor):
         
         return extracted_files
 
-    def _extract_7z(self, total_size: int) -> list[dict]:
+    def _extract_7z(self, total_size: list) -> list[dict]:
         """Extract 7Z archive (requires py7zr library)."""
         try:
             import py7zr
@@ -208,8 +209,8 @@ class ArchiveExtractor(BaseExtractor):
                             continue
                         
                         # Check total size
-                        total_size += info.uncompressed
-                        if total_size > self._max_total_size:
+                        total_size[0] += info.uncompressed
+                        if total_size[0] > self._max_total_size:
                             print(f"Warning: Total extraction size limit exceeded, stopping extraction")
                             break
                 
@@ -232,7 +233,7 @@ class ArchiveExtractor(BaseExtractor):
         
         return extracted_files
 
-    def _extract_rar(self, total_size: int) -> list[dict]:
+    def _extract_rar(self, total_size: list) -> list[dict]:
         """Extract RAR archive (requires rarfile library)."""
         try:
             import rarfile
@@ -251,8 +252,8 @@ class ArchiveExtractor(BaseExtractor):
                             continue
                         
                         # Check total size
-                        total_size += member.file_size
-                        if total_size > self._max_total_size:
+                        total_size[0] += member.file_size
+                        if total_size[0] > self._max_total_size:
                             print(f"Warning: Total extraction size limit exceeded, stopping extraction")
                             break
                         
@@ -277,8 +278,16 @@ class ArchiveExtractor(BaseExtractor):
         normalized = os.path.normpath(path)
         return not (normalized.startswith('/') or normalized.startswith('..') or '\\' in normalized)
 
-        extract_setting = ExtractSetting(file_path=file_path)
-        documents = processor.extract(extract_setting)
+    def _process_extracted_file(self, file_info: dict) -> list[Document]:
+        """Process an extracted file using appropriate extractor."""
+        file_path = file_info['path']
+        relative_path = file_info['relative_path']
+        file_size = file_info['size']
+        
+        # Use ExtractProcessor to handle the file
+        processor = ExtractProcessor()
+        extract_setting = ExtractSetting(datasource_type="file", file_path=file_path)
+        documents = processor.extract(extract_setting, file_path=file_path)
         
         # Enhance metadata for each document
         for doc in documents:
