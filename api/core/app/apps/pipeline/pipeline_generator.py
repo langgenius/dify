@@ -10,7 +10,6 @@ from collections.abc import Generator, Mapping
 from typing import Any, Literal, Optional, Union, cast, overload
 
 from flask import Flask, current_app
-from flask_login import current_user
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
