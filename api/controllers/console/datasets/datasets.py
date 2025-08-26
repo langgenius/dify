@@ -555,6 +555,7 @@ class DatasetIndexingStatusApi(Resource):
         data = {"data": documents_status}
         return data, 200
 
+
 class DatasetApiKeyApi(Resource):
     max_keys = 10
     token_prefix = "dataset-"
