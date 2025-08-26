@@ -605,7 +605,7 @@ class LLMGenerator:
             LLMResult,
             model_instance.invoke_llm(
                 prompt_messages=[UserPromptMessage(content=formatted_prompt)],
-                model_parameters={"temperature": 0.01, "max_tokens": 2000},
+                model_parameters=memory_spec.model.completion_params,
                 stream=False,
             )
         )
