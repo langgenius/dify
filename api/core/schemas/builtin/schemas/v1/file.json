@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "version": "1.0.0",
   "type": "object",
-  "title": "File Schema",
+  "title": "File",
   "description": "Schema for file objects (v1)",
   "properties": {
     "name": {

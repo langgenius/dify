@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "version": "1.0.0",
   "type": "object",
-  "title": "Parent-Child Structure Schema",
+  "title": "Parent-Child Structure",
   "description": "Schema for parent-child structure (v1)",
   "properties": {
     "parent_mode": {
