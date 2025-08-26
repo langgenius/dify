@@ -4,13 +4,20 @@ import { useMemo } from 'react'
 import { useTypeSchema } from './use-type-schema'
 import { useValueSchema } from './use-value-schema'
 import { useEditInJSONSchema } from './use-edit-in-json-schema'
+import {
+  useMemoryDefaultValues,
+  useMemorySchema,
+} from './use-memory-schema'
+import type { ConversationVariable } from '@/app/components/workflow/types'
 
-export const useForm = () => {
+export const useForm = (chatVar?: ConversationVariable) => {
   const { t } = useTranslation()
 
   const typeSchema = useTypeSchema()
   const valueSchema = useValueSchema()
   const editInJSONSchema = useEditInJSONSchema()
+  const memorySchema = useMemorySchema()
+  const memoryDefaultValues = useMemoryDefaultValues()
 
   const formSchemas = useMemo(() => {
     return [
@@ -24,15 +31,31 @@ export const useForm = () => {
       typeSchema,
       editInJSONSchema,
       valueSchema,
+      {
+        name: 'description',
+        label: t('workflow.chatVariable.modal.description'),
+        type: 'textarea-input',
+        placeholder: t('workflow.chatVariable.modal.descriptionPlaceholder'),
+        show_on: [
+          {
+            variable: 'value_type',
+            value: [ChatVarType.String, ChatVarType.Number, ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber, ChatVarType.ArrayObject],
+          },
+        ],
+      },
+      ...memorySchema,
     ]
-  }, [t, valueSchema, typeSchema, editInJSONSchema])
+  }, [t, valueSchema, typeSchema, editInJSONSchema, memorySchema])
   const defaultValues = useMemo(() => {
+    if (chatVar)
+      return chatVar
     return {
-      type: ChatVarType.String,
+      value_type: ChatVarType.Memory,
       value: '',
       editInJSON: false,
+      ...memoryDefaultValues,
     }
-  }, [])
+  }, [chatVar])
 
   return {
     formSchemas,

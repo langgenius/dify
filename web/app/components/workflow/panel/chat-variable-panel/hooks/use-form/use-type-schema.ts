@@ -4,8 +4,15 @@ import type {
   AnyFormApi,
 } from '@tanstack/react-form'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
 import { typeList } from '@/app/components/workflow/panel/chat-variable-panel/constants'
+import {
+  TYPE_ARRAY_NUMBER_DEFAULT_VALUE,
+  TYPE_ARRAY_OBJECT_DEFAULT_VALUE,
+  TYPE_ARRAY_STRING_DEFAULT_VALUE,
+  TYPE_NUMBER_DEFAULT_VALUE,
+  TYPE_OBJECT_DEFAULT_VALUE,
+  TYPE_STRING_DEFAULT_VALUE,
+} from '@/app/components/workflow/panel/chat-variable-panel/constants'
 
 export const useTypeSchema = () => {
   const { t } = useTranslation()
@@ -13,22 +20,23 @@ export const useTypeSchema = () => {
     const {
       setFieldValue,
     } = form
+    setFieldValue('editInJSON', false)
     if (v === ChatVarType.String)
-      setFieldValue('value', '')
+      setFieldValue('value', TYPE_STRING_DEFAULT_VALUE)
     else if (v === ChatVarType.Number)
-      setFieldValue('value', 0)
+      setFieldValue('value', TYPE_NUMBER_DEFAULT_VALUE)
     else if (v === ChatVarType.Object)
-      setFieldValue('value', [DEFAULT_OBJECT_VALUE])
+      setFieldValue('value', TYPE_OBJECT_DEFAULT_VALUE)
     else if (v === ChatVarType.ArrayString)
-      setFieldValue('value', [undefined])
+      setFieldValue('value', TYPE_ARRAY_STRING_DEFAULT_VALUE)
     else if (v === ChatVarType.ArrayNumber)
-      setFieldValue('value', [undefined])
+      setFieldValue('value', TYPE_ARRAY_NUMBER_DEFAULT_VALUE)
     else if (v === ChatVarType.ArrayObject)
-      setFieldValue('value', undefined)
+      setFieldValue('value', TYPE_ARRAY_OBJECT_DEFAULT_VALUE)
   }, [])
 
   return {
-    name: 'type',
+    name: 'value_type',
     label: t('workflow.chatVariable.modal.type'),
     type: 'select',
     options: typeList.map(type => ({

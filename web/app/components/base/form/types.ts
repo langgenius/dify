@@ -68,7 +68,7 @@ export type FormSchema = {
   inputContainerClassName?: string
   inputClassName?: string
   validators?: AnyValidators
-  selfFormProps?: (form: AnyFormApi) => Record<string, any>
+  selfFormProps?: ((form: AnyFormApi) => Record<string, any>) | Record<string, any>
   onChange?: (form: AnyFormApi, v: any) => void
 }
 

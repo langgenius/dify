@@ -1,4 +1,5 @@
 import { ChatVarType } from './type'
+import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
 
 export const objectPlaceholder = `#  example
 #  {
@@ -33,5 +34,12 @@ export const typeList = [
   ChatVarType.ArrayString,
   ChatVarType.ArrayNumber,
   ChatVarType.ArrayObject,
-  'memory',
+  ChatVarType.Memory,
 ]
+
+export const TYPE_STRING_DEFAULT_VALUE = ''
+export const TYPE_NUMBER_DEFAULT_VALUE = 0
+export const TYPE_OBJECT_DEFAULT_VALUE = [DEFAULT_OBJECT_VALUE]
+export const TYPE_ARRAY_STRING_DEFAULT_VALUE = [undefined]
+export const TYPE_ARRAY_NUMBER_DEFAULT_VALUE = [undefined]
+export const TYPE_ARRAY_OBJECT_DEFAULT_VALUE = undefined

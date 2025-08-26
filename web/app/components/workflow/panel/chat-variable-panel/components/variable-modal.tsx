@@ -40,7 +40,7 @@ const ChatVariableModal = ({
   const form = useTanstackForm({
     defaultValues,
   })
-  const type = useTanstackStore(form.store, s => s.values.type)
+  const type = useTanstackStore(form.store, (s: any) => s.values.value_type)
 
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
@@ -57,19 +57,23 @@ const ChatVariableModal = ({
   const handleConfirm = useCallback(async () => {
     const {
       values,
+      isCheckValidated,
     } = formRef.current?.getFormValues({
       needCheckValidatedValues: true,
     }) || { isCheckValidated: false, values: {} }
     const {
       name,
       type,
-      'object-list-value': objectValue,
+      value,
     } = values
+    console.log(values, 'xxx')
+    if (!isCheckValidated)
+      return
     if (!checkVariableName(name))
       return
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
       return notify({ type: 'error', message: 'name is existed' })
-    if (type === ChatVarType.Object && objectValue.some((item: any) => !item.key && !!item.value))
+    if (type === ChatVarType.Object && value.some((item: any) => !item.key && !!item.value))
       return notify({ type: 'error', message: 'object key can not be empty' })
 
     // onSave({

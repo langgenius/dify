@@ -27,6 +27,10 @@ import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import Button from '@/app/components/base/button'
+import PromptGeneratorBtn from '@/app/components/workflow/nodes/llm/components/prompt-generator-btn'
+import Switch from '@/app/components/base/switch'
+import Slider from '@/app/components/base/slider'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type BaseFieldProps = {
   fieldClassName?: string
@@ -62,6 +66,7 @@ const BaseField = ({
     help,
     selfFormProps,
     onChange,
+    tooltip,
   } = formSchema
   const type = typeof typeOrFn === 'function' ? typeOrFn(field.form) : typeOrFn
 
@@ -82,6 +87,13 @@ const BaseField = ({
     if (typeof placeholder === 'object' && placeholder !== null)
       return renderI18nObject(placeholder as Record<string, string>)
   }, [placeholder, renderI18nObject])
+  const memorizedTooltip = useMemo(() => {
+    if (typeof tooltip === 'string')
+      return tooltip
+
+    if (typeof tooltip === 'object' && tooltip !== null)
+      return renderI18nObject(tooltip as Record<string, string>)
+  }, [tooltip, renderI18nObject])
   const optionValues = useStore(field.form.store, (s) => {
     const result: Record<string, any> = {}
     options?.forEach((option) => {
@@ -127,12 +139,26 @@ const BaseField = ({
     onChange?.(field.form, value)
   }, [field, onChange])
 
+  const selfProps = typeof selfFormProps === 'function' ? selfFormProps(field.form) : selfFormProps
+
   if (!show)
     return null
 
   return (
+    <>
+    {
+      selfProps?.withTopDivider && (
+        <div className='h-px w-full bg-divider-subtle' />
+      )
+    }
     <div className={cn(fieldClassName, formFieldClassName)}>
-      <div className={cn(labelClassName, formLabelClassName)}>
+      <div
+        className={cn(type === FormTypeEnum.collapse && 'cursor-pointer', labelClassName, formLabelClassName)}
+        onClick={() => {
+          if (type === FormTypeEnum.collapse)
+            handleChange(!value)
+        }}
+      >
         {memorizedLabel}
         {
           required && !isValidElement(label) && (
@@ -143,10 +169,9 @@ const BaseField = ({
           type === FormTypeEnum.collapse && (
             <RiArrowDownSFill
               className={cn(
-                'h-4 w-4',
-                value && 'rotate-180',
+                'h-4 w-4 text-text-quaternary',
+                value && '-rotate-90',
               )}
-              onClick={() => handleChange(!value)}
             />
           )
         }
@@ -159,8 +184,16 @@ const BaseField = ({
               onClick={() => handleChange(!value)}
             >
               {value ? <RiInputField className='mr-1 h-3.5 w-3.5' /> : <RiDraftLine className='mr-1 h-3.5 w-3.5' />}
-              {selfFormProps?.(field.form)?.editModeLabel}
+              {selfProps?.editModeLabel}
             </Button>
+          )
+        }
+        {
+          memorizedTooltip && (
+            <Tooltip
+              popupContent={memorizedTooltip}
+              triggerClassName='ml-1 w-4 h-4'
+            />
           )
         }
       </div>
@@ -195,7 +228,7 @@ const BaseField = ({
           )
         }
         {
-          type === FormTypeEnum.textNumber && (
+          type === FormTypeEnum.textNumber && !selfProps?.withSlider && (
             <Input
               id={field.name}
               name={field.name}
@@ -207,6 +240,34 @@ const BaseField = ({
               disabled={disabled}
               placeholder={memorizedPlaceholder}
             />
+          )
+        }
+        {
+          type === FormTypeEnum.textNumber && selfProps?.withSlider && (
+            <div className='flex items-center space-x-2'>
+              <Slider
+                min={selfProps?.sliderMin}
+                max={selfProps?.sliderMax}
+                step={selfProps?.sliderStep}
+                value={value}
+                onChange={handleChange}
+                className={cn(selfProps.sliderClassName)}
+                trackClassName={cn(selfProps.sliderTrackClassName)}
+                thumbClassName={cn(selfProps.sliderThumbClassName)}
+              />
+              <Input
+                id={field.name}
+                name={field.name}
+                type='number'
+                className={cn('', inputClassName, formInputClassName)}
+                wrapperClassName={cn(selfProps.inputWrapperClassName)}
+                value={value || ''}
+                onChange={e => handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                disabled={disabled}
+                placeholder={memorizedPlaceholder}
+              />
+            </div>
           )
         }
         {
@@ -239,7 +300,7 @@ const BaseField = ({
                     onClick={() => handleChange(option.value)}
                   >
                     {
-                      selfFormProps?.(field.form)?.showRadioUI && (
+                      selfProps?.showRadioUI && (
                         <RadioE
                           className='mr-2'
                           isChecked={value === option.value}
@@ -271,18 +332,34 @@ const BaseField = ({
         }
         {
           type === FormTypeEnum.promptInput && (
-            <PromptEditor
-              value={value}
-              onChange={handleChange}
-              onBlur={field.handleBlur}
-              editable={!disabled}
-              placeholder={memorizedPlaceholder}
-              className={cn(
-                'min-h-[80px]',
-                inputClassName,
-                formInputClassName,
-              )}
-            />
+            <div className={cn(
+              'relative rounded-lg bg-components-input-bg-normal p-2',
+              formInputContainerClassName,
+            )}>
+              {
+                selfProps?.enablePromptGenerator && (
+                  <PromptGeneratorBtn
+                    nodeId={selfProps?.nodeId}
+                    className='absolute right-0 top-[-26px]'
+                    onGenerated={handleChange}
+                    modelConfig={selfProps?.modelConfig}
+                    currentPrompt={value}
+                  />
+                )
+              }
+              <PromptEditor
+                value={value}
+                onChange={handleChange}
+                onBlur={field.handleBlur}
+                editable={!disabled}
+                placeholder={memorizedPlaceholder || selfProps?.placeholder}
+                className={cn(
+                  'min-h-[80px]',
+                  inputClassName,
+                  formInputClassName,
+                )}
+              />
+            </div>
           )
         }
         {
@@ -296,7 +373,7 @@ const BaseField = ({
         {
           type === FormTypeEnum.arrayList && (
             <ArrayValueList
-              isString={selfFormProps?.(field.form)?.isString}
+              isString={selfProps?.isString}
               list={value}
               onChange={handleChange}
             />
@@ -304,13 +381,13 @@ const BaseField = ({
         }
         {
           type === FormTypeEnum.jsonInput && (
-            <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: selfFormProps?.(field.form)?.editorMinHeight }}>
+            <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: selfProps?.editorMinHeight }}>
               <CodeEditor
                 isExpand
                 noWrapper
                 language={CodeLanguage.json}
                 value={value}
-                placeholder={<div className='whitespace-pre'>{selfFormProps?.(field.form)?.placeholder as string}</div>}
+                placeholder={<div className='whitespace-pre'>{selfProps?.placeholder as string}</div>}
                 onChange={handleChange}
               />
             </div>
@@ -325,6 +402,15 @@ const BaseField = ({
               readonly={disabled}
               scope={formSchema.scope}
               isAdvancedMode
+            />
+          )
+        }
+        {
+          type === FormTypeEnum.boolean && (
+            <Switch
+              defaultValue={value}
+              onChange={handleChange}
+              disabled={disabled}
             />
           )
         }
@@ -346,6 +432,12 @@ const BaseField = ({
         }
       </div>
     </div>
+    {
+      selfProps?.withBottomDivider && (
+        <div className='h-px w-full bg-divider-subtle' />
+      )
+    }
+    </>
   )
 }
 

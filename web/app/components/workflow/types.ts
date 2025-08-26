@@ -156,13 +156,25 @@ export type EnvironmentVariable = {
   description: string
 }
 
+export type MemoryVariable = {
+  template?: string
+  instruction?: string
+  schedule_mode?: string
+  model?: any
+  strategy?: string
+  update_turns?: number
+  scope?: string
+  term?: string
+  end_user_editable?: boolean
+}
+
 export type ConversationVariable = {
   id: string
   name: string
   value_type: ChatVarType
   value: any
   description: string
-}
+} & MemoryVariable
 
 export type GlobalVariable = {
   name: string

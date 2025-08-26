@@ -15,57 +15,57 @@ export const useValueSchema = () => {
   const { t } = useTranslation()
   const getValueFormType = useCallback((form: AnyFormApi) => {
     const {
-      type,
+      value_type,
       editInJSON,
     } = form.state.values
-    console.log(editInJSON, 'editInJSON', type, 'type')
-    if (type === ChatVarType.String) {
+
+    if (value_type === ChatVarType.String) {
       return 'textarea-input'
     }
-    else if (type === ChatVarType.Number) {
+    else if (value_type === ChatVarType.Number) {
       return 'number-input'
     }
-    else if (type === ChatVarType.Object) {
+    else if (value_type === ChatVarType.Object) {
       if (editInJSON)
         return 'json-input'
       else
         return 'object-list'
     }
-    else if (type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) {
+    else if (value_type === ChatVarType.ArrayString || value_type === ChatVarType.ArrayNumber) {
       if (editInJSON)
         return 'json-input'
       else
         return 'array-list'
     }
-    else if (type === ChatVarType.ArrayObject) {
+    else if (value_type === ChatVarType.ArrayObject) {
       return 'json-input'
     }
   }, [])
   const getSelfFormProps = useCallback((form: AnyFormApi) => {
     const {
-      type,
+      value_type,
       editInJSON,
     } = form.state.values
-    if (editInJSON || type === ChatVarType.ArrayObject) {
+    if (editInJSON || value_type === ChatVarType.ArrayObject) {
       let minHeight = '120px'
-      if (type === ChatVarType.ArrayObject)
+      if (value_type === ChatVarType.ArrayObject)
         minHeight = '240px'
       let placeholder = objectPlaceholder
-      if (type === ChatVarType.ArrayString)
+      if (value_type === ChatVarType.ArrayString)
         placeholder = arrayStringPlaceholder
-      else if (type === ChatVarType.ArrayNumber)
+      else if (value_type === ChatVarType.ArrayNumber)
         placeholder = arrayNumberPlaceholder
-      else if (type === ChatVarType.ArrayObject)
+      else if (value_type === ChatVarType.ArrayObject)
         placeholder = arrayObjectPlaceholder
       return {
         editorMinHeight: minHeight,
         placeholder,
       }
     }
-    if (type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) {
+    if (value_type === ChatVarType.ArrayString || value_type === ChatVarType.ArrayNumber) {
       if (!editInJSON) {
         return {
-          isString: type === ChatVarType.ArrayString,
+          isString: value_type === ChatVarType.ArrayString,
         }
       }
     }
@@ -78,12 +78,12 @@ export const useValueSchema = () => {
     placeholder: t('workflow.chatVariable.modal.valuePlaceholder'),
     show_on: [
       {
-        variable: 'type',
+        variable: 'value_type',
         value: [ChatVarType.String, ChatVarType.Number, ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber, ChatVarType.ArrayObject],
       },
       {
         variable: 'editInJSON',
-        value: [true, false],
+        value: [true, false, undefined],
       },
     ],
     selfFormProps: getSelfFormProps,

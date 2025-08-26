@@ -4,30 +4,35 @@ import type {
   AnyFormApi,
 } from '@tanstack/react-form'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { getValue } from '@/app/components/workflow/panel/chat-variable-panel/utils'
 
 export const useEditInJSONSchema = () => {
   const { t } = useTranslation()
+
   const getEditModeLabel = useCallback((form: AnyFormApi) => {
     const {
-      type,
+      value_type,
       editInJSON,
     } = form.state.values
     const editModeLabelWhenFalse = t('workflow.chatVariable.modal.editInJSON')
     let editModeLabelWhenTrue = t('workflow.chatVariable.modal.oneByOne')
-    if (type === ChatVarType.Object)
+    if (value_type === ChatVarType.Object)
       editModeLabelWhenTrue = t('workflow.chatVariable.modal.editInForm')
 
     return {
       editModeLabel: editInJSON ? editModeLabelWhenTrue : editModeLabelWhenFalse,
     }
   }, [t])
-  const handleEditInJSONChange = useCallback((form: AnyFormApi) => {
+  const handleEditInJSONChange = useCallback((form: AnyFormApi, v: boolean) => {
     const {
-      resetField,
+      setFieldValue,
+      getFieldValue,
     } = form
-    resetField('objectListValue')
-    resetField('arrayListValue')
-    resetField('jsonValue')
+    const type = getFieldValue('value_type')
+    const value = getFieldValue('value')
+
+    const newValue = getValue(type, !v, value)
+    setFieldValue('value', newValue)
   }, [])
 
   return {
@@ -36,7 +41,7 @@ export const useEditInJSONSchema = () => {
     type: 'edit-mode',
     show_on: [
       {
-        variable: 'type',
+        variable: 'value_type',
         value: [ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber],
       },
     ],
