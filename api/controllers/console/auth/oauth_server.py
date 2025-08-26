@@ -3,7 +3,7 @@ from typing import cast
 
 import flask_login
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
