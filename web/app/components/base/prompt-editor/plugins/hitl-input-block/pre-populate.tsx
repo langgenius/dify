@@ -72,7 +72,7 @@ const PrePopulate: FC<Props> = ({
     value: valueSelector || [],
     onChange: onValueSelectorChange!,
     readonly: false,
-    zIndex: 1000,
+    zIndex: 1000000, // bigger than shortcut plugin popup
   }
 
   const isShowPlaceholder = !onPlaceholderClicked && (isVariable ? (!valueSelector || valueSelector.length === 0) : !value)

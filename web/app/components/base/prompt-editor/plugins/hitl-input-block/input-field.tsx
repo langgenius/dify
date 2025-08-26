@@ -65,6 +65,7 @@ const InputField: React.FC<Props> = ({
           onChange={(e) => {
             setTempPayload(prev => ({ ...prev, output_variable_name: e.target.value }))
           }}
+          autoFocus
         />
       </div>
       <div className='mt-4'>
