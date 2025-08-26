@@ -400,7 +400,7 @@ class TestChunkMerger:
             for i in range(num_chunks):
                 # Create unique data for each chunk to verify ordering
                 chunk_data = bytes([i % 256]) * chunk_size
-                is_last = (i == num_chunks - 1)
+                is_last = i == num_chunks - 1
 
                 yield ToolInvokeMessage(
                     type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -442,7 +442,7 @@ class TestChunkMerger:
             total_length = sum(len(part) for part in data_parts)
 
             for i, part in enumerate(data_parts):
-                is_last = (i == len(data_parts) - 1)
+                is_last = i == len(data_parts) - 1
                 yield ToolInvokeMessage(
                     type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
                     message=ToolInvokeMessage.BlobChunkMessage(

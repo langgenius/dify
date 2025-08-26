@@ -30,7 +30,7 @@ def merge_blob_chunks(
     """
     Merge streaming blob chunks into complete blob messages.
 
-    This function processes a stream of plugin invoke messages, accumulating 
+    This function processes a stream of plugin invoke messages, accumulating
     BLOB_CHUNK messages by their ID until the final chunk is received,
     then yielding a single complete BLOB message.
 
