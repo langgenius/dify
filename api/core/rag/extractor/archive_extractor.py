@@ -277,15 +277,8 @@ class ArchiveExtractor(BaseExtractor):
         normalized = os.path.normpath(path)
         return not (normalized.startswith('/') or normalized.startswith('..') or '\\' in normalized)
 
-    def _process_extracted_file(self, file_info: dict) -> list[Document]:
-        """Process an extracted file using appropriate extractor."""
-        file_path = file_info['path']
-        relative_path = file_info['relative_path']
-        file_size = file_info['size']
-        
-        # Use ExtractProcessor to handle the file
-        processor = ExtractProcessor()
-        documents = processor.extract(file_path)
+        extract_setting = ExtractSetting(file_path=file_path)
+        documents = processor.extract(extract_setting)
         
         # Enhance metadata for each document
         for doc in documents:
