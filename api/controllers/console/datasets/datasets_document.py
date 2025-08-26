@@ -473,16 +473,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             if document.indexing_status in {"completed", "error"}:
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
-            # format document files info
-            if data_source_info and "upload_file_id" in data_source_info:
-                file_id = data_source_info["upload_file_id"]
-            # format document notion info
-            elif (
-                data_source_info and "notion_workspace_id" in data_source_info and "notion_page_id" in data_source_info
-            ):
-                pages = []
-                page = {"page_id": data_source_info["notion_page_id"], "type": data_source_info["type"]}
-                pages.append(page)
 
             if document.data_source_type == "upload_file":
                 file_id = data_source_info["upload_file_id"]
