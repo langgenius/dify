@@ -100,6 +100,37 @@ class CompletionConversationApi(Resource):
 
         return conversations
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.COMPLETION)
+    def delete(self, app_model):
+        """Clear all completion conversations"""
+        if not current_user.is_editor:
+            raise Forbidden()
+            
+        # Delete all conversations and related data for this app
+        conversations = db.session.query(Conversation).filter(
+            Conversation.app_id == app_model.id,
+            Conversation.mode == "completion"
+        ).all()
+        
+        for conversation in conversations:
+            # Delete messages first
+            db.session.query(Message).filter(Message.conversation_id == conversation.id).delete()
+            # Delete message annotations
+            db.session.query(MessageAnnotation).filter(MessageAnnotation.conversation_id == conversation.id).delete()
+            
+        # Delete conversations
+        db.session.query(Conversation).filter(
+            Conversation.app_id == app_model.id,
+            Conversation.mode == "completion"
+        ).delete()
+        
+        db.session.commit()
+        
+        return {"result": "success"}
+
 
 class CompletionConversationDetailApi(Resource):
     @setup_required
@@ -257,6 +288,37 @@ class ChatConversationApi(Resource):
         conversations = db.paginate(query, page=args["page"], per_page=args["limit"], error_out=False)
 
         return conversations
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def delete(self, app_model):
+        """Clear all chat conversations"""
+        if not current_user.is_editor:
+            raise Forbidden()
+            
+        # Delete all chat conversations and related data for this app
+        conversations = db.session.query(Conversation).filter(
+            Conversation.app_id == app_model.id,
+            Conversation.mode.in_(["chat", "agent_chat", "advanced_chat"])
+        ).all()
+        
+        for conversation in conversations:
+            # Delete messages first
+            db.session.query(Message).filter(Message.conversation_id == conversation.id).delete()
+            # Delete message annotations
+            db.session.query(MessageAnnotation).filter(MessageAnnotation.conversation_id == conversation.id).delete()
+            
+        # Delete conversations
+        db.session.query(Conversation).filter(
+            Conversation.app_id == app_model.id,
+            Conversation.mode.in_(["chat", "agent_chat", "advanced_chat"])
+        ).delete()
+        
+        db.session.commit()
+        
+        return {"result": "success"}
 
 
 class ChatConversationDetailApi(Resource):

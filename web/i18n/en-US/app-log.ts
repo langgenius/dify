@@ -75,6 +75,13 @@ const translation = {
     sortBy: 'Sort by:',
     descending: 'descending',
     ascending: 'ascending',
+    clearAll: 'Clear All Logs',
+    clearSuccess: 'All logs have been cleared successfully',
+    clearFailed: 'Failed to clear logs',
+    clearConfirm: {
+      title: 'Clear All Logs',
+      content: 'Are you sure you want to clear all logs? This action cannot be undone.',
+    },
   },
   workflowTitle: 'Workflow Logs',
   workflowSubtitle: 'The log recorded the operation of Automate.',
