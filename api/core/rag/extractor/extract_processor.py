@@ -14,6 +14,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
 from core.rag.extractor.jina_reader_extractor import JinaReaderWebExtractor
+from core.rag.extractor.json_extractor import JsonExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
@@ -127,6 +128,8 @@ class ExtractProcessor:
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
+                    elif file_extension == ".json":
+                        extractor = JsonExtractor(file_path)
                     elif file_extension == ".msg":
                         extractor = UnstructuredMsgExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".eml":
@@ -157,6 +160,8 @@ class ExtractProcessor:
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
+                    elif file_extension == ".json":
+                        extractor = JsonExtractor(file_path)
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path)
                     else:
