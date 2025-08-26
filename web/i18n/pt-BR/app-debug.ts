@@ -351,6 +351,10 @@ const translation = {
     'uploadFileTypes': 'Carregar tipos de arquivo',
     'both': 'Ambos',
     'localUpload': 'Local Upload',
+    'optional': 'opcional',
+    'json': 'Código JSON',
+    'checkbox': 'Caixa de seleção',
+    'jsonSchema': 'Esquema JSON',
   },
   vision: {
     name: 'Visão',
