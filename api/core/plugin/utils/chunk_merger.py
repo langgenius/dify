@@ -26,7 +26,7 @@ class FileChunk:
         except AttributeError:
             # Fallback to 50MB if config is not available
             max_size = 50 * 1024 * 1024
-            
+
         validate_size(
             actual_size=self.total_length,
             hint="The tool file",
