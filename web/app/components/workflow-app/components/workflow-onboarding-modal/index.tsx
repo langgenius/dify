@@ -3,14 +3,12 @@ import type { FC } from 'react'
 import {
   useCallback,
   useEffect,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import Modal from '@/app/components/base/modal'
 import StartNodeSelectionPanel from './start-node-selection-panel'
-import TriggerSelectionPanel from './trigger-selection-panel'
 
 type WorkflowOnboardingModalProps = {
   isShow: boolean
@@ -24,52 +22,33 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
   onSelectStartNode,
 }) => {
   const { t } = useTranslation()
-  const [showTriggerPanel, setShowTriggerPanel] = useState(false)
 
   const handleSelectUserInput = useCallback(() => {
     onSelectStartNode(BlockEnum.Start)
   }, [onSelectStartNode])
 
-  const handleSelectTrigger = useCallback(() => {
-    setShowTriggerPanel(true)
-  }, [])
-
   const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => {
     onSelectStartNode(nodeType, toolConfig)
   }, [onSelectStartNode])
 
-  const handleBack = useCallback(() => {
-    setShowTriggerPanel(false)
-  }, [])
-
-  const handleClose = useCallback(() => {
-    setShowTriggerPanel(false)
-    onClose()
-  }, [onClose])
-
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isShow)
-        handleClose()
+        onClose()
     }
     document.addEventListener('keydown', handleEsc)
     return () => document.removeEventListener('keydown', handleEsc)
-  }, [isShow, handleClose])
-
-  // Reset panel state when modal is reopened
-  useEffect(() => {
-    if (isShow)
-      setShowTriggerPanel(false)
-  }, [isShow])
+  }, [isShow, onClose])
 
   return (
     <>
       <Modal
         isShow={isShow}
-        onClose={handleClose}
+        onClose={onClose}
         className="w-[618px] max-w-[618px] rounded-2xl border border-effects-highlight bg-background-default-subtle shadow-lg"
         overlayOpacity
         closable
+        clickOutsideNotClose
       >
         <div className="pb-4">
           {/* Header */}
@@ -83,7 +62,6 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
                 type="button"
                 className="hover:text-text-accent-hover cursor-pointer text-text-accent underline"
                 onClick={() => {
-                  // TODO: Link to workflow start node documentation
                   console.log('Navigate to start node documentation')
                 }}
               >
@@ -93,17 +71,10 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
           </div>
 
           {/* Content */}
-          {!showTriggerPanel ? (
-            <StartNodeSelectionPanel
-              onSelectUserInput={handleSelectUserInput}
-              onSelectTrigger={handleSelectTrigger}
-            />
-          ) : (
-            <TriggerSelectionPanel
-              onSelect={handleTriggerSelect}
-              onBack={handleBack}
-            />
-          )}
+          <StartNodeSelectionPanel
+            onSelectUserInput={handleSelectUserInput}
+            onSelectTrigger={handleTriggerSelect}
+          />
         </div>
       </Modal>
 

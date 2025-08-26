@@ -44,6 +44,7 @@ type NodeSelectorProps = {
   disabled?: boolean
   noBlocks?: boolean
   showStartTab?: boolean
+  defaultActiveTab?: TabsEnum
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -61,6 +62,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   disabled,
   noBlocks = false,
   showStartTab = false,
+  defaultActiveTab,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -87,7 +89,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     onSelect(type, toolDefaultValue)
   }, [handleOpenChange, onSelect])
 
-  const [activeTab, setActiveTab] = useState(noBlocks ? TabsEnum.Tools : TabsEnum.Blocks)
+  const [activeTab, setActiveTab] = useState(
+    defaultActiveTab || (noBlocks ? TabsEnum.Tools : TabsEnum.Blocks),
+  )
   const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
     setActiveTab(newActiveTab)
   }, [])
