@@ -1,4 +1,3 @@
-import logging
 import queue
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError

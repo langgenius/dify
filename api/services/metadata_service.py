@@ -17,6 +17,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 
 logger = logging.getLogger(__name__)
 
+
 class MetadataService:
     @staticmethod
     def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:

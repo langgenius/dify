@@ -2,7 +2,6 @@
 Proxy requests to avoid SSRF
 """
 
-import logging
 import time
 
 import httpx

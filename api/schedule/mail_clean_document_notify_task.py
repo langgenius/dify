@@ -91,8 +91,6 @@ def mail_clean_document_notify_task():
                 dataset_auto_disable_log.notified = True
             db.session.commit()
         end_at = time.perf_counter()
-        logger.info(
-            click.style(f"Send document clean notify mail succeeded: latency: {end_at - start_at}", fg="green")
-        )
+        logger.info(click.style(f"Send document clean notify mail succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
         logger.exception("Send document clean notify mail failed")

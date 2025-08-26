@@ -5,6 +5,7 @@ from email.mime.text import MIMEText
 
 logger = logging.getLogger(__name__)
 
+
 class SMTPClient:
     def __init__(
         self, server: str, port: int, username: str, password: str, _from: str, use_tls=False, opportunistic_tls=False

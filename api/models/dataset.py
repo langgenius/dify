@@ -31,6 +31,7 @@ from .types import StringUUID
 
 logger = logging.getLogger(__name__)
 
+
 class DatasetPermissionEnum(enum.StrEnum):
     ONLY_ME = "only_me"
     ALL_TEAM = "all_team_members"

@@ -27,6 +27,7 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 
 logger = logging.getLogger(__name__)
 
+
 class AppService:
     def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
         """

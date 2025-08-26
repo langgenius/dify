@@ -1,5 +1,4 @@
 import json
-import logging
 
 from flask_restx import Api, Namespace, Resource, fields, reqparse
 from flask_restx.inputs import int_range

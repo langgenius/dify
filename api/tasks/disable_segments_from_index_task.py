@@ -12,6 +12,7 @@ from models.dataset import Document as DatasetDocument
 
 logger = logging.getLogger(__name__)
 
+
 @shared_task(queue="dataset")
 def disable_segments_from_index_task(segment_ids: list, dataset_id: str, document_id: str):
     """

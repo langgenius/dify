@@ -1,5 +1,4 @@
 import importlib.util
-import logging
 import sys
 from types import ModuleType
 from typing import AnyStr

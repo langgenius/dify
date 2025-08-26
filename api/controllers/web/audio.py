@@ -1,5 +1,3 @@
-import logging
-
 from flask import request
 from werkzeug.exceptions import InternalServerError
 

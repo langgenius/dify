@@ -1,5 +1,3 @@
-import logging
-
 from flask import request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound

@@ -1,6 +1,5 @@
 import hashlib
 import json
-import logging
 import uuid
 from contextlib import contextmanager
 from typing import Any

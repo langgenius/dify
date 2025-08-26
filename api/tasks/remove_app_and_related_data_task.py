@@ -73,9 +73,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         end_at = time.perf_counter()
         logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
     except SQLAlchemyError as e:
-        logger.exception(
-            click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red")
-        )
+        logger.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red"))
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))

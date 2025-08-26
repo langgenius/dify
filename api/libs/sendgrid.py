@@ -6,6 +6,7 @@ from sendgrid.helpers.mail import Content, Email, Mail, To  # type: ignore
 
 logger = logging.getLogger(__name__)
 
+
 class SendGridClient:
     def __init__(self, sendgrid_api_key: str, _from: str):
         self.sendgrid_api_key = sendgrid_api_key

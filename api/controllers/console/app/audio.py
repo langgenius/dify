@@ -33,6 +33,7 @@ from services.errors.audio import (
 
 logger = logging.getLogger(__name__)
 
+
 class ChatMessageAudioApi(Resource):
     @setup_required
     @login_required

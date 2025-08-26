@@ -36,6 +36,7 @@ from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
+
 # define completion message api for user
 class CompletionMessageApi(Resource):
     @setup_required

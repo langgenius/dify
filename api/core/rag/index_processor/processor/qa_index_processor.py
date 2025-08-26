@@ -1,6 +1,5 @@
 """Paragraph index processor."""
 
-import logging
 import re
 import threading
 import uuid

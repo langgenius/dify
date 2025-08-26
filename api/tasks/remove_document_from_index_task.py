@@ -64,9 +64,7 @@ def remove_document_from_index_task(document_id: str):
         db.session.commit()
 
         end_at = time.perf_counter()
-        logger.info(
-            click.style(f"Document removed from index: {document.id} latency: {end_at - start_at}", fg="green")
-        )
+        logger.info(click.style(f"Document removed from index: {document.id} latency: {end_at - start_at}", fg="green"))
     except Exception:
         logger.exception("remove document from index failed")
         if not document.archived:
