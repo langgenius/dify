@@ -11,6 +11,13 @@ class TooltipManager {
     if (this.activeCloser === closeFn)
       this.activeCloser = null
   }
+
+  closeAll() {
+    if (this.activeCloser) {
+      this.activeCloser()
+      this.activeCloser = null
+    }
+  }
 }
 
 export const tooltipManager = new TooltipManager()
