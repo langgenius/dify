@@ -34,6 +34,7 @@ import StatusWithAction from '../common/document-status-with-action/status-with-
 import { useDocLink } from '@/context/i18n'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
 import { SimpleSelect } from '../../base/select'
+import StatusItem from './detail/completed/status-item'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -111,7 +112,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const embeddingAvailable = !!dataset?.embedding_available
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
-  const statusFilterItems = useMemo(() => [
+  const statusFilterItems: Item[] = useMemo(() => [
     { value: 'all', name: 'All Status' },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
@@ -347,6 +348,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               items={statusFilterItems}
               defaultValue={statusFilter}
               wrapperClassName='w-[160px] h-8'
+              renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+              optionClassName='p-0'
               notClearable
             />
             <Input
