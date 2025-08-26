@@ -38,7 +38,12 @@ export const useNodesSyncDraft = () => {
 
     if (appId) {
       const nodes = getNodes()
-      const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
+      const hasStartNode = nodes.find(node =>
+        node.data.type === BlockEnum.Start
+        || node.data.type === BlockEnum.TriggerSchedule
+        || node.data.type === BlockEnum.TriggerWebhook
+        || node.data.type === BlockEnum.TriggerPlugin,
+      )
 
       if (!hasStartNode)
         return

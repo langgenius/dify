@@ -57,13 +57,16 @@ export const useWorkflowInit = () => {
       if (error && error.json && !error.bodyUsed && appDetail) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({ notInitialWorkflow: true })
+            workflowStore.setState({
+              notInitialWorkflow: true,
+              showOnboarding: true,
+            })
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
                 graph: {
-                  nodes: nodesTemplate,
-                  edges: edgesTemplate,
+                  nodes: [],
+                  edges: [],
                 },
                 features: {
                   retriever_resource: { enabled: true },
@@ -83,7 +86,6 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
