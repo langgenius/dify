@@ -15,7 +15,7 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
-from controllers.web import api
+from controllers.web import web_ns
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
@@ -23,10 +23,19 @@ from models.account import Account
 from services.account_service import AccountService
 
 
+@web_ns.route("/forgot-password")
 class ForgotPasswordSendEmailApi(Resource):
     @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
+    @web_ns.doc("send_forgot_password_email")
+    @web_ns.doc(description="Send password reset email")
+    @web_ns.doc(responses={
+        200: "Password reset email sent successfully",
+        400: "Bad request - invalid email format",
+        404: "Account not found",
+        429: "Too many requests - rate limit exceeded"
+    })
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -53,10 +62,18 @@ class ForgotPasswordSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@web_ns.route("/forgot-password/validity")
 class ForgotPasswordCheckApi(Resource):
     @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
+    @web_ns.doc("check_forgot_password_token")
+    @web_ns.doc(description="Verify password reset token validity")
+    @web_ns.doc(responses={
+        200: "Token is valid",
+        400: "Bad request - invalid token format",
+        401: "Invalid or expired token"
+    })
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=str, required=True, location="json")
@@ -93,10 +110,19 @@ class ForgotPasswordCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
+@web_ns.route("/forgot-password/resets")
 class ForgotPasswordResetApi(Resource):
     @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
+    @web_ns.doc("reset_password")
+    @web_ns.doc(description="Reset user password with verification token")
+    @web_ns.doc(responses={
+        200: "Password reset successfully",
+        400: "Bad request - invalid parameters or password mismatch",
+        401: "Invalid or expired token",
+        404: "Account not found"
+    })
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
@@ -142,6 +168,4 @@ class ForgotPasswordResetApi(Resource):
         session.commit()
 
 
-api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")
-api.add_resource(ForgotPasswordCheckApi, "/forgot-password/validity")
-api.add_resource(ForgotPasswordResetApi, "/forgot-password/resets")
+
