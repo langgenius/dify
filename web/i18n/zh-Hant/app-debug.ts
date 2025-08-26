@@ -331,6 +331,10 @@ const translation = {
     'localUpload': '本地上傳',
     'single-file': '單個檔',
     'maxNumberOfUploads': '最大上傳次數',
+    'checkbox': '核取方塊',
+    'optional': '可選的',
+    'jsonSchema': 'JSON Schema',
+    'json': 'JSON 代碼',
   },
   vision: {
     name: '視覺',

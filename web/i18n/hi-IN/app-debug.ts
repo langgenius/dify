@@ -377,6 +377,10 @@ const translation = {
     'maxNumberOfUploads': 'अधिकतम अपलोड संख्या',
     'uploadFileTypes': 'फ़ाइल प्रकार अपलोड करें',
     'localUpload': 'स्थानीय अपलोड',
+    'jsonSchema': 'JSON स्कीमा',
+    'optional': 'वैकल्पिक',
+    'json': 'JSON कोड',
+    'checkbox': 'चेकबॉक्स',
   },
   vision: {
     name: 'विजन',
