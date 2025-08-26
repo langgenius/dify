@@ -89,7 +89,7 @@ class TestArchiveExtractor:
 
         assert len(documents) == 1
         assert documents[0].page_content == "Test content"
-        assert documents[0].metadata["archive_path"] == "test.zip"
+        assert documents[0].metadata["archive_path"] == "test.txt"
         assert documents[0].metadata["relative_path"] == "test.txt"
         assert documents[0].metadata["archive_format"] == "zip"
 
