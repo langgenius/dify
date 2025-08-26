@@ -31,6 +31,7 @@ import Popover from '@/app/components/base/popover'
 import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast, { ToastContext } from '@/app/components/base/toast'
+import type { Item } from '@/app/components/base/select'
 import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
@@ -455,7 +456,7 @@ type IDocumentListProps = {
   pagination: PaginationProps
   onUpdate: () => void
   onManageMetadata: () => void
-  statusFilter: string
+  statusFilter: Item
   onStatusFilterChange: (filter: string) => void
 }
 
@@ -472,7 +473,6 @@ const DocumentList: FC<IDocumentListProps> = ({
   onUpdate,
   onManageMetadata,
   statusFilter,
-  onStatusFilterChange,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -503,7 +503,7 @@ const DocumentList: FC<IDocumentListProps> = ({
 
     if (statusFilter !== 'all') {
       filteredDocs = filteredDocs.filter(doc =>
-        doc.display_status?.toLowerCase() === statusFilter.toLowerCase(),
+        doc.display_status?.toLowerCase() === statusFilter.value.toLowerCase(),
       )
     }
 

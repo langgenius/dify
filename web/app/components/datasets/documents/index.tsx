@@ -35,6 +35,7 @@ import { useDocLink } from '@/context/i18n'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
 import { SimpleSelect } from '../../base/select'
 import StatusItem from './detail/completed/status-item'
+import type { Item } from '@/app/components/base/select'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -94,7 +95,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isFreePlan = plan.type === 'sandbox'
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<Item>({ value: 'all', name: 'All Status' })
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
   // Use the new hook for URL state management
@@ -343,10 +344,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             <SimpleSelect
               placeholder={t('datasetDocuments.list.table.header.status')}
               onSelect={(item) => {
-                setStatusFilter(item.value as string)
+                setStatusFilter(item)
               }}
               items={statusFilterItems}
-              defaultValue={statusFilter}
+              defaultValue={statusFilter.value}
               wrapperClassName='w-[160px] h-8'
               renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
               optionClassName='p-0'
