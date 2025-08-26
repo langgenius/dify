@@ -73,7 +73,8 @@ function MCPServiceCard({
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp` : '***********'
-  const toggleDisabled = !isCurrentWorkspaceEditor || appUnpublished
+  const hasStartNode = currentWorkflow?.graph?.nodes.find(node => node.data.type === BlockEnum.Start)
+  const toggleDisabled = !isCurrentWorkspaceEditor || appUnpublished || !hasStartNode
 
   const [activated, setActivated] = useState(serverActivated)
 
