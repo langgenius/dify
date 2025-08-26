@@ -338,7 +338,7 @@ class IndexingRunner:
             if not data_source_info or "upload_file_id" not in data_source_info:
                 raise ValueError("no upload file found")
             stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
-            file_detail = db.session.scalars(stmt).one_or_none()
+            file_detail = db.session.scalar(stmt)
 
             if file_detail:
                 extract_setting = ExtractSetting(

@@ -419,11 +419,11 @@ class TidbOnQdrantVector(BaseVector):
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
         stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
-        tidb_auth_binding = db.session.scalars(stmt).one_or_none()
+        tidb_auth_binding = db.session.scalar(stmt)
         if not tidb_auth_binding:
             with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=900):
                 stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
-                tidb_auth_binding = db.session.scalars(stmt).one_or_none()
+                tidb_auth_binding = db.session.scalar(stmt)
                 if tidb_auth_binding:
                     TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
