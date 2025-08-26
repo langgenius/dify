@@ -366,7 +366,7 @@ class BaseSession(
                             self._handle_incoming(notification)
                     except Exception as e:
                         # For other validation errors, log and continue
-                        logging.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
+                        logger.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
                 else:  # Response or error
                     response_queue = self._response_streams.get(message.message.root.id)
                     if response_queue is not None:
@@ -376,7 +376,7 @@ class BaseSession(
             except queue.Empty:
                 continue
             except Exception:
-                logging.exception("Error in message processing loop")
+                logger.exception("Error in message processing loop")
                 raise
 
     def _received_request(self, responder: RequestResponder[ReceiveRequestT, SendResultT]) -> None:

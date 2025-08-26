@@ -18,7 +18,7 @@ class Mail:
     def init_app(self, app: Flask):
         mail_type = dify_config.MAIL_TYPE
         if not mail_type:
-            logging.warning("MAIL_TYPE is not set")
+            logger.warning("MAIL_TYPE is not set")
             return
 
         if dify_config.MAIL_DEFAULT_SEND_FROM:

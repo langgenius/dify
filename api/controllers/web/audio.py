@@ -38,7 +38,7 @@ class AudioApi(WebApiResource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -59,7 +59,7 @@ class AudioApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("Failed to handle post request to AudioApi")
+            logger.exception("Failed to handle post request to AudioApi")
             raise InternalServerError()
 
 
@@ -84,7 +84,7 @@ class TextApi(WebApiResource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -105,7 +105,7 @@ class TextApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("Failed to handle post request to TextApi")
+            logger.exception("Failed to handle post request to TextApi")
             raise InternalServerError()
 
 

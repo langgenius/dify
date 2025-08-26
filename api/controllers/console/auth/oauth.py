@@ -24,6 +24,8 @@ from services.feature_service import FeatureService
 
 from .. import api
 
+logger = logging.getLogger(__name__)
+
 
 def get_oauth_providers():
     with current_app.app_context():
@@ -80,7 +82,7 @@ class OAuthCallback(Resource):
             user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.RequestException as e:
             error_text = e.response.text if e.response else str(e)
-            logging.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
+            logger.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):

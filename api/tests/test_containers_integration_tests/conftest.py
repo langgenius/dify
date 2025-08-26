@@ -25,7 +25,7 @@ from app_factory import create_app
 from models import db
 
 # Configure logging for test containers
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger.basicConfig(level=logger.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 

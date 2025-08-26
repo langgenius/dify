@@ -120,7 +120,7 @@ class AppGenerateResponseConverter(ABC):
         if data:
             data.setdefault("message", getattr(e, "description", str(e)))
         else:
-            logging.error(e)
+            logger.error(e)
             data = {
                 "code": "internal_server_error",
                 "message": "Internal Server Error, please contact support.",

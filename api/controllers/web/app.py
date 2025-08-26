@@ -92,7 +92,7 @@ class AppWebAuthPermission(Resource):
         except Unauthorized:
             raise
         except Exception:
-            logging.exception("Unexpected error during auth verification")
+            logger.exception("Unexpected error during auth verification")
             raise
 
         features = FeatureService.get_system_features()

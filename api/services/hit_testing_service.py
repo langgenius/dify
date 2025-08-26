@@ -12,6 +12,8 @@ from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery
 
+logger = logging.getLogger(__name__)
+
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
     "reranking_enable": False,
@@ -77,7 +79,7 @@ class HitTestingService:
         )
 
         end = time.perf_counter()
-        logging.debug("Hit testing retrieve in %s seconds", end - start)
+        logger.debug("Hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
@@ -113,7 +115,7 @@ class HitTestingService:
         )
 
         end = time.perf_counter()
-        logging.debug("External knowledge hit testing retrieve in %s seconds", end - start)
+        logger.debug("External knowledge hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
