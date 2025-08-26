@@ -1,9 +1,12 @@
+import logging
 from typing import Optional
 
 from flask import Flask
 
 from configs import dify_config
 from dify_app import DifyApp
+
+logger = logging.getLogger(__name__)
 
 
 class Mail:
