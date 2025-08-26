@@ -186,6 +186,8 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
     if not updates_to_perform:
         return
 
+    updates_to_perform = sorted(updates_to_perform, key=lambda i: (i.filters.tenant_id, i.filters.provider_name))
+
     # Use SQLAlchemy's context manager for transaction management
     # This automatically handles commit/rollback
     with Session(db.engine) as session:
