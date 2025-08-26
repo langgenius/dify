@@ -146,8 +146,8 @@ const useLastRun = <T>({
     checkValid,
   } = oneStepRunRes
 
+  const nodeInfo = runResult
   const {
-    nodeInfo,
     ...singleRunParams
   } = useSingleRunFormParamsHooks(blockType)({
     id,
@@ -197,7 +197,6 @@ const useLastRun = <T>({
       setTabType(TabType.lastRun)
 
     setInitShowLastRunTab(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(appId!, id)
 

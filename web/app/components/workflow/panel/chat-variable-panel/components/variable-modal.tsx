@@ -16,6 +16,15 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import cn from '@/utils/classnames'
+import BoolValue from './bool-value'
+import ArrayBoolList from './array-bool-list'
+import {
+  arrayBoolPlaceholder,
+  arrayNumberPlaceholder,
+  arrayObjectPlaceholder,
+  arrayStringPlaceholder,
+  objectPlaceholder,
+} from '@/app/components/workflow/panel/chat-variable-panel/utils'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 export type ModalPropsType = {
@@ -33,38 +42,13 @@ type ObjectValueItem = {
 const typeList = [
   ChatVarType.String,
   ChatVarType.Number,
+  ChatVarType.Boolean,
   ChatVarType.Object,
   ChatVarType.ArrayString,
   ChatVarType.ArrayNumber,
+  ChatVarType.ArrayBoolean,
   ChatVarType.ArrayObject,
 ]
-
-const objectPlaceholder = `#  example
-#  {
-#     "name": "ray",
-#     "age": 20
-#  }`
-const arrayStringPlaceholder = `#  example
-#  [
-#     "value1",
-#     "value2"
-#  ]`
-const arrayNumberPlaceholder = `#  example
-#  [
-#     100,
-#     200
-#  ]`
-const arrayObjectPlaceholder = `#  example
-#  [
-#     {
-#       "name": "ray",
-#       "age": 20
-#     },
-#     {
-#       "name": "lily",
-#       "age": 18
-#     }
-#  ]`
 
 const ChatVariableModal = ({
   chatVar,
@@ -94,6 +78,8 @@ const ChatVariableModal = ({
       return arrayNumberPlaceholder
     if (type === ChatVarType.ArrayObject)
       return arrayObjectPlaceholder
+    if (type === ChatVarType.ArrayBoolean)
+      return arrayBoolPlaceholder
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
@@ -122,12 +108,16 @@ const ChatVariableModal = ({
         return value || ''
       case ChatVarType.Number:
         return value || 0
+      case ChatVarType.Boolean:
+        return value === undefined ? true : value
       case ChatVarType.Object:
         return editInJSON ? value : formatValueFromObject(objectValue)
       case ChatVarType.ArrayString:
       case ChatVarType.ArrayNumber:
       case ChatVarType.ArrayObject:
         return value?.filter(Boolean) || []
+      case ChatVarType.ArrayBoolean:
+        return value || []
     }
   }
 
@@ -157,6 +147,10 @@ const ChatVariableModal = ({
       setEditInJSON(true)
     if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Object)
       setEditInJSON(false)
+    if(v === ChatVarType.Boolean)
+      setValue(false)
+    if (v === ChatVarType.ArrayBoolean)
+      setValue([false])
     setType(v)
   }
 
@@ -202,6 +196,11 @@ const ChatVariableModal = ({
         setValue(value?.length ? value : [undefined])
       }
     }
+
+    if(type === ChatVarType.ArrayBoolean) {
+      if(editInJSON)
+        setEditorContent(JSON.stringify(value.map((item: boolean) => item ? 'True' : 'False')))
+    }
     setEditInJSON(editInJSON)
   }
 
@@ -213,7 +212,16 @@ const ChatVariableModal = ({
     else {
       setEditorContent(content)
       try {
-        const newValue = JSON.parse(content)
+        let newValue = JSON.parse(content)
+        if(type === ChatVarType.ArrayBoolean) {
+          newValue = newValue.map((item: string | boolean) => {
+            if (item === 'True' || item === 'true' || item === true)
+              return true
+            if (item === 'False' || item === 'false' || item === false)
+              return false
+            return undefined
+          }).filter((item?: boolean) => item !== undefined)
+        }
         setValue(newValue)
       }
       catch {
@@ -304,7 +312,7 @@ const ChatVariableModal = ({
         <div className='mb-4'>
           <div className='system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary'>
             <div>{t('workflow.chatVariable.modal.value')}</div>
-            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) && (
+            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber || type === ChatVarType.ArrayBoolean) && (
               <Button
                 variant='ghost'
                 size='small'
@@ -345,6 +353,12 @@ const ChatVariableModal = ({
                 type='number'
               />
             )}
+            {type === ChatVarType.Boolean && (
+              <BoolValue
+                value={value}
+                onChange={setValue}
+              />
+            )}
             {type === ChatVarType.Object && !editInJSON && (
               <ObjectValueList
                 list={objectValue}
@@ -365,6 +379,13 @@ const ChatVariableModal = ({
                 onChange={setValue}
               />
             )}
+            {type === ChatVarType.ArrayBoolean && !editInJSON && (
+              <ArrayBoolList
+                list={value || [true]}
+                onChange={setValue}
+              />
+            )}
+
             {editInJSON && (
               <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
                 <CodeEditor

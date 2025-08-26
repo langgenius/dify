@@ -7,11 +7,13 @@ from core.file import File
 from core.variables.exc import VariableError
 from core.variables.segments import (
     ArrayAnySegment,
+    ArrayBooleanSegment,
     ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArraySegment,
     ArrayStringSegment,
+    BooleanSegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
@@ -23,10 +25,12 @@ from core.variables.segments import (
 from core.variables.types import SegmentType
 from core.variables.variables import (
     ArrayAnyVariable,
+    ArrayBooleanVariable,
     ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
+    BooleanVariable,
     FileVariable,
     FloatVariable,
     IntegerVariable,
@@ -49,17 +53,19 @@ class TypeMismatchError(Exception):
 
 # Define the constant
 SEGMENT_TO_VARIABLE_MAP = {
-    StringSegment: StringVariable,
-    IntegerSegment: IntegerVariable,
-    FloatSegment: FloatVariable,
-    ObjectSegment: ObjectVariable,
-    FileSegment: FileVariable,
-    ArrayStringSegment: ArrayStringVariable,
+    ArrayAnySegment: ArrayAnyVariable,
+    ArrayBooleanSegment: ArrayBooleanVariable,
+    ArrayFileSegment: ArrayFileVariable,
     ArrayNumberSegment: ArrayNumberVariable,
     ArrayObjectSegment: ArrayObjectVariable,
-    ArrayFileSegment: ArrayFileVariable,
-    ArrayAnySegment: ArrayAnyVariable,
+    ArrayStringSegment: ArrayStringVariable,
+    BooleanSegment: BooleanVariable,
+    FileSegment: FileVariable,
+    FloatSegment: FloatVariable,
+    IntegerSegment: IntegerVariable,
     NoneSegment: NoneVariable,
+    ObjectSegment: ObjectVariable,
+    StringSegment: StringVariable,
 }
 
 
@@ -99,6 +105,8 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             mapping = dict(mapping)
             mapping["value_type"] = SegmentType.FLOAT
             result = FloatVariable.model_validate(mapping)
+        case SegmentType.BOOLEAN:
+            result = BooleanVariable.model_validate(mapping)
         case SegmentType.NUMBER if not isinstance(value, float | int):
             raise VariableError(f"invalid number value {value}")
         case SegmentType.OBJECT if isinstance(value, dict):
@@ -109,6 +117,8 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             result = ArrayNumberVariable.model_validate(mapping)
         case SegmentType.ARRAY_OBJECT if isinstance(value, list):
             result = ArrayObjectVariable.model_validate(mapping)
+        case SegmentType.ARRAY_BOOLEAN if isinstance(value, list):
+            result = ArrayBooleanVariable.model_validate(mapping)
         case _:
             raise VariableError(f"not supported value type {value_type}")
     if result.size > dify_config.MAX_VARIABLE_SIZE:
@@ -129,6 +139,8 @@ def build_segment(value: Any, /) -> Segment:
         return NoneSegment()
     if isinstance(value, str):
         return StringSegment(value=value)
+    if isinstance(value, bool):
+        return BooleanSegment(value=value)
     if isinstance(value, int):
         return IntegerSegment(value=value)
     if isinstance(value, float):
@@ -152,6 +164,8 @@ def build_segment(value: Any, /) -> Segment:
                 return ArrayStringSegment(value=value)
             case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
                 return ArrayNumberSegment(value=value)
+            case SegmentType.BOOLEAN:
+                return ArrayBooleanSegment(value=value)
             case SegmentType.OBJECT:
                 return ArrayObjectSegment(value=value)
             case SegmentType.FILE:
@@ -170,6 +184,7 @@ _segment_factory: Mapping[SegmentType, type[Segment]] = {
     SegmentType.INTEGER: IntegerSegment,
     SegmentType.FLOAT: FloatSegment,
     SegmentType.FILE: FileSegment,
+    SegmentType.BOOLEAN: BooleanSegment,
     SegmentType.OBJECT: ObjectSegment,
     # Array types
     SegmentType.ARRAY_ANY: ArrayAnySegment,
@@ -177,6 +192,7 @@ _segment_factory: Mapping[SegmentType, type[Segment]] = {
     SegmentType.ARRAY_NUMBER: ArrayNumberSegment,
     SegmentType.ARRAY_OBJECT: ArrayObjectSegment,
     SegmentType.ARRAY_FILE: ArrayFileSegment,
+    SegmentType.ARRAY_BOOLEAN: ArrayBooleanSegment,
 }
 
 
@@ -225,6 +241,8 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
             return ArrayAnySegment(value=value)
         elif segment_type == SegmentType.ARRAY_STRING:
             return ArrayStringSegment(value=value)
+        elif segment_type == SegmentType.ARRAY_BOOLEAN:
+            return ArrayBooleanSegment(value=value)
         elif segment_type == SegmentType.ARRAY_NUMBER:
             return ArrayNumberSegment(value=value)
         elif segment_type == SegmentType.ARRAY_OBJECT:

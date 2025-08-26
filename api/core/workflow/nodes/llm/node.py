@@ -3,7 +3,7 @@ import io
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
@@ -55,7 +55,6 @@ from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
@@ -90,6 +89,7 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 if TYPE_CHECKING:
     from core.file.models import File
     from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
+    from core.workflow.graph_engine.entities.event import InNodeEvent
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ class LLMNode(BaseNode):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
+    def _run(self) -> Generator[Union[NodeEvent, "InNodeEvent"], None, None]:
         node_inputs: Optional[dict[str, Any]] = None
         process_data = None
         result_text = ""
