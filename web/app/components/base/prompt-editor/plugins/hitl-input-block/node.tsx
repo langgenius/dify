@@ -3,7 +3,7 @@ import { DecoratorNode } from 'lexical'
 import HILTInputBlockComponent from './component'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 
-export type SerializedNode = SerializedLexicalNode & {
+export type HITLNodeProps = {
   variableName: string
   nodeId: string
   nodeTitle: string
@@ -12,6 +12,8 @@ export type SerializedNode = SerializedLexicalNode & {
   onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   onFormInputItemRemove: (varName: string) => void
 }
+
+export type SerializedNode = SerializedLexicalNode & HITLNodeProps
 
 export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __variableName: string

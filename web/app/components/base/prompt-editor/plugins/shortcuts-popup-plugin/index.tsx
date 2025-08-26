@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import type { LexicalCommand } from 'lexical'
 import {
   $getSelection,
   $isRangeSelection,
@@ -24,7 +25,7 @@ export type Hotkey = string | string[] | string[][] | ((e: KeyboardEvent) => boo
 
 type ShortcutPopupPluginProps = {
   hotkey?: Hotkey
-  children?: React.ReactNode | ((close: () => void) => React.ReactNode)
+  children?: React.ReactNode | ((close: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void) => React.ReactNode)
   className?: string
   style?: React.CSSProperties
   container?: Element | null
@@ -261,6 +262,11 @@ export default function ShortcutsPopupPlugin({
     return () => document.removeEventListener('mousedown', onMouseDown, true)
   }, [open, closePortal])
 
+  const handleInsert = useCallback((command: LexicalCommand<unknown>, params: any) => {
+    editor.dispatchCommand(command, params)
+    closePortal()
+  }, [editor, closePortal])
+
   if (!open || !containerEl)
     return null
 
@@ -274,7 +280,7 @@ export default function ShortcutsPopupPlugin({
       )}
       style={{ top: `${position.top}px`, left: `${position.left}px`, ...style }}
     >
-      {typeof children === 'function' ? children(closePortal) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+      {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
     </div>,
     containerEl,
   )

@@ -7,28 +7,31 @@ import { BlockEnum } from '../../../types'
 import { useWorkflowVariableType } from '../../../hooks'
 import { useTranslation } from 'react-i18next'
 import type { FormInputItem } from '../types'
+import AddInputField from './add-input-field'
+import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
+import type { LexicalCommand } from 'lexical'
 
 type Props = {
   nodeId: string
+  nodeTitle: string
   value: string
   onChange: (value: string) => void
   formInputs: FormInputItem[]
   onFormInputsChange: (payload: FormInputItem[]) => void
   onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   onFormInputItemRemove: (varName: string) => void
-  nodeTitle: string
   editorKey: number
 }
 
 const FormContent: FC<Props> = ({
   nodeId,
+  nodeTitle,
   value,
   onChange,
   formInputs,
   onFormInputsChange,
   onFormInputItemRename,
   onFormInputItemRemove,
-  nodeTitle,
   editorKey,
 }) => {
   const { t } = useTranslation()
@@ -42,6 +45,21 @@ const FormContent: FC<Props> = ({
   })
 
   const getVarType = useWorkflowVariableType()
+
+  const handleInsertHITLNode = (onInsert: (command: LexicalCommand<unknown>, params: any) => void) => {
+    return (payload: FormInputItem) => {
+      // todo insert into form inputs
+      onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
+        variableName: payload.output_variable_name,
+        nodeId,
+        nodeTitle,
+        formInputs,
+        onFormInputsChange,
+        onFormInputItemRename,
+        onFormInputItemRemove,
+      })
+    }
+  }
 
   return (
     <div>
@@ -81,6 +99,16 @@ const FormContent: FC<Props> = ({
           }, {}),
         }}
         editable
+        shortcutPopups={[{
+          hotkey: ['mod', '/'],
+          Popup: ({ onClose, onInsert }) => (
+            <AddInputField
+              nodeId={nodeId}
+              onSave={handleInsertHITLNode(onInsert!)}
+              onCancel={onClose}
+            />
+          ),
+        }]}
       />
     </div>
   )

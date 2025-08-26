@@ -8,15 +8,21 @@ import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import type { FormInputItem, FormInputItemPlaceholder } from '@/app/components/workflow/nodes/human-input/types'
 import PrePopulate from './pre-populate'
 import produce from 'immer'
+import { InputVarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
 
 type Props = {
   nodeId: string
   isEdit: boolean
-  payload: FormInputItem
+  payload?: FormInputItem
   onChange: (newPayload: FormInputItem) => void
   onCancel: () => void
+}
+const defaultPayload: FormInputItem = {
+  type: InputVarType.paragraph,
+  output_variable_name: '',
+  placeholder: { type: 'const', selector: [], value: '' },
 }
 const InputField: React.FC<Props> = ({
   nodeId,
@@ -26,7 +32,7 @@ const InputField: React.FC<Props> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
-  const [tempPayload, setTempPayload] = useState(payload)
+  const [tempPayload, setTempPayload] = useState(payload || defaultPayload)
   const handleSave = useCallback(() => {
     onChange(tempPayload)
   }, [tempPayload])

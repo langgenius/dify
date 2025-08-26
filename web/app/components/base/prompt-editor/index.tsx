@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import type {
   EditorState,
+  LexicalCommand,
 } from 'lexical'
 import {
   $getRoot,
@@ -119,7 +120,7 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  shortcutPopups?: Array<{ hotkey: Hotkey; Popup: React.ComponentType<{ onClose: () => void }> }>
+  shortcutPopups?: Array<{ hotkey: Hotkey; Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void }> }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -229,7 +230,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         />
         {shortcutPopups?.map(({ hotkey, Popup }, idx) => (
           <ShortcutsPopupPlugin key={idx} hotkey={hotkey} >
-            {closePortal => <Popup onClose={closePortal} />}
+            {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
           </ShortcutsPopupPlugin>
         ))}
         <ComponentPickerBlock
