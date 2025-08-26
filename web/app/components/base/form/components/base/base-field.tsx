@@ -48,7 +48,7 @@ const BaseField = ({
   inputClassName,
   formSchema,
   field,
-  disabled,
+  disabled: propsDisabled,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -67,8 +67,10 @@ const BaseField = ({
     selfFormProps,
     onChange,
     tooltip,
+    disabled: formSchemaDisabled,
   } = formSchema
   const type = typeof typeOrFn === 'function' ? typeOrFn(field.form) : typeOrFn
+  const disabled = propsDisabled || formSchemaDisabled
 
   const memorizedLabel = useMemo(() => {
     if (isValidElement(label))
@@ -107,7 +109,7 @@ const BaseField = ({
   })
   const memorizedOptions = useMemo(() => {
     return options?.filter((option) => {
-      if (!option.show_on?.length)
+      if (!option.show_on || option.show_on.length === 0)
         return true
 
       return option.show_on.every((condition) => {
@@ -120,7 +122,7 @@ const BaseField = ({
         value: option.value,
       }
     }) || []
-  }, [options, renderI18nObject])
+  }, [options, renderI18nObject, optionValues])
   const value = useStore(field.form.store, s => s.values[field.name])
   const values = useStore(field.form.store, (s) => {
     return (Array.isArray(show_on) ? show_on : show_on(field.form)).reduce((acc, condition) => {
@@ -135,9 +137,11 @@ const BaseField = ({
     })
   }, [values, show_on, field.name])
   const handleChange = useCallback((value: any) => {
+    if (disabled)
+      return
     field.handleChange(value)
     onChange?.(field.form, value)
-  }, [field, onChange])
+  }, [field, onChange, disabled])
 
   const selfProps = typeof selfFormProps === 'function' ? selfFormProps(field.form) : selfFormProps
 
@@ -294,6 +298,7 @@ const BaseField = ({
                     className={cn(
                       'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
                       value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
+                      disabled && 'cursor-not-allowed opacity-50',
                       inputClassName,
                       formInputClassName,
                     )}

@@ -24,6 +24,7 @@ import IndexFailed from '@/app/components/datasets/common/document-status-with-a
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
 import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { useIndexStatus } from './list'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import useDocumentListQueryState from './hooks/use-document-list-query-state'
@@ -32,6 +33,9 @@ import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata
 import StatusWithAction from '../common/document-status-with-action/status-with-action'
 import { useDocLink } from '@/context/i18n'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
+import { SimpleSelect } from '../../base/select'
+import StatusItem from './detail/completed/status-item'
+import type { Item } from '@/app/components/base/select'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -91,6 +95,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isFreePlan = plan.type === 'sandbox'
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<Item>({ value: 'all', name: 'All Status' })
+  const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
   // Use the new hook for URL state management
   const { query, updateQuery } = useDocumentListQueryState()
@@ -106,6 +112,18 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isDataSourceFile = dataset?.data_source_type === DataSourceType.FILE
   const embeddingAvailable = !!dataset?.embedding_available
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
+
+  const statusFilterItems: Item[] = useMemo(() => [
+    { value: 'all', name: 'All Status' },
+    { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
+    { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
+    { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
+    { value: 'error', name: DOC_INDEX_STATUS_MAP.error.text },
+    { value: 'available', name: DOC_INDEX_STATUS_MAP.available.text },
+    { value: 'enabled', name: DOC_INDEX_STATUS_MAP.enabled.text },
+    { value: 'disabled', name: DOC_INDEX_STATUS_MAP.disabled.text },
+    { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
+  ], [DOC_INDEX_STATUS_MAP, t])
 
   // Initialize search value from URL on mount
   useEffect(() => {
@@ -322,14 +340,28 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       </div>
       <div className='flex flex-1 flex-col px-6 py-4'>
         <div className='flex flex-wrap items-center justify-between'>
-          <Input
-            showLeftIcon
-            showClearIcon
-            wrapperClassName='!w-[200px]'
-            value={inputValue}
-            onChange={e => handleInputChange(e.target.value)}
-            onClear={() => handleInputChange('')}
-          />
+          <div className='flex items-center gap-2'>
+            <SimpleSelect
+              placeholder={t('datasetDocuments.list.table.header.status')}
+              onSelect={(item) => {
+                setStatusFilter(item)
+              }}
+              items={statusFilterItems}
+              defaultValue={statusFilter.value}
+              wrapperClassName='w-[160px] h-8'
+              renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+              optionClassName='p-0'
+              notClearable
+            />
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName='!w-[200px]'
+              value={inputValue}
+              onChange={e => handleInputChange(e.target.value)}
+              onClear={() => handleInputChange('')}
+            />
+          </div>
           <div className='flex !h-8 items-center justify-center gap-2'>
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
@@ -372,6 +404,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               onUpdate={handleUpdate}
               selectedIds={selectedIds}
               onSelectedIdChange={setSelectedIds}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
               pagination={{
                 total,
                 limit,

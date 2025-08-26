@@ -70,6 +70,8 @@ export type FormSchema = {
   validators?: AnyValidators
   selfFormProps?: ((form: AnyFormApi) => Record<string, any>) | Record<string, any>
   onChange?: (form: AnyFormApi, v: any) => void
+  showRadioUI?: boolean
+  disabled?: boolean
 }
 
 export type FormValues = Record<string, any>
