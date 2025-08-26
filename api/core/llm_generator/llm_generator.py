@@ -401,7 +401,6 @@ class LLMGenerator:
     def instruction_modify_legacy(
         tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
     ) -> dict:
-        app: App | None = db.session.query(App).where(App.id == flow_id).first()
         last_run: Message | None = (
             db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
         )
