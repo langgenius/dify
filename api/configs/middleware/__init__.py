@@ -297,6 +297,57 @@ class DatasetQueueMonitorConfig(BaseSettings):
     )
 
 
+class DocUploadSchedulerConfig(BaseSettings):
+    """
+    Configuration settings for Dataset Queue Monitor
+    """
+
+    UPLOAD_SCHEDULER_ENABLED: bool = Field(
+        description="enable upload scheduler",
+        default=False,
+    )
+
+    UPLOAD_MAX_PER_WINDOW: Optional[int] = Field(
+        description="max upload per window",
+        default=100,
+    )
+
+    UPLOAD_TIME_WINDOW_MINUTES: Optional[int] = Field(
+        description="time to be considered for upload window",
+        default=60,
+    )
+
+    UPLOAD_PEAK_HOURS_START: Optional[str] = Field(
+        description="start of peak hour",
+        default="09:00",
+    )
+
+    UPLOAD_PEAK_HOURS_END: Optional[str] = Field(
+        description="end of peak hour",
+        default="17:00",
+    )
+
+    UPLOAD_PEAK_RATE_LIMIT: Optional[int] = Field(
+        description="rate limit during peak hours",
+        default=50,
+    )
+
+    UPLOAD_OFF_PEAK_RATE_LIMIT: Optional[int] = Field(
+        description="rate limit when it is not peak hours",
+        default=200,
+    )
+
+    UPLOAD_MAX_QUEUE_SIZE: Optional[int] = Field(
+        description="max queue size",
+        default=1000,
+    )
+
+    UPLOAD_BATCH_SIZE: Optional[int] = Field(
+        description="batch size for upload",
+        default=10,
+    )
+
+
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,
@@ -348,5 +399,6 @@ class MiddlewareConfig(
     TableStoreConfig,
     DatasetQueueMonitorConfig,
     MatrixoneConfig,
+    DocUploadSchedulerConfig,
 ):
     pass

@@ -7,6 +7,7 @@ from celery import Celery, Task
 from celery.schedules import crontab
 
 from configs import dify_config
+from configs.scheduler_config import upload_scheduler_config
 from dify_app import DifyApp
 
 
@@ -158,6 +159,13 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
             "schedule": crontab(minute="0", hour="2"),
         }
+    if upload_scheduler_config.enabled:
+        imports.append("schedule.process_upload_queue_task")
+        beat_schedule["process_upload_queue"] = {
+            "task": "process_upload_queue",
+            "schedule": crontab(minute="*"),
+        }
+
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app
