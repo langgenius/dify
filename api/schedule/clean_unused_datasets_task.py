@@ -45,6 +45,7 @@ def clean_unused_datasets_task():
         plan_filter = config["plan_filter"]
         add_logs = config["add_logs"]
 
+        page = 1
         while True:
             try:
                 # Subquery for counting new documents
@@ -86,12 +87,12 @@ def clean_unused_datasets_task():
                     .order_by(Dataset.created_at.desc())
                 )
 
-                datasets = db.paginate(stmt, page=1, per_page=50)
+                datasets = db.paginate(stmt, page=page, per_page=50, error_out=False)
 
             except SQLAlchemyError:
                 raise
 
-            if datasets.items is None or len(datasets.items) == 0:
+            if datasets is None or datasets.items is None or len(datasets.items) == 0:
                 break
 
             for dataset in datasets:
@@ -149,6 +150,8 @@ def clean_unused_datasets_task():
                             click.echo(click.style(f"Cleaned unused dataset {dataset.id} from db success!", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"clean dataset index error: {e.__class__.__name__} {str(e)}", fg="red"))
+
+            page += 1
 
     end_at = time.perf_counter()
     click.echo(click.style(f"Cleaned unused dataset from db success latency: {end_at - start_at}", fg="green"))
