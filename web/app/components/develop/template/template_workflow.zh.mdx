@@ -7,10 +7,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
 <div>
   ### Base URL
-  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
-    ```javascript
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url} />
 
   ### Authentication
 
@@ -18,12 +15,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   <i>**强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**</i>
   所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
 
-  <CodeGroup title="Code">
-    ```javascript
-      Authorization: Bearer {API_KEY}
-
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode='Authorization: Bearer {API_KEY}' />
 </div>
 
 ---
@@ -31,7 +23,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 <Heading
   url='/workflows/run'
   method='POST'
-  title='执行 workflow'
+  title='执行 Workflow'
   name='#Execute-Workflow'
 />
 <Row>
@@ -182,23 +174,24 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "response_mode": "streaming",
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+      "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
     <CodeGroup title="Example: file array as an input variable">
       ```json {{ title: 'File variable example' }}
       {
         "inputs": {
-          "{variable_name}": 
+          "{variable_name}":
           [
             {
             "transfer_method": "local_file",
@@ -254,7 +247,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
           headers = {
               "Authorization": "Bearer app-xxxxxxxx",
           }
-          
+
           try:
               print("上传文件中...")
               with open(file_path, 'rb') as file:
@@ -265,7 +258,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
                       "user": user,
                       "type": "TXT"  # 设置文件类型为TXT
                   }
-                  
+
                   response = requests.post(upload_url, headers=headers, files=files, data=data)
                   if response.status_code == 201:  # 201 表示创建成功
                       print("文件上传成功")
@@ -331,7 +324,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 <Heading
   url='/workflows/:workflow_id/run'
   method='POST'
-  title='执行指定版本 workflow'
+  title='执行指定版本 Workflow'
   name='#Execute-Specific-Workflow'
 />
 <Row>
@@ -340,7 +333,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
     ### Path
     - `workflow_id` (string) Required 工作流ID，用于指定特定版本的工作流
-      
+
       获取方式：可以在版本历史中查询特定版本的工作流ID。
 
     ### Request Body
@@ -490,23 +483,24 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="POST" label="/workflows/:workflow_id/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "response_mode": "streaming",
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/:workflow_id/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
     <CodeGroup title="Example: file array as an input variable">
       ```json {{ title: 'File variable example' }}
       {
         "inputs": {
-          "{variable_name}": 
+          "{variable_name}":
           [
             {
             "transfer_method": "local_file",
@@ -560,7 +554,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 <Heading
   url='/workflows/run/:workflow_run_id'
   method='GET'
-  title='获取workflow执行情况'
+  title='获取 Workflow 执行情况'
   name='#get-workflow-run-detail'
 />
 <Row>
@@ -583,13 +577,14 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_run_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \
-      -H 'Authorization: Bearer {api_key}' \
-      -H 'Content-Type: application/json'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/run/:workflow_run_id"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -633,16 +628,15 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="POST" label="/workflows/tasks/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \
-      -H 'Authorization: Bearer {api_key}' \
-      -H 'Content-Type: application/json' \
-      --data-raw '{
-          "user": "abc-123"
-      }'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/tasks/:task_id/stop"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{"user": "abc-123"}'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -703,15 +697,15 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@"/path/to/file"'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/files/upload"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\
+--form 'user=abc-123'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -739,7 +733,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 <Row>
   <Col>
     预览或下载已上传的文件。此端点允许您访问先前通过文件上传 API 上传的文件。
-    
+
     <i>文件只能在属于请求应用程序的消息范围内访问。</i>
 
     ### 路径参数
@@ -767,25 +761,23 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
     ### 请求示例
-    <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\\n--header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/files/:file_id/preview"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     ### 作为附件下载
-    <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview?as_attachment=true" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\\\\n--header 'Authorization: Bearer {api_key}' \\\\\\n--output downloaded_file.png`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
-    --header 'Authorization: Bearer {api_key}' \
-    --output downloaded_file.png
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/files/:file_id/preview?as_attachment=true"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\
+--header 'Authorization: Bearer {api_key}' \\
+--output downloaded_file.png`}
+    />
 
     ### 响应标头示例
     <CodeGroup title="Response Headers">
@@ -812,7 +804,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 <Heading
   url='/workflows/logs'
   method='GET'
-  title='获取 workflow 日志'
+  title='获取 Workflow 日志'
   name='#Get-Workflow-Logs'
 />
 <Row>
@@ -871,14 +863,13 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/workflows/logs" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\\n --header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/workflows/logs?limit=1'
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/logs"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\
+--header 'Authorization: Bearer {api_key}'`}
+    />
     ### Response Example
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -937,12 +928,13 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   - 'author_name' (string) 作者名称
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info' \
-      -H 'Authorization: Bearer {api_key}'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
@@ -991,30 +983,30 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         - `default` (string) 默认值
         - `options` (array[string]) 选项值
     - `file_upload` (object) 文件上传配置
-      - `document` (object) 文档设置  
-        当前仅支持文档类型：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。  
-        - `enabled` (bool) 是否启用  
-        - `number_limits` (int) 文档数量限制，默认为 3  
-        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
-      - `image` (object) 图片设置  
-        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`。  
-        - `enabled` (bool) 是否启用  
-        - `number_limits` (int) 图片数量限制，默认为 3  
-        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
-      - `audio` (object) 音频设置  
-        当前仅支持音频类型：`mp3`, `m4a`, `wav`, `webm`, `amr`。  
-        - `enabled` (bool) 是否启用  
-        - `number_limits` (int) 音频数量限制，默认为 3  
-        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
-      - `video` (object) 视频设置  
-        当前仅支持视频类型：`mp4`, `mov`, `mpeg`, `mpga`。  
-        - `enabled` (bool) 是否启用  
-        - `number_limits` (int) 视频数量限制，默认为 3  
-        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
-      - `custom` (object) 自定义设置  
-        - `enabled` (bool) 是否启用  
-        - `number_limits` (int) 自定义数量限制，默认为 3  
-        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。 
+      - `document` (object) 文档设置
+        当前仅支持文档类型：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。
+        - `enabled` (bool) 是否启用
+        - `number_limits` (int) 文档数量限制，默认为 3
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。
+      - `image` (object) 图片设置
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`。
+        - `enabled` (bool) 是否启用
+        - `number_limits` (int) 图片数量限制，默认为 3
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。
+      - `audio` (object) 音频设置
+        当前仅支持音频类型：`mp3`, `m4a`, `wav`, `webm`, `amr`。
+        - `enabled` (bool) 是否启用
+        - `number_limits` (int) 音频数量限制，默认为 3
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。
+      - `video` (object) 视频设置
+        当前仅支持视频类型：`mp4`, `mov`, `mpeg`, `mpga`。
+        - `enabled` (bool) 是否启用
+        - `number_limits` (int) 视频数量限制，默认为 3
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。
+      - `custom` (object) 自定义设置
+        - `enabled` (bool) 是否启用
+        - `number_limits` (int) 自定义数量限制，默认为 3
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。
     - `system_parameters` (object) 系统参数
       - `file_size_limit` (int) 文档上传大小限制 (MB)
       - `image_file_size_limit` (int) 图片文件上传大小限制（MB）
@@ -1024,14 +1016,12 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/parameters"
+      targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1094,13 +1084,13 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   - `show_workflow_steps` (bool) 是否显示工作流详情
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/site' \
-    -H 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/meta"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
