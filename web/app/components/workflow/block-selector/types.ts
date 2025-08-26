@@ -35,7 +35,6 @@ export type ToolDefaultValue = {
   is_team_authorization: boolean
   params: Record<string, any>
   paramSchemas: Record<string, any>[]
-  output_schema: Record<string, any>
   credential_id?: string
   meta?: PluginMeta
 }
@@ -46,7 +45,6 @@ export type DataSourceDefaultValue = {
   provider_name: string
   datasource_name: string
   datasource_label: string
-  output_schema?: Record<string, any>
 }
 
 export type ToolValue = {

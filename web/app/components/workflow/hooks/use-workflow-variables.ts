@@ -35,6 +35,11 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       environmentVariables,
       ragPipelineVariables,
+      buildInTools,
+      customTools,
+      workflowTools,
+      mcpTools,
+      dataSourceList,
     } = workflowStore.getState()
     return toNodeAvailableVars({
       parentNode,
@@ -45,6 +50,13 @@ export const useWorkflowVariables = () => {
       conversationVariables: (isChatMode && !hideChatVar) ? conversationVariables : [],
       ragVariables: ragPipelineVariables,
       filterVar,
+      allPluginInfoList: {
+        buildInTools,
+        customTools,
+        workflowTools,
+        mcpTools,
+        dataSourceList: dataSourceList ?? [],
+      },
     })
   }, [t, workflowStore])
 
@@ -69,6 +81,11 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       environmentVariables,
       ragPipelineVariables,
+      buildInTools,
+      customTools,
+      workflowTools,
+      mcpTools,
+      dataSourceList,
     } = workflowStore.getState()
     return getVarType({
       parentNode,
@@ -81,6 +98,13 @@ export const useWorkflowVariables = () => {
       environmentVariables,
       conversationVariables,
       ragVariables: ragPipelineVariables,
+      allPluginInfoList: {
+        buildInTools,
+        customTools,
+        workflowTools,
+        mcpTools,
+        dataSourceList: dataSourceList ?? [],
+      },
     })
   }, [workflowStore])
 

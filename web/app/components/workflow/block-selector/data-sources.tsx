@@ -44,7 +44,6 @@ const DataSources = ({
       datasource_name: toolDefaultValue?.tool_name,
       datasource_label: toolDefaultValue?.tool_label,
       title: toolDefaultValue?.title,
-      output_schema: toolDefaultValue?.output_schema,
     })
   }, [onSelect])
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
