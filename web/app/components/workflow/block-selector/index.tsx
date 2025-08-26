@@ -45,6 +45,7 @@ type NodeSelectorProps = {
   noBlocks?: boolean
   showStartTab?: boolean
   defaultActiveTab?: TabsEnum
+  forceShowStartContent?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -63,6 +64,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   noBlocks = false,
   showStartTab = false,
   defaultActiveTab,
+  forceShowStartContent = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -171,6 +173,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
             showStartTab={showStartTab}
+            forceShowStartContent={forceShowStartContent}
           />
         </div>
       </PortalToFollowElemContent>
