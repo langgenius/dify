@@ -187,7 +187,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             self._handle_event(workflow_entry, event)
 
         try:
-            self._check_app_memory_updates()
+            self._check_app_memory_updates(variable_pool)
         except Exception as e:
             logger.exception("Failed to check app memory updates", exc_info=e)
 
@@ -452,11 +452,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             tenant_id=self._workflow.tenant_id
         )
 
-    def _check_app_memory_updates(self):
+    def _check_app_memory_updates(self, variable_pool: VariablePool):
         is_draft = (self.application_generate_entity.invoke_from == InvokeFrom.DEBUGGER)
 
         ChatflowMemoryService.update_app_memory_if_needed(
             workflow=self._workflow,
             conversation_id=self.conversation.id,
+            variable_pool=variable_pool,
             is_draft=is_draft
         )

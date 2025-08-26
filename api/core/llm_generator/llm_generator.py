@@ -29,6 +29,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_engine.entities.event import AgentLogEvent
 from models import App, Message, WorkflowNodeExecutionModel, db
@@ -579,6 +580,7 @@ class LLMGenerator:
     def update_memory_block(
         tenant_id: str,
         visible_history: Sequence[tuple[str, str]],
+        variable_pool: VariablePool,
         memory_block: MemoryBlock,
         memory_spec: MemoryBlockSpec
     ) -> str:
@@ -591,11 +593,12 @@ class LLMGenerator:
         formatted_history = ""
         for sender, message in visible_history:
             formatted_history += f"{sender}: {message}\n"
+        filled_instruction = variable_pool.convert_template(memory_spec.instruction).text
         formatted_prompt = PromptTemplateParser(MEMORY_UPDATE_PROMPT).format(
             inputs={
                 "formatted_history": formatted_history,
                 "current_value": memory_block.value,
-                "instruction": memory_spec.instruction,
+                "instruction": filled_instruction,
             }
         )
         llm_result = cast(

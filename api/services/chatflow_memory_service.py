@@ -184,6 +184,7 @@ class ChatflowMemoryService:
     def update_app_memory_if_needed(
         workflow: Workflow,
         conversation_id: str,
+        variable_pool: VariablePool,
         is_draft: bool
     ):
         visible_messages = ChatflowHistoryService.get_visible_chat_history(
@@ -218,6 +219,7 @@ class ChatflowMemoryService:
             ChatflowMemoryService._app_submit_async_memory_update(
                 block=memory_block,
                 is_draft=is_draft,
+                variable_pool=variable_pool,
                 visible_messages=visible_messages
             )
 
@@ -228,7 +230,8 @@ class ChatflowMemoryService:
                 is_draft=is_draft,
                 conversation_id=conversation_id,
                 app_id=workflow.app_id,
-                visible_messages=visible_messages
+                visible_messages=visible_messages,
+                variable_pool=variable_pool
             )
 
     @staticmethod
@@ -350,6 +353,7 @@ class ChatflowMemoryService:
     def _app_submit_async_memory_update(
         block: MemoryBlock,
         visible_messages: Sequence[PromptMessage],
+        variable_pool: VariablePool,
         is_draft: bool
     ):
         thread = threading.Thread(
@@ -357,7 +361,7 @@ class ChatflowMemoryService:
             kwargs={
                 'memory_block': block,
                 'visible_messages': visible_messages,
-                'variable_pool': VariablePool(),
+                'variable_pool': variable_pool,
                 'is_draft': is_draft
             },
         )
@@ -369,6 +373,7 @@ class ChatflowMemoryService:
         app_id: str,
         conversation_id: str,
         visible_messages: Sequence[PromptMessage],
+        variable_pool: VariablePool,
         is_draft: bool
     ):
         """Submit sync memory batch update task"""
@@ -379,6 +384,7 @@ class ChatflowMemoryService:
                 'app_id': app_id,
                 'conversation_id': conversation_id,
                 'visible_messages': visible_messages,
+                'variable_pool': variable_pool,
                 'is_draft': is_draft
             },
         )
@@ -390,6 +396,7 @@ class ChatflowMemoryService:
         app_id: str,
         conversation_id: str,
         visible_messages: Sequence[PromptMessage],
+        variable_pool: VariablePool,
         is_draft: bool
     ):
         try:
@@ -402,7 +409,7 @@ class ChatflowMemoryService:
                         kwargs={
                             'memory_block': block,
                             'visible_messages': visible_messages,
-                            'variable_pool': VariablePool(),
+                            'variable_pool': variable_pool,
                             'is_draft': is_draft
                         },
                     )
@@ -457,6 +464,7 @@ class ChatflowMemoryService:
         updated_value = LLMGenerator.update_memory_block(
             tenant_id=memory_block.tenant_id,
             visible_history=ChatflowMemoryService._format_chat_history(visible_messages),
+            variable_pool=variable_pool,
             memory_block=memory_block,
             memory_spec=memory_block.spec,
         )
