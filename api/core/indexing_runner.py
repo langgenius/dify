@@ -8,8 +8,6 @@ import uuid
 from typing import Any, Optional, cast
 
 from flask import current_app
-
-from flask_login import current_user
 from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
