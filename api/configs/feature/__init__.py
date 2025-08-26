@@ -978,7 +978,7 @@ class WorkflowLogConfig(BaseSettings):
 
 class SwaggerUIConfig(BaseSettings):
     SWAGGER_UI_ENABLED: bool = Field(
-        description="Enable Swagger UI page",
+        description="Whether to enable Swagger UI in api module",
         default=True,
     )
 
