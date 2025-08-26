@@ -23,11 +23,13 @@ class PassportResource(Resource):
 
     @web_ns.doc("get_passport")
     @web_ns.doc(description="Get authentication passport for web application access")
-    @web_ns.doc(responses={
-        200: "Passport retrieved successfully",
-        401: "Unauthorized - missing app code or invalid authentication",
-        404: "Application or user not found"
-    })
+    @web_ns.doc(
+        responses={
+            200: "Passport retrieved successfully",
+            401: "Unauthorized - missing app code or invalid authentication",
+            404: "Application or user not found",
+        }
+    )
     def get(self):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
@@ -100,9 +102,6 @@ class PassportResource(Resource):
         return {
             "access_token": tk,
         }
-
-
-
 
 
 def decode_enterprise_webapp_user_id(jwt_token: str | None):

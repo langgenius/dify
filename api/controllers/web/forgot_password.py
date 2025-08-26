@@ -30,12 +30,14 @@ class ForgotPasswordSendEmailApi(Resource):
     @email_password_login_enabled
     @web_ns.doc("send_forgot_password_email")
     @web_ns.doc(description="Send password reset email")
-    @web_ns.doc(responses={
-        200: "Password reset email sent successfully",
-        400: "Bad request - invalid email format",
-        404: "Account not found",
-        429: "Too many requests - rate limit exceeded"
-    })
+    @web_ns.doc(
+        responses={
+            200: "Password reset email sent successfully",
+            400: "Bad request - invalid email format",
+            404: "Account not found",
+            429: "Too many requests - rate limit exceeded",
+        }
+    )
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -69,11 +71,9 @@ class ForgotPasswordCheckApi(Resource):
     @email_password_login_enabled
     @web_ns.doc("check_forgot_password_token")
     @web_ns.doc(description="Verify password reset token validity")
-    @web_ns.doc(responses={
-        200: "Token is valid",
-        400: "Bad request - invalid token format",
-        401: "Invalid or expired token"
-    })
+    @web_ns.doc(
+        responses={200: "Token is valid", 400: "Bad request - invalid token format", 401: "Invalid or expired token"}
+    )
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=str, required=True, location="json")
@@ -117,12 +117,14 @@ class ForgotPasswordResetApi(Resource):
     @email_password_login_enabled
     @web_ns.doc("reset_password")
     @web_ns.doc(description="Reset user password with verification token")
-    @web_ns.doc(responses={
-        200: "Password reset successfully",
-        400: "Bad request - invalid parameters or password mismatch",
-        401: "Invalid or expired token",
-        404: "Account not found"
-    })
+    @web_ns.doc(
+        responses={
+            200: "Password reset successfully",
+            400: "Bad request - invalid parameters or password mismatch",
+            401: "Invalid or expired token",
+            404: "Account not found",
+        }
+    )
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
@@ -166,6 +168,3 @@ class ForgotPasswordResetApi(Resource):
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
         session.commit()
-
-
-

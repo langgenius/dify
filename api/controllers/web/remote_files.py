@@ -22,27 +22,29 @@ from services.file_service import FileService
 class RemoteFileInfoApi(WebApiResource):
     @web_ns.doc("get_remote_file_info")
     @web_ns.doc(description="Get information about a remote file")
-    @web_ns.doc(responses={
-        200: "Remote file information retrieved successfully",
-        400: "Bad request - invalid URL",
-        404: "Remote file not found",
-        500: "Failed to fetch remote file"
-    })
+    @web_ns.doc(
+        responses={
+            200: "Remote file information retrieved successfully",
+            400: "Bad request - invalid URL",
+            404: "Remote file not found",
+            500: "Failed to fetch remote file",
+        }
+    )
     @marshal_with(build_remote_file_info_model(web_ns))
     def get(self, app_model, end_user, url):
         """Get information about a remote file.
-        
+
         Retrieves basic information about a file located at a remote URL,
         including content type and content length.
-        
+
         Args:
             app_model: The associated application model
             end_user: The end user making the request
             url: URL-encoded path to the remote file
-            
+
         Returns:
             dict: Remote file information including type and length
-            
+
         Raises:
             HTTPException: If the remote file cannot be accessed
         """
@@ -62,31 +64,33 @@ class RemoteFileInfoApi(WebApiResource):
 class RemoteFileUploadApi(WebApiResource):
     @web_ns.doc("upload_remote_file")
     @web_ns.doc(description="Upload a file from a remote URL")
-    @web_ns.doc(responses={
-        201: "Remote file uploaded successfully",
-        400: "Bad request - invalid URL or parameters",
-        413: "File too large",
-        415: "Unsupported file type",
-        500: "Failed to fetch remote file"
-    })
+    @web_ns.doc(
+        responses={
+            201: "Remote file uploaded successfully",
+            400: "Bad request - invalid URL or parameters",
+            413: "File too large",
+            415: "Unsupported file type",
+            500: "Failed to fetch remote file",
+        }
+    )
     @marshal_with(build_file_with_signed_url_model(web_ns))
     def post(self, app_model, end_user):
         """Upload a file from a remote URL.
-        
+
         Downloads a file from the provided remote URL and uploads it
         to the platform storage for use in web applications.
-        
+
         Args:
             app_model: The associated application model
             end_user: The end user making the request
-            
+
         JSON Parameters:
             url: The remote URL to download the file from (required)
-            
+
         Returns:
             dict: File information including ID, signed URL, and metadata
             int: HTTP status code 201 for success
-            
+
         Raises:
             RemoteFileUploadError: Failed to fetch file from remote URL
             FileTooLargeError: File exceeds size limit
