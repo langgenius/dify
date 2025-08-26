@@ -62,8 +62,8 @@ class Dataset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model = db.Column(String(255), nullable=True)  # TODO: mapped_column
-    embedding_model_provider = db.Column(String(255), nullable=True)  # TODO: mapped_column
+    embedding_model = mapped_column(String(255), nullable=True)
+    embedding_model_provider = mapped_column(String(255), nullable=True)
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
