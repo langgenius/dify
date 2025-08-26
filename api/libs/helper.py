@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from models.account import Account
     from models.model import EndUser
 
+logger = logging.getLogger(__name__)
+
 
 def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
     """
@@ -321,7 +323,7 @@ class TokenManager:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
-            logging.warning("%s token %s not found with key %s", token_type, token, key)
+            logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
         token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data

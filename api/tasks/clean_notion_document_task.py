@@ -8,6 +8,8 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def clean_notion_document_task(document_ids: list[str], dataset_id: str):
@@ -18,9 +20,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
 
     Usage: clean_notion_document_task.delay(document_ids, dataset_id)
     """
-    logging.info(
-        click.style(f"Start clean document when import form notion document deleted: {dataset_id}", fg="green")
-    )
+    logger.info(click.style(f"Start clean document when import form notion document deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -43,7 +43,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
                 db.session.delete(segment)
         db.session.commit()
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(
                 "Clean document when import form notion document deleted end :: {} latency: {}".format(
                     dataset_id, end_at - start_at
@@ -52,6 +52,6 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
             )
         )
     except Exception:
-        logging.exception("Cleaned document when import form notion document deleted  failed")
+        logger.exception("Cleaned document when import form notion document deleted  failed")
     finally:
         db.session.close()

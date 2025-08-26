@@ -38,7 +38,7 @@ from .engine import db
 from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class WorkflowType(Enum):
@@ -1055,7 +1055,7 @@ class WorkflowDraftVariable(Base):
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
         if not isinstance(selector, list):
-            _logger.error(
+            logger.error(
                 "invalid selector loaded from database, type=%s, value=%s",
                 type(selector),
                 self.selector,

@@ -29,6 +29,8 @@ from .engine import db
 from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
 
+logger = logging.getLogger(__name__)
+
 
 class DatasetPermissionEnum(enum.StrEnum):
     ONLY_ME = "only_me"
@@ -914,7 +916,7 @@ class DatasetKeywordTable(Base):
                     return json.loads(keyword_table_text.decode("utf-8"), cls=SetDecoder)
                 return None
             except Exception as e:
-                logging.exception("Failed to load keyword table from file: %s", file_key)
+                logger.exception("Failed to load keyword table from file: %s", file_key)
                 return None
 
 

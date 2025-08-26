@@ -10,6 +10,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def disable_segments_from_index_task(segment_ids: list, dataset_id: str, document_id: str):
@@ -25,18 +27,18 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
 
     dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
-        logging.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
+        logger.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
         db.session.close()
         return
 
     dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
 
     if not dataset_document:
-        logging.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
+        logger.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
         db.session.close()
         return
     if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-        logging.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
+        logger.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
         db.session.close()
         return
     # sync index processor
@@ -61,7 +63,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
         index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))
     except Exception:
         # update segment error msg
         db.session.query(DocumentSegment).where(

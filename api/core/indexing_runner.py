@@ -39,6 +39,8 @@ from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
 
+logger = logging.getLogger(__name__)
+
 
 class IndexingRunner:
     def __init__(self):
@@ -90,9 +92,9 @@ class IndexingRunner:
                 dataset_document.stopped_at = naive_utc_now()
                 db.session.commit()
             except ObjectDeletedError:
-                logging.warning("Document deleted, document id: %s", dataset_document.id)
+                logger.warning("Document deleted, document id: %s", dataset_document.id)
             except Exception as e:
-                logging.exception("consume document failed")
+                logger.exception("consume document failed")
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e)
                 dataset_document.stopped_at = naive_utc_now()
@@ -153,7 +155,7 @@ class IndexingRunner:
             dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
         except Exception as e:
-            logging.exception("consume document failed")
+            logger.exception("consume document failed")
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e)
             dataset_document.stopped_at = naive_utc_now()
@@ -228,7 +230,7 @@ class IndexingRunner:
             dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
         except Exception as e:
-            logging.exception("consume document failed")
+            logger.exception("consume document failed")
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e)
             dataset_document.stopped_at = naive_utc_now()
@@ -321,7 +323,7 @@ class IndexingRunner:
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception(
+                        logger.exception(
                             "Delete image_files failed while indexing_estimate, \
                                           image_upload_file_is: %s",
                             upload_file_id,

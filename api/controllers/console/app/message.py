@@ -33,6 +33,8 @@ from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 
+logger = logging.getLogger(__name__)
+
 
 class ChatMessageListApi(Resource):
     message_infinite_scroll_pagination_fields = {
@@ -215,7 +217,7 @@ class MessageSuggestedQuestionApi(Resource):
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}
