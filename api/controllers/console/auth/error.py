@@ -55,6 +55,12 @@ class EmailOrPasswordMismatchError(BaseHTTPException):
     code = 400
 
 
+class AuthenticationFailedError(BaseHTTPException):
+    error_code = "authentication_failed"
+    description = "Invalid email or password."
+    code = 401
+
+
 class EmailPasswordLoginLimitError(BaseHTTPException):
     error_code = "email_code_login_limit"
     description = "Too many incorrect password attempts. Please try again later."
