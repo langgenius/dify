@@ -2,8 +2,8 @@ import logging
 import time
 
 import click
-from sqlalchemy import exists, select
 from celery import shared_task
+from sqlalchemy import exists, select
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db

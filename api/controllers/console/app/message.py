@@ -3,6 +3,7 @@ import logging
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
+from sqlalchemy import exists, select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
@@ -32,7 +33,6 @@ from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
-from sqlalchemy import exists, select
 
 logger = logging.getLogger(__name__)
 
