@@ -24,6 +24,7 @@ def _safe_rollback(connection) -> None:
     except Exception:  # pylint: disable=broad-exception-caught
         logger.exception("Failed to rollback connection")
 
+
 def _setup_gevent_compatibility() -> None:
     global _GEVENT_COMPATIBILITY_SETUP  # pylint: disable=global-statement
 
@@ -47,6 +48,7 @@ def _setup_gevent_compatibility() -> None:
             _safe_rollback(dbapi_connection)
 
     _GEVENT_COMPATIBILITY_SETUP = True
+
 
 def init_app(app: DifyApp):
     db.init_app(app)
