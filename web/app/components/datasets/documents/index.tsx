@@ -7,14 +7,12 @@ import { useDebounce, useDebounceFn } from 'ahooks'
 import { groupBy } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
-import { RiFilter3Line } from '@remixicon/react'
 import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
 import List from './list'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Chip from '@/app/components/base/chip'
 import { get } from '@/service/base'
 import { createDocument } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
@@ -35,6 +33,7 @@ import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata
 import StatusWithAction from '../common/document-status-with-action/status-with-action'
 import { useDocLink } from '@/context/i18n'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
+import { SimpleSelect } from '../../base/select'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -113,7 +112,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
   const statusFilterItems = useMemo(() => [
-    { value: 'all', name: 'STATUS: All' },
+    { value: 'all', name: 'All Status' },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
     { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
@@ -340,6 +339,16 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       <div className='flex flex-1 flex-col px-6 py-4'>
         <div className='flex flex-wrap items-center justify-between'>
           <div className='flex items-center gap-2'>
+            <SimpleSelect
+              placeholder={t('datasetDocuments.list.table.header.status')}
+              onSelect={(item) => {
+                setStatusFilter(item.value as string)
+              }}
+              items={statusFilterItems}
+              defaultValue={statusFilter}
+              wrapperClassName='w-[160px] h-8'
+              notClearable
+            />
             <Input
               showLeftIcon
               showClearIcon
@@ -347,17 +356,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               value={inputValue}
               onChange={e => handleInputChange(e.target.value)}
               onClear={() => handleInputChange('')}
-            />
-            <Chip
-              className='min-w-[150px]'
-              panelClassName='w-[220px]'
-              leftIcon={<RiFilter3Line className='h-4 w-4 text-text-secondary' />}
-              value={statusFilter}
-              onSelect={(item) => {
-                setStatusFilter(item.value as string)
-              }}
-              onClear={() => setStatusFilter('all')}
-              items={statusFilterItems}
             />
           </div>
           <div className='flex !h-8 items-center justify-center gap-2'>
