@@ -341,6 +341,7 @@ export enum NodeRunningStatus {
   Exception = 'exception',
   Retry = 'retry',
   Stopped = 'stopped',
+  Suspended = 'suspended',
 }
 
 export type OnNodeAdd = (

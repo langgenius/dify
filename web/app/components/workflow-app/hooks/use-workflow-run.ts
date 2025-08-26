@@ -44,6 +44,7 @@ export const useWorkflowRun = () => {
     handleWorkflowFailed,
     handleWorkflowNodeStarted,
     handleWorkflowNodeFinished,
+    handleWorkflowNodeHumanInputRequired,
     handleWorkflowNodeIterationStarted,
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
@@ -54,6 +55,7 @@ export const useWorkflowRun = () => {
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowSuspended,
   } = useWorkflowRunEvent()
 
   const handleBackupDraft = useCallback(() => {
@@ -138,6 +140,8 @@ export const useWorkflowRun = () => {
       onNodeRetry,
       onAgentLog,
       onError,
+      onWorkflowSuspended,
+      onHumanInputRequired,
       ...restCallback
     } = callback || {}
     workflowStore.setState({ historyWorkflowData: undefined })
@@ -303,6 +307,16 @@ export const useWorkflowRun = () => {
         },
         onTTSEnd: (messageId: string, audio: string) => {
           player.playAudioWithAudio(audio, false)
+        },
+        onWorkflowSuspended: (params) => {
+          handleWorkflowSuspended()
+          if (onWorkflowSuspended)
+            onWorkflowSuspended(params)
+        },
+        onHumanInputRequired: (params) => {
+          handleWorkflowNodeHumanInputRequired(params)
+          if (onHumanInputRequired)
+            onHumanInputRequired(params)
         },
         ...restCallback,
       },
