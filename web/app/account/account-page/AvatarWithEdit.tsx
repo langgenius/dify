@@ -30,6 +30,8 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const [isShowDeleteConfirm, setIsShowDeleteConfirm] = useState(false)
   const [hoverArea, setHoverArea] = useState<string>('left')
 
+  const [onAvatarError, setOnAvatarError] = useState(false)
+
   const handleImageInput: OnImageInput = useCallback(async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
     setInputImageInfo(
       isCropped
@@ -98,10 +100,15 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     <>
       <div>
         <div className="group relative">
-          <Avatar {...props} />
+          <Avatar {...props} onError={(x: boolean) => setOnAvatarError(x)} />
           <div
             className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
-            onClick={() => hoverArea === 'right' ? setIsShowDeleteConfirm(true) : setIsShowAvatarPicker(true)}
+            onClick={() => {
+              if (hoverArea === 'right' && !onAvatarError)
+                setIsShowDeleteConfirm(true)
+               else
+                setIsShowAvatarPicker(true)
+            }}
             onMouseMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               const x = e.clientX - rect.left
@@ -109,12 +116,15 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
               setHoverArea(isRight ? 'right' : 'left')
             }}
           >
-            {hoverArea === 'right' ? <span className="text-xs text-white">
-              <RiDeleteBin5Line />
-            </span> : <span className="text-xs text-white">
-              <RiPencilLine />
-            </span>}
-
+            {hoverArea === 'right' && !onAvatarError ? (
+              <span className="text-xs text-white">
+                <RiDeleteBin5Line />
+              </span>
+            ) : (
+              <span className="text-xs text-white">
+                <RiPencilLine />
+              </span>
+            )}
           </div>
         </div>
       </div>
