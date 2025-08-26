@@ -50,7 +50,7 @@ class Vector:
                 stmt = select(Whitelist).where(
                     Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
                 )
-                whitelist = db.session.scalar(stmt)
+                whitelist = db.session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
