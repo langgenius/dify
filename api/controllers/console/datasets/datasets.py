@@ -553,8 +553,7 @@ class DatasetIndexingStatusApi(Resource):
             }
             documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
-        return data
-
+        return data, 200
 
 class DatasetApiKeyApi(Resource):
     max_keys = 10
