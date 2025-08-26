@@ -44,7 +44,7 @@ def clean_unused_datasets_task():
         clean_day = config["clean_day"]
         plan_filter = config["plan_filter"]
         add_logs = config["add_logs"]
-        
+
         page = 1
         while True:
             try:
