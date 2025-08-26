@@ -16,6 +16,7 @@ from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
+from services.plugin.plugin_service import PluginService
 
 
 class RagPipelineTransformService:
@@ -255,17 +256,7 @@ class RagPipelineTransformService:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
         if need_install_plugin_unique_identifiers:
             print(need_install_plugin_unique_identifiers)
-            installer_manager.install_from_identifiers(
-                tenant_id,
-                need_install_plugin_unique_identifiers,
-                PluginInstallationSource.Marketplace,
-                metas=[
-                    {
-                        "plugin_unique_identifier": identifier,
-                    }
-                    for identifier in need_install_plugin_unique_identifiers
-                ],
-            )
+            PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
     def _transfrom_to_empty_pipeline(self, dataset: Dataset):
         pipeline = Pipeline(
