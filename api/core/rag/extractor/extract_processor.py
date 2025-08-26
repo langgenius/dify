@@ -6,6 +6,7 @@ from urllib.parse import unquote
 
 from configs import dify_config
 from core.helper import ssrf_proxy
+from core.rag.extractor.archive_extractor import ArchiveExtractor
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -141,6 +142,8 @@ class ExtractProcessor:
                         extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                    elif file_extension in {".zip", ".tar", ".gz", ".bz2", ".7z", ".rar", ".tgz", ".tbz2"} or input_file.suffixes[-2:] in [['.tar', '.gz'], ['.tar', '.bz2']]:
+                        extractor = ArchiveExtractor(file_path)
                     else:
                         # txt
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
@@ -159,6 +162,8 @@ class ExtractProcessor:
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path)
+                    elif file_extension in {".zip", ".tar", ".gz", ".bz2", ".7z", ".rar", ".tgz", ".tbz2"} or input_file.suffixes[-2:] in [['.tar', '.gz'], ['.tar', '.bz2']]:
+                        extractor = ArchiveExtractor(file_path)
                     else:
                         # txt
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
