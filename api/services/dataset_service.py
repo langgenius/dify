@@ -9,7 +9,7 @@ from collections import Counter
 from typing import Any, Literal, Optional
 
 from flask_login import current_user
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -655,10 +655,9 @@ class DatasetService:
 
     @staticmethod
     def dataset_use_check(dataset_id) -> bool:
-        count = db.session.query(AppDatasetJoin).filter_by(dataset_id=dataset_id).count()
-        if count > 0:
-            return True
-        return False
+        return db.session.query(
+            exists().where(AppDatasetJoin.dataset_id == dataset_id)
+        ).scalar()
 
     @staticmethod
     def check_dataset_permission(dataset, user):
