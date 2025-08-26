@@ -131,6 +131,8 @@ class YamlExtractor(BaseExtractor):
         Args:
             data: Dictionary data to convert.
             index: Index of this object in the source.
+            is_array_item: True when this element is an item within a YAML array,
+                          used to set the correct type in metadata.
             
         Returns:
             Document object with content and metadata.
@@ -171,6 +173,8 @@ class YamlExtractor(BaseExtractor):
         Args:
             data: Primitive data to convert.
             index: Index of this value in the source.
+            is_array_item: True when this element is an item within a YAML array,
+                          used to set the correct type in metadata.
             
         Returns:
             Document object with content and metadata.

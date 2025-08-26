@@ -1,6 +1,7 @@
 import tempfile
 from pathlib import Path
 import yaml
+import pytest
 
 from core.rag.extractor.yaml_extractor import YamlExtractor
 
@@ -224,7 +225,7 @@ age: 30
         # Should raise an exception for malformed YAML
         try:
             documents = extractor.extract()
-            assert False, "Expected an exception for malformed YAML"
+            pytest.fail("Expected an exception for malformed YAML")
         except (RuntimeError, yaml.YAMLError):
             # This is expected behavior
             pass
