@@ -86,7 +86,7 @@ class JsonExtractor(BaseExtractor):
         """
         # Convert object to formatted JSON string
         content = json.dumps(obj, ensure_ascii=False, indent=2)
-
+        obj_type = TYPE_NAME_MAP.get(type(obj).__name__, type(obj).__name__)
         # Determine object type and extract key information
         obj_type = type(obj).__name__
         metadata = {"source": self._file_path, "index": index, "type": obj_type}
