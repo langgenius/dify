@@ -10,6 +10,8 @@ export type WorkflowSliceShape = {
   setShowOnboarding: (showOnboarding: boolean) => void
   hasSelectedStartNode: boolean
   setHasSelectedStartNode: (hasSelectedStartNode: boolean) => void
+  hasShownOnboarding: boolean
+  setHasShownOnboarding: (hasShownOnboarding: boolean) => void
 }
 
 export type CreateWorkflowSlice = StateCreator<WorkflowSliceShape>
@@ -23,4 +25,6 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setShowOnboarding: showOnboarding => set(() => ({ showOnboarding })),
   hasSelectedStartNode: false,
   setHasSelectedStartNode: hasSelectedStartNode => set(() => ({ hasSelectedStartNode })),
+  hasShownOnboarding: false,
+  setHasShownOnboarding: hasShownOnboarding => set(() => ({ hasShownOnboarding })),
 })

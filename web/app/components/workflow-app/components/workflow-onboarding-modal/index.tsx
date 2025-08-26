@@ -25,11 +25,13 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 
   const handleSelectUserInput = useCallback(() => {
     onSelectStartNode(BlockEnum.Start)
-  }, [onSelectStartNode])
+    onClose() // Close modal after selection
+  }, [onSelectStartNode, onClose])
 
   const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => {
     onSelectStartNode(nodeType, toolConfig)
-  }, [onSelectStartNode])
+    onClose() // Close modal after selection
+  }, [onSelectStartNode, onClose])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {

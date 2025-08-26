@@ -22,6 +22,7 @@ import WorkflowPanel from './workflow-panel'
 import dynamic from 'next/dynamic'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
 
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
   ssr: false,
@@ -44,6 +45,7 @@ const WorkflowChildren = () => {
   const reactFlowStore = useStoreApi()
   const nodesInitialData = useNodesInitialData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleOnboardingClose } = useAutoOnboarding()
   const {
     handlePaneContextmenuCancel,
   } = usePanelInteractions()
@@ -58,8 +60,8 @@ const WorkflowChildren = () => {
   })
 
   const handleCloseOnboarding = useCallback(() => {
-    setShowOnboarding(false)
-  }, [setShowOnboarding])
+    handleOnboardingClose()
+  }, [handleOnboardingClose])
 
   const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => {
     const nodeData = nodeType === BlockEnum.Start

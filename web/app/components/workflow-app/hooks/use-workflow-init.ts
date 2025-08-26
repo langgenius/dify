@@ -60,6 +60,7 @@ export const useWorkflowInit = () => {
             workflowStore.setState({
               notInitialWorkflow: true,
               showOnboarding: true,
+              hasShownOnboarding: false,
             })
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
