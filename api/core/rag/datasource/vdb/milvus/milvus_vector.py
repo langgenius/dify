@@ -266,7 +266,8 @@ class MilvusVector(BaseVector):
             return []
         if not self.field_exists(Field.SPARSE_VECTOR.value):
             logger.warning(
-                "Full-text search unavailable: collection missing 'sparse_vector' field; recreate the collection after enabling MILVUS_ENABLE_HYBRID_SEARCH to add BM25 sparse index."
+                "Full-text search unavailable: collection missing 'sparse_vector' field; "
+                "recreate the collection after enabling MILVUS_ENABLE_HYBRID_SEARCH to add BM25 sparse index."
             )
             return []
         document_ids_filter = kwargs.get("document_ids_filter")
