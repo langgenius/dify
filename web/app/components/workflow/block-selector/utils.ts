@@ -25,9 +25,12 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
         description: datasource.description,
         parameters: datasource.parameters,
         labels: [],
-        output_schema: datasource.output_schema || {},
+        output_schema: datasource.output_schema,
       } as Tool
     }),
     credentialsSchema: dataSourceItem.declaration.credentials_schema || [],
+    meta: {
+      version: '',
+    },
   }
 }

@@ -123,6 +123,7 @@ class SchemaRegistry:
         for schema_name, schema in version_schemas.items():
             result.append({
                 "name": schema_name,
+                "label": schema.get("title", schema_name),
                 "schema": schema
             })
             

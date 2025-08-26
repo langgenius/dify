@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "version": "1.0.0",
   "type": "array",
-  "title": "General Structure Schema",
+  "title": "General Structure",
   "description": "Schema for general structure (v1) - array of strings",
   "items": {
     "type": "string"

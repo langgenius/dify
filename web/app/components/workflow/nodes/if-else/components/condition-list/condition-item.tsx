@@ -92,6 +92,11 @@ const ConditionItem = ({
   const workflowStore = useWorkflowStore()
   const {
     setControlPromptEditorRerenderKey,
+    buildInTools,
+    customTools,
+    mcpTools,
+    workflowTools,
+    dataSourceList,
   } = workflowStore.getState()
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
@@ -207,6 +212,13 @@ const ConditionItem = ({
       valueSelector,
       availableNodes,
       isChatMode,
+      allPluginInfoList: {
+        buildInTools,
+        customTools,
+        mcpTools,
+        workflowTools,
+        dataSourceList: dataSourceList ?? [],
+      },
     })
 
     const newCondition = produce(condition, (draft) => {

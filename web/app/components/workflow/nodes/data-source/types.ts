@@ -27,10 +27,6 @@ export type DataSourceNodeType = CommonNodeType & {
   datasource_label: string
   datasource_parameters: ToolVarInputs
   datasource_configurations: Record<string, any>
-  output_schema?: {
-    type: string
-    properties: Record<string, any>
-  }
 }
 
 export type CustomRunFormProps = {

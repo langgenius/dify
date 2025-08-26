@@ -54,7 +54,6 @@ export const useInitial = (id: string) => {
         tool_description: currTool.description[language],
         title: currTool.label[language],
         is_team_authorization: currCollection.is_team_authorization,
-        output_schema: currTool.output_schema,
         paramSchemas: currTool.parameters,
         params,
         _notInitialized: false,

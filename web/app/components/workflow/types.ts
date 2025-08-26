@@ -330,7 +330,7 @@ export type NodeDefault<T = {}> = {
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
-  getOutputVars?: (payload: T, ragVariables?: Var[]) => Var[]
+  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[]) => Var[]
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void

@@ -71,7 +71,7 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
 
     const res: any[] = []
     if (!output_schema || !output_schema.properties)
-      return []
+      return res
 
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]

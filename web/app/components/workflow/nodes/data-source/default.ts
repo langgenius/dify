@@ -54,15 +54,21 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       errorMessage,
     }
   },
-  getOutputVars(payload, ragVars = []) {
+  getOutputVars(payload, allPluginInfoList, ragVars = []) {
     const {
+      plugin_id,
+      datasource_name,
       provider_type,
     } = payload
     const isLocalFile = provider_type === DataSourceClassification.localFile
+    const currentDataSource = allPluginInfoList.dataSourceList?.find((ds: any) => ds.plugin_id === plugin_id)
+    const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === datasource_name)
+    const output_schema = currentDataSourceItem?.output_schema
     const dynamicOutputSchema: any[] = []
-    if (payload.output_schema?.properties) {
-      Object.keys(payload.output_schema.properties).forEach((outputKey) => {
-        const output = payload.output_schema!.properties[outputKey]
+
+    if (output_schema?.properties) {
+      Object.keys(output_schema.properties).forEach((outputKey) => {
+        const output = output_schema.properties[outputKey]
         const dataType = output.type
         const alias = getOutputVariableAlias(output.properties)
         let type = dataType === 'array'

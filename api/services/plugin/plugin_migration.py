@@ -440,7 +440,9 @@ class PluginMigration:
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
-        def install(tenant_id: str, plugin_ids: dict[str, str], total_success_tenant: int, total_failed_tenant: int) -> None:
+        def install(
+            tenant_id: str, plugin_ids: dict[str, str], total_success_tenant: int, total_failed_tenant: int
+        ) -> None:
             logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
             try:
                 # fetch plugin already installed
