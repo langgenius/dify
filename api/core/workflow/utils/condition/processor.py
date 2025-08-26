@@ -62,7 +62,7 @@ class ConditionProcessor:
                 )
             else:
                 actual_value = variable.value if variable else None
-                expected_value = condition.value
+                expected_value: str | Sequence[str] | bool | list[bool] | None = condition.value
                 if isinstance(expected_value, str):
                     expected_value = variable_pool.convert_template(expected_value).text
                 # Here we need to explicit convet the input string to boolean.

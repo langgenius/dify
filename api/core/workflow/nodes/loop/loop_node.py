@@ -404,7 +404,7 @@ class LoopNode(BaseNode):
         for node_id in loop_graph.node_ids:
             variable_pool.remove([node_id])
 
-        _outputs = {}
+        _outputs: dict[str, Segment | int | None] = {}
         for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
             _loop_variable_segment = variable_pool.get(loop_variable_selector)
             if _loop_variable_segment:
