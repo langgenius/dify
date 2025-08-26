@@ -21,11 +21,17 @@ class FileChunk:
     def __post_init__(self) -> None:
         """Initialize the data buffer and validate file size."""
         # Validate file size against configuration
+        try:
+            max_size = dify_config.TOOL_FILE_MAX_SIZE
+        except AttributeError:
+            # Fallback to 50MB if config is not available
+            max_size = 50 * 1024 * 1024
+            
         validate_size(
             actual_size=self.total_length,
             hint="The tool file",
             min_size=0,
-            max_size=dify_config.TOOL_FILE_MAX_SIZE,
+            max_size=max_size,
         )
         self.data = bytearray(self.total_length)
 

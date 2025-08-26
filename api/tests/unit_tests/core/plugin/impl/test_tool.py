@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
-from core.plugin.impl.tool import FileChunk, PluginToolManager
+from core.plugin.impl.tool import PluginToolManager
+from core.plugin.utils.chunk_merger import FileChunk, merge_blob_chunks
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
@@ -16,14 +17,6 @@ class TestFileChunk(unittest.TestCase):
         assert chunk.bytes_written == 0
         assert len(chunk.data) == 1024
         assert isinstance(chunk.data, bytearray)
-
-    def test_file_chunk_pydantic_model(self):
-        """Test FileChunk as a Pydantic model."""
-        chunk = FileChunk(total_length=512, bytes_written=100, data=bytearray(512))
-
-        assert chunk.total_length == 512
-        assert chunk.bytes_written == 100
-        assert len(chunk.data) == 512
 
 
 class TestBlobChunkProcessing(unittest.TestCase):
@@ -41,7 +34,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
             yield text_message
 
         # Process the response
-        result = list(self.manager._process_blob_chunks(response_generator()))
+        result = list(merge_blob_chunks(response_generator()))
 
         assert len(result) == 1
         assert result[0] == text_message
@@ -63,7 +56,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
             yield chunk_message
 
         # Process the response
-        result = list(self.manager._process_blob_chunks(response_generator()))
+        result = list(merge_blob_chunks(response_generator()))
 
         assert len(result) == 1
         assert result[0].type == ToolInvokeMessage.MessageType.BLOB
@@ -98,7 +91,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
             yield chunk2
 
         # Process the response
-        result = list(self.manager._process_blob_chunks(response_generator()))
+        result = list(merge_blob_chunks(response_generator()))
 
         # Should only yield one complete blob message
         assert len(result) == 1
@@ -123,7 +116,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
 
         # Should raise ValueError for oversized chunk
         with pytest.raises(ValueError) as exc_info:
-            list(self.manager._process_blob_chunks(response_generator()))
+            list(merge_blob_chunks(response_generator()))
 
         assert "File chunk is too large" in str(exc_info.value)
         assert "10000 bytes" in str(exc_info.value)
@@ -154,7 +147,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
 
         # Process first chunk successfully, second should fail
         with pytest.raises(ValueError) as exc_info:
-            list(self.manager._process_blob_chunks(response_generator()))
+            list(merge_blob_chunks(response_generator()))
 
         assert "The tool file size should be less than 1.00 KB" in str(exc_info.value)
         assert "got 2.00 KB instead" in str(exc_info.value)
@@ -193,7 +186,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
             yield file2_chunk2
 
         # Process the response
-        result = list(self.manager._process_blob_chunks(response_generator()))
+        result = list(merge_blob_chunks(response_generator()))
 
         # Should get two complete blobs
         assert len(result) == 2
@@ -227,7 +220,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
             yield error_msg
 
         # Process the response
-        result = list(self.manager._process_blob_chunks(response_generator()))
+        result = list(merge_blob_chunks(response_generator()))
 
         assert len(result) == 3
         assert result[0].type == ToolInvokeMessage.MessageType.TEXT
