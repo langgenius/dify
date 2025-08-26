@@ -334,6 +334,10 @@ const translation = {
     'required': 'Erforderlich',
     'text-input': 'Kurztext',
     'localUpload': 'Lokaler Upload',
+    'json': 'JSON-Code',
+    'optional': 'optional',
+    'checkbox': 'Checkbox',
+    'jsonSchema': 'JSON-Schema',
   },
   vision: {
     name: 'Vision',
