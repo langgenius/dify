@@ -534,10 +534,6 @@ class TestSchemaResolverClass:
         assert resolved[1] == {"type": "string"}
         assert resolved[2]["type"] == "object"
         assert resolved[2]["title"] == "Q&A Structure Schema"
-
-
-class TestPerformance:
-    """Performance-related tests"""
     
     def test_cache_performance(self):
         """Test that caching improves performance"""
