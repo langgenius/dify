@@ -4,9 +4,20 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 // Mock zustand store
 jest.mock('@/app/components/workflow/store')
 
+// Mock ReactFlow store
+const mockGetNodes = jest.fn()
+jest.mock('reactflow', () => ({
+  useStoreApi: () => ({
+    getState: () => ({
+      getNodes: mockGetNodes,
+    }),
+  }),
+}))
+
 describe('Workflow Onboarding Integration Logic', () => {
   const mockSetShowOnboarding = jest.fn()
   const mockSetHasSelectedStartNode = jest.fn()
+  const mockSetHasShownOnboarding = jest.fn()
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -17,6 +28,9 @@ describe('Workflow Onboarding Integration Logic', () => {
       setShowOnboarding: mockSetShowOnboarding,
       hasSelectedStartNode: false,
       setHasSelectedStartNode: mockSetHasSelectedStartNode,
+      hasShownOnboarding: false,
+      setHasShownOnboarding: mockSetHasShownOnboarding,
+      notInitialWorkflow: false,
     })
   })
 
@@ -26,6 +40,7 @@ describe('Workflow Onboarding Integration Logic', () => {
 
       expect(store.showOnboarding).toBe(false)
       expect(store.hasSelectedStartNode).toBe(false)
+      expect(store.hasShownOnboarding).toBe(false)
     })
 
     it('should update onboarding visibility', () => {
@@ -43,6 +58,13 @@ describe('Workflow Onboarding Integration Logic', () => {
 
       store.setHasSelectedStartNode(true)
       expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(true)
+    })
+
+    it('should track onboarding show state', () => {
+      const store = useWorkflowStore()
+
+      store.setHasShownOnboarding(true)
+      expect(mockSetHasShownOnboarding).toHaveBeenCalledWith(true)
     })
   })
 
@@ -409,6 +431,142 @@ describe('Workflow Onboarding Integration Logic', () => {
           conversation_variables: [],
         },
       })
+    })
+  })
+
+  describe('Auto-Detection for Empty Canvas', () => {
+    beforeEach(() => {
+      mockGetNodes.mockClear()
+    })
+
+    it('should detect empty canvas and trigger onboarding', () => {
+      // Mock empty canvas
+      mockGetNodes.mockReturnValue([])
+
+      // Mock store with proper state for auto-detection
+      ;(useWorkflowStore as jest.Mock).mockReturnValue({
+        showOnboarding: false,
+        hasShownOnboarding: false,
+        notInitialWorkflow: false,
+        setShowOnboarding: mockSetShowOnboarding,
+        setHasShownOnboarding: mockSetHasShownOnboarding,
+        getState: () => ({
+          showOnboarding: false,
+          hasShownOnboarding: false,
+          notInitialWorkflow: false,
+          setShowOnboarding: mockSetShowOnboarding,
+          setHasShownOnboarding: mockSetHasShownOnboarding,
+        }),
+      })
+
+      // Simulate empty canvas check logic
+      const nodes = mockGetNodes()
+      const startNodeTypes = [
+        BlockEnum.Start,
+        BlockEnum.TriggerSchedule,
+        BlockEnum.TriggerWebhook,
+        BlockEnum.TriggerPlugin,
+      ]
+      const hasStartNode = nodes.some(node => startNodeTypes.includes(node.data?.type))
+      const isEmpty = nodes.length === 0 || !hasStartNode
+
+      expect(isEmpty).toBe(true)
+      expect(nodes.length).toBe(0)
+    })
+
+    it('should detect canvas with non-start nodes as empty', () => {
+      // Mock canvas with non-start nodes
+      mockGetNodes.mockReturnValue([
+        { id: '1', data: { type: BlockEnum.LLM } },
+        { id: '2', data: { type: BlockEnum.Code } },
+      ])
+
+      const nodes = mockGetNodes()
+      const startNodeTypes = [
+        BlockEnum.Start,
+        BlockEnum.TriggerSchedule,
+        BlockEnum.TriggerWebhook,
+        BlockEnum.TriggerPlugin,
+      ]
+      const hasStartNode = nodes.some(node => startNodeTypes.includes(node.data.type))
+      const isEmpty = nodes.length === 0 || !hasStartNode
+
+      expect(isEmpty).toBe(true)
+      expect(hasStartNode).toBe(false)
+    })
+
+    it('should not detect canvas with start nodes as empty', () => {
+      // Mock canvas with start node
+      mockGetNodes.mockReturnValue([
+        { id: '1', data: { type: BlockEnum.Start } },
+      ])
+
+      const nodes = mockGetNodes()
+      const startNodeTypes = [
+        BlockEnum.Start,
+        BlockEnum.TriggerSchedule,
+        BlockEnum.TriggerWebhook,
+        BlockEnum.TriggerPlugin,
+      ]
+      const hasStartNode = nodes.some(node => startNodeTypes.includes(node.data.type))
+      const isEmpty = nodes.length === 0 || !hasStartNode
+
+      expect(isEmpty).toBe(false)
+      expect(hasStartNode).toBe(true)
+    })
+
+    it('should not trigger onboarding if already shown in session', () => {
+      // Mock empty canvas
+      mockGetNodes.mockReturnValue([])
+
+      // Mock store with hasShownOnboarding = true
+      ;(useWorkflowStore as jest.Mock).mockReturnValue({
+        showOnboarding: false,
+        hasShownOnboarding: true, // Already shown in this session
+        notInitialWorkflow: false,
+        setShowOnboarding: mockSetShowOnboarding,
+        setHasShownOnboarding: mockSetHasShownOnboarding,
+        getState: () => ({
+          showOnboarding: false,
+          hasShownOnboarding: true,
+          notInitialWorkflow: false,
+          setShowOnboarding: mockSetShowOnboarding,
+          setHasShownOnboarding: mockSetHasShownOnboarding,
+        }),
+      })
+
+      // Simulate the check logic with hasShownOnboarding = true
+      const store = useWorkflowStore()
+      const shouldTrigger = !store.hasShownOnboarding && !store.showOnboarding && !store.notInitialWorkflow
+
+      expect(shouldTrigger).toBe(false)
+    })
+
+    it('should not trigger onboarding during initial workflow creation', () => {
+      // Mock empty canvas
+      mockGetNodes.mockReturnValue([])
+
+      // Mock store with notInitialWorkflow = true (initial creation)
+      ;(useWorkflowStore as jest.Mock).mockReturnValue({
+        showOnboarding: false,
+        hasShownOnboarding: false,
+        notInitialWorkflow: true, // Initial workflow creation
+        setShowOnboarding: mockSetShowOnboarding,
+        setHasShownOnboarding: mockSetHasShownOnboarding,
+        getState: () => ({
+          showOnboarding: false,
+          hasShownOnboarding: false,
+          notInitialWorkflow: true,
+          setShowOnboarding: mockSetShowOnboarding,
+          setHasShownOnboarding: mockSetHasShownOnboarding,
+        }),
+      })
+
+      // Simulate the check logic with notInitialWorkflow = true
+      const store = useWorkflowStore()
+      const shouldTrigger = !store.hasShownOnboarding && !store.showOnboarding && !store.notInitialWorkflow
+
+      expect(shouldTrigger).toBe(false)
     })
   })
 })
