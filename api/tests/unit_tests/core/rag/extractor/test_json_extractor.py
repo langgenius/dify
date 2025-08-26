@@ -124,12 +124,10 @@ def test_json_malformed_error():
             assert False, "Expected ValueError for malformed JSON"
         except ValueError as e:
             assert "Invalid JSON format" in str(e)
-            assert temp_path in str(e)
-
-    finally:
-        Path(temp_path).unlink()
-
-
+        with pytest.raises(ValueError) as exc_info:
+            extractor.extract()
+        assert "Invalid JSON format" in str(exc_info.value)
+        assert temp_path in str(exc_info.value)
 def test_json_with_file_content():
     """Test extraction using file_content parameter."""
     json_data = {"message": "Hello from bytes", "count": 42}
