@@ -15,7 +15,9 @@ jobs:
       - uses: actions/checkout@v4
 
       # Use uv to ensure we have the same ruff version in CI and locally.
-      - uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f 
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12" 
       - run: |
           cd api
           uv sync --dev
@@ -26,6 +28,7 @@ jobs:
       - name: ast-grep
         run: |
           uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
-
+      - name: mdformat
+        run: |
+          uvx mdformat .
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
-

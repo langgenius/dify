@@ -1,15 +1,15 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
 
 
@@ -89,7 +89,7 @@ def enable_segment_to_index_task(segment_id: str):
     except Exception as e:
         logging.exception("enable segment to index failed")
         segment.enabled = False
-        segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        segment.disabled_at = naive_utc_now()
         segment.status = "error"
         segment.error = str(e)
         db.session.commit()

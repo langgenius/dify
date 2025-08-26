@@ -1,5 +1,6 @@
 from flask import request
-from flask_restful import Resource, marshal_with
+from flask_restx import Resource
+from flask_restx.api import HTTPStatus
 
 import services
 from controllers.common.errors import (
@@ -9,17 +10,33 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.service_api import api
+from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from fields.file_fields import file_fields
+from fields.file_fields import build_file_model
 from models.model import App, EndUser
 from services.file_service import FileService
 
 
+@service_api_ns.route("/files/upload")
 class FileApi(Resource):
+    @service_api_ns.doc("upload_file")
+    @service_api_ns.doc(description="Upload a file for use in conversations")
+    @service_api_ns.doc(
+        responses={
+            201: "File uploaded successfully",
+            400: "Bad request - no file or invalid file",
+            401: "Unauthorized - invalid API token",
+            413: "File too large",
+            415: "Unsupported file type",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
-    @marshal_with(file_fields)
+    @service_api_ns.marshal_with(build_file_model(service_api_ns), code=HTTPStatus.CREATED)
     def post(self, app_model: App, end_user: EndUser):
+        """Upload a file for use in conversations.
+
+        Accepts a single file upload via multipart/form-data.
+        """
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -47,6 +64,3 @@ class FileApi(Resource):
             raise UnsupportedFileTypeError()
 
         return upload_file, 201
-
-
-api.add_resource(FileApi, "/files/upload")

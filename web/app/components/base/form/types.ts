@@ -59,6 +59,7 @@ export type FormSchema = {
   labelClassName?: string
   validators?: AnyValidators
   showRadioUI?: boolean
+  disabled?: boolean
 }
 
 export type FormValues = Record<string, any>

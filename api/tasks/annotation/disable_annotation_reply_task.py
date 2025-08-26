@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db

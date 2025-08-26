@@ -73,74 +73,6 @@ LLM 함수 호출 또는 ReAct를 기반으로 에이전트를 정의하고 에�
 **7. Backend-as-a-Service**:
 Dify의 모든 제품에는 해당 API가 함께 제공되므로 Dify를 자신의 비즈니스 로직에 쉽게 통합할 수 있습니다.
 
-## 기능 비교
-
-<table style="width: 100%;">
-  <tr>
-    <th align="center">기능</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">OpenAI Assistants API</th>
-  </tr>
-  <tr>
-    <td align="center">프로그래밍 접근 방식</td>
-    <td align="center">API + 앱 중심</td>
-    <td align="center">Python 코드</td>
-    <td align="center">앱 중심</td>
-    <td align="center">API 중심</td>
-  </tr>
-  <tr>
-    <td align="center">지원되는 LLMs</td>
-    <td align="center">다양한 종류</td>
-    <td align="center">다양한 종류</td>
-    <td align="center">다양한 종류</td>
-    <td align="center">OpenAI 전용</td>
-  </tr>
-  <tr>
-    <td align="center">RAG 엔진</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">에이전트</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">워크플로우</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">가시성</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">기업용 기능 (SSO/접근 제어)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">로컬 배포</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
-
 ## Dify 사용하기
 
 - **클라우드 </br>**
@@ -230,7 +162,7 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 ## 기여
 
-코드에 기여하고 싶은 분들은 [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)를 참조하세요.
+코드에 기여하고 싶은 분들은 [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING_KR.md)를 참조하세요.
 동시에 Dify를 소셜 미디어와 행사 및 컨퍼런스에 공유하여 지원하는 것을 고려해 주시기 바랍니다.
 
 > 우리는 Dify를 중국어나 영어 이외의 언어로 번역하는 데 도움을 줄 수 있는 기여자를 찾고 있습니다. 도움을 주고 싶으시다면 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)에서 더 많은 정보를 확인하시고 [Discord 커뮤니티 서버](https://discord.gg/8Tpq4AcN9c)의 `global-users` 채널에 댓글을 남겨주세요.

@@ -1,6 +1,6 @@
 import logging
 
-from flask_restful import reqparse
+from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError
 
 from controllers.console.app.error import (
@@ -43,7 +43,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("files", type=list, required=False, location="json")
         args = parser.parse_args()
-
+        assert current_user is not None
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
@@ -76,6 +76,7 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
+        assert current_user is not None
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 

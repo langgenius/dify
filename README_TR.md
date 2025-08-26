@@ -74,74 +74,6 @@ Uygulama loglarını ve performans metriklerini zaman içinde izleme ve analiz e
 **7. Hizmet Olarak Backend**:
 Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı kendi iş mantığınıza kolayca entegre edebilirsiniz.
 
-## Özellik karşılaştırması
-
-<table style="width: 100%;">
-  <tr>
-    <th align="center">Özellik</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">OpenAI Assistants API</th>
-  </tr>
-  <tr>
-    <td align="center">Programlama Yaklaşımı</td>
-    <td align="center">API + Uygulama odaklı</td>
-    <td align="center">Python Kodu</td>
-    <td align="center">Uygulama odaklı</td>
-    <td align="center">API odaklı</td>
-  </tr>
-  <tr>
-    <td align="center">Desteklenen LLM'ler</td>
-    <td align="center">Zengin Çeşitlilik</td>
-    <td align="center">Zengin Çeşitlilik</td>
-    <td align="center">Zengin Çeşitlilik</td>
-    <td align="center">Yalnızca OpenAI</td>
-  </tr>
-  <tr>
-    <td align="center">RAG Motoru</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Ajan</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">İş Akışı</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Gözlemlenebilirlik</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Kurumsal Özellikler (SSO/Erişim kontrolü)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Yerel Dağıtım</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
-
 ## Dify'ı Kullanma
 
 - **Cloud </br>**
@@ -229,7 +161,7 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 
 ## Katkıda Bulunma
 
-Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) bakabilirsiniz.
+Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](https://github.com/langgenius/dify/blob/main/CONTRIBUTING_TR.md) bakabilirsiniz.
 Aynı zamanda, lütfen Dify'ı sosyal medyada, etkinliklerde ve konferanslarda paylaşarak desteklemeyi düşünün.
 
 > Dify'ı Mandarin veya İngilizce dışındaki dillere çevirmemize yardımcı olacak katkıda bulunanlara ihtiyacımız var. Yardımcı olmakla ilgileniyorsanız, lütfen daha fazla bilgi için [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) dosyasına bakın ve [Discord Topluluk Sunucumuzdaki](https://discord.gg/8Tpq4AcN9c) `global-users` kanalında bize bir yorum bırakın.

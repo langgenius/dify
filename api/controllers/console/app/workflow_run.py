@@ -1,8 +1,8 @@
 from typing import cast
 
 from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, marshal_with, reqparse
+from flask_restx.inputs import int_range
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
