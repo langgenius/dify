@@ -1568,3 +1568,25 @@ def transform_datasource_credentials():
         click.style(f"Transforming firecrawl successfully. deal_firecrawl_count: {deal_firecrawl_count}", fg="green")
     )
     click.echo(click.style(f"Transforming jina successfully. deal_jina_count: {deal_jina_count}", fg="green"))
+    
+
+@click.command("install-rag-pipeline-plugins", help="Install rag pipeline plugins.")
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+@click.option(
+    "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
+)
+@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+def install_rag_pipeline_plugins(input_file, output_file, workers):
+    """
+    Install rag pipeline plugins
+    """
+    click.echo(click.style("Installing rag pipeline plugins", fg="yellow"))
+    plugin_migration = PluginMigration()
+    plugin_migration.install_rag_pipeline_plugins(
+        input_file,
+        output_file,
+        workers,
+    )
+    click.echo(click.style("Installing rag pipeline plugins successfully", fg="green"))

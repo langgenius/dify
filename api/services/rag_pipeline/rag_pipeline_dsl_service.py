@@ -300,9 +300,12 @@ class RagPipelineDslService:
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     if not dataset:
+                        datasets = db.session.query(Dataset).filter_by(tenant_id=account.current_tenant_id).all()
+                        names = [dataset.name for dataset in datasets]
+                        generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
                             tenant_id=account.current_tenant_id,
-                            name=name + datetime.now(UTC).strftime("%Y%m%d%H%M%S%f"),
+                            name=generate_name,
                             description=description,
                             icon_info={
                                 "type": icon_type,
