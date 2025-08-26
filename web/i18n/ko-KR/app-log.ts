@@ -1,7 +1,7 @@
 const translation = {
   title: '로그',
   description: '로그는 애플리케이션 실행 상태를 기록합니다. 사용자 입력 및 AI 응답이 포함됩니다.',
-  dateTimeFormat: 'YYYY/MM/DD HH:mm',
+  dateTimeFormat: 'YYYY/MM/DD HH:mm:ss',
   table: {
     header: {
       updatedTime: '업데이트 시간',
@@ -94,6 +94,7 @@ const translation = {
     iteration: '반복',
     finalProcessing: '최종 처리',
   },
+  dateFormat: 'MM/DD/YYYY',
 }
 
 export default translation

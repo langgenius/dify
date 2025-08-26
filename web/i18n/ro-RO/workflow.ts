@@ -842,6 +842,7 @@ const translation = {
           url: 'Adresa URL a imaginii',
         },
         text: 'Conținut generat de agent',
+        usage: 'Informații de utilizare a modelului',
         json: 'JSON generat de agent',
       },
       checkList: {
@@ -995,6 +996,7 @@ const translation = {
     copyLastRun: 'Copiază ultima execuție',
     noLastRunFound: 'Niciun rulament anterior găsit',
     copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
+    lastOutput: 'Ultimul rezultat',
   },
 }
 

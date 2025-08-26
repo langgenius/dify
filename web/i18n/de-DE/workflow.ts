@@ -842,6 +842,7 @@ const translation = {
           transfer_method: 'Übertragungsmethode. Wert ist remote_url oder local_file',
         },
         text: 'Von Agenten generierte Inhalte',
+        usage: 'Nutzungsinformationen des Modells',
         json: 'Vom Agenten generiertes JSON',
       },
       checkList: {
@@ -995,6 +996,7 @@ const translation = {
     copyLastRunError: 'Fehler beim Kopieren der letzten Lauf-Eingaben',
     noMatchingInputsFound: 'Keine übereinstimmenden Eingaben aus dem letzten Lauf gefunden.',
     noLastRunFound: 'Kein vorheriger Lauf gefunden',
+    lastOutput: 'Letzte Ausgabe',
   },
 }
 

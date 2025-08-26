@@ -1,51 +1,14 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
-from configs import dify_config
+from pydantic import BaseModel
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.utils.chunk_merger import merge_blob_chunks
 from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
-from libs.validate_utils import validate_size
 
 
-class FileChunk(BaseModel):
-    """File chunk buffer for assembling blob data from chunks."""
-
-    bytes_written: int = 0
-    total_length: int
-    data: bytearray = Field(default_factory=bytearray)
-
-    def __iadd__(self, other: bytes) -> "FileChunk":
-        self.data[self.bytes_written : self.bytes_written + len(other)] = other
-        self.bytes_written += len(other)
-        if self.bytes_written > self.total_length:
-            raise ValueError(f"File chunk is too large which reached the limit of {self.total_length} bytes")
-        return self
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    @field_validator("total_length")
-    @classmethod
-    def validate_total_length(cls, v: int) -> int:
-        validate_size(
-            actual_size=v,
-            hint="The tool file",
-            min_size=0,
-            max_size=dify_config.TOOL_FILE_MAX_SIZE,
-        )
-        return v
-
-    @model_validator(mode="before")
-    @classmethod
-    def initialize_data_buffer(cls, values):
-        if isinstance(values, dict):
-            if "data" not in values or values["data"] is None:
-                if "total_length" in values:
-                    values["data"] = bytearray(values["total_length"])
-        return values
 
 
 class PluginToolManager(BasePluginClient):
@@ -79,60 +42,6 @@ class PluginToolManager(BasePluginClient):
                 tool.identity.provider = provider.declaration.identity.name
 
         return response
-
-    def _process_blob_chunks(
-        self,
-        response: Generator[ToolInvokeMessage, None, None],
-        chunk_size_limit: int = 8192,
-    ) -> Generator[ToolInvokeMessage, None, None]:
-        """
-        Process blob chunks from tool invocation responses.
-
-        Args:
-            response: Generator yielding ToolInvokeMessage instances
-            chunk_size_limit: Maximum size for a single chunk (default 8KB)
-
-        Yields:
-            ToolInvokeMessage: Processed messages with complete blobs assembled from chunks
-
-        Raises:
-            ValueError: If chunk or file size limits are exceeded
-        """
-        chunks: dict[str, FileChunk] = {}
-
-        for resp in response:
-            if resp.type != ToolInvokeMessage.MessageType.BLOB_CHUNK:
-                yield resp
-                continue
-
-            assert isinstance(resp.message, ToolInvokeMessage.BlobChunkMessage)
-
-            # Get blob chunk information
-            chunk_id = resp.message.id
-            total_length = resp.message.total_length
-            blob_data = resp.message.blob
-            is_end = resp.message.end
-
-            # Initialize buffer for this file if it doesn't exist
-            if chunk_id not in chunks:
-                validate_size(
-                    actual_size=total_length,
-                    hint="The tool file",
-                    max_size=dify_config.TOOL_FILE_MAX_SIZE,
-                )
-                chunks[chunk_id] = FileChunk(total_length=total_length)
-
-            # Append the blob data to the buffer
-            chunks[chunk_id] += blob_data
-
-            # If this is the final chunk, yield a complete blob message
-            if is_end:
-                yield ToolInvokeMessage(
-                    type=ToolInvokeMessage.MessageType.BLOB,
-                    message=ToolInvokeMessage.BlobMessage(blob=chunks[chunk_id].data),
-                    meta=resp.meta,
-                )
-                del chunks[chunk_id]
 
     def fetch_tool_provider(self, tenant_id: str, provider: str) -> PluginToolProviderEntity:
         """
@@ -206,8 +115,7 @@ class PluginToolManager(BasePluginClient):
             },
         )
 
-        # Process blob chunks using the handler method
-        return self._process_blob_chunks(response)
+        return merge_blob_chunks(response)
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, credentials: dict[str, Any]

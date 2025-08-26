@@ -22,7 +22,7 @@ class GraphRuntimeState(BaseModel):
     #
     # Note: Since the type of this field is `dict[str, Any]`, its values may not remain consistent
     # after a serialization and deserialization round trip.
-    outputs: dict[str, Any] = {}
+    outputs: dict[str, Any] = Field(default_factory=dict)
 
     node_run_steps: int = 0
     """node run steps"""

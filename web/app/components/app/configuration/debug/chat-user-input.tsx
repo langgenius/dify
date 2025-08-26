@@ -8,6 +8,7 @@ import Textarea from '@/app/components/base/textarea'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import type { Inputs } from '@/models/debug'
 import cn from '@/utils/classnames'
+import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 
 type Props = {
   inputs: Inputs
@@ -31,7 +32,7 @@ const ChatUserInput = ({
     return obj
   })()
 
-  const handleInputValueChange = (key: string, value: string) => {
+  const handleInputValueChange = (key: string, value: string | boolean) => {
     if (!(key in promptVariableObj))
       return
 
@@ -55,10 +56,12 @@ const ChatUserInput = ({
             className='mb-4 last-of-type:mb-0'
           >
             <div>
+              {type !== 'checkbox' && (
               <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
                 <div className='truncate'>{name || key}</div>
                 {!required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
               </div>
+              )}
               <div className='grow'>
                 {type === 'string' && (
                   <Input
@@ -94,6 +97,14 @@ const ChatUserInput = ({
                     placeholder={name}
                     autoFocus={index === 0}
                     maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                  />
+                )}
+                {type === 'checkbox' && (
+                  <BoolInput
+                    name={name || key}
+                    value={!!inputs[key]}
+                    required={required}
+                    onChange={(value) => { handleInputValueChange(key, value) }}
                   />
                 )}
               </div>

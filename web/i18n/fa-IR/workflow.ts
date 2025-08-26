@@ -842,6 +842,7 @@ const translation = {
           type: 'نوع پشتیبانی. اکنون فقط از تصویر پشتیبانی می کند',
         },
         text: 'محتوای تولید شده توسط عامل',
+        usage: 'اطلاعات استفاده از مدل',
         json: 'عامل JSON را تولید کرد',
       },
       checkList: {
@@ -995,6 +996,7 @@ const translation = {
     noLastRunFound: 'هیچ اجرای قبلی یافت نشد',
     noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
     copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
+    lastOutput: 'آخرین خروجی',
   },
 }
 

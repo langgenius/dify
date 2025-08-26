@@ -1,9 +1,13 @@
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from jwt import InvalidTokenError  # type: ignore
 
 import services
-from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
-from controllers.console.error import AccountBannedError, AccountNotFound
+from controllers.console.auth.error import (
+    AuthenticationFailedError,
+    EmailCodeError,
+    InvalidEmailError,
+)
+from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import api
 from libs.helper import email
@@ -29,9 +33,9 @@ class LoginApi(Resource):
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
-            raise EmailOrPasswordMismatchError()
+            raise AuthenticationFailedError()
         except services.errors.account.AccountNotFoundError:
-            raise AccountNotFound()
+            raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
         return {"result": "success", "data": {"access_token": token}}
@@ -63,7 +67,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         account = WebAppAuthService.get_user_through_email(args["email"])
         if account is None:
-            raise AccountNotFound()
+            raise AuthenticationFailedError()
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
 
@@ -95,7 +99,7 @@ class EmailCodeLoginApi(Resource):
         WebAppAuthService.revoke_email_code_login_token(args["token"])
         account = WebAppAuthService.get_user_through_email(user_email)
         if not account:
-            raise AccountNotFound()
+            raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(args["email"])

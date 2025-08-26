@@ -3,6 +3,17 @@ import re
 from core.app.app_config.entities import ExternalDataVariableEntity, VariableEntity, VariableEntityType
 from core.external_data_tool.factory import ExternalDataToolFactory
 
+_ALLOWED_VARIABLE_ENTITY_TYPE = frozenset(
+    [
+        VariableEntityType.TEXT_INPUT,
+        VariableEntityType.SELECT,
+        VariableEntityType.PARAGRAPH,
+        VariableEntityType.NUMBER,
+        VariableEntityType.EXTERNAL_DATA_TOOL,
+        VariableEntityType.CHECKBOX,
+    ]
+)
+
 
 class BasicVariablesConfigManager:
     @classmethod
@@ -47,6 +58,7 @@ class BasicVariablesConfigManager:
                 VariableEntityType.PARAGRAPH,
                 VariableEntityType.NUMBER,
                 VariableEntityType.SELECT,
+                VariableEntityType.CHECKBOX,
             }:
                 variable = variables[variable_type]
                 variable_entities.append(
@@ -96,8 +108,17 @@ class BasicVariablesConfigManager:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
-                raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
+            # if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
+            if key not in {
+                VariableEntityType.TEXT_INPUT,
+                VariableEntityType.SELECT,
+                VariableEntityType.PARAGRAPH,
+                VariableEntityType.NUMBER,
+                VariableEntityType.EXTERNAL_DATA_TOOL,
+                VariableEntityType.CHECKBOX,
+            }:
+                allowed_keys = ", ".join(i.value for i in _ALLOWED_VARIABLE_ENTITY_TYPE)
+                raise ValueError(f"Keys in user_input_form list can only be {allowed_keys}")
 
             form_item = item[key]
             if "label" not in form_item:

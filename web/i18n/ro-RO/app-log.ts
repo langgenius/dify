@@ -1,7 +1,7 @@
 const translation = {
   title: 'Jurnale',
   description: 'Jurnalele înregistrează starea de funcționare a aplicației, inclusiv intrările utilizatorilor și răspunsurile AI.',
-  dateTimeFormat: 'DD/MM/YYYY hh:mm A',
+  dateTimeFormat: 'DD/MM/YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'Timp actualizare',
@@ -93,6 +93,7 @@ const translation = {
     iteration: 'Iterație',
     finalProcessing: 'Procesare finală',
   },
+  dateFormat: 'ZZ/LL/AAAA',
 }
 
 export default translation

@@ -234,7 +234,7 @@ class TestAPIBasedExtensionService:
         # Verify extension was deleted
         from extensions.ext_database import db
 
-        deleted_extension = db.session.query(APIBasedExtension).filter(APIBasedExtension.id == extension_id).first()
+        deleted_extension = db.session.query(APIBasedExtension).where(APIBasedExtension.id == extension_id).first()
         assert deleted_extension is None
 
     def test_save_extension_duplicate_name(self, db_session_with_containers, mock_external_service_dependencies):

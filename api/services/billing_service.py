@@ -123,7 +123,7 @@ class BillingService:
             return BillingService._send_request("GET", "/education/verify", params=params)
 
         @classmethod
-        def is_active(cls, account_id: str):
+        def status(cls, account_id: str):
             params = {"account_id": account_id}
             return BillingService._send_request("GET", "/education/status", params=params)
 

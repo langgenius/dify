@@ -183,7 +183,7 @@ export const useEmbeddedChatbot = () => {
 
         return {
           ...item.paragraph,
-          default: value || item.default,
+          default: value || item.default || item.paragraph.default,
           type: 'paragraph',
         }
       }
@@ -191,8 +191,15 @@ export const useEmbeddedChatbot = () => {
         const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
         return {
           ...item.number,
-          default: convertedNumber || item.default,
+          default: convertedNumber || item.default || item.number.default,
           type: 'number',
+        }
+      }
+      if (item.checkbox) {
+        return {
+          ...item.checkbox,
+          default: false,
+          type: 'checkbox',
         }
       }
       if (item.select) {
@@ -218,13 +225,20 @@ export const useEmbeddedChatbot = () => {
         }
       }
 
+      if (item.json_object) {
+        return {
+          ...item.json_object,
+          type: 'json_object',
+        }
+      }
+
       let value = initInputs[item['text-input'].variable]
       if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
         value = value.slice(0, item['text-input'].max_length)
 
       return {
         ...item['text-input'],
-        default: value || item.default,
+        default: value || item.default || item['text-input'].default,
         type: 'text-input',
       }
     })
@@ -312,7 +326,7 @@ export const useEmbeddedChatbot = () => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)

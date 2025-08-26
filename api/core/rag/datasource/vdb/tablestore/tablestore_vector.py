@@ -17,6 +17,8 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models import Dataset
 
+logger = logging.getLogger(__name__)
+
 
 class TableStoreConfig(BaseModel):
     access_key_id: Optional[str] = None
@@ -145,7 +147,7 @@ class TableStoreVector(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
-                logging.info("Collection %s already exists.", self._collection_name)
+                logger.info("Collection %s already exists.", self._collection_name)
                 return
 
             self._create_table_if_not_exist()
@@ -155,7 +157,7 @@ class TableStoreVector(BaseVector):
     def _create_table_if_not_exist(self) -> None:
         table_list = self._tablestore_client.list_table()
         if self._table_name in table_list:
-            logging.info("Tablestore system table[%s] already exists", self._table_name)
+            logger.info("Tablestore system table[%s] already exists", self._table_name)
             return None
 
         schema_of_primary_key = [("id", "STRING")]
@@ -163,12 +165,12 @@ class TableStoreVector(BaseVector):
         table_options = tablestore.TableOptions()
         reserved_throughput = tablestore.ReservedThroughput(tablestore.CapacityUnit(0, 0))
         self._tablestore_client.create_table(table_meta, table_options, reserved_throughput)
-        logging.info("Tablestore create table[%s] successfully.", self._table_name)
+        logger.info("Tablestore create table[%s] successfully.", self._table_name)
 
     def _create_search_index_if_not_exist(self, dimension: int) -> None:
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
         if self._index_name in [t[1] for t in search_index_list]:
-            logging.info("Tablestore system index[%s] already exists", self._index_name)
+            logger.info("Tablestore system index[%s] already exists", self._index_name)
             return None
 
         field_schemas = [
@@ -206,20 +208,20 @@ class TableStoreVector(BaseVector):
 
         index_meta = tablestore.SearchIndexMeta(field_schemas)
         self._tablestore_client.create_search_index(self._table_name, self._index_name, index_meta)
-        logging.info("Tablestore create system index[%s] successfully.", self._index_name)
+        logger.info("Tablestore create system index[%s] successfully.", self._index_name)
 
     def _delete_table_if_exist(self):
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
         for resp_tuple in search_index_list:
             self._tablestore_client.delete_search_index(resp_tuple[0], resp_tuple[1])
-            logging.info("Tablestore delete index[%s] successfully.", self._index_name)
+            logger.info("Tablestore delete index[%s] successfully.", self._index_name)
 
         self._tablestore_client.delete_table(self._table_name)
-        logging.info("Tablestore delete system table[%s] successfully.", self._index_name)
+        logger.info("Tablestore delete system table[%s] successfully.", self._index_name)
 
     def _delete_search_index(self) -> None:
         self._tablestore_client.delete_search_index(self._table_name, self._index_name)
-        logging.info("Tablestore delete index[%s] successfully.", self._index_name)
+        logger.info("Tablestore delete index[%s] successfully.", self._index_name)
 
     def _write_row(self, primary_key: str, attributes: dict[str, Any]) -> None:
         pk = [("id", primary_key)]

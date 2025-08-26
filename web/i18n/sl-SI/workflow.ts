@@ -882,6 +882,7 @@ const translation = {
         },
         json: 'agent generiran json',
         text: 'vsebina, ki jo je ustvaril agent',
+        usage: 'informacije o uporabi modela',
       },
       checkList: {
         strategyNotSelected: 'Strategija ni izbrana',
@@ -995,6 +996,7 @@ const translation = {
     copyLastRunError: 'Kopiranje vhodov zadnjega zagona ni uspelo',
     noLastRunFound: 'Nobenega prejšnjega zagona ni bilo najdenega.',
     noMatchingInputsFound: 'Ni podatkov, ki bi ustrezali prejšnjemu zagonu',
+    lastOutput: 'Nazadnje izhod',
   },
 }
 

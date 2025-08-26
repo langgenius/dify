@@ -862,6 +862,7 @@ const translation = {
           title: 'एजेंट द्वारा उत्पन्न फ़ाइलें',
         },
         text: 'एजेंट द्वारा उत्पन्न सामग्री',
+        usage: 'मॉडल उपयोग जानकारी',
         json: 'एजेंट द्वारा उत्पन्न जेसन',
       },
       checkList: {
@@ -1015,6 +1016,7 @@ const translation = {
     noLastRunFound: 'कोई पिछला रन नहीं मिला',
     noMatchingInputsFound: 'अंतिम रन से कोई मेल खाने वाले इनपुट नहीं मिले',
     copyLastRunError: 'अंतिम रन इनपुट को कॉपी करने में विफल',
+    lastOutput: 'अंतिम आउटपुट',
   },
 }
 

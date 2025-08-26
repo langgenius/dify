@@ -1,3 +1,5 @@
+import contextlib
+import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Optional, Union
 
@@ -22,6 +24,9 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
+from tasks.delete_conversation_task import delete_conversation_related_data
+
+logger = logging.getLogger(__name__)
 
 
 class ConversationService:
@@ -103,10 +108,10 @@ class ConversationService:
     @classmethod
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
         field_value = getattr(reference_conversation, sort_field)
-        if sort_direction == desc:
+        if sort_direction is desc:
             return getattr(Conversation, sort_field) < field_value
-        else:
-            return getattr(Conversation, sort_field) > field_value
+
+        return getattr(Conversation, sort_field) > field_value
 
     @classmethod
     def rename(
@@ -142,13 +147,11 @@ class ConversationService:
             raise MessageNotExistsError()
 
         # generate conversation name
-        try:
+        with contextlib.suppress(Exception):
             name = LLMGenerator.generate_conversation_name(
                 app_model.tenant_id, message.query, conversation.id, app_model.id
             )
             conversation.name = name
-        except:
-            pass
 
         db.session.commit()
 
@@ -176,11 +179,21 @@ class ConversationService:
 
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
-        conversation = cls.get_conversation(app_model, conversation_id, user)
+        try:
+            logger.info(
+                "Initiating conversation deletion for app_name %s, conversation_id: %s",
+                app_model.name,
+                conversation_id,
+            )
 
-        conversation.is_deleted = True
-        conversation.updated_at = naive_utc_now()
-        db.session.commit()
+            db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
+            db.session.commit()
+
+            delete_conversation_related_data.delay(conversation_id)
+
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @classmethod
     def get_conversational_variable(
@@ -277,6 +290,11 @@ class ConversationService:
 
             # Validate that the new value type matches the expected variable type
             expected_type = SegmentType(current_variable.value_type)
+
+            # There is showing number in web ui but int in db
+            if expected_type == SegmentType.INTEGER:
+                expected_type = SegmentType.NUMBER
+
             if not expected_type.is_valid(new_value):
                 inferred_type = SegmentType.infer_segment_type(new_value)
                 raise ConversationVariableTypeMismatchError(
