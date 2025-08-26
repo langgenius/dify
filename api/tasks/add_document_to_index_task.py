@@ -13,6 +13,8 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import DatasetAutoDisableLog, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def add_document_to_index_task(dataset_document_id: str):
@@ -22,12 +24,12 @@ def add_document_to_index_task(dataset_document_id: str):
 
     Usage: add_document_to_index_task.delay(dataset_document_id)
     """
-    logging.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
+    logger.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
     start_at = time.perf_counter()
 
     dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document_id).first()
     if not dataset_document:
-        logging.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
+        logger.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
         db.session.close()
         return
 
@@ -101,11 +103,11 @@ def add_document_to_index_task(dataset_document_id: str):
         db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(f"Document added to index: {dataset_document.id} latency: {end_at - start_at}", fg="green")
         )
     except Exception as e:
-        logging.exception("add document to index failed")
+        logger.exception("add document to index failed")
         dataset_document.enabled = False
         dataset_document.disabled_at = naive_utc_now()
         dataset_document.indexing_status = "error"

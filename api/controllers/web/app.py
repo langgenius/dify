@@ -16,6 +16,8 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
+logger = logging.getLogger(__name__)
+
 
 class AppParameterApi(WebApiResource):
     """Resource for app variables."""
@@ -92,7 +94,7 @@ class AppWebAuthPermission(Resource):
         except Unauthorized:
             raise
         except Exception:
-            logging.exception("Unexpected error during auth verification")
+            logger.exception("Unexpected error during auth verification")
             raise
 
         features = FeatureService.get_system_features()

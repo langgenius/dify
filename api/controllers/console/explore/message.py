@@ -35,6 +35,8 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 
+logger = logging.getLogger(__name__)
+
 
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
@@ -126,7 +128,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -158,7 +160,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}

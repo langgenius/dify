@@ -14,6 +14,8 @@ from libs.login import login_required
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
+logger = logging.getLogger(__name__)
+
 
 class DefaultModelApi(Resource):
     @setup_required
@@ -73,7 +75,7 @@ class DefaultModelApi(Resource):
                     model=model_setting["model"],
                 )
             except Exception as ex:
-                logging.exception(
+                logger.exception(
                     "Failed to update default model, model type: %s, model: %s",
                     model_setting["model_type"],
                     model_setting.get("model"),
@@ -278,7 +280,7 @@ class ModelProviderModelCredentialApi(Resource):
                 credential_name=args["name"],
             )
         except CredentialsValidateFailedError as ex:
-            logging.exception(
+            logger.exception(
                 "Failed to save model credentials, tenant_id: %s, model: %s, model_type: %s",
                 tenant_id,
                 args.get("model"),

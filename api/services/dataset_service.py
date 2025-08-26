@@ -76,6 +76,8 @@ from tasks.remove_document_from_index_task import remove_document_from_index_tas
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
+logger = logging.getLogger(__name__)
+
 
 class DatasetService:
     @staticmethod
@@ -615,7 +617,7 @@ class DatasetService:
             )
         except ProviderTokenNotInitError:
             # If we can't get the embedding model, preserve existing settings
-            logging.warning(
+            logger.warning(
                 "Failed to initialize embedding model %s/%s, preserving existing settings",
                 data["embedding_model_provider"],
                 data["embedding_model"],
@@ -661,11 +663,11 @@ class DatasetService:
     @staticmethod
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
-            logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
+            logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
-                logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
+                logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
@@ -674,7 +676,7 @@ class DatasetService:
                         db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
                     )
                     if not user_permission:
-                        logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
+                        logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                         raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
@@ -1190,7 +1192,7 @@ class DocumentService:
                             created_by=account.id,
                         )
                     else:
-                        logging.warning(
+                        logger.warning(
                             "Invalid process rule mode: %s, can not find dataset process rule",
                             process_rule.mode,
                         )
@@ -1882,7 +1884,7 @@ class DocumentService:
                         task_func.delay(*task_args)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception("Error executing async task for document %s", update_info["document"].id)
+                    logger.exception("Error executing async task for document %s", update_info["document"].id)
                     # don't raise the error immediately, but capture it for later
                     propagation_error = e
                 try:
@@ -1893,7 +1895,7 @@ class DocumentService:
                         redis_client.setex(indexing_cache_key, 600, 1)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception("Error setting cache for document %s", update_info["document"].id)
+                    logger.exception("Error setting cache for document %s", update_info["document"].id)
             # Raise any propagation error after all updates
             if propagation_error:
                 raise propagation_error
@@ -2059,7 +2061,7 @@ class SegmentService:
             try:
                 VectorService.create_segments_vector([args["keywords"]], [segment_document], dataset, document.doc_form)
             except Exception as e:
-                logging.exception("create segment index failed")
+                logger.exception("create segment index failed")
                 segment_document.enabled = False
                 segment_document.disabled_at = naive_utc_now()
                 segment_document.status = "error"
@@ -2142,7 +2144,7 @@ class SegmentService:
                 # save vector index
                 VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset, document.doc_form)
             except Exception as e:
-                logging.exception("create segment index failed")
+                logger.exception("create segment index failed")
                 for segment_document in segment_data_list:
                     segment_document.enabled = False
                     segment_document.disabled_at = naive_utc_now()
@@ -2314,7 +2316,7 @@ class SegmentService:
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
 
         except Exception as e:
-            logging.exception("update segment index failed")
+            logger.exception("update segment index failed")
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
             segment.status = "error"
@@ -2476,7 +2478,7 @@ class SegmentService:
             try:
                 VectorService.create_child_chunk_vector(child_chunk, dataset)
             except Exception as e:
-                logging.exception("create child chunk index failed")
+                logger.exception("create child chunk index failed")
                 db.session.rollback()
                 raise ChildChunkIndexingError(str(e))
             db.session.commit()
@@ -2551,7 +2553,7 @@ class SegmentService:
             VectorService.update_child_chunk_vector(new_child_chunks, update_child_chunks, delete_child_chunks, dataset)
             db.session.commit()
         except Exception as e:
-            logging.exception("update child chunk index failed")
+            logger.exception("update child chunk index failed")
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
         return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
@@ -2575,7 +2577,7 @@ class SegmentService:
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)
             db.session.commit()
         except Exception as e:
-            logging.exception("update child chunk index failed")
+            logger.exception("update child chunk index failed")
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
         return child_chunk
@@ -2586,7 +2588,7 @@ class SegmentService:
         try:
             VectorService.delete_child_chunk_vector(child_chunk, dataset)
         except Exception as e:
-            logging.exception("delete child chunk index failed")
+            logger.exception("delete child chunk index failed")
             db.session.rollback()
             raise ChildChunkDeleteIndexError(str(e))
         db.session.commit()
