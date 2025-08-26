@@ -7,7 +7,6 @@ import { pick, uniq } from 'lodash-es'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
-  RiDownloadLine,
   RiEditLine,
   RiEqualizer2Line,
   RiLoopLeftLine,
@@ -35,7 +34,6 @@ import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { useDocumentDownload } from '@/service/knowledge/use-document'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { ChunkingMode, DataSourceType, DocumentActionType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
@@ -189,7 +187,6 @@ export const OperationAction: FC<{
   scene?: 'list' | 'detail'
   className?: string
 }> = ({ embeddingAvailable, datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
-  const downloadDocument = useDocumentDownload()
   const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -298,32 +295,6 @@ export const OperationAction: FC<{
     )}
     {embeddingAvailable && (
       <>
-        <Tooltip
-          popupContent={t('datasetDocuments.list.action.download')}
-          popupClassName='text-text-secondary system-xs-medium'
-          needsDelay={false}
-        >
-          <button
-            className={cn('mr-2 cursor-pointer rounded-lg',
-              !isListScene
-                ? 'shadow-shadow-3 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
-                : 'p-0.5 hover:bg-state-base-hover')}
-            onClick={() => {
-              downloadDocument.mutateAsync({
-                datasetId,
-                documentId: detail.id,
-              }).then((response) => {
-                if (response.download_url)
-                  window.location.href = response.download_url
-              }).catch((error) => {
-                console.error(error)
-                notify({ type: 'error', message: t('common.actionMsg.downloadFailed') })
-              })
-            }}
-          >
-            <RiDownloadLine className='h-4 w-4 text-components-button-secondary-text' />
-          </button>
-        </Tooltip>
         <Tooltip
           popupContent={t('datasetDocuments.list.action.settings')}
           popupClassName='text-text-secondary system-xs-medium'
@@ -692,7 +663,11 @@ const DocumentList: FC<IDocumentListProps> = ({
                       {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
                       {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='mr-1.5 mt-[-3px] inline-flex align-middle' />}
                     </div>
-                    <span className='grow-1 truncate text-sm'>{doc.name}</span>
+                    <Tooltip
+                      popupContent={doc.name}
+                    >
+                      <span className='grow-1 truncate text-sm'>{doc.name}</span>
+                    </Tooltip>
                     <div className='hidden shrink-0 group-hover:ml-auto group-hover:flex'>
                       <Tooltip
                         popupContent={t('datasetDocuments.list.table.rename')}

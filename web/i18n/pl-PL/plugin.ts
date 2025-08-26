@@ -246,6 +246,9 @@ const translation = {
     addOAuth: 'Dodaj OAuth',
     useApiAuthDesc: 'Po skonfigurowaniu poświadczeń wszyscy członkowie w przestrzeni roboczej mogą korzystać z tego narzędzia podczas orkiestracji aplikacji.',
     clientInfo: 'Ponieważ nie znaleziono tajemnic klientów systemu dla tego dostawcy narzędzi, wymagane jest ręczne skonfigurowanie, dla redirect_uri proszę użyć',
+    unavailable: 'Niedostępny',
+    customCredentialUnavailable: 'Niestandardowe dane logowania są obecnie niedostępne',
+    credentialUnavailable: 'Kredencje są obecnie niedostępne. Proszę skontaktować się z administratorem.',
   },
   deprecated: 'Nieaktualny',
   autoUpdate: {
