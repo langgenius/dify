@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, exists, orm
+from sqlalchemy import DateTime, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -336,12 +336,14 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return db.session.query(
-            exists().where(
-                WorkflowToolProvider.tenant_id == self.tenant_id,
-                WorkflowToolProvider.app_id == self.app_id,
+        return db.session.scalar(
+            select(
+                exists().where(
+                    WorkflowToolProvider.tenant_id == self.tenant_id,
+                    WorkflowToolProvider.app_id == self.app_id,
+                )
             )
-        ).scalar()
+        )
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
