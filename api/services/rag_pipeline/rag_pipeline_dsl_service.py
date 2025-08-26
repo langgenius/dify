@@ -274,7 +274,7 @@ class RagPipelineDslService:
                 dependencies=check_dependencies_pending_data,
             )
             # create dataset
-            name = dataset_name or pipeline.name
+            name = pipeline.name or "Untitled"
             description = pipeline.description
             if icon_info:
                 icon_type = icon_info.icon_type
