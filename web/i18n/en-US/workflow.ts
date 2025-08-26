@@ -340,6 +340,18 @@ const translation = {
         conversationRoleName: 'Conversation Role Name',
         user: 'User prefix',
         assistant: 'Assistant prefix',
+        disabled: {
+          title: 'Disabled',
+          desc: 'AI won\'t remember anything from previous conversations',
+        },
+        linear: {
+          title: 'Linear',
+          desc: 'AI remembers the conversation flow and previous messages in order',
+        },
+        block: {
+          title: 'Memory Block',
+          desc: 'AI remembers specific information you define using custom templates',
+        },
       },
       memories: {
         title: 'Memories',

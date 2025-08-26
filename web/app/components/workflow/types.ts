@@ -173,7 +173,7 @@ export type ConversationVariable = {
   name: string
   value_type: ChatVarType
   value: any
-  description: string
+  description?: string
 } & MemoryVariable
 
 export type GlobalVariable = {
@@ -259,12 +259,15 @@ export type RolePrefix = {
 }
 
 export type Memory = {
+  enabled?: boolean
   role_prefix?: RolePrefix
   window: {
     enabled: boolean
     size: number | string | null
   }
   query_prompt_template: string
+  block_id?: string
+  mode?: 'linear' | 'block'
 }
 
 export enum VarType {

@@ -1,6 +1,7 @@
 import React, { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { v4 as uuid4 } from 'uuid'
 import {
   useForm as useTanstackForm,
   useStore as useTanstackStore,
@@ -63,26 +64,27 @@ const ChatVariableModal = ({
     }) || { isCheckValidated: false, values: {} }
     const {
       name,
-      type,
+      value_type,
       value,
+      editInJSON,
+      ...rest
     } = values
-    console.log(values, 'xxx')
     if (!isCheckValidated)
       return
     if (!checkVariableName(name))
       return
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
       return notify({ type: 'error', message: 'name is existed' })
-    if (type === ChatVarType.Object && value.some((item: any) => !item.key && !!item.value))
+    if (value_type === ChatVarType.Object && value.some((item: any) => !item.key && !!item.value))
       return notify({ type: 'error', message: 'object key can not be empty' })
 
-    // onSave({
-    //   id: chatVar ? chatVar.id : uuid4(),
-    //   name,
-    //   value_type: type,
-    //   value: values,
-    //   description,
-    // })
+    onSave({
+      id: chatVar ? chatVar.id : uuid4(),
+      name,
+      value_type,
+      value: editInJSON ? JSON.parse(value) : value,
+      ...rest,
+    })
     onClose()
   }, [onClose, notify, t, varList, chatVar, checkVariableName])
 

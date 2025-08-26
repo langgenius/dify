@@ -340,6 +340,18 @@ const translation = {
         conversationRoleName: '对话角色名',
         user: '用户前缀',
         assistant: '助手前缀',
+        disabled: {
+          title: '禁用',
+          desc: 'AI 不会记住任何之前的对话',
+        },
+        linear: {
+          title: '线性',
+          desc: 'AI 会记住对话的顺序和之前的消息',
+        },
+        block: {
+          title: '记忆块',
+          desc: 'AI 会记住你定义的特定信息',
+        },
       },
       memories: {
         title: '记忆',

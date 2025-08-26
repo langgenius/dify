@@ -21,6 +21,7 @@ import Switch from '@/app/components/base/switch'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
+import MemorySystem from './components/memory-system'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -224,7 +225,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               readonly={readOnly}
               config={{ data: inputs.memory }}
               onChange={handleMemoryChange}
-              canSetRoleName={isCompletionModel}
+              canSetRoleName={!isCompletionModel}
+            />
+            <MemorySystem
+              id={id}
+              data={data}
             />
           </>
         )}
