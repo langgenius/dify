@@ -12,12 +12,12 @@ class JsonExtractor(BaseExtractor):
     into separate documents, preserving key-value relationships and nested structure information.
     """
 
-    def __init__(self, file_path: str, file_content: Optional[str] = None):
+    def __init__(self, file_path: str, file_content: Optional[bytes] = None):
         """Initialize with file path and optional file content.
-
+        
         Args:
             file_path: Path to the JSON file to load
-            file_content: Optional file content string (for testing)
+            file_content: Optional file content bytes (for testing)
         """
         self._file_path = file_path
         self._file_content = file_content
