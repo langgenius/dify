@@ -127,7 +127,6 @@ class ExternalApi(Api):
             kwargs["doc"] = dify_config.SWAGGER_UI_PATH
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
-        init_args = args[1:] if len(args) >= 1 else []
-        super().__init__(app=None, *init_args, **kwargs)  # type: ignore
+        super().__init__(app=None, *args, **kwargs)  # type: ignore
         self.init_app(app, **kwargs)
         register_external_error_handlers(self)
