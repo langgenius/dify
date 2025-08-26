@@ -1,7 +1,7 @@
 'use client'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { BlockEnum } from '../../../types'
 import { useWorkflowVariableType } from '../../../hooks'
@@ -46,20 +46,32 @@ const FormContent: FC<Props> = ({
 
   const getVarType = useWorkflowVariableType()
 
+  const [needToAddFormInput, setNeedToAddFormInput] = useState(false)
+  const [newFormInputs, setNewFormInputs] = useState<FormInputItem[]>([])
   const handleInsertHITLNode = (onInsert: (command: LexicalCommand<unknown>, params: any) => void) => {
     return (payload: FormInputItem) => {
-      // todo insert into form inputs
+      const newFormInputs = [...(formInputs || []), payload]
       onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
         variableName: payload.output_variable_name,
         nodeId,
         nodeTitle,
-        formInputs,
+        formInputs: newFormInputs,
         onFormInputsChange,
         onFormInputItemRename,
         onFormInputItemRemove,
       })
+      setNewFormInputs(newFormInputs)
+      setNeedToAddFormInput(true)
     }
   }
+
+  // avoid update formInputs would overwrite the value just inserted
+  useEffect(() => {
+    if (needToAddFormInput) {
+      onFormInputsChange(newFormInputs)
+      setNeedToAddFormInput(false)
+    }
+  }, [value])
 
   return (
     <div>
