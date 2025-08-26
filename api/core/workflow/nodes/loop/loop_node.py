@@ -534,10 +534,8 @@ class LoopNode(BaseNode):
             else:
                 logger.warning("unexpected value for LoopNode, value_type=%s, value=%s", original_value, var_type)
                 value = []
-        elif var_type == SegmentType.ARRAY_BOOLEAN:
-            value = original_value
         else:
-            raise AssertionError("this statement should be unreachable.")
+            value = original_value
         try:
             return build_segment_with_type(var_type, value=value)
         except TypeMismatchError as type_exc:
