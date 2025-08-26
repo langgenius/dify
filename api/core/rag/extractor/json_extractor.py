@@ -4,6 +4,17 @@ from typing import Optional
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 
+# Type mapping for more descriptive type representation
+TYPE_NAME_MAP = {
+    "dict": "object",
+    "list": "array",
+    "str": "string",
+    "int": "number",
+    "float": "number",
+    "bool": "boolean",
+    "NoneType": "null",
+}
+
 
 class JsonExtractor(BaseExtractor):
     """Extract text from JSON files.
@@ -86,9 +97,9 @@ class JsonExtractor(BaseExtractor):
         """
         # Convert object to formatted JSON string
         content = json.dumps(obj, ensure_ascii=False, indent=2)
+        
+        # Determine object type using descriptive mapping
         obj_type = TYPE_NAME_MAP.get(type(obj).__name__, type(obj).__name__)
-        # Determine object type and extract key information
-        obj_type = type(obj).__name__
         metadata = {"source": self._file_path, "index": index, "type": obj_type}
 
         # Add additional metadata for objects
@@ -109,6 +120,6 @@ class JsonExtractor(BaseExtractor):
 
         elif isinstance(obj, list):
             metadata["length"] = len(obj)
-            metadata["element_types"] = list(set(type(item).__name__ for item in obj))
+            metadata["element_types"] = list(set(TYPE_NAME_MAP.get(type(item).__name__, type(item).__name__) for item in obj))
 
         return Document(page_content=content, metadata=metadata)
