@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 from typing import Optional, Union
 
@@ -30,6 +31,8 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageCycleManager:

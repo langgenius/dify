@@ -1,3 +1,4 @@
+import logging
 from flask import request
 from werkzeug.exceptions import InternalServerError
 
@@ -25,6 +26,8 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AudioApi(WebApiResource):

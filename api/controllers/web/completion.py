@@ -1,3 +1,4 @@
+import logging
 from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -28,6 +29,8 @@ from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
+
+logger = logging.getLogger(__name__)
 
 
 # define completion api for user

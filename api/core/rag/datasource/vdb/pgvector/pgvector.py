@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import uuid
 from contextlib import contextmanager
 from typing import Any
@@ -17,6 +18,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class PGVectorConfig(BaseModel):

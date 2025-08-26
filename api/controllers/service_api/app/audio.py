@@ -1,3 +1,4 @@
+import logging
 from flask import request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import InternalServerError
@@ -27,6 +28,7 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
+logger = logging.getLogger(__name__)
 
 @service_api_ns.route("/audio-to-text")
 class AudioApi(Resource):

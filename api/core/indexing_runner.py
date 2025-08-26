@@ -1,5 +1,6 @@
 import concurrent.futures
 import json
+import logging
 import re
 import threading
 import time
@@ -37,6 +38,8 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 class IndexingRunner:

@@ -1,3 +1,4 @@
+import logging
 from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
@@ -13,6 +14,8 @@ from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
+
+logger = logging.getLogger(__name__)
 
 
 class AppParameterApi(WebApiResource):

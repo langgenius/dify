@@ -1,3 +1,4 @@
+import logging
 from flask_restx import fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -32,6 +33,8 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageListApi(WebApiResource):

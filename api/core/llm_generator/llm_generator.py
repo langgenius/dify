@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from collections.abc import Sequence
 from typing import Optional, cast
@@ -29,6 +30,8 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_engine.entities.event import AgentLogEvent
 from models import App, Message, WorkflowNodeExecutionModel, db
+
+logger = logging.getLogger(__name__)
 
 
 class LLMGenerator:

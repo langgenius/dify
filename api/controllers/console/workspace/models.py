@@ -1,3 +1,4 @@
+import logging
 from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
@@ -11,6 +12,8 @@ from libs.helper import StrLen, uuid_value
 from libs.login import login_required
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
+
+logger = logging.getLogger(__name__)
 
 
 class DefaultModelApi(Resource):

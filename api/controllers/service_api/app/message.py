@@ -1,4 +1,5 @@
 import json
+import logging
 
 from flask_restx import Api, Namespace, Resource, fields, reqparse
 from flask_restx.inputs import int_range
@@ -20,6 +21,9 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
+
 
 # Define parsers for message APIs
 message_list_parser = reqparse.RequestParser()

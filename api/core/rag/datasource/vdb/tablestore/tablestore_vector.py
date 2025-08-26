@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 from typing import Any, Optional
 
@@ -15,6 +16,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class TableStoreConfig(BaseModel):

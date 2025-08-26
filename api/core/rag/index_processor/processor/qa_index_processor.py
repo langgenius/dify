@@ -1,5 +1,5 @@
 """Paragraph index processor."""
-
+import logging
 import re
 import threading
 import uuid
@@ -21,6 +21,8 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.dataset import Dataset
 from services.entities.knowledge_entities.knowledge_entities import Rule
+
+logger = logging.getLogger(__name__)
 
 
 class QAIndexProcessor(BaseIndexProcessor):

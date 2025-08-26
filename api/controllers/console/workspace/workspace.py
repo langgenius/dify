@@ -1,3 +1,4 @@
+import logging
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
@@ -28,6 +29,9 @@ from services.account_service import TenantService
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
+
+logger = logging.getLogger(__name__)
+
 
 provider_fields = {
     "provider_name": fields.String,

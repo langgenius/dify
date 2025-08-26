@@ -1,12 +1,13 @@
 """
 Proxy requests to avoid SSRF
 """
-
+import logging
 import time
-
 import httpx
 
 from configs import dify_config
+
+logger = logging.getLogger(__name__)
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 

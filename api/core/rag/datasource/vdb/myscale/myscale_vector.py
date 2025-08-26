@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from enum import Enum
 from typing import Any
@@ -13,6 +14,8 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class MyScaleConfig(BaseModel):

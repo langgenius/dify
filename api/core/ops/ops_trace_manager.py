@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import queue
 import threading
@@ -35,6 +36,8 @@ from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
+
+logger = logging.getLogger(__name__)
 
 
 class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):

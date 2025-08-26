@@ -1,3 +1,4 @@
+import logging
 import queue
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
@@ -29,6 +30,9 @@ from core.mcp.types import (
     ServerResult,
     SessionMessage,
 )
+
+logger = logging.getLogger(__name__)
+
 
 SendRequestT = TypeVar("SendRequestT", ClientRequest, ServerRequest)
 SendResultT = TypeVar("SendResultT", ClientResult, ServerResult)

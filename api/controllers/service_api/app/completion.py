@@ -1,3 +1,4 @@
+import logging
 from flask import request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
@@ -30,6 +31,9 @@ from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+
+logger = logging.getLogger(__name__)
+
 
 # Define parser for completion API
 completion_parser = reqparse.RequestParser()
