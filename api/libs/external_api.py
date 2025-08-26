@@ -116,11 +116,9 @@ class ExternalApi(Api):
         }
     }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, app: Blueprint | Flask, *args, **kwargs):
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
-        bp = args[0]
-        assert isinstance(bp, (Blueprint, Flask))
 
         kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED
         if not dify_config.SWAGGER_UI_ENABLED:
@@ -131,5 +129,5 @@ class ExternalApi(Api):
         # manual separate call on construction and init_app to ensure configs in kwargs effective
         init_args = args[1:] if len(args) >= 1 else []
         super().__init__(app=None, *init_args, **kwargs)  # type: ignore
-        self.init_app(bp, **kwargs)
+        self.init_app(app, **kwargs)
         register_external_error_handlers(self)
