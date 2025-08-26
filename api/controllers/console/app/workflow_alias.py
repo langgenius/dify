@@ -25,6 +25,7 @@ class WorkflowAliasApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_alias_list_fields)
     def get(self, app_model: App):
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -71,6 +72,7 @@ class WorkflowAliasApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_alias_fields)
     def post(self, app_model: App):
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -117,6 +119,7 @@ class WorkflowAliasApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def delete(self, app_model: App):
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
 
