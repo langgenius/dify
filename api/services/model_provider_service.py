@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
@@ -380,7 +380,7 @@ class ModelProviderService:
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider available models
-        models = provider_configurations.get_models(model_type=ModelType.value_of(model_type))
+        models = provider_configurations.get_models(model_type=ModelType.value_of(model_type), only_active=True)
 
         # Group models by provider
         provider_models: dict[str, list[ModelWithProviderEntity]] = {}
@@ -389,9 +389,6 @@ class ModelProviderService:
                 provider_models[model.provider.provider] = []
 
             if model.deprecated:
-                continue
-
-            if model.status != ModelStatus.ACTIVE:
                 continue
 
             provider_models[model.provider.provider].append(model)
