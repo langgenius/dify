@@ -20,6 +20,7 @@ from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphEngineEvent,
+    GraphNodeEventBase,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunStartedEvent,
@@ -103,7 +104,7 @@ class GraphEngine:
 
         # Initialize queues
         self.ready_queue: queue.Queue[str] = queue.Queue()
-        self.event_queue: queue.Queue = queue.Queue()
+        self.event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
 
         # Initialize subsystems
         self._initialize_subsystems()
