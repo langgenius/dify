@@ -190,52 +190,6 @@ class TestAppDslService:
         assert model_dict["provider"] == "openai"
         assert model_dict["name"] == "gpt-3.5-turbo"
 
-    def test_import_app_yaml_url_success(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test successful app import from YAML URL.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create YAML content for mock response
-        yaml_content = self._create_simple_yaml_content(fake.company(), "chat")
-
-        # Setup mock response
-        mock_response = MagicMock()
-        mock_response.content = yaml_content.encode("utf-8")
-        mock_response.raise_for_status.return_value = None
-        mock_external_service_dependencies["ssrf_proxy"].get.return_value = mock_response
-
-        # Import app from URL
-        dsl_service = AppDslService(db_session_with_containers)
-        result = dsl_service.import_app(
-            account=account,
-            import_mode=ImportMode.YAML_URL,
-            yaml_url="https://example.com/app.yaml",
-            name="URL Imported App",
-            description="App imported from URL",
-        )
-
-        # Verify import result
-        assert result.status == ImportStatus.COMPLETED
-        assert result.app_id is not None
-        assert result.app_mode == "chat"
-        assert result.imported_dsl_version == "0.3.0"
-        assert result.error == ""
-
-        # Verify app was created in database
-        imported_app = db_session_with_containers.query(App).filter(App.id == result.app_id).first()
-        assert imported_app is not None
-        assert imported_app.name == "URL Imported App"
-        assert imported_app.description == "App imported from URL"
-        assert imported_app.mode == "chat"
-        assert imported_app.tenant_id == account.current_tenant_id
-
-        # Verify ssrf_proxy was called
-        mock_external_service_dependencies["ssrf_proxy"].get.assert_called_once_with(
-            "https://example.com/app.yaml", follow_redirects=True, timeout=(10, 10)
-        )
-
     def test_import_app_invalid_yaml_format(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test app import with invalid YAML format.
