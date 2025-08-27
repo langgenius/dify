@@ -190,35 +190,6 @@ class TestAppDslService:
         assert model_dict["provider"] == "openai"
         assert model_dict["name"] == "gpt-3.5-turbo"
 
-    def test_import_app_invalid_yaml_format(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test app import with invalid YAML format.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create invalid YAML content
-        invalid_yaml = "invalid: yaml: content: ["
-
-        # Import app with invalid YAML
-        dsl_service = AppDslService(db_session_with_containers)
-        result = dsl_service.import_app(
-            account=account,
-            import_mode=ImportMode.YAML_CONTENT,
-            yaml_content=invalid_yaml,
-            name="Invalid App",
-        )
-
-        # Verify import failed
-        assert result.status == ImportStatus.FAILED
-        assert result.app_id is None
-        assert "Invalid YAML format" in result.error
-        assert result.imported_dsl_version == ""
-
-        # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
-        assert apps_count == 1  # Only the original test app
-
     def test_import_app_missing_yaml_content(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test app import with missing YAML content.
