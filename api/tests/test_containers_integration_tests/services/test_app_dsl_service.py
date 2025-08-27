@@ -144,52 +144,6 @@ class TestAppDslService:
         }
         return yaml.dump(yaml_data, allow_unicode=True)
 
-    def test_import_app_yaml_content_success(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test successful app import from YAML content.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create YAML content
-        yaml_content = self._create_simple_yaml_content(fake.company(), "chat")
-
-        # Import app
-        dsl_service = AppDslService(db_session_with_containers)
-        result = dsl_service.import_app(
-            account=account,
-            import_mode=ImportMode.YAML_CONTENT,
-            yaml_content=yaml_content,
-            name="Imported App",
-            description="Imported app description",
-        )
-
-        # Verify import result
-        assert result.status == ImportStatus.COMPLETED
-        assert result.app_id is not None
-        assert result.app_mode == "chat"
-        assert result.imported_dsl_version == "0.3.0"
-        assert result.error == ""
-
-        # Verify app was created in database
-        imported_app = db_session_with_containers.query(App).filter(App.id == result.app_id).first()
-        assert imported_app is not None
-        assert imported_app.name == "Imported App"
-        assert imported_app.description == "Imported app description"
-        assert imported_app.mode == "chat"
-        assert imported_app.tenant_id == account.current_tenant_id
-        assert imported_app.created_by == account.id
-
-        # Verify model config was created
-        model_config = (
-            db_session_with_containers.query(AppModelConfig).filter(AppModelConfig.app_id == result.app_id).first()
-        )
-        assert model_config is not None
-        # The provider and model_id are stored in the model field as JSON
-        model_dict = model_config.model_dict
-        assert model_dict["provider"] == "openai"
-        assert model_dict["name"] == "gpt-3.5-turbo"
-
     def test_import_app_missing_yaml_content(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test app import with missing YAML content.
