@@ -94,8 +94,7 @@ class AsyncWorkflowService:
         # 3. Get dispatcher based on tenant subscription
         dispatcher = dispatcher_manager.get_dispatcher(trigger_data.tenant_id)
 
-        # 4. Get tenant owner timezone for rate limiting
-        tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
+        # 4. Rate limiting check will be done without timezone first
 
         # 5. Determine user role and ID
         if isinstance(user, Account):
@@ -125,16 +124,16 @@ class AsyncWorkflowService:
         session.commit()
 
         # 7. Check and consume daily quota
-        if not dispatcher.consume_quota(trigger_data.tenant_id, tenant_owner_tz):
+        if not dispatcher.consume_quota(trigger_data.tenant_id):
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
             trigger_log.error = f"Daily limit reached for {dispatcher.get_queue_name()}"
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            remaining = rate_limiter.get_remaining_quota(
-                trigger_data.tenant_id, dispatcher.get_daily_limit(), tenant_owner_tz
-            )
+            tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
+
+            remaining = rate_limiter.get_remaining_quota(trigger_data.tenant_id, dispatcher.get_daily_limit())
 
             reset_time = rate_limiter.get_quota_reset_time(trigger_data.tenant_id, tenant_owner_tz)
 
