@@ -11,12 +11,14 @@ from models.account import Account
 from models.model import EndUser
 
 _T = TypeVar("_T")
+
+
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
-current_user = cast(return_type(_get_user), LocalProxy(lambda: _get_user()))
-
-
 def return_type(x: Callable[..., _T]) -> type[_T]: ...
+
+
+current_user = cast(return_type(_get_user), LocalProxy(lambda: _get_user()))
 
 
 def login_required(func):
