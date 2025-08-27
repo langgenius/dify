@@ -26,7 +26,6 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
-import Divider from '../base/divider'
 import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
@@ -197,7 +196,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   if (!appDetail)
     return null
 
-  const operations = [
+  const primaryOperations = [
     {
       id: 'edit',
       title: t('app.editApp'),
@@ -224,7 +223,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       icon: <RiFileDownloadLine />,
       onClick: exportCheck,
     },
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? {
+  ]
+
+  const secondaryOperations: Operation[] = [
+    // Import DSL (conditional)
+    ...(appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? [{
       id: 'import',
       title: t('workflow.common.importDSL'),
       icon: <RiFileUploadLine />,
@@ -233,18 +236,39 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         onDetailExpand?.(false)
         setShowImportDSLModal(true)
       },
-    } : undefined,
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
-      id: 'switch',
-      title: t('app.switch'),
-      icon: <RiExchange2Line />,
+    }] : [],
+    // Divider
+    {
+      id: 'divider-1',
+      title: '',
+      icon: <></>,
+      onClick: () => { /* divider has no action */ },
+      type: 'divider' as const,
+    },
+    // Delete operation
+    {
+      id: 'delete',
+      title: t('common.operation.delete'),
+      icon: <RiDeleteBinLine />,
       onClick: () => {
         setOpen(false)
         onDetailExpand?.(false)
-        setShowSwitchModal(true)
+        setShowConfirmDelete(true)
       },
-    } : undefined,
-  ].filter((op): op is Operation => Boolean(op))
+    },
+  ]
+
+  // Keep the switch operation separate as it's not part of the main operations
+  const switchOperation = (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
+    id: 'switch',
+    title: t('app.switch'),
+    icon: <RiExchange2Line />,
+    onClick: () => {
+      setOpen(false)
+      onDetailExpand?.(false)
+      setShowSwitchModal(true)
+    },
+  } : null
 
   return (
     <div>
@@ -322,7 +346,8 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           {/* operations */}
           <AppOperations
             gap={4}
-            operations={operations}
+            primaryOperations={primaryOperations}
+            secondaryOperations={secondaryOperations}
           />
         </div>
         <CardView
@@ -330,22 +355,20 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           isInPanel={true}
           className='flex flex-1 flex-col gap-2 overflow-auto px-2 py-1'
         />
-        <Divider />
-        <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2'>
-          <Button
-            size={'medium'}
-            variant={'ghost'}
-            className='gap-0.5'
-            onClick={() => {
-              setOpen(false)
-              onDetailExpand?.(false)
-              setShowConfirmDelete(true)
-            }}
-          >
-            <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
-            <span className='system-sm-medium text-text-tertiary'>{t('common.operation.deleteApp')}</span>
-          </Button>
-        </div>
+        {/* Switch operation (if available) */}
+        {switchOperation && (
+          <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2'>
+            <Button
+              size={'medium'}
+              variant={'ghost'}
+              className='gap-0.5'
+              onClick={switchOperation.onClick}
+            >
+              {switchOperation.icon}
+              <span className='system-sm-medium text-text-tertiary'>{switchOperation.title}</span>
+            </Button>
+          </div>
+        )}
       </ContentDialog>
       {showSwitchModal && (
         <SwitchAppModal
