@@ -65,7 +65,7 @@ class Storage:
                 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 
                 return VolcengineTosStorage
-            case StorageType.SUPBASE:
+            case StorageType.SUPABASE:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage

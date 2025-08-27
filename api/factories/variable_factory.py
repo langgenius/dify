@@ -128,10 +128,6 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     return cast(Variable, result)
 
 
-def infer_segment_type_from_value(value: Any, /) -> SegmentType:
-    return build_segment(value).value_type
-
-
 def build_segment(value: Any, /) -> Segment:
     # NOTE: If you have runtime type information available, consider using the `build_segment_with_type`
     # below
