@@ -47,7 +47,7 @@ class OutputRegistry:
         with self._lock:
             self._scalars.add(selector, value)
 
-    def get_scalar(self, selector: Sequence[str]) -> "Segment" | None:
+    def get_scalar(self, selector: Sequence[str]) -> "Segment | None":
         """
         Get a scalar value for the given selector.
 
@@ -81,7 +81,7 @@ class OutputRegistry:
             except ValueError:
                 raise ValueError(f"Stream {'.'.join(selector)} is already closed")
 
-    def pop_chunk(self, selector: Sequence[str]) -> "NodeRunStreamChunkEvent" | None:
+    def pop_chunk(self, selector: Sequence[str]) -> "NodeRunStreamChunkEvent | None":
         """
         Pop the next unread NodeRunStreamChunkEvent from the stream.
 

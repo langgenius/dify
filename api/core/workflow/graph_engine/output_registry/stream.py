@@ -41,7 +41,7 @@ class Stream:
             raise ValueError("Cannot append to a closed stream")
         self.events.append(event)
 
-    def pop_next(self) -> "NodeRunStreamChunkEvent" | None:
+    def pop_next(self) -> "NodeRunStreamChunkEvent | None":
         """
         Pop the next unread NodeRunStreamChunkEvent from the stream.
 
