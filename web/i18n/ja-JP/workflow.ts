@@ -46,7 +46,7 @@ const translation = {
     needConnectTip: '接続されていないステップがあります',
     maxTreeDepth: '1 ブランチあたりの最大ノード数：{{depth}}',
     needEndNode: '終了ブロックを追加する必要があります',
-    needStartNode: '開始ノード（スタートまたはトリガー）を追加する必要があります',
+    needStartNode: '少なくとも1つのスタートノードを追加する必要があります',
     needAnswerNode: '回答ブロックを追加する必要があります',
     workflowProcess: 'ワークフロー処理',
     notRunning: 'まだ実行されていません',

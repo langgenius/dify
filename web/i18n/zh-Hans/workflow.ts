@@ -45,7 +45,7 @@ const translation = {
     needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
     needEndNode: '必须添加结束节点',
-    needStartNode: '必须添加开始节点（开始或触发器）',
+    needStartNode: '必须添加至少一个开始节点',
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',
     notRunning: '尚未运行',
