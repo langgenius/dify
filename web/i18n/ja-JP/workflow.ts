@@ -1098,6 +1098,17 @@ const translation = {
     enabled: 'スタート',
     disabled: '開始 • 無効',
   },
+  onboarding: {
+    title: '開始するには開始ノードを選択してください',
+    description: '異なる開始ノードには異なる機能があります。心配しないでください、いつでも変更できます。',
+    userInputFull: 'ユーザー入力（元の開始ノード）',
+    userInputDescription: 'ユーザー入力変数の設定を可能にする開始ノードで、Webアプリ、サービスAPI、MCPサーバー、およびツールとしてのワークフロー機能を持ちます。',
+    trigger: 'トリガー',
+    triggerDescription: 'トリガーは、スケジュールされたタスク、カスタムwebhook、または他のアプリとの統合など、ワークフローの開始ノードとして機能できます。',
+    back: '戻る',
+    learnMore: '詳細を見る',
+    aboutStartNode: '開始ノードについて。',
+  },
 }
 
 export default translation
