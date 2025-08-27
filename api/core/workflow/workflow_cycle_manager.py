@@ -266,7 +266,7 @@ class WorkflowCycleManager:
         """Get execution ID from system variables or generate a new one."""
         if self._workflow_system_variables and self._workflow_system_variables.workflow_execution_id:
             return str(self._workflow_system_variables.workflow_execution_id)
-        return str(uuid4())
+        return str(uuidv7())
 
     def _save_and_cache_workflow_execution(self, execution: WorkflowExecution) -> WorkflowExecution:
         """Save workflow execution to repository and cache it."""
