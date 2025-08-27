@@ -19,6 +19,7 @@ import {
 } from '@remixicon/react'
 
 export const OAUTH_AUTHORIZE_PENDING_KEY = 'oauth_authorize_pending'
+export const REDIRECT_URL_KEY = 'redirect_url'
 
 function buildReturnUrl(pathname: string, search: string) {
   try {
@@ -73,11 +74,11 @@ export default function OAuthAuthorize() {
     catch { return false }
   }, [])
 
-  const onLoginClick = () => {
+  const onLoginSwitchClick = () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
       localStorage.setItem(OAUTH_AUTHORIZE_PENDING_KEY, JSON.stringify({ returnUrl }))
-      router.push(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
+      router.push(`/signin?${REDIRECT_URL_KEY}=${encodeURIComponent(returnUrl)}`)
     }
     catch {
       router.push('/signin')
@@ -147,7 +148,7 @@ export default function OAuthAuthorize() {
               <div className='system-xs-regular text-text-tertiary'>{userProfile.email}</div>
             </div>
           </div>
-          <Button variant='tertiary' size='small' onClick={() => router.push('/signin')}>{t('oauth.switchAccount')}</Button>
+          <Button variant='tertiary' size='small' onClick={onLoginSwitchClick}>{t('oauth.switchAccount')}</Button>
         </div>
       )}
 
@@ -167,7 +168,7 @@ export default function OAuthAuthorize() {
 
       <div className='flex flex-col items-center gap-2 pt-4'>
         {!isLoggedIn ? (
-          <Button variant='primary' size='large' className='w-full' onClick={onLoginClick}>{t('oauth.login')}</Button>
+          <Button variant='primary' size='large' className='w-full' onClick={onLoginSwitchClick}>{t('oauth.login')}</Button>
         ) : (
           <>
             <Button variant='primary' size='large' className='w-full' onClick={onAuthorize} disabled={!client_id || !redirect_uri || isError || authorizing} loading={authorizing}>{t('oauth.continue')}</Button>

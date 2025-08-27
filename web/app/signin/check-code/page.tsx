@@ -10,6 +10,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -43,7 +44,13 @@ export default function CheckCode() {
       if (ret.result === 'success') {
         localStorage.setItem('console_token', ret.data.access_token)
         localStorage.setItem('refresh_token', ret.data.refresh_token)
-        router.replace(invite_token ? `/signin/invite-settings?${searchParams.toString()}` : '/apps')
+        if (invite_token) {
+          router.replace(`/signin/invite-settings?${searchParams.toString()}`)
+        }
+        else {
+          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          router.replace(redirectUrl || '/apps')
+        }
       }
     }
     catch (error) { console.error(error) }
