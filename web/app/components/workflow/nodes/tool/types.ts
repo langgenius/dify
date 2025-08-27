@@ -26,5 +26,4 @@ export type ToolNodeType = CommonNodeType & {
   tool_description?: string
   is_team_authorization?: boolean
   params?: Record<string, any>
-  _notInitialized?: boolean
 }

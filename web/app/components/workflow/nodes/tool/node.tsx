@@ -3,15 +3,12 @@ import React from 'react'
 import type { ToolNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useInitial } from './use-initial'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({
-  id,
   data,
 }) => {
   const { tool_configurations, paramSchemas } = data
   const toolConfigs = Object.keys(tool_configurations || {})
-  useInitial(id)
 
   if (!toolConfigs.length)
     return null

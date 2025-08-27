@@ -12,7 +12,6 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
-import { useInitial } from './use-initial'
 import useMatchSchemaType from '../_base/components/variable/use-match-schema-type'
 
 const i18nPrefix = 'workflow.nodes.tool'
@@ -22,7 +21,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  useInitial(id)
   const {
     readOnly,
     inputs,
