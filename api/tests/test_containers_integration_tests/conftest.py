@@ -10,11 +10,13 @@ more reliable and realistic test scenarios.
 import logging
 import os
 from collections.abc import Generator
+from pathlib import Path
 from typing import Optional
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
@@ -64,7 +66,7 @@ class DifyTestContainers:
         # PostgreSQL is used for storing user data, workflows, and application state
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
-            image="postgres:16-alpine",
+            image="postgres:14-alpine",
         )
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
@@ -116,7 +118,7 @@ class DifyTestContainers:
         # Start Redis container for caching and session management
         # Redis is used for storing session data, cache entries, and temporary data
         logger.info("Initializing Redis container...")
-        self.redis = RedisContainer(image="redis:latest", port=6379)
+        self.redis = RedisContainer(image="redis:6-alpine", port=6379)
         self.redis.start()
         redis_host = self.redis.get_container_host_ip()
         redis_port = self.redis.get_exposed_port(6379)
@@ -184,6 +186,57 @@ class DifyTestContainers:
 _container_manager = DifyTestContainers()
 
 
+def _get_migration_dir() -> Path:
+    conftest_dir = Path(__file__).parent
+    return conftest_dir.parent.parent / "migrations"
+
+
+def _get_engine_url(engine: Engine):
+    try:
+        return engine.url.render_as_string(hide_password=False).replace("%", "%%")
+    except AttributeError:
+        return str(engine.url).replace("%", "%%")
+
+
+_UUIDv7SQL = r"""
+/* Main function to generate a uuidv7 value with millisecond precision */
+CREATE FUNCTION uuidv7() RETURNS uuid
+AS
+$$
+    -- Replace the first 48 bits of a uuidv4 with the current
+    -- number of milliseconds since 1970-01-01 UTC
+    -- and set the "ver" field to 7 by setting additional bits
+SELECT encode(
+               set_bit(
+                       set_bit(
+                               overlay(uuid_send(gen_random_uuid()) placing
+                                       substring(int8send((extract(epoch from clock_timestamp()) * 1000)::bigint) from
+                                                 3)
+                                       from 1 for 6),
+                               52, 1),
+                       53, 1), 'hex')::uuid;
+$$ LANGUAGE SQL VOLATILE PARALLEL SAFE;
+
+COMMENT ON FUNCTION uuidv7 IS
+    'Generate a uuid-v7 value with a 48-bit timestamp (millisecond precision) and 74 bits of randomness';
+
+CREATE FUNCTION uuidv7_boundary(timestamptz) RETURNS uuid
+AS
+$$
+    /* uuid fields: version=0b0111, variant=0b10 */
+SELECT encode(
+               overlay('\x00000000000070008000000000000000'::bytea
+                       placing substring(int8send(floor(extract(epoch from $1) * 1000)::bigint) from 3)
+                       from 1 for 6),
+               'hex')::uuid;
+$$ LANGUAGE SQL STABLE STRICT PARALLEL SAFE;
+
+COMMENT ON FUNCTION uuidv7_boundary(timestamptz) IS
+    'Generate a non-random uuidv7 with the given timestamp (first 48 bits) and all random bits to 0.
+    As the smallest possible uuidv7 for that timestamp, it may be used as a boundary for partitions.';
+"""
+
+
 def _create_app_with_containers() -> Flask:
     """
     Create Flask application configured to use test containers.
@@ -211,7 +264,10 @@ def _create_app_with_containers() -> Flask:
 
     # Initialize database schema
     logger.info("Creating database schema...")
+
     with app.app_context():
+        with db.engine.connect() as conn, conn.begin():
+            conn.execute(text(_UUIDv7SQL))
         db.create_all()
     logger.info("Database schema created successfully")
 
