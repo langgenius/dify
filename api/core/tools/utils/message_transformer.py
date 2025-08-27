@@ -19,14 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 def safe_json_value(v):
-    if current_user is None:
-        return None
     if isinstance(v, datetime):
-        tz_name = None
-        if isinstance(current_user, Account):
+        tz_name = "UTC"
+        if isinstance(current_user, Account) and current_user.timezone is not None:
             tz_name = current_user.timezone
-        if tz_name is None:
-            tz_name = "UTC"
         return v.astimezone(pytz.timezone(tz_name)).isoformat()
     elif isinstance(v, date):
         return v.isoformat()
