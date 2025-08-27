@@ -23,6 +23,7 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
+from libs.uuid_utils import uuidv7
 from models import (
     Account,
     CreatorUserRole,
@@ -198,8 +199,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel
     ) -> None:
         """Regenerate UUID v7 for both domain and database models when duplicate key detected."""
-        from libs.uuid_utils import uuidv7
-
         new_id = str(uuidv7())
         logger.warning(
             "Duplicate key conflict for workflow node execution ID %s, generating new UUID v7: %s", db_model.id, new_id
