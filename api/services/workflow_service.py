@@ -87,15 +87,14 @@ class WorkflowService:
         )
 
     def is_workflow_exist(self, app_model: App) -> bool:
-        return db.session.scalar(
-            select(
-                exists().where(
-                    Workflow.tenant_id == app_model.tenant_id,
-                    Workflow.app_id == app_model.id,
-                    Workflow.version == Workflow.VERSION_DRAFT,
-                )
+        stmt = select(
+            exists().where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
             )
         )
+        return db.session.execute(stmt).scalar_one()
 
     def get_draft_workflow(self, app_model: App) -> Optional[Workflow]:
         """

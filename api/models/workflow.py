@@ -336,14 +336,14 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return db.session.scalar(
-            select(
-                exists().where(
-                    WorkflowToolProvider.tenant_id == self.tenant_id,
-                    WorkflowToolProvider.app_id == self.app_id,
-                )
+
+        stmt = select(
+            exists().where(
+                WorkflowToolProvider.tenant_id == self.tenant_id,
+                WorkflowToolProvider.app_id == self.app_id,
             )
         )
+        return db.session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:

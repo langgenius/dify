@@ -655,7 +655,8 @@ class DatasetService:
 
     @staticmethod
     def dataset_use_check(dataset_id) -> bool:
-        return db.session.scalar(select(exists().where(AppDatasetJoin.dataset_id == dataset_id)))
+        stmt = select(exists().where(AppDatasetJoin.dataset_id == dataset_id))
+        return db.session.execute(stmt).scalar_one()
 
     @staticmethod
     def check_dataset_permission(dataset, user):
