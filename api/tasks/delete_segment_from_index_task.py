@@ -36,19 +36,16 @@ def delete_segment_from_index_task(
 
         dataset_document = db.session.query(Document).where(Document.id == document_id).first()
         if not dataset_document:
-            logging.info("Document %s not found, but proceeding with index cleanup", document_id)
-            # Continue with index cleanup even if document record is missing
-            # Assume default values for index operations
-            doc_form = "qa"  # Default form, will be handled by IndexProcessorFactory
-        else:
-            if (
-                not dataset_document.enabled
-                or dataset_document.archived
-                or dataset_document.indexing_status != "completed"
-            ):
-                logging.info("Document not in valid state for index operations, skipping")
-                return
-            doc_form = dataset_document.doc_form
+            return
+        
+        if (
+            not dataset_document.enabled
+            or dataset_document.archived
+            or dataset_document.indexing_status != "completed"
+        ):
+            logging.info("Document not in valid state for index operations, skipping")
+            return
+        doc_form = dataset_document.doc_form
 
         # Proceed with index cleanup using the index_node_ids directly
         index_processor = IndexProcessorFactory(doc_form).init_index_processor()
