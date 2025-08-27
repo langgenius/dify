@@ -2,7 +2,9 @@
 Skip state propagation through the graph.
 """
 
-from core.workflow.graph import Graph
+from collections.abc import Sequence
+
+from core.workflow.graph import Edge, Graph
 
 from ..state_management import EdgeStateManager, NodeStateManager
 
@@ -57,9 +59,8 @@ class SkipPropagator:
 
         # If any edge is taken, node may still execute
         if edge_states["has_taken"]:
-            # Check if node is ready and enqueue if so
-            if self.node_state_manager.is_node_ready(downstream_node_id):
-                self.node_state_manager.enqueue_node(downstream_node_id)
+            # Enqueue node
+            self.node_state_manager.enqueue_node(downstream_node_id)
             return
 
         # All edges are skipped, propagate skip to this node
