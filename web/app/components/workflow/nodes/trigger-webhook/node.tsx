@@ -12,9 +12,11 @@ const Node: FC<NodeProps<WebhookTriggerNodeType>> = ({
         URL
       </div>
       <div className="flex h-[26px] items-center rounded-md bg-workflow-block-parma-bg px-2 text-xs text-text-secondary">
-        <span className="truncate" title={data.webhook_url || '--'}>
-          {data.webhook_url || '--'}
-        </span>
+        <div className="w-0 grow">
+          <div className="truncate" title={data.webhook_url || '--'}>
+            {data.webhook_url || '--'}
+          </div>
+        </div>
       </div>
     </div>
   )
