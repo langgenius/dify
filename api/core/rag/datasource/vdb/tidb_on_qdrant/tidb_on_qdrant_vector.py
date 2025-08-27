@@ -398,7 +398,6 @@ class TidbOnQdrantVector(BaseVector):
 
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
-            self._client = self._client
             self._client._load()
 
     @classmethod
