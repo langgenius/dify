@@ -618,7 +618,7 @@ class ToolManager:
                 WHERE tenant_id = :tenant_id
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
             return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 

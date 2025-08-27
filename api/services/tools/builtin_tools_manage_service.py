@@ -453,7 +453,7 @@ class BuiltinToolManageService:
         check if oauth system client exists
         """
         tool_provider = ToolProviderID(provider_name)
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             system_client: ToolOAuthSystemClient | None = (
                 session.query(ToolOAuthSystemClient)
                 .filter_by(plugin_id=tool_provider.plugin_id, provider=tool_provider.provider_name)
@@ -467,7 +467,7 @@ class BuiltinToolManageService:
         check if oauth custom client is enabled
         """
         tool_provider = ToolProviderID(provider)
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             user_client: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -492,7 +492,7 @@ class BuiltinToolManageService:
             config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
             cache=NoOpProviderCredentialCache(),
         )
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             user_client: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -603,7 +603,7 @@ class BuiltinToolManageService:
         1.if the default provider exists, return the default provider
         2.if the default provider does not exist, return the oldest provider
         """
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             try:
                 full_provider_name = provider_name
                 provider_id_entity = ToolProviderID(provider_name)
