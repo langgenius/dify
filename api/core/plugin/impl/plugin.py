@@ -1,5 +1,7 @@
 from collections.abc import Sequence
 
+from requests import HTTPError
+
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     GenericProviderID,
@@ -14,6 +16,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginListResponse,
+    PluginReadmeResponse,
 )
 from core.plugin.impl.base import BasePluginClient
 
@@ -23,12 +26,23 @@ class PluginInstaller(BasePluginClient):
         """
         Fetch plugin readme
         """
-        return self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/fetch/readme",
-            str,
-            params={"plugin_unique_identifier": plugin_unique_identifier, "language": language},
-        )
+        try:
+            response = self._request_with_plugin_daemon_response(
+                "GET",
+                f"plugin/{tenant_id}/management/fetch/readme",
+                PluginReadmeResponse,
+                params={
+                    "tenant_id":tenant_id,
+                    "plugin_unique_identifier": plugin_unique_identifier,
+                    "language": language
+                }
+            )
+            return response.content
+        except HTTPError as e:
+            message = e.args[0]
+            if "404" in message:
+                return ""
+            raise e
 
     def fetch_plugin_by_identifier(
         self,
