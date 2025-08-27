@@ -113,13 +113,13 @@ class PluginAssetApi(Resource):
     @account_initialization_required
     def get(self):
         req = reqparse.RequestParser()
-        req.add_argument("file_name", type=str, required=True, location="args")
+        req.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
         req.add_argument("file_name", type=str, required=True, location="args")
         args = req.parse_args()
 
         tenant_id = current_user.current_tenant_id
         try:
-            binary = PluginService.extract_asset(args["tenant_id"], tenant_id, args["file_name"])
+            binary = PluginService.extract_asset(tenant_id, args["plugin_unique_identifier"], args["file_name"])
             return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
