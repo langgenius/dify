@@ -31,6 +31,8 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +145,8 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        message_file = db.session.query(MessageFile).where(MessageFile.id == event.message_file_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
 
         if message_file and message_file.url is not None:
             # get tool file id
@@ -183,7 +186,8 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
-        message_file = db.session.query(MessageFile).where(MessageFile.id == message_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == message_id))
         event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
 
         return MessageStreamResponse(

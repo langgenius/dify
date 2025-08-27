@@ -418,10 +418,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation.override_model_configs = workflow.features
             db.session.commit()
             db.session.refresh(conversation)
-            # refresh user, message, workflow before db.session.close()
-            db.session.refresh(workflow)
-            db.session.refresh(message)
-            db.session.refresh(user)
 
         # get conversation dialogue count
         self._dialogue_count = get_thread_messages_length(conversation.id)
@@ -452,10 +448,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             },
         )
 
-        # release database connection, because the following new thread operations may take a long time
-        db.session.close()
-
         worker_thread.start()
+
+        # release database connection, because the following new thread operations may take a long time
+        db.session.refresh(workflow)
+        db.session.refresh(message)
+        db.session.refresh(user)
+        db.session.close()
 
         # return response or stream generator
         response = self._handle_advanced_chat_response(

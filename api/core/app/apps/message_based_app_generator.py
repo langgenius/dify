@@ -31,6 +31,8 @@ from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Me
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +255,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param conversation_id: conversation id
         :return: conversation
         """
-        conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id))
 
         if not conversation:
             raise ConversationNotExistsError("Conversation not exists")
@@ -266,7 +269,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param message_id: message id
         :return: message
         """
-        message = db.session.query(Message).where(Message.id == message_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message = session.scalar(select(Message).where(Message.id == message_id))
 
         if message is None:
             raise MessageNotExistsError("Message not exists")
