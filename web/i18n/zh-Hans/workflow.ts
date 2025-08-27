@@ -942,7 +942,7 @@ const translation = {
       nextExecutionTimes: '接下来 5 次执行时间',
       hours: '小时',
       minutes: '分钟',
-      onMinute: '分钟位置',
+      onMinute: '分钟',
       cronExpression: 'Cron 表达式',
       weekdays: '星期',
       executeNow: '立即执行',

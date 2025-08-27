@@ -946,7 +946,7 @@ const translation = {
       notConfigured: '未設定',
       startTime: '開始時刻',
       hours: '時間',
-      onMinute: '実行分',
+      onMinute: '分',
       executeNow: '今すぐ実行',
       weekdays: '曜日',
       selectDateTime: '日時を選択',
