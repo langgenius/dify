@@ -116,12 +116,22 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     let weekOffset = 0
 
     while (executionCount < count) {
+      let hasValidDays = false
+
       for (const selectedDay of selectedDays) {
         if (executionCount >= count) break
 
         const targetDay = dayMap[selectedDay as keyof typeof dayMap]
+        if (targetDay === undefined) continue
+
+        hasValidDays = true
+
+        const currentDayOfWeek = userToday.getDay()
+        const daysUntilTarget = (targetDay - currentDayOfWeek + 7) % 7
+        const adjustedDays = daysUntilTarget === 0 ? 7 : daysUntilTarget
+
         const execution = new Date(userToday)
-        execution.setDate(userToday.getDate() + targetDay + (weekOffset * 7))
+        execution.setDate(userToday.getDate() + adjustedDays + (weekOffset * 7))
         execution.setHours(displayHour, Number.parseInt(minute), 0, 0)
 
         // Only add if execution time is in the future
@@ -130,6 +140,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
           executionCount++
         }
       }
+
+      if (!hasValidDays) break
       weekOffset++
     }
 
