@@ -276,7 +276,6 @@ class OracleVector(BaseVector):
         if not isinstance(top_k, int) or top_k <= 0 or top_k > 10000:
             top_k = 5  # Use default if invalid
         # just not implement fetch by score_threshold now, may be later
-        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         if len(query) > 0:
             # Check which language the query is in
             zh_pattern = re.compile("[\u4e00-\u9fa5]+")

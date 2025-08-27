@@ -210,13 +210,6 @@ class IndexingRunner:
                         documents.append(document)
 
             # build index
-            # get the process rule
-            processing_rule = (
-                db.session.query(DatasetProcessRule)
-                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                .first()
-            )
-
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             self._load(
