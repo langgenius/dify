@@ -81,7 +81,7 @@ class OAuthDataSourceBinding(Resource):
                 return {"error": "Invalid code"}, 400
             try:
                 oauth_provider.get_access_token(code)
-            except requests.exceptions.HTTPError as e:
+            except requests.HTTPError as e:
                 logger.exception(
                     "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
                 )
@@ -104,7 +104,7 @@ class OAuthDataSourceSync(Resource):
             return {"error": "Invalid provider"}, 400
         try:
             oauth_provider.sync_data_source(binding_id)
-        except requests.exceptions.HTTPError as e:
+        except requests.HTTPError as e:
             logger.exception(
                 "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
             )

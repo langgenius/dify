@@ -308,7 +308,7 @@ class MCPToolProvider(Base):
 
     @property
     def decrypted_server_url(self) -> str:
-        return cast(str, encrypter.decrypt_token(self.tenant_id, self.server_url))
+        return encrypter.decrypt_token(self.tenant_id, self.server_url)
 
     @property
     def masked_server_url(self) -> str:

@@ -96,7 +96,11 @@ class RateLimit:
         if isinstance(generator, Mapping):
             return generator
         else:
-            return RateLimitGenerator(rate_limit=self, generator=generator, request_id=request_id)
+            return RateLimitGenerator(
+                rate_limit=self,
+                generator=generator,  # ty: ignore [invalid-argument-type]
+                request_id=request_id,
+            )
 
 
 class RateLimitGenerator:

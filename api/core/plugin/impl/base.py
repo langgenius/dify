@@ -64,7 +64,7 @@ class BasePluginClient:
             response = requests.request(
                 method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
             )
-        except requests.exceptions.ConnectionError:
+        except requests.ConnectionError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 

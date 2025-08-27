@@ -32,9 +32,9 @@ class VikingDBConfig(BaseModel):
     scheme: str
     connection_timeout: int
     socket_timeout: int
-    index_type: str = IndexType.HNSW
-    distance: str = DistanceType.L2
-    quant: str = QuantType.Float
+    index_type: str = str(IndexType.HNSW)
+    distance: str = str(DistanceType.L2)
+    quant: str = str(QuantType.Float)
 
 
 class VikingDBVector(BaseVector):

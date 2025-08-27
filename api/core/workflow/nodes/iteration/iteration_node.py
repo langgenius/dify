@@ -441,8 +441,8 @@ class IterationNode(BaseNode):
             iteration_run_id = parallel_mode_run_id if parallel_mode_run_id is not None else f"{current_index}"
             next_index = int(current_index) + 1
             for event in rst:
-                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:
-                    event.in_iteration_id = self.node_id
+                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:  # ty: ignore [unresolved-attribute]
+                    event.in_iteration_id = self.node_id  # ty: ignore [unresolved-attribute]
 
                 if (
                     isinstance(event, BaseNodeEvent)

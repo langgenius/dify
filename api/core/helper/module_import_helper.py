@@ -47,7 +47,7 @@ def get_subclasses_from_module(mod: ModuleType, parent_type: type) -> list[type]
 
 
 def load_single_subclass_from_source(
-    *, module_name: str, script_path: AnyStr, parent_type: type, use_lazy_loader: bool = False
+    *, module_name: str, script_path: str, parent_type: type, use_lazy_loader: bool = False
 ) -> type:
     """
     Load a single subclass from the source

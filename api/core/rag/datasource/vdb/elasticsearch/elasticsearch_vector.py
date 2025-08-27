@@ -138,7 +138,7 @@ class ElasticSearchVector(BaseVector):
             if not client.ping():
                 raise ConnectionError("Failed to connect to Elasticsearch")
 
-        except requests.exceptions.ConnectionError as e:
+        except requests.ConnectionError as e:
             raise ConnectionError(f"Vector database connection error: {str(e)}")
         except Exception as e:
             raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}")
