@@ -84,6 +84,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.TemplateTransform]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAggregator]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.Tool]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.Assigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
@@ -99,19 +100,20 @@ const BlockIcon: FC<BlockIconProps> = ({
   toolIcon,
 }) => {
   const isToolOrDataSource = type === BlockEnum.Tool || type === BlockEnum.DataSource
+  const showDefaultIcon = !isToolOrDataSource || !toolIcon
 
   return (
     <div className={
       cn(
         'flex items-center justify-center border-[0.5px] border-white/2 text-white',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
-        !isToolOrDataSource && ICON_CONTAINER_BG_COLOR_MAP[type],
+        showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
         toolIcon && '!shadow-none',
         className,
       )}
     >
       {
-        !isToolOrDataSource && (
+        showDefaultIcon && (
           getIcon(type, size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5')
         )
       }
