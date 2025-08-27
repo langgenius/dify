@@ -39,5 +39,5 @@ def handle_webhook(webhook_id: str):
     except ValueError as e:
         raise NotFound(str(e))
     except Exception as e:
-        logger.exception(f"Webhook processing failed for {webhook_id}: {str(e)}")
+        logger.exception("Webhook processing failed for %s", webhook_id)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
