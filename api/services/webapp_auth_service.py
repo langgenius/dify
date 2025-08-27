@@ -1,7 +1,7 @@
 import enum
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from werkzeug.exceptions import NotFound, Unauthorized
 
@@ -42,7 +42,7 @@ class WebAppAuthService:
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
 
-        return cast(Account, account)
+        return account
 
     @classmethod
     def login(cls, account: Account) -> str:
