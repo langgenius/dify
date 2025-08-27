@@ -57,17 +57,21 @@ export const useWorkflowInit = () => {
       if (error && error.json && !error.bodyUsed && appDetail) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
+            const isAdvancedChat = appDetail.mode === 'advanced-chat'
             workflowStore.setState({
               notInitialWorkflow: true,
-              showOnboarding: true,
+              showOnboarding: !isAdvancedChat,
               hasShownOnboarding: false,
             })
+            const nodesData = isAdvancedChat ? nodesTemplate : []
+            const edgesData = isAdvancedChat ? edgesTemplate : []
+
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
                 graph: {
-                  nodes: [],
-                  edges: [],
+                  nodes: nodesData,
+                  edges: edgesData,
                 },
                 features: {
                   retriever_resource: { enabled: true },
