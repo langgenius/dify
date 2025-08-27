@@ -1,7 +1,7 @@
 """Add workflow webhook table
 
 Revision ID: 5871f634954d
-Revises: fa8b0fa6f407
+Revises: 4558cfabe44e
 Create Date: 2025-08-23 20:39:20.704501
 
 """

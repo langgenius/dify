@@ -38,11 +38,10 @@ class ScheduleService:
         session: Session,
         tenant_id: str,
         app_id: str,
-        workflow_id: str,
-        root_node_id: str,
+        node_id: str,
         cron_expression: str,
         timezone: str,
-        created_by: str,
+        triggered_by: str,
         enabled: bool = True,
     ) -> WorkflowSchedulePlan:
         """
@@ -52,11 +51,10 @@ class ScheduleService:
             session: Database session
             tenant_id: Tenant ID
             app_id: Application ID
-            workflow_id: Workflow ID to trigger
-            root_node_id: Starting node ID
+            node_id: Starting node ID
             cron_expression: Cron expression
             timezone: Timezone for cron evaluation
-            created_by: Creator account ID
+            triggered_by: Trigger context - 'debugger' or 'production'
             enabled: Whether schedule is enabled
 
         Returns:
@@ -72,13 +70,12 @@ class ScheduleService:
         schedule = WorkflowSchedulePlan(
             tenant_id=tenant_id,
             app_id=app_id,
-            workflow_id=workflow_id,
-            root_node_id=root_node_id,
+            node_id=node_id,
             cron_expression=cron_expression,
             timezone=timezone,
             enabled=enabled and next_run_at is not None,
             next_run_at=next_run_at,
-            created_by=created_by,
+            triggered_by=triggered_by,
         )
 
         session.add(schedule)
@@ -164,45 +161,6 @@ class ScheduleService:
             WorkflowSchedulePlan or None
         """
         return session.get(WorkflowSchedulePlan, schedule_id)
-
-    @staticmethod
-    def list_schedules(
-        session: Session,
-        tenant_id: str,
-        app_id: Optional[str] = None,
-        workflow_id: Optional[str] = None,
-        enabled: Optional[bool] = None,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[WorkflowSchedulePlan]:
-        """
-        List schedules with optional filters.
-
-        Args:
-            session: Database session
-            tenant_id: Tenant ID (required)
-            app_id: Optional app ID filter
-            workflow_id: Optional workflow ID filter
-            enabled: Optional enabled status filter
-            limit: Maximum results to return
-            offset: Number of results to skip
-
-        Returns:
-            List of WorkflowSchedulePlan instances
-        """
-        query = select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.tenant_id == tenant_id)
-
-        if app_id:
-            query = query.where(WorkflowSchedulePlan.app_id == app_id)
-        if workflow_id:
-            query = query.where(WorkflowSchedulePlan.workflow_id == workflow_id)
-        if enabled is not None:
-            query = query.where(WorkflowSchedulePlan.enabled == enabled)
-
-        query = query.order_by(WorkflowSchedulePlan.created_at.desc())
-        query = query.limit(limit).offset(offset)
-
-        return list(session.scalars(query).all())
 
     @staticmethod
     def get_tenant_owner(session: Session, tenant_id: str) -> Optional[Account]:

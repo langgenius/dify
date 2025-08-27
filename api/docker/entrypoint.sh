@@ -68,11 +68,6 @@ if [[ "${MODE}" == "worker" ]]; then
 
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
-elif [[ "${MODE}" == "workflow-scheduler" ]]; then
-  echo "Starting Workflow Scheduler..."
-  exec celery -A app.celery beat \
-    --scheduler schedule.schedule_dispatch:WorkflowScheduler \
-    --loglevel ${LOG_LEVEL:-INFO}
 else
   if [[ "${DEBUG}" == "true" ]]; then
     exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug

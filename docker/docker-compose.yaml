@@ -576,6 +576,9 @@ x-shared-env: &shared-api-worker-env
   ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: ${ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:-false}
   ENABLE_DATASETS_QUEUE_MONITOR: ${ENABLE_DATASETS_QUEUE_MONITOR:-false}
   ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: ${ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:-true}
+  ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK: ${ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:-true}
+  WORKFLOW_SCHEDULE_POLLER_INTERVAL: ${WORKFLOW_SCHEDULE_POLLER_INTERVAL:-1}
+  WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: ${WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE:-100}
 
 services:
   # API service
@@ -643,25 +646,6 @@ services:
       <<: *shared-api-worker-env
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - ssrf_proxy_network
-      - default
-
-  # Workflow scheduler service (Required for schedule trigger nodes)
-  # This is a dedicated Celery Beat instance for workflow schedules.
-  workflow_scheduler:
-    image: langgenius/dify-api:1.7.2
-    restart: always
-    environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
-      # Startup mode for workflow scheduler
-      MODE: workflow-scheduler
     depends_on:
       db:
         condition: service_healthy

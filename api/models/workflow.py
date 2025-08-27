@@ -1431,34 +1431,30 @@ class WorkflowSchedulePlan(Base):
     Uses cron expressions with timezone support for flexible scheduling.
 
     Attributes:
-        id: UUID primary key
-        tenant_id: Workspace ID for multi-tenancy
-        app_id: Application ID this schedule belongs to
-        workflow_id: Workflow to trigger
-        root_node_id: Starting node ID for workflow execution
-        cron_expression: Cron expression defining schedule pattern
-        timezone: Timezone for cron evaluation (e.g., 'Asia/Shanghai')
-        enabled: Whether schedule is active
-        next_run_at: Next scheduled execution time (timestamptz)
-        created_by: Creator account ID
-        created_at: Creation timestamp
-        updated_at: Last update timestamp
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Starting node ID for workflow execution
+    - tenant_id (uuid) Workspace ID for multi-tenancy
+    - cron_expression (varchar) Cron expression defining schedule pattern
+    - timezone (varchar) Timezone for cron evaluation (e.g., 'Asia/Shanghai')
+    - enabled (bool) Whether schedule is active
+    - triggered_by (varchar) Environment: debugger or production
+    - next_run_at (timestamp) Next scheduled execution time
+    - created_at (timestamp) Creation timestamp
+    - updated_at (timestamp) Last update timestamp
     """
 
     __tablename__ = "workflow_schedule_plans"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_schedule_plan_pkey"),
-        sa.Index("workflow_schedule_plan_tenant_enabled_next_idx", "tenant_id", "enabled", "next_run_at"),
-        sa.Index("workflow_schedule_plan_app_workflow_idx", "app_id", "workflow_id"),
-        sa.Index("workflow_schedule_plan_created_at_idx", "created_at"),
+        sa.UniqueConstraint("app_id", "node_id", "triggered_by", name="uniq_app_node_trigger"),
+        sa.Index("workflow_schedule_plan_enabled_next_idx", "enabled", "next_run_at"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-
-    root_node_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # Schedule configuration
     cron_expression: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1466,9 +1462,8 @@ class WorkflowSchedulePlan(Base):
 
     # Schedule control
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
-    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
@@ -1478,15 +1473,14 @@ class WorkflowSchedulePlan(Base):
         """Convert to dictionary representation"""
         return {
             "id": self.id,
-            "tenant_id": self.tenant_id,
             "app_id": self.app_id,
-            "workflow_id": self.workflow_id,
-            "root_node_id": self.root_node_id,
+            "node_id": self.node_id,
+            "tenant_id": self.tenant_id,
             "cron_expression": self.cron_expression,
             "timezone": self.timezone,
             "enabled": self.enabled,
             "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
-            "created_by": self.created_by,
+            "triggered_by": self.triggered_by,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }

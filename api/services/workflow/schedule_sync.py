@@ -17,9 +17,7 @@ class ScheduleSyncService:
         session: Session,
         tenant_id: str,
         app_id: str,
-        workflow_id: str,
         graph: str,
-        created_by: str,
     ) -> Optional[WorkflowSchedulePlan]:
         try:
             graph_data = json.loads(graph)
@@ -28,7 +26,7 @@ class ScheduleSyncService:
 
         # Find schedule trigger node in graph
         schedule_node = None
-        root_node_id = None
+        node_id = None
         schedule_nodes_count = 0
 
         for node in graph_data.get("nodes", []):
@@ -37,13 +35,12 @@ class ScheduleSyncService:
                 schedule_nodes_count += 1
                 if not schedule_node:  # Take the first schedule node
                     schedule_node = node_data
-                    root_node_id = node.get("id", "start")
+                    node_id = node.get("id", "start")
 
         if schedule_nodes_count > 1:
             logger.warning("Found %d schedule nodes in workflow, only the first one will be used", schedule_nodes_count)
 
         # Get existing schedule plan for this app
-        # Note: We use app_id as the key since workflow_id changes with each publish
         existing_plan = session.scalar(
             select(WorkflowSchedulePlan).where(
                 WorkflowSchedulePlan.tenant_id == tenant_id,
@@ -56,7 +53,6 @@ class ScheduleSyncService:
             if existing_plan:
                 logger.info("No schedule node in workflow for app %s, disabling schedule plan", app_id)
                 updates = {
-                    "workflow_id": workflow_id,
                     "enabled": False,  # Disable but keep the plan
                     "next_run_at": None,  # Clear next run time
                 }
@@ -93,10 +89,9 @@ class ScheduleSyncService:
         # Update existing plan or create new one
         if existing_plan:
             # Update existing schedule with new workflow version
-            logger.info("Updating schedule plan for app %s with new workflow %s", app_id, workflow_id)
+            logger.info("Updating schedule plan for app %s with new workflow %s", app_id)
             updates = {
-                "workflow_id": workflow_id,  # Update to latest workflow version
-                "root_node_id": root_node_id,
+                "node_id": node_id,
                 "cron_expression": cron_expression,
                 "timezone": timezone,
                 "enabled": enabled,
@@ -109,17 +104,16 @@ class ScheduleSyncService:
             return updated_plan
         else:
             # Create new schedule
-            logger.info("Creating new schedule plan for app %s, workflow %s", app_id, workflow_id)
+            logger.info("Creating new schedule plan for app %s, workflow %s", app_id)
             new_plan = ScheduleService.create_schedule(
                 session=session,
                 tenant_id=tenant_id,
                 app_id=app_id,
-                workflow_id=workflow_id,
-                root_node_id=root_node_id,
+                node_id=node_id,
                 cron_expression=cron_expression,
                 timezone=timezone,
-                created_by=created_by,
                 enabled=enabled,
+                triggered_by="production",
             )
             return new_plan
 

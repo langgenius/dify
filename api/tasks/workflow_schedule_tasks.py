@@ -9,14 +9,14 @@ from extensions.ext_database import db
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
-from services.workflow.entities import TriggerData
+from services.workflow.entities import AsyncTriggerResponse, TriggerData
 from services.workflow.schedule_manager import ScheduleService
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="schedule")
-def run_schedule_trigger(schedule_id: str):
+def run_schedule_trigger(schedule_id: str) -> AsyncTriggerResponse | None:
     """
     Execute a scheduled workflow trigger.
 
@@ -51,15 +51,15 @@ def run_schedule_trigger(schedule_id: str):
                 user=tenant_owner,
                 trigger_data=TriggerData(
                     app_id=schedule.app_id,
-                    workflow_id=schedule.workflow_id,
-                    root_node_id=schedule.root_node_id,
+                    root_node_id=schedule.node_id,
+                    # TODO: need `workflow_id` when triggered_by = `debugger`
                     trigger_type=WorkflowRunTriggeredFrom.SCHEDULE,
                     inputs=inputs,
                     tenant_id=schedule.tenant_id,
                 ),
             )
             logger.info("Schedule %s triggered workflow: %s", schedule_id, response.workflow_trigger_log_id)
+            return response
 
         except Exception as e:
-            # Don't retry - schedule will run again at next interval
             logger.error("Failed to trigger workflow for schedule %s: %s", schedule_id, e, exc_info=True)

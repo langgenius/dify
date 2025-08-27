@@ -293,9 +293,7 @@ class WorkflowService:
             session=session,
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            workflow_id=workflow.id,
             graph=workflow.graph,
-            created_by=account.id,
         )
 
         # trigger app workflow events
