@@ -44,36 +44,34 @@ class BaseQueueDispatcher(ABC):
         """Get task priority level"""
         pass
 
-    def check_daily_quota(self, tenant_id: str, tenant_owner_tz: str) -> bool:
+    def check_daily_quota(self, tenant_id: str) -> bool:
         """
         Check if tenant has remaining daily quota
 
         Args:
             tenant_id: The tenant identifier
-            tenant_owner_tz: Tenant owner's timezone
 
         Returns:
             True if quota available, False otherwise
         """
         # Check without consuming
         remaining = self.rate_limiter.get_remaining_quota(
-            tenant_id=tenant_id, max_daily_limit=self.get_daily_limit(), timezone_str=tenant_owner_tz
+            tenant_id=tenant_id, max_daily_limit=self.get_daily_limit()
         )
         return remaining > 0
 
-    def consume_quota(self, tenant_id: str, tenant_owner_tz: str) -> bool:
+    def consume_quota(self, tenant_id: str) -> bool:
         """
         Consume one execution from daily quota
 
         Args:
             tenant_id: The tenant identifier
-            tenant_owner_tz: Tenant owner's timezone
 
         Returns:
             True if quota consumed successfully, False if limit reached
         """
         return self.rate_limiter.check_and_consume(
-            tenant_id=tenant_id, max_daily_limit=self.get_daily_limit(), timezone_str=tenant_owner_tz
+            tenant_id=tenant_id, max_daily_limit=self.get_daily_limit()
         )
 
 
