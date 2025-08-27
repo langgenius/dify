@@ -643,8 +643,30 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
         return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
 
 
+class PluginReadmeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        parser.add_argument("language", type=str, required=False, location="args")
+        args = parser.parse_args()
+        return jsonable_encoder(
+            {
+                "readme": PluginService.fetch_plugin_readme(
+                    tenant_id,
+                    args["plugin_unique_identifier"],
+                    args.get("language", "en-US")
+                )
+            }
+        )
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
+api.add_resource(PluginReadmeApi, "/workspaces/current/plugin/readme")
 api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
 api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")

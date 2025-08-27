@@ -196,3 +196,7 @@ class PluginListResponse(BaseModel):
 
 class PluginDynamicSelectOptionsResponse(BaseModel):
     options: Sequence[PluginParameterOption] = Field(description="The options of the dynamic select.")
+
+class PluginReadmeResponse(BaseModel):
+    content: str = Field(description="The readme of the plugin.")
+    language: str = Field(description="The language of the readme.")
