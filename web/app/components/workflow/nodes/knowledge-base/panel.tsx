@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { KnowledgeBaseNodeType } from './types'
 import {
+  ChunkStructureEnum,
   IndexMethodEnum,
 } from './types'
 import ChunkStructure from './components/chunk-structure'
@@ -46,9 +47,16 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   } = useConfig(id)
 
   const filterVar = useCallback((variable: Var) => {
-    // console.log(variable.schemaType)
-    // return variable.schemaType === 'aaa'
-    return true
+    if(!data.chunk_structure) return false
+    switch (data.chunk_structure) {
+      case ChunkStructureEnum.general:
+        return variable.schemaType === 'general_structure'
+      case ChunkStructureEnum.parent_child:
+        return variable.schemaType === 'parent_child_structure'
+      case ChunkStructureEnum.question_answer:
+        return variable.schemaType === 'qa_structure'
+    }
+    return false
   }, [data.chunk_structure])
 
   return (
