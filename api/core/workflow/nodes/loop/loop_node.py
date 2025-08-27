@@ -524,7 +524,12 @@ class LoopNode(BaseNode):
     @staticmethod
     def _get_segment_for_constant(var_type: SegmentType, original_value: Any) -> Segment:
         """Get the appropriate segment type for a constant value."""
-        if var_type in [
+        # TODO: Refactor for maintainability:
+        # 1. Ensure type handling logic stays synchronized with _VALID_VAR_TYPE (entities.py)
+        # 2. Consider moving this method to LoopVariableData class for better encapsulation
+        if not var_type.is_array_type() or var_type == SegmentType.ARRAY_BOOLEAN:
+            value = original_value
+        elif var_type in [
             SegmentType.ARRAY_NUMBER,
             SegmentType.ARRAY_OBJECT,
             SegmentType.ARRAY_STRING,
@@ -534,8 +539,6 @@ class LoopNode(BaseNode):
             else:
                 logger.warning("unexpected value for LoopNode, value_type=%s, value=%s", original_value, var_type)
                 value = []
-        elif var_type == SegmentType.ARRAY_BOOLEAN:
-            value = original_value
         else:
             raise AssertionError("this statement should be unreachable.")
         try:
