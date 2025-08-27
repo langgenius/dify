@@ -7,7 +7,6 @@ import yaml
 from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
-from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from factories import variable_factory

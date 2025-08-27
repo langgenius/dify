@@ -24,6 +24,7 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import BoolInput from './bool-input'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 
 type Props = {
@@ -93,6 +94,7 @@ const FormItem: FC<Props> = ({
     return ''
   })()
 
+  const isBooleanType = type === InputVarType.checkbox
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
@@ -114,7 +116,7 @@ const FormItem: FC<Props> = ({
 
   return (
     <div className={cn(className)}>
-      {!isArrayLikeType && (
+      {!isArrayLikeType && !isBooleanType && (
         <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
           <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
           {!payload.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
@@ -167,6 +169,15 @@ const FormItem: FC<Props> = ({
           )
         }
 
+        {isBooleanType && (
+          <BoolInput
+            name={payload.label as string}
+            value={!!value}
+            required={payload.required}
+            onChange={onChange}
+          />
+        )}
+
         {
           type === InputVarType.json && (
             <CodeEditor
@@ -177,6 +188,18 @@ const FormItem: FC<Props> = ({
             />
           )
         }
+        {type === InputVarType.jsonObject && (
+          <CodeEditor
+            value={value}
+            language={CodeLanguage.json}
+            onChange={onChange}
+            noWrapper
+            className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
+            placeholder={
+              <div className='whitespace-pre'>{payload.json_schema}</div>
+            }
+          />
+        )}
         {(type === InputVarType.singleFile) && (
           <FileUploaderInAttachmentWrapper
             value={singleFileValue}

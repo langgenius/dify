@@ -7,6 +7,8 @@ from celery import shared_task
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="mail")
 def send_email_code_login_mail_task(language: str, to: str, code: str) -> None:
@@ -21,7 +23,7 @@ def send_email_code_login_mail_task(language: str, to: str, code: str) -> None:
     if not mail.is_inited():
         return
 
-    logging.info(click.style(f"Start email code login mail to {to}", fg="green"))
+    logger.info(click.style(f"Start email code login mail to {to}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -37,8 +39,8 @@ def send_email_code_login_mail_task(language: str, to: str, code: str) -> None:
         )
 
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(f"Send email code login mail to {to} succeeded: latency: {end_at - start_at}", fg="green")
         )
     except Exception:
-        logging.exception("Send email code login mail to %s failed", to)
+        logger.exception("Send email code login mail to %s failed", to)

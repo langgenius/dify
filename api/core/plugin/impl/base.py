@@ -141,11 +141,11 @@ class BasePluginClient:
             response.raise_for_status()
         except HTTPError as e:
             msg = f"Failed to request plugin daemon, status: {e.response.status_code}, url: {path}"
-            logging.exception(msg)
+            logger.exception(msg)
             raise e
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
-            logging.exception(msg)
+            logger.exception(msg)
             raise ValueError(msg) from e
 
         try:
@@ -158,7 +158,7 @@ class BasePluginClient:
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
                 f" url: {path}"
             )
-            logging.exception(msg)
+            logger.exception(msg)
             raise ValueError(msg)
 
         if rep.code != 0:

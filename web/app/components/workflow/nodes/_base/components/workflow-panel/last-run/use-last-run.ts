@@ -156,8 +156,8 @@ const useLastRun = <T>({
     checkValid,
   } = oneStepRunRes
 
+  const nodeInfo = runResult
   const {
-    nodeInfo,
     ...singleRunParams
   } = useSingleRunFormParamsHooks(blockType)({
     id,

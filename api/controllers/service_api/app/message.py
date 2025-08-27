@@ -22,6 +22,9 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 
+logger = logging.getLogger(__name__)
+
+
 # Define parsers for message APIs
 message_list_parser = reqparse.RequestParser()
 message_list_parser.add_argument(
@@ -216,7 +219,7 @@ class MessageSuggestedApi(Resource):
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise BadRequest("Suggested Questions Is Disabled.")
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"result": "success", "data": questions}

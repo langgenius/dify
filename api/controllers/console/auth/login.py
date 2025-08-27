@@ -9,8 +9,8 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
+    AuthenticationFailedError,
     EmailCodeError,
-    EmailOrPasswordMismatchError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
@@ -79,7 +79,7 @@ class LoginApi(Resource):
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
-            raise EmailOrPasswordMismatchError()
+            raise AuthenticationFailedError()
         except services.errors.account.AccountNotFoundError:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -132,6 +132,7 @@ class ResetPasswordSendEmailApi(Resource):
             account = AccountService.get_user_through_email(args["email"])
         except AccountRegisterError as are:
             raise AccountInFreezeError()
+
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)

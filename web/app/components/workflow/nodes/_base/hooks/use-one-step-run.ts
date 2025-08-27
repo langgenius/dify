@@ -96,6 +96,8 @@ const varTypeToInputVarType = (type: VarType, {
     return InputVarType.paragraph
   if (type === VarType.number)
     return InputVarType.number
+  if (type === VarType.boolean)
+    return InputVarType.checkbox
   if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
     return InputVarType.json
   if (type === VarType.file)
@@ -601,7 +603,7 @@ const useOneStepRun = <T>({
         }
       }
       return {
-        label: item.label || item.variable,
+        label: (typeof item.label === 'object' ? item.label.variable : item.label) || item.variable,
         variable: item.variable,
         type: varTypeToInputVarType(originalVar.type, {
           isSelect: !!originalVar.isSelect,

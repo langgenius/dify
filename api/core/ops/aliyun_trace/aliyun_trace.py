@@ -306,7 +306,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 node_span = self.build_workflow_task_span(trace_id, workflow_span_id, trace_info, node_execution)
             return node_span
         except Exception as e:
-            logging.debug("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
+            logger.debug("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
             return None
 
     def get_workflow_node_status(self, node_execution: WorkflowNodeExecution) -> Status:

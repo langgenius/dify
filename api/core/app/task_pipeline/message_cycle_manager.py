@@ -32,6 +32,8 @@ from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 
+logger = logging.getLogger(__name__)
+
 
 class MessageCycleManager:
     def __init__(
@@ -98,7 +100,7 @@ class MessageCycleManager:
                     conversation.name = name
                 except Exception as e:
                     if dify_config.DEBUG:
-                        logging.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
                     pass
 
                 db.session.merge(conversation)

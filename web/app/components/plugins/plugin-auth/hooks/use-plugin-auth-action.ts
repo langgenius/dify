@@ -87,9 +87,9 @@ export const usePluginAuthAction = (
   }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
-      credential_id: string
-      name: string
-    }) => {
+    credential_id: string
+    name: string
+  }) => {
     if (doingActionRef.current)
       return
     try {

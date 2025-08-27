@@ -246,6 +246,9 @@ const translation = {
     useOAuthAuth: 'OAuth 인증 사용하기',
     useApiAuthDesc: '자격증명을 구성한 후에는 작업 공간 내의 모든 구성원이 애플리케이션을 조정할 때 이 도구를 사용할 수 있습니다.',
     clientInfo: '이 도구 공급자에 대한 시스템 클라이언트 비밀이 발견되지 않았으므로 수동으로 설정해야 하며, redirect_uri는 다음을 사용하십시오.',
+    unavailable: '사용할 수 없음',
+    credentialUnavailable: '현재 자격 증명이 사용 불가능합니다. 관리자에게 문의하십시오.',
+    customCredentialUnavailable: '현재 사용자 정의 자격 증명이 사용 불가능합니다.',
   },
   deprecated: '사용 중단됨',
   autoUpdate: {

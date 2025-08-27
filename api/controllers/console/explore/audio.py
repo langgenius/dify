@@ -26,6 +26,8 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ChatAudioApi(InstalledAppResource):
     def post(self, installed_app):
@@ -38,7 +40,7 @@ class ChatAudioApi(InstalledAppResource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -59,7 +61,7 @@ class ChatAudioApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -83,7 +85,7 @@ class ChatTextApi(InstalledAppResource):
             response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -104,5 +106,5 @@ class ChatTextApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()

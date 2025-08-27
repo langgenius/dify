@@ -222,6 +222,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           type: 'number',
         }
       }
+
+      if(item.checkbox) {
+        return {
+          ...item.checkbox,
+          default: false,
+          type: 'checkbox',
+        }
+      }
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
@@ -242,6 +250,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         return {
           ...item.file,
           type: 'file',
+        }
+      }
+
+      if (item.json_object) {
+        return {
+          ...item.json_object,
+          type: 'json_object',
         }
       }
 
@@ -340,7 +355,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)

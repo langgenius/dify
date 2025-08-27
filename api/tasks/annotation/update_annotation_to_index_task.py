@@ -10,6 +10,8 @@ from extensions.ext_database import db
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def update_annotation_to_index_task(
@@ -25,7 +27,7 @@ def update_annotation_to_index_task(
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
-    logging.info(click.style(f"Start update index for annotation: {annotation_id}", fg="green"))
+    logger.info(click.style(f"Start update index for annotation: {annotation_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -49,13 +51,13 @@ def update_annotation_to_index_task(
         vector.delete_by_metadata_field("annotation_id", annotation_id)
         vector.add_texts([document])
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(
                 f"Build index successful for annotation: {annotation_id} latency: {end_at - start_at}",
                 fg="green",
             )
         )
     except Exception:
-        logging.exception("Build index for annotation failed")
+        logger.exception("Build index for annotation failed")
     finally:
         db.session.close()

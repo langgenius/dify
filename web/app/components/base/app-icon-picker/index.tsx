@@ -120,7 +120,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
           <button
             key={tab.key}
             className={cn(
-              'system-sm-medium flex h-8 flex-1 shrink-0 items-center justify-center rounded-xl p-2 text-text-tertiary',
+              'system-sm-medium flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 text-text-tertiary',
               activeTab === tab.key && 'bg-components-main-nav-nav-button-bg-active text-text-accent shadow-md',
             )}
             onClick={() => setActiveTab(tab.key as AppIconType)}

@@ -71,11 +71,13 @@ export const hasValidChildren = (children: any): boolean => {
   )
 }
 
-const inputVarTypeToVarType = (type: InputVarType): VarType => {
+export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
+    [InputVarType.checkbox]: VarType.boolean,
     [InputVarType.singleFile]: VarType.file,
     [InputVarType.multiFiles]: VarType.arrayFile,
+    [InputVarType.jsonObject]: VarType.object,
   } as any)[type] || VarType.string
 }
 
@@ -245,14 +247,27 @@ const formatItem = (
         variables,
       } = data as StartNodeType
       res.vars = variables.map((v) => {
-        return {
+        const type = inputVarTypeToVarType(v.type)
+        const varRes: Var = {
           variable: v.variable,
-          type: inputVarTypeToVarType(v.type),
+          type,
           isParagraph: v.type === InputVarType.paragraph,
           isSelect: v.type === InputVarType.select,
           options: v.options,
           required: v.required,
         }
+        try {
+          if(type === VarType.object && v.json_schema) {
+            varRes.children = {
+              schema: JSON.parse(v.json_schema),
+            }
+          }
+        }
+        catch (error) {
+          console.error('Error formatting variable:', error)
+        }
+
+        return varRes
       })
       if (isChatMode) {
         res.vars.push({
@@ -729,6 +744,8 @@ const getIterationItemType = ({
       return VarType.string
     case VarType.arrayNumber:
       return VarType.number
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
@@ -782,6 +799,8 @@ const getLoopItemType = ({
       return VarType.number
     case VarType.arrayObject:
       return VarType.object
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.array:
       return VarType.any
     case VarType.arrayFile:

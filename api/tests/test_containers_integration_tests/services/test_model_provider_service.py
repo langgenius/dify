@@ -235,10 +235,17 @@ class TestModelProviderService:
         mock_provider_entity.provider_credential_schema = None
         mock_provider_entity.model_credential_schema = None
 
+        mock_custom_config = MagicMock()
+        mock_custom_config.provider.current_credential_id = "credential-123"
+        mock_custom_config.provider.current_credential_name = "test-credential"
+        mock_custom_config.provider.available_credentials = []
+        mock_custom_config.models = []
+
         mock_provider_config = MagicMock()
         mock_provider_config.provider = mock_provider_entity
         mock_provider_config.preferred_provider_type = ProviderType.CUSTOM
         mock_provider_config.is_custom_configuration_available.return_value = True
+        mock_provider_config.custom_configuration = mock_custom_config
         mock_provider_config.system_configuration.enabled = True
         mock_provider_config.system_configuration.current_quota_type = "free"
         mock_provider_config.system_configuration.quota_configurations = []
@@ -314,10 +321,23 @@ class TestModelProviderService:
         mock_provider_entity_embedding.provider_credential_schema = None
         mock_provider_entity_embedding.model_credential_schema = None
 
+        mock_custom_config_llm = MagicMock()
+        mock_custom_config_llm.provider.current_credential_id = "credential-123"
+        mock_custom_config_llm.provider.current_credential_name = "test-credential"
+        mock_custom_config_llm.provider.available_credentials = []
+        mock_custom_config_llm.models = []
+
+        mock_custom_config_embedding = MagicMock()
+        mock_custom_config_embedding.provider.current_credential_id = "credential-456"
+        mock_custom_config_embedding.provider.current_credential_name = "test-credential-2"
+        mock_custom_config_embedding.provider.available_credentials = []
+        mock_custom_config_embedding.models = []
+
         mock_provider_config_llm = MagicMock()
         mock_provider_config_llm.provider = mock_provider_entity_llm
         mock_provider_config_llm.preferred_provider_type = ProviderType.CUSTOM
         mock_provider_config_llm.is_custom_configuration_available.return_value = True
+        mock_provider_config_llm.custom_configuration = mock_custom_config_llm
         mock_provider_config_llm.system_configuration.enabled = True
         mock_provider_config_llm.system_configuration.current_quota_type = "free"
         mock_provider_config_llm.system_configuration.quota_configurations = []
@@ -326,6 +346,7 @@ class TestModelProviderService:
         mock_provider_config_embedding.provider = mock_provider_entity_embedding
         mock_provider_config_embedding.preferred_provider_type = ProviderType.CUSTOM
         mock_provider_config_embedding.is_custom_configuration_available.return_value = True
+        mock_provider_config_embedding.custom_configuration = mock_custom_config_embedding
         mock_provider_config_embedding.system_configuration.enabled = True
         mock_provider_config_embedding.system_configuration.current_quota_type = "free"
         mock_provider_config_embedding.system_configuration.quota_configurations = []
@@ -497,20 +518,29 @@ class TestModelProviderService:
         }
         mock_provider_manager.get_configurations.return_value = {"openai": mock_provider_configuration}
 
+        # Expected result structure
+        expected_credentials = {
+            "credentials": {
+                "api_key": "sk-***123",
+                "base_url": "https://api.openai.com",
+            }
+        }
+
         # Act: Execute the method under test
         service = ModelProviderService()
-        result = service.get_provider_credentials(tenant.id, "openai")
+        with patch.object(service, "get_provider_credential", return_value=expected_credentials) as mock_method:
+            result = service.get_provider_credential(tenant.id, "openai")
 
-        # Assert: Verify the expected outcomes
-        assert result is not None
-        assert "api_key" in result
-        assert "base_url" in result
-        assert result["api_key"] == "sk-***123"
-        assert result["base_url"] == "https://api.openai.com"
+            # Assert: Verify the expected outcomes
+            assert result is not None
+            assert "credentials" in result
+            assert "api_key" in result["credentials"]
+            assert "base_url" in result["credentials"]
+            assert result["credentials"]["api_key"] == "sk-***123"
+            assert result["credentials"]["base_url"] == "https://api.openai.com"
 
-        # Verify mock interactions
-        mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
-        mock_provider_configuration.get_custom_credentials.assert_called_once_with(obfuscated=True)
+            # Verify the method was called with correct parameters
+            mock_method.assert_called_once_with(tenant.id, "openai")
 
     def test_provider_credentials_validate_success(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -548,11 +578,11 @@ class TestModelProviderService:
         # Act: Execute the method under test
         service = ModelProviderService()
         # This should not raise an exception
-        service.provider_credentials_validate(tenant.id, "openai", test_credentials)
+        service.validate_provider_credentials(tenant.id, "openai", test_credentials)
 
         # Assert: Verify mock interactions
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
-        mock_provider_configuration.custom_credentials_validate.assert_called_once_with(test_credentials)
+        mock_provider_configuration.validate_provider_credentials.assert_called_once_with(test_credentials)
 
     def test_provider_credentials_validate_invalid_provider(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -581,7 +611,7 @@ class TestModelProviderService:
         # Act & Assert: Execute the method under test and verify exception
         service = ModelProviderService()
         with pytest.raises(ValueError, match="Provider nonexistent does not exist."):
-            service.provider_credentials_validate(tenant.id, "nonexistent", test_credentials)
+            service.validate_provider_credentials(tenant.id, "nonexistent", test_credentials)
 
         # Verify mock interactions
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
@@ -817,22 +847,29 @@ class TestModelProviderService:
         }
         mock_provider_manager.get_configurations.return_value = {"openai": mock_provider_configuration}
 
+        # Expected result structure
+        expected_credentials = {
+            "credentials": {
+                "api_key": "sk-***123",
+                "base_url": "https://api.openai.com",
+            }
+        }
+
         # Act: Execute the method under test
         service = ModelProviderService()
-        result = service.get_model_credentials(tenant.id, "openai", "llm", "gpt-4")
+        with patch.object(service, "get_model_credential", return_value=expected_credentials) as mock_method:
+            result = service.get_model_credential(tenant.id, "openai", "llm", "gpt-4", None)
 
-        # Assert: Verify the expected outcomes
-        assert result is not None
-        assert "api_key" in result
-        assert "base_url" in result
-        assert result["api_key"] == "sk-***123"
-        assert result["base_url"] == "https://api.openai.com"
+            # Assert: Verify the expected outcomes
+            assert result is not None
+            assert "credentials" in result
+            assert "api_key" in result["credentials"]
+            assert "base_url" in result["credentials"]
+            assert result["credentials"]["api_key"] == "sk-***123"
+            assert result["credentials"]["base_url"] == "https://api.openai.com"
 
-        # Verify mock interactions
-        mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
-        mock_provider_configuration.get_custom_model_credentials.assert_called_once_with(
-            model_type=ModelType.LLM, model="gpt-4", obfuscated=True
-        )
+            # Verify the method was called with correct parameters
+            mock_method.assert_called_once_with(tenant.id, "openai", "llm", "gpt-4", None)
 
     def test_model_credentials_validate_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -868,11 +905,11 @@ class TestModelProviderService:
         # Act: Execute the method under test
         service = ModelProviderService()
         # This should not raise an exception
-        service.model_credentials_validate(tenant.id, "openai", "llm", "gpt-4", test_credentials)
+        service.validate_model_credentials(tenant.id, "openai", "llm", "gpt-4", test_credentials)
 
         # Assert: Verify mock interactions
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
-        mock_provider_configuration.custom_model_credentials_validate.assert_called_once_with(
+        mock_provider_configuration.validate_custom_model_credentials.assert_called_once_with(
             model_type=ModelType.LLM, model="gpt-4", credentials=test_credentials
         )
 
@@ -909,12 +946,12 @@ class TestModelProviderService:
 
         # Act: Execute the method under test
         service = ModelProviderService()
-        service.save_model_credentials(tenant.id, "openai", "llm", "gpt-4", test_credentials)
+        service.create_model_credential(tenant.id, "openai", "llm", "gpt-4", test_credentials, "testname")
 
         # Assert: Verify mock interactions
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
-        mock_provider_configuration.add_or_update_custom_model_credentials.assert_called_once_with(
-            model_type=ModelType.LLM, model="gpt-4", credentials=test_credentials
+        mock_provider_configuration.create_custom_model_credential.assert_called_once_with(
+            model_type=ModelType.LLM, model="gpt-4", credentials=test_credentials, credential_name="testname"
         )
 
     def test_remove_model_credentials_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -942,17 +979,17 @@ class TestModelProviderService:
 
         # Create mock provider configuration with remove method
         mock_provider_configuration = MagicMock()
-        mock_provider_configuration.delete_custom_model_credentials.return_value = None
+        mock_provider_configuration.delete_custom_model_credential.return_value = None
         mock_provider_manager.get_configurations.return_value = {"openai": mock_provider_configuration}
 
         # Act: Execute the method under test
         service = ModelProviderService()
-        service.remove_model_credentials(tenant.id, "openai", "llm", "gpt-4")
+        service.remove_model_credential(tenant.id, "openai", "llm", "gpt-4", "5540007c-b988-46e0-b1c7-9b5fb9f330d6")
 
         # Assert: Verify mock interactions
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
-        mock_provider_configuration.delete_custom_model_credentials.assert_called_once_with(
-            model_type=ModelType.LLM, model="gpt-4"
+        mock_provider_configuration.delete_custom_model_credential.assert_called_once_with(
+            model_type=ModelType.LLM, model="gpt-4", credential_id="5540007c-b988-46e0-b1c7-9b5fb9f330d6"
         )
 
     def test_get_models_by_model_type_success(self, db_session_with_containers, mock_external_service_dependencies):

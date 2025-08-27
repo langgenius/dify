@@ -190,15 +190,16 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
+  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
+  jsonObject = 'json_object', // only object support define json schema
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
-  checkbox = 'checkbox',
 }
 
 export type InputVar = {
@@ -221,6 +222,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
+  json_schema?: string // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -279,6 +281,7 @@ export enum VarType {
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
+  arrayBoolean = 'array[boolean]',
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',

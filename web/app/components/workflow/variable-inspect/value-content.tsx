@@ -24,6 +24,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import { useStore } from '@/app/components/workflow/store'
 import { ChunkCardList, type ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list'
 import { PreviewMode } from '../../base/features/types'
@@ -117,6 +118,8 @@ const ValueContent = ({
   const errorMessageRef = useRef<HTMLDivElement>(null)
   const [editorHeight, setEditorHeight] = useState(0)
   const showTextEditor = currentVar.value_type === 'secret' || currentVar.value_type === 'string' || currentVar.value_type === 'number'
+  const showBoolEditor = typeof currentVar.value === 'boolean'
+  const showBoolArrayEditor = Array.isArray(currentVar.value) && currentVar.value.every(v => typeof v === 'boolean')
   const isSysFiles = currentVar.type === VarInInspectType.system && currentVar.name === 'files'
   const showJSONEditor = !isSysFiles && (currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]' || currentVar.value_type === 'array[any]')
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
@@ -273,6 +276,35 @@ const ValueContent = ({
             onChange={e => handleTextChange(e.target.value)}
           />
         )}
+        {showBoolEditor && (
+          <div className='w-[295px]'>
+            <BoolValue
+              value={currentVar.value as boolean}
+              onChange={(newValue) => {
+                setValue(newValue)
+                debounceValueChange(currentVar.id, newValue)
+              }}
+            />
+          </div>
+        )}
+        {
+          showBoolArrayEditor && (
+            <div className='w-[295px] space-y-1'>
+              {currentVar.value.map((v: boolean, i: number) => (
+                <BoolValue
+                  key={i}
+                  value={v}
+                  onChange={(newValue) => {
+                    const newArray = [...(currentVar.value as boolean[])]
+                    newArray[i] = newValue
+                    setValue(newArray)
+                    debounceValueChange(currentVar.id, newArray)
+                  }}
+                />
+              ))}
+            </div>
+          )
+        }
         {showJSONEditor && (
           hasChunks
             ? <DisplayContent
