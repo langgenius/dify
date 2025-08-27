@@ -332,6 +332,7 @@ const translation = {
     checklist: '检查清单',
     checklistTip: '发布前确保所有问题均已解决',
     checklistResolved: '所有问题均已解决',
+    startNode: '开始节点',
     organizeBlocks: '整理节点',
     change: '更改',
     optional: '（选填）',

@@ -166,7 +166,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       list.push({
         id: 'start-node-required',
         type: BlockEnum.Start,
-        title: t('workflow.blocks.start'),
+        title: t('workflow.panel.startNode'),
         errorMessage: t('workflow.common.needStartNode'),
       })
     }

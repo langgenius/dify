@@ -332,6 +332,7 @@ const translation = {
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
     checklistResolved: 'All issues are resolved',
+    startNode: 'Start Node',
     organizeBlocks: 'Organize nodes',
     change: 'Change',
     optional: '(optional)',
