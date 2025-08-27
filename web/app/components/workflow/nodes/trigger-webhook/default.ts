@@ -2,7 +2,6 @@ import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { WebhookTriggerNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
@@ -16,7 +15,6 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     'async_mode': true,
     'status_code': 200,
     'response_body': '',
-    'error_strategy': ErrorHandleTypeEnum.defaultValue,
     'default_value': [] as DefaultValueForm[],
   },
   getAvailablePrevNodes(_isChatMode: boolean) {
