@@ -62,7 +62,7 @@ class BranchHandler:
             raise ValueError(f"Branch node {node_id} completed without selecting a branch")
 
         # Categorize edges into selected and unselected
-        selected_edges, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
+        _, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
 
         # Skip all unselected paths
         self.skip_propagator.skip_branch_paths(unselected_edges)
