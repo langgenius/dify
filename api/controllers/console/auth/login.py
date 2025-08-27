@@ -2,7 +2,7 @@ from typing import cast
 
 import flask_login
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
@@ -221,7 +221,7 @@ class EmailCodeLoginApi(Resource):
                     email=user_email, name=user_email, interface_language=languages[0]
                 )
             except WorkSpaceNotAllowedCreateError:
-                return NotAllowedCreateWorkspace()
+                raise NotAllowedCreateWorkspace()
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:

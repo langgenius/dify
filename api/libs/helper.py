@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
-from flask_restful import fields
+from flask_restx import fields
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -57,7 +57,7 @@ def run(script):
 
 
 class AppIconUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 
@@ -72,7 +72,7 @@ class AppIconUrlField(fields.Raw):
 
 
 class AvatarUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 

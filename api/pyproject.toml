@@ -13,13 +13,12 @@ dependencies = [
     "cachetools~=5.3.0",
     "celery~=5.5.2",
     "chardet~=5.1.0",
-    "flask~=3.1.0",
+    "flask~=3.1.2",
     "flask-compress~=1.17",
     "flask-cors~=6.0.0",
     "flask-login~=0.6.3",
     "flask-migrate~=4.0.7",
     "flask-orjson~=2.0.0",
-    "flask-restful~=0.3.10",
     "flask-sqlalchemy~=3.1.1",
     "gevent~=24.11.1",
     "gmpy2~=2.2.1",
@@ -88,6 +87,7 @@ dependencies = [
     "sseclient-py>=1.8.0",
     "httpx-sse>=0.4.0",
     "sendgrid~=6.12.3",
+    "flask-restx>=1.3.0",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -110,7 +110,7 @@ dev = [
     "dotenv-linter~=0.5.0",
     "faker~=32.1.0",
     "lxml-stubs~=0.5.1",
-    "mypy~=1.16.0",
+    "mypy~=1.17.1",
     "ruff~=0.12.3",
     "pytest~=8.3.2",
     "pytest-benchmark~=4.0.0",
@@ -164,6 +164,7 @@ dev = [
     "scipy-stubs>=1.15.3.0",
     "types-python-http-client>=3.3.7.20240910",
     "types-redis>=4.6.0.20241004",
+    "celery-types>=0.23.0",
 ]
 
 ############################################################

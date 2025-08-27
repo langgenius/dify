@@ -1,15 +1,15 @@
-import datetime
 import logging
 import time
 from typing import Optional
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
 
 
@@ -41,7 +41,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         db.session.query(DocumentSegment).filter_by(id=segment.id).update(
             {
                 DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.indexing_at: naive_utc_now(),
             }
         )
         db.session.commit()
@@ -79,7 +79,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         db.session.query(DocumentSegment).filter_by(id=segment.id).update(
             {
                 DocumentSegment.status: "completed",
-                DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.completed_at: naive_utc_now(),
             }
         )
         db.session.commit()
@@ -89,7 +89,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
     except Exception as e:
         logging.exception("create segment to index failed")
         segment.enabled = False
-        segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        segment.disabled_at = naive_utc_now()
         segment.status = "error"
         segment.error = str(e)
         db.session.commit()

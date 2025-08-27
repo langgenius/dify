@@ -1,14 +1,14 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from services.dataset_service import DatasetCollectionBindingService
@@ -72,7 +72,7 @@ def enable_annotation_reply_task(
             annotation_setting.score_threshold = score_threshold
             annotation_setting.collection_binding_id = dataset_collection_binding.id
             annotation_setting.updated_user_id = user_id
-            annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            annotation_setting.updated_at = naive_utc_now()
             db.session.add(annotation_setting)
         else:
             new_app_annotation_setting = AppAnnotationSetting(
