@@ -65,7 +65,7 @@ class BranchHandler:
         selected_edges, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
 
         # Skip all unselected paths
-        self.skip_propagator.skip_branch_paths(node_id, unselected_edges)
+        self.skip_propagator.skip_branch_paths(unselected_edges)
 
         # Process selected edges and get ready nodes and streaming events
         return self.edge_processor.process_node_success(node_id, selected_handle)

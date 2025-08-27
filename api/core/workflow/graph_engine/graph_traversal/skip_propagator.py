@@ -83,12 +83,11 @@ class SkipPropagator:
             # Recursively propagate skip
             self.propagate_skip_from_edge(edge.id)
 
-    def skip_branch_paths(self, node_id: str, unselected_edges: list) -> None:
+    def skip_branch_paths(self, unselected_edges: Sequence[Edge]) -> None:
         """
         Skip all paths from unselected branch edges.
 
         Args:
-            node_id: The ID of the branch node
             unselected_edges: List of edges not taken by the branch
         """
         for edge in unselected_edges:
