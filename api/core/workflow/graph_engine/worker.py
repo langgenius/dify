@@ -11,7 +11,6 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 from flask import Flask
@@ -38,10 +37,10 @@ class Worker(threading.Thread):
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         worker_id: int = 0,
-        flask_app: Optional[Flask] = None,
-        context_vars: Optional[contextvars.Context] = None,
-        on_idle_callback: Optional[Callable[[int], None]] = None,
-        on_active_callback: Optional[Callable[[int], None]] = None,
+        flask_app: Flask | None = None,
+        context_vars: contextvars.Context | None = None,
+        on_idle_callback: Callable[[int], None] | None = None,
+        on_active_callback: Callable[[int], None] | None = None,
     ) -> None:
         """
         Initialize worker thread.

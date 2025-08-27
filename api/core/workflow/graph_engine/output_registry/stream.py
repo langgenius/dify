@@ -5,7 +5,7 @@ This module contains the private Stream class used internally by OutputRegistry
 to manage streaming data chunks.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.workflow.graph_events import NodeRunStreamChunkEvent
@@ -41,7 +41,7 @@ class Stream:
             raise ValueError("Cannot append to a closed stream")
         self.events.append(event)
 
-    def pop_next(self) -> Optional["NodeRunStreamChunkEvent"]:
+    def pop_next(self) -> "NodeRunStreamChunkEvent" | None:
         """
         Pop the next unread NodeRunStreamChunkEvent from the stream.
 

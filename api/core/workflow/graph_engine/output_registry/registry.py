@@ -7,7 +7,7 @@ thread-safe storage for node outputs.
 
 from collections.abc import Sequence
 from threading import RLock
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from core.variables import Segment
 from core.workflow.entities.variable_pool import VariablePool
@@ -47,7 +47,7 @@ class OutputRegistry:
         with self._lock:
             self._scalars.add(selector, value)
 
-    def get_scalar(self, selector: Sequence[str]) -> Optional["Segment"]:
+    def get_scalar(self, selector: Sequence[str]) -> "Segment" | None:
         """
         Get a scalar value for the given selector.
 
@@ -81,7 +81,7 @@ class OutputRegistry:
             except ValueError:
                 raise ValueError(f"Stream {'.'.join(selector)} is already closed")
 
-    def pop_chunk(self, selector: Sequence[str]) -> Optional["NodeRunStreamChunkEvent"]:
+    def pop_chunk(self, selector: Sequence[str]) -> "NodeRunStreamChunkEvent" | None:
         """
         Pop the next unread NodeRunStreamChunkEvent from the stream.
 

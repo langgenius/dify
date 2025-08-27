@@ -6,7 +6,7 @@ instance to control its execution flow.
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -23,11 +23,11 @@ class GraphEngineCommand(BaseModel):
     """Base class for all GraphEngine commands."""
 
     command_type: CommandType = Field(..., description="Type of command")
-    payload: Optional[dict[str, Any]] = Field(default=None, description="Optional command payload")
+    payload: dict[str, Any] | None = Field(default=None, description="Optional command payload")
 
 
 class AbortCommand(GraphEngineCommand):
     """Command to abort a running workflow execution."""
 
     command_type: CommandType = Field(default=CommandType.ABORT, description="Type of command")
-    reason: Optional[str] = Field(default=None, description="Optional reason for abort")
+    reason: str | None = Field(default=None, description="Optional reason for abort")

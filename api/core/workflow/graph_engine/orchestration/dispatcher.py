@@ -6,7 +6,7 @@ import logging
 import queue
 import threading
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from core.workflow.graph_events.base import GraphNodeEventBase
 
@@ -34,7 +34,7 @@ class Dispatcher:
         event_collector: EventCollector,
         execution_coordinator: ExecutionCoordinator,
         max_execution_time: int,
-        event_emitter: Optional[EventEmitter] = None,
+        event_emitter: EventEmitter | None = None,
     ) -> None:
         """
         Initialize the dispatcher.
@@ -54,9 +54,9 @@ class Dispatcher:
         self.max_execution_time = max_execution_time
         self.event_emitter = event_emitter
 
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
-        self._start_time: Optional[float] = None
+        self._start_time: float | None = None
 
     def start(self) -> None:
         """Start the dispatcher thread."""

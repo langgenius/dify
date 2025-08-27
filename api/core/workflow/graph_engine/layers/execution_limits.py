@@ -11,7 +11,6 @@ When limits are exceeded, the layer automatically aborts execution.
 import logging
 import time
 from enum import Enum
-from typing import Optional
 
 from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType
 from core.workflow.graph_engine.layers import Layer
@@ -53,7 +52,7 @@ class ExecutionLimitsLayer(Layer):
         self.max_time = max_time
 
         # Runtime tracking
-        self.start_time: Optional[float] = None
+        self.start_time: float | None = None
         self.step_count = 0
         self.logger = logging.getLogger(__name__)
 
@@ -94,7 +93,7 @@ class ExecutionLimitsLayer(Layer):
             if self._reached_time_limitation():
                 self._send_abort_command(LimitType.TIME_LIMIT)
 
-    def on_graph_end(self, error: Optional[Exception]) -> None:
+    def on_graph_end(self, error: Exception | None) -> None:
         """Called when graph execution ends."""
         if self._execution_started and not self._execution_ended:
             self._execution_ended = True

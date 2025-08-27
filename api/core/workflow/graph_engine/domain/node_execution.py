@@ -3,7 +3,6 @@ NodeExecution entity representing a node's execution state.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from core.workflow.enums import NodeState
 
@@ -20,8 +19,8 @@ class NodeExecution:
     node_id: str
     state: NodeState = NodeState.UNKNOWN
     retry_count: int = 0
-    execution_id: Optional[str] = None
-    error: Optional[str] = None
+    execution_id: str | None = None
+    error: str | None = None
 
     def mark_started(self, execution_id: str) -> None:
         """Mark the node as started with an execution ID."""

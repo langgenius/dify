@@ -5,7 +5,6 @@ Factory for creating worker instances.
 import contextvars
 import queue
 from collections.abc import Callable
-from typing import Optional
 
 from flask import Flask
 
@@ -24,7 +23,7 @@ class WorkerFactory:
 
     def __init__(
         self,
-        flask_app: Optional[Flask],
+        flask_app: Flask | None,
         context_vars: contextvars.Context,
     ) -> None:
         """
@@ -43,8 +42,8 @@ class WorkerFactory:
         ready_queue: queue.Queue[str],
         event_queue: queue.Queue,
         graph: Graph,
-        on_idle_callback: Optional[Callable[[int], None]] = None,
-        on_active_callback: Optional[Callable[[int], None]] = None,
+        on_idle_callback: Callable[[int], None] | None = None,
+        on_active_callback: Callable[[int], None] | None = None,
     ) -> Worker:
         """
         Create a new worker instance.

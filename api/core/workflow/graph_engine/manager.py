@@ -6,7 +6,6 @@ using the new Redis command channel, without requiring user permission checks.
 Supports stop, pause, and resume operations.
 """
 
-from typing import Optional
 
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand
@@ -23,7 +22,7 @@ class GraphEngineManager:
     """
 
     @staticmethod
-    def send_stop_command(task_id: str, reason: Optional[str] = None) -> None:
+    def send_stop_command(task_id: str, reason: str | None = None) -> None:
         """
         Send a stop command to a running workflow.
 

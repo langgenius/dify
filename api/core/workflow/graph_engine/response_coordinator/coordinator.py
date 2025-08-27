@@ -9,7 +9,7 @@ import logging
 from collections import deque
 from collections.abc import Sequence
 from threading import RLock
-from typing import Optional, TypeAlias
+from typing import TypeAlias
 from uuid import uuid4
 
 from core.workflow.enums import NodeExecutionType, NodeState
@@ -45,7 +45,7 @@ class ResponseStreamCoordinator:
         """
         self.registry = registry
         self.graph = graph
-        self.active_session: Optional[ResponseSession] = None
+        self.active_session: ResponseSession | None = None
         self.waiting_sessions: deque[ResponseSession] = deque()
         self.lock = RLock()
 

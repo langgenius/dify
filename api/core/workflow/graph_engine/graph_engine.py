@@ -9,7 +9,7 @@ import contextvars
 import logging
 import queue
 from collections.abc import Generator, Mapping
-from typing import Any, Optional
+from typing import Any
 
 from flask import Flask, current_app
 
@@ -210,7 +210,7 @@ class GraphEngine:
     def _setup_worker_management(self) -> None:
         """Initialize worker management subsystem."""
         # Capture context for workers
-        flask_app: Optional[Flask] = None
+        flask_app: Flask | None = None
         try:
             flask_app = current_app._get_current_object()  # type: ignore
         except RuntimeError:
