@@ -43,7 +43,7 @@ class DatasourceNode(Node):
     """
 
     _node_data: DatasourceNodeData
-    _node_type = NodeType.DATASOURCE
+    node_type = NodeType.DATASOURCE
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
         self._node_data = DatasourceNodeData.model_validate(data)

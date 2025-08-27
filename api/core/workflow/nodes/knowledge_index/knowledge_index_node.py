@@ -36,7 +36,7 @@ default_retrieval_model = {
 
 class KnowledgeIndexNode(Node):
     _node_data: KnowledgeIndexNodeData
-    _node_type = NodeType.KNOWLEDGE_INDEX
+    node_type = NodeType.KNOWLEDGE_INDEX
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
         self._node_data = KnowledgeIndexNodeData.model_validate(data)
