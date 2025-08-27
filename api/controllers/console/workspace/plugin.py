@@ -107,6 +107,22 @@ class PluginIconApi(Resource):
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
+class PluginAssetApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        req.add_argument("file_name", type=str, required=True, location="args")
+        args = req.parse_args()
+
+        tenant_id = current_user.current_tenant_id
+        try:
+            binary = PluginService.extract_asset(tenant_id, args["plugin_unique_identifier"], args["file_name"])
+            return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
 
 class PluginUploadFromPkgApi(Resource):
     @setup_required
@@ -670,6 +686,7 @@ api.add_resource(PluginReadmeApi, "/workspaces/current/plugin/readme")
 api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
 api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
+api.add_resource(PluginAssetApi, "/workspaces/current/plugin/asset")
 api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
 api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")
 api.add_resource(PluginUploadFromBundleApi, "/workspaces/current/plugin/upload/bundle")
