@@ -117,22 +117,27 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               description={t(`${i18nPrefix}.outputVars.json`)}
               isIndent={hasObjectOutput}
             />
-            {outputSchema.map(outputItem => (
-              <div key={outputItem.name}>
-                {outputItem.value?.type === 'object' ? (
-                  <StructureOutputItem
-                    rootClassName='code-sm-semibold text-text-secondary'
-                    payload={wrapStructuredVarItem(outputItem, getMatchedSchemaType(outputItem.value))} />
-                ) : (
-                  <VarItem
-                    name={outputItem.name}
-                    type={outputItem.type.toLocaleLowerCase()}
-                    description={outputItem.description}
-                    isIndent={hasObjectOutput}
-                  />
-                )}
-              </div>
-            ))}
+            {outputSchema.map((outputItem) => {
+              const schemaType = getMatchedSchemaType(outputItem.value)
+              return (
+                <div key={outputItem.name}>
+                  {outputItem.value?.type === 'object' ? (
+                    <StructureOutputItem
+                      rootClassName='code-sm-semibold text-text-secondary'
+                      payload={wrapStructuredVarItem(outputItem, schemaType)}
+                    />
+                  ) : (
+                    <VarItem
+                      name={outputItem.name}
+                      // eslint-disable-next-line sonarjs/no-nested-template-literals
+                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                      description={outputItem.description}
+                      isIndent={hasObjectOutput}
+                    />
+                  )}
+                </div>
+              )
+          })}
           </>
         </OutputVars>
       </div>
