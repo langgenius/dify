@@ -1383,3 +1383,41 @@ class WorkflowTriggerLog(Base):
             "triggered_at": self.triggered_at.isoformat() if self.triggered_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
         }
+
+
+class WorkflowWebhookTrigger(Base):
+    """
+    Workflow Webhook Trigger
+
+    Attributes:
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Node ID which node in the workflow
+    - tenant_id (uuid) Workspace ID
+    - webhook_id (varchar) Webhook ID for URL: https://api.dify.ai/triggers/webhook/:webhook_id
+    - triggered_by (varchar) Environment: debugger or production
+    - created_at (timestamp) Creation time
+    - updated_at (timestamp) Last update time
+    """
+
+    __tablename__ = "workflow_webhook_triggers"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_webhook_trigger_pkey"),
+        sa.Index("workflow_webhook_trigger_tenant_idx", "tenant_id"),
+        sa.UniqueConstraint("app_id", "node_id", "triggered_by", name="uniq_node"),
+        sa.UniqueConstraint("webhook_id", name="uniq_webhook_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
+    triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
