@@ -97,7 +97,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       Object.keys(output_schema.properties).forEach((outputKey) => {
         const output = output_schema.properties[outputKey]
         const dataType = output.type
-        const schemaType = getMatchedSchemaType?.(output.value)
+        const schemaType = getMatchedSchemaType?.(output)
         let type = dataType === 'array'
           ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
           : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`
