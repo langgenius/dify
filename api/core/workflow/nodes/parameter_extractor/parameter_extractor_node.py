@@ -2,7 +2,7 @@ import contextlib
 import json
 import logging
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -295,33 +295,83 @@ class ParameterExtractorNode(BaseNode):
         tools: list[PromptMessageTool],
         stop: list[str],
     ) -> tuple[str, LLMUsage, Optional[AssistantPromptMessage.ToolCall]]:
+        provider = model_instance.provider
+        model = model_instance.model
+        completion_params = node_data_model.completion_params
+
+        thinking_business_qwen3 = (
+            provider == "langgenius/tongyi/tongyi"
+            and model in ("qwen-plus-latest", "qwen-plus-2025-04-28", "qwen-turbo-latest", "qwen-turbo-2025-04-28")
+            and completion_params.get("enable_thinking", False)
+        )
+
+        stream = False
+        # Qwen3 business edition (Thinking Mode), Qwen3 open-source edition, QwQ, and QVQ models only supports streaming output.
+        if thinking_business_qwen3 or any(s in model.lower() for s in ["qwen3-", "qwq-", "qvq-"]):
+            stream = True
+
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=node_data_model.completion_params,
             tools=tools,
             stop=stop,
-            stream=False,
+            stream=stream,
             user=self.user_id,
         )
 
         # handle invoke result
-        if not isinstance(invoke_result, LLMResult):
-            raise InvalidInvokeResultError(f"Invalid invoke result: {invoke_result}")
+        if isinstance(invoke_result, LLMResult):
+            # Non stream response
+            text = invoke_result.message.content or ""
+            if not isinstance(text, str):
+                raise InvalidTextContentTypeError(f"Invalid text content type: {type(text)}. Expected str.")
 
-        text = invoke_result.message.content or ""
-        if not isinstance(text, str):
-            raise InvalidTextContentTypeError(f"Invalid text content type: {type(text)}. Expected str.")
+            usage = invoke_result.usage
+            tool_call = invoke_result.message.tool_calls[0] if invoke_result.message.tool_calls else None
 
-        usage = invoke_result.usage
-        tool_call = invoke_result.message.tool_calls[0] if invoke_result.message.tool_calls else None
+            # deduct quota
+            llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
-        # deduct quota
-        llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+            if text is None:
+                text = ""
 
-        if text is None:
+            return text, usage, tool_call
+        elif isinstance(invoke_result, Generator):
+            # Stream response
             text = ""
+            usage = None
+            tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
-        return text, usage, tool_call
+            for chunk in invoke_result:
+                if isinstance(chunk.delta.message.content, str):
+                    text += chunk.delta.message.content
+                elif isinstance(chunk.delta.message.content, list):
+                    for content in chunk.delta.message.content:
+                        if isinstance(content, str):
+                            text += content
+                        else:
+                            text += content.data
+
+                if chunk.delta.message.tool_calls:
+                    tool_calls.extend(chunk.delta.message.tool_calls)
+
+                if chunk.delta.usage:
+                    usage = chunk.delta.usage
+
+            if usage is None:
+                usage = LLMUsage.empty_usage()
+
+            tool_call = tool_calls[0] if tool_calls else None
+
+            # deduct quota
+            llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+
+            if text is None:
+                text = ""
+
+            return text, usage, tool_call
+        else:
+            raise InvalidInvokeResultError(f"Invalid invoke result: {invoke_result}")
 
     def _generate_function_call_prompt(
         self,
