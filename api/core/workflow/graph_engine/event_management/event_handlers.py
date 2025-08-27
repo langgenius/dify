@@ -3,7 +3,7 @@ Event handler implementations for different event types.
 """
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
@@ -52,12 +52,12 @@ class EventHandlerRegistry:
         graph_runtime_state: GraphRuntimeState,
         graph_execution: GraphExecution,
         response_coordinator: ResponseStreamCoordinator,
-        event_collector: Optional["EventCollector"] = None,
-        branch_handler: Optional["BranchHandler"] = None,
-        edge_processor: Optional["EdgeProcessor"] = None,
-        node_state_manager: Optional["NodeStateManager"] = None,
-        execution_tracker: Optional["ExecutionTracker"] = None,
-        error_handler: Optional["ErrorHandler"] = None,
+        event_collector: "EventCollector",
+        branch_handler: "BranchHandler",
+        edge_processor: "EdgeProcessor",
+        node_state_manager: "NodeStateManager",
+        execution_tracker: "ExecutionTracker",
+        error_handler: "ErrorHandler",
     ) -> None:
         """
         Initialize the event handler registry.
@@ -67,12 +67,12 @@ class EventHandlerRegistry:
             graph_runtime_state: Runtime state with variable pool
             graph_execution: Graph execution aggregate
             response_coordinator: Response stream coordinator
-            event_collector: Optional event collector for collecting events
-            branch_handler: Optional branch handler for branch node processing
-            edge_processor: Optional edge processor for edge traversal
-            node_state_manager: Optional node state manager
-            execution_tracker: Optional execution tracker
-            error_handler: Optional error handler
+            event_collector: Event collector for collecting events
+            branch_handler: Branch handler for branch node processing
+            edge_processor: Edge processor for edge traversal
+            node_state_manager: Node state manager
+            execution_tracker: Execution tracker
+            error_handler: Error handler
         """
         self.graph = graph
         self.graph_runtime_state = graph_runtime_state
@@ -93,9 +93,8 @@ class EventHandlerRegistry:
             event: The event to handle
         """
         # Events in loops or iterations are always collected
-        if isinstance(event, GraphNodeEventBase) and (event.in_loop_id or event.in_iteration_id):
-            if self.event_collector:
-                self.event_collector.collect(event)
+        if event.in_loop_id or event.in_iteration_id:
+            self.event_collector.collect(event)
             return
 
         # Handle specific event types
@@ -125,12 +124,10 @@ class EventHandlerRegistry:
             ),
         ):
             # Iteration and loop events are collected directly
-            if self.event_collector:
-                self.event_collector.collect(event)
+            self.event_collector.collect(event)
         else:
             # Collect unhandled events
-            if self.event_collector:
-                self.event_collector.collect(event)
+            self.event_collector.collect(event)
             logger.warning("Unhandled event type: %s", type(event).__name__)
 
     def _handle_node_started(self, event: NodeRunStartedEvent) -> None:
@@ -148,8 +145,7 @@ class EventHandlerRegistry:
         self.response_coordinator.track_node_execution(event.node_id, event.id)
 
         # Collect the event
-        if self.event_collector:
-            self.event_collector.collect(event)
+        self.event_collector.collect(event)
 
     def _handle_stream_chunk(self, event: NodeRunStreamChunkEvent) -> None:
         """
@@ -162,9 +158,8 @@ class EventHandlerRegistry:
         streaming_events = list(self.response_coordinator.intercept_event(event))
 
         # Collect all events
-        if self.event_collector:
-            for stream_event in streaming_events:
-                self.event_collector.collect(stream_event)
+        for stream_event in streaming_events:
+            self.event_collector.collect(stream_event)
 
     def _handle_node_succeeded(self, event: NodeRunSucceededEvent) -> None:
         """
@@ -184,48 +179,37 @@ class EventHandlerRegistry:
         self._store_node_outputs(event)
 
         # Forward to response coordinator and emit streaming events
-        streaming_events = list(self.response_coordinator.intercept_event(event))
-        if self.event_collector:
-            for stream_event in streaming_events:
-                self.event_collector.collect(stream_event)
+        streaming_events = self.response_coordinator.intercept_event(event)
+        for stream_event in streaming_events:
+            self.event_collector.collect(stream_event)
 
         # Process edges and get ready nodes
         node = self.graph.nodes[event.node_id]
         if node.execution_type == NodeExecutionType.BRANCH:
-            if self.branch_handler:
-                ready_nodes, edge_streaming_events = self.branch_handler.handle_branch_completion(
-                    event.node_id, event.node_run_result.edge_source_handle
-                )
-            else:
-                ready_nodes, edge_streaming_events = [], []
+            ready_nodes, edge_streaming_events = self.branch_handler.handle_branch_completion(
+                event.node_id, event.node_run_result.edge_source_handle
+            )
         else:
-            if self.edge_processor:
-                ready_nodes, edge_streaming_events = self.edge_processor.process_node_success(event.node_id)
-            else:
-                ready_nodes, edge_streaming_events = [], []
+            ready_nodes, edge_streaming_events = self.edge_processor.process_node_success(event.node_id)
 
         # Collect streaming events from edge processing
-        if self.event_collector:
-            for edge_event in edge_streaming_events:
-                self.event_collector.collect(edge_event)
+        for edge_event in edge_streaming_events:
+            self.event_collector.collect(edge_event)
 
         # Enqueue ready nodes
-        if self.node_state_manager and self.execution_tracker:
-            for node_id in ready_nodes:
-                self.node_state_manager.enqueue_node(node_id)
-                self.execution_tracker.add(node_id)
+        for node_id in ready_nodes:
+            self.node_state_manager.enqueue_node(node_id)
+            self.execution_tracker.add(node_id)
 
         # Update execution tracking
-        if self.execution_tracker:
-            self.execution_tracker.remove(event.node_id)
+        self.execution_tracker.remove(event.node_id)
 
         # Handle response node outputs
         if node.execution_type == NodeExecutionType.RESPONSE:
             self._update_response_outputs(event)
 
         # Collect the event
-        if self.event_collector:
-            self.event_collector.collect(event)
+        self.event_collector.collect(event)
 
     def _handle_node_failed(self, event: NodeRunFailedEvent) -> None:
         """
@@ -238,26 +222,16 @@ class EventHandlerRegistry:
         node_execution = self.graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_failed(event.error)
 
-        if self.error_handler:
-            result = self.error_handler.handle_node_failure(event)
+        result = self.error_handler.handle_node_failure(event)
 
-            if result:
-                # Process the resulting event (retry, exception, etc.)
-                self.handle_event(result)
-            else:
-                # Abort execution
-                self.graph_execution.fail(RuntimeError(event.error))
-                if self.event_collector:
-                    self.event_collector.collect(event)
-                if self.execution_tracker:
-                    self.execution_tracker.remove(event.node_id)
+        if result:
+            # Process the resulting event (retry, exception, etc.)
+            self.handle_event(result)
         else:
-            # Without error handler, just fail
+            # Abort execution
             self.graph_execution.fail(RuntimeError(event.error))
-            if self.event_collector:
-                self.event_collector.collect(event)
-            if self.execution_tracker:
-                self.execution_tracker.remove(event.node_id)
+            self.event_collector.collect(event)
+            self.execution_tracker.remove(event.node_id)
 
     def _handle_node_exception(self, event: NodeRunExceptionEvent) -> None:
         """

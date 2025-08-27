@@ -2,9 +2,11 @@
 Branch node handling for graph traversal.
 """
 
+from collections.abc import Sequence
 from typing import Optional
 
 from core.workflow.graph import Graph
+from core.workflow.graph_events.node import NodeRunStreamChunkEvent
 
 from ..state_management import EdgeStateManager
 from .edge_processor import EdgeProcessor
@@ -40,7 +42,9 @@ class BranchHandler:
         self.skip_propagator = skip_propagator
         self.edge_state_manager = edge_state_manager
 
-    def handle_branch_completion(self, node_id: str, selected_handle: Optional[str]) -> tuple[list[str], list]:
+    def handle_branch_completion(
+        self, node_id: str, selected_handle: Optional[str]
+    ) -> tuple[Sequence[str], Sequence[NodeRunStreamChunkEvent]]:
         """
         Handle completion of a branch node.
 

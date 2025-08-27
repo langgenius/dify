@@ -8,6 +8,8 @@ import threading
 import time
 from typing import TYPE_CHECKING, Optional
 
+from core.workflow.graph_events.base import GraphNodeEventBase
+
 from ..event_management import EventCollector, EventEmitter
 from .execution_coordinator import ExecutionCoordinator
 
@@ -27,7 +29,7 @@ class Dispatcher:
 
     def __init__(
         self,
-        event_queue: queue.Queue,
+        event_queue: queue.Queue[GraphNodeEventBase],
         event_handler: "EventHandlerRegistry",
         event_collector: EventCollector,
         execution_coordinator: ExecutionCoordinator,

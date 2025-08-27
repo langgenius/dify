@@ -2,8 +2,11 @@
 Edge processing logic for graph traversal.
 """
 
+from collections.abc import Sequence
+
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Edge, Graph
+from core.workflow.graph_events import NodeRunStreamChunkEvent
 
 from ..response_coordinator import ResponseStreamCoordinator
 from ..state_management import EdgeStateManager, NodeStateManager
@@ -38,7 +41,9 @@ class EdgeProcessor:
         self.node_state_manager = node_state_manager
         self.response_coordinator = response_coordinator
 
-    def process_node_success(self, node_id: str, selected_handle: str | None = None) -> tuple[list[str], list]:
+    def process_node_success(
+        self, node_id: str, selected_handle: str | None = None
+    ) -> tuple[Sequence[str], Sequence[NodeRunStreamChunkEvent]]:
         """
         Process edges after a node succeeds.
 
@@ -56,7 +61,7 @@ class EdgeProcessor:
         else:
             return self._process_non_branch_node_edges(node_id)
 
-    def _process_non_branch_node_edges(self, node_id: str) -> tuple[list[str], list]:
+    def _process_non_branch_node_edges(self, node_id: str) -> tuple[Sequence[str], Sequence[NodeRunStreamChunkEvent]]:
         """
         Process edges for non-branch nodes (mark all as TAKEN).
 
@@ -66,8 +71,8 @@ class EdgeProcessor:
         Returns:
             Tuple of (list of downstream nodes ready for execution, list of streaming events)
         """
-        ready_nodes = []
-        all_streaming_events = []
+        ready_nodes: list[str] = []
+        all_streaming_events: list[NodeRunStreamChunkEvent] = []
         outgoing_edges = self.graph.get_outgoing_edges(node_id)
 
         for edge in outgoing_edges:
@@ -77,7 +82,9 @@ class EdgeProcessor:
 
         return ready_nodes, all_streaming_events
 
-    def _process_branch_node_edges(self, node_id: str, selected_handle: str | None) -> tuple[list[str], list]:
+    def _process_branch_node_edges(
+        self, node_id: str, selected_handle: str | None
+    ) -> tuple[Sequence[str], Sequence[NodeRunStreamChunkEvent]]:
         """
         Process edges for branch nodes.
 
@@ -94,8 +101,8 @@ class EdgeProcessor:
         if not selected_handle:
             raise ValueError(f"Branch node {node_id} did not select any edge")
 
-        ready_nodes = []
-        all_streaming_events = []
+        ready_nodes: list[str] = []
+        all_streaming_events: list[NodeRunStreamChunkEvent] = []
 
         # Categorize edges
         selected_edges, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
@@ -112,7 +119,7 @@ class EdgeProcessor:
 
         return ready_nodes, all_streaming_events
 
-    def _process_taken_edge(self, edge: Edge) -> tuple[list[str], list]:
+    def _process_taken_edge(self, edge: Edge) -> tuple[Sequence[str], Sequence[NodeRunStreamChunkEvent]]:
         """
         Mark edge as taken and check downstream node.
 
@@ -129,11 +136,11 @@ class EdgeProcessor:
         streaming_events = self.response_coordinator.on_edge_taken(edge.id)
 
         # Check if downstream node is ready
-        ready_nodes = []
+        ready_nodes: list[str] = []
         if self.node_state_manager.is_node_ready(edge.head):
             ready_nodes.append(edge.head)
 
-        return ready_nodes, list(streaming_events)
+        return ready_nodes, streaming_events
 
     def _process_skipped_edge(self, edge: Edge) -> None:
         """

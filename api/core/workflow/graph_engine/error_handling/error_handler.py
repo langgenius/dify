@@ -2,7 +2,7 @@
 Main error handler that coordinates error strategies.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, final
 
 from core.workflow.enums import ErrorStrategy as ErrorStrategyEnum
 from core.workflow.graph import Graph
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ..domain import GraphExecution
 
 
+@final
 class ErrorHandler:
     """
     Coordinates error handling strategies for node failures.
@@ -43,7 +44,7 @@ class ErrorHandler:
         self.fail_branch_strategy = FailBranchStrategy()
         self.default_value_strategy = DefaultValueStrategy()
 
-    def handle_node_failure(self, event: NodeRunFailedEvent) -> Optional[GraphNodeEventBase]:
+    def handle_node_failure(self, event: NodeRunFailedEvent) -> GraphNodeEventBase | None:
         """
         Handle a node failure event.
 
