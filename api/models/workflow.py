@@ -352,10 +352,12 @@ class Workflow(Base):
             if not end_node_outputs:
                 # Skip End nodes without declared outputs
                 continue
-            results.append({
-                "end_id": end_node.get("id"),
-                "outputs": end_node_outputs,
-            })
+            results.append(
+                {
+                    "end_id": end_node.get("id"),
+                    "outputs": end_node_outputs,
+                }
+            )
 
         return results
 
