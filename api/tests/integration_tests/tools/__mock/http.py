@@ -4,7 +4,6 @@ from typing import Literal
 import httpx
 import pytest
 
-
 from core.helper import ssrf_proxy
 
 
