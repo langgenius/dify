@@ -85,7 +85,7 @@ def handle(sender: Message, **kwargs):
         values=_ProviderUpdateValues(last_used=current_time),
         description="basic_last_used_update",
     )
-    logging.info("provider used, tenant_id=%s, provider_name=%s", tenant_id, provider_name)
+    logger.info("provider used, tenant_id=%s, provider_name=%s", tenant_id, provider_name)
     updates_to_perform.append(basic_update)
 
     # 2. Check if we need to deduct quota (system provider only)
