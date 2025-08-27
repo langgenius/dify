@@ -2,7 +2,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional, Union
-from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -27,6 +26,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
+from core.workflow.utils.uuid_utils import uuid7_str
 from core.workflow.workflow_entry import WorkflowEntry
 from libs.datetime_utils import naive_utc_now
 
@@ -371,7 +371,7 @@ class WorkflowCycleManager:
         }
 
         domain_execution = WorkflowNodeExecution(
-            id=str(uuid4()),
+            id=uuid7_str(),
             workflow_id=workflow_execution.workflow_id,
             workflow_execution_id=workflow_execution.id_,
             predecessor_node_id=event.predecessor_node_id,

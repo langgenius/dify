@@ -9,6 +9,7 @@ from typing import Optional, Union
 
 from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -195,6 +196,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         2. Persists the database model using SQLAlchemy's merge operation
         3. Maintains proper multi-tenancy by including tenant context during conversion
         4. Updates the in-memory cache for faster subsequent lookups
+        5. Handles duplicate key conflicts by retrying with a new UUID v7
 
         The method handles both creating new records and updating existing ones through
         SQLAlchemy's merge operation.
@@ -202,21 +204,57 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Args:
             execution: The NodeExecution domain entity to persist
         """
+        from core.workflow.utils.uuid_utils import uuid7_str
+
         # Convert domain model to database model using tenant context and other attributes
         db_model = self.to_db_model(execution)
 
-        # Create a new database session
-        with self._session_factory() as session:
-            # SQLAlchemy merge intelligently handles both insert and update operations
-            # based on the presence of the primary key
-            session.merge(db_model)
-            session.commit()
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Create a new database session
+                with self._session_factory() as session:
+                    # Check if record already exists
+                    existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
-            # Update the in-memory cache for faster subsequent lookups
-            # Only cache if we have a node_execution_id to use as the cache key
-            if db_model.node_execution_id:
-                logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
-                self._node_execution_cache[db_model.node_execution_id] = db_model
+                    if existing:
+                        # Update existing record
+                        for key, value in db_model.__dict__.items():
+                            if not key.startswith("_"):
+                                setattr(existing, key, value)
+                        session.commit()
+                        db_model = existing
+                    else:
+                        # Add new record
+                        session.add(db_model)
+                        session.commit()
+
+                    # Update the in-memory cache for faster subsequent lookups
+                    # Only cache if we have a node_execution_id to use as the cache key
+                    if db_model.node_execution_id:
+                        logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
+                        self._node_execution_cache[db_model.node_execution_id] = db_model
+
+                    # Success, exit the retry loop
+                    break
+
+            except IntegrityError as e:
+                if "duplicate key value violates unique constraint" in str(e) and attempt < max_retries - 1:
+                    # Generate new UUID v7 and retry
+                    logger.warning(
+                        "Duplicate key conflict for workflow node execution ID %s, "
+                        "generating new UUID v7 (attempt %d/%d)",
+                        db_model.id,
+                        attempt + 1,
+                        max_retries,
+                    )
+                    new_id = uuid7_str()
+                    db_model.id = new_id
+                    execution.id = new_id
+                else:
+                    # Max retries exceeded or different error, re-raise
+                    logger.exception("Failed to save workflow node execution after %d attempts", attempt + 1)
+                    raise
 
     def get_db_models_by_workflow_run(
         self,
