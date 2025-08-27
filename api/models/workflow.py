@@ -336,7 +336,6 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-
         stmt = select(
             exists().where(
                 WorkflowToolProvider.tenant_id == self.tenant_id,
