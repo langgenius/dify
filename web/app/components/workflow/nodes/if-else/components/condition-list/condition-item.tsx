@@ -41,6 +41,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -208,6 +209,7 @@ const ConditionItem = ({
       onRemoveCondition?.(caseId, condition.id)
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
+  const { getMatchedSchemaType } = useMatchSchemaType()
   const handleVarChange = useCallback((valueSelector: ValueSelector, _varItem: Var) => {
     const {
       conversationVariables,
@@ -224,6 +226,7 @@ const ConditionItem = ({
         workflowTools,
         dataSourceList: dataSourceList ?? [],
       },
+      getMatchedSchemaType,
     })
 
     const newCondition = produce(condition, (draft) => {

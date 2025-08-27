@@ -11,10 +11,12 @@ import type {
 import { useIsChatMode } from './use-workflow'
 import { useStoreApi } from 'reactflow'
 import type { Type } from '../nodes/llm/types'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const { getMatchedSchemaType } = useMatchSchemaType()
 
   const getNodeAvailableVars = useCallback(({
     parentNode,
@@ -57,8 +59,9 @@ export const useWorkflowVariables = () => {
         mcpTools,
         dataSourceList: dataSourceList ?? [],
       },
+      getMatchedSchemaType,
     })
-  }, [t, workflowStore])
+  }, [t, workflowStore, getMatchedSchemaType])
 
   const getCurrentVariableType = useCallback(({
     parentNode,
@@ -105,6 +108,7 @@ export const useWorkflowVariables = () => {
         mcpTools,
         dataSourceList: dataSourceList ?? [],
       },
+      getMatchedSchemaType,
     })
   }, [workflowStore])
 
