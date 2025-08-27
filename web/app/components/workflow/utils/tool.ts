@@ -62,6 +62,7 @@ export const getOutputVariableAlias = (variable: Record<string, any>) => {
 }
 export const wrapStructuredVarItem = (outputItem: any): StructuredOutput => {
   const dataType = Type.object
+  // console.log(outputItem)
   return {
     schema: {
       type: dataType,
