@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
 from yarl import URL
 
 import contexts
@@ -617,8 +618,9 @@ class ToolManager:
                 WHERE tenant_id = :tenant_id
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
-        ids = [row.id for row in db.session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
-        return db.session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
+        with Session(db.engine, autoflush=False) as session:
+            ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
+            return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 
     @classmethod
     def list_providers_from_api(

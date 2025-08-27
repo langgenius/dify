@@ -1,11 +1,11 @@
 from typing import Literal
 
 from flask import request
-from flask_restful import marshal, marshal_with, reqparse
+from flask_restx import marshal, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
-from controllers.service_api import api
+from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import (
     DatasetApiResource,
@@ -16,8 +16,9 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
-from fields.tag_fields import tag_fields
+from fields.tag_fields import build_dataset_tag_fields
 from libs.login import current_user
+from models.account import Account
 from models.dataset import Dataset, DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
@@ -36,12 +37,171 @@ def _validate_description_length(description):
     return description
 
 
+# Define parsers for dataset operations
+dataset_create_parser = reqparse.RequestParser()
+dataset_create_parser.add_argument(
+    "name",
+    nullable=False,
+    required=True,
+    help="type is required. Name must be between 1 to 40 characters.",
+    type=_validate_name,
+)
+dataset_create_parser.add_argument(
+    "description",
+    type=_validate_description_length,
+    nullable=True,
+    required=False,
+    default="",
+)
+dataset_create_parser.add_argument(
+    "indexing_technique",
+    type=str,
+    location="json",
+    choices=Dataset.INDEXING_TECHNIQUE_LIST,
+    help="Invalid indexing technique.",
+)
+dataset_create_parser.add_argument(
+    "permission",
+    type=str,
+    location="json",
+    choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
+    help="Invalid permission.",
+    required=False,
+    nullable=False,
+)
+dataset_create_parser.add_argument(
+    "external_knowledge_api_id",
+    type=str,
+    nullable=True,
+    required=False,
+    default="_validate_name",
+)
+dataset_create_parser.add_argument(
+    "provider",
+    type=str,
+    nullable=True,
+    required=False,
+    default="vendor",
+)
+dataset_create_parser.add_argument(
+    "external_knowledge_id",
+    type=str,
+    nullable=True,
+    required=False,
+)
+dataset_create_parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
+dataset_create_parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+dataset_create_parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
+
+dataset_update_parser = reqparse.RequestParser()
+dataset_update_parser.add_argument(
+    "name",
+    nullable=False,
+    help="type is required. Name must be between 1 to 40 characters.",
+    type=_validate_name,
+)
+dataset_update_parser.add_argument(
+    "description", location="json", store_missing=False, type=_validate_description_length
+)
+dataset_update_parser.add_argument(
+    "indexing_technique",
+    type=str,
+    location="json",
+    choices=Dataset.INDEXING_TECHNIQUE_LIST,
+    nullable=True,
+    help="Invalid indexing technique.",
+)
+dataset_update_parser.add_argument(
+    "permission",
+    type=str,
+    location="json",
+    choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
+    help="Invalid permission.",
+)
+dataset_update_parser.add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
+dataset_update_parser.add_argument(
+    "embedding_model_provider", type=str, location="json", help="Invalid embedding model provider."
+)
+dataset_update_parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
+dataset_update_parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
+dataset_update_parser.add_argument(
+    "external_retrieval_model",
+    type=dict,
+    required=False,
+    nullable=True,
+    location="json",
+    help="Invalid external retrieval model.",
+)
+dataset_update_parser.add_argument(
+    "external_knowledge_id",
+    type=str,
+    required=False,
+    nullable=True,
+    location="json",
+    help="Invalid external knowledge id.",
+)
+dataset_update_parser.add_argument(
+    "external_knowledge_api_id",
+    type=str,
+    required=False,
+    nullable=True,
+    location="json",
+    help="Invalid external knowledge api id.",
+)
+
+tag_create_parser = reqparse.RequestParser()
+tag_create_parser.add_argument(
+    "name",
+    nullable=False,
+    required=True,
+    help="Name must be between 1 to 50 characters.",
+    type=lambda x: x
+    if x and 1 <= len(x) <= 50
+    else (_ for _ in ()).throw(ValueError("Name must be between 1 to 50 characters.")),
+)
+
+tag_update_parser = reqparse.RequestParser()
+tag_update_parser.add_argument(
+    "name",
+    nullable=False,
+    required=True,
+    help="Name must be between 1 to 50 characters.",
+    type=lambda x: x
+    if x and 1 <= len(x) <= 50
+    else (_ for _ in ()).throw(ValueError("Name must be between 1 to 50 characters.")),
+)
+tag_update_parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
+
+tag_delete_parser = reqparse.RequestParser()
+tag_delete_parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
+
+tag_binding_parser = reqparse.RequestParser()
+tag_binding_parser.add_argument(
+    "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
+)
+tag_binding_parser.add_argument(
+    "target_id", type=str, nullable=False, required=True, location="json", help="Target Dataset ID is required."
+)
+
+tag_unbinding_parser = reqparse.RequestParser()
+tag_unbinding_parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
+tag_unbinding_parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
+
+
+@service_api_ns.route("/datasets")
 class DatasetListApi(DatasetApiResource):
     """Resource for datasets."""
 
+    @service_api_ns.doc("list_datasets")
+    @service_api_ns.doc(description="List all datasets")
+    @service_api_ns.doc(
+        responses={
+            200: "Datasets retrieved successfully",
+            401: "Unauthorized - invalid API token",
+        }
+    )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         # provider = request.args.get("provider", default="vendor")
@@ -54,7 +214,10 @@ class DatasetListApi(DatasetApiResource):
         )
         # check embedding setting
         provider_manager = ProviderManager()
-        configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
+        assert isinstance(current_user, Account)
+        cid = current_user.current_tenant_id
+        assert cid is not None
+        configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
 
@@ -76,65 +239,20 @@ class DatasetListApi(DatasetApiResource):
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
+    @service_api_ns.expect(dataset_create_parser)
+    @service_api_ns.doc("create_dataset")
+    @service_api_ns.doc(description="Create a new dataset")
+    @service_api_ns.doc(
+        responses={
+            200: "Dataset created successfully",
+            401: "Unauthorized - invalid API token",
+            400: "Bad request - invalid parameters",
+        }
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id):
         """Resource for creating datasets."""
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="type is required. Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            type=_validate_description_length,
-            nullable=True,
-            required=False,
-            default="",
-        )
-        parser.add_argument(
-            "indexing_technique",
-            type=str,
-            location="json",
-            choices=Dataset.INDEXING_TECHNIQUE_LIST,
-            help="Invalid indexing technique.",
-        )
-        parser.add_argument(
-            "permission",
-            type=str,
-            location="json",
-            choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-            help="Invalid permission.",
-            required=False,
-            nullable=False,
-        )
-        parser.add_argument(
-            "external_knowledge_api_id",
-            type=str,
-            nullable=True,
-            required=False,
-            default="_validate_name",
-        )
-        parser.add_argument(
-            "provider",
-            type=str,
-            nullable=True,
-            required=False,
-            default="vendor",
-        )
-        parser.add_argument(
-            "external_knowledge_id",
-            type=str,
-            nullable=True,
-            required=False,
-        )
-        parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-
-        args = parser.parse_args()
+        args = dataset_create_parser.parse_args()
 
         if args.get("embedding_model_provider"):
             DatasetService.check_embedding_model_setting(
@@ -152,6 +270,7 @@ class DatasetListApi(DatasetApiResource):
             )
 
         try:
+            assert isinstance(current_user, Account)
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
                 name=args["name"],
@@ -174,9 +293,21 @@ class DatasetListApi(DatasetApiResource):
         return marshal(dataset, dataset_detail_fields), 200
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>")
 class DatasetApi(DatasetApiResource):
     """Resource for dataset."""
 
+    @service_api_ns.doc("get_dataset")
+    @service_api_ns.doc(description="Get a specific dataset by ID")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Dataset retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Dataset not found",
+        }
+    )
     def get(self, _, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -193,7 +324,10 @@ class DatasetApi(DatasetApiResource):
 
         # check embedding setting
         provider_manager = ProviderManager()
-        configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
+        assert isinstance(current_user, Account)
+        cid = current_user.current_tenant_id
+        assert cid is not None
+        configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
 
@@ -216,6 +350,18 @@ class DatasetApi(DatasetApiResource):
 
         return data, 200
 
+    @service_api_ns.expect(dataset_update_parser)
+    @service_api_ns.doc("update_dataset")
+    @service_api_ns.doc(description="Update an existing dataset")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Dataset updated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Dataset not found",
+        }
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, _, dataset_id):
         dataset_id_str = str(dataset_id)
@@ -223,63 +369,7 @@ class DatasetApi(DatasetApiResource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            help="type is required. Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument("description", location="json", store_missing=False, type=_validate_description_length)
-        parser.add_argument(
-            "indexing_technique",
-            type=str,
-            location="json",
-            choices=Dataset.INDEXING_TECHNIQUE_LIST,
-            nullable=True,
-            help="Invalid indexing technique.",
-        )
-        parser.add_argument(
-            "permission",
-            type=str,
-            location="json",
-            choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-            help="Invalid permission.",
-        )
-        parser.add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
-        parser.add_argument(
-            "embedding_model_provider", type=str, location="json", help="Invalid embedding model provider."
-        )
-        parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
-        parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
-
-        parser.add_argument(
-            "external_retrieval_model",
-            type=dict,
-            required=False,
-            nullable=True,
-            location="json",
-            help="Invalid external retrieval model.",
-        )
-
-        parser.add_argument(
-            "external_knowledge_id",
-            type=str,
-            required=False,
-            nullable=True,
-            location="json",
-            help="Invalid external knowledge id.",
-        )
-
-        parser.add_argument(
-            "external_knowledge_api_id",
-            type=str,
-            required=False,
-            nullable=True,
-            location="json",
-            help="Invalid external knowledge api id.",
-        )
-        args = parser.parse_args()
+        args = dataset_update_parser.parse_args()
         data = request.get_json()
 
         # check embedding model setting
@@ -309,6 +399,7 @@ class DatasetApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
 
         result_data = marshal(dataset, dataset_detail_fields)
+        assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
         if data.get("partial_member_list") and data.get("permission") == "partial_members":
@@ -327,6 +418,17 @@ class DatasetApi(DatasetApiResource):
 
         return result_data, 200
 
+    @service_api_ns.doc("delete_dataset")
+    @service_api_ns.doc(description="Delete a dataset")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            204: "Dataset deleted successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset not found",
+            409: "Conflict - dataset is in use",
+        }
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, _, dataset_id):
         """
@@ -357,9 +459,27 @@ class DatasetApi(DatasetApiResource):
             raise DatasetInUseError()
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>")
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
+    @service_api_ns.doc("update_document_status")
+    @service_api_ns.doc(description="Batch update document status")
+    @service_api_ns.doc(
+        params={
+            "dataset_id": "Dataset ID",
+            "action": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+        }
+    )
+    @service_api_ns.doc(
+        responses={
+            200: "Document status updated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Dataset not found",
+            400: "Bad request - invalid action",
+        }
+    )
     def patch(self, tenant_id, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
         """
         Batch update document status.
@@ -407,53 +527,70 @@ class DocumentStatusApi(DatasetApiResource):
         return {"result": "success"}, 200
 
 
+@service_api_ns.route("/datasets/tags")
 class DatasetTagsApi(DatasetApiResource):
+    @service_api_ns.doc("list_dataset_tags")
+    @service_api_ns.doc(description="Get all knowledge type tags")
+    @service_api_ns.doc(
+        responses={
+            200: "Tags retrieved successfully",
+            401: "Unauthorized - invalid API token",
+        }
+    )
     @validate_dataset_token
-    @marshal_with(tag_fields)
+    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     def get(self, _, dataset_id):
         """Get all knowledge type tags."""
-        tags = TagService.get_tags("knowledge", current_user.current_tenant_id)
+        assert isinstance(current_user, Account)
+        cid = current_user.current_tenant_id
+        assert cid is not None
+        tags = TagService.get_tags("knowledge", cid)
 
         return tags, 200
 
+    @service_api_ns.expect(tag_create_parser)
+    @service_api_ns.doc("create_dataset_tag")
+    @service_api_ns.doc(description="Add a knowledge type tag")
+    @service_api_ns.doc(
+        responses={
+            200: "Tag created successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+        }
+    )
+    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     @validate_dataset_token
     def post(self, _, dataset_id):
         """Add a knowledge type tag."""
+        assert isinstance(current_user, Account)
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="Name must be between 1 to 50 characters.",
-            type=DatasetTagsApi._validate_tag_name,
-        )
-
-        args = parser.parse_args()
+        args = tag_create_parser.parse_args()
         args["type"] = "knowledge"
         tag = TagService.save_tags(args)
 
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
-
         return response, 200
 
+    @service_api_ns.expect(tag_update_parser)
+    @service_api_ns.doc("update_dataset_tag")
+    @service_api_ns.doc(description="Update a knowledge type tag")
+    @service_api_ns.doc(
+        responses={
+            200: "Tag updated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+        }
+    )
+    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     @validate_dataset_token
     def patch(self, _, dataset_id):
+        assert isinstance(current_user, Account)
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="Name must be between 1 to 50 characters.",
-            type=DatasetTagsApi._validate_tag_name,
-        )
-        parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
-        args = parser.parse_args()
+        args = tag_update_parser.parse_args()
         args["type"] = "knowledge"
         tag = TagService.update_tags(args, args.get("tag_id"))
 
@@ -463,80 +600,98 @@ class DatasetTagsApi(DatasetApiResource):
 
         return response, 200
 
+    @service_api_ns.expect(tag_delete_parser)
+    @service_api_ns.doc("delete_dataset_tag")
+    @service_api_ns.doc(description="Delete a knowledge type tag")
+    @service_api_ns.doc(
+        responses={
+            204: "Tag deleted successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+        }
+    )
     @validate_dataset_token
     def delete(self, _, dataset_id):
         """Delete a knowledge type tag."""
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
-        args = parser.parse_args()
+        args = tag_delete_parser.parse_args()
         TagService.delete_tag(args.get("tag_id"))
 
         return 204
 
-    @staticmethod
-    def _validate_tag_name(name):
-        if not name or len(name) < 1 or len(name) > 50:
-            raise ValueError("Name must be between 1 to 50 characters.")
-        return name
 
-
+@service_api_ns.route("/datasets/tags/binding")
 class DatasetTagBindingApi(DatasetApiResource):
+    @service_api_ns.expect(tag_binding_parser)
+    @service_api_ns.doc("bind_dataset_tags")
+    @service_api_ns.doc(description="Bind tags to a dataset")
+    @service_api_ns.doc(
+        responses={
+            204: "Tags bound successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+        }
+    )
     @validate_dataset_token
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        assert isinstance(current_user, Account)
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
-        )
-        parser.add_argument(
-            "target_id", type=str, nullable=False, required=True, location="json", help="Target Dataset ID is required."
-        )
-
-        args = parser.parse_args()
+        args = tag_binding_parser.parse_args()
         args["type"] = "knowledge"
         TagService.save_tag_binding(args)
 
         return 204
 
 
+@service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
+    @service_api_ns.expect(tag_unbinding_parser)
+    @service_api_ns.doc("unbind_dataset_tag")
+    @service_api_ns.doc(description="Unbind a tag from a dataset")
+    @service_api_ns.doc(
+        responses={
+            204: "Tag unbound successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+        }
+    )
     @validate_dataset_token
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        assert isinstance(current_user, Account)
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
-        parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
-
-        args = parser.parse_args()
+        args = tag_unbinding_parser.parse_args()
         args["type"] = "knowledge"
         TagService.delete_tag_binding(args)
 
         return 204
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/tags")
 class DatasetTagsBindingStatusApi(DatasetApiResource):
+    @service_api_ns.doc("get_dataset_tags_binding_status")
+    @service_api_ns.doc(description="Get tags bound to a specific dataset")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Tags retrieved successfully",
+            401: "Unauthorized - invalid API token",
+        }
+    )
     @validate_dataset_token
     def get(self, _, *args, **kwargs):
         """Get all knowledge type tags."""
         dataset_id = kwargs.get("dataset_id")
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         tags = TagService.get_tags_by_target_id("knowledge", current_user.current_tenant_id, str(dataset_id))
         tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
         response = {"data": tags_list, "total": len(tags)}
         return response, 200
-
-
-api.add_resource(DatasetListApi, "/datasets")
-api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
-api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>")
-api.add_resource(DatasetTagsApi, "/datasets/tags")
-api.add_resource(DatasetTagBindingApi, "/datasets/tags/binding")
-api.add_resource(DatasetTagUnbindingApi, "/datasets/tags/unbinding")
-api.add_resource(DatasetTagsBindingStatusApi, "/datasets/<uuid:dataset_id>/tags")

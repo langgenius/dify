@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from werkzeug.exceptions import NotFound
 
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -12,6 +12,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from services.dataset_service import DatasetCollectionBindingService
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -25,7 +27,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     :param user_id: user_id
 
     """
-    logging.info(click.style(f"Start batch import annotation: {job_id}", fg="green"))
+    logger.info(click.style(f"Start batch import annotation: {job_id}", fg="green"))
     start_at = time.perf_counter()
     indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
     # get app info
@@ -74,7 +76,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             db.session.commit()
             redis_client.setex(indexing_cache_key, 600, "completed")
             end_at = time.perf_counter()
-            logging.info(
+            logger.info(
                 click.style(
                     "Build index successful for batch import annotation: {} latency: {}".format(
                         job_id, end_at - start_at
@@ -87,6 +89,6 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             redis_client.setex(indexing_cache_key, 600, "error")
             indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
             redis_client.setex(indexing_error_msg_key, 600, str(e))
-            logging.exception("Build index for batch import annotations failed")
+            logger.exception("Build index for batch import annotations failed")
         finally:
             db.session.close()

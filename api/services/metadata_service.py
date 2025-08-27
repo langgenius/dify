@@ -1,5 +1,4 @@
 import copy
-import datetime
 import logging
 from typing import Optional
 
@@ -8,12 +7,15 @@ from flask_login import current_user
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
     MetadataOperationData,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MetadataService:
@@ -69,7 +71,7 @@ class MetadataService:
             old_name = metadata.name
             metadata.name = name
             metadata.updated_by = current_user.id
-            metadata.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            metadata.updated_at = naive_utc_now()
 
             # update related documents
             dataset_metadata_bindings = (
@@ -90,7 +92,7 @@ class MetadataService:
             db.session.commit()
             return metadata  # type: ignore
         except Exception:
-            logging.exception("Update metadata name failed")
+            logger.exception("Update metadata name failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -122,7 +124,7 @@ class MetadataService:
             db.session.commit()
             return metadata
         except Exception:
-            logging.exception("Delete metadata failed")
+            logger.exception("Delete metadata failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -161,7 +163,7 @@ class MetadataService:
             dataset.built_in_field_enabled = True
             db.session.commit()
         except Exception:
-            logging.exception("Enable built-in field failed")
+            logger.exception("Enable built-in field failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -192,7 +194,7 @@ class MetadataService:
             dataset.built_in_field_enabled = False
             db.session.commit()
         except Exception:
-            logging.exception("Disable built-in field failed")
+            logger.exception("Disable built-in field failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -230,7 +232,7 @@ class MetadataService:
                     db.session.add(dataset_metadata_binding)
                 db.session.commit()
             except Exception:
-                logging.exception("Update documents metadata failed")
+                logger.exception("Update documents metadata failed")
             finally:
                 redis_client.delete(lock_key)
 

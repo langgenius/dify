@@ -2,7 +2,7 @@
   "name": "dify-web",
   "version": "1.7.2",
   "private": true,
-  "packageManager": "pnpm@10.14.0",
+  "packageManager": "pnpm@10.15.0",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -21,6 +21,7 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
+    "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
     "lint": "pnpx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "lint-only-show-error": "pnpx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",

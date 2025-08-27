@@ -1,16 +1,18 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -22,12 +24,11 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
     Usage: retry_document_indexing_task.delay(dataset_id, document_ids)
     """
-    documents: list[Document] = []
     start_at = time.perf_counter()
     try:
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
-            logging.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
+            logger.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
             return
         tenant_id = dataset.tenant_id
         for document_id in document_ids:
@@ -51,18 +52,18 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 if document:
                     document.indexing_status = "error"
                     document.error = str(e)
-                    document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    document.stopped_at = naive_utc_now()
                     db.session.add(document)
                     db.session.commit()
                 redis_client.delete(retry_indexing_cache_key)
                 return
 
-            logging.info(click.style(f"Start retry document: {document_id}", fg="green"))
+            logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
             document = (
                 db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
             )
             if not document:
-                logging.info(click.style(f"Document not found: {document_id}", fg="yellow"))
+                logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
                 return
             try:
                 # clean old data
@@ -79,7 +80,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 db.session.commit()
 
                 document.indexing_status = "parsing"
-                document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                document.processing_started_at = naive_utc_now()
                 db.session.add(document)
                 db.session.commit()
 
@@ -89,16 +90,16 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             except Exception as ex:
                 document.indexing_status = "error"
                 document.error = str(ex)
-                document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                document.stopped_at = naive_utc_now()
                 db.session.add(document)
                 db.session.commit()
-                logging.info(click.style(str(ex), fg="yellow"))
+                logger.info(click.style(str(ex), fg="yellow"))
                 redis_client.delete(retry_indexing_cache_key)
-                logging.exception("retry_document_indexing_task failed, document_id: %s", document_id)
+                logger.exception("retry_document_indexing_task failed, document_id: %s", document_id)
         end_at = time.perf_counter()
-        logging.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
-        logging.exception(
+        logger.exception(
             "retry_document_indexing_task failed, dataset_id: %s, document_ids: %s", dataset_id, document_ids
         )
         raise e

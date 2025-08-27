@@ -50,6 +50,7 @@ from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.datetime_utils import naive_utc_now
 from models import (
     Account,
     CreatorUserRole,
@@ -399,7 +400,7 @@ class WorkflowResponseConverter:
                 if event.error is None
                 else WorkflowNodeExecutionStatus.FAILED,
                 error=None,
-                elapsed_time=(datetime.now(UTC).replace(tzinfo=None) - event.start_at).total_seconds(),
+                elapsed_time=(naive_utc_now() - event.start_at).total_seconds(),
                 total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,
                 execution_metadata=event.metadata,
                 finished_at=int(time.time()),
@@ -478,7 +479,7 @@ class WorkflowResponseConverter:
                 if event.error is None
                 else WorkflowNodeExecutionStatus.FAILED,
                 error=None,
-                elapsed_time=(datetime.now(UTC).replace(tzinfo=None) - event.start_at).total_seconds(),
+                elapsed_time=(naive_utc_now() - event.start_at).total_seconds(),
                 total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,
                 execution_metadata=event.metadata,
                 finished_at=int(time.time()),

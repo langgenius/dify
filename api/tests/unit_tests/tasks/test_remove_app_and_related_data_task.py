@@ -179,7 +179,7 @@ class TestDeleteDraftVariablesBatch:
             delete_draft_variables_batch(app_id, 0)
 
     @patch("tasks.remove_app_and_related_data_task.db")
-    @patch("tasks.remove_app_and_related_data_task.logging")
+    @patch("tasks.remove_app_and_related_data_task.logger")
     def test_delete_draft_variables_batch_logs_progress(self, mock_logging, mock_db):
         """Test that batch deletion logs progress correctly."""
         app_id = "test-app-id"

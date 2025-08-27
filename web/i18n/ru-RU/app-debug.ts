@@ -405,6 +405,10 @@ const translation = {
     'uploadFileTypes': 'Типы файлов загрузки',
     'single-file': 'Друг за другом',
     'multi-files': 'Список файлов',
+    'checkbox': 'Флажок',
+    'optional': 'необязательный',
+    'jsonSchema': 'JSON схема',
+    'json': 'JSON код',
   },
   vision: {
     name: 'Зрение',

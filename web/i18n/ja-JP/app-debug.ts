@@ -419,6 +419,10 @@ const translation = {
     'defaultValue': 'デフォルト値',
     'noDefaultValue': 'デフォルト値なし',
     'selectDefaultValue': 'デフォルト値を選択',
+    'jsonSchema': 'JSONスキーマ',
+    'optional': 'オプション',
+    'json': 'JSONコード',
+    'checkbox': 'チェックボックス',
   },
   vision: {
     name: 'ビジョン',

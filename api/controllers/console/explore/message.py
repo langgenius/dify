@@ -1,8 +1,8 @@
 import logging
 
 from flask_login import current_user
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console.app.error import (
@@ -34,6 +34,8 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageListApi(InstalledAppResource):
@@ -126,7 +128,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -158,7 +160,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}
