@@ -492,8 +492,8 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/workflows/:workflow_id/run"
-      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+      label="/workflows/:identifier/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{identifier}/run' \\
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{

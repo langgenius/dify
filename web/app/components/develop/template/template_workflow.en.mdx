@@ -505,8 +505,8 @@ Workflow applications offers non-session support and is ideal for translation, a
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/workflows/:workflow_id/run"
-      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+      label="/workflows/:identifier/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{identifier}/run' \\
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
