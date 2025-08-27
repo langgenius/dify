@@ -524,7 +524,9 @@ class LoopNode(BaseNode):
     @staticmethod
     def _get_segment_for_constant(var_type: SegmentType, original_value: Any) -> Segment:
         """Get the appropriate segment type for a constant value."""
-        if var_type in [
+        if not var_type.is_array_type() or var_type == SegmentType.BOOLEAN:
+            value = original_value
+        elif var_type in [
             SegmentType.ARRAY_NUMBER,
             SegmentType.ARRAY_OBJECT,
             SegmentType.ARRAY_STRING,
@@ -535,7 +537,7 @@ class LoopNode(BaseNode):
                 logger.warning("unexpected value for LoopNode, value_type=%s, value=%s", original_value, var_type)
                 value = []
         else:
-            value = original_value
+            raise AssertionError("this statement should be unreachable.")
         try:
             return build_segment_with_type(var_type, value=value)
         except TypeMismatchError as type_exc:
