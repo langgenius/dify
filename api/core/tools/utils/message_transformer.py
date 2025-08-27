@@ -8,18 +8,22 @@ from uuid import UUID
 
 import numpy as np
 import pytz
-from flask_login import current_user
 
 from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
+from libs.login import current_user
+from models.account import Account
 
 logger = logging.getLogger(__name__)
 
 
 def safe_json_value(v):
+    if current_user is None:
+        return None
+    assert isinstance(current_user, Account)
     if isinstance(v, datetime):
-        tz_name = getattr(current_user, "timezone", None) if current_user is not None else None
+        tz_name = current_user.timezone
         if not tz_name:
             tz_name = "UTC"
         return v.astimezone(pytz.timezone(tz_name)).isoformat()
@@ -46,7 +50,7 @@ def safe_json_value(v):
         return v
 
 
-def safe_json_dict(d):
+def safe_json_dict(d: dict):
     if not isinstance(d, dict):
         raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
     return {k: safe_json_value(v) for k, v in d.items()}

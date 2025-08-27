@@ -1,4 +1,5 @@
 import httpx
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
@@ -20,7 +21,7 @@ from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 
-def test_http_request_node_binary_file(monkeypatch):
+def test_http_request_node_binary_file(monkeypatch: pytest.MonkeyPatch):
     data = HttpRequestNodeData(
         title="test",
         method="post",
@@ -110,7 +111,7 @@ def test_http_request_node_binary_file(monkeypatch):
     assert result.outputs["body"] == "test"
 
 
-def test_http_request_node_form_with_file(monkeypatch):
+def test_http_request_node_form_with_file(monkeypatch: pytest.MonkeyPatch):
     data = HttpRequestNodeData(
         title="test",
         method="post",
@@ -211,7 +212,7 @@ def test_http_request_node_form_with_file(monkeypatch):
     assert result.outputs["body"] == ""
 
 
-def test_http_request_node_form_with_multiple_files(monkeypatch):
+def test_http_request_node_form_with_multiple_files(monkeypatch: pytest.MonkeyPatch):
     data = HttpRequestNodeData(
         title="test",
         method="post",

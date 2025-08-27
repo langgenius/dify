@@ -39,7 +39,7 @@ def test_page_result(text, cursor, maxlen, expected):
 # Tests: get_url
 # ---------------------------
 @pytest.fixture
-def stub_support_types(monkeypatch):
+def stub_support_types(monkeypatch: pytest.MonkeyPatch):
     """Stub supported content types list."""
     import core.tools.utils.web_reader_tool as mod
 
@@ -48,7 +48,7 @@ def stub_support_types(monkeypatch):
     return mod
 
 
-def test_get_url_unsupported_content_type(monkeypatch, stub_support_types):
+def test_get_url_unsupported_content_type(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     # HEAD 200 but content-type not supported and not text/html
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(
@@ -62,7 +62,7 @@ def test_get_url_unsupported_content_type(monkeypatch, stub_support_types):
     assert result == "Unsupported content-type [image/png] of URL."
 
 
-def test_get_url_supported_binary_type_uses_extract_processor(monkeypatch, stub_support_types):
+def test_get_url_supported_binary_type_uses_extract_processor(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """
     When content-type is in SUPPORT_URL_CONTENT_TYPES,
     should call ExtractProcessor.load_from_url and return its text.
@@ -88,7 +88,7 @@ def test_get_url_supported_binary_type_uses_extract_processor(monkeypatch, stub_
     assert result == "PDF extracted text"
 
 
-def test_get_url_html_flow_with_chardet_and_readability(monkeypatch, stub_support_types):
+def test_get_url_html_flow_with_chardet_and_readability(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """200 + text/html → GET, chardet detects encoding, readability returns article which is templated."""
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
@@ -121,7 +121,7 @@ def test_get_url_html_flow_with_chardet_and_readability(monkeypatch, stub_suppor
     assert "Hello world" in out
 
 
-def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch, stub_support_types):
+def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """If readability returns no text, should return empty string."""
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
@@ -142,7 +142,7 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch, stub_su
     assert out == ""
 
 
-def test_get_url_403_cloudscraper_fallback(monkeypatch, stub_support_types):
+def test_get_url_403_cloudscraper_fallback(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """HEAD 403 → use cloudscraper.get via ssrf_proxy.make_request, then proceed."""
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
@@ -175,7 +175,7 @@ def test_get_url_403_cloudscraper_fallback(monkeypatch, stub_support_types):
     assert "X" in out
 
 
-def test_get_url_head_non_200_returns_status(monkeypatch, stub_support_types):
+def test_get_url_head_non_200_returns_status(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """HEAD returns non-200 and non-403 → should directly return code message."""
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
@@ -189,7 +189,7 @@ def test_get_url_head_non_200_returns_status(monkeypatch, stub_support_types):
     assert out == "URL returned status code 500."
 
 
-def test_get_url_content_disposition_filename_detection(monkeypatch, stub_support_types):
+def test_get_url_content_disposition_filename_detection(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """
     If HEAD 200 with no Content-Type but Content-Disposition filename suggests a supported type,
     it should route to ExtractProcessor.load_from_url.
@@ -213,7 +213,7 @@ def test_get_url_content_disposition_filename_detection(monkeypatch, stub_suppor
     assert out == "From ExtractProcessor via filename"
 
 
-def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch, stub_support_types):
+def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """
     If chardet returns an encoding but content.decode raises, should fallback to response.text.
     """
@@ -250,7 +250,7 @@ def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch, stub_supp
 # ---------------------------
 
 
-def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch):
+def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch: pytest.MonkeyPatch):
     # stub readabilipy.simple_json_from_html_string
     def fake_simple_json_from_html_string(html, use_readability=True):
         return {
@@ -271,7 +271,7 @@ def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch):
     assert article.text[0]["text"] == "world"
 
 
-def test_extract_using_readabilipy_defaults_when_missing(monkeypatch):
+def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.MonkeyPatch):
     def fake_simple_json_from_html_string(html, use_readability=True):
         return {}  # all missing
 
