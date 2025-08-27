@@ -221,7 +221,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
     children: childrenResult,
-    alias: obj.alias,
+    schemaType: obj.schemaType,
   }
 
   return res

@@ -54,13 +54,10 @@ from core.ops.entities.trace_entity import (
 )
 from core.rag.models.document import Document
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from core.workflow.nodes import NodeType
-from models import Account, App, EndUser, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom, db
+from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from extensions.ext_database import db
+from models import Account, App, EndUser, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 

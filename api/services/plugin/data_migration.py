@@ -4,8 +4,8 @@ import logging
 import click
 import sqlalchemy as sa
 
-from core.plugin.entities.plugin import GenericProviderID, ModelProviderID, ToolProviderID
-from models.engine import db
+from extensions.ext_database import db
+from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
 
 logger = logging.getLogger(__name__)
 

@@ -9,16 +9,15 @@ from sqlalchemy import func
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
+from core.workflow.enums import ErrorStrategy, NodeType, SystemVariableKey
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
-from ..base import BaseNode
 from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
@@ -35,7 +34,7 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeIndexNode(BaseNode):
+class KnowledgeIndexNode(Node):
     _node_data: KnowledgeIndexNodeData
     _node_type = NodeType.KNOWLEDGE_INDEX
 
@@ -93,15 +92,12 @@ class KnowledgeIndexNode(BaseNode):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=variables,
-                    process_data=None,
                     outputs=outputs,
                 )
             results = self._invoke_knowledge_index(
                 dataset=dataset, node_data=node_data, chunks=chunks, variable_pool=variable_pool
             )
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, process_data=None, outputs=results
-            )
+            return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=results)
 
         except KnowledgeIndexNodeError as e:
             logger.warning("Error when running knowledge index node")

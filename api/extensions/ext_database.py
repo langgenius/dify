@@ -5,7 +5,7 @@ from sqlalchemy import event
 from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
-from models import db
+from models.engine import db
 
 logger = logging.getLogger(__name__)
 

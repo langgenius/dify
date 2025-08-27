@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from configs import dify_config
 from constants.languages import languages
 from core.helper import encrypter
-from core.plugin.entities.plugin import DatasourceProviderID, PluginInstallationSource, ToolProviderID
+from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -35,6 +35,7 @@ from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider import Provider, ProviderModel
+from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService
@@ -1570,7 +1571,7 @@ def transform_datasource_credentials():
         click.style(f"Transforming firecrawl successfully. deal_firecrawl_count: {deal_firecrawl_count}", fg="green")
     )
     click.echo(click.style(f"Transforming jina successfully. deal_jina_count: {deal_jina_count}", fg="green"))
-    
+
 
 @click.command("install-rag-pipeline-plugins", help="Install rag pipeline plugins.")
 @click.option(

@@ -1,6 +1,7 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Optional
 from uuid import uuid4
 
 import yaml
@@ -87,7 +88,7 @@ class RagPipelineTransformService:
             "status": "success",
         }
 
-    def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str):
+    def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: Optional[str]):
         if doc_form == "text_model":
             match datasource_type:
                 case "upload_file":
@@ -148,7 +149,7 @@ class RagPipelineTransformService:
         return node
 
     def _deal_knowledge_index(
-        self, dataset: Dataset, doc_form: str, indexing_technique: str, retrieval_model: dict, node: dict
+        self, dataset: Dataset, doc_form: str, indexing_technique: Optional[str], retrieval_model: dict, node: dict
     ):
         knowledge_configuration_dict = node.get("data", {})
         knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration_dict)

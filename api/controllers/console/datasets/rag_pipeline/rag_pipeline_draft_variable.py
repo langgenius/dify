@@ -17,10 +17,11 @@ from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
-from models import db
+from models.account import Account
 from models.dataset import Pipeline
 from models.workflow import WorkflowDraftVariable
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -131,7 +132,7 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_rag_pipeline
     def wrapper(*args, **kwargs):
-        if not current_user.is_editor:
+        if not isinstance(current_user, Account) or not current_user.is_editor:
             raise Forbidden()
         return f(*args, **kwargs)
 

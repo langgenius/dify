@@ -19,16 +19,14 @@ from core.file.enums import FileTransferMethod, FileType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
-from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, SystemVariableKey
+from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event.event import RunCompletedEvent, RunStreamChunkEvent
+from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.tool.exc import ToolFileError
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import UploadFile
@@ -39,7 +37,7 @@ from .entities import DatasourceNodeData
 from .exc import DatasourceNodeError, DatasourceParameterError
 
 
-class DatasourceNode(BaseNode):
+class DatasourceNode(Node):
     """
     Datasource Node
     """
@@ -97,8 +95,8 @@ class DatasourceNode(BaseNode):
                 datasource_type=DatasourceProviderType.value_of(datasource_type),
             )
         except DatasourceNodeError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs={},
                     metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
@@ -172,8 +170,8 @@ class DatasourceNode(BaseNode):
                         datasource_type=datasource_type,
                     )
                 case DatasourceProviderType.WEBSITE_CRAWL:
-                    yield RunCompletedEvent(
-                        run_result=NodeRunResult(
+                    yield StreamCompletedEvent(
+                        node_run_result=NodeRunResult(
                             status=WorkflowNodeExecutionStatus.SUCCEEDED,
                             inputs=parameters_for_log,
                             metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
@@ -204,10 +202,10 @@ class DatasourceNode(BaseNode):
                         size=upload_file.size,
                         storage_key=upload_file.key,
                     )
-                    variable_pool.add([self.node_id, "file"], file_info)
+                    variable_pool.add([self._node_id, "file"], file_info)
                     # variable_pool.add([self.node_id, "file"], file_info.to_dict())
-                    yield RunCompletedEvent(
-                        run_result=NodeRunResult(
+                    yield StreamCompletedEvent(
+                        node_run_result=NodeRunResult(
                             status=WorkflowNodeExecutionStatus.SUCCEEDED,
                             inputs=parameters_for_log,
                             metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
@@ -220,8 +218,8 @@ class DatasourceNode(BaseNode):
                 case _:
                     raise DatasourceNodeError(f"Unsupported datasource provider: {datasource_type}")
         except PluginDaemonClientSideError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
@@ -230,8 +228,8 @@ class DatasourceNode(BaseNode):
                 )
             )
         except DatasourceNodeError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
@@ -425,8 +423,10 @@ class DatasourceNode(BaseNode):
             elif message.type == DatasourceMessage.MessageType.TEXT:
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
                 text += message.message.text
-                yield RunStreamChunkEvent(
-                    chunk_content=message.message.text, from_variable_selector=[self.node_id, "text"]
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "text"],
+                    chunk=message.message.text,
+                    is_final=False,
                 )
             elif message.type == DatasourceMessage.MessageType.JSON:
                 assert isinstance(message.message, DatasourceMessage.JsonMessage)
@@ -442,7 +442,11 @@ class DatasourceNode(BaseNode):
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
-                yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[self.node_id, "text"])
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "text"],
+                    chunk=stream_text,
+                    is_final=False,
+                )
             elif message.type == DatasourceMessage.MessageType.VARIABLE:
                 assert isinstance(message.message, DatasourceMessage.VariableMessage)
                 variable_name = message.message.variable_name
@@ -454,17 +458,24 @@ class DatasourceNode(BaseNode):
                         variables[variable_name] = ""
                     variables[variable_name] += variable_value
 
-                    yield RunStreamChunkEvent(
-                        chunk_content=variable_value, from_variable_selector=[self.node_id, variable_name]
+                    yield StreamChunkEvent(
+                        selector=[self._node_id, variable_name],
+                        chunk=variable_value,
+                        is_final=False,
                     )
                 else:
                     variables[variable_name] = variable_value
             elif message.type == DatasourceMessage.MessageType.FILE:
                 assert message.meta is not None
                 files.append(message.meta["file"])
-
-        yield RunCompletedEvent(
-            run_result=NodeRunResult(
+        # mark the end of the stream
+        yield StreamChunkEvent(
+            selector=[self._node_id, "text"],
+            chunk="",
+            is_final=True,
+        )
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"json": json, "files": files, **variables, "text": text},
                 metadata={
@@ -526,9 +537,9 @@ class DatasourceNode(BaseNode):
                     tenant_id=self.tenant_id,
                 )
         if file:
-            variable_pool.add([self.node_id, "file"], file)
-        yield RunCompletedEvent(
-            run_result=NodeRunResult(
+            variable_pool.add([self._node_id, "file"], file)
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=parameters_for_log,
                 metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},

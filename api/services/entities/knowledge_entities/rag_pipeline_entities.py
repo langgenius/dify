@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class IconInfo(BaseModel):
@@ -110,7 +110,21 @@ class KnowledgeConfiguration(BaseModel):
 
     chunk_structure: str
     indexing_technique: Literal["high_quality", "economy"]
-    embedding_model_provider: Optional[str] = ""
-    embedding_model: Optional[str] = ""
+    embedding_model_provider: str = ""
+    embedding_model: str = ""
     keyword_number: Optional[int] = 10
     retrieval_model: RetrievalSetting
+
+    @field_validator("embedding_model_provider", mode="before")
+    @classmethod
+    def validate_embedding_model_provider(cls, v):
+        if v is None:
+            return ""
+        return v
+
+    @field_validator("embedding_model", mode="before")
+    @classmethod
+    def validate_embedding_model(cls, v):
+        if v is None:
+            return ""
+        return v

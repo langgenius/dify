@@ -141,7 +141,6 @@ const BaseNode: FC<BaseNodeProps> = ({
       className={cn(
         'relative flex rounded-2xl border',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
-        !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
         data._dimmed && 'opacity-30',
       )}
@@ -174,13 +173,6 @@ const BaseNode: FC<BaseNodeProps> = ({
           data._isBundled && '!shadow-lg',
         )}
       >
-        {
-          data._inParallelHovering && (
-            <div className='top system-2xs-medium-uppercase absolute -top-2.5 left-2 z-10 text-text-tertiary'>
-              {t('workflow.common.parallelRun')}
-            </div>
-          )
-        }
         {
           data._showAddVariablePopup && (
             <AddVariablePopupWithPosition

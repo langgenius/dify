@@ -13,10 +13,10 @@ class SchemaManager:
     def get_all_schema_definitions(self, version: str = "v1") -> list[Mapping[str, Any]]:
         """
         Get all JSON Schema definitions for a specific version
-        
+
         Args:
             version: Schema version, defaults to v1
-            
+
         Returns:
             Array containing schema definitions, each element contains name and schema fields
         """
@@ -25,31 +25,28 @@ class SchemaManager:
     def get_schema_by_name(self, schema_name: str, version: str = "v1") -> Optional[Mapping[str, Any]]:
         """
         Get a specific schema by name
-        
+
         Args:
             schema_name: Schema name
             version: Schema version, defaults to v1
-            
+
         Returns:
             Dictionary containing name and schema, returns None if not found
         """
         uri = f"https://dify.ai/schemas/{version}/{schema_name}.json"
         schema = self.registry.get_schema(uri)
-        
+
         if schema:
-            return {
-                "name": schema_name,
-                "schema": schema
-            }
+            return {"name": schema_name, "schema": schema}
         return None
 
     def list_available_schemas(self, version: str = "v1") -> list[str]:
         """
         List all available schema names for a specific version
-        
+
         Args:
             version: Schema version, defaults to v1
-            
+
         Returns:
             List of schema names
         """
@@ -58,7 +55,7 @@ class SchemaManager:
     def list_available_versions(self) -> list[str]:
         """
         List all available schema versions
-        
+
         Returns:
             List of versions
         """

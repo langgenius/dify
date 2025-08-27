@@ -1,0 +1,202 @@
+app:
+  description: 'receive a query, output {"true": query} if query contains ''hello'',
+    otherwise, output {"false": query}.'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: if-else
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: if-else
+      id: 1754154032319-source-1754217359748-target
+      source: '1754154032319'
+      sourceHandle: source
+      target: '1754217359748'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: end
+      id: 1754217359748-true-1754154034161-target
+      source: '1754217359748'
+      sourceHandle: 'true'
+      target: '1754154034161'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: end
+      id: 1754217359748-false-1754217363584-target
+      source: '1754217359748'
+      sourceHandle: 'false'
+      target: '1754217363584'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: query
+          max_length: null
+          options: []
+          required: true
+          type: text-input
+          variable: query
+      height: 90
+      id: '1754154032319'
+      position:
+        x: 30
+        y: 263
+      positionAbsolute:
+        x: 30
+        y: 263
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754154032319'
+          - query
+          value_type: string
+          variable: 'true'
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: '1754154034161'
+      position:
+        x: 766.1428571428571
+        y: 161.35714285714283
+      positionAbsolute:
+        x: 766.1428571428571
+        y: 161.35714285714283
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: 8c8a76f8-d3c2-4203-ab52-87b0abf486b9
+            value: hello
+            varType: string
+            variable_selector:
+            - '1754154032319'
+            - query
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: IF/ELSE
+        type: if-else
+      height: 126
+      id: '1754217359748'
+      position:
+        x: 364
+        y: 263
+      positionAbsolute:
+        x: 364
+        y: 263
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754154032319'
+          - query
+          value_type: string
+          variable: 'false'
+        selected: false
+        title: End 2
+        type: end
+      height: 90
+      id: '1754217363584'
+      position:
+        x: 766.1428571428571
+        y: 363
+      positionAbsolute:
+        x: 766.1428571428571
+        y: 363
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

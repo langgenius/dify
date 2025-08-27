@@ -133,6 +133,9 @@ class DocumentAddByTextApi(DatasetApiResource):
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
 
+        if not current_user:
+            raise ValueError("current_user is required")
+
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,

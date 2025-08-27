@@ -81,7 +81,6 @@ export type CommonNodeType<T = {}> = {
   _holdAddVariablePopup?: boolean
   _iterationLength?: number
   _iterationIndex?: number
-  _inParallelHovering?: boolean
   _waitingRun?: boolean
   _retryIndex?: number
   _dataSourceStartToAdd?: boolean
@@ -305,7 +304,7 @@ export type Var = {
   isLoopVariable?: boolean
   nodeId?: string
   isRagVariable?: boolean
-  alias?: string
+  schemaType?: string
 }
 
 export type NodeOutPutVar = {

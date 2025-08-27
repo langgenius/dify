@@ -23,8 +23,8 @@ from core.helper import ssrf_proxy
 from core.helper.name_generator import generate_incremental_name
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
+from core.workflow.enums import NodeType
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
-from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
@@ -281,7 +281,7 @@ class RagPipelineDslService:
                 icon = icon_info.icon
                 icon_background = icon_info.icon_background
                 icon_url = icon_info.icon_url
-            else:   
+            else:
                 icon_type = data.get("rag_pipeline", {}).get("icon_type")
                 icon = data.get("rag_pipeline", {}).get("icon")
                 icon_background = data.get("rag_pipeline", {}).get("icon_background")

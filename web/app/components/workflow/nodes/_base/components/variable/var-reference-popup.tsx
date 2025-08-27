@@ -15,6 +15,7 @@ type Props = {
   itemWidth?: number
   isSupportFileVar?: boolean
   zIndex?: number
+  preferSchemaType?: boolean
 }
 const VarReferencePopup: FC<Props> = ({
   vars,
@@ -23,6 +24,7 @@ const VarReferencePopup: FC<Props> = ({
   itemWidth,
   isSupportFileVar = true,
   zIndex,
+  preferSchemaType,
 }) => {
   const { t } = useTranslation()
   const pipelineId = useStore(s => s.pipelineId)
@@ -69,6 +71,7 @@ const VarReferencePopup: FC<Props> = ({
           zIndex={zIndex}
           showManageInputField={showManageRagInputFields}
           onManageInputField={() => setShowInputFieldPanel?.(true)}
+          preferSchemaType={preferSchemaType}
         />
       }
     </div >

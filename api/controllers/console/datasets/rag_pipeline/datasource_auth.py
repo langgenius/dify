@@ -11,10 +11,10 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.plugin.entities.plugin import DatasourceProviderID
 from core.plugin.impl.oauth import OAuthHandler
 from libs.helper import StrLen
 from libs.login import login_required
+from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
