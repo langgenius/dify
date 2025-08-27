@@ -85,7 +85,6 @@ from .datasets import (
     external,
     hit_testing,
     metadata,
-    upload_file,
     website,
 )
 

@@ -79,74 +79,6 @@ Supervisa y analiza registros de aplicaciones y rendimiento a lo largo del tiemp
 **7. Backend como servicio**:
 Todas las ofertas de Dify vienen con APIs correspondientes, por lo que podrías integrar Dify sin esfuerzo en tu propia lógica empresarial.
 
-## Comparación de características
-
-<table style="width: 100%;">
-  <tr>
-    <th align="center">Característica</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">API de Asistentes de OpenAI</th>
-  </tr>
-  <tr>
-    <td align="center">Enfoque de programación</td>
-    <td align="center">API + orientado a la aplicación</td>
-    <td align="center">Código Python</td>
-    <td align="center">Orientado a la aplicación</td>
-    <td align="center">Orientado a la API</td>
-  </tr>
-  <tr>
-    <td align="center">LLMs admitidos</td>
-    <td align="center">Gran variedad</td>
-    <td align="center">Gran variedad</td>
-    <td align="center">Gran variedad</td>
-    <td align="center">Solo OpenAI</td>
-  </tr>
-  <tr>
-    <td align="center">Motor RAG</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Agente</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Flujo de trabajo</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Observabilidad</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Característica empresarial (SSO/Control de acceso)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Implementación local</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
-
 ## Usando Dify
 
 - **Nube </br>**
@@ -238,7 +170,7 @@ Implementa Dify en AKS con un clic usando [Azure Devops Pipeline Helm Chart by @
 
 ## Contribuir
 
-Para aquellos que deseen contribuir con código, consulten nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
+Para aquellos que deseen contribuir con código, consulten nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING_ES.md).
 Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en eventos y conferencias.
 
 > Estamos buscando colaboradores para ayudar con la traducción de Dify a idiomas que no sean el mandarín o el inglés. Si estás interesado en ayudar, consulta el [README de i18n](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) para obtener más información y déjanos un comentario en el canal `global-users` de nuestro [Servidor de Comunidad en Discord](https://discord.gg/8Tpq4AcN9c).

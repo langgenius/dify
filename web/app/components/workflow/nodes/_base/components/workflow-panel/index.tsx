@@ -475,7 +475,7 @@ const BasePanel: FC<BasePanelProps> = ({
             isRunAfterSingleRun={isRunAfterSingleRun}
             updateNodeRunningStatus={updateNodeRunningStatus}
             onSingleRunClicked={handleSingleRun}
-            nodeInfo={nodeInfo}
+            nodeInfo={nodeInfo!}
             singleRunResult={runResult!}
             isPaused={isPaused}
             {...passedLogParams}

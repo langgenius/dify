@@ -59,7 +59,7 @@ def mock_response_receiver(monkeypatch) -> mock.Mock:
 @pytest.fixture
 def mock_logger(monkeypatch) -> logging.Logger:
     _logger = mock.MagicMock(spec=logging.Logger)
-    monkeypatch.setattr(ext_request_logging, "_logger", _logger)
+    monkeypatch.setattr(ext_request_logging, "logger", _logger)
     return _logger
 
 

@@ -1,10 +1,46 @@
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    field_validator,
+)
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.variables.types import SegmentType
 from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.llm import ModelConfig, VisionConfig
+from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
+
+_OLD_BOOL_TYPE_NAME = "bool"
+_OLD_SELECT_TYPE_NAME = "select"
+
+_VALID_PARAMETER_TYPES = frozenset(
+    [
+        SegmentType.STRING,  # "string",
+        SegmentType.NUMBER,  # "number",
+        SegmentType.BOOLEAN,
+        SegmentType.ARRAY_STRING,
+        SegmentType.ARRAY_NUMBER,
+        SegmentType.ARRAY_OBJECT,
+        SegmentType.ARRAY_BOOLEAN,
+        _OLD_BOOL_TYPE_NAME,  # old boolean type used by Parameter Extractor node
+        _OLD_SELECT_TYPE_NAME,  # string type with enumeration choices.
+    ]
+)
+
+
+def _validate_type(parameter_type: str) -> SegmentType:
+    if not isinstance(parameter_type, str):
+        raise TypeError(f"type should be str, got {type(parameter_type)}, value={parameter_type}")
+    if parameter_type not in _VALID_PARAMETER_TYPES:
+        raise ValueError(f"type {parameter_type} is not allowd to use in Parameter Extractor node.")
+
+    if parameter_type == _OLD_BOOL_TYPE_NAME:
+        return SegmentType.BOOLEAN
+    elif parameter_type == _OLD_SELECT_TYPE_NAME:
+        return SegmentType.STRING
+    return SegmentType(parameter_type)
 
 
 class _ParameterConfigError(Exception):
@@ -17,7 +53,7 @@ class ParameterConfig(BaseModel):
     """
 
     name: str
-    type: Literal["string", "number", "bool", "select", "array[string]", "array[number]", "array[object]"]
+    type: Annotated[SegmentType, BeforeValidator(_validate_type)]
     options: Optional[list[str]] = None
     description: str
     required: bool
@@ -32,17 +68,20 @@ class ParameterConfig(BaseModel):
         return str(value)
 
     def is_array_type(self) -> bool:
-        return self.type in ("array[string]", "array[number]", "array[object]")
+        return self.type.is_array_type()
 
-    def element_type(self) -> Literal["string", "number", "object"]:
-        if self.type == "array[number]":
-            return "number"
-        elif self.type == "array[string]":
-            return "string"
-        elif self.type == "array[object]":
-            return "object"
-        else:
-            raise _ParameterConfigError(f"{self.type} is not array type.")
+    def element_type(self) -> SegmentType:
+        """Return the element type of the parameter.
+
+        Raises a ValueError if the parameter's type is not an array type.
+        """
+        element_type = self.type.element_type()
+        # At this point, self.type is guaranteed to be one of `ARRAY_STRING`,
+        # `ARRAY_NUMBER`, `ARRAY_OBJECT`, or `ARRAY_BOOLEAN`.
+        #
+        # See: _VALID_PARAMETER_TYPES for reference.
+        assert element_type is not None, f"the element type should not be None, {self.type=}"
+        return element_type
 
 
 class ParameterExtractorNodeData(BaseNodeData):
@@ -74,16 +113,18 @@ class ParameterExtractorNodeData(BaseNodeData):
         for parameter in self.parameters:
             parameter_schema: dict[str, Any] = {"description": parameter.description}
 
-            if parameter.type in {"string", "select"}:
+            if parameter.type == SegmentType.STRING:
                 parameter_schema["type"] = "string"
-            elif parameter.type.startswith("array"):
+            elif parameter.type.is_array_type():
                 parameter_schema["type"] = "array"
-                nested_type = parameter.type[6:-1]
-                parameter_schema["items"] = {"type": nested_type}
+                element_type = parameter.type.element_type()
+                if element_type is None:
+                    raise AssertionError("element type should not be None.")
+                parameter_schema["items"] = {"type": element_type.value}
             else:
                 parameter_schema["type"] = parameter.type
 
-            if parameter.type == "select":
+            if parameter.options:
                 parameter_schema["enum"] = parameter.options
 
             parameters["properties"][parameter.name] = parameter_schema

@@ -134,12 +134,21 @@ class OpsService:
 
         # get project url
         if tracing_provider in ("arize", "phoenix"):
-            project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            except Exception:
+                project_url = None
         elif tracing_provider == "langfuse":
-            project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
-            project_url = f"{tracing_config.get('host')}/project/{project_key}"
+            try:
+                project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
+                project_url = f"{tracing_config.get('host')}/project/{project_key}"
+            except Exception:
+                project_url = None
         elif tracing_provider in ("langsmith", "opik"):
-            project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            except Exception:
+                project_url = None
         else:
             project_url = None
 

@@ -407,6 +407,10 @@ const translation = {
     'text-input': 'Kısa Metin',
     'both': 'Her ikisi',
     'maxNumberOfUploads': 'Maksimum yükleme sayısı',
+    'checkbox': 'Onay kutusu',
+    'json': 'JSON Kodu',
+    'optional': 'isteğe bağlı',
+    'jsonSchema': 'JSON Şeması',
   },
   vision: {
     name: 'Görüş',

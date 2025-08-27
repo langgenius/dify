@@ -1,8 +1,8 @@
 import logging
 
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
@@ -32,6 +32,8 @@ from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class ChatMessageListApi(Resource):
@@ -215,7 +217,7 @@ class MessageSuggestedQuestionApi(Resource):
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}

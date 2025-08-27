@@ -10,6 +10,8 @@ from pydantic import BaseModel
 
 from core.helper.position_helper import sort_to_dict_by_position_map
 
+logger = logging.getLogger(__name__)
+
 
 class ExtensionModule(enum.Enum):
     MODERATION = "moderation"
@@ -66,7 +68,7 @@ class Extensible:
 
                 # Check for extension module file
                 if (extension_name + ".py") not in file_names:
-                    logging.warning("Missing %s.py file in %s, Skip.", extension_name, subdir_path)
+                    logger.warning("Missing %s.py file in %s, Skip.", extension_name, subdir_path)
                     continue
 
                 # Check for builtin flag and position
@@ -95,7 +97,7 @@ class Extensible:
                         break
 
                 if not extension_class:
-                    logging.warning("Missing subclass of %s in %s, Skip.", cls.__name__, module_name)
+                    logger.warning("Missing subclass of %s in %s, Skip.", cls.__name__, module_name)
                     continue
 
                 # Load schema if not builtin
@@ -103,7 +105,7 @@ class Extensible:
                 if not builtin:
                     json_path = os.path.join(subdir_path, "schema.json")
                     if not os.path.exists(json_path):
-                        logging.warning("Missing schema.json file in %s, Skip.", subdir_path)
+                        logger.warning("Missing schema.json file in %s, Skip.", subdir_path)
                         continue
 
                     with open(json_path, encoding="utf-8") as f:
@@ -122,7 +124,7 @@ class Extensible:
                 )
 
         except Exception as e:
-            logging.exception("Error scanning extensions")
+            logger.exception("Error scanning extensions")
             raise
 
         # Sort extensions by position

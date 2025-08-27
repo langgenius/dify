@@ -80,7 +80,7 @@
 1. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
 ```bash
-uv run celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage
+uv run celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation
 ```
 
 Addition, if you want to debug the celery scheduled tasks, you can use the following command in another terminal:
@@ -97,8 +97,16 @@ uv run celery -A app.celery beat
    uv sync --dev
    ```
 
-1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
+1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [Claude.md](../CLAUDE.md)
 
    ```bash
-   uv run -P api bash dev/pytest/pytest_all_tests.sh
+   uv run pytest                           # Run all tests
+   uv run pytest tests/unit_tests/         # Unit tests only
+   uv run pytest tests/integration_tests/  # Integration tests
+
+   # Code quality
+   ../dev/reformat               # Run all formatters and linters
+   uv run ruff check --fix ./    # Fix linting issues
+   uv run ruff format ./         # Format code
+   uv run mypy .                 # Type checking
    ```

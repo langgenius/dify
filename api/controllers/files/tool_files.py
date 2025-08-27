@@ -1,17 +1,18 @@
 from urllib.parse import quote
 
 from flask import Response
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.files import api
+from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from models import db as global_db
 
 
-class ToolFilePreviewApi(Resource):
+@files_ns.route("/tools/<uuid:file_id>.<string:extension>")
+class ToolFileApi(Resource):
     def get(self, file_id, extension):
         file_id = str(file_id)
 
@@ -52,6 +53,3 @@ class ToolFilePreviewApi(Resource):
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         return response
-
-
-api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")

@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any
+from typing import Union, cast
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS  # type: ignore
@@ -11,7 +11,7 @@ from models.model import EndUser
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
-current_user: Any = LocalProxy(lambda: _get_user())
+current_user = cast(Union[Account, EndUser, None], LocalProxy(lambda: _get_user()))
 
 
 def login_required(func):
@@ -52,7 +52,7 @@ def login_required(func):
     def decorated_view(*args, **kwargs):
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
-        elif not current_user.is_authenticated:
+        elif current_user is not None and not current_user.is_authenticated:
             return current_app.login_manager.unauthorized()  # type: ignore
 
         # flask 1.x compatibility

@@ -83,7 +83,7 @@ class TestDatasetPermissionService:
     @pytest.fixture
     def mock_logging_dependencies(self):
         """Mock setup for logging tests."""
-        with patch("services.dataset_service.logging") as mock_logging:
+        with patch("services.dataset_service.logger") as mock_logging:
             yield {
                 "logging": mock_logging,
             }

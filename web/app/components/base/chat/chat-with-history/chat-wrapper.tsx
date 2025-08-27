@@ -23,6 +23,7 @@ import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
+import { formatBooleanInputs } from '@/utils/model-config'
 import Avatar from '../../avatar'
 
 const ChatWrapper = () => {
@@ -89,7 +90,7 @@ const ChatWrapper = () => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -131,7 +132,7 @@ const ChatWrapper = () => {
     const data: any = {
       query: message,
       files,
-      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
+      inputs: formatBooleanInputs(inputsForms, currentConversationId ? currentConversationInputs : newConversationInputs),
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }

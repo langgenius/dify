@@ -1,3 +1,8 @@
+from typing import Any
+
+from core.variables.types import SegmentType
+
+
 class ParameterExtractorNodeError(ValueError):
     """Base error for ParameterExtractorNode."""
 
@@ -48,3 +53,23 @@ class InvalidArrayValueError(ParameterExtractorNodeError):
 
 class InvalidModelModeError(ParameterExtractorNodeError):
     """Raised when the model mode is invalid."""
+
+
+class InvalidValueTypeError(ParameterExtractorNodeError):
+    def __init__(
+        self,
+        /,
+        parameter_name: str,
+        expected_type: SegmentType,
+        actual_type: SegmentType | None,
+        value: Any,
+    ) -> None:
+        message = (
+            f"Invalid value for parameter {parameter_name}, expected segment type: {expected_type}, "
+            f"actual_type: {actual_type}, python_type: {type(value)}, value: {value}"
+        )
+        super().__init__(message)
+        self.parameter_name = parameter_name
+        self.expected_type = expected_type
+        self.actual_type = actual_type
+        self.value = value

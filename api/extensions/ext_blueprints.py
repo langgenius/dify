@@ -30,7 +30,6 @@ def init_app(app: DifyApp):
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=["X-Version", "X-Env"],
     )
-
     app.register_blueprint(web_bp)
 
     CORS(
@@ -41,10 +40,13 @@ def init_app(app: DifyApp):
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=["X-Version", "X-Env"],
     )
-
     app.register_blueprint(console_app_bp)
 
-    CORS(files_bp, allow_headers=["Content-Type"], methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"])
+    CORS(
+        files_bp,
+        allow_headers=["Content-Type"],
+        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+    )
     app.register_blueprint(files_bp)
 
     app.register_blueprint(inner_api_bp)
