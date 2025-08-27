@@ -519,8 +519,8 @@ importers:
         specifier: ^4.0.2
         version: 4.1.0
       code-inspector-plugin:
-        specifier: ^1.2.3
-        version: 1.2.3
+        specifier: 1.2.4
+        version: 1.2.4
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -1372,23 +1372,23 @@ packages:
   '@clack/prompts@0.11.0':
     resolution: {integrity: sha512-pMN5FcrEw9hUkZA4f+zLlzivQSeQf5dRGJjSUbvVYDLvpKCdQx5OaknvKzgbtXOizhP+SJJJjqEbOe55uKKfAw==}
 
-  '@code-inspector/core@1.2.3':
-    resolution: {integrity: sha512-v9ui+LeKqK46ZiSB6NUhK0R1IXtCZmr7LYbN0uBU7k4n5qMegab8BUfzZQvSNuF1tTyRMiOvbU3DDRNx+UfKbw==}
+  '@code-inspector/core@1.2.4':
+    resolution: {integrity: sha512-lJAfopmUzcuhNUJecSjS24dVK1/Uak7GyzqMgEE3XW6DZ75CAOWCHI2YMCrFi+fDgUhXX36WQcltcilPjftOnQ==}
 
-  '@code-inspector/esbuild@1.2.3':
-    resolution: {integrity: sha512-6pOmI5L36LWLU+532mpCY+iFcIJMmPLy9EBzCKUzJacuZ+IMjmC2kx76dTkvNEVL1292hRxkOt0x1HtE40tqng==}
+  '@code-inspector/esbuild@1.2.4':
+    resolution: {integrity: sha512-4X/hdRt7IKHKmHGjDpdPyIMPHOEMmWYpn33Uuv4S6siGA2riWMOE6lEi58BvQE9/zotNm+VVZ/WwO5wO611T5w==}
 
-  '@code-inspector/mako@1.2.3':
-    resolution: {integrity: sha512-bWIRfnSsm/XpCdyaDJY2oyP8jtF12VGgFe/KDMiDjyVwyKtJ3MPEelq1iMlOce4IjLbmM+kSNb9HOuQEHAXuLQ==}
+  '@code-inspector/mako@1.2.4':
+    resolution: {integrity: sha512-OrjbhAJc0VwOwqq7PgMwP3ePtcsANCH3fRKjxriAIbytmC/oljJ7lYxTGfv40R1qNQP2ds5n80W1vtVyyYiHBA==}
 
-  '@code-inspector/turbopack@1.2.3':
-    resolution: {integrity: sha512-ImG+2J4t8lkyrDmggjnZ5o+xnEz+ittDjoOvJ9S1YtzE4xv+OjUMKS1RSJCr6/s4RW9yH2Cb5q/RZcQcytrSXA==}
+  '@code-inspector/turbopack@1.2.4':
+    resolution: {integrity: sha512-t6UKwsuTzQSKYVXhFLpPwp7RRbiMrDlQQD1c1dAlvyjWz2fx4N6UxU9ysDKMa4zvUPTnX+wkGSAudQIAIOF6yA==}
 
-  '@code-inspector/vite@1.2.3':
-    resolution: {integrity: sha512-0PllP6w02g61Y2fySMFJrDRuqcdr0w4iSclf1rZjNRbIr3PJ34R6c2LvbTOJYVKLnv+HSG4n3EsQ+vbs2buAYA==}
+  '@code-inspector/vite@1.2.4':
+    resolution: {integrity: sha512-3p7GHAmJX5TQSax+aHmd3Dtr4/PPyKPGmnwpCrodtpJVCMGUBs45Sfzamc97uXDWtttc6oFEdkQ1SocDuGVmbA==}
 
-  '@code-inspector/webpack@1.2.3':
-    resolution: {integrity: sha512-tWMluXv5zy65wqac85ae/q2Z+hUuNTTfv7Bh94I9j5JXs6OvNy/lpIdON3z5B4/QULwuZv4eyqth40pYKRaxWw==}
+  '@code-inspector/webpack@1.2.4':
+    resolution: {integrity: sha512-DH9kpzccST34luIOYQ7OS2YtF0AiWLWqC9duxAETt0GQO7LBB2LKUOTwggz/wPCml6ci9AIgc0v0Ms5U3giqiQ==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -4381,8 +4381,8 @@ packages:
     resolution: {integrity: sha512-QVb0dM5HvG+uaxitm8wONl7jltx8dqhfU33DcqtOZcLSVIKSDDLDi7+0LbAKiyI8hD9u42m2YxXSkMGWThaecQ==}
     engines: {iojs: '>= 1.0.0', node: '>= 0.12.0'}
 
-  code-inspector-plugin@1.2.3:
-    resolution: {integrity: sha512-bVqNyRkEUr7QOu2WGwIC3XyPMIGmMW7X2VRdc5SO+KFbQyn/0d6qFFI5kuRoG/3lLEvkcza3KOWQfMBWYx4EHQ==}
+  code-inspector-plugin@1.2.4:
+    resolution: {integrity: sha512-87/UzMvSof8m2NrtHVzTFYJSVz6zegVuaYWzZu3p6lLBOV2Jj1oKn0wJlpL8Y5xqzDPB8C7HOeN++y5BXhYdxg==}
 
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -6354,8 +6354,8 @@ packages:
     resolution: {integrity: sha512-MbjN408fEndfiQXbFQ1vnd+1NoLDsnQW41410oQBXiyXDMYH5z505juWa4KUE1LqxRC7DgOgZDbKLxHIwm27hA==}
     engines: {node: '>=0.10'}
 
-  launch-ide@1.1.1:
-    resolution: {integrity: sha512-1p7bQw9t3o/D4xknB/Ij7TlvNfdyIkdYD7XmMhwuqjlc5Q5M61w9O2HLk5yoVR4ozNXJY41woOqa1jgriqQllg==}
+  launch-ide@1.2.0:
+    resolution: {integrity: sha512-7nXSPQOt3b2JT52Ge8jp4miFcY+nrUEZxNLWBzrEfjmByDTb9b5ytqMSwGhsNwY6Cntwop+6n7rWIFN0+S8PTw==}
 
   layout-base@1.0.2:
     resolution: {integrity: sha512-8h2oVEZNktL4BH2JCOI90iD1yXwL6iNW7KcCKT2QZgQJR2vbqDsldCTPRU9NifTCqHZci57XvQQ15YTu+sTYPg==}
@@ -9924,45 +9924,45 @@ snapshots:
       picocolors: 1.1.1
       sisteransi: 1.0.5
 
-  '@code-inspector/core@1.2.3':
+  '@code-inspector/core@1.2.4':
     dependencies:
       '@vue/compiler-dom': 3.5.17
       chalk: 4.1.2
       dotenv: 16.6.1
-      launch-ide: 1.1.1
+      launch-ide: 1.2.0
       portfinder: 1.0.37
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/esbuild@1.2.3':
+  '@code-inspector/esbuild@1.2.4':
     dependencies:
-      '@code-inspector/core': 1.2.3
+      '@code-inspector/core': 1.2.4
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/mako@1.2.3':
+  '@code-inspector/mako@1.2.4':
     dependencies:
-      '@code-inspector/core': 1.2.3
+      '@code-inspector/core': 1.2.4
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/turbopack@1.2.3':
+  '@code-inspector/turbopack@1.2.4':
     dependencies:
-      '@code-inspector/core': 1.2.3
-      '@code-inspector/webpack': 1.2.3
+      '@code-inspector/core': 1.2.4
+      '@code-inspector/webpack': 1.2.4
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/vite@1.2.3':
+  '@code-inspector/vite@1.2.4':
     dependencies:
-      '@code-inspector/core': 1.2.3
+      '@code-inspector/core': 1.2.4
       chalk: 4.1.1
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/webpack@1.2.3':
+  '@code-inspector/webpack@1.2.4':
     dependencies:
-      '@code-inspector/core': 1.2.3
+      '@code-inspector/core': 1.2.4
     transitivePeerDependencies:
       - supports-color
 
@@ -13400,14 +13400,14 @@ snapshots:
 
   co@4.6.0: {}
 
-  code-inspector-plugin@1.2.3:
+  code-inspector-plugin@1.2.4:
     dependencies:
-      '@code-inspector/core': 1.2.3
-      '@code-inspector/esbuild': 1.2.3
-      '@code-inspector/mako': 1.2.3
-      '@code-inspector/turbopack': 1.2.3
-      '@code-inspector/vite': 1.2.3
-      '@code-inspector/webpack': 1.2.3
+      '@code-inspector/core': 1.2.4
+      '@code-inspector/esbuild': 1.2.4
+      '@code-inspector/mako': 1.2.4
+      '@code-inspector/turbopack': 1.2.4
+      '@code-inspector/vite': 1.2.4
+      '@code-inspector/webpack': 1.2.4
       chalk: 4.1.1
     transitivePeerDependencies:
       - supports-color
@@ -15898,7 +15898,7 @@ snapshots:
     dependencies:
       language-subtag-registry: 0.3.23
 
-  launch-ide@1.1.1:
+  launch-ide@1.2.0:
     dependencies:
       chalk: 4.1.2
       dotenv: 16.6.1
