@@ -24,7 +24,6 @@ import IndexFailed from '@/app/components/datasets/common/document-status-with-a
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
 import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { useIndexStatus } from './list'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import useDocumentListQueryState from './hooks/use-document-list-query-state'
@@ -36,6 +35,7 @@ import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-datas
 import { SimpleSelect } from '../../base/select'
 import StatusItem from './detail/completed/status-item'
 import type { Item } from '@/app/components/base/select'
+import { useIndexStatus } from './status-item/hooks'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
