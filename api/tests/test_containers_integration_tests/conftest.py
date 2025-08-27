@@ -66,7 +66,7 @@ class DifyTestContainers:
         # PostgreSQL is used for storing user data, workflows, and application state
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
-            image="postgres:16-alpine",
+            image="postgres:14-alpine",
         )
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
@@ -118,7 +118,7 @@ class DifyTestContainers:
         # Start Redis container for caching and session management
         # Redis is used for storing session data, cache entries, and temporary data
         logger.info("Initializing Redis container...")
-        self.redis = RedisContainer(image="redis:latest", port=6379)
+        self.redis = RedisContainer(image="redis:6-alpine", port=6379)
         self.redis.start()
         redis_host = self.redis.get_container_host_ip()
         redis_port = self.redis.get_exposed_port(6379)
