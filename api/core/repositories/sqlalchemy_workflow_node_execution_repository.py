@@ -204,7 +204,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Args:
             execution: The NodeExecution domain entity to persist
         """
-        from core.workflow.utils.uuid_utils import uuid7_str
+        from libs.uuid_utils import uuidv7
 
         # Convert domain model to database model using tenant context and other attributes
         db_model = self.to_db_model(execution)
@@ -248,7 +248,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                         attempt + 1,
                         max_retries,
                     )
-                    new_id = uuid7_str()
+                    new_id = str(uuidv7())
                     db_model.id = new_id
                     execution.id = new_id
                 else:
