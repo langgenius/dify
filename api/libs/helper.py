@@ -301,8 +301,8 @@ class TokenManager:
         if expiry_minutes is None:
             raise ValueError(f"Expiry minutes for {token_type} token is not set")
         token_key = cls._get_token_key(token, token_type)
-        expiry_time = int(expiry_minutes * 60)
-        redis_client.setex(token_key, expiry_time, json.dumps(token_data))
+        expiry_seconds = int(expiry_minutes * 60)
+        redis_client.setex(token_key, expiry_seconds, json.dumps(token_data))
 
         if account_id:
             cls._set_current_token_for_account(account_id, token, token_type, expiry_minutes)
@@ -336,11 +336,11 @@ class TokenManager:
 
     @classmethod
     def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_hours: Union[int, float]
+        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
     ):
         key = cls._get_account_token_key(account_id, token_type)
-        expiry_time = int(expiry_hours * 60 * 60)
-        redis_client.setex(key, expiry_time, token)
+        expiry_seconds = int(expiry_minutes * 60)
+        redis_client.setex(key, expiry_seconds, token)
 
     @classmethod
     def _get_account_token_key(cls, account_id: str, token_type: str) -> str:
