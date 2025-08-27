@@ -30,6 +30,7 @@ import {
   ChecklistSquare,
 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { IconR } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type WorkflowChecklistProps = {
   disabled: boolean
@@ -103,7 +104,7 @@ const WorkflowChecklist = ({
                       needWarningNodes.map(node => (
                         <div
                           key={node.id}
-                          className='mb-2 cursor-pointer rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs last-of-type:mb-0'
+                          className='group mb-2 cursor-pointer rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs last-of-type:mb-0'
                           onClick={() => {
                             handleNodeSelect(node.id)
                             setOpen(false)
@@ -118,6 +119,12 @@ const WorkflowChecklist = ({
                             <span className='grow truncate'>
                               {node.title}
                             </span>
+                            <div className='flex h-4 w-[50px] items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100'>
+                              <span className='text-xs font-medium leading-4 text-primary-600'>
+                                {t('workflow.panel.goTo')}
+                              </span>
+                              <IconR className='h-3.5 w-3.5 text-primary-600' />
+                            </div>
                           </div>
                           <div className='border-t-[0.5px] border-divider-regular'>
                             {
