@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from flask import request
@@ -24,7 +25,7 @@ class WebhookService:
     @classmethod
     def get_webhook_trigger_and_workflow(
         cls, webhook_id: str
-    ) -> tuple[WorkflowWebhookTrigger, Workflow, dict[str, Any]]:
+    ) -> tuple[WorkflowWebhookTrigger, Workflow, Mapping[str, Any]]:
         """Get webhook trigger, workflow, and node configuration."""
         with Session(db.engine) as session:
             # Get webhook trigger
@@ -118,14 +119,14 @@ class WebhookService:
 
                     processed_files[name] = file_obj
 
-                except Exception as e:
-                    logger.exception(f"Failed to process file upload {name}: {str(e)}")
+                except Exception:
+                    logger.exception("Failed to process file upload %s", name)
                     # Continue processing other files
 
         return processed_files
 
     @classmethod
-    def validate_webhook_request(cls, webhook_data: dict[str, Any], node_config: dict[str, Any]) -> dict[str, Any]:
+    def validate_webhook_request(cls, webhook_data: dict[str, Any], node_config: Mapping[str, Any]) -> dict[str, Any]:
         """Validate webhook request against node configuration."""
         try:
             node_data = node_config.get("data", {})
@@ -176,9 +177,9 @@ class WebhookService:
 
             return {"valid": True}
 
-        except Exception as e:
-            logger.exception(f"Validation error: {str(e)}")
-            return {"valid": False, "error": f"Validation failed: {str(e)}"}
+        except Exception:
+            logger.exception("Validation error")
+            return {"valid": False, "error": "Validation failed"}
 
     @classmethod
     def trigger_workflow_execution(
@@ -198,7 +199,7 @@ class WebhookService:
                 )
 
                 if not tenant_owner:
-                    logger.error(f"Tenant owner not found for tenant {webhook_trigger.tenant_id}")
+                    logger.error("Tenant owner not found for tenant %s", webhook_trigger.tenant_id)
                     raise ValueError("Tenant owner not found")
 
                 # Prepare inputs for the webhook node
@@ -228,12 +229,12 @@ class WebhookService:
                     trigger_data,
                 )
 
-        except Exception as e:
-            logger.exception(f"Failed to trigger workflow for webhook {webhook_trigger.webhook_id}: {str(e)}")
+        except Exception:
+            logger.exception("Failed to trigger workflow for webhook %s", webhook_trigger.webhook_id)
             raise
 
     @classmethod
-    def generate_webhook_response(cls, node_config: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    def generate_webhook_response(cls, node_config: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
         """Generate HTTP response based on node configuration."""
         import json
 
