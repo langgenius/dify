@@ -1,5 +1,6 @@
 export { default as Agent } from './Agent'
 export { default as Answer } from './Answer'
+export { default as ApiAggregate } from './ApiAggregate'
 export { default as Assigner } from './Assigner'
 export { default as Asterisk } from './Asterisk'
 export { default as CalendarCheckLine } from './CalendarCheckLine'

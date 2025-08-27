@@ -101,7 +101,7 @@ function AppCard({
 
   const isApp = cardType === 'webapp'
   const basicName = isApp
-    ? appInfo?.site?.title
+    ? t('appOverview.overview.appInfo.title')
     : t('appOverview.overview.apiInfo.title')
   const hasStartNode = currentWorkflow?.graph?.nodes.find(node => node.data.type === BlockEnum.Start)
   const isWorkflowAndMissingStart = appInfo.mode === 'workflow' && !hasStartNode
