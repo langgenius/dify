@@ -67,6 +67,7 @@ from .app import (
     workflow_draft_variable,
     workflow_run,
     workflow_statistic,
+    workflow_trigger,
 )
 
 # Import auth controllers
@@ -84,7 +85,6 @@ from .datasets import (
     external,
     hit_testing,
     metadata,
-    upload_file,
     website,
 )
 

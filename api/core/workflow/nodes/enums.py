@@ -26,6 +26,7 @@ class NodeType(StrEnum):
     LIST_OPERATOR = "list-operator"
     AGENT = "agent"
     TRIGGER_SCHEDULE = "trigger-schedule"
+    WEBHOOK = "webhook"
 
 
 class ErrorStrategy(StrEnum):

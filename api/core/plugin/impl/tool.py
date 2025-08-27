@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.utils.chunk_merger import merge_blob_chunks
 from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
 
 
@@ -113,61 +114,7 @@ class PluginToolManager(BasePluginClient):
             },
         )
 
-        class FileChunk:
-            """
-            Only used for internal processing.
-            """
-
-            bytes_written: int
-            total_length: int
-            data: bytearray
-
-            def __init__(self, total_length: int):
-                self.bytes_written = 0
-                self.total_length = total_length
-                self.data = bytearray(total_length)
-
-        files: dict[str, FileChunk] = {}
-        for resp in response:
-            if resp.type == ToolInvokeMessage.MessageType.BLOB_CHUNK:
-                assert isinstance(resp.message, ToolInvokeMessage.BlobChunkMessage)
-                # Get blob chunk information
-                chunk_id = resp.message.id
-                total_length = resp.message.total_length
-                blob_data = resp.message.blob
-                is_end = resp.message.end
-
-                # Initialize buffer for this file if it doesn't exist
-                if chunk_id not in files:
-                    files[chunk_id] = FileChunk(total_length)
-
-                # If this is the final chunk, yield a complete blob message
-                if is_end:
-                    yield ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.BLOB,
-                        message=ToolInvokeMessage.BlobMessage(blob=files[chunk_id].data),
-                        meta=resp.meta,
-                    )
-                else:
-                    # Check if file is too large (30MB limit)
-                    if files[chunk_id].bytes_written + len(blob_data) > 30 * 1024 * 1024:
-                        # Delete the file if it's too large
-                        del files[chunk_id]
-                        # Skip yielding this message
-                        raise ValueError("File is too large which reached the limit of 30MB")
-
-                    # Check if single chunk is too large (8KB limit)
-                    if len(blob_data) > 8192:
-                        # Skip yielding this message
-                        raise ValueError("File chunk is too large which reached the limit of 8KB")
-
-                    # Append the blob data to the buffer
-                    files[chunk_id].data[
-                        files[chunk_id].bytes_written : files[chunk_id].bytes_written + len(blob_data)
-                    ] = blob_data
-                    files[chunk_id].bytes_written += len(blob_data)
-            else:
-                yield resp
+        return merge_blob_chunks(response)
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, credentials: dict[str, Any]

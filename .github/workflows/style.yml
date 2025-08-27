@@ -36,10 +36,11 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-uv
+        uses: astral-sh/setup-uv@v6
         with:
-          uv-lockfile: api/uv.lock
           enable-cache: false
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'

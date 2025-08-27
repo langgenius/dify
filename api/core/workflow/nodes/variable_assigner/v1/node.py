@@ -2,6 +2,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, TypeAlias
 
 from core.variables import SegmentType, Variable
+from core.variables.segments import BooleanSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.entities.node_entities import NodeRunResult
@@ -158,8 +159,8 @@ class VariableAssignerNode(BaseNode):
 def get_zero_value(t: SegmentType):
     # TODO(QuantumGhost): this should be a method of `SegmentType`.
     match t:
-        case SegmentType.ARRAY_OBJECT | SegmentType.ARRAY_STRING | SegmentType.ARRAY_NUMBER:
-            return variable_factory.build_segment([])
+        case SegmentType.ARRAY_OBJECT | SegmentType.ARRAY_STRING | SegmentType.ARRAY_NUMBER | SegmentType.ARRAY_BOOLEAN:
+            return variable_factory.build_segment_with_type(t, [])
         case SegmentType.OBJECT:
             return variable_factory.build_segment({})
         case SegmentType.STRING:
@@ -170,5 +171,7 @@ def get_zero_value(t: SegmentType):
             return variable_factory.build_segment(0.0)
         case SegmentType.NUMBER:
             return variable_factory.build_segment(0)
+        case SegmentType.BOOLEAN:
+            return BooleanSegment(value=False)
         case _:
             raise VariableOperatorNodeError(f"unsupported variable type: {t}")

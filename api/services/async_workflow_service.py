@@ -20,7 +20,7 @@ from models.enums import CreatorUserRole
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowTriggerLog, WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.errors.llm import InvokeRateLimitError
+from services.errors.app import InvokeDailyRateLimitError, WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
 from services.workflow.rate_limiter import TenantDailyRateLimiter
@@ -69,8 +69,8 @@ class AsyncWorkflowService:
             Note: The actual workflow execution status must be checked separately via workflow_trigger_log_id
 
         Raises:
-            ValueError: If app or workflow not found
-            InvokeRateLimitError: If daily rate limit exceeded
+            WorkflowNotFoundError: If app or workflow not found
+            InvokeDailyRateLimitError: If daily rate limit exceeded
 
         Behavior:
             - Non-blocking: Returns immediately after queuing
@@ -86,7 +86,7 @@ class AsyncWorkflowService:
         # 1. Validate app exists
         app_model = session.scalar(select(App).where(App.id == trigger_data.app_id))
         if not app_model:
-            raise ValueError(f"App not found: {trigger_data.app_id}")
+            raise WorkflowNotFoundError(f"App not found: {trigger_data.app_id}")
 
         # 2. Get workflow
         workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id)
@@ -94,8 +94,7 @@ class AsyncWorkflowService:
         # 3. Get dispatcher based on tenant subscription
         dispatcher = dispatcher_manager.get_dispatcher(trigger_data.tenant_id)
 
-        # 4. Get tenant owner timezone for rate limiting
-        tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
+        # 4. Rate limiting check will be done without timezone first
 
         # 5. Determine user role and ID
         if isinstance(user, Account):
@@ -125,20 +124,20 @@ class AsyncWorkflowService:
         session.commit()
 
         # 7. Check and consume daily quota
-        if not dispatcher.consume_quota(trigger_data.tenant_id, tenant_owner_tz):
+        if not dispatcher.consume_quota(trigger_data.tenant_id):
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
             trigger_log.error = f"Daily limit reached for {dispatcher.get_queue_name()}"
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            remaining = rate_limiter.get_remaining_quota(
-                trigger_data.tenant_id, dispatcher.get_daily_limit(), tenant_owner_tz
-            )
+            tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
+
+            remaining = rate_limiter.get_remaining_quota(trigger_data.tenant_id, dispatcher.get_daily_limit())
 
             reset_time = rate_limiter.get_quota_reset_time(trigger_data.tenant_id, tenant_owner_tz)
 
-            raise InvokeRateLimitError(
+            raise InvokeDailyRateLimitError(
                 f"Daily workflow execution limit reached. "
                 f"Limit resets at {reset_time.strftime('%Y-%m-%d %H:%M:%S %Z')}. "
                 f"Remaining quota: {remaining}"
@@ -305,17 +304,17 @@ class AsyncWorkflowService:
             Workflow instance
 
         Raises:
-            ValueError: If workflow not found
+            WorkflowNotFoundError: If workflow not found
         """
         if workflow_id:
             # Get specific published workflow
             workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id)
             if not workflow:
-                raise ValueError(f"Published workflow not found: {workflow_id}")
+                raise WorkflowNotFoundError(f"Published workflow not found: {workflow_id}")
         else:
             # Get default published workflow
             workflow = workflow_service.get_published_workflow(app_model)
             if not workflow:
-                raise ValueError(f"No published workflow found for app: {app_model.id}")
+                raise WorkflowNotFoundError(f"No published workflow found for app: {app_model.id}")
 
         return workflow

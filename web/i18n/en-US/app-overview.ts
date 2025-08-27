@@ -30,6 +30,7 @@ const translation = {
   overview: {
     title: 'Overview',
     appInfo: {
+      title: 'Web App',
       explanation: 'Ready-to-use AI web app',
       accessibleAddress: 'Public URL',
       preview: 'Preview',

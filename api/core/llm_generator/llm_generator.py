@@ -31,6 +31,8 @@ from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
 from core.workflow.graph_engine.entities.event import AgentLogEvent
 from models import App, Message, WorkflowNodeExecutionModel, db
 
+logger = logging.getLogger(__name__)
+
 
 class LLMGenerator:
     @classmethod
@@ -68,7 +70,7 @@ class LLMGenerator:
             result_dict = json.loads(cleaned_answer)
             answer = result_dict["Your Output"]
         except json.JSONDecodeError as e:
-            logging.exception("Failed to generate name after answer, use query instead")
+            logger.exception("Failed to generate name after answer, use query instead")
             answer = query
         name = answer.strip()
 
@@ -125,7 +127,7 @@ class LLMGenerator:
         except InvokeError:
             questions = []
         except Exception:
-            logging.exception("Failed to generate suggested questions after answer")
+            logger.exception("Failed to generate suggested questions after answer")
             questions = []
 
         return questions
@@ -173,7 +175,7 @@ class LLMGenerator:
                 error = str(e)
                 error_step = "generate rule config"
             except Exception as e:
-                logging.exception("Failed to generate rule config, model: %s", model_config.get("name"))
+                logger.exception("Failed to generate rule config, model: %s", model_config.get("name"))
                 rule_config["error"] = str(e)
 
             rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
@@ -270,7 +272,7 @@ class LLMGenerator:
                 error_step = "generate conversation opener"
 
         except Exception as e:
-            logging.exception("Failed to generate rule config, model: %s", model_config.get("name"))
+            logger.exception("Failed to generate rule config, model: %s", model_config.get("name"))
             rule_config["error"] = str(e)
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
@@ -319,7 +321,7 @@ class LLMGenerator:
             error = str(e)
             return {"code": "", "language": code_language, "error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
-            logging.exception(
+            logger.exception(
                 "Failed to invoke LLM model, model: %s, language: %s", model_config.get("name"), code_language
             )
             return {"code": "", "language": code_language, "error": f"An unexpected error occurred: {str(e)}"}
@@ -392,14 +394,13 @@ class LLMGenerator:
             error = str(e)
             return {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
         except Exception as e:
-            logging.exception("Failed to invoke LLM model, model: %s", model_config.get("name"))
+            logger.exception("Failed to invoke LLM model, model: %s", model_config.get("name"))
             return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
 
     @staticmethod
     def instruction_modify_legacy(
         tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
     ) -> dict:
-        app: App | None = db.session.query(App).where(App.id == flow_id).first()
         last_run: Message | None = (
             db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
         )
@@ -570,5 +571,7 @@ class LLMGenerator:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
-            logging.exception("Failed to invoke LLM model, model: " + json.dumps(model_config.get("name")), exc_info=e)
+            logger.exception(
+                "Failed to invoke LLM model, model: %s", json.dumps(model_config.get("name")), exc_info=True
+            )
             return {"error": f"An unexpected error occurred: {str(e)}"}

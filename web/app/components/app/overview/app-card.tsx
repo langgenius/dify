@@ -39,7 +39,9 @@ import { fetchAppDetailDirect } from '@/service/apps'
 import { AccessMode } from '@/models/access-control'
 import AccessControl from '../app-access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
+import { useAppWorkflow } from '@/service/use-workflow'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 export type IAppCardProps = {
   className?: string
@@ -65,6 +67,7 @@ function AppCard({
   const router = useRouter()
   const pathname = usePathname()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === 'workflow' ? appInfo.id : '')
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -98,10 +101,12 @@ function AppCard({
 
   const isApp = cardType === 'webapp'
   const basicName = isApp
-    ? appInfo?.site?.title
+    ? t('appOverview.overview.appInfo.title')
     : t('appOverview.overview.apiInfo.title')
-  const toggleDisabled = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
-  const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
+  const hasStartNode = currentWorkflow?.graph?.nodes.find(node => node.data.type === BlockEnum.Start)
+  const isWorkflowAndMissingStart = appInfo.mode === 'workflow' && !hasStartNode
+  const toggleDisabled = isWorkflowAndMissingStart || (isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager)
+  const runningStatus = isWorkflowAndMissingStart ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
   const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`

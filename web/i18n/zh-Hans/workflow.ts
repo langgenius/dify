@@ -12,6 +12,7 @@ const translation = {
     run: '测试运行',
     running: '运行中',
     chooseStartNodeToRun: '选择启动节点进行运行',
+    runAllTriggers: '运行所有触发器',
     inRunMode: '在运行模式中',
     inPreview: '预览中',
     inPreviewMode: '预览中',
@@ -44,7 +45,7 @@ const translation = {
     needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
     needEndNode: '必须添加结束节点',
-    needStartNode: '必须添加开始节点（开始或触发器）',
+    needStartNode: '必须添加至少一个开始节点',
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',
     notRunning: '尚未运行',
@@ -331,6 +332,7 @@ const translation = {
     checklist: '检查清单',
     checklistTip: '发布前确保所有问题均已解决',
     checklistResolved: '所有问题均已解决',
+    startNode: '开始节点',
     organizeBlocks: '整理节点',
     change: '更改',
     optional: '（选填）',
@@ -903,6 +905,7 @@ const translation = {
       },
       outputVars: {
         text: 'agent 生成的内容',
+        usage: '模型用量信息',
         files: {
           title: 'agent 生成的文件',
           type: '支持类型。现在只支持图片',
@@ -929,7 +932,6 @@ const translation = {
       frequency: {
         label: '频率',
         monthly: '每月',
-        once: '仅一次',
         daily: '每日',
         hourly: '每小时',
         weekly: '每周',
@@ -941,6 +943,7 @@ const translation = {
       nextExecutionTimes: '接下来 5 次执行时间',
       hours: '小时',
       minutes: '分钟',
+      onMinute: '分钟',
       cronExpression: 'Cron 表达式',
       weekdays: '星期',
       executeNow: '立即执行',
@@ -970,6 +973,7 @@ const translation = {
       invalidTimeFormat: '无效的时间格式（预期格式：HH:MM AM/PM）',
       invalidWeekday: '无效的工作日：{{weekday}}',
       invalidMonthlyDay: '月份日期必须在 1-31 之间或为"last"',
+      invalidOnMinute: '分钟必须在 0-59 之间',
       invalidExecutionTime: '无效的执行时间',
       executionTimeMustBeFuture: '执行时间必须是将来的时间',
     },
@@ -1097,6 +1101,17 @@ const translation = {
   entryNodeStatus: {
     enabled: '开始',
     disabled: '开始 • 已禁用',
+  },
+  onboarding: {
+    title: '选择开始节点来开始',
+    description: '不同的开始节点具有不同的功能。不用担心，您随时可以更改它们。',
+    userInputFull: '用户输入（原始开始节点）',
+    userInputDescription: '允许设置用户输入变量的开始节点，具有Web应用程序、服务API、MCP服务器和工作流即工具功能。',
+    trigger: '触发器',
+    triggerDescription: '触发器可以作为工作流的开始节点，例如定时任务、自定义webhook或与其他应用程序的集成。',
+    back: '返回',
+    learnMore: '了解更多',
+    aboutStartNode: '关于开始节点。',
   },
 }
 

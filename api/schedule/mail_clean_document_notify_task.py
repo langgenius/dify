@@ -13,6 +13,8 @@ from models.account import Account, Tenant, TenantAccountJoin
 from models.dataset import Dataset, DatasetAutoDisableLog
 from services.feature_service import FeatureService
 
+logger = logging.getLogger(__name__)
+
 
 @app.celery.task(queue="dataset")
 def mail_clean_document_notify_task():
@@ -24,7 +26,7 @@ def mail_clean_document_notify_task():
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start send document clean notify mail", fg="green"))
+    logger.info(click.style("Start send document clean notify mail", fg="green"))
     start_at = time.perf_counter()
 
     # send document clean notify mail
@@ -89,8 +91,6 @@ def mail_clean_document_notify_task():
                 dataset_auto_disable_log.notified = True
             db.session.commit()
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"Send document clean notify mail succeeded: latency: {end_at - start_at}", fg="green")
-        )
+        logger.info(click.style(f"Send document clean notify mail succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("Send document clean notify mail failed")
+        logger.exception("Send document clean notify mail failed")

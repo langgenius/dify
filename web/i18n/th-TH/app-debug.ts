@@ -395,6 +395,10 @@ const translation = {
     'apiBasedVar': 'ตัวแปรที่ใช้ API',
     'paragraph': 'วรรค',
     'both': 'ทั้งสอง',
+    'checkbox': 'Checkbox',
+    'jsonSchema': 'แบบจำลอง JSON',
+    'json': 'รหัส JSON',
+    'optional': 'ตัวเลือก',
   },
   vision: {
     visionSettings: {

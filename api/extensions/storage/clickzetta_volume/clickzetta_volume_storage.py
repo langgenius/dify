@@ -292,7 +292,6 @@ class ClickZettaVolumeStorage(BaseStorage):
 
             # Get the actual volume path (may include dify_km prefix)
             volume_path = self._get_volume_path(filename, dataset_id)
-            actual_filename = volume_path.split("/")[-1] if "/" in volume_path else volume_path
 
             # For User Volume, use the full path with dify_km prefix
             if volume_prefix == "USER VOLUME":

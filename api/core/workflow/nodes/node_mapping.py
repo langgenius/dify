@@ -23,6 +23,7 @@ from core.workflow.nodes.trigger_schedule import TriggerScheduleNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
 from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode as VariableAssignerNodeV1
 from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode as VariableAssignerNodeV2
+from core.workflow.nodes.webhook import WebhookNode
 
 LATEST_VERSION = "latest"
 
@@ -132,6 +133,10 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
         # but in order to maintain compatibility with historical data, this approach has been retained.
         "2": AgentNode,
         "1": AgentNode,
+    },
+    NodeType.WEBHOOK: {
+        LATEST_VERSION: WebhookNode,
+        "1": WebhookNode,
     },
     NodeType.TRIGGER_SCHEDULE: {
         LATEST_VERSION: TriggerScheduleNode,

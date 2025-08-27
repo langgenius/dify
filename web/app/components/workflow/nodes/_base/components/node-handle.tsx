@@ -157,7 +157,7 @@ export const NodeSourceHandle = memo(({
   }, [handleNodeAdd, id, handleId])
 
   useEffect(() => {
-    if (notInitialWorkflow && data.type === BlockEnum.Start && !isChatMode)
+    if (notInitialWorkflow && (data.type === BlockEnum.Start || data.type === BlockEnum.TriggerSchedule || data.type === BlockEnum.TriggerWebhook || data.type === BlockEnum.TriggerPlugin) && !isChatMode)
       setOpen(true)
   }, [notInitialWorkflow, data.type, isChatMode])
 

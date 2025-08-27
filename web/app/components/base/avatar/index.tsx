@@ -8,6 +8,7 @@ export type AvatarProps = {
   size?: number
   className?: string
   textClassName?: string
+  onError?: (x: boolean) => void
 }
 const Avatar = ({
   name,
@@ -15,6 +16,7 @@ const Avatar = ({
   size = 30,
   className,
   textClassName,
+  onError,
 }: AvatarProps) => {
   const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
   const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
@@ -22,6 +24,7 @@ const Avatar = ({
 
   const handleError = () => {
     setImgError(true)
+    onError?.(true)
   }
 
   if (avatar && !imgError) {
@@ -32,6 +35,7 @@ const Avatar = ({
         alt={name}
         src={avatar}
         onError={handleError}
+        onLoad={() => onError?.(false)}
       />
     )
   }

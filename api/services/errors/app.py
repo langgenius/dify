@@ -16,3 +16,9 @@ class WorkflowNotFoundError(Exception):
 
 class WorkflowIdFormatError(Exception):
     pass
+
+
+class InvokeDailyRateLimitError(Exception):
+    """Raised when daily rate limit is exceeded for workflow invocations."""
+
+    pass

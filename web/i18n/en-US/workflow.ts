@@ -46,7 +46,7 @@ const translation = {
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
     needEndNode: 'The End node must be added',
-    needStartNode: 'An entry node (User Input or Trigger) must be added',
+    needStartNode: 'At least one start node must be added',
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
@@ -332,6 +332,7 @@ const translation = {
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
     checklistResolved: 'All issues are resolved',
+    startNode: 'Start Node',
     organizeBlocks: 'Organize nodes',
     change: 'Change',
     optional: '(optional)',
@@ -904,6 +905,7 @@ const translation = {
       },
       outputVars: {
         text: 'agent generated content',
+        usage: 'Model Usage Information',
         files: {
           title: 'agent generated files',
           type: 'Support type. Now only support image',
@@ -1099,6 +1101,17 @@ const translation = {
       noDependencies: 'No dependencies',
       noDependents: 'No dependents',
     },
+  },
+  onboarding: {
+    title: 'Select a start node to begin',
+    description: 'Different start nodes have different capabilities. Don\'t worry, you can always change them later.',
+    userInputFull: 'User Input (original start node)',
+    userInputDescription: 'Start node that allows setting user input variables, with web app, service API, MCP server, and workflow as tool capabilities.',
+    trigger: 'Trigger',
+    triggerDescription: 'Triggers can serve as the start node of a workflow, such as scheduled tasks, custom webhooks, or integrations with other apps.',
+    back: 'Back',
+    learnMore: 'Learn more',
+    aboutStartNode: 'about start node.',
   },
 }
 

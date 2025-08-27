@@ -417,6 +417,7 @@ const vars = {
   'background-overlay-destructive': 'var(--color-background-overlay-destructive)',
   'background-overlay-backdrop': 'var(--color-background-overlay-backdrop)',
   'background-body-transparent': 'var(--color-background-body-transparent)',
+  'background-section-burn-inverted': 'var(--color-background-section-burn-inverted)',
 
   'shadow-shadow-1': 'var(--color-shadow-shadow-1)',
   'shadow-shadow-3': 'var(--color-shadow-shadow-3)',

@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import Any, Optional
 
 import pytz
-from celery import Celery, Task  # type: ignore
-from celery.schedules import crontab  # type: ignore
+from celery import Celery, Task
+from celery.schedules import crontab
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -66,7 +66,6 @@ def init_app(app: DifyApp) -> Celery:
         task_cls=FlaskTask,
         broker=dify_config.CELERY_BROKER_URL,
         backend=dify_config.CELERY_BACKEND,
-        task_ignore_result=True,
     )
 
     celery_app.conf.update(
@@ -77,6 +76,7 @@ def init_app(app: DifyApp) -> Celery:
         worker_task_log_format=dify_config.LOG_FORMAT,
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
+        task_ignore_result=True,
     )
 
     # Apply SSL configuration if enabled

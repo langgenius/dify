@@ -2,7 +2,7 @@ import logging
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
@@ -30,6 +30,9 @@ from services.account_service import TenantService
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
+
+logger = logging.getLogger(__name__)
+
 
 provider_fields = {
     "provider_name": fields.String,
@@ -120,7 +123,7 @@ class TenantApi(Resource):
     @marshal_with(tenant_fields)
     def get(self):
         if request.path == "/info":
-            logging.warning("Deprecated URL /info was used.")
+            logger.warning("Deprecated URL /info was used.")
 
         tenant = current_user.current_tenant
 

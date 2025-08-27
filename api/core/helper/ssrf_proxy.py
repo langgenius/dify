@@ -9,6 +9,8 @@ import httpx
 
 from configs import dify_config
 
+logger = logging.getLogger(__name__)
+
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
 HTTP_REQUEST_NODE_SSL_VERIFY = True  # Default value for HTTP_REQUEST_NODE_SSL_VERIFY is True
@@ -73,12 +75,12 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             if response.status_code not in STATUS_FORCELIST:
                 return response
             else:
-                logging.warning(
+                logger.warning(
                     "Received status code %s for URL %s which is in the force list", response.status_code, url
                 )
 
         except httpx.RequestError as e:
-            logging.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
+            logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
             if max_retries == 0:
                 raise
 
