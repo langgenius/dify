@@ -1,8 +1,5 @@
-from __future__ import annotations
-
-from collections.abc import Callable
 from functools import wraps
-from typing import TypeVar, cast
+from typing import Union, cast
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS  # type: ignore
@@ -12,15 +9,9 @@ from configs import dify_config
 from models.account import Account
 from models.model import EndUser
 
-_T = TypeVar("_T")
-
-
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
-def return_type(x: Callable[..., _T]) -> type[_T]: ...
-
-
-current_user = cast(return_type(_get_user), LocalProxy(lambda: _get_user()))
+current_user = cast(Union[Account, EndUser, None], LocalProxy(lambda: _get_user()))
 
 
 def login_required(func):
