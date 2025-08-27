@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
 import produce from 'immer'
 import type {
   NodeDragHandler,
@@ -67,6 +68,7 @@ import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -90,6 +92,32 @@ export const useNodesInteractions = () => {
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
+
+  // Unified error handler for start node missing scenarios
+  const handleStartNodeMissingError = useCallback((error: Error, operationKey: string): boolean => {
+    if (error.message === 'Start node not found') {
+      const operation = t(`workflow.error.operations.${operationKey}`) || operationKey
+      notify({
+        type: 'error',
+        message: t('workflow.error.startNodeRequired', { operation }) || `Please add a start node first before ${operation}`,
+      })
+      return true // Error handled
+    }
+    return false // Error not handled, should re-throw
+  }, [notify, t])
+
+  // Safe wrapper for checkNestedParallelLimit with error handling
+  const safeCheckParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string, operationKey = 'updatingWorkflow') => {
+    try {
+      return checkNestedParallelLimit(nodes, edges, parentNodeId)
+    }
+ catch (error: any) {
+      if (handleStartNodeMissingError(error, operationKey))
+        return false // Operation blocked but gracefully handled
+
+      throw error // Re-throw other errors
+    }
+  }, [checkNestedParallelLimit, handleStartNodeMissingError])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     workflowStore.setState({ nodeAnimation: false })
@@ -419,7 +447,7 @@ export const useNodesInteractions = () => {
       draft.push(newEdge)
     })
 
-    if (checkNestedParallelLimit(newNodes, newEdges, targetNode?.parentId)) {
+    if (safeCheckParallelLimit(newNodes, newEdges, targetNode?.parentId, 'connectingNodes')) {
       setNodes(newNodes)
       setEdges(newEdges)
 
@@ -434,7 +462,7 @@ export const useNodesInteractions = () => {
       setConnectingNodePayload(undefined)
       setEnteringNodePayload(undefined)
     }
-  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, checkNestedParallelLimit])
+  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, safeCheckParallelLimit])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
@@ -824,7 +852,7 @@ export const useNodesInteractions = () => {
         draft.push(newEdge)
       })
 
-      if (checkNestedParallelLimit(newNodes, newEdges, prevNode.parentId)) {
+      if (safeCheckParallelLimit(newNodes, newEdges, prevNode.parentId, 'addingNodes')) {
         setNodes(newNodes)
         setEdges(newEdges)
       }
@@ -944,7 +972,7 @@ export const useNodesInteractions = () => {
           draft.push(newEdge)
         })
 
-        if (checkNestedParallelLimit(newNodes, newEdges, nextNode.parentId)) {
+        if (safeCheckParallelLimit(newNodes, newEdges, nextNode.parentId, 'modifyingWorkflow')) {
           setNodes(newNodes)
           setEdges(newEdges)
         }
@@ -953,7 +981,7 @@ export const useNodesInteractions = () => {
         }
       }
       else {
-        if (checkNestedParallelLimit(newNodes, edges))
+        if (safeCheckParallelLimit(newNodes, edges, undefined, 'updatingWorkflow'))
           setNodes(newNodes)
 
         else
@@ -1102,7 +1130,7 @@ export const useNodesInteractions = () => {
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
-  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit])
+  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, safeCheckParallelLimit])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,

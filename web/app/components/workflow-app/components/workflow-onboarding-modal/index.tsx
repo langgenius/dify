@@ -9,6 +9,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import Modal from '@/app/components/base/modal'
 import StartNodeSelectionPanel from './start-node-selection-panel'
+import { useDocLink } from '@/context/i18n'
 
 type WorkflowOnboardingModalProps = {
   isShow: boolean
@@ -22,6 +23,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
   onSelectStartNode,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const handleSelectUserInput = useCallback(() => {
     onSelectStartNode(BlockEnum.Start)
@@ -60,15 +62,15 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
             </h3>
             <div className="body-xs-regular leading-4 text-text-tertiary">
               {t('workflow.onboarding.description')}{' '}
-              <button
-                type="button"
+              <a
+                href={docLink('guides/workflow/node/start')}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-text-accent-hover cursor-pointer text-text-accent underline"
-                onClick={() => {
-                  console.log('Navigate to start node documentation')
-                }}
               >
-                Learn more
-              </button> about start node.
+                {t('workflow.onboarding.learnMore')}
+              </a>{' '}
+              {t('workflow.onboarding.aboutStartNode')}
             </div>
           </div>
 

@@ -210,6 +210,16 @@ const translation = {
     invalidVariable: '無効な変数です',
     noValidTool: '{{field}} に利用可能なツールがありません',
     toolParameterRequired: '{{field}}: パラメータ [{{param}}] は必須です',
+    startNodeRequired: '{{operation}}前に開始ノードを追加してください',
+  },
+  error: {
+    startNodeRequired: '{{operation}}前に開始ノードを追加してください',
+    operations: {
+      connectingNodes: 'ノード接続',
+      addingNodes: 'ノード追加',
+      modifyingWorkflow: 'ワークフロー変更',
+      updatingWorkflow: 'ワークフロー更新',
+    },
   },
   singleRun: {
     testRun: 'テスト実行',
