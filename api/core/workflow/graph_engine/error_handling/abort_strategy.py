@@ -3,7 +3,6 @@ Abort error strategy implementation.
 """
 
 import logging
-from typing import Optional
 
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
@@ -19,7 +18,7 @@ class AbortStrategy:
     It stops the entire graph execution when a node fails.
     """
 
-    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> Optional[GraphNodeEventBase]:
+    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> GraphNodeEventBase | None:
         """
         Handle error by aborting execution.
 

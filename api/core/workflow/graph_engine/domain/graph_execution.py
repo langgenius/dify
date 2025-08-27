@@ -3,7 +3,6 @@ GraphExecution aggregate root managing the overall graph execution state.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .node_execution import NodeExecution
 
@@ -21,7 +20,7 @@ class GraphExecution:
     started: bool = False
     completed: bool = False
     aborted: bool = False
-    error: Optional[Exception] = None
+    error: Exception | None = None
     node_executions: dict[str, NodeExecution] = field(default_factory=dict)
 
     def start(self) -> None:
