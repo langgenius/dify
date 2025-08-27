@@ -14,7 +14,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from libs.login import current_user
 from models.account import Account
-from models.model import EndUser
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +22,10 @@ def safe_json_value(v):
     if current_user is None:
         return None
     if isinstance(v, datetime):
-        match current_user:
-            case EndUser():
-                tz_name = None
-            case Account():
-                tz_name = current_user.timezone
-        if not tz_name:
+        tz_name = None
+        if isinstance(current_user, Account):
+            tz_name = current_user.timezone
+        if tz_name is None:
             tz_name = "UTC"
         return v.astimezone(pytz.timezone(tz_name)).isoformat()
     elif isinstance(v, date):
