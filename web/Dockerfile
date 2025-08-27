@@ -9,6 +9,7 @@ RUN apk add --no-cache tzdata
 RUN corepack enable
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV NEXT_PUBLIC_BASE_PATH=
 
 
 # install packages
