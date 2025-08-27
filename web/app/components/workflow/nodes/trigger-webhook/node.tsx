@@ -8,19 +8,16 @@ const Node: FC<NodeProps<WebhookTriggerNodeType>> = ({
 }) => {
   return (
     <div className="mb-1 px-3 py-1">
-      <div className="mb-1 text-xs text-text-secondary">
+      <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
         URL
       </div>
-      {data.webhook_url && (
-        <div
-          className="max-w-[200px] cursor-default truncate rounded bg-components-badge-bg-gray-soft px-2 py-1 text-xs text-text-tertiary"
-          title={data.webhook_url}
-        >
-          <span className="truncate" title={data.webhook_url}>
-            {data.webhook_url}
-          </span>
+      <div className="flex h-[26px] items-center rounded-md bg-workflow-block-parma-bg px-2 text-xs text-text-secondary">
+        <div className="w-0 grow">
+          <div className="truncate" title={data.webhook_url || '--'}>
+            {data.webhook_url || '--'}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
