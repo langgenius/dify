@@ -95,6 +95,7 @@ const nextConfig = {
     rules: {
       "**/*.{jsx,tsx,js,mjs,mts}": Object.values(codeInspectorPlugin({
         bundler: 'turbopack',
+        exclude: ['.mdx.tsx']
       }))[0]
     }
   },
