@@ -3,6 +3,9 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -31,8 +34,6 @@ from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Me
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
-from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 

@@ -3,6 +3,8 @@ from threading import Thread
 from typing import Optional, Union
 
 from flask import Flask, current_app
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
@@ -31,8 +33,6 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
-from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
