@@ -32,12 +32,7 @@ class TokenBufferMemory:
         self.model_instance = model_instance
 
     def _build_prompt_message_with_files(
-        self,
-        message_files: list[MessageFile],
-        text_content: str,
-        message: Message,
-        app_record,
-        is_user_message: bool
+        self, message_files: list[MessageFile], text_content: str, message: Message, app_record, is_user_message: bool
     ) -> PromptMessage:
         """
         Build prompt message with files.
@@ -51,9 +46,7 @@ class TokenBufferMemory:
         if self.conversation.mode in {AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.CHAT}:
             file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
         elif self.conversation.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow_run = db.session.scalar(
-                select(WorkflowRun).where(WorkflowRun.id == message.workflow_run_id)
-            )
+            workflow_run = db.session.scalar(select(WorkflowRun).where(WorkflowRun.id == message.workflow_run_id))
             if not workflow_run:
                 raise ValueError(f"Workflow run not found: {message.workflow_run_id}")
             workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
@@ -68,9 +61,7 @@ class TokenBufferMemory:
             # Build files directly without filtering by belongs_to
             file_objs = [
                 file_factory.build_from_message_file(
-                    message_file=message_file,
-                    tenant_id=app_record.tenant_id,
-                    config=file_extra_config
+                    message_file=message_file, tenant_id=app_record.tenant_id, config=file_extra_config
                 )
                 for message_file in message_files
             ]
@@ -136,10 +127,14 @@ class TokenBufferMemory:
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             # Process user message with files
-            user_files = db.session.query(MessageFile).where(
-                MessageFile.message_id == message.id,
-                (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None))
-            ).all()
+            user_files = (
+                db.session.query(MessageFile)
+                .where(
+                    MessageFile.message_id == message.id,
+                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
+                )
+                .all()
+            )
 
             if user_files:
                 user_prompt_message = self._build_prompt_message_with_files(
@@ -147,17 +142,18 @@ class TokenBufferMemory:
                     text_content=message.query,
                     message=message,
                     app_record=app_record,
-                    is_user_message=True
+                    is_user_message=True,
                 )
                 prompt_messages.append(user_prompt_message)
             else:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 
             # Process assistant message with files
-            assistant_files = db.session.query(MessageFile).where(
-                MessageFile.message_id == message.id,
-                MessageFile.belongs_to == "assistant"
-            ).all()
+            assistant_files = (
+                db.session.query(MessageFile)
+                .where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
+                .all()
+            )
 
             if assistant_files:
                 assistant_prompt_message = self._build_prompt_message_with_files(
@@ -165,7 +161,7 @@ class TokenBufferMemory:
                     text_content=message.answer,
                     message=message,
                     app_record=app_record,
-                    is_user_message=False
+                    is_user_message=False,
                 )
                 prompt_messages.append(assistant_prompt_message)
             else:
