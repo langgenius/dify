@@ -6,6 +6,7 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Viewport } from 'reactflow'
 import type { TransferMethod } from '@/types/app'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import type { NodeRunResult } from '@/types/workflow'
 
 export enum DatasourceType {
   localFile = 'local_file',
@@ -287,3 +288,13 @@ export type OnlineDriveFile = {
   size?: number
   type: OnlineDriveFileType
 }
+
+export type DatasourceNodeSingleRunRequest = {
+  pipeline_id: string
+  start_node_id: string
+  start_node_title: string
+  datasource_type: DatasourceType
+  datasource_info: Record<string, any>
+}
+
+export type DatasourceNodeSingleRunResponse = NodeRunResult

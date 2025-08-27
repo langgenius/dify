@@ -663,6 +663,7 @@ const useOneStepRun = <T>({
     runInputDataRef,
     setRunInputData: handleSetRunInputData,
     runResult,
+    setRunResult: doSetRunResult,
     iterationRunResult,
     loopRunResult,
     setNodeRunning,

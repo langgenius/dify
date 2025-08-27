@@ -221,7 +221,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
     children: childrenResult,
-    alias: obj.alias,
+    schemaType: obj.schemaType,
   }
 
   return res
@@ -233,6 +233,7 @@ const formatItem = (
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
   allPluginInfoList: Record<string, ToolWithProvider[]>,
   ragVars?: Var[],
+  getMatchedSchemaType = (_obj: any) => '',
 ): NodeOutPutVar => {
   const { id, data } = item
 
@@ -414,7 +415,7 @@ const formatItem = (
     }
 
     case BlockEnum.Tool: {
-      const toolOutputVars = ToolNodeDefault.getOutputVars?.(data as ToolNodeType, allPluginInfoList) || []
+      const toolOutputVars = ToolNodeDefault.getOutputVars?.(data as ToolNodeType, allPluginInfoList, [], { getMatchedSchemaType }) || []
       res.vars = toolOutputVars
       break
     }
@@ -510,7 +511,7 @@ const formatItem = (
 
     case BlockEnum.DataSource: {
       const payload = data as DataSourceNodeType
-      const dataSourceVars = DataSourceNodeDefault.getOutputVars?.(payload, allPluginInfoList, ragVars) || []
+      const dataSourceVars = DataSourceNodeDefault.getOutputVars?.(payload, allPluginInfoList, ragVars, { getMatchedSchemaType }) || []
       res.vars = dataSourceVars
       break
     }
@@ -640,6 +641,7 @@ export const toNodeOutputVars = (
   conversationVariables: ConversationVariable[] = [],
   ragVariables: RAGPipelineVariable[] = [],
   allPluginInfoList: Record<string, ToolWithProvider[]>,
+  getMatchedSchemaType = (_obj: any) => '',
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
   const ENV_NODE = {
@@ -697,7 +699,7 @@ export const toNodeOutputVars = (
           description: ragVariable.label,
           isRagVariable: true,
         } as Var),
-      )),
+      ), getMatchedSchemaType),
       isStartNode: node.data.type === BlockEnum.Start,
     }
   }).filter(item => item.vars.length > 0)
@@ -822,6 +824,7 @@ export const getVarType = ({
   conversationVariables = [],
   ragVariables = [],
   allPluginInfoList,
+  getMatchedSchemaType,
 }: {
   valueSelector: ValueSelector
   parentNode?: Node | null
@@ -834,6 +837,7 @@ export const getVarType = ({
   conversationVariables?: ConversationVariable[]
   ragVariables?: RAGPipelineVariable[]
   allPluginInfoList: Record<string, ToolWithProvider[]>
+  getMatchedSchemaType: (obj: any) => string
 }): VarType => {
   if (isConstant)
     return VarType.string
@@ -846,6 +850,7 @@ export const getVarType = ({
     conversationVariables,
     ragVariables,
     allPluginInfoList,
+    getMatchedSchemaType,
   )
 
   const isIterationInnerVar = parentNode?.data.type === BlockEnum.Iteration
@@ -972,6 +977,7 @@ export const toNodeAvailableVars = ({
   ragVariables,
   filterVar,
   allPluginInfoList,
+  getMatchedSchemaType,
 }: {
   parentNode?: Node | null
   t?: any
@@ -986,6 +992,7 @@ export const toNodeAvailableVars = ({
   ragVariables?: RAGPipelineVariable[]
   filterVar: (payload: Var, selector: ValueSelector) => boolean
   allPluginInfoList: Record<string, ToolWithProvider[]>
+  getMatchedSchemaType: (obj: any) => string
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
     beforeNodes,
@@ -995,6 +1002,7 @@ export const toNodeAvailableVars = ({
     conversationVariables,
     ragVariables,
     allPluginInfoList,
+    getMatchedSchemaType,
   )
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
@@ -1008,6 +1016,7 @@ export const toNodeAvailableVars = ({
       environmentVariables,
       conversationVariables,
       allPluginInfoList,
+      getMatchedSchemaType,
     })
     const itemChildren = itemType === VarType.file
       ? {

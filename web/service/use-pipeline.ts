@@ -4,6 +4,8 @@ import { del, get, patch, post } from './base'
 import { DatasourceType } from '@/models/pipeline'
 import type {
   ConversionResponse,
+  DatasourceNodeSingleRunRequest,
+  DatasourceNodeSingleRunResponse,
   DeleteTemplateResponse,
   ExportTemplateDSLResponse,
   ImportPipelineDSLConfirmResponse,
@@ -365,5 +367,20 @@ export const useConvertDatasetToPipeline = () => {
     mutationFn: (datasetId: string) => {
       return post<ConversionResponse>(`/rag/pipelines/transform/datasets/${datasetId}`)
     },
+  })
+}
+
+export const useDatasourceSingleRun = (
+  mutationOptions: MutationOptions<DatasourceNodeSingleRunResponse, Error, DatasourceNodeSingleRunRequest> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'datasource-node-single-run'],
+    mutationFn: (params: DatasourceNodeSingleRunRequest) => {
+      const { pipeline_id: pipelineId, ...rest } = params
+      return post<DatasourceNodeSingleRunResponse>(`/rag/pipelines/${pipelineId}/workflows/draft/datasource/variables-inspect`, {
+        body: rest,
+      })
+    },
+    ...mutationOptions,
   })
 }

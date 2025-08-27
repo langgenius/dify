@@ -174,7 +174,7 @@ const useLastRun = <T>({
   })
 
   const toSubmitData = useCallback((data: Record<string, any>) => {
-    if(!isIterationNode && !isLoopNode)
+    if (!isIterationNode && !isLoopNode)
       return data
 
     const allVarObject = singleRunParams?.allVarObject || {}
@@ -183,7 +183,7 @@ const useLastRun = <T>({
       const [varSectorStr, nodeId] = key.split(DELIMITER)
       formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr]
     })
-    if(isIterationNode) {
+    if (isIterationNode) {
       const iteratorInputKey = `${id}.input_selector`
       formattedData[iteratorInputKey] = data[iteratorInputKey]
     }
@@ -203,7 +203,7 @@ const useLastRun = <T>({
   const initShowLastRunTab = useStore(s => s.initShowLastRunTab)
   const [tabType, setTabType] = useState<TabType>(initShowLastRunTab ? TabType.lastRun : TabType.settings)
   useEffect(() => {
-    if(initShowLastRunTab)
+    if (initShowLastRunTab)
       setTabType(TabType.lastRun)
 
     setInitShowLastRunTab(false)
@@ -212,7 +212,7 @@ const useLastRun = <T>({
 
   const handleRunWithParams = async (data: Record<string, any>) => {
     const { isValid } = checkValid()
-    if(!isValid)
+    if (!isValid)
       return
     setNodeRunning()
     setIsRunAfterSingleRun(true)
@@ -236,14 +236,14 @@ const useLastRun = <T>({
       const values: Record<string, boolean> = {}
       form.inputs.forEach(({ variable, getVarValueFromDependent }) => {
         const isGetValueFromDependent = getVarValueFromDependent || !variable.includes('.')
-        if(isGetValueFromDependent && !singleRunParams?.getDependentVar)
+        if (isGetValueFromDependent && !singleRunParams?.getDependentVar)
           return
 
         const selector = isGetValueFromDependent ? (singleRunParams?.getDependentVar(variable) || []) : variable.slice(1, -1).split('.')
-        if(!selector || selector.length === 0)
+        if (!selector || selector.length === 0)
           return
         const [nodeId, varName] = selector.slice(0, 2)
-        if(!isStartNode && nodeId === id) { // inner vars like loop vars
+        if (!isStartNode && nodeId === id) { // inner vars like loop vars
           values[variable] = true
           return
         }
@@ -257,7 +257,7 @@ const useLastRun = <T>({
   }
 
   const isAllVarsHasValue = (vars?: ValueSelector[]) => {
-    if(!vars || vars.length === 0)
+    if (!vars || vars.length === 0)
       return true
     return vars.every((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
@@ -267,7 +267,7 @@ const useLastRun = <T>({
   }
 
   const isSomeVarsHasValue = (vars?: ValueSelector[]) => {
-    if(!vars || vars.length === 0)
+    if (!vars || vars.length === 0)
       return true
     return vars.some((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
@@ -294,7 +294,7 @@ const useLastRun = <T>({
   }
 
   const checkAggregatorVarsSet = (vars: ValueSelector[][]) => {
-    if(!vars || vars.length === 0)
+    if (!vars || vars.length === 0)
       return true
     // in each group, at last one set is ok
     return vars.every((varItem) => {
@@ -310,9 +310,9 @@ const useLastRun = <T>({
 
   const handleSingleRun = () => {
     const { isValid } = checkValid()
-    if(!isValid)
+    if (!isValid)
       return
-    if(isCustomRunNode) {
+    if (isCustomRunNode) {
       showSingleRun()
       return
     }
@@ -335,6 +335,7 @@ const useLastRun = <T>({
     ...oneStepRunRes,
     tabType,
     isRunAfterSingleRun,
+    setIsRunAfterSingleRun,
     setTabType: handleTabClicked,
     handleAfterCustomSingleRun,
     singleRunParams,

@@ -79,6 +79,7 @@ type Props = {
   zIndex?: number
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  preferSchemaType?: boolean
 }
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
@@ -111,6 +112,7 @@ const VarReferencePicker: FC<Props> = ({
   zIndex,
   currentTool,
   currentProvider,
+  preferSchemaType,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -562,6 +564,7 @@ const VarReferencePicker: FC<Props> = ({
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
               isSupportFileVar={isSupportFileVar}
               zIndex={zIndex}
+              preferSchemaType={preferSchemaType}
             />
           )}
         </PortalToFollowElemContent>

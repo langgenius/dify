@@ -304,7 +304,7 @@ export type Var = {
   isLoopVariable?: boolean
   nodeId?: string
   isRagVariable?: boolean
-  alias?: string
+  schemaType?: string
 }
 
 export type NodeOutPutVar = {
@@ -332,7 +332,7 @@ export type NodeDefault<T = {}> = {
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
-  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[]) => Var[]
+  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: { getMatchedSchemaType: (obj: any) => string }) => Var[]
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void

@@ -8,7 +8,7 @@ import {
   LOCAL_FILE_OUTPUT,
 } from './constants'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { getOutputVariableAlias } from '@/app/components/workflow/utils/tool'
+import type { AnyObj } from '../_base/components/variable/match-schema-type'
 
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -54,12 +54,13 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       errorMessage,
     }
   },
-  getOutputVars(payload, allPluginInfoList, ragVars = []) {
+  getOutputVars(payload, allPluginInfoList, ragVars = [], { getMatchedSchemaType } = { getMatchedSchemaType: (_obj: AnyObj) => '' }) {
     const {
       plugin_id,
       datasource_name,
       provider_type,
     } = payload
+
     const isLocalFile = provider_type === DataSourceClassification.localFile
     const currentDataSource = allPluginInfoList.dataSourceList?.find((ds: any) => ds.plugin_id === plugin_id)
     const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === datasource_name)
@@ -70,19 +71,19 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       Object.keys(output_schema.properties).forEach((outputKey) => {
         const output = output_schema.properties[outputKey]
         const dataType = output.type
-        const alias = getOutputVariableAlias(output.properties)
         let type = dataType === 'array'
           ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
           : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`
+        const schemaType = getMatchedSchemaType?.(output)
 
-        if (type === 'object' && alias === 'file')
+        if (type === 'object' && schemaType === 'file')
           type = 'file'
 
         dynamicOutputSchema.push({
           variable: outputKey,
           type,
           description: output.description,
-          alias,
+          schemaType,
           children: output.type === 'object' ? {
             schema: {
               type: 'object',

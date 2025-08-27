@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import type { CustomRunFormProps, DataSourceNodeType } from './types'
+import type { CustomRunFormProps } from './types'
 import { DatasourceType } from '@/models/pipeline'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
 import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
@@ -13,17 +13,23 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import DataSourceProvider from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
 import PanelWrap from '../_base/components/before-run-form/panel-wrap'
+import useBeforeRunForm from './hooks/use-before-run-form'
 
-const BeforeRunForm: FC<CustomRunFormProps> = ({
-  nodeId,
-  payload,
-  onSuccess,
-  onCancel,
-}) => {
+const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
+  const {
+    nodeId,
+    payload,
+    onCancel,
+  } = props
   const { t } = useTranslation()
-  const datasourceType = payload.provider_type
-  const datasourceNodeData = payload as DataSourceNodeType
   const dataSourceStore = useDataSourceStore()
+
+  const {
+    isPending,
+    handleRunWithSyncDraft,
+    datasourceType,
+    datasourceNodeData,
+  } = useBeforeRunForm(props)
 
   const { clearOnlineDocumentData } = useOnlineDocument()
   const { clearWebsiteCrawlData } = useWebsiteCrawl()
@@ -44,10 +50,6 @@ const BeforeRunForm: FC<CustomRunFormProps> = ({
     setCurrentCredentialId(credentialId)
   }, [dataSourceStore])
 
-  const handleRun = useCallback(() => {
-    onSuccess()
-  }, [onSuccess])
-
   return (
     <PanelWrap
       nodeName={payload.title}
@@ -57,13 +59,14 @@ const BeforeRunForm: FC<CustomRunFormProps> = ({
         {datasourceType === DatasourceType.localFile && (
           <LocalFile
             allowedExtensions={datasourceNodeData.fileExtensions || []}
-            notSupportBatchUpload={false}
+            notSupportBatchUpload
           />
         )}
         {datasourceType === DatasourceType.onlineDocument && (
           <OnlineDocuments
             nodeId={nodeId}
             nodeData={datasourceNodeData}
+            isInPipeline
             onCredentialChange={handleCredentialChange}
           />
         )}
@@ -71,6 +74,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = ({
           <WebsiteCrawl
             nodeId={nodeId}
             nodeData={datasourceNodeData}
+            isInPipeline
             onCredentialChange={handleCredentialChange}
           />
         )}
@@ -78,12 +82,22 @@ const BeforeRunForm: FC<CustomRunFormProps> = ({
           <OnlineDrive
             nodeId={nodeId}
             nodeData={datasourceNodeData}
+            isInPipeline
             onCredentialChange={handleCredentialChange}
           />
         )}
         <div className='flex justify-end gap-x-2'>
-          <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-          <Button onClick={handleRun} variant='primary'>{t('workflow.singleRun.startRun')}</Button>
+          <Button onClick={onCancel}>
+            {t('common.operation.cancel')}
+          </Button>
+          <Button
+            onClick={handleRunWithSyncDraft}
+            variant='primary'
+            loading={isPending}
+            disabled={isPending}
+          >
+            {t('workflow.singleRun.startRun')}
+          </Button>
         </div>
       </div>
     </PanelWrap>
