@@ -55,7 +55,7 @@ export type Field = {
   items?: ArrayItems // Array has items. Define the item type
   enum?: SchemaEnumType // Enum values
   additionalProperties?: false // Required in object by api. Just set false
-  alias?: string // Alias of the field
+  schemaType?: string // an another type defined in backend schemas
 }
 
 export type StructuredOutput = {
