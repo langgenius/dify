@@ -3,7 +3,6 @@ from typing import Literal
 
 import pytest
 import requests
-from _pytest.monkeypatch import MonkeyPatch
 
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse
 from core.tools.entities.common_entities import I18nObject
@@ -53,7 +52,7 @@ MOCK_SWITCH = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_http_mock(request, monkeypatch: MonkeyPatch):
+def setup_http_mock(request, monkeypatch: pytest.MonkeyPatch):
     if MOCK_SWITCH:
         monkeypatch.setattr(requests, "request", MockedHttp.requests_request)
 

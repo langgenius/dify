@@ -1,9 +1,11 @@
 import datetime
 
+import pytest
+
 from libs.datetime_utils import naive_utc_now
 
 
-def test_naive_utc_now(monkeypatch):
+def test_naive_utc_now(monkeypatch: pytest.MonkeyPatch):
     tz_aware_utc_now = datetime.datetime.now(tz=datetime.UTC)
 
     def _now_func(tz: datetime.timezone | None) -> datetime.datetime:

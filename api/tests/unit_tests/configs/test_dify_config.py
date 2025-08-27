@@ -8,7 +8,7 @@ from yarl import URL
 from configs.app_config import DifyConfig
 
 
-def test_dify_config(monkeypatch):
+def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # clear system environment variables
     os.environ.clear()
 
@@ -48,7 +48,7 @@ def test_dify_config(monkeypatch):
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
 # This is due to `pymilvus` loading all the variables from the `.env` file into `os.environ`.
-def test_flask_configs(monkeypatch):
+def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     flask_app = Flask("app")
     # clear system environment variables
     os.environ.clear()
@@ -101,7 +101,7 @@ def test_flask_configs(monkeypatch):
     assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://127.0.0.1:8194/v1"
 
 
-def test_inner_api_config_exist(monkeypatch):
+def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
@@ -119,7 +119,7 @@ def test_inner_api_config_exist(monkeypatch):
     assert len(config.INNER_API_KEY) > 0
 
 
-def test_db_extras_options_merging(monkeypatch):
+def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     """Test that DB_EXTRAS options are properly merged with default timezone setting"""
     # Set environment variables
     monkeypatch.setenv("DB_USERNAME", "postgres")
@@ -164,7 +164,13 @@ def test_db_extras_options_merging(monkeypatch):
     ],
 )
 def test_celery_broker_url_with_special_chars_password(
-    monkeypatch, broker_url, expected_host, expected_port, expected_username, expected_password, expected_db
+    monkeypatch: pytest.MonkeyPatch,
+    broker_url,
+    expected_host,
+    expected_port,
+    expected_username,
+    expected_password,
+    expected_db,
 ):
     """Test that CELERY_BROKER_URL with various formats are handled correctly."""
     from kombu.utils.url import parse_url
