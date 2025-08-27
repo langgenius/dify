@@ -69,18 +69,13 @@ const ChunkDetailModal: FC<Props> = ({
             <div>
               <div className='flex gap-x-1'>
                 <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
-                <div
-                  className={cn('body-md-regular text-text-secondary',
-                    'line-clamp-20',
-                  )}>
+                <div className={cn('body-md-regular text-text-secondary line-clamp-20')}>
                   {content}
                 </div>
               </div>
               <div className='flex gap-x-1'>
                 <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
-                <div className={cn('body-md-regular text-text-secondary',
-                  'line-clamp-20',
-                )}>
+                <div className={cn('body-md-regular text-text-secondary line-clamp-20')}>
                   {answer}
                 </div>
               </div>
@@ -91,7 +86,7 @@ const ChunkDetailModal: FC<Props> = ({
               <div className='text-xs font-medium uppercase text-text-tertiary'>{t(`${i18nPrefix}.keyword`)}</div>
               <div className='mt-1 flex flex-wrap'>
                 {keywords.map(keyword => (
-                  <Tag key={keyword} text={keyword} className='mr-2'/>
+                  <Tag key={keyword} text={keyword} className='mr-2' />
                 ))}
               </div>
             </div>
@@ -100,8 +95,7 @@ const ChunkDetailModal: FC<Props> = ({
 
         {isParentChildRetrieval && (
           <div className='flex-1 pb-6 pl-6'>
-            <div
-              className='system-xs-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.hitChunks`, {num: child_chunks.length})}</div>
+            <div className='system-xs-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             <div className={cn('mt-1 space-y-2', heighClassName)}>
               {child_chunks.map(item => (
                 <ChildChunksItem key={item.id} payload={item} isShowAll />
