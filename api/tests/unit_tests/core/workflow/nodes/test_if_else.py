@@ -8,7 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.enums import WorkflowNodeExecutionStatus, WorkflowType
 from core.workflow.graph import Graph
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
@@ -305,14 +305,11 @@ def _get_condition_test_id(c: Condition):
 @pytest.mark.parametrize("condition", _get_test_conditions(), ids=_get_condition_test_id)
 def test_execute_if_else_boolean_conditions(condition: Condition):
     """Test IfElseNode with boolean conditions using various operators"""
-    graph_config = {"edges": [], "nodes": [{"data": {"type": "start"}, "id": "start"}]}
-
-    graph = Graph.init(graph_config=graph_config)
+    graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -330,6 +327,13 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
     pool.add(["start", "bool_array"], [True, False, True])
     pool.add(["start", "mixed_array"], [True, "false", 1, 0])
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node_data = {
         "title": "Boolean Test",
         "type": "if-else",
@@ -339,8 +343,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
     node = IfElseNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config={"id": "if-else", "data": node_data},
     )
     node.init_node_data(node_data)
@@ -358,14 +361,11 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
 
 def test_execute_if_else_boolean_false_conditions():
     """Test IfElseNode with boolean conditions that should evaluate to false"""
-    graph_config = {"edges": [], "nodes": [{"data": {"type": "start"}, "id": "start"}]}
-
-    graph = Graph.init(graph_config=graph_config)
+    graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -381,6 +381,13 @@ def test_execute_if_else_boolean_false_conditions():
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
     pool.add(["start", "bool_array"], [True, False, True])
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
     node_data = {
         "title": "Boolean False Test",
@@ -403,8 +410,7 @@ def test_execute_if_else_boolean_false_conditions():
     node = IfElseNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config={
             "id": "if-else",
             "data": node_data,
@@ -425,14 +431,11 @@ def test_execute_if_else_boolean_false_conditions():
 
 def test_execute_if_else_boolean_cases_structure():
     """Test IfElseNode with boolean conditions using the new cases structure"""
-    graph_config = {"edges": [], "nodes": [{"data": {"type": "start"}, "id": "start"}]}
-
-    graph = Graph.init(graph_config=graph_config)
+    graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -447,6 +450,13 @@ def test_execute_if_else_boolean_cases_structure():
     )
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
     node_data = {
         "title": "Boolean Cases Test",
@@ -473,8 +483,7 @@ def test_execute_if_else_boolean_cases_structure():
     node = IfElseNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config={"id": "if-else", "data": node_data},
     )
     node.init_node_data(node_data)
