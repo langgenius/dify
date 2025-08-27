@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import exists, select
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
@@ -22,7 +23,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     start_at = time.perf_counter()
     # get app info
     app = db.session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
-    annotations_count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id).count()
+    annotations_exists = db.session.scalar(select(exists().where(MessageAnnotation.app_id == app_id)))
     if not app:
         logger.info(click.style(f"App not found: {app_id}", fg="red"))
         db.session.close()
@@ -47,7 +48,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         )
 
         try:
-            if annotations_count > 0:
+            if annotations_exists:
                 vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
                 vector.delete()
         except Exception:
