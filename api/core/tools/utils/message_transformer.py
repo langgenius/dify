@@ -1,4 +1,3 @@
-from models.model import EndUser
 import logging
 from collections.abc import Generator
 from datetime import date, datetime
@@ -15,6 +14,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from libs.login import current_user
 from models.account import Account
+from models.model import EndUser
 
 logger = logging.getLogger(__name__)
 
