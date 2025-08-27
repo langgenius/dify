@@ -392,6 +392,10 @@ x-shared-env: &shared-api-worker-env
   MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
   WORKFLOW_PARALLEL_DEPTH_LIMIT: ${WORKFLOW_PARALLEL_DEPTH_LIMIT:-3}
   WORKFLOW_FILE_UPLOAD_LIMIT: ${WORKFLOW_FILE_UPLOAD_LIMIT:-10}
+  GRAPH_ENGINE_MIN_WORKERS: ${GRAPH_ENGINE_MIN_WORKERS:-1}
+  GRAPH_ENGINE_MAX_WORKERS: ${GRAPH_ENGINE_MAX_WORKERS:-10}
+  GRAPH_ENGINE_SCALE_UP_THRESHOLD: ${GRAPH_ENGINE_SCALE_UP_THRESHOLD:-3}
+  GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: ${GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME:-5.0}
   WORKFLOW_NODE_EXECUTION_STORAGE: ${WORKFLOW_NODE_EXECUTION_STORAGE:-rdbms}
   CORE_WORKFLOW_EXECUTION_REPOSITORY: ${CORE_WORKFLOW_EXECUTION_REPOSITORY:-core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository}
   CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: ${CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY:-core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository}
@@ -580,7 +584,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.7.2
+    image: langgenius/dify-api:1.8.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -609,7 +613,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.7.2
+    image: langgenius/dify-api:1.8.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -636,7 +640,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.7.2
+    image: langgenius/dify-api:1.8.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -654,7 +658,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.7.2
+    image: langgenius/dify-web:1.8.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

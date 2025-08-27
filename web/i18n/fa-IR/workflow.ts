@@ -88,7 +88,6 @@ const translation = {
     },
     disconnect: 'قطع',
     jumpToNode: 'پرش به این گره',
-    parallelRun: 'اجرای موازی',
     addParallelNode: 'افزودن گره موازی',
     parallel: 'موازی',
     branch: 'شاخه',

@@ -28,8 +28,9 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_engine.entities.event import AgentLogEvent
-from models import App, Message, WorkflowNodeExecutionModel, db
+from core.workflow.node_events import AgentLogEvent
+from extensions.ext_database import db
+from models import App, Message, WorkflowNodeExecutionModel
 
 logger = logging.getLogger(__name__)
 
@@ -401,7 +402,6 @@ class LLMGenerator:
     def instruction_modify_legacy(
         tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
     ) -> dict:
-        app: App | None = db.session.query(App).where(App.id == flow_id).first()
         last_run: Message | None = (
             db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
         )
@@ -572,5 +572,7 @@ class LLMGenerator:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
-            logger.exception("Failed to invoke LLM model, model: %s", json.dumps(model_config.get("name")), exc_info=e)
+            logger.exception(
+                "Failed to invoke LLM model, model: %s", json.dumps(model_config.get("name")), exc_info=True
+            )
             return {"error": f"An unexpected error occurred: {str(e)}"}

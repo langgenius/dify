@@ -44,10 +44,10 @@ def queue_monitor_task():
 
         if queue_length >= threshold:
             warning_msg = f"Queue {queue_name} task count exceeded the limit.: {queue_length}/{threshold}"
-            logger.warning(click.style(warning_msg, fg="red"))
-            alter_emails = dify_config.QUEUE_MONITOR_ALERT_EMAILS
-            if alter_emails:
-                to_list = alter_emails.split(",")
+            logging.warning(click.style(warning_msg, fg="red"))
+            alert_emails = dify_config.QUEUE_MONITOR_ALERT_EMAILS
+            if alert_emails:
+                to_list = alert_emails.split(",")
                 email_service = get_email_i18n_service()
                 for to in to_list:
                     try:

@@ -94,7 +94,6 @@ const translation = {
     importWarning: 'Caution',
     importWarningDetails: 'DSL version difference may affect certain features',
     importSuccess: 'Import Successfully',
-    parallelRun: 'Parallel Run',
     parallelTip: {
       click: {
         title: 'Click',

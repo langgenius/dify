@@ -9,7 +9,7 @@ import type { MutableRefObject } from 'react'
 
 export type AgentLogItem = {
   node_execution_id: string,
-  id: string,
+  message_id: string,
   node_id: string,
   parent_id?: string,
   label: string,

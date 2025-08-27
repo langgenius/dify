@@ -89,7 +89,6 @@ const translation = {
       limit: '並行度僅限於 {{num}} 個分支。',
       depthLimit: '並行嵌套層限制為 {{num}} 個層',
     },
-    parallelRun: '並行運行',
     disconnect: '斷開',
     jumpToNode: '跳轉到此節點',
     addParallelNode: '添加並行節點',

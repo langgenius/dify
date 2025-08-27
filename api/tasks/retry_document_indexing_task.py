@@ -24,7 +24,6 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
     Usage: retry_document_indexing_task.delay(dataset_id, document_ids)
     """
-    documents: list[Document] = []
     start_at = time.perf_counter()
     try:
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
