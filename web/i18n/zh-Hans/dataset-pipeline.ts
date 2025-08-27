@@ -1,6 +1,6 @@
 const translation = {
   creation: {
-    title: '创建知识流水线',
+    backToKnowledge: '返回知识库',
     createFromScratch: {
       title: '空白知识流水线',
       description: '从零开始创建一个自定义知识流水线，对数据处理和结构拥有完全控制权。',

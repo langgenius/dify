@@ -1,6 +1,6 @@
 const translation = {
   creation: {
-    title: 'Blank Knowledge Pipeline',
+    backToKnowledge: 'Back to Knowledge',
     createFromScratch: {
       title: 'Blank knowledge pipeline',
       description: 'Create a custom pipeline from scratch with full control over data processing and structure.',
