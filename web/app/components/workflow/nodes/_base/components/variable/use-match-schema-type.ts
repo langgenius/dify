@@ -1,3 +1,5 @@
+import { useSchemaTypeDefinitions } from '@/service/use-common'
+
 type AnyObj = Record<string, any> | null
 
 // only compare type in object
@@ -29,3 +31,17 @@ export function deepEqualByType(a: AnyObj, b: AnyObj): boolean {
 
   return cmp(a, b)
 }
+
+const useMatchSchemaType = () => {
+  const { data: schemaTypeDefinitions } = useSchemaTypeDefinitions()
+  const getMatchedSchemaType = (obj: AnyObj): string => {
+    if(!schemaTypeDefinitions) return ''
+    const matched = schemaTypeDefinitions.find(def => deepEqualByType(obj, def.schema))
+    return matched ? matched.name : ''
+  }
+  return {
+    getMatchedSchemaType,
+  }
+}
+
+export default useMatchSchemaType

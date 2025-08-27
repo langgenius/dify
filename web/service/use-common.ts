@@ -60,3 +60,17 @@ export const useFilePreview = (fileID: string) => {
     enabled: !!fileID,
   })
 }
+
+type SchemaTypeDefinition = {
+  name: string
+  schema: {
+    properties: Record<string, any>
+  }
+}
+
+export const useSchemaTypeDefinitions = () => {
+  return useQuery<SchemaTypeDefinition[]>({
+    queryKey: [NAME_SPACE, 'schema-type-definitions'],
+    queryFn: () => get<SchemaTypeDefinition[]>('/spec/schema-definitions'),
+  })
+}

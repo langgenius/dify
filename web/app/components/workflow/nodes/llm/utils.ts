@@ -10,14 +10,11 @@ export const checkNodeValid = (_payload: LLMNodeType) => {
 }
 
 export const getFieldType = (field: Field) => {
-  const { type, items, alias } = field
-  if (type !== Type.array || !items) {
-    if (alias)
-      return alias
+  const { type, items } = field
+  if (type !== Type.array || !items)
     return type
-  }
 
-  return ArrayType[items.type]
+  return ArrayType[items.type as keyof typeof ArrayType]
 }
 
 export const getHasChildren = (schema: Field) => {
