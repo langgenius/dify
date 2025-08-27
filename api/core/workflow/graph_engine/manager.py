@@ -6,7 +6,6 @@ using the new Redis command channel, without requiring user permission checks.
 Supports stop, pause, and resume operations.
 """
 
-
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand
 from extensions.ext_redis import redis_client
