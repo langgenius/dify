@@ -8,6 +8,7 @@ from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.variables.segments import ArrayFileSegment
+from core.variables.types import SegmentType
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
@@ -119,6 +120,14 @@ class CodeNode(BaseNode):
 
         return value.replace("\x00", "")
 
+    def _check_boolean(self, value: bool | None, variable: str) -> bool | None:
+        if value is None:
+            return None
+        if not isinstance(value, bool):
+            raise OutputValidationError(f"Output variable `{variable}` must be a boolean")
+
+        return value
+
     def _check_number(self, value: int | float | None, variable: str) -> int | float | None:
         """
         Check number
@@ -173,6 +182,8 @@ class CodeNode(BaseNode):
                         prefix=f"{prefix}.{output_name}" if prefix else output_name,
                         depth=depth + 1,
                     )
+                elif isinstance(output_value, bool):
+                    self._check_boolean(output_value, variable=f"{prefix}.{output_name}" if prefix else output_name)
                 elif isinstance(output_value, int | float):
                     self._check_number(
                         value=output_value, variable=f"{prefix}.{output_name}" if prefix else output_name
@@ -232,7 +243,7 @@ class CodeNode(BaseNode):
             if output_name not in result:
                 raise OutputValidationError(f"Output {prefix}{dot}{output_name} is missing.")
 
-            if output_config.type == "object":
+            if output_config.type == SegmentType.OBJECT:
                 # check if output is object
                 if not isinstance(result.get(output_name), dict):
                     if result[output_name] is None:
@@ -249,18 +260,28 @@ class CodeNode(BaseNode):
                         prefix=f"{prefix}.{output_name}",
                         depth=depth + 1,
                     )
-            elif output_config.type == "number":
+            elif output_config.type == SegmentType.NUMBER:
                 # check if number available
-                transformed_result[output_name] = self._check_number(
-                    value=result[output_name], variable=f"{prefix}{dot}{output_name}"
-                )
-            elif output_config.type == "string":
+                checked = self._check_number(value=result[output_name], variable=f"{prefix}{dot}{output_name}")
+                # If the output is a boolean and the output schema specifies a NUMBER type,
+                # convert the boolean value to an integer.
+                #
+                # This ensures compatibility with existing workflows that may use
+                # `True` and `False` as values for NUMBER type outputs.
+                transformed_result[output_name] = self._convert_boolean_to_int(checked)
+
+            elif output_config.type == SegmentType.STRING:
                 # check if string available
                 transformed_result[output_name] = self._check_string(
                     value=result[output_name],
                     variable=f"{prefix}{dot}{output_name}",
                 )
-            elif output_config.type == "array[number]":
+            elif output_config.type == SegmentType.BOOLEAN:
+                transformed_result[output_name] = self._check_boolean(
+                    value=result[output_name],
+                    variable=f"{prefix}{dot}{output_name}",
+                )
+            elif output_config.type == SegmentType.ARRAY_NUMBER:
                 # check if array of number available
                 if not isinstance(result[output_name], list):
                     if result[output_name] is None:
@@ -278,10 +299,17 @@ class CodeNode(BaseNode):
                         )
 
                     transformed_result[output_name] = [
-                        self._check_number(value=value, variable=f"{prefix}{dot}{output_name}[{i}]")
+                        # If the element is a boolean and the output schema specifies a `array[number]` type,
+                        # convert the boolean value to an integer.
+                        #
+                        # This ensures compatibility with existing workflows that may use
+                        # `True` and `False` as values for NUMBER type outputs.
+                        self._convert_boolean_to_int(
+                            self._check_number(value=value, variable=f"{prefix}{dot}{output_name}[{i}]"),
+                        )
                         for i, value in enumerate(result[output_name])
                     ]
-            elif output_config.type == "array[string]":
+            elif output_config.type == SegmentType.ARRAY_STRING:
                 # check if array of string available
                 if not isinstance(result[output_name], list):
                     if result[output_name] is None:
@@ -302,7 +330,7 @@ class CodeNode(BaseNode):
                         self._check_string(value=value, variable=f"{prefix}{dot}{output_name}[{i}]")
                         for i, value in enumerate(result[output_name])
                     ]
-            elif output_config.type == "array[object]":
+            elif output_config.type == SegmentType.ARRAY_OBJECT:
                 # check if array of object available
                 if not isinstance(result[output_name], list):
                     if result[output_name] is None:
@@ -340,6 +368,22 @@ class CodeNode(BaseNode):
                         )
                         for i, value in enumerate(result[output_name])
                     ]
+            elif output_config.type == SegmentType.ARRAY_BOOLEAN:
+                # check if array of object available
+                if not isinstance(result[output_name], list):
+                    if result[output_name] is None:
+                        transformed_result[output_name] = None
+                    else:
+                        raise OutputValidationError(
+                            f"Output {prefix}{dot}{output_name} is not an array,"
+                            f" got {type(result.get(output_name))} instead."
+                        )
+                else:
+                    transformed_result[output_name] = [
+                        self._check_boolean(value=value, variable=f"{prefix}{dot}{output_name}[{i}]")
+                        for i, value in enumerate(result[output_name])
+                    ]
+
             else:
                 raise OutputValidationError(f"Output type {output_config.type} is not supported.")
 
@@ -374,3 +418,16 @@ class CodeNode(BaseNode):
     @property
     def retry(self) -> bool:
         return self._node_data.retry_config.retry_enabled
+
+    @staticmethod
+    def _convert_boolean_to_int(value: bool | int | float | None) -> int | float | None:
+        """This function convert boolean to integers when the output schema specifies a NUMBER type.
+
+        This ensures compatibility with existing workflows that may use
+        `True` and `False` as values for NUMBER type outputs.
+        """
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return int(value)
+        return value

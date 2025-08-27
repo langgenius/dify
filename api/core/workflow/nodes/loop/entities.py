@@ -12,9 +12,11 @@ _VALID_VAR_TYPE = frozenset(
         SegmentType.STRING,
         SegmentType.NUMBER,
         SegmentType.OBJECT,
+        SegmentType.BOOLEAN,
         SegmentType.ARRAY_STRING,
         SegmentType.ARRAY_NUMBER,
         SegmentType.ARRAY_OBJECT,
+        SegmentType.ARRAY_BOOLEAN,
     ]
 )
 

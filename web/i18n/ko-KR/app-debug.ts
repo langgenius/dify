@@ -330,6 +330,10 @@ const translation = {
     'uploadFileTypes': '파일 형식 업로드',
     'maxNumberOfUploads': '최대 업로드 수',
     'localUpload': '로컬 업로드',
+    'json': 'JSON 코드',
+    'jsonSchema': 'JSON 스키마',
+    'checkbox': '체크박스',
+    'optional': '선택 사항',
   },
   vision: {
     name: '비전',

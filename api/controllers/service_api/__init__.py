@@ -13,7 +13,7 @@ api = ExternalApi(
     doc="/docs",  # Enable Swagger UI at /v1/docs
 )
 
-service_api_ns = Namespace("service_api", description="Service operations")
+service_api_ns = Namespace("service_api", description="Service operations", path="/")
 
 from . import index
 from .app import (

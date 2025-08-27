@@ -13,6 +13,8 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_id: str):
@@ -27,17 +29,17 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
     start_at = time.perf_counter()
     dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
-        logging.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
+        logger.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
         return
 
     dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
 
     if not dataset_document:
-        logging.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
+        logger.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
         db.session.close()
         return
     if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-        logging.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
+        logger.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
         db.session.close()
         return
     # sync index processor
@@ -53,7 +55,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         .all()
     )
     if not segments:
-        logging.info(click.style(f"Segments not found: {segment_ids}", fg="cyan"))
+        logger.info(click.style(f"Segments not found: {segment_ids}", fg="cyan"))
         db.session.close()
         return
 
@@ -91,9 +93,9 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         index_processor.load(dataset, documents)
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"Segments enabled to index latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Segments enabled to index latency: {end_at - start_at}", fg="green"))
     except Exception as e:
-        logging.exception("enable segments to index failed")
+        logger.exception("enable segments to index failed")
         # update segment error msg
         db.session.query(DocumentSegment).where(
             DocumentSegment.id.in_(segment_ids),

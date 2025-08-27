@@ -13,7 +13,6 @@ const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   useEffect(() => {
     if (!ref?.current) return
     setWrapHeight(ref.current?.clientHeight)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExpand])
 
   const wrapClassName = (() => {

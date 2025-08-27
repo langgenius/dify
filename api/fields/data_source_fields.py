@@ -24,8 +24,6 @@ integrate_notion_info_list_fields = {
     "notion_info": fields.List(fields.Nested(integrate_workspace_fields)),
 }
 
-integrate_icon_fields = {"type": fields.String, "url": fields.String, "emoji": fields.String}
-
 integrate_page_fields = {
     "page_name": fields.String,
     "page_id": fields.String,

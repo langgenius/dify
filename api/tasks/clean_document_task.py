@@ -12,6 +12,8 @@ from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
 from models.model import UploadFile
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: Optional[str]):
@@ -24,7 +26,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
     Usage: clean_document_task.delay(document_id, dataset_id)
     """
-    logging.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
+    logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -49,7 +51,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception(
+                        logger.exception(
                             "Delete image_files failed when storage deleted, \
                                           image_upload_file_is: %s",
                             upload_file_id,
@@ -64,7 +66,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 try:
                     storage.delete(file.key)
                 except Exception:
-                    logging.exception("Delete file failed when document deleted, file_id: %s", file_id)
+                    logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
                 db.session.delete(file)
                 db.session.commit()
 
@@ -76,13 +78,13 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(
                 f"Cleaned document when document deleted: {document_id} latency: {end_at - start_at}",
                 fg="green",
             )
         )
     except Exception:
-        logging.exception("Cleaned document when document deleted failed")
+        logger.exception("Cleaned document when document deleted failed")
     finally:
         db.session.close()

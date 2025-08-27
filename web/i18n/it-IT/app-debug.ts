@@ -379,6 +379,10 @@ const translation = {
     'multi-files': 'Elenco file',
     'both': 'Ambedue',
     'localUpload': 'Caricamento locale',
+    'checkbox': 'Checkbox',
+    'optional': 'opzionale',
+    'jsonSchema': 'Schema JSON',
+    'json': 'Codice JSON',
   },
   vision: {
     name: 'Visione',

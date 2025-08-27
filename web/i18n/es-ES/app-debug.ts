@@ -330,6 +330,10 @@ const translation = {
     'single-file': 'En fila india',
     'maxNumberOfUploads': 'Número máximo de cargas',
     'multi-files': 'Lista de archivos',
+    'jsonSchema': 'Esquema JSON',
+    'json': 'Código JSON',
+    'checkbox': 'Checkbox',
+    'optional': 'opcional',
   },
   vision: {
     name: 'Visión',

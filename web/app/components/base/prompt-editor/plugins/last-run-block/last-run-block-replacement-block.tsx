@@ -52,7 +52,6 @@ const LastRunReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createLastRunBlockNode)),
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

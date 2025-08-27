@@ -69,6 +69,15 @@ class QuotaConfiguration(BaseModel):
     restrict_models: list[RestrictModel] = []
 
 
+class CredentialConfiguration(BaseModel):
+    """
+    Model class for credential configuration.
+    """
+
+    credential_id: str
+    credential_name: str
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
@@ -86,6 +95,9 @@ class CustomProviderConfiguration(BaseModel):
     """
 
     credentials: dict
+    current_credential_id: Optional[str] = None
+    current_credential_name: Optional[str] = None
+    available_credentials: list[CredentialConfiguration] = []
 
 
 class CustomModelConfiguration(BaseModel):
@@ -95,7 +107,10 @@ class CustomModelConfiguration(BaseModel):
 
     model: str
     model_type: ModelType
-    credentials: dict
+    credentials: dict | None
+    current_credential_id: Optional[str] = None
+    current_credential_name: Optional[str] = None
+    available_model_credentials: list[CredentialConfiguration] = []
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -118,6 +133,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
     id: str
     name: str
     credentials: dict
+    credential_source_type: str | None = None
 
 
 class ModelSettings(BaseModel):

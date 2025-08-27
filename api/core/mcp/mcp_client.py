@@ -152,7 +152,7 @@ class MCPClient:
             # ExitStack will handle proper cleanup of all managed context managers
             self._exit_stack.close()
         except Exception as e:
-            logging.exception("Error during cleanup")
+            logger.exception("Error during cleanup")
             raise ValueError(f"Error during cleanup: {e}")
         finally:
             self._session = None

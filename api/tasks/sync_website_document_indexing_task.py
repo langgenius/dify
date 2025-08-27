@@ -12,6 +12,8 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from services.feature_service import FeatureService
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def sync_website_document_indexing_task(dataset_id: str, document_id: str):
@@ -52,10 +54,10 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         redis_client.delete(sync_indexing_cache_key)
         return
 
-    logging.info(click.style(f"Start sync website document: {document_id}", fg="green"))
+    logger.info(click.style(f"Start sync website document: {document_id}", fg="green"))
     document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
     if not document:
-        logging.info(click.style(f"Document not found: {document_id}", fg="yellow"))
+        logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
         return
     try:
         # clean old data
@@ -85,8 +87,8 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         document.stopped_at = naive_utc_now()
         db.session.add(document)
         db.session.commit()
-        logging.info(click.style(str(ex), fg="yellow"))
+        logger.info(click.style(str(ex), fg="yellow"))
         redis_client.delete(sync_indexing_cache_key)
-        logging.exception("sync_website_document_indexing_task failed, document_id: %s", document_id)
+        logger.exception("sync_website_document_indexing_task failed, document_id: %s", document_id)
     end_at = time.perf_counter()
-    logging.info(click.style(f"Sync document: {document_id} latency: {end_at - start_at}", fg="green"))
+    logger.info(click.style(f"Sync document: {document_id} latency: {end_at - start_at}", fg="green"))

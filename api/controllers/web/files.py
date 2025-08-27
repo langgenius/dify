@@ -9,14 +9,50 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
-from fields.file_fields import file_fields
+from fields.file_fields import build_file_model
 from services.file_service import FileService
 
 
+@web_ns.route("/files/upload")
 class FileApi(WebApiResource):
-    @marshal_with(file_fields)
+    @web_ns.doc("upload_file")
+    @web_ns.doc(description="Upload a file for use in web applications")
+    @web_ns.doc(
+        responses={
+            201: "File uploaded successfully",
+            400: "Bad request - invalid file or parameters",
+            413: "File too large",
+            415: "Unsupported file type",
+        }
+    )
+    @marshal_with(build_file_model(web_ns))
     def post(self, app_model, end_user):
+        """Upload a file for use in web applications.
+
+        Accepts file uploads for use within web applications, supporting
+        multiple file types with automatic validation and storage.
+
+        Args:
+            app_model: The associated application model
+            end_user: The end user uploading the file
+
+        Form Parameters:
+            file: The file to upload (required)
+            source: Optional source type (datasets or None)
+
+        Returns:
+            dict: File information including ID, URL, and metadata
+            int: HTTP status code 201 for success
+
+        Raises:
+            NoFileUploadedError: No file provided in request
+            TooManyFilesError: Multiple files provided (only one allowed)
+            FilenameNotExistsError: File has no filename
+            FileTooLargeError: File exceeds size limit
+            UnsupportedFileTypeError: File type not supported
+        """
         if "file" not in request.files:
             raise NoFileUploadedError()
 

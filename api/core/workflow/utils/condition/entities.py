@@ -45,5 +45,5 @@ class SubVariableCondition(BaseModel):
 class Condition(BaseModel):
     variable_selector: list[str]
     comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None = None
+    value: str | Sequence[str] | bool | None = None
     sub_variable_condition: SubVariableCondition | None = None

@@ -27,10 +27,11 @@ const ChunkDetailModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { segment, score, child_chunks } = payload
-  const { position, content, sign_content, keywords, document } = segment
+  const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const heighClassName = isParentChildRetrieval ? 'h-[min(627px,_80vh)] overflow-y-auto' : 'h-[min(539px,_80vh)] overflow-y-auto'
+  const labelPrefix = isParentChildRetrieval ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
   return (
     <Modal
       title={t(`${i18nPrefix}.chunkDetail`)}
@@ -45,7 +46,7 @@ const ChunkDetailModal: FC<Props> = ({
           <div className='flex items-center justify-between'>
             <div className='flex grow items-center space-x-2'>
               <SegmentIndexTag
-                labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`}
+                labelPrefix={labelPrefix}
                 positionId={position}
                 className={cn('w-fit group-hover:opacity-100')}
               />
@@ -57,11 +58,29 @@ const ChunkDetailModal: FC<Props> = ({
             </div>
             <Score value={score} />
           </div>
-          <Markdown
-            className={cn('!mt-2 !text-text-secondary', heighClassName)}
-            content={sign_content || content}
-            customDisallowedElements={['input']}
-          />
+          {!answer && (
+            <Markdown
+              className={cn('!mt-2 !text-text-secondary', heighClassName)}
+              content={sign_content || content}
+              customDisallowedElements={['input']}
+            />
+          )}
+          {answer && (
+            <div>
+              <div className='flex gap-x-1'>
+                <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
+                <div className={cn('body-md-regular text-text-secondary line-clamp-20')}>
+                  {content}
+                </div>
+              </div>
+              <div className='flex gap-x-1'>
+                <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
+                <div className={cn('body-md-regular text-text-secondary line-clamp-20')}>
+                  {answer}
+                </div>
+              </div>
+            </div>
+          )}
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (
             <div className='mt-6'>
               <div className='text-xs font-medium uppercase text-text-tertiary'>{t(`${i18nPrefix}.keyword`)}</div>
