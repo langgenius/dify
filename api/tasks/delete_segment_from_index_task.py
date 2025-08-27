@@ -37,12 +37,8 @@ def delete_segment_from_index_task(
         dataset_document = db.session.query(Document).where(Document.id == document_id).first()
         if not dataset_document:
             return
-        
-        if (
-            not dataset_document.enabled
-            or dataset_document.archived
-            or dataset_document.indexing_status != "completed"
-        ):
+
+        if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
             logging.info("Document not in valid state for index operations, skipping")
             return
         doc_form = dataset_document.doc_form
