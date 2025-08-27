@@ -305,7 +305,7 @@ export type Var = {
   isLoopVariable?: boolean
   nodeId?: string
   isRagVariable?: boolean
-  alias?: string
+  schemaType?: string
 }
 
 export type NodeOutPutVar = {

@@ -34,6 +34,7 @@ type ObjectChildrenProps = {
   onHovering?: (value: boolean) => void
   itemWidth?: number
   isSupportFileVar?: boolean
+  preferSchemaType?: boolean
 }
 
 type ItemProps = {
@@ -51,6 +52,7 @@ type ItemProps = {
   isInCodeGeneratorInstructionEditor?: boolean
   zIndex?: number
   className?: string
+  preferSchemaType?: boolean
 }
 
 const objVarTypes = [VarType.object, VarType.file]
@@ -69,6 +71,7 @@ const Item: FC<ItemProps> = ({
   isInCodeGeneratorInstructionEditor,
   zIndex,
   className,
+  preferSchemaType,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
@@ -211,7 +214,7 @@ const Item: FC<ItemProps> = ({
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.split('.').slice(-1)[0]}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.alias || itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
           {
             (isObj || isStructureOutput) && (
               <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
@@ -224,7 +227,7 @@ const Item: FC<ItemProps> = ({
       }}>
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
-            root={{ nodeId, nodeName: title, attrName: itemData.variable, attrAlias: itemData.alias }}
+            root={{ nodeId, nodeName: title, attrName: itemData.variable, attrAlias: itemData.schemaType }}
             payload={structuredOutput!}
             onHovering={setIsChildrenHovering}
             onSelect={(valueSelector) => {
@@ -246,6 +249,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   onHovering,
   itemWidth,
   isSupportFileVar,
+  preferSchemaType,
 }) => {
   const currObjPath = objPath
   const itemRef = useRef<HTMLDivElement>(null)
@@ -290,6 +294,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
             onHovering={setIsChildrenHovering}
             isSupportFileVar={isSupportFileVar}
             isException={v.isException}
+            preferSchemaType={preferSchemaType}
           />
         ))
       }
@@ -312,6 +317,7 @@ type Props = {
   showManageInputField?: boolean
   onManageInputField?: () => void
   autoFocus?: boolean
+  preferSchemaType?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -328,6 +334,7 @@ const VarReferenceVars: FC<Props> = ({
   showManageInputField,
   onManageInputField,
   autoFocus = true,
+  preferSchemaType,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -417,6 +424,7 @@ const VarReferenceVars: FC<Props> = ({
                     isFlat={item.isFlat}
                     isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                     zIndex={zIndex}
+                    preferSchemaType={preferSchemaType}
                   />
                 ))}
                 {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
