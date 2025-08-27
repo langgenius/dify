@@ -538,6 +538,8 @@ class RagPipelineDslService:
         account: Account,
         dependencies: Optional[list[PluginDependency]] = None,
     ) -> Pipeline:
+        if not account.current_tenant_id:
+            raise ValueError("Tenant id is required")
         """Create a new app or update an existing one."""
         pipeline_data = data.get("rag_pipeline", {})
         # Set icon type

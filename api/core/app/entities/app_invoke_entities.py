@@ -256,7 +256,6 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     batch: str
     document_id: Optional[str] = None
     start_node_id: Optional[str] = None
-
     class SingleIterationRunEntity(BaseModel):
         """
         Single Iteration Run Entity.
@@ -276,3 +275,4 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
         inputs: dict
 
     single_loop_run: Optional[SingleLoopRunEntity] = None
+

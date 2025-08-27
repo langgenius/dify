@@ -239,9 +239,9 @@ class WebsiteService:
             return {"status": "active", "job_id": response.json().get("data", {}).get("taskId")}
 
     @classmethod
-    def get_crawl_status(cls, job_id: str, provider: str, credential_id: Optional[str] = None) -> dict[str, Any]:
+    def get_crawl_status(cls, job_id: str, provider: str) -> dict[str, Any]:
         """Get crawl status using string parameters."""
-        api_request = WebsiteCrawlStatusApiRequest(provider=provider, job_id=job_id, credential_id=credential_id)
+        api_request = WebsiteCrawlStatusApiRequest(provider=provider, job_id=job_id)
         return cls.get_crawl_status_typed(api_request)
 
     @classmethod
