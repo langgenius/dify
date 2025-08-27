@@ -7,6 +7,8 @@ from packaging import version
 
 from configs import dify_config
 
+from . import api
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,3 +59,6 @@ def _has_new_version(*, latest_version: str, current_version: str) -> bool:
     except version.InvalidVersion:
         logger.warning("Invalid version format: latest=%s, current=%s", latest_version, current_version)
         return False
+
+
+api.add_resource(VersionApi, "/version")
