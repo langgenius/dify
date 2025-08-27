@@ -21,7 +21,6 @@ from .test_mock_config import MockConfigBuilder
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
-@pytest.mark.skip
 class TestComplexBranchWorkflow:
     """Test suite for complex branch workflow with parallel execution."""
 
@@ -30,6 +29,7 @@ class TestComplexBranchWorkflow:
         self.runner = TableTestRunner()
         self.fixture_path = "test_complex_branch"
 
+    @pytest.mark.skip(reason="output in this workflow can be random")
     def test_hello_branch_with_llm(self):
         """
         Test when query contains 'hello' - should trigger true branch.

@@ -9,13 +9,6 @@ from core.workflow.nodes.template_transform.template_transform_node import Templ
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
-def mock_template_transform_run(self):
-    """Mock the TemplateTransformNode._run() method to return results based on node title."""
-    title = self._node_data.title
-    return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"output": title})
-
-
-@pytest.mark.skip
 class TestVariableAggregator:
     """Test cases for the variable aggregator workflow."""
 
@@ -37,6 +30,12 @@ class TestVariableAggregator:
         description: str,
     ) -> None:
         """Test all four combinations of switch1 and switch2."""
+
+        def mock_template_transform_run(self):
+            """Mock the TemplateTransformNode._run() method to return results based on node title."""
+            title = self._node_data.title
+            return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"output": title})
+
         with patch.object(
             TemplateTransformNode,
             "_run",
