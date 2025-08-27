@@ -74,6 +74,7 @@ import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-so
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { useModalContext } from '@/context/modal-context'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -222,10 +223,12 @@ const BasePanel: FC<BasePanelProps> = ({
     runInputData,
     runInputDataRef,
     runResult,
+    setRunResult,
     getInputVars,
     toVarInputs,
     tabType,
     isRunAfterSingleRun,
+    setIsRunAfterSingleRun,
     setTabType,
     handleAfterCustomSingleRun,
     singleRunParams,
@@ -281,6 +284,10 @@ const BasePanel: FC<BasePanelProps> = ({
     setShowAccountSettingModal({ payload: 'data-source' })
   }, [setShowAccountSettingModal])
 
+  const {
+    appendNodeInspectVars,
+  } = useInspectVarsCrud()
+
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -309,9 +316,16 @@ const BasePanel: FC<BasePanelProps> = ({
   if (isShowSingleRun) {
     const form = getCustomRunForm({
       nodeId: id,
+      flowId: configsMap?.flowId || '',
+      flowType: configsMap?.flowType || FlowType.appFlow,
       payload: data,
+      setRunResult,
+      setIsRunAfterSingleRun,
+      isPaused,
+      isRunAfterSingleRun,
       onSuccess: handleAfterCustomSingleRun,
       onCancel: hideSingleRun,
+      appendNodeInspectVars,
     })
 
     return (

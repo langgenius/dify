@@ -1,4 +1,7 @@
-import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, Node, ValueSelector } from '@/app/components/workflow/types'
+import type { FlowType } from '@/types/common'
+import type { NodeRunResult, VarInInspect } from '@/types/workflow'
+import type { Dispatch, SetStateAction } from 'react'
 
 export enum VarType {
   variable = 'variable',
@@ -31,7 +34,14 @@ export type DataSourceNodeType = CommonNodeType & {
 
 export type CustomRunFormProps = {
   nodeId: string
+  flowId: string
+  flowType: FlowType
   payload: CommonNodeType
+  setRunResult: Dispatch<SetStateAction<NodeRunResult | null>>
+  setIsRunAfterSingleRun: Dispatch<SetStateAction<boolean>>
+  isPaused: boolean
+  isRunAfterSingleRun: boolean
   onSuccess: () => void
   onCancel: () => void
+  appendNodeInspectVars: (nodeId: string, vars: VarInInspect[], nodes: Node[]) => void
 }

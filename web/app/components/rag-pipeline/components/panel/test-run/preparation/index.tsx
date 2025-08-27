@@ -163,7 +163,7 @@ const Preparation = () => {
                 {datasourceType === DatasourceType.localFile && (
                   <LocalFile
                     allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                    notSupportBatchUpload={false} // only support single file upload in test run
+                    notSupportBatchUpload // only support single file upload in test run
                   />
                 )}
                 {datasourceType === DatasourceType.onlineDocument && (
