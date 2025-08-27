@@ -112,6 +112,10 @@ const nextConfig = {
     })),
   },
   experimental: {
+    optimizePackageImports: [
+      '@remixicon/react',
+      '@heroicons/react'
+    ],
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
