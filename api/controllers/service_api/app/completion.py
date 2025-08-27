@@ -35,6 +35,9 @@ from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, Wor
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_alias_service import WorkflowAliasService
 
+logger = logging.getLogger(__name__)
+
+
 # Define parser for completion API
 completion_parser = reqparse.RequestParser()
 completion_parser.add_argument(
@@ -123,7 +126,7 @@ class CompletionApi(Resource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -136,7 +139,7 @@ class CompletionApi(Resource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -219,7 +222,7 @@ class ChatApi(Resource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -234,7 +237,7 @@ class ChatApi(Resource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
     def _resolve_workflow_alias(self, app_model: App, args: dict) -> None:

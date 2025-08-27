@@ -54,6 +54,8 @@ from models import Dataset, DatasetProcessRule, Document, DocumentSegment, Uploa
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 
+logger = logging.getLogger(__name__)
+
 
 class DocumentResource(Resource):
     def get_document(self, dataset_id: str, document_id: str) -> Document:
@@ -468,25 +470,11 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
         data_process_rule = documents[0].dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict()
-        info_list = []
         extract_settings = []
         for document in documents:
             if document.indexing_status in {"completed", "error"}:
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
-            # format document files info
-            if data_source_info and "upload_file_id" in data_source_info:
-                file_id = data_source_info["upload_file_id"]
-                info_list.append(file_id)
-            # format document notion info
-            elif (
-                data_source_info and "notion_workspace_id" in data_source_info and "notion_page_id" in data_source_info
-            ):
-                pages = []
-                page = {"page_id": data_source_info["notion_page_id"], "type": data_source_info["type"]}
-                pages.append(page)
-                notion_info = {"workspace_id": data_source_info["notion_workspace_id"], "pages": pages}
-                info_list.append(notion_info)
 
             if document.data_source_type == "upload_file":
                 file_id = data_source_info["upload_file_id"]
@@ -966,7 +954,7 @@ class DocumentRetryApi(DocumentResource):
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception:
-                logging.exception("Failed to retry document, document id: %s", document_id)
+                logger.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)

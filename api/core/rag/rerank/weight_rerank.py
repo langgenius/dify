@@ -39,9 +39,16 @@ class WeightRerankRunner(BaseRerankRunner):
         unique_documents = []
         doc_ids = set()
         for document in documents:
-            if document.metadata is not None and document.metadata["doc_id"] not in doc_ids:
+            if (
+                document.provider == "dify"
+                and document.metadata is not None
+                and document.metadata["doc_id"] not in doc_ids
+            ):
                 doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
+            else:
+                if document not in unique_documents:
+                    unique_documents.append(document)
 
         documents = unique_documents
 

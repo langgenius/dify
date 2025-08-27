@@ -8,6 +8,8 @@ from core.app.entities.task_entities import AppBlockingResponse, AppStreamRespon
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 
+logger = logging.getLogger(__name__)
+
 
 class AppGenerateResponseConverter(ABC):
     _blocking_response_type: type[AppBlockingResponse]
@@ -120,7 +122,7 @@ class AppGenerateResponseConverter(ABC):
         if data:
             data.setdefault("message", getattr(e, "description", str(e)))
         else:
-            logging.error(e)
+            logger.error(e)
             data = {
                 "code": "internal_server_error",
                 "message": "Internal Server Error, please contact support.",

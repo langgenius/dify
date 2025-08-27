@@ -9,6 +9,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def disable_segment_from_index_task(segment_id: str):
@@ -18,17 +20,17 @@ def disable_segment_from_index_task(segment_id: str):
 
     Usage: disable_segment_from_index_task.delay(segment_id)
     """
-    logging.info(click.style(f"Start disable segment from index: {segment_id}", fg="green"))
+    logger.info(click.style(f"Start disable segment from index: {segment_id}", fg="green"))
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
     if not segment:
-        logging.info(click.style(f"Segment not found: {segment_id}", fg="red"))
+        logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
         db.session.close()
         return
 
     if segment.status != "completed":
-        logging.info(click.style(f"Segment is not completed, disable is not allowed: {segment_id}", fg="red"))
+        logger.info(click.style(f"Segment is not completed, disable is not allowed: {segment_id}", fg="red"))
         db.session.close()
         return
 
@@ -38,17 +40,17 @@ def disable_segment_from_index_task(segment_id: str):
         dataset = segment.dataset
 
         if not dataset:
-            logging.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
+            logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
             return
 
         dataset_document = segment.document
 
         if not dataset_document:
-            logging.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
+            logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
             return
 
         if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-            logging.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
+            logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
             return
 
         index_type = dataset_document.doc_form
@@ -56,9 +58,9 @@ def disable_segment_from_index_task(segment_id: str):
         index_processor.clean(dataset, [segment.index_node_id])
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"Segment removed from index: {segment.id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Segment removed from index: {segment.id} latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("remove segment from index failed")
+        logger.exception("remove segment from index failed")
         segment.enabled = True
         db.session.commit()
     finally:

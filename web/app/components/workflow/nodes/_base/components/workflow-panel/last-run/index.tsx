@@ -115,7 +115,7 @@ const LastRun: FC<Props> = ({
         status={isPaused ? NodeRunningStatus.Stopped : ((runResult as any).status || otherResultPanelProps.status)}
         total_tokens={(runResult as any)?.execution_metadata?.total_tokens || otherResultPanelProps?.total_tokens}
         created_by={(runResult as any)?.created_by_account?.created_by || otherResultPanelProps?.created_by}
-        nodeInfo={nodeInfo}
+        nodeInfo={runResult as NodeTracing}
         showSteps={false}
       />
     </div>

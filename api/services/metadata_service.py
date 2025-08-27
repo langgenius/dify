@@ -15,6 +15,8 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataOperationData,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class MetadataService:
     @staticmethod
@@ -90,7 +92,7 @@ class MetadataService:
             db.session.commit()
             return metadata  # type: ignore
         except Exception:
-            logging.exception("Update metadata name failed")
+            logger.exception("Update metadata name failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -122,7 +124,7 @@ class MetadataService:
             db.session.commit()
             return metadata
         except Exception:
-            logging.exception("Delete metadata failed")
+            logger.exception("Delete metadata failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -161,7 +163,7 @@ class MetadataService:
             dataset.built_in_field_enabled = True
             db.session.commit()
         except Exception:
-            logging.exception("Enable built-in field failed")
+            logger.exception("Enable built-in field failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -192,7 +194,7 @@ class MetadataService:
             dataset.built_in_field_enabled = False
             db.session.commit()
         except Exception:
-            logging.exception("Disable built-in field failed")
+            logger.exception("Disable built-in field failed")
         finally:
             redis_client.delete(lock_key)
 
@@ -230,7 +232,7 @@ class MetadataService:
                     db.session.add(dataset_metadata_binding)
                 db.session.commit()
             except Exception:
-                logging.exception("Update documents metadata failed")
+                logger.exception("Update documents metadata failed")
             finally:
                 redis_client.delete(lock_key)
 

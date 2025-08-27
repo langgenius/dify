@@ -178,7 +178,7 @@ class WorkflowRunApi(Resource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -243,7 +243,7 @@ class WorkflowRunByIdentifierApi(Resource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
     def _resolve_workflow_id(self, app_model: App, identifier: str) -> str:

@@ -33,10 +33,11 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: ./.github/actions/setup-uv
+        uses: astral-sh/setup-uv@v6
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
-          uv-lockfile: api/uv.lock
+          cache-dependency-glob: api/uv.lock
 
       - name: Check UV lockfile
         run: uv lock --project api --check

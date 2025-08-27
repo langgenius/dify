@@ -215,6 +215,7 @@ class DatabaseConfig(BaseSettings):
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
+            "pool_reset_on_return": None,
         }
 
 

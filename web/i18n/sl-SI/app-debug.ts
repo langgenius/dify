@@ -447,6 +447,10 @@ const translation = {
     'editModalTitle': 'Uredi vnosno polje',
     'required': 'Zahteva',
     'labelName': 'Ime nalepke',
+    'json': 'JSON koda',
+    'jsonSchema': 'JSON shema',
+    'optional': 'neobvezno',
+    'checkbox': 'Potrdite polje',
   },
   vision: {
     visionSettings: {
