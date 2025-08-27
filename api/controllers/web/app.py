@@ -1,7 +1,7 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse, marshal_with
+from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common import fields
