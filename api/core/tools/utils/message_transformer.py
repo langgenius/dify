@@ -1,3 +1,4 @@
+from models.model import EndUser
 import logging
 from collections.abc import Generator
 from datetime import date, datetime
@@ -21,9 +22,12 @@ logger = logging.getLogger(__name__)
 def safe_json_value(v):
     if current_user is None:
         return None
-    assert isinstance(current_user, Account)
     if isinstance(v, datetime):
-        tz_name = current_user.timezone
+        match current_user:
+            case EndUser():
+                tz_name = None
+            case Account():
+                tz_name = current_user.timezone
         if not tz_name:
             tz_name = "UTC"
         return v.astimezone(pytz.timezone(tz_name)).isoformat()
