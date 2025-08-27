@@ -37,12 +37,14 @@ class NodeType(StrEnum):
     ANSWER = "answer"
     LLM = "llm"
     KNOWLEDGE_RETRIEVAL = "knowledge-retrieval"
+    KNOWLEDGE_INDEX = "knowledge-index"
     IF_ELSE = "if-else"
     CODE = "code"
     TEMPLATE_TRANSFORM = "template-transform"
     QUESTION_CLASSIFIER = "question-classifier"
     HTTP_REQUEST = "http-request"
     TOOL = "tool"
+    DATASOURCE = "datasource"
     VARIABLE_AGGREGATOR = "variable-aggregator"
     LEGACY_VARIABLE_AGGREGATOR = "variable-assigner"  # TODO: Merge this into VARIABLE_AGGREGATOR in the database.
     LOOP = "loop"
@@ -83,6 +85,7 @@ class WorkflowType(StrEnum):
 
     WORKFLOW = "workflow"
     CHAT = "chat"
+    RAG_PIPELINE = "rag-pipeline"
 
 
 class WorkflowExecutionStatus(StrEnum):
@@ -116,6 +119,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
     ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
+    DATASOURCE_INFO = "datasource_info"
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

@@ -52,3 +52,8 @@ class ToolProviderID(GenericProviderID):
         if self.organization == "langgenius":
             if self.provider_name in ["jina", "siliconflow", "stepfun", "gitee_ai"]:
                 self.plugin_name = f"{self.provider_name}_tool"
+
+
+class DatasourceProviderID(GenericProviderID):
+    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        super().__init__(value, is_hardcoded)

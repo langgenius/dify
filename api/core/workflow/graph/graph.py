@@ -109,7 +109,7 @@ class Graph:
         start_node_id = None
         for nid in root_candidates:
             node_data = node_configs_map[nid].get("data", {})
-            if node_data.get("type") == NodeType.START.value:
+            if node_data.get("type") in [NodeType.START, NodeType.DATASOURCE]:
                 start_node_id = nid
                 break
 

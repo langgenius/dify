@@ -1,8 +1,7 @@
 import logging
-from collections.abc import Mapping
-from typing import Any, Optional, cast
+import time
+from typing import Optional, cast
 
-from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -11,10 +10,12 @@ from core.app.entities.app_invoke_entities import (
     RagPipelineGenerateEntity,
 )
 from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
-from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
+from core.workflow.entities.graph_init_params import GraphInitParams
+from core.workflow.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent
-from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph import Graph
+from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -22,7 +23,7 @@ from extensions.ext_database import db
 from models.dataset import Document, Pipeline
 from models.enums import UserFrom
 from models.model import EndUser
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -84,24 +85,30 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         db.session.close()
 
-        workflow_callbacks: list[WorkflowCallback] = []
-        if dify_config.DEBUG:
-            workflow_callbacks.append(WorkflowLoggingCallback())
-
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run:
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=VariablePool.empty(),
+                start_at=time.time(),
+            )
             # if only single iteration run is requested
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=workflow,
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
                 user_inputs=self.application_generate_entity.single_iteration_run.inputs,
+                graph_runtime_state=graph_runtime_state,
             )
         elif self.application_generate_entity.single_loop_run:
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=VariablePool.empty(),
+                start_at=time.time(),
+            )
             # if only single loop run is requested
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
                 workflow=workflow,
                 node_id=self.application_generate_entity.single_loop_run.node_id,
                 user_inputs=self.application_generate_entity.single_loop_run.inputs,
+                graph_runtime_state=graph_runtime_state,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -121,6 +128,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 datasource_info=self.application_generate_entity.datasource_info,
                 invoke_from=self.application_generate_entity.invoke_from.value,
             )
+
             rag_pipeline_variables = []
             if workflow.rag_pipeline_variables:
                 for v in workflow.rag_pipeline_variables:
@@ -143,11 +151,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 conversation_variables=[],
                 rag_pipeline_variables=rag_pipeline_variables,
             )
+            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
             # init graph
             graph = self._init_rag_pipeline_graph(
-                graph_config=workflow.graph_dict,
+                graph_runtime_state=graph_runtime_state,
                 start_node_id=self.application_generate_entity.start_node_id,
+                workflow=workflow,
             )
 
         # RUN WORKFLOW
@@ -155,7 +165,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
             workflow_id=workflow.id,
-            workflow_type=WorkflowType.value_of(workflow.type),
             graph=graph,
             graph_config=workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,
@@ -166,11 +175,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
             ),
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
-            variable_pool=variable_pool,
-            thread_pool_id=self.workflow_thread_pool_id,
+            graph_runtime_state=graph_runtime_state,
         )
 
-        generator = workflow_entry.run(callbacks=workflow_callbacks)
+        generator = workflow_entry.run()
 
         for event in generator:
             self._update_document_status(
@@ -194,10 +202,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # return workflow
         return workflow
 
-    def _init_rag_pipeline_graph(self, graph_config: Mapping[str, Any], start_node_id: Optional[str] = None) -> Graph:
+    def _init_rag_pipeline_graph(
+        self, workflow: Workflow, graph_runtime_state: GraphRuntimeState, start_node_id: Optional[str] = None
+    ) -> Graph:
         """
         Init pipeline graph
         """
+        graph_config = workflow.graph_dict
         if "nodes" not in graph_config or "edges" not in graph_config:
             raise ValueError("nodes or edges not found in workflow graph")
 
@@ -227,7 +238,23 @@ class PipelineRunner(WorkflowBasedAppRunner):
         graph_config["nodes"] = real_run_nodes
         graph_config["edges"] = real_edges
         # init graph
-        graph = Graph.init(graph_config=graph_config)
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            workflow_id=workflow.id,
+            graph_config=graph_config,
+            user_id="",
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.SERVICE_API.value,
+            call_depth=0,
+        )
+
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=start_node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")

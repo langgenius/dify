@@ -21,14 +21,16 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 
 
 @shared_task(queue="dataset")
-def rag_pipeline_run_task(pipeline_id: str,
-                          application_generate_entity: dict,
-                          user_id: str,
-                          tenant_id: str,
-                          workflow_id: str,
-                          streaming: bool,
-                          workflow_execution_id: str | None = None,
-                          workflow_thread_pool_id: str | None = None):
+def rag_pipeline_run_task(
+    pipeline_id: str,
+    application_generate_entity: dict,
+    user_id: str,
+    tenant_id: str,
+    workflow_id: str,
+    streaming: bool,
+    workflow_execution_id: str | None = None,
+    workflow_thread_pool_id: str | None = None,
+):
     """
     Async Run rag pipeline
     :param pipeline_id: Pipeline ID
@@ -94,18 +96,19 @@ def rag_pipeline_run_task(pipeline_id: str,
             with current_app.app_context():
                 # Set the user directly in g for preserve_flask_contexts
                 g._login_user = account
-                
+
                 # Copy context for thread (after setting user)
                 context = contextvars.copy_context()
-                
+
                 # Get Flask app object in the main thread where app context exists
                 flask_app = current_app._get_current_object()  # type: ignore
-                
+
                 # Create a wrapper function that passes user context
                 def _run_with_user_context():
                     # Don't create a new app context here - let _generate handle it
                     # Just ensure the user is available in contextvars
                     from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+
                     pipeline_generator = PipelineGenerator()
                     pipeline_generator._generate(
                         flask_app=flask_app,
@@ -120,7 +123,7 @@ def rag_pipeline_run_task(pipeline_id: str,
                         streaming=streaming,
                         workflow_thread_pool_id=workflow_thread_pool_id,
                     )
-                
+
                 # Create and start worker thread
                 worker_thread = threading.Thread(target=_run_with_user_context)
                 worker_thread.start()

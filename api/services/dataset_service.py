@@ -718,9 +718,9 @@ class DatasetService:
                 model_manager = ModelManager()
                 embedding_model = model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    provider=knowledge_configuration.embedding_model_provider,
+                    provider=knowledge_configuration.embedding_model_provider or "",
                     model_type=ModelType.TEXT_EMBEDDING,
-                    model=knowledge_configuration.embedding_model,
+                    model=knowledge_configuration.embedding_model or "",
                 )
                 dataset.embedding_model = embedding_model.model
                 dataset.embedding_model_provider = embedding_model.provider
@@ -1159,7 +1159,7 @@ class DocumentService:
             return
         documents = db.session.query(Document).where(Document.id.in_(document_ids)).all()
         file_ids = [
-            document.data_source_info_dict["upload_file_id"]
+            document.data_source_info_dict.get("upload_file_id", "")
             for document in documents
             if document.data_source_type == "upload_file"
         ]
@@ -1281,7 +1281,7 @@ class DocumentService:
         account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
-    ):
+    ) -> tuple[list[Document], str]:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
@@ -1386,7 +1386,7 @@ class DocumentService:
                             "Invalid process rule mode: %s, can not find dataset process rule",
                             process_rule.mode,
                         )
-                        return
+                        return [], ""
                     db.session.add(dataset_process_rule)
                     db.session.flush()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"
@@ -2595,7 +2595,9 @@ class SegmentService:
             return segment_data_list
 
     @classmethod
-    def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
+    def update_segment(
+        cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset
+    ) -> DocumentSegment:
         indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
@@ -2764,6 +2766,8 @@ class SegmentService:
             segment.error = str(e)
             db.session.commit()
         new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
+        if not new_segment:
+            raise ValueError("new_segment is not found")
         return new_segment
 
     @classmethod
@@ -2804,7 +2808,11 @@ class SegmentService:
         index_node_ids = [seg.index_node_id for seg in segments]
         total_words = sum(seg.word_count for seg in segments)
 
-        document.word_count -= total_words
+        if document.word_count is None:
+            document.word_count = 0
+        else:
+            document.word_count = max(0, document.word_count - total_words)
+
         db.session.add(document)
 
         delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)

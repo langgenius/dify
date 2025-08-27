@@ -28,26 +28,23 @@ from core.datasource.online_document.online_document_plugin import OnlineDocumen
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.rag.entities.event import (
-    BaseDatasourceEvent,
     DatasourceCompletedEvent,
     DatasourceErrorEvent,
     DatasourceProcessingEvent,
 )
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables.variables import Variable
-from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.enums import SystemVariableKey
+from core.workflow.enums import ErrorStrategy, NodeType, SystemVariableKey
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import InNodeEvent
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event.event import RunCompletedEvent
-from core.workflow.nodes.event.types import NodeEvent
+from core.workflow.graph_events.base import GraphNodeEventBase
+from core.workflow.node_events.base import NodeRunResult
+from core.workflow.node_events.node import StreamCompletedEvent
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from core.workflow.system_variable import SystemVariable
@@ -105,12 +102,13 @@ class RagPipelineService:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(template_id)
+            built_in_result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(template_id)
+            return built_in_result
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(template_id)
-        return result
+            customized_result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(template_id)
+            return customized_result
 
     @classmethod
     def update_customized_pipeline_template(cls, template_id: str, template_info: PipelineTemplateInfoEntity):
@@ -471,7 +469,7 @@ class RagPipelineService:
         datasource_type: str,
         is_published: bool,
         credential_id: Optional[str] = None,
-    ) -> Generator[BaseDatasourceEvent, None, None]:
+    ) -> Generator[Mapping[str, Any], None, None]:
         """
         Run published workflow datasource
         """
@@ -563,9 +561,9 @@ class RagPipelineService:
                             user_id=account.id,
                             request=OnlineDriveBrowseFilesRequest(
                                 bucket=user_inputs.get("bucket"),
-                                prefix=user_inputs.get("prefix"),
+                                prefix=user_inputs.get("prefix", ""),
                                 max_keys=user_inputs.get("max_keys", 20),
-                                start_after=user_inputs.get("start_after"),
+                                next_page_parameters=user_inputs.get("next_page_parameters"),
                             ),
                             provider_type=datasource_runtime.datasource_provider_type(),
                         )
@@ -600,7 +598,7 @@ class RagPipelineService:
                             end_time = time.time()
                             if message.result.status == "completed":
                                 crawl_event = DatasourceCompletedEvent(
-                                    data=message.result.web_info_list,
+                                    data=message.result.web_info_list or [],
                                     total=message.result.total,
                                     completed=message.result.completed,
                                     time_consuming=round(end_time - start_time, 2),
@@ -681,9 +679,9 @@ class RagPipelineService:
                         datasource_runtime.get_online_document_page_content(
                             user_id=account.id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
-                                workspace_id=user_inputs.get("workspace_id"),
-                                page_id=user_inputs.get("page_id"),
-                                type=user_inputs.get("type"),
+                                workspace_id=user_inputs.get("workspace_id", ""),
+                                page_id=user_inputs.get("page_id", ""),
+                                type=user_inputs.get("type", ""),
                             ),
                             provider_type=datasource_type,
                         )
@@ -740,7 +738,7 @@ class RagPipelineService:
 
     def _handle_node_run_result(
         self,
-        getter: Callable[[], tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]],
+        getter: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
         start_at: float,
         tenant_id: str,
         node_id: str,
@@ -758,17 +756,16 @@ class RagPipelineService:
 
             node_run_result: NodeRunResult | None = None
             for event in generator:
-                if isinstance(event, RunCompletedEvent):
-                    node_run_result = event.run_result
-
+                if isinstance(event, StreamCompletedEvent):
+                    node_run_result = event.node_run_result
                     # sign output files
-                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
+                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) or {}
                     break
 
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
-            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.continue_on_error:
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.error_strategy:
                 node_error_args: dict[str, Any] = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
@@ -808,7 +805,7 @@ class RagPipelineService:
             workflow_id=node_instance.workflow_id,
             index=1,
             node_id=node_id,
-            node_type=node_instance.type_,
+            node_type=node_instance.node_type,
             title=node_instance.title,
             elapsed_time=time.perf_counter() - start_at,
             finished_at=datetime.now(UTC).replace(tzinfo=None),
@@ -1148,7 +1145,7 @@ class RagPipelineService:
             .first()
         )
         return node_exec
-    
+
     def set_datasource_variables(self, pipeline: Pipeline, args: dict, current_user: Account | EndUser):
         # fetch draft workflow by app_model
         draft_workflow = self.get_draft_workflow(pipeline=pipeline)
@@ -1208,6 +1205,3 @@ class RagPipelineService:
             )
             session.commit()
         return workflow_node_execution_db_model
-        
-        
-

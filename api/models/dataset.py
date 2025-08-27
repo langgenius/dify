@@ -172,7 +172,7 @@ class Dataset(Base):
         )
 
     @property
-    def doc_form(self):
+    def doc_form(self) -> Optional[str]:
         if self.chunk_structure:
             return self.chunk_structure
         document = db.session.query(Document).filter(Document.dataset_id == self.id).first()
@@ -424,7 +424,7 @@ class Document(Base):
         return status
 
     @property
-    def data_source_info_dict(self):
+    def data_source_info_dict(self) -> dict[str, Any]:
         if self.data_source_info:
             try:
                 data_source_info_dict = json.loads(self.data_source_info)
@@ -432,7 +432,7 @@ class Document(Base):
                 data_source_info_dict = {}
 
             return data_source_info_dict
-        return None
+        return {}
 
     @property
     def data_source_detail_dict(self):

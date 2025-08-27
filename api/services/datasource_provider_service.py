@@ -11,7 +11,6 @@ from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.model_runtime.entities.provider_entities import FormType
-from core.plugin.entities.plugin import DatasourceProviderID
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import CredentialType
@@ -19,6 +18,7 @@ from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
+from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
@@ -809,9 +809,7 @@ class DatasourceProviderService:
                 credentials = self.list_datasource_credentials(
                     tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
                 )
-                redirect_uri = (
-                    f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
-                )
+                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
                 datasource_credentials.append(
                     {
                         "provider": datasource.provider,

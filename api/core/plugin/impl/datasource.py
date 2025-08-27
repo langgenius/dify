@@ -10,13 +10,13 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadFileRequest,
     WebsiteCrawlMessage,
 )
-from core.plugin.entities.plugin import DatasourceProviderID, GenericProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDatasourceProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
 from core.schemas.resolver import resolve_dify_schema_refs
+from models.provider_ids import DatasourceProviderID, GenericProviderID
 from services.tools.tools_transform_service import ToolTransformService
 
 
