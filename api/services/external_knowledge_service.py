@@ -198,11 +198,7 @@ class ExternalDatasetService:
         if method_lc not in _METHOD_MAP:
             raise InvalidHttpMethodError(f"Invalid http method {settings.request_method}")
 
-        response: httpx.Response = _METHOD_MAP[
-            method_lc
-        ](
-            data=json.dumps(settings.params), files=files, **kwargs
-        )
+        response: httpx.Response = _METHOD_MAP[method_lc](data=json.dumps(settings.params), files=files, **kwargs)
         return response
 
     @staticmethod

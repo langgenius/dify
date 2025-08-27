@@ -341,7 +341,6 @@ class Executor:
         if method_lc not in _METHOD_MAP:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
-
         request_args = {
             "url": self.url,
             "data": self.data,
@@ -357,11 +356,7 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response: httpx.Response = _METHOD_MAP[
-                method_lc
-            ](
-                **request_args
-            )
+            response: httpx.Response = _METHOD_MAP[method_lc](**request_args)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
