@@ -10,12 +10,10 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.provider_cache import NoOpProviderCredentialCache
+from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.utils.encryption import (
-    create_provider_encrypter,
-)
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from core.trigger.entities.api_entities import TriggerProviderApiEntity, TriggerProviderCredentialApiEntity
 from core.trigger.trigger_manager import TriggerManager

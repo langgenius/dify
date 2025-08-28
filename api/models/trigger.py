@@ -65,6 +65,7 @@ class TriggerProvider(Base):
             credentials=self.credentials,
         )
 
+
 # system level trigger oauth client params
 class TriggerOAuthSystemClient(Base):
     __tablename__ = "trigger_oauth_system_clients"

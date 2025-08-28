@@ -51,9 +51,7 @@ class TriggerManager:
         return controllers
 
     @classmethod
-    def get_trigger_provider(
-        cls, tenant_id: str, provider_id: TriggerProviderID
-    ) -> PluginTriggerProviderController:
+    def get_trigger_provider(cls, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
         """
         Get a specific plugin trigger provider
 
@@ -101,9 +99,7 @@ class TriggerManager:
         return provider.get_triggers()
 
     @classmethod
-    def get_trigger(
-        cls, tenant_id: str, provider_id: TriggerProviderID, trigger_name: str
-    ) -> Optional[TriggerEntity]:
+    def get_trigger(cls, tenant_id: str, provider_id: TriggerProviderID, trigger_name: str) -> Optional[TriggerEntity]:
         """
         Get a specific trigger
 
@@ -198,9 +194,7 @@ class TriggerManager:
         )
 
     @classmethod
-    def get_provider_subscription_schema(
-        cls, tenant_id: str, provider_id: TriggerProviderID
-    ) -> list[ProviderConfig]:
+    def get_provider_subscription_schema(cls, tenant_id: str, provider_id: TriggerProviderID) -> list[ProviderConfig]:
         """
         Get provider subscription schema
 
@@ -209,6 +203,7 @@ class TriggerManager:
         :return: List of subscription config schemas
         """
         return cls.get_trigger_provider(tenant_id, provider_id).get_subscription_schema()
+
 
 # Export
 __all__ = ["TriggerManager"]

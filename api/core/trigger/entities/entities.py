@@ -70,6 +70,7 @@ class TriggerIdentity(BaseModel):
     label: I18nObject = Field(..., description="The label of the trigger")
     provider: str = Field(..., description="The provider of the trigger")
 
+
 class TriggerDescription(BaseModel):
     """
     The description of the trigger
@@ -91,11 +92,13 @@ class TriggerEntity(BaseModel):
         default=None, description="The output schema that this trigger produces"
     )
 
+
 class OAuthSchema(BaseModel):
     client_schema: list[ProviderConfig] = Field(default_factory=list, description="The schema of the OAuth client")
     credentials_schema: list[ProviderConfig] = Field(
         default_factory=list, description="The schema of the OAuth credentials"
     )
+
 
 class TriggerProviderEntity(BaseModel):
     """

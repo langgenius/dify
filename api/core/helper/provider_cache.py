@@ -80,6 +80,7 @@ class TriggerProviderCredentialCache(ProviderCredentialsCache):
         credential_id = kwargs["credential_id"]
         return f"trigger_credentials:tenant_id:{tenant_id}:provider_id:{provider_id}:credential_id:{credential_id}"
 
+
 class TriggerProviderOAuthClientCache(ProviderCredentialsCache):
     """Cache for trigger provider OAuth client"""
 
@@ -90,6 +91,7 @@ class TriggerProviderOAuthClientCache(ProviderCredentialsCache):
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]
         return f"trigger_oauth_client:tenant_id:{tenant_id}:provider_id:{provider_id}"
+
 
 class NoOpProviderCredentialCache:
     """No-op provider credential cache"""
