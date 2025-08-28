@@ -95,18 +95,19 @@ class ChatMessageListApi(Resource):
                 .all()
             )
 
+        has_more = False
         if len(history_messages) == args["limit"]:
             current_page_first_message = history_messages[-1]
 
-        has_more = db.session.scalar(
-            select(
-                exists().where(
-                    Message.conversation_id == conversation.id,
-                    Message.created_at < current_page_first_message.created_at,
-                    Message.id != current_page_first_message.id,
+            has_more = db.session.scalar(
+                select(
+                    exists().where(
+                        Message.conversation_id == conversation.id,
+                        Message.created_at < current_page_first_message.created_at,
+                        Message.id != current_page_first_message.id,
+                    )
                 )
             )
-        )
 
         history_messages = list(reversed(history_messages))
 
