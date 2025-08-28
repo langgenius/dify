@@ -123,11 +123,10 @@ class CompletionConversationApi(Resource):
 
         return {
             "result": "success",
-            "task_id": result['task_id'],
             "status": result['status'],
-            "estimated_conversations": result['estimated_conversations'],
+            "deleted_counts": result.get('deleted_counts', {}),
             "mode": result['mode'],
-            "message": "Conversation cleanup task queued successfully. Large datasets will be processed asynchronously."
+            "message": "Conversations cleared successfully."
         }
 
 
@@ -321,11 +320,10 @@ class ChatConversationApi(Resource):
 
         return {
             "result": "success",
-            "task_id": result['task_id'],
             "status": result['status'],
-            "estimated_conversations": result['estimated_conversations'],
+            "deleted_counts": result.get('deleted_counts', {}),
             "mode": result['mode'],
-            "message": "Conversation cleanup task queued successfully. Large datasets will be processed asynchronously."
+            "message": "Conversations cleared successfully."
         }
 
 
