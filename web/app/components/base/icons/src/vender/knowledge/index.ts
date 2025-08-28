@@ -1,3 +1,4 @@
+export { default as AddChunks } from './AddChunks'
 export { default as ArrowShape } from './ArrowShape'
 export { default as Chunk } from './Chunk'
 export { default as Collapse } from './Collapse'

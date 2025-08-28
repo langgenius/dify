@@ -7,6 +7,7 @@ import OptionCard from '../option-card'
 import Selector from './selector'
 import { useChunkStructure } from './hooks'
 import Button from '@/app/components/base/button'
+import Instruction from './instruction'
 
 type ChunkStructureProps = {
   chunkStructure?: ChunkStructureEnum
@@ -51,20 +52,23 @@ const ChunkStructure = ({
       }
       {
         !chunkStructure && (
-          <Selector
-            options={options}
-            onChange={onChunkStructureChange}
-            readonly={readonly}
-            trigger={(
-              <Button
-                className='w-full'
-                variant='secondary-accent'
-              >
-                <RiAddLine className='mr-1 h-4 w-4' />
-                {t('workflow.nodes.knowledgeBase.chooseChunkStructure')}
-              </Button>
-            )}
-          />
+          <>
+            <Selector
+              options={options}
+              onChange={onChunkStructureChange}
+              readonly={readonly}
+              trigger={(
+                <Button
+                  className='w-full'
+                  variant='secondary-accent'
+                >
+                  <RiAddLine className='mr-1 h-4 w-4' />
+                  {t('workflow.nodes.knowledgeBase.chooseChunkStructure')}
+                </Button>
+              )}
+            />
+            <Instruction className='mt-2' />
+          </>
         )
       }
     </Field>

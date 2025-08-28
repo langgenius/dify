@@ -2,14 +2,16 @@ import type { StateCreator } from 'zustand'
 import type { OnlineDriveFile } from '@/models/pipeline'
 
 export type OnlineDriveSliceShape = {
+  breadcrumbs: string[]
+  setBreadcrumbs: (breadcrumbs: string[]) => void
   prefix: string[]
   setPrefix: (prefix: string[]) => void
   keywords: string
   setKeywords: (keywords: string) => void
   selectedFileIds: string[]
   setSelectedFileIds: (selectedFileIds: string[]) => void
-  fileList: OnlineDriveFile[]
-  setFileList: (fileList: OnlineDriveFile[]) => void
+  onlineDriveFileList: OnlineDriveFile[]
+  setOnlineDriveFileList: (onlineDriveFileList: OnlineDriveFile[]) => void
   bucket: string
   setBucket: (bucket: string) => void
   nextPageParameters: Record<string, any>
@@ -23,6 +25,10 @@ export type OnlineDriveSliceShape = {
 
 export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set, get) => {
   return ({
+    breadcrumbs: [],
+    setBreadcrumbs: (breadcrumbs: string[]) => set(() => ({
+      breadcrumbs,
+    })),
     prefix: [],
     setPrefix: (prefix: string[]) => set(() => ({
       prefix,
@@ -37,12 +43,12 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set,
         selectedFileIds,
       }))
       const id = selectedFileIds[0]
-      const { fileList, previewOnlineDriveFileRef } = get()
-      previewOnlineDriveFileRef.current = fileList.find(file => file.id === id)
+      const { onlineDriveFileList, previewOnlineDriveFileRef } = get()
+      previewOnlineDriveFileRef.current = onlineDriveFileList.find(file => file.id === id)
     },
-    fileList: [],
-    setFileList: (fileList: OnlineDriveFile[]) => set(() => ({
-      fileList,
+    onlineDriveFileList: [],
+    setOnlineDriveFileList: (onlineDriveFileList: OnlineDriveFile[]) => set(() => ({
+      onlineDriveFileList,
     })),
     bucket: '',
     setBucket: (bucket: string) => set(() => ({

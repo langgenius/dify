@@ -10,6 +10,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { useIsChatMode } from './use-workflow'
 import { useStoreApi } from 'reactflow'
+import { useStore } from '@/app/components/workflow/store'
 import type { Type } from '../nodes/llm/types'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
@@ -18,6 +19,11 @@ export const useWorkflowVariables = () => {
   const workflowStore = useWorkflowStore()
   const { getMatchedSchemaType } = useMatchSchemaType()
 
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+  const dataSourceList = useStore(s => s.dataSourceList)
   const getNodeAvailableVars = useCallback(({
     parentNode,
     beforeNodes,
@@ -37,11 +43,6 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       environmentVariables,
       ragPipelineVariables,
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
-      dataSourceList,
     } = workflowStore.getState()
     return toNodeAvailableVars({
       parentNode,
@@ -61,7 +62,7 @@ export const useWorkflowVariables = () => {
       },
       getMatchedSchemaType,
     })
-  }, [t, workflowStore, getMatchedSchemaType])
+  }, [t, workflowStore, getMatchedSchemaType, buildInTools])
 
   const getCurrentVariableType = useCallback(({
     parentNode,
@@ -71,6 +72,7 @@ export const useWorkflowVariables = () => {
     availableNodes,
     isChatMode,
     isConstant,
+    preferSchemaType,
   }: {
     valueSelector: ValueSelector
     parentNode?: Node | null
@@ -79,6 +81,7 @@ export const useWorkflowVariables = () => {
     availableNodes: any[]
     isChatMode: boolean
     isConstant?: boolean
+    preferSchemaType?: boolean
   }) => {
     const {
       conversationVariables,
@@ -109,8 +112,9 @@ export const useWorkflowVariables = () => {
         dataSourceList: dataSourceList ?? [],
       },
       getMatchedSchemaType,
+      preferSchemaType,
     })
-  }, [workflowStore])
+  }, [workflowStore, getVarType, getMatchedSchemaType])
 
   return {
     getNodeAvailableVars,

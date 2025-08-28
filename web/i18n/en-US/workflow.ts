@@ -934,6 +934,11 @@ const translation = {
     knowledgeBase: {
       chunkStructure: 'Chunk Structure',
       chooseChunkStructure: 'Choose a chunk structure',
+      chunkStructureTip: {
+        title: 'Please choose a chunk structure',
+        message: 'After configuring chunk structure, this node will automatically load the remaining configurations.',
+        learnMore: 'Learn more',
+      },
       changeChunkStructure: 'Change Chunk Structure',
       aboutRetrieval: 'about retrieval method.',
       chunkIsRequired: 'Chunk structure is required',

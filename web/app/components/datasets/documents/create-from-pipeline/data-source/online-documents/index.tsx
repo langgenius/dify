@@ -70,7 +70,6 @@ const OnlineDocuments = ({
 
   const getOnlineDocuments = useCallback(async () => {
     const { currentCredentialId } = dataSourceStore.getState()
-    if (!currentCredentialId) return
     ssePost(
       datasourceNodeRunURL,
       {
@@ -96,6 +95,7 @@ const OnlineDocuments = ({
   }, [dataSourceStore, datasourceNodeRunURL])
 
   useEffect(() => {
+    if (!currentCredentialId) return
     getOnlineDocuments()
   }, [currentCredentialId])
 

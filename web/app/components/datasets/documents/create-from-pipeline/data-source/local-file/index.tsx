@@ -32,7 +32,7 @@ const LocalFile = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { locale } = useContext(I18n)
-  const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
+  const localFileList = useDataSourceStoreWithSelector(state => state.localFileList)
   const dataSourceStore = useDataSourceStore()
   const [dragging, setDragging] = useState(false)
 
@@ -41,7 +41,7 @@ const LocalFile = ({
   const fileUploader = useRef<HTMLInputElement>(null)
   const fileListRef = useRef<FileItem[]>([])
 
-  const hideUpload = notSupportBatchUpload && fileList.length > 0
+  const hideUpload = notSupportBatchUpload && localFileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const supportTypesShowNames = useMemo(() => {
@@ -179,7 +179,7 @@ const LocalFile = ({
     if (!files.length)
       return false
 
-    if (files.length + fileList.length > FILES_NUMBER_LIMIT && !IS_CE_EDITION) {
+    if (files.length + localFileList.length > FILES_NUMBER_LIMIT && !IS_CE_EDITION) {
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: FILES_NUMBER_LIMIT }) })
       return false
     }
@@ -193,7 +193,7 @@ const LocalFile = ({
     updateFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [updateFileList, uploadMultipleFiles, notify, t, fileList])
+  }, [updateFileList, uploadMultipleFiles, notify, t, localFileList])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -297,9 +297,9 @@ const LocalFile = ({
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
       )}
-      {fileList.length > 0 && (
+      {localFileList.length > 0 && (
         <div className='mt-1 flex flex-col gap-y-1'>
-          {fileList.map((fileItem, index) => {
+          {localFileList.map((fileItem, index) => {
             const isUploading = fileItem.progress >= 0 && fileItem.progress < 100
             const isError = fileItem.progress === -2
             return (
