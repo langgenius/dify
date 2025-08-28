@@ -1,6 +1,7 @@
 {
     "permissions": {
-      "allow": []
+      "allow": [],
+      "deny": []
     },
     "env": {
       "__comment": "Environment variables for MCP servers. Override in .claude/settings.local.json with actual values.",
