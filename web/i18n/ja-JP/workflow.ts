@@ -1025,6 +1025,14 @@ const translation = {
       responseBodyPlaceholder: 'レスポンス本文',
       headers: 'ヘッダー',
     },
+    triggerPlugin: {
+      title: 'プラグイントリガー',
+      configuration: '設定',
+      noPluginSelected: 'プラグインが選択されていません。ワークフローキャンバスでこのトリガーを設定してください。',
+      outputVars: {
+        triggerData: 'プラグイントリガーからのデータ',
+      },
+    },
   },
   tracing: {
     stopBy: '{{user}}によって停止',

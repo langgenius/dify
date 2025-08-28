@@ -1025,6 +1025,14 @@ const translation = {
       responseBodyPlaceholder: '响应体内容',
       headers: 'Headers',
     },
+    triggerPlugin: {
+      title: '插件触发器',
+      configuration: '配置',
+      noPluginSelected: '未选择插件。请在工作流画布中配置此触发器。',
+      outputVars: {
+        triggerData: '来自插件触发器的数据',
+      },
+    },
   },
   tracing: {
     stopBy: '由{{user}}终止',

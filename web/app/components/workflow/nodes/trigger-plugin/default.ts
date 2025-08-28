@@ -5,12 +5,9 @@ import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/ap
 
 const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   defaultValue: {
-    plugin_id: '',
-    plugin_name: '',
-    event_type: '',
     config: {},
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
+  getAvailablePrevNodes(_isChatMode: boolean) {
     return []
   },
   getAvailableNextNodes(isChatMode: boolean) {
@@ -20,6 +17,27 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     return nodes.filter(type => type !== BlockEnum.Start)
   },
   checkValid(payload: PluginTriggerNodeType, t: any) {
+    if (!payload.provider_name || !payload.tool_name) {
+      return {
+        isValid: false,
+        errorMessage: t('workflow.errorMsg.fieldRequired', { field: 'plugin' }),
+      }
+    }
+
+    if (payload.paramSchemas && payload.paramSchemas.length > 0) {
+      const requiredParams = payload.paramSchemas.filter(param => param.required)
+      const config = payload.config || {}
+
+      for (const param of requiredParams) {
+        if (!config[param.name] || config[param.name] === '') {
+          return {
+            isValid: false,
+            errorMessage: t('workflow.errorMsg.fieldRequired', { field: param.name }),
+          }
+        }
+      }
+    }
+
     return {
       isValid: true,
       errorMessage: '',

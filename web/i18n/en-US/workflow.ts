@@ -1025,6 +1025,14 @@ const translation = {
       responseBodyPlaceholder: 'Response body content',
       headers: 'Headers',
     },
+    triggerPlugin: {
+      title: 'Plugin Trigger',
+      configuration: 'Configuration',
+      noPluginSelected: 'No plugin selected. Configure this trigger in the workflow canvas.',
+      outputVars: {
+        triggerData: 'Data from plugin trigger',
+      },
+    },
   },
   triggerStatus: {
     enabled: 'TRIGGER',
