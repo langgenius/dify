@@ -244,6 +244,8 @@ const translation = {
     'transform': '変換',
     'utilities': 'ツール',
     'noResult': '該当なし',
+    'noPluginsFound': 'プラグインが見つかりません',
+    'requestToCommunity': 'コミュニティにリクエスト',
     'plugin': 'プラグイン',
     'agent': 'エージェント戦略',
     'addAll': 'すべてを追加する',

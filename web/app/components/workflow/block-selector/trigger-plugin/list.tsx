@@ -10,12 +10,14 @@ type TriggerPluginListProps = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   searchText: string
   onContentStateChange?: (hasContent: boolean) => void
+  tags?: string[]
 }
 
 const TriggerPluginList = ({
   onSelect,
   searchText,
   onContentStateChange,
+  tags = [],
 }: TriggerPluginListProps) => {
   const { data: buildInTools = [] } = useAllBuiltInTools()
   const language = useGetLanguage()
@@ -24,12 +26,16 @@ const TriggerPluginList = ({
     return buildInTools.filter((toolWithProvider) => {
       if (toolWithProvider.tools.length === 0) return false
 
-      if (!searchText) return true
+      // Filter by search text
+      if (searchText) {
+        const matchesSearch = toolWithProvider.name.toLowerCase().includes(searchText.toLowerCase())
+          || toolWithProvider.tools.some(tool =>
+            tool.label[language].toLowerCase().includes(searchText.toLowerCase()),
+          )
+        if (!matchesSearch) return false
+      }
 
-      return toolWithProvider.name.toLowerCase().includes(searchText.toLowerCase())
-        || toolWithProvider.tools.some(tool =>
-          tool.label[language].toLowerCase().includes(searchText.toLowerCase()),
-        )
+      return true
     })
   }, [buildInTools, searchText, language])
 

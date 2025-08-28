@@ -143,7 +143,18 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             onActiveTabChange={handleActiveTabChange}
             filterElem={
               <div className='relative m-2' onClick={e => e.stopPropagation()}>
-                {(activeTab === TabsEnum.Start || activeTab === TabsEnum.Blocks) && (
+                {activeTab === TabsEnum.Start && (
+                  <SearchBox
+                    search={searchText}
+                    onSearchChange={setSearchText}
+                    tags={tags}
+                    onTagsChange={setTags}
+                    size='small'
+                    placeholder={searchPlaceholder}
+                    inputClassName='grow'
+                  />
+                )}
+                {activeTab === TabsEnum.Blocks && (
                   <Input
                     showLeftIcon
                     showClearIcon

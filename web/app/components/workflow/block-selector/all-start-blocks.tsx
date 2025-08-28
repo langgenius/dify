@@ -18,6 +18,7 @@ type AllStartBlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
+  tags?: string[]
 }
 
 const AllStartBlocks = ({
@@ -25,6 +26,7 @@ const AllStartBlocks = ({
   searchText,
   onSelect,
   availableBlocksTypes,
+  tags = [],
 }: AllStartBlocksProps) => {
   const { t } = useTranslation()
   const wrapElemRef = useRef<HTMLDivElement>(null)
@@ -82,6 +84,7 @@ const AllStartBlocks = ({
               onSelect={onSelect}
               searchText={searchText}
               onContentStateChange={handlePluginContentChange}
+              tags={tags}
             />
           </>
         )}
