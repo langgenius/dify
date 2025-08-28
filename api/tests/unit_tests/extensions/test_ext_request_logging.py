@@ -43,28 +43,28 @@ def _get_test_app():
 
 
 @pytest.fixture
-def mock_request_receiver(monkeypatch) -> mock.Mock:
+def mock_request_receiver(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     mock_log_request_started = mock.Mock()
     monkeypatch.setattr(ext_request_logging, "_log_request_started", mock_log_request_started)
     return mock_log_request_started
 
 
 @pytest.fixture
-def mock_response_receiver(monkeypatch) -> mock.Mock:
+def mock_response_receiver(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     mock_log_request_finished = mock.Mock()
     monkeypatch.setattr(ext_request_logging, "_log_request_finished", mock_log_request_finished)
     return mock_log_request_finished
 
 
 @pytest.fixture
-def mock_logger(monkeypatch) -> logging.Logger:
+def mock_logger(monkeypatch: pytest.MonkeyPatch) -> logging.Logger:
     _logger = mock.MagicMock(spec=logging.Logger)
     monkeypatch.setattr(ext_request_logging, "logger", _logger)
     return _logger
 
 
 @pytest.fixture
-def enable_request_logging(monkeypatch):
+def enable_request_logging(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(dify_config, "ENABLE_REQUEST_LOGGING", True)
 
 
