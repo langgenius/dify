@@ -1,7 +1,7 @@
 import time
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -43,7 +43,6 @@ from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import (

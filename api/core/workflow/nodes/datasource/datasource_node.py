@@ -21,7 +21,7 @@ from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import ErrorStrategy, NodeType, SystemVariableKey, NodeExecutionType
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, SystemVariableKey
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
