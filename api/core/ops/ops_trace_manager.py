@@ -119,6 +119,16 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                     "other_keys": ["endpoint", "app_name"],
                     "trace_instance": AliyunDataTrace,
                 }
+            case TracingProviderEnum.MLFLOW:
+                from core.ops.entities.config_entity import MLflowConfig
+                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+
+                return {
+                    "config_class": MLflowConfig,
+                    "secret_keys": ["password"],
+                    "other_keys": ["tracking_uri", "experiment_name", "experiment_id", "username"],
+                    "trace_instance": MLflowDataTrace,
+                }
 
             case _:
                 raise KeyError(f"Unsupported tracing provider: {provider}")

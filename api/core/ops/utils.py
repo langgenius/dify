@@ -147,3 +147,14 @@ def validate_project_name(project: str, default_name: str) -> str:
         return default_name
 
     return project.strip()
+
+
+def validate_integer_id(id: str) -> str:
+    """
+    Validate and normalize integer ID
+    """
+    id = id.strip()
+    if not id.isdigit():
+        raise ValueError("ID must be a valid integer")
+
+    return id

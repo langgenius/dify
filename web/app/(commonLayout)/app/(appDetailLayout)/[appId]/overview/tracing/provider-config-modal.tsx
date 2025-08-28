@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,7 +22,7 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | null
   onRemoved: () => void
   onCancel: () => void
   onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
@@ -77,6 +77,13 @@ const aliyunConfigTemplate = {
   endpoint: '',
 }
 
+const mlflowConfigTemplate = {
+  tracking_uri: '',
+  experiment_id: '',
+  username: '',
+  password: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -90,7 +97,7 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig>((() => {
     if (isEdit)
       return payload
 
@@ -111,6 +118,9 @@ const ProviderConfigModal: FC<Props> = ({
 
     else if (type === TracingProvider.aliyun)
       return aliyunConfigTemplate
+
+    else if (type === TracingProvider.mlflow)
+      return mlflowConfigTemplate
 
     return weaveConfigTemplate
   })())
@@ -200,6 +210,13 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'License Key' })
       if (!errorMessage && !postData.endpoint)
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Endpoint' })
+    }
+
+    if (type === TracingProvider.mlflow) {
+      const postData = config as MLflowConfig
+      if (!errorMessage && !postData.tracking_uri)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Tracking URI' })
+      // TODO: If tracking URI is set to 'databricks', prompt users to use Databricks tracing config
     }
 
     return errorMessage
@@ -463,6 +480,42 @@ const ProviderConfigModal: FC<Props> = ({
                             value={(config as OpikConfig).url}
                             onChange={handleConfigChange('url')}
                             placeholder={'https://www.comet.com/opik/api/'}
+                          />
+                        </>
+                      )}
+                    {type === TracingProvider.mlflow && (
+                        <>
+                          <Field
+                            label={t(`${I18N_PREFIX}.trackingUri`)!}
+                            labelClassName='!text-sm'
+                            value={(config as MLflowConfig).tracking_uri}
+                            isRequired
+                            onChange={handleConfigChange('tracking_uri')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.trackingUri`) })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.experimentId`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as MLflowConfig).experiment_id}
+                            onChange={handleConfigChange('experiment_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.experimentId`) })!}
+                          />
+                          <Field
+                            label='Username'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as MLflowConfig).username}
+                            onChange={handleConfigChange('username')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.username`) })!}
+                          />
+                          <Field
+                            label='Password'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as MLflowConfig).password}
+                            onChange={handleConfigChange('password')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.password`) })!}
                           />
                         </>
                       )}

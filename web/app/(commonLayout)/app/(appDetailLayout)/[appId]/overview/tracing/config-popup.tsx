@@ -30,7 +30,8 @@ export type PopupProps = {
   opikConfig: OpikConfig | null
   weaveConfig: WeaveConfig | null
   aliyunConfig: AliyunConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
+  mlflowConfig: MLflowConfig | null
+  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -48,6 +49,7 @@ const ConfigPopup: FC<PopupProps> = ({
   opikConfig,
   weaveConfig,
   aliyunConfig,
+  mlflowConfig,
   onConfigUpdated,
   onConfigRemoved,
 }) => {
@@ -71,7 +73,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => {
+  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -81,8 +83,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig
-  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig
+  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig && mlflowConfig
+  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig && !mlflowConfig
 
   const switchContent = (
     <Switch
@@ -182,6 +184,20 @@ const ConfigPopup: FC<PopupProps> = ({
       key="aliyun-provider-panel"
     />
   )
+
+  const mlflowPanel = (
+    <ProviderPanel
+      type={TracingProvider.mlflow}
+      readOnly={readOnly}
+      config={mlflowConfig}
+      hasConfigured={!!mlflowConfig}
+      onConfig={handleOnConfig(TracingProvider.mlflow)}
+      isChosen={chosenProvider === TracingProvider.mlflow}
+      onChoose={handleOnChoose(TracingProvider.mlflow)}
+      key="mlflow-provider-panel"
+    />
+  )
+
   const configuredProviderPanel = () => {
     const configuredPanels: JSX.Element[] = []
 
@@ -205,6 +221,9 @@ const ConfigPopup: FC<PopupProps> = ({
 
     if (aliyunConfig)
       configuredPanels.push(aliyunPanel)
+
+    if (mlflowConfig)
+      configuredPanels.push(mlflowPanel)
 
     return configuredPanels
   }
@@ -233,6 +252,9 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!aliyunConfig)
       notConfiguredPanels.push(aliyunPanel)
 
+    if (!mlflowConfig)
+      notConfiguredPanels.push(mlflowPanel)
+
     return notConfiguredPanels
   }
 
@@ -249,6 +271,8 @@ const ConfigPopup: FC<PopupProps> = ({
       return opikConfig
     if (currentProvider === TracingProvider.aliyun)
       return aliyunConfig
+    if (currentProvider === TracingProvider.mlflow)
+      return mlflowConfig
     return weaveConfig
   }
 
@@ -293,6 +317,7 @@ const ConfigPopup: FC<PopupProps> = ({
                 {langfusePanel}
                 {langSmithPanel}
                 {opikPanel}
+                {mlflowPanel}
                 {weavePanel}
                 {arizePanel}
                 {phoenixPanel}

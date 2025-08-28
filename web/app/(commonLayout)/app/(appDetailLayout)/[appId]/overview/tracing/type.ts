@@ -6,6 +6,7 @@ export enum TracingProvider {
   opik = 'opik',
   weave = 'weave',
   aliyun = 'aliyun',
+  mlflow = 'mlflow',
 }
 
 export type ArizeConfig = {
@@ -52,4 +53,11 @@ export type AliyunConfig = {
   app_name: string
   license_key: string
   endpoint: string
+}
+
+export type MLflowConfig = {
+  tracking_uri: string
+  experiment_id: string
+  username: string
+  password: string
 }

@@ -8,12 +8,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, MLflowIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -71,6 +71,7 @@ const Panel: FC = () => {
     [TracingProvider.opik]: OpikIcon,
     [TracingProvider.weave]: WeaveIcon,
     [TracingProvider.aliyun]: AliyunIcon,
+    [TracingProvider.mlflow]: MLflowIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
@@ -81,7 +82,8 @@ const Panel: FC = () => {
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
   const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
   const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig)
+  const [mlflowConfig, setMLflowConfig] = useState<MLflowConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig)
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
@@ -119,6 +121,11 @@ const Panel: FC = () => {
       if (!aliyunHasNotConfig)
         setAliyunConfig(aliyunConfig as AliyunConfig)
     }
+    const getMLflowConfig = async () => {
+      const { tracing_config: mlflowConfig, has_not_configured: mlflowHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.mlflow })
+      if (!mlflowHasNotConfig)
+        setMLflowConfig(mlflowConfig as MLflowConfig)
+    }
     Promise.all([
       getArizeConfig(),
       getPhoenixConfig(),
@@ -127,6 +134,7 @@ const Panel: FC = () => {
       getOpikConfig(),
       getWeaveConfig(),
       getAliyunConfig(),
+      getMLflowConfig(),
     ])
   }
 
@@ -164,6 +172,8 @@ const Panel: FC = () => {
       setWeaveConfig(null)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(null)
+    else if (provider === TracingProvider.mlflow)
+      setMLflowConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -209,6 +219,7 @@ const Panel: FC = () => {
           opikConfig={opikConfig}
           weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
+          mlflowConfig={mlflowConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >
@@ -245,6 +256,7 @@ const Panel: FC = () => {
           opikConfig={opikConfig}
           weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
+          mlflowConfig={mlflowConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >

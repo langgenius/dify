@@ -8,4 +8,5 @@ export const docURL = {
   [TracingProvider.opik]: 'https://www.comet.com/docs/opik/tracing/integrations/dify#setup-instructions',
   [TracingProvider.weave]: 'https://weave-docs.wandb.ai/',
   [TracingProvider.aliyun]: 'https://help.aliyun.com/zh/arms/tracing-analysis/untitled-document-1750672984680',
+  [TracingProvider.mlflow]: 'https://mlflow.org/docs/latest/genai/',
 }
