@@ -3,7 +3,7 @@ import contextlib
 import logging
 from typing import Optional
 
-from bs4 import BeautifulSoup  # type: ignore
+from bs4 import BeautifulSoup
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
