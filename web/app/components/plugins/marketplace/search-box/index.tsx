@@ -44,7 +44,7 @@ const SearchBox = ({
         )
       }>
         <div className='relative flex grow items-center p-1 pl-2'>
-          <div className='mr-2 flex w-full items-center'>
+          <div className='mr-2 flex w-full items-center pr-7'>
             <RiSearchLine className='mr-1.5 size-4 text-text-placeholder' />
             <input
               className={cn(
