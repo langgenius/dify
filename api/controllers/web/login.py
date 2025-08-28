@@ -1,5 +1,5 @@
 from flask_restx import Resource, reqparse
-from jwt import InvalidTokenError  # type: ignore
+from jwt import InvalidTokenError
 
 import services
 from controllers.console.auth.error import (
