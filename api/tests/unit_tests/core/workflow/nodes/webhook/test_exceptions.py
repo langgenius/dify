@@ -1,7 +1,7 @@
 import pytest
 
 from core.workflow.nodes.base.exc import BaseNodeError
-from core.workflow.nodes.webhook.exc import (
+from core.workflow.nodes.trigger_webhook.exc import (
     WebhookConfigError,
     WebhookNodeError,
     WebhookNotFoundError,

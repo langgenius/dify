@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.nodes.webhook.entities import (
+from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
     WebhookBodyParameter,

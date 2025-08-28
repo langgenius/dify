@@ -10,8 +10,8 @@ from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from .entities import WebhookData
 
 
-class WebhookNode(BaseNode):
-    _node_type = NodeType.WEBHOOK
+class TriggerWebhookNode(BaseNode):
+    _node_type = NodeType.TRIGGER_WEBHOOK
 
     _node_data: WebhookData
 
