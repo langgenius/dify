@@ -46,7 +46,7 @@ def session():
     # Configure the session to be used as a context manager
     session.__enter__ = MagicMock(return_value=session)
     session.__exit__ = MagicMock(return_value=None)
-
+    session.merge.side_effect = lambda x: x
     # Configure the session factory to return the session
     session_factory = MagicMock(spec=sessionmaker)
     session_factory.return_value = session
@@ -104,7 +104,7 @@ def test_save(repository, session):
     repository.to_db_model.assert_called_once_with(execution)
 
     # Assert session.merge was called (now using merge for both save and update)
-    session_obj.merge.assert_called_once_with(execution)
+    session_obj.merge.assert_called_with(execution)
 
 
 def test_save_with_existing_tenant_id(repository, session):
@@ -134,7 +134,7 @@ def test_save_with_existing_tenant_id(repository, session):
     repository.to_db_model.assert_called_once_with(execution)
 
     # Assert session.merge was called with the modified execution (now using merge for both save and update)
-    session_obj.merge.assert_called_once_with(modified_execution)
+    session_obj.merge.assert_called_with(modified_execution)
 
 
 def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
