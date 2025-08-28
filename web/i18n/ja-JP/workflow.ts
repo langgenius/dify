@@ -302,9 +302,10 @@ const translation = {
     'list-operator': '配列のフィルタリングやソート処理を行います。',
     'agent': '大規模言語モデルを活用した質問応答や自然言語処理を実行します。',
     'trigger-schedule': 'スケジュールに基づいてワークフローを開始する時間ベースのトリガー',
-    'trigger-webhook': 'HTTP コールバックトリガー、外部 HTTP リクエストによってワークフローを開始します',
+    'trigger-webhook': 'Webhook トリガーは第三者システムからの HTTP プッシュを受信してワークフローを自動的に開始します。',
     'trigger-plugin': 'サードパーティ統合トリガー、外部プラットフォームのイベントによってワークフローを開始します',
   },
+  difyTeam: 'Dify チーム',
   operator: {
     zoomIn: '拡大',
     zoomOut: '縮小',

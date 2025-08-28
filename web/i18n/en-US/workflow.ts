@@ -302,9 +302,10 @@ const translation = {
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
     'trigger-schedule': 'Time-based workflow trigger that starts workflows on a schedule',
-    'trigger-webhook': 'HTTP callback trigger that starts workflows from external HTTP requests',
+    'trigger-webhook': 'Webhook Trigger receives HTTP pushes from third-party systems to automatically trigger workflows.',
     'trigger-plugin': 'Third-party integration trigger that starts workflows from external platform events',
   },
+  difyTeam: 'Dify Team',
   operator: {
     zoomIn: 'Zoom In',
     zoomOut: 'Zoom Out',
