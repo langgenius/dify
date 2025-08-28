@@ -63,7 +63,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       {/* form content */}
       <div className='px-4 py-2'>
         <div className='mb-1 flex items-center justify-between'>
-          <div className='flex items-center gap-0.5'>
+          <div className='flex h-6 items-center gap-0.5'>
             <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.formContent.title`)}</div>
             <Tooltip
               popupContent={t(`${i18nPrefix}.formContent.tooltip`)}

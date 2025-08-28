@@ -10,6 +10,9 @@ import type { FormInputItem } from '../types'
 import AddInputField from './add-input-field'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
 import type { LexicalCommand } from 'lexical'
+import { isMac } from '../../../utils'
+import { useBoolean } from 'ahooks'
+import cn from '@/utils/classnames'
 
 type Props = {
   nodeId: string
@@ -73,13 +76,20 @@ const FormContent: FC<Props> = ({
     }
   }, [value])
 
+  const [isFocus, {
+    setTrue: setFocus,
+    setFalse: setBlur,
+  }] = useBoolean(false)
+
   return (
-    <div>
+    <div className={cn('rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal px-3 pt-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active')}>
       <PromptEditor
         key={editorKey}
         value={value}
         onChange={onChange}
         className='min-h-[80px]'
+        onFocus={setFocus}
+        onBlur={setBlur}
         hitlInputBlock={{
           show: true,
           formInputs,
@@ -122,6 +132,7 @@ const FormContent: FC<Props> = ({
           ),
         }]}
       />
+      <div className='system-xs-regular flex h-8 items-center text-components-input-text-placeholder'>Press / to insert variable, {isMac() ? '⌘' : 'Ctrl'} / to insert input field</div>
     </div>
   )
 }
