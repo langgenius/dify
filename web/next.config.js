@@ -87,6 +87,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
  * @param {import('code-inspector-plugin').CodeInspectorPluginOptions} [options] - Configuration options
  */
 const patchedCodeInspectorPlugin = (options) => {
+  if (process.env.NODE_ENV === 'production') return {}
   return {
     '**/*.{jsx,tsx,js,mjs,mts}': Object.values(codeInspectorPlugin(options))[0],
   }
