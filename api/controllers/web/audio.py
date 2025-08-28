@@ -1,7 +1,7 @@
 import logging
 
 from flask import request
-from flask_restx import reqparse, fields, marshal_with
+from flask_restx import fields, marshal_with, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
