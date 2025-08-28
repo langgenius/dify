@@ -3,6 +3,7 @@ Abort error strategy implementation.
 """
 
 import logging
+from typing import final
 
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
@@ -10,6 +11,7 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
 logger = logging.getLogger(__name__)
 
 
+@final
 class AbortStrategy:
     """
     Error strategy that aborts execution on failure.

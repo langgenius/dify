@@ -11,6 +11,7 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import datetime
+from typing import final
 from uuid import uuid4
 
 from flask import Flask
@@ -22,6 +23,7 @@ from core.workflow.nodes.base.node import Node
 from libs.flask_utils import preserve_flask_contexts
 
 
+@final
 class Worker(threading.Thread):
     """
     Worker thread that executes nodes from the ready queue.

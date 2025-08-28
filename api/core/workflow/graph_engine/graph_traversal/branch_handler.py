@@ -3,6 +3,7 @@ Branch node handling for graph traversal.
 """
 
 from collections.abc import Sequence
+from typing import final
 
 from core.workflow.graph import Graph
 from core.workflow.graph_events.node import NodeRunStreamChunkEvent
@@ -12,6 +13,7 @@ from .edge_processor import EdgeProcessor
 from .skip_propagator import SkipPropagator
 
 
+@final
 class BranchHandler:
     """
     Handles branch node logic during graph traversal.

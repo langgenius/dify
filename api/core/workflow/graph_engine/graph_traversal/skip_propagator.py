@@ -3,12 +3,14 @@ Skip state propagation through the graph.
 """
 
 from collections.abc import Sequence
+from typing import final
 
 from core.workflow.graph import Edge, Graph
 
 from ..state_management import EdgeStateManager, NodeStateManager
 
 
+@final
 class SkipPropagator:
     """
     Propagates skip states through the graph.

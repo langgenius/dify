@@ -7,7 +7,7 @@ Each instance uses a unique key for its command queue.
 """
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, final
 
 from ..entities.commands import AbortCommand, CommandType, GraphEngineCommand
 
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from extensions.ext_redis import RedisClientWrapper
 
 
+@final
 class RedisChannel:
     """
     Redis-based command channel implementation for distributed systems.

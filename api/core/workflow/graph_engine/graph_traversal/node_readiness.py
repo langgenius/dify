@@ -2,10 +2,13 @@
 Node readiness checking for execution.
 """
 
+from typing import final
+
 from core.workflow.enums import NodeState
 from core.workflow.graph import Graph
 
 
+@final
 class NodeReadinessChecker:
     """
     Checks if nodes are ready for execution based on their dependencies.

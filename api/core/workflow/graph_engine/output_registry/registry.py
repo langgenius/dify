@@ -7,7 +7,7 @@ thread-safe storage for node outputs.
 
 from collections.abc import Sequence
 from threading import RLock
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, final
 
 from core.variables import Segment
 from core.workflow.entities.variable_pool import VariablePool
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from core.workflow.graph_events import NodeRunStreamChunkEvent
 
 
+@final
 class OutputRegistry:
     """
     Thread-safe registry for storing and retrieving node outputs.

@@ -2,9 +2,12 @@
 Dynamic scaler for worker pool sizing.
 """
 
+from typing import final
+
 from core.workflow.graph import Graph
 
 
+@final
 class DynamicScaler:
     """
     Manages dynamic scaling decisions for the worker pool.

@@ -3,11 +3,13 @@ Retry error strategy implementation.
 """
 
 import time
+from typing import final
 
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunRetryEvent
 
 
+@final
 class RetryStrategy:
     """
     Error strategy that retries failed nodes.

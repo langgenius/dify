@@ -4,7 +4,7 @@ Manager for edge states during graph execution.
 
 import threading
 from collections.abc import Sequence
-from typing import TypedDict
+from typing import TypedDict, final
 
 from core.workflow.enums import NodeState
 from core.workflow.graph import Edge, Graph
@@ -18,6 +18,7 @@ class EdgeStateAnalysis(TypedDict):
     all_skipped: bool
 
 
+@final
 class EdgeStateManager:
     """
     Manages edge states and transitions during graph execution.

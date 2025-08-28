@@ -7,7 +7,7 @@ graph execution for debugging purposes.
 
 import logging
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, final
 
 from core.workflow.graph_events import (
     GraphEngineEvent,
@@ -34,6 +34,7 @@ from core.workflow.graph_events import (
 from .base import Layer
 
 
+@final
 class DebugLoggingLayer(Layer):
     """
     A layer that provides comprehensive logging of GraphEngine execution.

@@ -3,8 +3,10 @@ Tracker for currently executing nodes.
 """
 
 import threading
+from typing import final
 
 
+@final
 class ExecutionTracker:
     """
     Tracks nodes that are currently being executed.

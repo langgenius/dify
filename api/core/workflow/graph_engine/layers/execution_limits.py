@@ -11,6 +11,7 @@ When limits are exceeded, the layer automatically aborts execution.
 import logging
 import time
 from enum import Enum
+from typing import final
 
 from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType
 from core.workflow.graph_engine.layers import Layer
@@ -28,6 +29,7 @@ class LimitType(Enum):
     TIME_LIMIT = "time_limit"
 
 
+@final
 class ExecutionLimitsLayer(Layer):
     """
     Layer that enforces execution limits for workflows.

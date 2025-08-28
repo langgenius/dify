@@ -4,6 +4,7 @@ Worker pool management.
 
 import queue
 import threading
+from typing import final
 
 from core.workflow.graph import Graph
 
@@ -13,6 +14,7 @@ from .dynamic_scaler import DynamicScaler
 from .worker_factory import WorkerFactory
 
 
+@final
 class WorkerPool:
     """
     Manages a pool of worker threads for executing nodes.

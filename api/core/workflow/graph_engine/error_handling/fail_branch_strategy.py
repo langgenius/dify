@@ -2,12 +2,15 @@
 Fail branch error strategy implementation.
 """
 
+from typing import final
+
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunExceptionEvent, NodeRunFailedEvent
 from core.workflow.node_events import NodeRunResult
 
 
+@final
 class FailBranchStrategy:
     """
     Error strategy that continues execution via a fail branch.

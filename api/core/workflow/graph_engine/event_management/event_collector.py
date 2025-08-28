@@ -3,12 +3,14 @@ Event collector for buffering and managing events.
 """
 
 import threading
+from typing import final
 
 from core.workflow.graph_events import GraphEngineEvent
 
 from ..layers.base import Layer
 
 
+@final
 class ReadWriteLock:
     """
     A read-write lock implementation that allows multiple concurrent readers
@@ -56,6 +58,7 @@ class ReadWriteLock:
         return WriteLockContext(self)
 
 
+@final
 class ReadLockContext:
     """Context manager for read locks."""
 
@@ -70,6 +73,7 @@ class ReadLockContext:
         self._lock.release_read()
 
 
+@final
 class WriteLockContext:
     """Context manager for write locks."""
 
@@ -84,6 +88,7 @@ class WriteLockContext:
         self._lock.release_write()
 
 
+@final
 class EventCollector:
     """
     Collects and buffers events for later retrieval.

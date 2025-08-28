@@ -9,7 +9,7 @@ import logging
 from collections import deque
 from collections.abc import Sequence
 from threading import RLock
-from typing import TypeAlias
+from typing import TypeAlias, final
 from uuid import uuid4
 
 from core.workflow.enums import NodeExecutionType, NodeState
@@ -28,6 +28,7 @@ NodeID: TypeAlias = str
 EdgeID: TypeAlias = str
 
 
+@final
 class ResponseStreamCoordinator:
     """
     Manages response streaming sessions without relying on global state.

@@ -5,6 +5,7 @@ Factory for creating worker instances.
 import contextvars
 import queue
 from collections.abc import Callable
+from typing import final
 
 from flask import Flask
 
@@ -13,6 +14,7 @@ from core.workflow.graph import Graph
 from ..worker import Worker
 
 
+@final
 class WorkerFactory:
     """
     Factory for creating worker instances with proper context.

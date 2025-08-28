@@ -5,12 +5,13 @@ This module contains the private Stream class used internally by OutputRegistry
 to manage streaming data chunks.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, final
 
 if TYPE_CHECKING:
     from core.workflow.graph_events import NodeRunStreamChunkEvent
 
 
+@final
 class Stream:
     """
     A stream that holds NodeRunStreamChunkEvent objects and tracks read position.

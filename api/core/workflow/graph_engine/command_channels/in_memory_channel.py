@@ -6,10 +6,12 @@ within a single process. Each instance handles commands for one workflow executi
 """
 
 from queue import Queue
+from typing import final
 
 from ..entities.commands import GraphEngineCommand
 
 
+@final
 class InMemoryChannel:
     """
     In-memory command channel implementation using a thread-safe queue.

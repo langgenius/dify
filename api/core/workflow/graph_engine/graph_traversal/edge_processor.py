@@ -3,6 +3,7 @@ Edge processing logic for graph traversal.
 """
 
 from collections.abc import Sequence
+from typing import final
 
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Edge, Graph
@@ -12,6 +13,7 @@ from ..response_coordinator import ResponseStreamCoordinator
 from ..state_management import EdgeStateManager, NodeStateManager
 
 
+@final
 class EdgeProcessor:
     """
     Processes edges during graph execution.

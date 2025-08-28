@@ -6,7 +6,7 @@ import logging
 import queue
 import threading
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, final
 
 from core.workflow.graph_events.base import GraphNodeEventBase
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@final
 class Dispatcher:
     """
     Main dispatcher that processes events from the event queue.

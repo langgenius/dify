@@ -9,7 +9,7 @@ import contextvars
 import logging
 import queue
 from collections.abc import Generator, Mapping
-from typing import Any
+from typing import final
 
 from flask import Flask, current_app
 
@@ -45,6 +45,7 @@ from .worker_management import ActivityTracker, DynamicScaler, WorkerFactory, Wo
 logger = logging.getLogger(__name__)
 
 
+@final
 class GraphEngine:
     """
     Queue-based graph execution engine.
@@ -63,7 +64,7 @@ class GraphEngine:
         invoke_from: InvokeFrom,
         call_depth: int,
         graph: Graph,
-        graph_config: Mapping[str, Any],
+        graph_config: Mapping[str, object],
         graph_runtime_state: GraphRuntimeState,
         max_execution_steps: int,
         max_execution_time: int,
@@ -186,7 +187,7 @@ class GraphEngine:
             event_handler=self.event_handler_registry,
             event_collector=self.event_collector,
             command_processor=self.command_processor,
-            worker_pool=self.worker_pool,
+            worker_pool=self._worker_pool,
         )
 
         self.dispatcher = Dispatcher(
@@ -219,8 +220,8 @@ class GraphEngine:
         context_vars = contextvars.copy_context()
 
         # Create worker management components
-        self.activity_tracker = ActivityTracker()
-        self.dynamic_scaler = DynamicScaler(
+        self._activity_tracker = ActivityTracker()
+        self._dynamic_scaler = DynamicScaler(
             min_workers=(self._min_workers if self._min_workers is not None else dify_config.GRAPH_ENGINE_MIN_WORKERS),
             max_workers=(self._max_workers if self._max_workers is not None else dify_config.GRAPH_ENGINE_MAX_WORKERS),
             scale_up_threshold=(
@@ -234,15 +235,15 @@ class GraphEngine:
                 else dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME
             ),
         )
-        self.worker_factory = WorkerFactory(flask_app, context_vars)
+        self._worker_factory = WorkerFactory(flask_app, context_vars)
 
-        self.worker_pool = WorkerPool(
+        self._worker_pool = WorkerPool(
             ready_queue=self.ready_queue,
             event_queue=self.event_queue,
             graph=self.graph,
-            worker_factory=self.worker_factory,
-            dynamic_scaler=self.dynamic_scaler,
-            activity_tracker=self.activity_tracker,
+            worker_factory=self._worker_factory,
+            dynamic_scaler=self._dynamic_scaler,
+            activity_tracker=self._activity_tracker,
         )
 
     def _validate_graph_state_consistency(self) -> None:
@@ -320,10 +321,10 @@ class GraphEngine:
     def _start_execution(self) -> None:
         """Start execution subsystems."""
         # Calculate initial worker count
-        initial_workers = self.dynamic_scaler.calculate_initial_workers(self.graph)
+        initial_workers = self._dynamic_scaler.calculate_initial_workers(self.graph)
 
         # Start worker pool
-        self.worker_pool.start(initial_workers)
+        self._worker_pool.start(initial_workers)
 
         # Register response nodes
         for node in self.graph.nodes.values():
@@ -341,7 +342,7 @@ class GraphEngine:
     def _stop_execution(self) -> None:
         """Stop execution subsystems."""
         self.dispatcher.stop()
-        self.worker_pool.stop()
+        self._worker_pool.stop()
         # Don't mark complete here as the dispatcher already does it
 
         # Notify layers
