@@ -1,7 +1,8 @@
 import logging
 import secrets
 
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, marshal_with, reqparse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -10,10 +11,16 @@ from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
+from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
-from models.workflow import WorkflowWebhookTrigger
+from models.model import AppMode
+from models.workflow import AppTrigger, AppTriggerStatus, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
+
+
+
+
 
 
 class WebhookTriggerApi(Resource):
@@ -22,7 +29,8 @@ class WebhookTriggerApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=AppMode.WORKFLOW)
+    @marshal_with(webhook_trigger_fields)
     def post(self, app_model):
         """Create webhook trigger"""
         parser = reqparse.RequestParser()
@@ -36,9 +44,6 @@ class WebhookTriggerApi(Resource):
             help="triggered_by must be debugger or production",
         )
         args = parser.parse_args()
-
-        if app_model.mode != "workflow":
-            raise BadRequest("Invalid app mode, only workflow can add webhook node")
 
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
@@ -78,19 +83,17 @@ class WebhookTriggerApi(Resource):
             session.commit()
             session.refresh(webhook_trigger)
 
-        return {
-            "id": webhook_trigger.id,
-            "webhook_id": webhook_trigger.webhook_id,
-            "webhook_url": f"{dify_config.SERVICE_API_URL}/triggers/webhook/{webhook_trigger.webhook_id}",
-            "node_id": webhook_trigger.node_id,
-            "triggered_by": webhook_trigger.triggered_by,
-            "created_at": webhook_trigger.created_at.isoformat(),
-        }
+        # Add computed fields for marshal_with
+        base_url = dify_config.SERVICE_API_URL
+        webhook_trigger.webhook_url = f"{base_url}/triggers/webhook/{webhook_trigger.webhook_id}"
+        webhook_trigger.webhook_debug_url = f"{base_url}/triggers/webhook-debug/{webhook_trigger.webhook_id}"
+        
+        return webhook_trigger
 
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=AppMode.WORKFLOW)
     def delete(self, app_model):
         """Delete webhook trigger"""
         parser = reqparse.RequestParser()
@@ -148,4 +151,90 @@ class WebhookTriggerApi(Resource):
                 return webhook_id
 
 
+class AppTriggersApi(Resource):
+    """App Triggers list API"""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.WORKFLOW)
+    @marshal_with(triggers_list_fields)
+    def get(self, app_model):
+        """Get app triggers list"""
+        with Session(db.engine) as session:
+            # Get all triggers for this app using select API
+            triggers = (
+                session.execute(
+                    select(AppTrigger)
+                    .where(
+                        AppTrigger.tenant_id == current_user.current_tenant_id,
+                        AppTrigger.app_id == app_model.id,
+                    )
+                    .order_by(AppTrigger.created_at.desc())
+                )
+                .scalars()
+                .all()
+            )
+
+        # Add computed icon field for each trigger
+        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        for trigger in triggers:
+            if trigger.trigger_type == "trigger-plugin":
+                trigger.icon = url_prefix + trigger.provider_name + "/icon"
+            else:
+                trigger.icon = ""
+
+        return {"data": triggers}
+
+
+class AppTriggerEnableApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.WORKFLOW)
+    @marshal_with(trigger_fields)
+    def post(self, app_model):
+        """Update app trigger (enable/disable)"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        # The role of the current user must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        trigger_id = args["trigger_id"]
+
+        with Session(db.engine) as session:
+            # Find the trigger using select
+            trigger = session.execute(
+                select(AppTrigger).where(
+                    AppTrigger.id == trigger_id,
+                    AppTrigger.tenant_id == current_user.current_tenant_id,
+                    AppTrigger.app_id == app_model.id,
+                )
+            ).scalar_one_or_none()
+
+            if not trigger:
+                raise NotFound("Trigger not found")
+
+            # Update status based on enable_trigger boolean
+            trigger.status = AppTriggerStatus.ENABLED if args["enable_trigger"] else AppTriggerStatus.DISABLED
+
+            session.commit()
+            session.refresh(trigger)
+
+        # Add computed icon field
+        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        if trigger.trigger_type == "trigger-plugin":
+            trigger.icon = url_prefix + trigger.provider_name + "/icon"
+        else:
+            trigger.icon = ""
+        
+        return trigger
+
+
 api.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
+api.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
+api.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")

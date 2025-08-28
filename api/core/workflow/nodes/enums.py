@@ -25,8 +25,8 @@ class NodeType(StrEnum):
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
     AGENT = "agent"
+    TRIGGER_WEBHOOK = "trigger-webhook"
     TRIGGER_SCHEDULE = "trigger-schedule"
-    WEBHOOK = "webhook"
 
 
 class ErrorStrategy(StrEnum):

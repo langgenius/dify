@@ -210,6 +210,16 @@ const translation = {
     invalidVariable: 'Invalid variable',
     noValidTool: '{{field}} no valid tool selected',
     toolParameterRequired: '{{field}}: parameter [{{param}}] is required',
+    startNodeRequired: 'Please add a start node first before {{operation}}',
+  },
+  error: {
+    startNodeRequired: 'Please add a start node first before {{operation}}',
+    operations: {
+      connectingNodes: 'connecting nodes',
+      addingNodes: 'adding nodes',
+      modifyingWorkflow: 'modifying workflow',
+      updatingWorkflow: 'updating workflow',
+    },
   },
   singleRun: {
     testRun: 'Test Run ',
@@ -332,6 +342,7 @@ const translation = {
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
     checklistResolved: 'All issues are resolved',
+    goTo: 'Go to',
     startNode: 'Start Node',
     organizeBlocks: 'Organize nodes',
     change: 'Change',

@@ -8,27 +8,27 @@ from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
 from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 from core.workflow.nodes.answer import AnswerStreamGenerateRoute
 from core.workflow.nodes.end import EndStreamParam
-from core.workflow.nodes.webhook import WebhookNode
-from core.workflow.nodes.webhook.entities import (
+from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
     WebhookBodyParameter,
     WebhookData,
     WebhookParameter,
 )
+from core.workflow.nodes.webhook import TriggerWebhookNode
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 
-def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) -> WebhookNode:
+def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
     node_config = {
         "id": "1",
         "data": webhook_data.model_dump(),
     }
 
-    node = WebhookNode(
+    node = TriggerWebhookNode(
         id="1",
         config=node_config,
         graph_init_params=GraphInitParams(
@@ -96,7 +96,7 @@ def test_webhook_node_basic_initialization():
 
 def test_webhook_node_default_config():
     """Test webhook node default configuration."""
-    config = WebhookNode.get_default_config()
+    config = TriggerWebhookNode.get_default_config()
 
     assert config["type"] == "webhook"
     assert config["config"]["method"] == "get"

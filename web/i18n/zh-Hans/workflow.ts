@@ -210,6 +210,16 @@ const translation = {
     invalidVariable: '无效的变量',
     noValidTool: '{{field}} 无可用工具',
     toolParameterRequired: '{{field}}: 参数 [{{param}}] 不能为空',
+    startNodeRequired: '请先添加开始节点，然后再{{operation}}',
+  },
+  error: {
+    startNodeRequired: '请先添加开始节点，然后再{{operation}}',
+    operations: {
+      connectingNodes: '连接节点',
+      addingNodes: '添加节点',
+      modifyingWorkflow: '修改工作流',
+      updatingWorkflow: '更新工作流',
+    },
   },
   singleRun: {
     testRun: '测试运行 ',
@@ -332,6 +342,7 @@ const translation = {
     checklist: '检查清单',
     checklistTip: '发布前确保所有问题均已解决',
     checklistResolved: '所有问题均已解决',
+    goTo: '转到',
     startNode: '开始节点',
     organizeBlocks: '整理节点',
     change: '更改',

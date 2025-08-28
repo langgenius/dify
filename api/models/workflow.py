@@ -1317,7 +1317,7 @@ class WorkflowTriggerLog(Base):
         sa.Index("workflow_trigger_log_workflow_id_idx", "workflow_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1408,7 +1408,7 @@ class WorkflowWebhookTrigger(Base):
         sa.UniqueConstraint("webhook_id", name="uniq_webhook_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1419,6 +1419,66 @@ class WorkflowWebhookTrigger(Base):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
+
+
+class AppTriggerType(StrEnum):
+    """App Trigger Type Enum"""
+
+    TRIGGER_WEBHOOK = "trigger-webhook"
+    TRIGGER_SCHEDULE = "trigger-schedule"
+    TRIGGER_PLUGIN = "trigger-plugin"
+
+
+class AppTriggerStatus(StrEnum):
+    """App Trigger Status Enum"""
+
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+    UNAUTHORIZED = "unauthorized"
+
+
+class AppTrigger(Base):
+    """
+    App Trigger
+
+    Manages multiple triggers for an app with enable/disable and authorization states.
+
+    Attributes:
+    - id (uuid) Primary key
+    - tenant_id (uuid) Workspace ID
+    - app_id (uuid) App ID
+    - trigger_type (string) Type: webhook, schedule, plugin
+    - title (string) Trigger title
+
+    - status (string) Status: enabled, disabled, unauthorized, error
+    - node_id (string) Optional workflow node ID
+    - created_at (timestamp) Creation time
+    - updated_at (timestamp) Last update time
+    """
+
+    __tablename__ = "app_triggers"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_trigger_pkey"),
+        sa.Index("app_trigger_tenant_app_idx", "tenant_id", "app_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=False)
+    trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(255), server_default="", nullable=True)
+    status: Mapped[str] = mapped_column(
+        EnumText(AppTriggerStatus, length=50), nullable=False, default=AppTriggerStatus.DISABLED
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
     )
 
