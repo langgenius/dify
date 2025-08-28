@@ -280,7 +280,7 @@ const translation = {
       feedbackDesc: 'Відкриті обговорення відгуків громади',
       docDesc: 'Відкрийте документацію допомоги',
       accountDesc: 'Перейдіть на сторінку облікового запису',
-      communityDesc: 'Відкритий дискорд-спільнота',
+      communityDesc: 'Відкрита Discord-спільнота',
     },
     emptyState: {
       noPluginsFound: 'Плагінів не знайдено',
