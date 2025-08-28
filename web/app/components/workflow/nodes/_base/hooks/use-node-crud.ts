@@ -29,7 +29,7 @@ export const useNodeUpdate = (id: string) => {
     return nodes.find(node => node.id === id)
   }, [store, id])
 
-  const handleNodeDataUpdate = useCallback((data: Partial<CommonNodeType>) => {
+  const handleNodeDataUpdate = useCallback((data: any) => {
     handleNodeDataUpdateWithSyncDraft({
       id,
       data,

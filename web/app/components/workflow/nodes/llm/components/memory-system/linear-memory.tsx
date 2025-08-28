@@ -9,16 +9,17 @@ import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
 import type { Memory } from '@/app/components/workflow/types'
 import { MemoryRole } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 const WINDOW_SIZE_MIN = 1
 const WINDOW_SIZE_MAX = 100
-const WINDOW_SIZE_DEFAULT = 50
-const MEMORY_DEFAULT: Memory = {
+export const WINDOW_SIZE_DEFAULT = 50
+export const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
   query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
 }
 type RoleItemProps = {
-  readonly: boolean
+  readonly?: boolean
   title: string
   value: string
   onChange: (value: string) => void
@@ -50,12 +51,14 @@ type LinearMemoryProps = {
   readonly?: boolean
   onChange: (payload: Memory) => void
   canSetRoleName?: boolean
+  className?: string
 }
 const LinearMemory = ({
   payload,
   readonly,
   onChange,
   canSetRoleName,
+  className,
 }: LinearMemoryProps) => {
   const i18nPrefix = 'workflow.nodes.common.memory'
   const { t } = useTranslation()
@@ -119,7 +122,7 @@ const LinearMemory = ({
 
   return (
     <>
-    <div className='flex justify-between'>
+    <div className={cn('flex justify-between', className)}>
       <div className='flex h-8 items-center space-x-2'>
         <Switch
           defaultValue={payload?.window?.enabled}

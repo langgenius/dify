@@ -15,12 +15,14 @@ import {
 import Button from '@/app/components/base/button'
 
 type MemorySelectorProps = {
-  value: string
+  value?: string
   onSelected: (value: string) => void
+  readonly?: boolean
 }
 const MemorySelector = ({
   value,
   onSelected,
+  readonly,
 }: MemorySelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -51,14 +53,17 @@ const MemorySelector = ({
       offset={4}
     >
       <PortalToFollowElemTrigger onClick={(e) => {
+        if (readonly)
+          return
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
         setOpen(v => !v)
       }}>
         <Button
           size='small'
+          disabled={readonly}
         >
-          {selectedOption?.label}
+          {selectedOption?.label || t('workflow.nodes.common.memory.disabled.title')}
           <RiArrowDownSLine className='h-3.5 w-3.5' />
         </Button>
       </PortalToFollowElemTrigger>
@@ -70,6 +75,8 @@ const MemorySelector = ({
                 key={option.value}
                 className='flex cursor-pointer rounded-lg p-2 pr-3 hover:bg-state-base-hover'
                 onClick={(e) => {
+                  if (readonly)
+                    return
                   e.stopPropagation()
                   e.nativeEvent.stopImmediatePropagation()
                   onSelected(option.value)

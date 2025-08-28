@@ -266,7 +266,7 @@ export type Memory = {
     size: number | string | null
   }
   query_prompt_template: string
-  block_id?: string
+  block_id?: string[]
   mode?: 'linear' | 'block'
 }
 

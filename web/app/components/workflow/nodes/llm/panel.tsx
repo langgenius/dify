@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
@@ -53,7 +52,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleVarListChange,
     handleVarNameChange,
     handleSyeQueryChange,
-    handleMemoryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isModelSupportStructuredOutput,
@@ -221,15 +219,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         {isChatMode && (
           <>
             <Split />
-            <MemoryConfig
-              readonly={readOnly}
-              config={{ data: inputs.memory }}
-              onChange={handleMemoryChange}
-              canSetRoleName={!isCompletionModel}
-            />
             <MemorySystem
               id={id}
               data={data}
+              readonly={readOnly}
+              canSetRoleName={isCompletionModel}
             />
           </>
         )}
