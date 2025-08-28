@@ -314,7 +314,7 @@ class DatasourceNode(Node):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: DatasourceNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -323,10 +323,11 @@ class DatasourceNode(Node):
         :param node_data: node data
         :return:
         """
+        typed_node_data = DatasourceNodeData.model_validate(node_data)
         result = {}
-        if node_data.datasource_parameters:
-            for parameter_name in node_data.datasource_parameters:
-                input = node_data.datasource_parameters[parameter_name]
+        if typed_node_data.datasource_parameters:
+            for parameter_name in typed_node_data.datasource_parameters:
+                input = typed_node_data.datasource_parameters[parameter_name]
                 if input.type == "mixed":
                     assert isinstance(input.value, str)
                     selectors = VariableTemplateParser(input.value).extract_variable_selectors()
@@ -430,7 +431,7 @@ class DatasourceNode(Node):
                 )
             elif message.type == DatasourceMessage.MessageType.JSON:
                 assert isinstance(message.message, DatasourceMessage.JsonMessage)
-                if self._node_type == NodeType.AGENT:
+                if self.node_type == NodeType.AGENT:
                     msg_metadata = message.message.json_object.pop("execution_metadata", {})
                     agent_execution_metadata = {
                         key: value

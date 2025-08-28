@@ -1010,14 +1010,6 @@ api.add_resource(
     RagPipelinePublishedDatasourceNodeRunApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run",
 )
-# api.add_resource(
-#     RagPipelinePublishedDatasourceNodeRunStatusApi,
-#     "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run-status",
-# )
-# api.add_resource(
-#     RagPipelineDraftDatasourceNodeRunStatusApi,
-#     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run-status",
-# )
 
 api.add_resource(
     RagPipelineDraftDatasourceNodeRunApi,

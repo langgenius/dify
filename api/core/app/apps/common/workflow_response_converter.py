@@ -179,11 +179,10 @@ class WorkflowResponseConverter:
                 provider_id=event.provider_id,
             )
         elif event.node_type == NodeType.DATASOURCE:
-            node_data = cast(DatasourceNodeData, event.node_data)
             manager = PluginDatasourceManager()
             provider_entity = manager.fetch_datasource_provider(
                 self._application_generate_entity.app_config.tenant_id,
-                f"{node_data.plugin_id}/{node_data.provider_name}",
+                event.provider_id,
             )
             response.data.extras["icon"] = provider_entity.declaration.identity.icon
 
