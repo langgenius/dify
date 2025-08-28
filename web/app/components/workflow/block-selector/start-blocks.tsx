@@ -59,7 +59,7 @@ const StartBlocks = ({
     <Tooltip
       key={block.type}
       position='right'
-      popupClassName='w-[200px] rounded-xl'
+      popupClassName='w-[224px] rounded-xl'
       needsDelay={false}
       popupContent={(
         <div>
