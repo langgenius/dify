@@ -4,7 +4,7 @@ import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'
 
 type HeaderProps = {
-  prefix: string[]
+  breadcrumbs: string[]
   inputValue: string
   keywords: string
   bucket: string
@@ -15,7 +15,7 @@ type HeaderProps = {
 }
 
 const Header = ({
-  prefix,
+  breadcrumbs,
   inputValue,
   keywords,
   bucket,
@@ -29,7 +29,7 @@ const Header = ({
   return (
     <div className='flex items-center gap-x-2 bg-components-panel-bg p-1 pl-3'>
       <Breadcrumbs
-        prefix={prefix}
+        breadcrumbs={breadcrumbs}
         keywords={keywords}
         bucket={bucket}
         searchResultsLength={searchResultsLength}

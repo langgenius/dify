@@ -33,6 +33,7 @@ const OnlineDrive = ({
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
     nextPageParameters,
+    breadcrumbs,
     prefix,
     keywords,
     bucket,
@@ -41,6 +42,7 @@ const OnlineDrive = ({
     currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     nextPageParameters: state.nextPageParameters,
+    breadcrumbs: state.breadcrumbs,
     prefix: state.prefix,
     keywords: state.keywords,
     bucket: state.bucket,
@@ -62,17 +64,16 @@ const OnlineDrive = ({
 
   const getOnlineDriveFiles = useCallback(async () => {
     const { nextPageParameters, prefix, bucket, fileList, currentCredentialId } = dataSourceStore.getState()
-    const prefixString = prefix.length > 0 ? `${prefix.join('/')}/` : ''
     setIsLoading(true)
     ssePost(
       datasourceNodeRunURL,
       {
         body: {
           inputs: {
-            prefix: prefixString,
+            prefix: prefix[prefix.length - 1],
             bucket,
             next_page_parameters: nextPageParameters,
-            max_keys: 30, // Adjust as needed
+            max_keys: 30,
           },
           datasource_type: DatasourceType.onlineDrive,
           credential_id: currentCredentialId,
@@ -86,7 +87,7 @@ const OnlineDrive = ({
             isTruncated: newIsTruncated,
             nextPageParameters: newNextPageParameters,
             hasBucket: newHasBucket,
-          } = convertOnlineDriveData(documentsData.data, prefix, bucket)
+          } = convertOnlineDriveData(documentsData.data, breadcrumbs, bucket)
           setFileList([...fileList, ...newFileList])
           isTruncated.current = newIsTruncated
           currentNextPageParametersRef.current = newNextPageParameters
@@ -105,6 +106,7 @@ const OnlineDrive = ({
   }, [datasourceNodeRunURL, dataSourceStore])
 
   useEffect(() => {
+    if (!currentCredentialId) return
     if (isInitialMount) {
       // Only fetch files on initial mount if fileList is empty
       if (fileList.length === 0)
@@ -150,7 +152,7 @@ const OnlineDrive = ({
   }, [dataSourceStore, isInPipeline])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
-    const { prefix, setPrefix, setBucket, setFileList, setSelectedFileIds } = dataSourceStore.getState()
+    const { breadcrumbs, setBreadcrumbs, setPrefix, setBucket, setFileList, setSelectedFileIds } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.file) return
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
@@ -158,9 +160,13 @@ const OnlineDrive = ({
     }
     else {
       setSelectedFileIds([])
-      const newPrefix = produce(prefix, (draft) => {
+      const newBreadcrumbs = produce(breadcrumbs, (draft) => {
         draft.push(file.name)
       })
+      const newPrefix = produce(prefix, (draft) => {
+        draft.push(file.id)
+      })
+      setBreadcrumbs(newBreadcrumbs)
       setPrefix(newPrefix)
     }
   }, [dataSourceStore, getOnlineDriveFiles])
@@ -185,7 +191,7 @@ const OnlineDrive = ({
       <FileList
         fileList={onlineDriveFileList}
         selectedFileIds={selectedFileIds}
-        prefix={prefix}
+        breadcrumbs={breadcrumbs}
         keywords={keywords}
         bucket={bucket}
         resetKeywords={resetKeywords}

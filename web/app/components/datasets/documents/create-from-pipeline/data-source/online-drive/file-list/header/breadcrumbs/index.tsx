@@ -7,7 +7,7 @@ import Dropdown from './dropdown'
 import Drive from './drive'
 
 type BreadcrumbsProps = {
-  prefix: string[]
+  breadcrumbs: string[]
   keywords: string
   bucket: string
   searchResultsLength: number
@@ -15,7 +15,7 @@ type BreadcrumbsProps = {
 }
 
 const Breadcrumbs = ({
-  prefix,
+  breadcrumbs,
   keywords,
   bucket,
   searchResultsLength,
@@ -25,52 +25,57 @@ const Breadcrumbs = ({
   const dataSourceStore = useDataSourceStore()
   const hasBucket = useDataSourceStoreWithSelector(s => s.hasBucket)
   const showSearchResult = !!keywords && searchResultsLength > 0
-  const showBucketListTitle = prefix.length === 0 && hasBucket && bucket === ''
+  const showBucketListTitle = breadcrumbs.length === 0 && hasBucket && bucket === ''
 
   const displayBreadcrumbNum = useMemo(() => {
     const num = isInPipeline ? 2 : 3
     return bucket ? num - 1 : num
   }, [isInPipeline, bucket])
 
-  const breadcrumbs = useMemo(() => {
-    const prefixToDisplay = prefix.slice(0, displayBreadcrumbNum - 1)
-    const collapsedBreadcrumbs = prefix.slice(displayBreadcrumbNum - 1, prefix.length - 1)
+  const breadcrumbsConfig = useMemo(() => {
+    const prefixToDisplay = breadcrumbs.slice(0, displayBreadcrumbNum - 1)
+    const collapsedBreadcrumbs = breadcrumbs.slice(displayBreadcrumbNum - 1, breadcrumbs.length - 1)
     return {
-      original: prefix,
-      needCollapsed: prefix.length > displayBreadcrumbNum,
+      original: breadcrumbs,
+      needCollapsed: breadcrumbs.length > displayBreadcrumbNum,
       prefixBreadcrumbs: prefixToDisplay,
       collapsedBreadcrumbs,
-      lastBreadcrumb: prefix[prefix.length - 1],
+      lastBreadcrumb: breadcrumbs[breadcrumbs.length - 1],
     }
-  }, [displayBreadcrumbNum, prefix])
+  }, [displayBreadcrumbNum, breadcrumbs])
 
   const handleBackToBucketList = useCallback(() => {
-    const { setFileList, setSelectedFileIds, setPrefix, setBucket } = dataSourceStore.getState()
+    const { setFileList, setSelectedFileIds, setBreadcrumbs, setPrefix, setBucket } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileIds([])
     setBucket('')
+    setBreadcrumbs([])
     setPrefix([])
   }, [dataSourceStore])
 
   const handleClickBucketName = useCallback(() => {
-    const { setFileList, setSelectedFileIds, setPrefix } = dataSourceStore.getState()
+    const { setFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileIds([])
+    setBreadcrumbs([])
     setPrefix([])
   }, [dataSourceStore])
 
   const handleBackToRoot = useCallback(() => {
-    const { setFileList, setSelectedFileIds, setPrefix } = dataSourceStore.getState()
+    const { setFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileIds([])
+    setBreadcrumbs([])
     setPrefix([])
   }, [dataSourceStore])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
-    const { prefix, setFileList, setSelectedFileIds, setPrefix } = dataSourceStore.getState()
+    const { breadcrumbs, prefix, setFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } = dataSourceStore.getState()
+    const newBreadcrumbs = breadcrumbs.slice(0, index + 1)
     const newPrefix = prefix.slice(0, index + 1)
     setFileList([])
     setSelectedFileIds([])
+    setBreadcrumbs(newBreadcrumbs)
     setPrefix(newPrefix)
   }, [dataSourceStore])
 
@@ -80,7 +85,7 @@ const Breadcrumbs = ({
         <div className='system-sm-medium text-test-secondary px-[5px]'>
           {t('datasetPipeline.onlineDrive.breadcrumbs.searchResult', {
             searchResultsLength,
-            folderName: prefix.length > 0 ? prefix[prefix.length - 1] : bucket,
+            folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
           })}
         </div>
       )}
@@ -96,21 +101,21 @@ const Breadcrumbs = ({
               bucketName={bucket}
               handleBackToBucketList={handleBackToBucketList}
               handleClickBucketName={handleClickBucketName}
-              isActive={prefix.length === 0}
-              disabled={prefix.length === 0}
-              showSeparator={prefix.length > 0}
+              isActive={breadcrumbs.length === 0}
+              disabled={breadcrumbs.length === 0}
+              showSeparator={breadcrumbs.length > 0}
             />
           )}
           {!hasBucket && (
             <Drive
-              prefix={prefix}
+              breadcrumbs={breadcrumbs}
               handleBackToRoot={handleBackToRoot}
             />
           )}
-          {!breadcrumbs.needCollapsed && (
+          {!breadcrumbsConfig.needCollapsed && (
             <>
-              {breadcrumbs.original.map((breadcrumb, index) => {
-                const isLast = index === breadcrumbs.original.length - 1
+              {breadcrumbsConfig.original.map((breadcrumb, index) => {
+                const isLast = index === breadcrumbsConfig.original.length - 1
                 return (
                   <BreadcrumbItem
                     key={`${breadcrumb}-${index}`}
@@ -125,9 +130,9 @@ const Breadcrumbs = ({
               })}
             </>
           )}
-          {breadcrumbs.needCollapsed && (
+          {breadcrumbsConfig.needCollapsed && (
             <>
-              {breadcrumbs.prefixBreadcrumbs.map((breadcrumb, index) => {
+              {breadcrumbsConfig.prefixBreadcrumbs.map((breadcrumb, index) => {
                 return (
                   <BreadcrumbItem
                     key={`${breadcrumb}-${index}`}
@@ -138,14 +143,14 @@ const Breadcrumbs = ({
                 )
               })}
               <Dropdown
-                startIndex={breadcrumbs.prefixBreadcrumbs.length}
-                breadcrumbs={breadcrumbs.collapsedBreadcrumbs}
+                startIndex={breadcrumbsConfig.prefixBreadcrumbs.length}
+                breadcrumbs={breadcrumbsConfig.collapsedBreadcrumbs}
                 onBreadcrumbClick={handleClickBreadcrumb}
               />
               <BreadcrumbItem
-                index={prefix.length - 1}
+                index={breadcrumbs.length - 1}
                 handleClick={handleClickBreadcrumb}
-                name={breadcrumbs.lastBreadcrumb}
+                name={breadcrumbsConfig.lastBreadcrumb}
                 isActive={true}
                 disabled={true}
                 showSeparator={false}

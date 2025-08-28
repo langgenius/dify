@@ -7,7 +7,7 @@ import { useDebounceFn } from 'ahooks'
 type FileListProps = {
   fileList: OnlineDriveFile[]
   selectedFileIds: string[]
-  prefix: string[]
+  breadcrumbs: string[]
   keywords: string
   bucket: string
   isInPipeline: boolean
@@ -22,7 +22,7 @@ type FileListProps = {
 const FileList = ({
   fileList,
   selectedFileIds,
-  prefix,
+  breadcrumbs,
   keywords,
   bucket,
   resetKeywords,
@@ -56,7 +56,7 @@ const FileList = ({
   return (
     <div className='flex h-[400px] flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3'>
       <Header
-        prefix={prefix}
+        breadcrumbs={breadcrumbs}
         inputValue={inputValue}
         keywords={keywords}
         bucket={bucket}
