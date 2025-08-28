@@ -301,10 +301,11 @@ const translation = {
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
     'agent': '调用大型语言模型回答问题或处理自然语言',
-    'trigger-webhook': '从外部 HTTP 请求启动工作流的 HTTP 回调触发器',
+    'trigger-webhook': 'Webhook 触发器接收来自第三方系统的 HTTP 推送以自动触发工作流。',
     'trigger-schedule': '基于时间的工作流触发器，按计划启动工作流',
     'trigger-plugin': '从外部平台事件启动工作流的第三方集成触发器',
   },
+  difyTeam: 'Dify 团队',
   operator: {
     zoomIn: '放大',
     zoomOut: '缩小',
