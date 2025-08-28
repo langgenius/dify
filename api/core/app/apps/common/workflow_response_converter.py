@@ -3,7 +3,6 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
