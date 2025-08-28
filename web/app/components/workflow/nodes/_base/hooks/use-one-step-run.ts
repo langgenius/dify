@@ -94,6 +94,8 @@ const varTypeToInputVarType = (type: VarType, {
     return InputVarType.paragraph
   if (type === VarType.number)
     return InputVarType.number
+  if (type === VarType.boolean)
+    return InputVarType.checkbox
   if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
     return InputVarType.json
   if (type === VarType.file)
@@ -185,11 +187,11 @@ const useOneStepRun = <T>({
     const isPaused = isPausedRef.current
 
     // The backend don't support pause the single run, so the frontend handle the pause state.
-    if(isPaused)
+    if (isPaused)
       return
 
     const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
-    if(!canRunLastRun) {
+    if (!canRunLastRun) {
       doSetRunResult(data)
       return
     }
@@ -199,9 +201,9 @@ const useOneStepRun = <T>({
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(id, vars, nodes)
-    if(data?.status === NodeRunningStatus.Succeeded) {
+    if (data?.status === NodeRunningStatus.Succeeded) {
       invalidLastRun()
-      if(isStartNode)
+      if (isStartNode)
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
@@ -218,21 +220,21 @@ const useOneStepRun = <T>({
     })
   }
   const checkValidWrap = () => {
-    if(!checkValid)
+    if (!checkValid)
       return { isValid: true, errorMessage: '' }
     const res = checkValid(data, t, moreDataForCheckValid)
-    if(!res.isValid) {
-        handleNodeDataUpdate({
-          id,
-          data: {
-            ...data,
-            _isSingleRun: false,
-          },
-        })
-        Toast.notify({
-          type: 'error',
-          message: res.errorMessage,
-        })
+    if (!res.isValid) {
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _isSingleRun: false,
+        },
+      })
+      Toast.notify({
+        type: 'error',
+        message: res.errorMessage,
+      })
     }
     return res
   }
@@ -251,7 +253,6 @@ const useOneStepRun = <T>({
       const { isValid } = checkValidWrap()
       setCanShowSingleRun(isValid)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
 
   useEffect(() => {
@@ -293,9 +294,9 @@ const useOneStepRun = <T>({
       if (!isIteration && !isLoop) {
         const isStartNode = data.type === BlockEnum.Start
         const postData: Record<string, any> = {}
-        if(isStartNode) {
+        if (isStartNode) {
           const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
-          if(isChatMode)
+          if (isChatMode)
             postData.conversation_id = ''
 
           postData.inputs = inputs
@@ -317,7 +318,7 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
-              if(isPausedRef.current)
+              if (isPausedRef.current)
                 return
               handleNodeDataUpdate({
                 id,
@@ -396,7 +397,7 @@ const useOneStepRun = <T>({
               setIterationRunResult(newIterationRunResult)
             },
             onError: () => {
-              if(isPausedRef.current)
+              if (isPausedRef.current)
                 return
               handleNodeDataUpdate({
                 id,
@@ -420,7 +421,7 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
-              if(isPausedRef.current)
+              if (isPausedRef.current)
                 return
               handleNodeDataUpdate({
                 id,
@@ -500,7 +501,7 @@ const useOneStepRun = <T>({
               setLoopRunResult(newLoopRunResult)
             },
             onError: () => {
-              if(isPausedRef.current)
+              if (isPausedRef.current)
                 return
               handleNodeDataUpdate({
                 id,
@@ -522,7 +523,7 @@ const useOneStepRun = <T>({
       hasError = true
       invalidLastRun()
       if (!isIteration && !isLoop) {
-        if(isPausedRef.current)
+        if (isPausedRef.current)
           return
         handleNodeDataUpdate({
           id,
@@ -544,11 +545,11 @@ const useOneStepRun = <T>({
         })
       }
     }
-    if(isPausedRef.current)
+    if (isPausedRef.current)
       return
 
     if (!isIteration && !isLoop && !hasError) {
-      if(isPausedRef.current)
+      if (isPausedRef.current)
         return
       handleNodeDataUpdate({
         id,
@@ -587,7 +588,7 @@ const useOneStepRun = <T>({
         }
       }
       return {
-        label: item.label || item.variable,
+        label: (typeof item.label === 'object' ? item.label.variable : item.label) || item.variable,
         variable: item.variable,
         type: varTypeToInputVarType(originalVar.type, {
           isSelect: !!originalVar.isSelect,

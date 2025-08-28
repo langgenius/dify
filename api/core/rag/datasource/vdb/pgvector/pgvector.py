@@ -6,8 +6,8 @@ from contextlib import contextmanager
 from typing import Any
 
 import psycopg2.errors
-import psycopg2.extras  # type: ignore
-import psycopg2.pool  # type: ignore
+import psycopg2.extras
+import psycopg2.pool
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -18,6 +18,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class PGVectorConfig(BaseModel):
@@ -155,7 +157,7 @@ class PGVector(BaseVector):
                 cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
             except psycopg2.errors.UndefinedTable:
                 # table not exists
-                logging.warning("Table %s not found, skipping delete operation.", self.table_name)
+                logger.warning("Table %s not found, skipping delete operation.", self.table_name)
                 return
             except Exception as e:
                 raise e

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, orm
+from sqlalchemy import DateTime, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -38,7 +38,7 @@ from .engine import db
 from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class WorkflowType(Enum):
@@ -336,12 +336,13 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return (
-            db.session.query(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
-            .count()
-            > 0
+        stmt = select(
+            exists().where(
+                WorkflowToolProvider.tenant_id == self.tenant_id,
+                WorkflowToolProvider.app_id == self.app_id,
+            )
         )
+        return db.session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
@@ -921,7 +922,7 @@ def _naive_utc_datetime():
 
 class WorkflowDraftVariable(Base):
     """`WorkflowDraftVariable` record variables and outputs generated during
-    debugging worfklow or chatflow.
+    debugging workflow or chatflow.
 
     IMPORTANT: This model maintains multiple invariant rules that must be preserved.
     Do not instantiate this class directly with the constructor.
@@ -1055,7 +1056,7 @@ class WorkflowDraftVariable(Base):
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
         if not isinstance(selector, list):
-            _logger.error(
+            logger.error(
                 "invalid selector loaded from database, type=%s, value=%s",
                 type(selector),
                 self.selector,

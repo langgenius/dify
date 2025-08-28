@@ -67,6 +67,8 @@ from tasks.mail_owner_transfer_task import (
 )
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 
+logger = logging.getLogger(__name__)
+
 
 class TokenPair(BaseModel):
     access_token: str
@@ -332,9 +334,9 @@ class AccountService:
                 db.session.add(account_integrate)
 
             db.session.commit()
-            logging.info("Account %s linked %s account %s.", account.id, provider, open_id)
+            logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
         except Exception as e:
-            logging.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
+            logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
             raise LinkAccountIntegrateError("Failed to link account.") from e
 
     @staticmethod
@@ -925,7 +927,7 @@ class TenantService:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER.value:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
-                logging.error("Tenant %s has already an owner.", tenant.id)
+                logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
@@ -1177,7 +1179,7 @@ class RegisterService:
             db.session.query(Tenant).delete()
             db.session.commit()
 
-            logging.exception("Setup account failed, email: %s, name: %s", email, name)
+            logger.exception("Setup account failed, email: %s, name: %s", email, name)
             raise ValueError(f"Setup failed: {e}")
 
     @classmethod
@@ -1222,15 +1224,15 @@ class RegisterService:
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
-            logging.exception("Register failed")
+            logger.exception("Register failed")
             raise AccountRegisterError("Workspace is not allowed to create.")
         except AccountRegisterError as are:
             db.session.rollback()
-            logging.exception("Register failed")
+            logger.exception("Register failed")
             raise are
         except Exception as e:
             db.session.rollback()
-            logging.exception("Register failed")
+            logger.exception("Register failed")
             raise AccountRegisterError(f"Registration failed: {e}") from e
 
         return account

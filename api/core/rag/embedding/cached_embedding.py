@@ -75,7 +75,7 @@ class CacheEmbedding(Embeddings):
                         except IntegrityError:
                             db.session.rollback()
                         except Exception:
-                            logging.exception("Failed transform embedding")
+                            logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
                     for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
@@ -95,7 +95,7 @@ class CacheEmbedding(Embeddings):
                     db.session.rollback()
             except Exception as ex:
                 db.session.rollback()
-                logger.exception("Failed to embed documents: %s")
+                logger.exception("Failed to embed documents")
                 raise ex
 
         return text_embeddings
@@ -122,7 +122,7 @@ class CacheEmbedding(Embeddings):
                 raise ValueError("Normalized embedding is nan please try again")
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception("Failed to embed query text '%s...(%s chars)'", text[:10], len(text))
+                logger.exception("Failed to embed query text '%s...(%s chars)'", text[:10], len(text))
             raise ex
 
         try:
@@ -136,7 +136,7 @@ class CacheEmbedding(Embeddings):
             redis_client.setex(embedding_cache_key, 600, encoded_str)
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception(
+                logger.exception(
                     "Failed to add embedding to redis for the text '%s...(%s chars)'", text[:10], len(text)
                 )
             raise ex

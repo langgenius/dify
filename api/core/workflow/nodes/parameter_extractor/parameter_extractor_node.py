@@ -26,7 +26,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.variables.types import SegmentType
+from core.variables.types import ArrayValidation, SegmentType
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -39,16 +39,13 @@ from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
-    InvalidArrayValueError,
-    InvalidBoolValueError,
     InvalidInvokeResultError,
     InvalidModelModeError,
     InvalidModelTypeError,
     InvalidNumberOfParametersError,
-    InvalidNumberValueError,
     InvalidSelectValueError,
-    InvalidStringValueError,
     InvalidTextContentTypeError,
+    InvalidValueTypeError,
     ModelSchemaNotFoundError,
     ParameterExtractorNodeError,
     RequiredParameterMissingError,
@@ -549,9 +546,6 @@ class ParameterExtractorNode(BaseNode):
         return prompt_messages
 
     def _validate_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
-        """
-        Validate result.
-        """
         if len(data.parameters) != len(result):
             raise InvalidNumberOfParametersError("Invalid number of parameters")
 
@@ -559,101 +553,106 @@ class ParameterExtractorNode(BaseNode):
             if parameter.required and parameter.name not in result:
                 raise RequiredParameterMissingError(f"Parameter {parameter.name} is required")
 
-            if parameter.type == "select" and parameter.options and result.get(parameter.name) not in parameter.options:
-                raise InvalidSelectValueError(f"Invalid `select` value for parameter {parameter.name}")
-
-            if parameter.type == "number" and not isinstance(result.get(parameter.name), int | float):
-                raise InvalidNumberValueError(f"Invalid `number` value for parameter {parameter.name}")
-
-            if parameter.type == "bool" and not isinstance(result.get(parameter.name), bool):
-                raise InvalidBoolValueError(f"Invalid `bool` value for parameter {parameter.name}")
-
-            if parameter.type == "string" and not isinstance(result.get(parameter.name), str):
-                raise InvalidStringValueError(f"Invalid `string` value for parameter {parameter.name}")
-
-            if parameter.type.startswith("array"):
-                parameters = result.get(parameter.name)
-                if not isinstance(parameters, list):
-                    raise InvalidArrayValueError(f"Invalid `array` value for parameter {parameter.name}")
-                nested_type = parameter.type[6:-1]
-                for item in parameters:
-                    if nested_type == "number" and not isinstance(item, int | float):
-                        raise InvalidArrayValueError(f"Invalid `array[number]` value for parameter {parameter.name}")
-                    if nested_type == "string" and not isinstance(item, str):
-                        raise InvalidArrayValueError(f"Invalid `array[string]` value for parameter {parameter.name}")
-                    if nested_type == "object" and not isinstance(item, dict):
-                        raise InvalidArrayValueError(f"Invalid `array[object]` value for parameter {parameter.name}")
+            param_value = result.get(parameter.name)
+            if not parameter.type.is_valid(param_value, array_validation=ArrayValidation.ALL):
+                inferred_type = SegmentType.infer_segment_type(param_value)
+                raise InvalidValueTypeError(
+                    parameter_name=parameter.name,
+                    expected_type=parameter.type,
+                    actual_type=inferred_type,
+                    value=param_value,
+                )
+            if parameter.type == SegmentType.STRING and parameter.options:
+                if param_value not in parameter.options:
+                    raise InvalidSelectValueError(f"Invalid `select` value for parameter {parameter.name}")
         return result
+
+    @staticmethod
+    def _transform_number(value: int | float | str | bool) -> int | float | None:
+        """
+        Attempts to transform the input into an integer or float.
+
+        Returns:
+            int or float: The transformed number if the conversion is successful.
+            None: If the transformation fails.
+
+        Note:
+            Boolean values `True` and `False` are converted to integers `1` and `0`, respectively.
+            This behavior ensures compatibility with existing workflows that may use boolean types as integers.
+        """
+        if isinstance(value, bool):
+            return int(value)
+        elif isinstance(value, (int, float)):
+            return value
+        elif not isinstance(value, str):
+            return None
+        if "." in value:
+            try:
+                return float(value)
+            except ValueError:
+                return None
+        else:
+            try:
+                return int(value)
+            except ValueError:
+                return None
 
     def _transform_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
         """
         Transform result into standard format.
         """
-        transformed_result = {}
+        transformed_result: dict[str, Any] = {}
         for parameter in data.parameters:
             if parameter.name in result:
+                param_value = result[parameter.name]
                 # transform value
-                if parameter.type == "number":
-                    if isinstance(result[parameter.name], int | float):
-                        transformed_result[parameter.name] = result[parameter.name]
-                    elif isinstance(result[parameter.name], str):
-                        try:
-                            if "." in result[parameter.name]:
-                                result[parameter.name] = float(result[parameter.name])
-                            else:
-                                result[parameter.name] = int(result[parameter.name])
-                        except ValueError:
-                            pass
-                    else:
-                        pass
-                # TODO: bool is not supported in the current version
-                # elif parameter.type == 'bool':
-                #     if isinstance(result[parameter.name], bool):
-                #         transformed_result[parameter.name] = bool(result[parameter.name])
-                #     elif isinstance(result[parameter.name], str):
-                #         if result[parameter.name].lower() in ['true', 'false']:
-                #             transformed_result[parameter.name] = bool(result[parameter.name].lower() == 'true')
-                #     elif isinstance(result[parameter.name], int):
-                #         transformed_result[parameter.name] = bool(result[parameter.name])
-                elif parameter.type in {"string", "select"}:
-                    if isinstance(result[parameter.name], str):
-                        transformed_result[parameter.name] = result[parameter.name]
+                if parameter.type == SegmentType.NUMBER:
+                    transformed = self._transform_number(param_value)
+                    if transformed is not None:
+                        transformed_result[parameter.name] = transformed
+                elif parameter.type == SegmentType.BOOLEAN:
+                    if isinstance(result[parameter.name], (bool, int)):
+                        transformed_result[parameter.name] = bool(result[parameter.name])
+                    # elif isinstance(result[parameter.name], str):
+                    #     if result[parameter.name].lower() in ["true", "false"]:
+                    #         transformed_result[parameter.name] = bool(result[parameter.name].lower() == "true")
+                elif parameter.type == SegmentType.STRING:
+                    if isinstance(param_value, str):
+                        transformed_result[parameter.name] = param_value
                 elif parameter.is_array_type():
-                    if isinstance(result[parameter.name], list):
+                    if isinstance(param_value, list):
                         nested_type = parameter.element_type()
                         assert nested_type is not None
                         segment_value = build_segment_with_type(segment_type=SegmentType(parameter.type), value=[])
                         transformed_result[parameter.name] = segment_value
-                        for item in result[parameter.name]:
-                            if nested_type == "number":
-                                if isinstance(item, int | float):
-                                    segment_value.value.append(item)
-                                elif isinstance(item, str):
-                                    try:
-                                        if "." in item:
-                                            segment_value.value.append(float(item))
-                                        else:
-                                            segment_value.value.append(int(item))
-                                    except ValueError:
-                                        pass
-                            elif nested_type == "string":
+                        for item in param_value:
+                            if nested_type == SegmentType.NUMBER:
+                                transformed = self._transform_number(item)
+                                if transformed is not None:
+                                    segment_value.value.append(transformed)
+                            elif nested_type == SegmentType.STRING:
                                 if isinstance(item, str):
                                     segment_value.value.append(item)
-                            elif nested_type == "object":
+                            elif nested_type == SegmentType.OBJECT:
                                 if isinstance(item, dict):
+                                    segment_value.value.append(item)
+                            elif nested_type == SegmentType.BOOLEAN:
+                                if isinstance(item, bool):
                                     segment_value.value.append(item)
 
             if parameter.name not in transformed_result:
-                if parameter.type == "number":
-                    transformed_result[parameter.name] = 0
-                elif parameter.type == "bool":
-                    transformed_result[parameter.name] = False
-                elif parameter.type in {"string", "select"}:
-                    transformed_result[parameter.name] = ""
-                elif parameter.type.startswith("array"):
+                if parameter.type.is_array_type():
                     transformed_result[parameter.name] = build_segment_with_type(
                         segment_type=SegmentType(parameter.type), value=[]
                     )
+                elif parameter.type in (SegmentType.STRING, SegmentType.SECRET):
+                    transformed_result[parameter.name] = ""
+                elif parameter.type == SegmentType.NUMBER:
+                    transformed_result[parameter.name] = 0
+                elif parameter.type == SegmentType.BOOLEAN:
+                    transformed_result[parameter.name] = False
+                else:
+                    raise AssertionError("this statement should be unreachable.")
 
         return transformed_result
 

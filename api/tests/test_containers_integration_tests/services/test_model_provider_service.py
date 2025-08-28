@@ -1067,7 +1067,7 @@ class TestModelProviderService:
 
         # Verify mock interactions
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
-        mock_provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM)
+        mock_provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
 
     def test_get_model_parameter_rules_success(self, db_session_with_containers, mock_external_service_dependencies):
         """

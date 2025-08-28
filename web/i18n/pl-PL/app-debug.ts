@@ -375,6 +375,10 @@ const translation = {
     'single-file': 'Pojedynczy plik',
     'content': 'Zawartość',
     'multi-files': 'Lista plików',
+    'json': 'Kod JSON',
+    'jsonSchema': 'Schemat JSON',
+    'optional': 'opcjonalny',
+    'checkbox': 'Pole wyboru',
   },
   vision: {
     name: 'Wizja',
