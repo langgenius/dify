@@ -86,7 +86,6 @@ const ModelModal: FC<ModelModalProps> = ({
   } = credentialData as any
 
   const { isCurrentWorkspaceManager } = useAppContext()
-  const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
   const { t } = useTranslation()
   const language = useLanguage()
   const {
@@ -94,6 +93,9 @@ const ModelModal: FC<ModelModalProps> = ({
     formValues,
   } = useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
   const formRef = useRef<FormRefObject>(null)
+  const isEditMode = !!Object.keys(formValues).filter((key) => {
+    return key !== '__model_name' && key !== '__model_type'
+  }).length && isCurrentWorkspaceManager
 
   const handleSave = useCallback(async () => {
     const {

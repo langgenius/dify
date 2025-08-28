@@ -190,7 +190,7 @@ const ModelLoadBalancingConfigs = ({
                           </Tooltip>
                         )}
                     </div>
-                    <div className='mr-1 text-[13px]'>
+                    <div className='mr-1 text-[13px] text-text-secondary'>
                       {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
                     </div>
                     {isProviderManaged && providerFormSchemaPredefined && (
