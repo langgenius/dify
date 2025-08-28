@@ -245,6 +245,8 @@ const translation = {
     'transform': '转换',
     'utilities': '工具',
     'noResult': '未找到匹配项',
+    'noPluginsFound': '未找到插件',
+    'requestToCommunity': '向社区反馈',
     'agent': 'Agent 策略',
     'allAdded': '已添加全部',
     'addAll': '添加全部',
