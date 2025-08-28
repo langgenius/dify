@@ -100,7 +100,6 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         splits = [s for s in splits if (s not in {"", "\n"})]
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
-        # _separator = "" if self._keep_separator else separator
         _separator = separator if self._keep_separator else ""
         s_lens = self._length_function(splits)
         if separator != "":
