@@ -391,6 +391,7 @@ const VarReferencePicker: FC<Props> = ({
         open={open}
         onOpenChange={setOpen}
         placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
+        enhancedScrollHandling={true}
       >
         <WrapElem onClick={() => {
           if (readonly)

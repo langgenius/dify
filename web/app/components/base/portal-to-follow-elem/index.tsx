@@ -30,6 +30,7 @@ export type PortalToFollowElemOptions = {
   offset?: number | OffsetOptions
   onOpenChange?: (open: boolean) => void
   triggerPopupSameWidth?: boolean
+  enhancedScrollHandling?: boolean
 }
 
 export function usePortalToFollowElem({
@@ -38,6 +39,7 @@ export function usePortalToFollowElem({
   offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
   triggerPopupSameWidth,
+  enhancedScrollHandling = false,
 }: PortalToFollowElemOptions = {}) {
   const setOpen = setControlledOpen
 
@@ -51,17 +53,17 @@ export function usePortalToFollowElem({
       flip({
         crossAxis: placement.includes('-'),
         fallbackAxisSideDirection: 'start',
-        padding: 8,
+        padding: enhancedScrollHandling ? 8 : 5,
       }),
-      shift({
+      shift(enhancedScrollHandling ? {
         padding: 8,
         boundary: document.body,
         altBoundary: true,
-      }),
-      hide({
+      } : { padding: 5 }),
+      ...(enhancedScrollHandling ? [hide({
         // hide when the reference element is not visible
         boundary: document.body,
-      }),
+      })] : []),
       size({
         apply({ rects, elements }) {
           if (triggerPopupSameWidth)
@@ -186,7 +188,7 @@ export const PortalToFollowElemContent = (
         style={{
           ...context.floatingStyles,
           ...style,
-          visibility: context.middlewareData.hide?.referenceHidden ? 'hidden' : 'visible',
+          ...(context.middlewareData.hide?.referenceHidden ? { visibility: 'hidden' } : {}),
         }}
         {...context.getFloatingProps(props)}
       />
