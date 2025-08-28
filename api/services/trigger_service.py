@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from flask import Request, Response
 
@@ -21,3 +20,4 @@ class TriggerService:
         # TODO dispatch by the trigger controller
 
         # TODO using the dispatch result(events) to invoke the trigger events
+        raise NotImplementedError("Not implemented")

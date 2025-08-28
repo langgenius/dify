@@ -14,7 +14,7 @@ from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
-from core.trigger.entities import TriggerProviderEntity
+from core.trigger.entities.entities import TriggerProviderEntity
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 

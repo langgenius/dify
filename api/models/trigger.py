@@ -1,5 +1,6 @@
 import json
-from datetime import UTC, datetime
+import time
+from datetime import datetime
 from typing import cast
 
 import sqlalchemy as sa
@@ -7,6 +8,7 @@ from sqlalchemy import DateTime, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.trigger.entities.api_entities import TriggerProviderCredentialApiEntity
 from models.base import Base
 from models.types import StringUUID
 
@@ -45,20 +47,23 @@ class TriggerProvider(Base):
         except (json.JSONDecodeError, TypeError):
             return {}
 
-    @property
-    def credentials_str(self) -> str:
-        """Get credentials as string"""
-        return self.encrypted_credentials or "{}"
-
     def is_oauth_expired(self) -> bool:
         """Check if OAuth token is expired"""
         if self.credential_type != CredentialType.OAUTH2.value:
             return False
         if self.expires_at == -1:
             return False
-        # Check if token expires in next 60 seconds
-        return (self.expires_at - 60) < int(datetime.now(UTC).timestamp())
+        # Check if token expires in next 3 minutes
+        return (self.expires_at - 180) < int(time.time())
 
+    def to_api_entity(self) -> TriggerProviderCredentialApiEntity:
+        return TriggerProviderCredentialApiEntity(
+            id=self.id,
+            name=self.name,
+            provider=self.provider_id,
+            credential_type=CredentialType(self.credential_type),
+            credentials=self.credentials,
+        )
 
 # system level trigger oauth client params
 class TriggerOAuthSystemClient(Base):

@@ -6,8 +6,11 @@ import logging
 import time
 from typing import Optional
 
+from core.entities.provider_entities import BasicProviderConfig
+from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities import (
+from core.trigger.entities.api_entities import TriggerProviderApiEntity
+from core.trigger.entities.entities import (
     ProviderConfig,
     Subscription,
     TriggerEntity,
@@ -19,7 +22,7 @@ from core.trigger.entities import (
 logger = logging.getLogger(__name__)
 
 
-class TriggerProviderController:
+class PluginTriggerProviderController:
     """
     Controller for plugin trigger providers
     """
@@ -43,6 +46,18 @@ class TriggerProviderController:
         self.tenant_id = tenant_id
         self.plugin_id = plugin_id
         self.plugin_unique_identifier = plugin_unique_identifier
+
+    def get_provider_id(self) -> TriggerProviderID:
+        """
+        Get provider ID
+        """
+        return TriggerProviderID(f"{self.plugin_id}/{self.entity.identity.name}")
+
+    def to_api_entity(self) -> TriggerProviderApiEntity:
+        """
+        Convert to API entity
+        """
+        return TriggerProviderApiEntity(**self.entity.model_dump())
 
     @property
     def identity(self) -> TriggerProviderIdentity:
@@ -68,14 +83,6 @@ class TriggerProviderController:
             if trigger.identity.name == trigger_name:
                 return trigger
         return None
-
-    def get_credentials_schema(self) -> list[ProviderConfig]:
-        """
-        Get credentials schema for this provider
-
-        :return: List of provider config schemas
-        """
-        return self.entity.credentials_schema
 
     def get_subscription_schema(self) -> list[ProviderConfig]:
         """
@@ -109,18 +116,24 @@ class TriggerProviderController:
             types.append(CredentialType.API_KEY)
         return types
 
-    def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
+    def get_credentials_schema(self, credential_type: CredentialType | str) -> list[ProviderConfig]:
         """
         Get credentials schema by credential type
 
         :param credential_type: The type of credential (oauth or api_key)
         :return: List of provider config schemas
         """
-        if credential_type == CredentialType.OAUTH2.value:
+        credential_type = CredentialType.of(credential_type) if isinstance(credential_type, str) else credential_type
+        if credential_type == CredentialType.OAUTH2:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
-        if credential_type == CredentialType.API_KEY.value:
+        if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
-        raise ValueError(f"Invalid credential type: {credential_type}")
+
+    def get_credential_schema_config(self, credential_type: CredentialType | str) -> list[BasicProviderConfig]:
+        """
+        Get credential schema config by credential type
+        """
+        return [x.to_basic_provider_config() for x in self.get_credentials_schema(credential_type)]
 
     def get_oauth_client_schema(self) -> list[ProviderConfig]:
         """
@@ -183,17 +196,5 @@ class TriggerProviderController:
         logger.info("Unsubscribing from trigger %s for plugin %s", trigger_name, self.plugin_id)
         return Unsubscription(success=True, message=f"Successfully unsubscribed from trigger {trigger_name}")
 
-    def handle_webhook(self, webhook_path: str, request_data: dict, credentials: dict) -> dict:
-        """
-        Handle incoming webhook through plugin runtime
 
-        :param webhook_path: Webhook path
-        :param request_data: Request data
-        :param credentials: Provider credentials
-        :return: Webhook handling result
-        """
-        logger.info("Handling webhook for path %s for plugin %s", webhook_path, self.plugin_id)
-        return {"success": True, "path": webhook_path, "plugin": self.plugin_id, "data_received": request_data}
-
-
-__all__ = ["TriggerProviderController"]
+__all__ = ["PluginTriggerProviderController"]

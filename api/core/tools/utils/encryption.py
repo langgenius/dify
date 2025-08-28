@@ -122,7 +122,6 @@ class ProviderConfigEncrypter:
         self.provider_config_cache.set(data)
         return data
 
-
 def create_provider_encrypter(tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache):
     return ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache), cache
 

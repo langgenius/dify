@@ -13,14 +13,20 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.plugin.service import PluginService
-from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
+from core.tools.utils.encryption import (
+    create_provider_encrypter,
+)
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
+from core.trigger.entities.api_entities import TriggerProviderApiEntity, TriggerProviderCredentialApiEntity
 from core.trigger.trigger_manager import TriggerManager
+from core.trigger.utils.encryption import (
+    create_trigger_provider_encrypter_for_credential,
+    create_trigger_provider_oauth_encrypter,
+)
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient, TriggerProvider
-from services.plugin.oauth_service import OAuthProxyService
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +37,34 @@ class TriggerProviderService:
     __MAX_TRIGGER_PROVIDER_COUNT__ = 100
 
     @classmethod
-    def list_trigger_providers(cls, tenant_id: str, provider_id: TriggerProviderID) -> list[TriggerProvider]:
+    def list_trigger_providers(cls, tenant_id: str) -> list[TriggerProviderApiEntity]:
         """List all trigger providers for the current tenant"""
-        # TODO fetch trigger plugin controller
+        return [provider.to_api_entity() for provider in TriggerManager.list_all_trigger_providers(tenant_id)]
 
-        # TODO fetch all trigger plugin credentials
+    @classmethod
+    def list_trigger_provider_credentials(
+        cls, tenant_id: str, provider_id: TriggerProviderID
+    ) -> list[TriggerProviderCredentialApiEntity]:
+        """List all trigger providers for the current tenant"""
+        credentials: list[TriggerProviderCredentialApiEntity] = []
         with Session(db.engine, autoflush=False) as session:
-            return session.query(TriggerProvider).filter_by(tenant_id=tenant_id, provider_id=provider_id).all()
+            credentials_db = (
+                session.query(TriggerProvider)
+                .filter_by(tenant_id=tenant_id, provider_id=str(provider_id))
+                .order_by(desc(TriggerProvider.created_at))
+                .all()
+            )
+            credentials = [credential.to_api_entity() for credential in credentials_db]
+
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        for credential in credentials:
+            encrypter, _ = create_trigger_provider_encrypter_for_credential(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+                credential=credential,
+            )
+            credential.credentials = encrypter.decrypt(credential.credentials)
+        return credentials
 
     @classmethod
     def add_trigger_provider(
@@ -63,6 +90,7 @@ class TriggerProviderService:
         :return: Success response
         """
         try:
+            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
             with Session(db.engine) as session:
                 # Use distributed lock to prevent race conditions
                 lock_key = f"trigger_provider_create_lock:{tenant_id}_{provider_id}"
@@ -96,10 +124,9 @@ class TriggerProviderService:
                         if existing:
                             raise ValueError(f"Credential name '{name}' already exists for this provider")
 
-                    # Create encrypter for credentials
                     encrypter, _ = create_provider_encrypter(
                         tenant_id=tenant_id,
-                        config=[],  # We'll define schema later in TriggerProvider classes
+                        config=provider_controller.get_credential_schema_config(credential_type),
                         cache=NoOpProviderCredentialCache(),
                     )
 
@@ -141,20 +168,21 @@ class TriggerProviderService:
         :return: Success response
         """
         with Session(db.engine) as session:
-            # Get provider
             db_provider = session.query(TriggerProvider).filter_by(tenant_id=tenant_id, id=credential_id).first()
-
             if not db_provider:
                 raise ValueError(f"Trigger provider credential {credential_id} not found")
 
             try:
-                # Update credentials if provided
-                if credentials:
-                    encrypter, cache = cls._create_provider_encrypter(
-                        tenant_id=tenant_id,
-                        provider=db_provider,
-                    )
+                provider_controller = TriggerManager.get_trigger_provider(
+                    tenant_id, TriggerProviderID(db_provider.provider_id)
+                )
 
+                if credentials:
+                    encrypter, cache = create_trigger_provider_encrypter_for_credential(
+                        tenant_id=tenant_id,
+                        controller=provider_controller,
+                        credential=db_provider,
+                    )
                     # Handle hidden values
                     original_credentials = encrypter.decrypt(db_provider.credentials)
                     new_credentials = {
@@ -200,14 +228,20 @@ class TriggerProviderService:
             if not db_provider:
                 raise ValueError(f"Trigger provider credential {credential_id} not found")
 
-            # Delete provider
+            provider_controller = TriggerManager.get_trigger_provider(
+                tenant_id, TriggerProviderID(db_provider.provider_id)
+            )
+            # Clear cache
+            _, cache = create_trigger_provider_encrypter_for_credential(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+                credential=db_provider,
+            )
+
             session.delete(db_provider)
             session.commit()
 
-            # Clear cache
-            _, cache = cls._create_provider_encrypter(tenant_id, db_provider)
             cache.delete()
-
             return {"result": "success"}
 
     @classmethod
@@ -232,13 +266,13 @@ class TriggerProviderService:
             if db_provider.credential_type != CredentialType.OAUTH2.value:
                 raise ValueError("Only OAuth credentials can be refreshed")
 
-            # Parse provider ID
             provider_id = TriggerProviderID(db_provider.provider_id)
-
+            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
             # Create encrypter
-            encrypter, cache = cls._create_provider_encrypter(
+            encrypter, cache = create_trigger_provider_encrypter_for_credential(
                 tenant_id=tenant_id,
-                provider=db_provider,
+                controller=provider_controller,
+                credential=db_provider,
             )
 
             # Decrypt current credentials
@@ -285,18 +319,8 @@ class TriggerProviderService:
         :param provider_id: Provider identifier
         :return: OAuth client configuration or None
         """
-        # Get trigger provider controller to access schema
-        provider_controller = TriggerManager.get_trigger_provider(provider_id, tenant_id)
-
-        # Create encrypter for OAuth client params
-        encrypter, _ = create_provider_encrypter(
-            tenant_id=tenant_id,
-            config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
-            cache=NoOpProviderCredentialCache(),
-        )
-
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
         with Session(db.engine, autoflush=False) as session:
-            # First check for tenant-specific OAuth client
             tenant_client: TriggerOAuthTenantClient | None = (
                 session.query(TriggerOAuthTenantClient)
                 .filter_by(
@@ -310,10 +334,10 @@ class TriggerProviderService:
 
             oauth_params: Mapping[str, Any] | None = None
             if tenant_client:
+                encrypter, _ = create_trigger_provider_oauth_encrypter(tenant_id, provider_controller)
                 oauth_params = encrypter.decrypt(tenant_client.oauth_params)
                 return oauth_params
 
-            # Only verified plugins can use system OAuth client
             is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
             if not is_verified:
                 return oauth_params
@@ -354,7 +378,7 @@ class TriggerProviderService:
             return {"result": "success"}
 
         # Get provider controller to access schema
-        provider_controller = TriggerManager.get_trigger_provider(provider_id, tenant_id)
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
 
         with Session(db.engine) as session:
             # Find existing custom client params
@@ -425,7 +449,7 @@ class TriggerProviderService:
                 return {}
 
             # Get provider controller to access schema
-            provider_controller = TriggerManager.get_trigger_provider(provider_id, tenant_id)
+            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
 
             # Create encrypter to decrypt and mask values
             encrypter, _ = create_provider_encrypter(
@@ -476,63 +500,6 @@ class TriggerProviderService:
                 .first()
             )
             return custom_client is not None
-
-    @classmethod
-    def create_oauth_proxy_context(
-        cls,
-        tenant_id: str,
-        user_id: str,
-        provider_id: TriggerProviderID,
-    ) -> str:
-        """
-        Create OAuth proxy context for authorization flow.
-
-        :param tenant_id: Tenant ID
-        :param user_id: User ID
-        :param provider: Provider identifier
-        :return: Context ID for OAuth flow
-        """
-        return OAuthProxyService.create_proxy_context(
-            user_id=user_id,
-            tenant_id=tenant_id,
-            plugin_id=provider_id.plugin_id,
-            provider=provider_id.provider_name,
-        )
-
-    @classmethod
-    def _create_provider_encrypter(
-        cls, tenant_id: str, provider: TriggerProvider
-    ) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
-        """
-        Create encrypter and cache for trigger provider credentials
-
-        :param tenant_id: Tenant ID
-        :param provider: TriggerProvider instance
-        :return: Tuple of encrypter and cache
-        """
-        from core.helper.provider_cache import TriggerProviderCredentialCache
-
-        # Parse provider ID
-        provider_id = TriggerProviderID(provider.provider_id)
-
-        # Get trigger provider controller to access schema
-        provider_controller = TriggerManager.get_trigger_provider(provider_id, tenant_id)
-
-        # Create encrypter with appropriate schema based on credential type
-        encrypter, cache = create_provider_encrypter(
-            tenant_id=tenant_id,
-            config=[
-                x.to_basic_provider_config()
-                for x in provider_controller.get_credentials_schema_by_type(provider.credential_type)
-            ],
-            cache=TriggerProviderCredentialCache(
-                tenant_id=tenant_id,
-                provider=provider.provider_id,
-                credential_id=provider.id,
-            ),
-        )
-
-        return encrypter, cache
 
     @classmethod
     def _generate_provider_name(
