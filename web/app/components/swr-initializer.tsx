@@ -65,7 +65,10 @@ const SwrInitializer = ({
           consoleToken && localStorage.setItem('console_token', consoleToken)
           refreshToken && localStorage.setItem('refresh_token', refreshToken)
           const redirectUrl = resolvePostLoginRedirect(searchParams)
-          router.replace(redirectUrl || pathname)
+          if (redirectUrl)
+            location.replace(redirectUrl)
+          else
+            router.replace(pathname)
         }
 
         setInit(true)

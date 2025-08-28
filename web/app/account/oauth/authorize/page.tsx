@@ -17,9 +17,20 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
+import dayjs from 'dayjs'
 
 export const OAUTH_AUTHORIZE_PENDING_KEY = 'oauth_authorize_pending'
 export const REDIRECT_URL_KEY = 'oauth_redirect_url'
+
+const OAUTH_AUTHORIZE_PENDING_TTL = 60 * 3
+
+function setItemWithExpiry(key: string, value: string, ttl: number) {
+  const item = {
+    value,
+    expiry: dayjs().add(ttl, 'seconds').unix(),
+  }
+  localStorage.setItem(key, JSON.stringify(item))
+}
 
 function buildReturnUrl(pathname: string, search: string) {
   try {
@@ -77,7 +88,7 @@ export default function OAuthAuthorize() {
   const onLoginSwitchClick = () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
-      localStorage.setItem(OAUTH_AUTHORIZE_PENDING_KEY, JSON.stringify({ returnUrl }))
+      setItemWithExpiry(OAUTH_AUTHORIZE_PENDING_KEY, returnUrl, OAUTH_AUTHORIZE_PENDING_TTL)
       router.push(`/signin?${REDIRECT_URL_KEY}=${encodeURIComponent(returnUrl)}`)
     }
     catch {
