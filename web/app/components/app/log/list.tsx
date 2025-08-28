@@ -7,6 +7,7 @@ import {
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
+import Checkbox from '@/app/components/base/checkbox'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -50,6 +51,8 @@ type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
   appDetail: App
   onRefresh: () => void
+  selectedItems?: string[]
+  onSelectionChange?: (selectedIds: string[]) => void
 }
 
 const defaultValue = 'N/A'
@@ -417,8 +420,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         </div>
       </div>
       <div className='mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn'>
-        {!isChatMode
-          ? <div className="px-6 py-4">
+        {!isChatMode && (
+          <div className="px-6 py-4">
             <div className='flex h-[18px] items-center space-x-3'>
               <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
               <div className='h-[1px] grow' style={{
@@ -439,40 +442,43 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               siteInfo={null}
             />
           </div>
-          : threadChatItems.length < 8
-            ? <div className="mb-4 pt-4">
-              <Chat
-                config={{
-                  appId: appDetail?.id,
-                  text_to_speech: {
-                    enabled: true,
-                  },
-                  questionEditEnable: false,
-                  supportAnnotation: true,
-                  annotation_reply: {
-                    enabled: true,
-                  },
-                  supportFeedback: true,
-                } as any}
-                chatList={threadChatItems}
-                onAnnotationAdded={handleAnnotationAdded}
-                onAnnotationEdited={handleAnnotationEdited}
-                onAnnotationRemoved={handleAnnotationRemoved}
-                onFeedback={onFeedback}
-                noChatInput
-                showPromptLog
-                hideProcessDetail
-                chatContainerInnerClassName='px-3'
-                switchSibling={switchSibling}
-              />
-            </div>
-            : <div
-              className="py-4"
-              id="scrollableDiv"
-              style={{
-                display: 'flex',
-                flexDirection: 'column-reverse',
-              }}>
+        )}
+        {isChatMode && threadChatItems.length < 8 && (
+          <div className="mb-4 pt-4">
+            <Chat
+              config={{
+                appId: appDetail?.id,
+                text_to_speech: {
+                  enabled: true,
+                },
+                questionEditEnable: false,
+                supportAnnotation: true,
+                annotation_reply: {
+                  enabled: true,
+                },
+                supportFeedback: true,
+              } as any}
+              chatList={threadChatItems}
+              onAnnotationAdded={handleAnnotationAdded}
+              onAnnotationEdited={handleAnnotationEdited}
+              onAnnotationRemoved={handleAnnotationRemoved}
+              onFeedback={onFeedback}
+              noChatInput
+              showPromptLog
+              hideProcessDetail
+              chatContainerInnerClassName='px-3'
+              switchSibling={switchSibling}
+            />
+          </div>
+        )}
+        {isChatMode && threadChatItems.length >= 8 && (
+          <div
+            className="py-4"
+            id="scrollableDiv"
+            style={{
+              display: 'flex',
+              flexDirection: 'column-reverse',
+            }}>
               {/* Put the scroll bar always on the bottom */}
               <InfiniteScroll
                 scrollableTarget="scrollableDiv"
@@ -521,7 +527,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 />
               </InfiniteScroll>
             </div>
-        }
+        )}
       </div>
       {showMessageLogModal && (
         <MessageLogModal
@@ -640,7 +646,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 /**
    * Conversation list component including basic information
    */
-const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
+const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, selectedItems = [], onSelectionChange }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
 
@@ -651,6 +657,29 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
   const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
+
+  // Selection state
+  const isAllSelected = logs?.data.length > 0 && selectedItems.length === logs?.data.length
+  const isSomeSelected = selectedItems.length > 0 && selectedItems.length < (logs?.data.length || 0)
+
+  // Selection handling
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      onSelectionChange?.([])
+    }
+ else {
+      const allIds = logs?.data.map(log => log.id) || []
+      onSelectionChange?.(allIds)
+    }
+  }
+
+  const handleSelectItem = (conversationId: string) => {
+    if (selectedItems.includes(conversationId))
+      onSelectionChange?.(selectedItems.filter(id => id !== conversationId))
+     else
+      onSelectionChange?.([...selectedItems, conversationId])
+  }
+
   const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     setShowPromptLogModal: state.setShowPromptLogModal,
     setShowAgentLogModal: state.setShowAgentLogModal,
@@ -692,7 +721,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
-            <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
+            <td className='w-10 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'>
+              <Checkbox
+                checked={isAllSelected}
+                indeterminate={isSomeSelected}
+                onCheck={handleSelectAll}
+              />
+            </td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.endUser')}</td>
             {isChatflow && <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>}
@@ -710,29 +745,65 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
-              onClick={() => {
-                setShowDrawer(true)
-                setCurrentConversation(log)
-              }}>
-              <td className='h-4'>
-                {!log.read_at && (
-                  <div className='flex items-center p-3 pr-0.5'>
+              className={cn('border-b border-divider-subtle hover:bg-background-default-hover', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
+              >
+              <td className='h-4 p-3'>
+                <div className='flex items-center gap-2' onClick={e => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedItems.includes(log.id)}
+                    onCheck={() => handleSelectItem(log.id)}
+                  />
+                  {!log.read_at && (
                     <span className='inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500'></span>
-                  </div>
-                )}
+                  )}
+                </div>
               </td>
-              <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                style={{ maxWidth: isChatMode ? 300 : 200 }}
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
-              <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
-              {isChatflow && <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
+                {renderTdValue(endUser || defaultValue, !endUser)}
+              </td>
+              {isChatflow && <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                style={{ maxWidth: isChatMode ? 300 : 200 }}
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {statusTdRender(log.status_count)}
               </td>}
-              <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                style={{ maxWidth: isChatMode ? 100 : 200 }}
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>
-              <td className='p-3 pr-2'>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -741,7 +812,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
-              <td className='p-3 pr-2'>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {(!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -750,8 +827,24 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
-              <td className='w-[160px] p-3 pr-2'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td className='w-[160px] p-3 pr-2'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
+                {formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}
+              </td>
+              <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
+                {formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}
+              </td>
             </tr>
           })}
         </tbody>
