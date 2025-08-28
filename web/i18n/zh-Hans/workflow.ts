@@ -933,6 +933,11 @@ const translation = {
     knowledgeBase: {
       chunkStructure: '分段结构',
       chooseChunkStructure: '选择分段结构',
+      chunkStructureTip: {
+        title: '请选择分段结构',
+        message: '配置完成分段结构后，将自动加载剩余配置。',
+        learnMore: '了解更多',
+      },
       changeChunkStructure: '更改分段结构',
       aboutRetrieval: '关于知识检索。',
       chunkIsRequired: '分段结构是必需的',

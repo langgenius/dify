@@ -47,7 +47,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   } = useConfig(id)
 
   const filterVar = useCallback((variable: Var) => {
-    if(!data.chunk_structure) return false
+    if (!data.chunk_structure) return false
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
         return variable.schemaType === 'general_structure'
@@ -55,37 +55,16 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
         return variable.schemaType === 'parent_child_structure'
       case ChunkStructureEnum.question_answer:
         return variable.schemaType === 'qa_structure'
+      default:
+        return false
     }
-    return false
   }, [data.chunk_structure])
 
   return (
     <div>
-      <BoxGroupField
-        boxGroupProps={{
-          boxProps: { withBorderBottom: true },
-        }}
-        fieldProps={{
-          fieldTitleProps: {
-            title: t('workflow.nodes.common.inputVars'),
-          },
-        }}
-      >
-        <VarReferencePicker
-          nodeId={id}
-          isShowNodeName
-          value={data.index_chunk_variable_selector}
-          onChange={handleInputVariableChange}
-          readonly={nodesReadOnly}
-          filterVar={filterVar}
-          isFilterFileVar
-          isSupportFileVar={false}
-          preferSchemaType
-        />
-      </BoxGroupField>
       <Group
         className='py-3'
-        withBorderBottom
+        withBorderBottom={!!data.chunk_structure}
       >
         <ChunkStructure
           chunkStructure={data.chunk_structure}
@@ -93,11 +72,33 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
           readonly={nodesReadOnly}
         />
       </Group>
-      <BoxGroup>
-        <div className='space-y-3'>
-          {
-            data.chunk_structure && (
-              <>
+      {
+        data.chunk_structure && (
+          <>
+            <BoxGroupField
+              boxGroupProps={{
+                boxProps: { withBorderBottom: true },
+              }}
+              fieldProps={{
+                fieldTitleProps: {
+                  title: t('workflow.nodes.common.inputVars'),
+                },
+              }}
+            >
+              <VarReferencePicker
+                nodeId={id}
+                isShowNodeName
+                value={data.index_chunk_variable_selector}
+                onChange={handleInputVariableChange}
+                readonly={nodesReadOnly}
+                filterVar={filterVar}
+                isFilterFileVar
+                isSupportFileVar={false}
+                preferSchemaType
+              />
+            </BoxGroupField>
+            <BoxGroup>
+              <div className='space-y-3'>
                 <IndexMethod
                   chunkStructure={data.chunk_structure}
                   indexMethod={data.indexing_technique}
@@ -119,29 +120,29 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 <div className='pt-1'>
                   <Split className='h-[1px]' />
                 </div>
-              </>
-            )
-          }
-          <RetrievalSetting
-            indexMethod={data.indexing_technique}
-            searchMethod={data.retrieval_model.search_method}
-            onRetrievalSearchMethodChange={handleRetrievalSearchMethodChange}
-            hybridSearchMode={data.retrieval_model.hybridSearchMode}
-            onHybridSearchModeChange={handleHybridSearchModeChange}
-            weightedScore={data.retrieval_model.weights}
-            onWeightedScoreChange={handleWeighedScoreChange}
-            rerankingModel={data.retrieval_model.reranking_model}
-            onRerankingModelChange={handleRerankingModelChange}
-            topK={data.retrieval_model.top_k}
-            onTopKChange={handleTopKChange}
-            scoreThreshold={data.retrieval_model.score_threshold}
-            onScoreThresholdChange={handleScoreThresholdChange}
-            isScoreThresholdEnabled={data.retrieval_model.score_threshold_enabled}
-            onScoreThresholdEnabledChange={handleScoreThresholdEnabledChange}
-            readonly={nodesReadOnly}
-          />
-        </div>
-      </BoxGroup>
+                <RetrievalSetting
+                  indexMethod={data.indexing_technique}
+                  searchMethod={data.retrieval_model.search_method}
+                  onRetrievalSearchMethodChange={handleRetrievalSearchMethodChange}
+                  hybridSearchMode={data.retrieval_model.hybridSearchMode}
+                  onHybridSearchModeChange={handleHybridSearchModeChange}
+                  weightedScore={data.retrieval_model.weights}
+                  onWeightedScoreChange={handleWeighedScoreChange}
+                  rerankingModel={data.retrieval_model.reranking_model}
+                  onRerankingModelChange={handleRerankingModelChange}
+                  topK={data.retrieval_model.top_k}
+                  onTopKChange={handleTopKChange}
+                  scoreThreshold={data.retrieval_model.score_threshold}
+                  onScoreThresholdChange={handleScoreThresholdChange}
+                  isScoreThresholdEnabled={data.retrieval_model.score_threshold_enabled}
+                  onScoreThresholdEnabledChange={handleScoreThresholdEnabledChange}
+                  readonly={nodesReadOnly}
+                />
+              </div>
+            </BoxGroup>
+          </>
+        )
+      }
     </div>
   )
 }
