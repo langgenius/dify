@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
 
 export const useAutoOnboarding = () => {
   const store = useStoreApi()
@@ -22,19 +21,13 @@ export const useAutoOnboarding = () => {
       return
 
     const nodes = getNodes()
-    const startNodeTypes = [
-      BlockEnum.Start,
-      BlockEnum.TriggerSchedule,
-      BlockEnum.TriggerWebhook,
-      BlockEnum.TriggerPlugin,
-    ]
 
-    // Check if canvas is empty (no nodes or no start nodes)
-    const hasStartNode = nodes.some(node => startNodeTypes.includes(node.data.type))
-    const isEmpty = nodes.length === 0 || !hasStartNode
+    // Check if canvas is completely empty (no nodes at all)
+    // Only trigger onboarding when canvas is completely blank to avoid data loss
+    const isCompletelyEmpty = nodes.length === 0
 
-    // Show onboarding if canvas is empty and we haven't shown it before in this session
-    if (isEmpty && !hasShownOnboarding) {
+    // Show onboarding only if canvas is completely empty and we haven't shown it before in this session
+    if (isCompletelyEmpty && !hasShownOnboarding) {
       setShowOnboarding(true)
       setHasShownOnboarding(true)
     }

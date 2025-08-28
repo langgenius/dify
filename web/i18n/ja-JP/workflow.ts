@@ -342,6 +342,7 @@ const translation = {
     checklist: 'チェックリスト',
     checklistTip: '公開前に全ての項目を確認してください',
     checklistResolved: '全てのチェックが完了しました',
+    goTo: '移動',
     startNode: '開始ノード',
     organizeBlocks: 'ノード整理',
     change: '変更',
