@@ -41,6 +41,7 @@ from core.workflow.entities.workflow_node_execution import (
 )
 from core.workflow.enums import ErrorStrategy, NodeType, SystemVariableKey
 from core.workflow.errors import WorkflowNodeRunFailedError
+from core.workflow.graph_events import NodeRunSucceededEvent, NodeRunFailedEvent
 from core.workflow.graph_events.base import GraphNodeEventBase
 from core.workflow.node_events.base import NodeRunResult
 from core.workflow.node_events.node import StreamCompletedEvent
@@ -756,7 +757,7 @@ class RagPipelineService:
 
             node_run_result: NodeRunResult | None = None
             for event in generator:
-                if isinstance(event, StreamCompletedEvent):
+                if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent)):
                     node_run_result = event.node_run_result
                     # sign output files
                     node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) or {}
