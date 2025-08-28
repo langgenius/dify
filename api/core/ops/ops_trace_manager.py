@@ -330,7 +330,7 @@ class OpsTraceManager:
             except KeyError:
                 raise ValueError(f"Invalid tracing provider: {tracing_provider}")
         else:
-            if tracing_provider is not None:
+            if tracing_provider is None:
                 raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: Optional[App] = db.session.query(App).where(App.id == app_id).first()

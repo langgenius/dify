@@ -30,6 +30,24 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowRunApi(WebApiResource):
+    @api.doc("Run Workflow")
+    @api.doc(description="Execute a workflow with provided inputs and files.")
+    @api.doc(
+        params={
+            "inputs": {"description": "Input variables for the workflow", "type": "object", "required": True},
+            "files": {"description": "Files to be processed by the workflow", "type": "array", "required": False},
+        }
+    )
+    @api.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "App Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model: App, end_user: EndUser):
         """
         Run workflow
@@ -67,6 +85,23 @@ class WorkflowRunApi(WebApiResource):
 
 
 class WorkflowTaskStopApi(WebApiResource):
+    @api.doc("Stop Workflow Task")
+    @api.doc(description="Stop a running workflow task.")
+    @api.doc(
+        params={
+            "task_id": {"description": "Task ID to stop", "type": "string", "required": True},
+        }
+    )
+    @api.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Task Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task
