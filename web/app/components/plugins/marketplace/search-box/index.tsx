@@ -48,7 +48,7 @@ const SearchBox = ({
             <RiSearchLine className='mr-1.5 size-4 text-text-placeholder' />
             <input
               className={cn(
-                'body-md-medium block grow appearance-none bg-transparent text-text-secondary outline-none',
+                'system-sm-regular block grow appearance-none bg-transparent text-text-secondary outline-none',
               )}
               value={search}
               onChange={(e) => {
