@@ -87,7 +87,7 @@ const StartBlocks = ({
   return (
     <div className='min-w-[400px] max-w-[500px] p-1'>
       {isEmpty && (
-        <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>
+        <div className='flex h-full items-center justify-center px-3 text-xs font-medium text-text-tertiary'>
           {t('workflow.tabs.noResult')}
         </div>
       )}
