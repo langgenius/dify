@@ -121,13 +121,29 @@ class CompletionConversationApi(Resource):
             conversation_ids=conversation_ids
         )
 
-        return {
+        # Handle both async (with task_id) and sync (with deleted_counts) responses
+        response = {
             "result": "success",
             "status": result['status'],
-            "deleted_counts": result.get('deleted_counts', {}),
             "mode": result['mode'],
-            "message": "Conversations cleared successfully."
         }
+        
+        if 'task_id' in result:
+            # Async response
+            response.update({
+                "task_id": result['task_id'],
+                "estimated_conversations": result['estimated_conversations'],
+                "message": ("Conversation cleanup task queued successfully. "
+                          "Large datasets will be processed asynchronously.")
+            })
+        else:
+            # Sync response
+            response.update({
+                "deleted_counts": result.get('deleted_counts', {}),
+                "message": "Conversations cleared successfully."
+            })
+            
+        return response
 
 
 class CompletionConversationDetailApi(Resource):
@@ -318,13 +334,29 @@ class ChatConversationApi(Resource):
             conversation_ids=conversation_ids
         )
 
-        return {
+        # Handle both async (with task_id) and sync (with deleted_counts) responses
+        response = {
             "result": "success",
             "status": result['status'],
-            "deleted_counts": result.get('deleted_counts', {}),
             "mode": result['mode'],
-            "message": "Conversations cleared successfully."
         }
+        
+        if 'task_id' in result:
+            # Async response
+            response.update({
+                "task_id": result['task_id'],
+                "estimated_conversations": result['estimated_conversations'],
+                "message": ("Conversation cleanup task queued successfully. "
+                          "Large datasets will be processed asynchronously.")
+            })
+        else:
+            # Sync response
+            response.update({
+                "deleted_counts": result.get('deleted_counts', {}),
+                "message": "Conversations cleared successfully."
+            })
+            
+        return response
 
 
 class ChatConversationDetailApi(Resource):

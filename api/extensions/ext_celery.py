@@ -120,6 +120,9 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": crontab(minute="*/15"),
         }
 
+    # Add our custom tasks to imports
+    imports.append("tasks.clear_conversation_task")
+    
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

@@ -22,7 +22,7 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
-# from tasks.clear_conversation_task import clear_conversations_task  # Temporarily disabled
+from tasks.clear_conversation_task import clear_conversations_task
 
 
 class ConversationService:
@@ -188,31 +188,92 @@ class ConversationService:
         cls, 
         app_model: App, 
         user: Optional[Union[Account, EndUser]], 
-        conversation_ids: Optional[list[str]] = None
+        conversation_ids: Optional[list[str]] = None,
+        use_async: bool = True
     ) -> dict[str, Any]:
         """
         Clear conversations and related data, optionally for specific conversation IDs.
-        Temporary synchronous implementation for testing.
+        Can use either synchronous or asynchronous (Celery) processing.
         
         Args:
             app_model: The app model
-            user: The user (Account or EndUser)
+            user: The user (Account or EndUser)  
             conversation_ids: Optional list of specific conversation IDs to clear
+            use_async: Whether to use Celery tasks (default True)
             
         Returns:
-            dict with deletion results
+            dict with task info (async) or deletion results (sync)
         """
-        from models.model import MessageAgentThought, MessageChain, MessageFeedback, MessageFile, UploadFile
-        from models.workflow import ConversationVariable
-        from extensions.ext_storage import storage
-        
         # Validate conversation ownership if specific IDs provided
         if conversation_ids:
             for conversation_id in conversation_ids:
                 cls.get_conversation(app_model, conversation_id, user)
-                
-        # Get conversations to delete
+        
+        # Get conversation mode for processing
         if app_model.mode == 'completion':
+            mode = 'completion'
+        else:
+            mode = 'chat'  # covers chat, agent-chat, advanced-chat
+        
+        # Use async processing for large datasets or when requested
+        if use_async:
+            try:
+                # Queue the Celery task
+                task = clear_conversations_task.delay(
+                    app_id=app_model.id,
+                    conversation_mode=mode,
+                    conversation_ids=conversation_ids,
+                    user_id=user.id if user else None,
+                    user_type=(
+                        'account' if isinstance(user, Account) 
+                        else 'end_user' if isinstance(user, EndUser) 
+                        else None
+                    )
+                )
+                
+                # Get estimated counts for response
+                if conversation_ids:
+                    conversation_count = len(conversation_ids)
+                else:
+                    # Estimate total conversations for this app
+                    conversation_count = db.session.query(Conversation).filter(
+                        Conversation.app_id == app_model.id,
+                        Conversation.mode == mode,
+                        Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                        Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                        Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+                        Conversation.is_deleted == False,
+                    ).count()
+                
+                return {
+                    'task_id': task.id,
+                    'status': 'queued',
+                    'estimated_conversations': conversation_count,
+                    'mode': 'selective' if conversation_ids else 'all'
+                }
+            except Exception as e:
+                # Fallback to synchronous processing if Celery fails
+                print(f"Celery task failed, falling back to sync processing: {e}")
+                use_async = False
+        
+        # Synchronous processing
+        return cls._clear_conversations_sync(app_model, user, conversation_ids, mode)
+    
+    @classmethod
+    def _clear_conversations_sync(
+        cls,
+        app_model: App,
+        user: Optional[Union[Account, EndUser]],
+        conversation_ids: Optional[list[str]],
+        mode: str
+    ) -> dict[str, Any]:
+        """Synchronous conversation clearing implementation."""
+        from extensions.ext_storage import storage
+        from models.model import MessageAgentThought, MessageChain, MessageFeedback, MessageFile, UploadFile
+        from models.workflow import ConversationVariable
+        
+        # Get conversations to delete  
+        if mode == 'completion':
             mode_filter = Conversation.mode == 'completion'
         else:
             mode_filter = Conversation.mode.in_(['chat', 'agent-chat', 'advanced-chat'])
@@ -237,21 +298,12 @@ class ConversationService:
             message_ids = db.session.query(Message.id).filter(Message.conversation_id == conversation.id).all()
             all_message_ids.extend([msg_id[0] for msg_id in message_ids])
 
-        # Initialize counters
-        total_deleted = {
-            'conversations': 0,
-            'messages': 0,
-            'files': 0,
-        }
-
         # Delete message files from storage and database
         upload_file_ids = []
         if all_message_ids:
-            # Get all message files to delete their actual files from storage
             message_files = db.session.query(MessageFile).filter(MessageFile.message_id.in_(all_message_ids)).all()
             upload_file_ids = [mf.upload_file_id for mf in message_files if mf.upload_file_id]
 
-            # Delete actual files from storage
             if upload_file_ids:
                 upload_files = db.session.query(UploadFile).filter(UploadFile.id.in_(upload_file_ids)).all()
                 for upload_file in upload_files:
@@ -259,7 +311,6 @@ class ConversationService:
                         storage.delete(upload_file.key)
                     except Exception as e:
                         print(f"Failed to delete file {upload_file.key}: {e}")
-                # Delete upload file records
                 db.session.query(UploadFile).filter(UploadFile.id.in_(upload_file_ids)).delete(synchronize_session=False)
 
             # Delete message-related database records
@@ -282,12 +333,9 @@ class ConversationService:
 
         # Delete conversation-related records
         for conversation in conversations:
-            # Delete messages
             db.session.query(Message).filter(Message.conversation_id == conversation.id).delete()
-            # Delete message annotations
             from models import MessageAnnotation
             db.session.query(MessageAnnotation).filter(MessageAnnotation.conversation_id == conversation.id).delete()
-            # Delete conversation variables
             try:
                 db.session.query(ConversationVariable).filter(
                     ConversationVariable.conversation_id == conversation.id
@@ -301,16 +349,14 @@ class ConversationService:
             db.session.delete(conversation)
             
         db.session.commit()
-
-        total_deleted.update({
-            'conversations': deleted_conversations,
-            'messages': len(all_message_ids),
-            'files': len(upload_file_ids)
-        })
         
         return {
             'status': 'completed',
-            'deleted_counts': total_deleted,
+            'deleted_counts': {
+                'conversations': deleted_conversations,
+                'messages': len(all_message_ids),
+                'files': len(upload_file_ids)
+            },
             'mode': 'selective' if conversation_ids else 'all'
         }
 
