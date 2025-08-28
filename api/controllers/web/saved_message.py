@@ -30,6 +30,10 @@ class SavedMessageListApi(WebApiResource):
         "data": fields.List(fields.Nested(message_fields)),
     }
 
+    post_response_fields = {
+        "result": fields.String,
+    }
+
     @marshal_with(saved_message_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
         if app_model.mode != "completion":
@@ -42,6 +46,7 @@ class SavedMessageListApi(WebApiResource):
 
         return SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
 
+    @marshal_with(post_response_fields)
     def post(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -59,6 +64,11 @@ class SavedMessageListApi(WebApiResource):
 
 
 class SavedMessageApi(WebApiResource):
+    delete_response_fields = {
+        "result": fields.String,
+    }
+
+    @marshal_with(delete_response_fields)
     def delete(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
