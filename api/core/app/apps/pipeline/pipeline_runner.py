@@ -217,26 +217,27 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
-        nodes = graph_config.get("nodes", [])
-        edges = graph_config.get("edges", [])
-        real_run_nodes = []
-        real_edges = []
-        exclude_node_ids = []
-        for node in nodes:
-            node_id = node.get("id")
-            node_type = node.get("data", {}).get("type", "")
-            if node_type == "datasource":
-                if start_node_id != node_id:
-                    exclude_node_ids.append(node_id)
-                    continue
-            real_run_nodes.append(node)
-        for edge in edges:
-            if edge.get("source") in exclude_node_ids:
-                continue
-            real_edges.append(edge)
-        graph_config = dict(graph_config)
-        graph_config["nodes"] = real_run_nodes
-        graph_config["edges"] = real_edges
+        # nodes = graph_config.get("nodes", [])
+        # edges = graph_config.get("edges", [])
+        # real_run_nodes = []
+        # real_edges = []
+        # exclude_node_ids = []
+        # for node in nodes:
+        #     node_id = node.get("id")
+        #     node_type = node.get("data", {}).get("type", "")
+        #     if node_type == "datasource":
+        #         if start_node_id != node_id:
+        #             exclude_node_ids.append(node_id)
+        #             continue
+        #     real_run_nodes.append(node)
+
+        # for edge in edges:
+        #     if edge.get("source") in exclude_node_ids:
+        #         continue
+        #     real_edges.append(edge)
+        # graph_config = dict(graph_config)
+        # graph_config["nodes"] = real_run_nodes
+        # graph_config["edges"] = real_edges
         # init graph
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
