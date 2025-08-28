@@ -7,7 +7,7 @@ graph execution for debugging purposes.
 
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any, final
 
 from core.workflow.graph_events import (
     GraphEngineEvent,
@@ -34,6 +34,7 @@ from core.workflow.graph_events import (
 from .base import Layer
 
 
+@final
 class DebugLoggingLayer(Layer):
     """
     A layer that provides comprehensive logging of GraphEngine execution.
@@ -221,7 +222,7 @@ class DebugLoggingLayer(Layer):
             # Log unknown events at debug level
             self.logger.debug("Event: %s", event_class)
 
-    def on_graph_end(self, error: Optional[Exception]) -> None:
+    def on_graph_end(self, error: Exception | None) -> None:
         """Log graph execution end with summary statistics."""
         self.logger.info("=" * 80)
 

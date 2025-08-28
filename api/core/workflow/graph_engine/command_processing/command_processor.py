@@ -3,7 +3,7 @@ Main command processor for handling external commands.
 """
 
 import logging
-from typing import Protocol
+from typing import Protocol, final
 
 from ..domain.graph_execution import GraphExecution
 from ..entities.commands import GraphEngineCommand
@@ -18,6 +18,7 @@ class CommandHandler(Protocol):
     def handle(self, command: GraphEngineCommand, execution: GraphExecution) -> None: ...
 
 
+@final
 class CommandProcessor:
     """
     Processes external commands sent to the engine.

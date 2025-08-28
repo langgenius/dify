@@ -12,7 +12,7 @@ This module provides a robust table-driven testing framework with support for:
 
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,7 +34,11 @@ from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import GraphEngineEvent, GraphRunStartedEvent, GraphRunSucceededEvent
+from core.workflow.graph_events import (
+    GraphEngineEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+)
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
@@ -57,7 +61,7 @@ class WorkflowTestCase:
     timeout: float = 30.0
     mock_config: Optional[MockConfig] = None
     use_auto_mock: bool = False
-    expected_event_sequence: Optional[list[type[GraphEngineEvent]]] = None
+    expected_event_sequence: Optional[Sequence[type[GraphEngineEvent]]] = None
     tags: list[str] = field(default_factory=list)
     skip: bool = False
     skip_reason: str = ""

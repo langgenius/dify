@@ -66,6 +66,7 @@ class NodeExecutionType(StrEnum):
     RESPONSE = "response"  # Response nodes that stream outputs (Answer, End)
     BRANCH = "branch"  # Nodes that can choose different branches (if-else, question-classifier)
     CONTAINER = "container"  # Container nodes that manage subgraphs (iteration, loop, graph)
+    ROOT = "root"  # Nodes that can serve as execution entry points
 
 
 class ErrorStrategy(StrEnum):

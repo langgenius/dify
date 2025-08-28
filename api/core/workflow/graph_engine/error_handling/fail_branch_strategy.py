@@ -2,7 +2,7 @@
 Fail branch error strategy implementation.
 """
 
-from typing import Optional
+from typing import final
 
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
@@ -10,6 +10,7 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunExceptionEvent
 from core.workflow.node_events import NodeRunResult
 
 
+@final
 class FailBranchStrategy:
     """
     Error strategy that continues execution via a fail branch.
@@ -18,7 +19,7 @@ class FailBranchStrategy:
     through a designated fail-branch edge.
     """
 
-    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> Optional[GraphNodeEventBase]:
+    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> GraphNodeEventBase | None:
         """
         Handle error by taking the fail branch.
 

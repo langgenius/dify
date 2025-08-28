@@ -4,11 +4,13 @@ Manager for node states during graph execution.
 
 import queue
 import threading
+from typing import final
 
 from core.workflow.enums import NodeState
 from core.workflow.graph import Graph
 
 
+@final
 class NodeStateManager:
     """
     Manages node states and the ready queue for execution.

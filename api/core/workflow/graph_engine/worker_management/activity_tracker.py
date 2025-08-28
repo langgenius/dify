@@ -4,8 +4,10 @@ Activity tracker for monitoring worker activity.
 
 import threading
 import time
+from typing import final
 
 
+@final
 class ActivityTracker:
     """
     Tracks worker activity for scaling decisions.

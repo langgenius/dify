@@ -2,10 +2,13 @@
 Node readiness checking for execution.
 """
 
+from typing import final
+
 from core.workflow.enums import NodeState
 from core.workflow.graph import Graph
 
 
+@final
 class NodeReadinessChecker:
     """
     Checks if nodes are ready for execution based on their dependencies.
@@ -71,7 +74,7 @@ class NodeReadinessChecker:
         Returns:
             List of node IDs that are now ready
         """
-        ready_nodes = []
+        ready_nodes: list[str] = []
         outgoing_edges = self.graph.get_outgoing_edges(from_node_id)
 
         for edge in outgoing_edges:

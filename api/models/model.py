@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, func, text
+from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
@@ -1556,7 +1556,7 @@ class ApiToken(Base):
     def generate_api_key(prefix, n):
         while True:
             result = prefix + generate_string(n)
-            if db.session.query(ApiToken).where(ApiToken.token == result).count() > 0:
+            if db.session.scalar(select(exists().where(ApiToken.token == result))):
                 continue
             return result
 

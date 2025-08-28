@@ -2,7 +2,7 @@
 Default value error strategy implementation.
 """
 
-from typing import Optional
+from typing import final
 
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
@@ -10,6 +10,7 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunExceptionEvent
 from core.workflow.node_events import NodeRunResult
 
 
+@final
 class DefaultValueStrategy:
     """
     Error strategy that uses default values on failure.
@@ -18,7 +19,7 @@ class DefaultValueStrategy:
     predefined default output values.
     """
 
-    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> Optional[GraphNodeEventBase]:
+    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> GraphNodeEventBase | None:
         """
         Handle error by using default values.
 

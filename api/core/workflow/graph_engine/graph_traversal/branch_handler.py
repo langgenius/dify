@@ -2,15 +2,18 @@
 Branch node handling for graph traversal.
 """
 
-from typing import Optional
+from collections.abc import Sequence
+from typing import final
 
 from core.workflow.graph import Graph
+from core.workflow.graph_events.node import NodeRunStreamChunkEvent
 
 from ..state_management import EdgeStateManager
 from .edge_processor import EdgeProcessor
 from .skip_propagator import SkipPropagator
 
 
+@final
 class BranchHandler:
     """
     Handles branch node logic during graph traversal.
@@ -40,7 +43,9 @@ class BranchHandler:
         self.skip_propagator = skip_propagator
         self.edge_state_manager = edge_state_manager
 
-    def handle_branch_completion(self, node_id: str, selected_handle: Optional[str]) -> tuple[list[str], list]:
+    def handle_branch_completion(
+        self, node_id: str, selected_handle: str | None
+    ) -> tuple[Sequence[str], Sequence[NodeRunStreamChunkEvent]]:
         """
         Handle completion of a branch node.
 
@@ -58,10 +63,10 @@ class BranchHandler:
             raise ValueError(f"Branch node {node_id} completed without selecting a branch")
 
         # Categorize edges into selected and unselected
-        selected_edges, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
+        _, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
 
         # Skip all unselected paths
-        self.skip_propagator.skip_branch_paths(node_id, unselected_edges)
+        self.skip_propagator.skip_branch_paths(unselected_edges)
 
         # Process selected edges and get ready nodes and streaming events
         return self.edge_processor.process_node_success(node_id, selected_handle)

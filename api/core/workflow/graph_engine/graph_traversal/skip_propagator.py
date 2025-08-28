@@ -2,11 +2,15 @@
 Skip state propagation through the graph.
 """
 
-from core.workflow.graph import Graph
+from collections.abc import Sequence
+from typing import final
+
+from core.workflow.graph import Edge, Graph
 
 from ..state_management import EdgeStateManager, NodeStateManager
 
 
+@final
 class SkipPropagator:
     """
     Propagates skip states through the graph.
@@ -57,9 +61,8 @@ class SkipPropagator:
 
         # If any edge is taken, node may still execute
         if edge_states["has_taken"]:
-            # Check if node is ready and enqueue if so
-            if self.node_state_manager.is_node_ready(downstream_node_id):
-                self.node_state_manager.enqueue_node(downstream_node_id)
+            # Enqueue node
+            self.node_state_manager.enqueue_node(downstream_node_id)
             return
 
         # All edges are skipped, propagate skip to this node
@@ -83,12 +86,11 @@ class SkipPropagator:
             # Recursively propagate skip
             self.propagate_skip_from_edge(edge.id)
 
-    def skip_branch_paths(self, node_id: str, unselected_edges: list) -> None:
+    def skip_branch_paths(self, unselected_edges: Sequence[Edge]) -> None:
         """
         Skip all paths from unselected branch edges.
 
         Args:
-            node_id: The ID of the branch node
             unselected_edges: List of edges not taken by the branch
         """
         for edge in unselected_edges:

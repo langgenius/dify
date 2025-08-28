@@ -2,7 +2,7 @@
 Base error strategy protocol.
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
@@ -16,7 +16,7 @@ class ErrorStrategy(Protocol):
     node execution failures.
     """
 
-    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> Optional[GraphNodeEventBase]:
+    def handle_error(self, event: NodeRunFailedEvent, graph: Graph, retry_count: int) -> GraphNodeEventBase | None:
         """
         Handle a node failure event.
 

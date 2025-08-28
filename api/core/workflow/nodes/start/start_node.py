@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from typing import Any, Optional
 
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
@@ -11,6 +11,7 @@ from core.workflow.nodes.start.entities import StartNodeData
 
 class StartNode(Node):
     node_type = NodeType.START
+    execution_type = NodeExecutionType.ROOT
 
     _node_data: StartNodeData
 

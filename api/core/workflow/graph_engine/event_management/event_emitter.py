@@ -5,12 +5,14 @@ Event emitter for yielding events to external consumers.
 import threading
 import time
 from collections.abc import Generator
+from typing import final
 
 from core.workflow.graph_events import GraphEngineEvent
 
 from .event_collector import EventCollector
 
 
+@final
 class EventEmitter:
     """
     Emits collected events as a generator for external consumption.

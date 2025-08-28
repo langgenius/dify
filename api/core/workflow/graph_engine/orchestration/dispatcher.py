@@ -6,7 +6,9 @@ import logging
 import queue
 import threading
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, final
+
+from core.workflow.graph_events.base import GraphNodeEventBase
 
 from ..event_management import EventCollector, EventEmitter
 from .execution_coordinator import ExecutionCoordinator
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@final
 class Dispatcher:
     """
     Main dispatcher that processes events from the event queue.
@@ -27,12 +30,12 @@ class Dispatcher:
 
     def __init__(
         self,
-        event_queue: queue.Queue,
+        event_queue: queue.Queue[GraphNodeEventBase],
         event_handler: "EventHandlerRegistry",
         event_collector: EventCollector,
         execution_coordinator: ExecutionCoordinator,
         max_execution_time: int,
-        event_emitter: Optional[EventEmitter] = None,
+        event_emitter: EventEmitter | None = None,
     ) -> None:
         """
         Initialize the dispatcher.
@@ -52,9 +55,9 @@ class Dispatcher:
         self.max_execution_time = max_execution_time
         self.event_emitter = event_emitter
 
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
-        self._start_time: Optional[float] = None
+        self._start_time: float | None = None
 
     def start(self) -> None:
         """Start the dispatcher thread."""

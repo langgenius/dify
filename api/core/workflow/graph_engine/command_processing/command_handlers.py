@@ -3,6 +3,7 @@ Command handler implementations.
 """
 
 import logging
+from typing import final
 
 from ..domain.graph_execution import GraphExecution
 from ..entities.commands import AbortCommand, GraphEngineCommand
@@ -11,6 +12,7 @@ from .command_processor import CommandHandler
 logger = logging.getLogger(__name__)
 
 
+@final
 class AbortCommandHandler(CommandHandler):
     """Handles abort commands."""
 

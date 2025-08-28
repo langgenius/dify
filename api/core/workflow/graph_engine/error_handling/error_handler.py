@@ -2,7 +2,7 @@
 Main error handler that coordinates error strategies.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, final
 
 from core.workflow.enums import ErrorStrategy as ErrorStrategyEnum
 from core.workflow.graph import Graph
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ..domain import GraphExecution
 
 
+@final
 class ErrorHandler:
     """
     Coordinates error handling strategies for node failures.
@@ -34,16 +35,16 @@ class ErrorHandler:
             graph: The workflow graph
             graph_execution: The graph execution state
         """
-        self.graph = graph
-        self.graph_execution = graph_execution
+        self._graph = graph
+        self._graph_execution = graph_execution
 
         # Initialize strategies
-        self.abort_strategy = AbortStrategy()
-        self.retry_strategy = RetryStrategy()
-        self.fail_branch_strategy = FailBranchStrategy()
-        self.default_value_strategy = DefaultValueStrategy()
+        self._abort_strategy = AbortStrategy()
+        self._retry_strategy = RetryStrategy()
+        self._fail_branch_strategy = FailBranchStrategy()
+        self._default_value_strategy = DefaultValueStrategy()
 
-    def handle_node_failure(self, event: NodeRunFailedEvent) -> Optional[GraphNodeEventBase]:
+    def handle_node_failure(self, event: NodeRunFailedEvent) -> GraphNodeEventBase | None:
         """
         Handle a node failure event.
 
@@ -56,14 +57,14 @@ class ErrorHandler:
         Returns:
             Optional new event to process, or None to abort
         """
-        node = self.graph.nodes[event.node_id]
+        node = self._graph.nodes[event.node_id]
         # Get retry count from NodeExecution
-        node_execution = self.graph_execution.get_or_create_node_execution(event.node_id)
+        node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         retry_count = node_execution.retry_count
 
         # First check if retry is configured and not exhausted
         if node.retry and retry_count < node.retry_config.max_retries:
-            result = self.retry_strategy.handle_error(event, self.graph, retry_count)
+            result = self._retry_strategy.handle_error(event, self._graph, retry_count)
             if result:
                 # Retry count will be incremented when NodeRunRetryEvent is handled
                 return result
@@ -71,12 +72,10 @@ class ErrorHandler:
         # Apply configured error strategy
         strategy = node.error_strategy
 
-        if strategy is None:
-            return self.abort_strategy.handle_error(event, self.graph, retry_count)
-        elif strategy == ErrorStrategyEnum.FAIL_BRANCH:
-            return self.fail_branch_strategy.handle_error(event, self.graph, retry_count)
-        elif strategy == ErrorStrategyEnum.DEFAULT_VALUE:
-            return self.default_value_strategy.handle_error(event, self.graph, retry_count)
-        else:
-            # Unknown strategy, default to abort
-            return self.abort_strategy.handle_error(event, self.graph, retry_count)
+        match strategy:
+            case None:
+                return self._abort_strategy.handle_error(event, self._graph, retry_count)
+            case ErrorStrategyEnum.FAIL_BRANCH:
+                return self._fail_branch_strategy.handle_error(event, self._graph, retry_count)
+            case ErrorStrategyEnum.DEFAULT_VALUE:
+                return self._default_value_strategy.handle_error(event, self._graph, retry_count)

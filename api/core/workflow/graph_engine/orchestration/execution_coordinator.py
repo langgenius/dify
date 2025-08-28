@@ -2,7 +2,7 @@
 Execution coordinator for managing overall workflow execution.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, final
 
 from ..command_processing import CommandProcessor
 from ..domain import GraphExecution
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from ..event_management import EventHandlerRegistry
 
 
+@final
 class ExecutionCoordinator:
     """
     Coordinates overall execution flow between subsystems.

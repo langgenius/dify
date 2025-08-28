@@ -3,7 +3,8 @@ Manager for edge states during graph execution.
 """
 
 import threading
-from typing import TypedDict
+from collections.abc import Sequence
+from typing import TypedDict, final
 
 from core.workflow.enums import NodeState
 from core.workflow.graph import Edge, Graph
@@ -17,6 +18,7 @@ class EdgeStateAnalysis(TypedDict):
     all_skipped: bool
 
 
+@final
 class EdgeStateManager:
     """
     Manages edge states and transitions during graph execution.
@@ -87,7 +89,7 @@ class EdgeStateManager:
         with self._lock:
             return self.graph.edges[edge_id].state
 
-    def categorize_branch_edges(self, node_id: str, selected_handle: str) -> tuple[list[Edge], list[Edge]]:
+    def categorize_branch_edges(self, node_id: str, selected_handle: str) -> tuple[Sequence[Edge], Sequence[Edge]]:
         """
         Categorize branch edges into selected and unselected.
 
@@ -100,8 +102,8 @@ class EdgeStateManager:
         """
         with self._lock:
             outgoing_edges = self.graph.get_outgoing_edges(node_id)
-            selected_edges = []
-            unselected_edges = []
+            selected_edges: list[Edge] = []
+            unselected_edges: list[Edge] = []
 
             for edge in outgoing_edges:
                 if edge.source_handle == selected_handle:

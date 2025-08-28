@@ -430,9 +430,7 @@ export const ssePost = async (
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
-          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
-            ssePost(url, fetchOptions, otherOptions)
-          }).catch(() => {
+          if (isPublicAPI) {
             res.json().then((data: any) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
@@ -449,7 +447,14 @@ export const ssePost = async (
                 }
               }
             })
-          })
+          }
+          else {
+            refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
+              ssePost(url, fetchOptions, otherOptions)
+            }).catch((err) => {
+              console.error(err)
+            })
+          }
         }
         else {
           res.json().then((data) => {
