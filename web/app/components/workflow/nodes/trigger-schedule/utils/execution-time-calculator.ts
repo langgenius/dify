@@ -128,7 +128,14 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
         const currentDayOfWeek = userToday.getDay()
         const daysUntilTarget = (targetDay - currentDayOfWeek + 7) % 7
-        const adjustedDays = daysUntilTarget === 0 ? 7 : daysUntilTarget
+
+        // Check if today's configured time has already passed
+        const todayAtTargetTime = new Date(userToday)
+        todayAtTargetTime.setHours(displayHour, Number.parseInt(minute), 0, 0)
+
+        let adjustedDays = daysUntilTarget
+        if (daysUntilTarget === 0 && todayAtTargetTime <= userCurrentTime)
+          adjustedDays = 7
 
         const execution = new Date(userToday)
         execution.setDate(userToday.getDate() + adjustedDays + (weekOffset * 7))
