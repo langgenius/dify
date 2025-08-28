@@ -288,6 +288,7 @@ const VarReferencePicker: FC<Props> = ({
     availableNodes,
     isChatMode,
     isConstant: !!isConstant,
+    preferSchemaType,
   })
 
   const { isEnv, isChatVar, isRagVar, isValidVar, isException } = useMemo(() => {

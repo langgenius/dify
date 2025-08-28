@@ -825,6 +825,7 @@ export const getVarType = ({
   ragVariables = [],
   allPluginInfoList,
   getMatchedSchemaType,
+  preferSchemaType,
 }: {
   valueSelector: ValueSelector
   parentNode?: Node | null
@@ -838,6 +839,7 @@ export const getVarType = ({
   ragVariables?: RAGPipelineVariable[]
   allPluginInfoList: Record<string, ToolWithProvider[]>
   getMatchedSchemaType: (obj: any) => string
+  preferSchemaType?: boolean
 }): VarType => {
   if (isConstant)
     return VarType.string
@@ -934,7 +936,7 @@ export const getVarType = ({
     const isStructuredOutputVar = !!targetVar.children?.schema?.properties
     if (isStructuredOutputVar) {
       if (valueSelector.length === 2) { // root
-        return targetVar.alias || VarType.object
+        return (preferSchemaType && targetVar.schemaType) ? targetVar.schemaType : VarType.object
       }
       let currProperties = targetVar.children.schema;
       (valueSelector as ValueSelector).slice(2).forEach((key, i) => {
@@ -955,7 +957,7 @@ export const getVarType = ({
         curr = curr?.find((v: any) => v.variable === key)
 
       if (isLast) {
-        type = curr?.type
+        type = (preferSchemaType && curr?.schemaType) ? curr?.schemaType : curr?.type
       }
       else {
         if (curr?.type === VarType.object || curr?.type === VarType.file)
