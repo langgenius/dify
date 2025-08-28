@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 from core.model_manager import ModelInstance
@@ -57,17 +58,54 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         if self._fixed_separator:
-            chunks = text.split(self._fixed_separator)
+            # Use re.split() instead of str.split() to support regex patterns
+            if self._keep_separator:
+                # For regex patterns, we need to handle separator preservation differently
+                # Use re.finditer to find all matches and manually construct splits
+                chunks = []
+                last_end = 0
+                for match in re.finditer(self._fixed_separator, text):
+                    # Add text before the match
+                    if match.start() > last_end:
+                        chunks.append(text[last_end : match.start()])
+                    # Add the matched separator + following content until next match or end
+                    separator_start = match.start()
+                    separator_end = match.end()
+
+                    # Find the next match to determine where this chunk should end
+                    next_match = None
+                    for next_m in re.finditer(self._fixed_separator, text[separator_end:]):
+                        next_match = next_m
+                        break
+
+                    if next_match:
+                        # There's a next match, so this chunk ends at the next separator
+                        chunk_end = separator_end + next_match.start()
+                        chunks.append(text[separator_start:chunk_end])
+                        last_end = separator_end + next_match.start()
+                    else:
+                        # This is the last match, so include all remaining text
+                        chunks.append(text[separator_start:])
+                        last_end = len(text)
+                        break
+
+                # Add any remaining text before the first match
+                if not chunks and text:
+                    chunks.append(text)
+            else:
+                chunks = re.split(self._fixed_separator, text)
         else:
             chunks = [text]
 
         final_chunks = []
         chunks_lengths = self._length_function(chunks)
         for chunk, chunk_length in zip(chunks, chunks_lengths):
-            if chunk_length > self._chunk_size:
-                final_chunks.extend(self.recursive_split_text(chunk))
-            else:
-                final_chunks.append(chunk)
+            # Filter out chunks that are too short or contain only symbols
+            if chunk_length > 1 and chunk.strip():  # Skip chunks with only 1 character or empty/whitespace
+                if chunk_length > self._chunk_size:
+                    final_chunks.extend(self.recursive_split_text(chunk))
+                else:
+                    final_chunks.append(chunk)
 
         return final_chunks
 
@@ -82,7 +120,8 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             if _s == "":
                 separator = _s
                 break
-            if _s in text:
+            # Use re.search() instead of 'in' to support regex patterns
+            if re.search(_s, text):
                 separator = _s
                 new_separators = self._separators[i + 1 :]
                 break
@@ -92,8 +131,24 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             if separator == " ":
                 splits = text.split()
             else:
-                splits = text.split(separator)
-                splits = [item + separator if i < len(splits) else item for i, item in enumerate(splits)]
+                # Use re.split() instead of str.split() to support regex patterns
+                if self._keep_separator:
+                    # For regex patterns, we need to handle separator preservation differently
+                    # Use re.finditer to find all matches and manually construct splits
+                    splits = []
+                    last_end = 0
+                    for match in re.finditer(separator, text):
+                        # Add text before the match
+                        if match.start() > last_end:
+                            splits.append(text[last_end : match.start()])
+                        # Add the matched separator
+                        splits.append(match.group(0))
+                        last_end = match.end()
+                    # Add remaining text after last match
+                    if last_end < len(text):
+                        splits.append(text[last_end:])
+                else:
+                    splits = re.split(separator, text)
         else:
             splits = list(text)
         splits = [s for s in splits if (s not in {"", "\n"})]
