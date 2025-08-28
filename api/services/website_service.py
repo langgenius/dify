@@ -23,6 +23,7 @@ class CrawlOptions:
     only_main_content: bool = False
     includes: Optional[str] = None
     excludes: Optional[str] = None
+    prompt: Optional[str] = None
     max_depth: Optional[int] = None
     use_sitemap: bool = True
 
@@ -70,6 +71,7 @@ class WebsiteCrawlApiRequest:
             only_main_content=self.options.get("only_main_content", False),
             includes=self.options.get("includes"),
             excludes=self.options.get("excludes"),
+            prompt=self.options.get("prompt"),
             max_depth=self.options.get("max_depth"),
             use_sitemap=self.options.get("use_sitemap", True),
         )
@@ -174,8 +176,10 @@ class WebsiteService:
                 "limit": request.options.limit,
                 "scrapeOptions": {"onlyMainContent": request.options.only_main_content},
             }
-            if request.options.max_depth:
-                params["maxDepth"] = request.options.max_depth
+
+        # Add optional prompt for Firecrawl v2 crawl-params compatibility
+        if request.options.prompt:
+            params["prompt"] = request.options.prompt
 
         job_id = firecrawl_app.crawl_url(request.url, params)
         website_crawl_time_cache_key = f"website_crawl_{job_id}"
