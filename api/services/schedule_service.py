@@ -41,8 +41,6 @@ class ScheduleService:
         node_id: str,
         cron_expression: str,
         timezone: str,
-        triggered_by: str,
-        enabled: bool = True,
     ) -> WorkflowSchedulePlan:
         """
         Create a new workflow schedule.
@@ -54,8 +52,6 @@ class ScheduleService:
             node_id: Starting node ID
             cron_expression: Cron expression
             timezone: Timezone for cron evaluation
-            triggered_by: Trigger context - 'debugger' or 'production'
-            enabled: Whether schedule is enabled
 
         Returns:
             Created WorkflowSchedulePlan instance
@@ -73,9 +69,7 @@ class ScheduleService:
             node_id=node_id,
             cron_expression=cron_expression,
             timezone=timezone,
-            enabled=enabled and next_run_at is not None,
             next_run_at=next_run_at,
-            triggered_by=triggered_by,
         )
 
         session.add(schedule)
@@ -110,17 +104,12 @@ class ScheduleService:
                 setattr(schedule, field, value)
 
         # Recalculate next_run_at if schedule parameters changed
-        if any(field in updates for field in ["cron_expression", "timezone", "enabled"]):
-            if schedule.enabled:
-                next_run_at = ScheduleService.calculate_next_run_at(
-                    schedule.cron_expression,
-                    schedule.timezone,
-                )
-                schedule.next_run_at = next_run_at
-
-                # Disable if no valid next run
-                if next_run_at is None:
-                    schedule.enabled = False
+        if any(field in updates for field in ["cron_expression", "timezone"]):
+            next_run_at = ScheduleService.calculate_next_run_at(
+                schedule.cron_expression,
+                schedule.timezone,
+            )
+            schedule.next_run_at = next_run_at
 
         session.flush()
         return schedule
@@ -147,20 +136,6 @@ class ScheduleService:
         session.delete(schedule)
         session.flush()
         return True
-
-    @staticmethod
-    def get_schedule(session: Session, schedule_id: str) -> Optional[WorkflowSchedulePlan]:
-        """
-        Get a schedule by ID.
-
-        Args:
-            session: Database session
-            schedule_id: Schedule ID
-
-        Returns:
-            WorkflowSchedulePlan or None
-        """
-        return session.get(WorkflowSchedulePlan, schedule_id)
 
     @staticmethod
     def get_tenant_owner(session: Session, tenant_id: str) -> Optional[Account]:
@@ -212,7 +187,7 @@ class ScheduleService:
             New next_run_at datetime or None
         """
         schedule = session.get(WorkflowSchedulePlan, schedule_id)
-        if not schedule or not schedule.enabled:
+        if not schedule:
             return None
 
         # Calculate next run time
@@ -224,10 +199,5 @@ class ScheduleService:
 
         # Update schedule
         schedule.next_run_at = next_run_at
-
-        # If no next run, disable it
-        if next_run_at is None:
-            schedule.enabled = False
-
         session.flush()
         return next_run_at

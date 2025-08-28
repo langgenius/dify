@@ -9,8 +9,8 @@ from extensions.ext_database import db
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
+from services.schedule_service import ScheduleService
 from services.workflow.entities import AsyncTriggerResponse, TriggerData
-from services.workflow.schedule_manager import ScheduleService
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +31,6 @@ def run_schedule_trigger(schedule_id: str) -> AsyncTriggerResponse | None:
             logger.warning("Schedule %s not found", schedule_id)
             return
 
-        if not schedule.enabled:
-            logger.debug("Schedule %s is disabled", schedule_id)
-            return
-
         tenant_owner = ScheduleService.get_tenant_owner(session, schedule.tenant_id)
         if not tenant_owner:
             logger.error("Tenant owner not found for tenant %s", schedule.tenant_id)
@@ -52,7 +48,6 @@ def run_schedule_trigger(schedule_id: str) -> AsyncTriggerResponse | None:
                 trigger_data=TriggerData(
                     app_id=schedule.app_id,
                     root_node_id=schedule.node_id,
-                    # TODO: need `workflow_id` when triggered_by = `debugger`
                     trigger_type=WorkflowRunTriggeredFrom.SCHEDULE,
                     inputs=inputs,
                     tenant_id=schedule.tenant_id,
@@ -62,4 +57,11 @@ def run_schedule_trigger(schedule_id: str) -> AsyncTriggerResponse | None:
             return response
 
         except Exception as e:
-            logger.error("Failed to trigger workflow for schedule %s: %s", schedule_id, e, exc_info=True)
+            logger.error(
+                "Failed to trigger workflow for schedule %s. App: %s, Error: %s",
+                schedule_id,
+                schedule.app_id,
+                str(e),
+                exc_info=True,
+            )
+            return None

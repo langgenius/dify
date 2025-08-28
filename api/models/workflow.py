@@ -1497,8 +1497,6 @@ class WorkflowSchedulePlan(Base):
     - tenant_id (uuid) Workspace ID for multi-tenancy
     - cron_expression (varchar) Cron expression defining schedule pattern
     - timezone (varchar) Timezone for cron evaluation (e.g., 'Asia/Shanghai')
-    - enabled (bool) Whether schedule is active
-    - triggered_by (varchar) Environment: debugger or production
     - next_run_at (timestamp) Next scheduled execution time
     - created_at (timestamp) Creation timestamp
     - updated_at (timestamp) Last update timestamp
@@ -1507,11 +1505,11 @@ class WorkflowSchedulePlan(Base):
     __tablename__ = "workflow_schedule_plans"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_schedule_plan_pkey"),
-        sa.UniqueConstraint("app_id", "node_id", "triggered_by", name="uniq_app_node_trigger"),
-        sa.Index("workflow_schedule_plan_enabled_next_idx", "enabled", "next_run_at"),
+        sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node"),
+        sa.Index("workflow_schedule_plan_next_idx", "next_run_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1521,8 +1519,6 @@ class WorkflowSchedulePlan(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)
 
     # Schedule control
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
-    triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
     next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
@@ -1538,9 +1534,7 @@ class WorkflowSchedulePlan(Base):
             "tenant_id": self.tenant_id,
             "cron_expression": self.cron_expression,
             "timezone": self.timezone,
-            "enabled": self.enabled,
             "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
-            "triggered_by": self.triggered_by,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
