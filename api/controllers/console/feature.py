@@ -10,11 +10,13 @@ from .wraps import account_initialization_required, cloud_utm_record, setup_requ
 
 @console_ns.route("/features")
 class FeatureApi(Resource):
-    @api.doc('get_tenant_features')
-    @api.doc(description='Get feature configuration for current tenant')
-    @api.response(200, 'Success', api.model('FeatureResponse', {
-        'features': api.fields.Raw(description='Feature configuration object')
-    }))
+    @api.doc("get_tenant_features")
+    @api.doc(description="Get feature configuration for current tenant")
+    @api.response(
+        200,
+        "Success",
+        api.model("FeatureResponse", {"features": api.fields.Raw(description="Feature configuration object")}),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -26,11 +28,15 @@ class FeatureApi(Resource):
 
 @console_ns.route("/system-features")
 class SystemFeatureApi(Resource):
-    @api.doc('get_system_features')
-    @api.doc(description='Get system-wide feature configuration')
-    @api.response(200, 'Success', api.model('SystemFeatureResponse', {
-        'features': api.fields.Raw(description='System feature configuration object')
-    }))
+    @api.doc("get_system_features")
+    @api.doc(description="Get system-wide feature configuration")
+    @api.response(
+        200,
+        "Success",
+        api.model(
+            "SystemFeatureResponse", {"features": api.fields.Raw(description="System feature configuration object")}
+        ),
+    )
     def get(self):
         """Get system-wide feature configuration"""
         return FeatureService.get_system_features().model_dump()

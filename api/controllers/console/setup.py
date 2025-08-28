@@ -15,12 +15,19 @@ from .wraps import only_edition_self_hosted
 
 @console_ns.route("/setup")
 class SetupApi(Resource):
-    @api.doc('get_setup_status')
-    @api.doc(description='Get system setup status')
-    @api.response(200, 'Success', api.model('SetupStatusResponse', {
-        'step': api.fields.String(description='Setup step status', enum=['not_started', 'finished']),
-        'setup_at': api.fields.String(description='Setup completion time (ISO format)', required=False)
-    }))
+    @api.doc("get_setup_status")
+    @api.doc(description="Get system setup status")
+    @api.response(
+        200,
+        "Success",
+        api.model(
+            "SetupStatusResponse",
+            {
+                "step": api.fields.String(description="Setup step status", enum=["not_started", "finished"]),
+                "setup_at": api.fields.String(description="Setup completion time (ISO format)", required=False),
+            },
+        ),
+    )
     def get(self):
         """Get system setup status"""
         if dify_config.EDITION == "SELF_HOSTED":
@@ -33,17 +40,20 @@ class SetupApi(Resource):
             return {"step": "not_started"}
         return {"step": "finished"}
 
-    @api.doc('setup_system')
-    @api.doc(description='Initialize system setup with admin account')
-    @api.expect(api.model('SetupRequest', {
-        'email': api.fields.String(required=True, description='Admin email address'),
-        'name': api.fields.String(required=True, description='Admin name (max 30 characters)'),
-        'password': api.fields.String(required=True, description='Admin password')
-    }))
-    @api.response(201, 'Success', api.model('SetupResponse', {
-        'result': api.fields.String(description='Setup result')
-    }))
-    @api.response(400, 'Already setup or validation failed')
+    @api.doc("setup_system")
+    @api.doc(description="Initialize system setup with admin account")
+    @api.expect(
+        api.model(
+            "SetupRequest",
+            {
+                "email": api.fields.String(required=True, description="Admin email address"),
+                "name": api.fields.String(required=True, description="Admin name (max 30 characters)"),
+                "password": api.fields.String(required=True, description="Admin password"),
+            },
+        )
+    )
+    @api.response(201, "Success", api.model("SetupResponse", {"result": api.fields.String(description="Setup result")}))
+    @api.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
     def post(self):
         """Initialize system setup with admin account"""
