@@ -1,5 +1,5 @@
 'use client'
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import TriggerPluginItem from './item'
 import type { BlockEnum } from '../../types'
@@ -9,11 +9,13 @@ import { useGetLanguage } from '@/context/i18n'
 type TriggerPluginListProps = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   searchText: string
+  onContentStateChange?: (hasContent: boolean) => void
 }
 
 const TriggerPluginList = ({
   onSelect,
   searchText,
+  onContentStateChange,
 }: TriggerPluginListProps) => {
   const { data: buildInTools = [] } = useAllBuiltInTools()
   const language = useGetLanguage()
@@ -31,7 +33,13 @@ const TriggerPluginList = ({
     })
   }, [buildInTools, searchText, language])
 
-  if (!triggerPlugins.length)
+  const hasContent = triggerPlugins.length > 0
+
+  useEffect(() => {
+    onContentStateChange?.(hasContent)
+  }, [hasContent, onContentStateChange])
+
+  if (!hasContent)
     return null
 
   return (

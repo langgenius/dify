@@ -246,6 +246,8 @@ const translation = {
     'transform': 'Transform',
     'utilities': 'Utilities',
     'noResult': 'No match found',
+    'noPluginsFound': 'No plugins were found',
+    'requestToCommunity': 'Requests to the community',
     'agent': 'Agent Strategy',
     'allAdded': 'All added',
     'addAll': 'Add all',

@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
 } from 'react'
 import { useNodes } from 'reactflow'
@@ -17,12 +18,14 @@ type StartBlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
+  onContentStateChange?: (hasContent: boolean) => void
 }
 
 const StartBlocks = ({
   searchText,
   onSelect,
   availableBlocksTypes = [],
+  onContentStateChange,
 }: StartBlocksProps) => {
   const { t } = useTranslation()
   const nodes = useNodes()
@@ -47,6 +50,10 @@ const StartBlocks = ({
   }, [searchText, availableBlocksTypes, nodes])
 
   const isEmpty = filteredBlocks.length === 0
+
+  useEffect(() => {
+    onContentStateChange?.(!isEmpty)
+  }, [isEmpty, onContentStateChange])
 
   const renderBlock = useCallback((block: typeof START_BLOCKS[0]) => (
     <Tooltip
@@ -84,27 +91,23 @@ const StartBlocks = ({
     </Tooltip>
   ), [nodesExtraData, onSelect, t])
 
+  if (isEmpty)
+    return null
+
   return (
-    <div className='min-w-[400px] max-w-[500px] p-1'>
-      {isEmpty && (
-        <div className='flex h-full items-center justify-center px-3 text-xs font-medium text-text-tertiary'>
-          {t('workflow.tabs.noResult')}
-        </div>
-      )}
-      {!isEmpty && (
-        <div className='mb-1'>
-          {filteredBlocks.map((block, index) => (
-            <div key={block.type}>
-              {renderBlock(block)}
-              {block.type === BlockEnumValues.Start && index < filteredBlocks.length - 1 && (
-                <div className='my-1 px-3'>
-                  <div className='border-t border-divider-subtle' />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+    <div className='p-1'>
+      <div className='mb-1'>
+        {filteredBlocks.map((block, index) => (
+          <div key={block.type}>
+            {renderBlock(block)}
+            {block.type === BlockEnumValues.Start && index < filteredBlocks.length - 1 && (
+              <div className='my-1 px-3'>
+                <div className='border-t border-divider-subtle' />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
