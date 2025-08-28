@@ -108,6 +108,8 @@ class ChatMessageListApi(Resource):
                     )
                 )
             )
+            if has_more is None:
+                has_more = False
 
         history_messages = list(reversed(history_messages))
 
