@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 @bp.route("/webhook/<string:webhook_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
+@bp.route("/webhook-debug/<string:webhook_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 def handle_webhook(webhook_id: str):
     """
     Handle webhook trigger calls.
