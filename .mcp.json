@@ -29,12 +29,6 @@
         "command": "npx",
         "args": ["-y", "@playwright/mcp@latest"],
         "env": {}
-      },
-      "ide": {
-        "type": "stdio",
-        "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-ide"],
-        "env": {}
       }
     }
   }
