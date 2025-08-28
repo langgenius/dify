@@ -71,7 +71,7 @@ const StartBlocks = ({
           <div className='system-md-medium mb-1 text-text-primary'>{block.title}</div>
           <div className='system-xs-regular text-text-secondary'>{nodesExtraData[block.type].about}</div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
-            <div className='system-xs-regular mt-1 text-text-tertiary'>
+            <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>
               {t('tools.author')} {t('workflow.difyTeam')}
             </div>
           )}
