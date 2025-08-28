@@ -7,13 +7,27 @@ from packaging import version
 
 from configs import dify_config
 
-from . import api
+from . import api, console_ns
 
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/version")
 class VersionApi(Resource):
+    @api.doc('check_version_update')
+    @api.doc(description='Check for application version updates')
+    @api.expect(api.parser()
+        .add_argument('current_version', type=str, required=True, location='args', help='Current application version')
+    )
+    @api.response(200, 'Success', api.model('VersionResponse', {
+        'version': api.fields.String(description='Latest version number'),
+        'release_date': api.fields.String(description='Release date of latest version'),
+        'release_notes': api.fields.String(description='Release notes for latest version'),
+        'can_auto_update': api.fields.Boolean(description='Whether auto-update is supported'),
+        'features': api.fields.Raw(description='Feature flags and capabilities')
+    }))
     def get(self):
+        """Check for application version updates"""
         parser = reqparse.RequestParser()
         parser.add_argument("current_version", type=str, required=True, location="args")
         args = parser.parse_args()
@@ -59,6 +73,3 @@ def _has_new_version(*, latest_version: str, current_version: str) -> bool:
     except version.InvalidVersion:
         logger.warning("Invalid version format: latest=%s, current=%s", latest_version, current_version)
         return False
-
-
-api.add_resource(VersionApi, "/version")
