@@ -1,4 +1,4 @@
-import type { NodeDefault, VarType } from '../../types'
+import { type NodeDefault, VarType } from '../../types'
 import { type IfElseNodeType, LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
