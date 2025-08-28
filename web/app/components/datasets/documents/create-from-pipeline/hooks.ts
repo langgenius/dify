@@ -65,7 +65,7 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
 
 export const useLocalFile = () => {
   const {
-    localFileList: fileList,
+    localFileList,
     currentLocalFile,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     localFileList: state.localFileList,
@@ -73,7 +73,7 @@ export const useLocalFile = () => {
   })))
   const dataSourceStore = useDataSourceStore()
 
-  const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
+  const allFileLoaded = useMemo(() => (localFileList.length > 0 && localFileList.every(file => file.file.id)), [localFileList])
 
   const hidePreviewLocalFile = useCallback(() => {
     const { setCurrentLocalFile } = dataSourceStore.getState()
@@ -81,7 +81,7 @@ export const useLocalFile = () => {
   }, [dataSourceStore])
 
   return {
-    fileList,
+    localFileList,
     allFileLoaded,
     currentLocalFile,
     hidePreviewLocalFile,
@@ -187,27 +187,27 @@ export const useWebsiteCrawl = () => {
 
 export const useOnlineDrive = () => {
   const {
-    fileList,
+    onlineDriveFileList,
     selectedFileIds,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
-    fileList: state.fileList,
+    onlineDriveFileList: state.onlineDriveFileList,
     selectedFileIds: state.selectedFileIds,
   })))
   const dataSourceStore = useDataSourceStore()
 
   const selectedOnlineDriveFileList = useMemo(() => {
-    return selectedFileIds.map(key => fileList.find(item => item.id === key)!)
-  }, [fileList, selectedFileIds])
+    return selectedFileIds.map(key => onlineDriveFileList.find(item => item.id === key)!)
+  }, [onlineDriveFileList, selectedFileIds])
 
   const clearOnlineDriveData = useCallback(() => {
     const {
-      setFileList,
+      setOnlineDriveFileList,
       setBucket,
       setPrefix,
       setKeywords,
       setSelectedFileIds,
     } = dataSourceStore.getState()
-    setFileList([])
+    setOnlineDriveFileList([])
     setBucket('')
     setPrefix([])
     setKeywords('')
@@ -215,7 +215,7 @@ export const useOnlineDrive = () => {
   }, [dataSourceStore])
 
   return {
-    fileList,
+    onlineDriveFileList,
     selectedFileIds,
     selectedOnlineDriveFileList,
     clearOnlineDriveData,

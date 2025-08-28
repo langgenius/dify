@@ -10,8 +10,8 @@ export type OnlineDriveSliceShape = {
   setKeywords: (keywords: string) => void
   selectedFileIds: string[]
   setSelectedFileIds: (selectedFileIds: string[]) => void
-  fileList: OnlineDriveFile[]
-  setFileList: (fileList: OnlineDriveFile[]) => void
+  onlineDriveFileList: OnlineDriveFile[]
+  setOnlineDriveFileList: (onlineDriveFileList: OnlineDriveFile[]) => void
   bucket: string
   setBucket: (bucket: string) => void
   nextPageParameters: Record<string, any>
@@ -43,12 +43,12 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set,
         selectedFileIds,
       }))
       const id = selectedFileIds[0]
-      const { fileList, previewOnlineDriveFileRef } = get()
-      previewOnlineDriveFileRef.current = fileList.find(file => file.id === id)
+      const { onlineDriveFileList, previewOnlineDriveFileRef } = get()
+      previewOnlineDriveFileRef.current = onlineDriveFileList.find(file => file.id === id)
     },
-    fileList: [],
-    setFileList: (fileList: OnlineDriveFile[]) => set(() => ({
-      fileList,
+    onlineDriveFileList: [],
+    setOnlineDriveFileList: (onlineDriveFileList: OnlineDriveFile[]) => set(() => ({
+      onlineDriveFileList,
     })),
     bucket: '',
     setBucket: (bucket: string) => set(() => ({

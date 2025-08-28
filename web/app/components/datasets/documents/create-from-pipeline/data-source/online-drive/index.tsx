@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import Header from '../base/header'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import FileList from './file-list'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
@@ -38,7 +38,7 @@ const OnlineDrive = ({
     keywords,
     bucket,
     selectedFileIds,
-    fileList,
+    onlineDriveFileList,
     currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     nextPageParameters: state.nextPageParameters,
@@ -47,11 +47,12 @@ const OnlineDrive = ({
     keywords: state.keywords,
     bucket: state.bucket,
     selectedFileIds: state.selectedFileIds,
-    fileList: state.fileList,
+    onlineDriveFileList: state.onlineDriveFileList,
     currentCredentialId: state.currentCredentialId,
   })))
   const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
+  const isLoadingRef = useRef(false)
 
   const { data: dataSourceAuth } = useGetDataSourceAuth({
     pluginId: nodeData.plugin_id,
@@ -63,8 +64,10 @@ const OnlineDrive = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDriveFiles = useCallback(async () => {
-    const { nextPageParameters, prefix, bucket, fileList, currentCredentialId } = dataSourceStore.getState()
+    if (isLoadingRef.current) return
+    const { nextPageParameters, prefix, bucket, onlineDriveFileList, currentCredentialId } = dataSourceStore.getState()
     setIsLoading(true)
+    isLoadingRef.current = true
     ssePost(
       datasourceNodeRunURL,
       {
@@ -81,18 +84,19 @@ const OnlineDrive = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const { setFileList, isTruncated, currentNextPageParametersRef, setHasBucket } = dataSourceStore.getState()
+          const { setOnlineDriveFileList, isTruncated, currentNextPageParametersRef, setHasBucket } = dataSourceStore.getState()
           const {
             fileList: newFileList,
             isTruncated: newIsTruncated,
             nextPageParameters: newNextPageParameters,
             hasBucket: newHasBucket,
           } = convertOnlineDriveData(documentsData.data, breadcrumbs, bucket)
-          setFileList([...fileList, ...newFileList])
+          setOnlineDriveFileList([...onlineDriveFileList, ...newFileList])
           isTruncated.current = newIsTruncated
           currentNextPageParametersRef.current = newNextPageParameters
           setHasBucket(newHasBucket)
           setIsLoading(false)
+          isLoadingRef.current = false
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           Toast.notify({
@@ -100,6 +104,7 @@ const OnlineDrive = ({
             message: error.error,
           })
           setIsLoading(false)
+          isLoadingRef.current = false
         },
       },
     )
@@ -109,7 +114,7 @@ const OnlineDrive = ({
     if (!currentCredentialId) return
     if (isInitialMount) {
       // Only fetch files on initial mount if fileList is empty
-      if (fileList.length === 0)
+      if (onlineDriveFileList.length === 0)
         getOnlineDriveFiles()
       setIsInitialMount(false)
     }
@@ -118,11 +123,11 @@ const OnlineDrive = ({
     }
   }, [nextPageParameters, prefix, bucket, currentCredentialId])
 
-  const onlineDriveFileList = useMemo(() => {
+  const filteredOnlineDriveFileList = useMemo(() => {
     if (keywords)
-      return fileList.filter(file => file.name.toLowerCase().includes(keywords.toLowerCase()))
-    return fileList
-  }, [fileList, keywords])
+      return onlineDriveFileList.filter(file => file.name.toLowerCase().includes(keywords.toLowerCase()))
+    return onlineDriveFileList
+  }, [onlineDriveFileList, keywords])
 
   const updateKeywords = useCallback((keywords: string) => {
     const { setKeywords } = dataSourceStore.getState()
@@ -152,9 +157,9 @@ const OnlineDrive = ({
   }, [dataSourceStore, isInPipeline])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
-    const { breadcrumbs, setBreadcrumbs, setPrefix, setBucket, setFileList, setSelectedFileIds } = dataSourceStore.getState()
+    const { breadcrumbs, prefix, setBreadcrumbs, setPrefix, setBucket, setOnlineDriveFileList, setSelectedFileIds } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.file) return
-    setFileList([])
+    setOnlineDriveFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
       setBucket(file.name)
     }
@@ -189,14 +194,14 @@ const OnlineDrive = ({
         credentials={dataSourceAuth?.result || []}
       />
       <FileList
-        fileList={onlineDriveFileList}
+        fileList={filteredOnlineDriveFileList}
         selectedFileIds={selectedFileIds}
         breadcrumbs={breadcrumbs}
         keywords={keywords}
         bucket={bucket}
         resetKeywords={resetKeywords}
         updateKeywords={updateKeywords}
-        searchResultsLength={onlineDriveFileList.length}
+        searchResultsLength={filteredOnlineDriveFileList.length}
         handleSelectFile={handleSelectFile}
         handleOpenFolder={handleOpenFolder}
         isInPipeline={isInPipeline}

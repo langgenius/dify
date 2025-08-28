@@ -110,13 +110,13 @@ export const useOnlineDrive = () => {
 
   const clearOnlineDriveData = useCallback(() => {
     const {
-      setFileList,
+      setOnlineDriveFileList,
       setBucket,
       setPrefix,
       setKeywords,
       setSelectedFileIds,
     } = dataSourceStore.getState()
-    setFileList([])
+    setOnlineDriveFileList([])
     setBucket('')
     setPrefix([])
     setKeywords('')

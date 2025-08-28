@@ -61,7 +61,7 @@ const CreateFormPipeline = () => {
     handleBackStep,
   } = useAddDocumentsSteps()
   const {
-    fileList,
+    localFileList,
     allFileLoaded,
     currentLocalFile,
     hidePreviewLocalFile,
@@ -81,7 +81,7 @@ const CreateFormPipeline = () => {
     clearWebsiteCrawlData,
   } = useWebsiteCrawl()
   const {
-    fileList: onlineDriveFileList,
+    onlineDriveFileList,
     selectedFileIds,
     selectedOnlineDriveFileList,
     clearOnlineDriveData,
@@ -107,7 +107,7 @@ const CreateFormPipeline = () => {
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
     if (datasourceType === DatasourceType.localFile)
-      return isShowVectorSpaceFull || !fileList.length || !allFileLoaded
+      return isShowVectorSpaceFull || !localFileList.length || !allFileLoaded
     if (datasourceType === DatasourceType.onlineDocument)
       return isShowVectorSpaceFull || !onlineDocuments.length
     if (datasourceType === DatasourceType.websiteCrawl)
@@ -115,7 +115,7 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.onlineDrive)
       return isShowVectorSpaceFull || !selectedFileIds.length
     return false
-  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileIds.length])
+  }, [datasource, datasourceType, isShowVectorSpaceFull, localFileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileIds.length])
 
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
@@ -285,7 +285,7 @@ const CreateFormPipeline = () => {
       const {
         bucket,
         selectedFileIds,
-        fileList: onlineDriveFileList,
+        onlineDriveFileList,
       } = dataSourceStore.getState()
       selectedFileIds.forEach((id) => {
         const file = onlineDriveFileList.find(file => file.id === id)
@@ -354,7 +354,7 @@ const CreateFormPipeline = () => {
   const handleSelectAll = useCallback(() => {
     const {
       onlineDocuments,
-      fileList: onlineDriveFileList,
+      onlineDriveFileList,
       selectedFileIds,
       setOnlineDocuments,
       setSelectedFileIds,
@@ -535,7 +535,7 @@ const CreateFormPipeline = () => {
             <div className='flex h-full flex-col pl-2 pt-2'>
               <ChunkPreview
                 dataSourceType={datasourceType as DatasourceType}
-                localFiles={fileList.map(file => file.file)}
+                localFiles={localFileList.map(file => file.file)}
                 onlineDocuments={onlineDocuments}
                 websitePages={websitePages}
                 onlineDriveFiles={selectedOnlineDriveFileList}

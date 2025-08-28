@@ -17,6 +17,7 @@ const Menu = ({
       {breadcrumbs.map((breadcrumb, index) => {
         return (
           <Item
+            key={`${breadcrumb}-${index}`}
             name={breadcrumb}
             index={startIndex + index}
             onBreadcrumbClick={onBreadcrumbClick}

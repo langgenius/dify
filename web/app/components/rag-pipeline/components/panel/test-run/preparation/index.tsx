@@ -104,8 +104,8 @@ const Preparation = () => {
       })
     }
     if (datasourceType === DatasourceType.onlineDrive) {
-      const { bucket, fileList, selectedFileIds } = dataSourceStore.getState()
-      const file = fileList.find(file => file.id === selectedFileIds[0])
+      const { bucket, onlineDriveFileList, selectedFileIds } = dataSourceStore.getState()
+      const file = onlineDriveFileList.find(file => file.id === selectedFileIds[0])
       datasourceInfoList.push({
         bucket,
         id: file?.id,
