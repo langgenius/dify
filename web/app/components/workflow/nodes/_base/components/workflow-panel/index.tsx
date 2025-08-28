@@ -418,9 +418,8 @@ const BasePanel: FC<BasePanelProps> = ({
           }
           <Split />
         </div>
-
         {tabType === TabType.settings && (
-          <>
+          <div className='flex-1 overflow-y-auto'>
             <div>
               {cloneElement(children as any, {
                 id,
@@ -465,7 +464,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 </div>
               )
             }
-          </>
+          </div>
         )}
 
         {tabType === TabType.lastRun && (

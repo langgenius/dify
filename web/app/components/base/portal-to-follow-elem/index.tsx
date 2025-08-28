@@ -4,6 +4,7 @@ import {
   FloatingPortal,
   autoUpdate,
   flip,
+  hide,
   offset,
   shift,
   size,
@@ -50,9 +51,17 @@ export function usePortalToFollowElem({
       flip({
         crossAxis: placement.includes('-'),
         fallbackAxisSideDirection: 'start',
-        padding: 5,
+        padding: 8,
       }),
-      shift({ padding: 5 }),
+      shift({
+        padding: 8,
+        boundary: document.body,
+        altBoundary: true,
+      }),
+      hide({
+        // hide when the reference element is not visible
+        boundary: document.body,
+      }),
       size({
         apply({ rects, elements }) {
           if (triggerPopupSameWidth)
@@ -133,9 +142,9 @@ export const PortalToFollowElemTrigger = (
       context.getReferenceProps({
         ref,
         ...props,
-        ...children.props,
+        ...(children.props || {}),
         'data-state': context.open ? 'open' : 'closed',
-      }),
+      } as any),
     )
   }
 
@@ -177,6 +186,7 @@ export const PortalToFollowElemContent = (
         style={{
           ...context.floatingStyles,
           ...style,
+          visibility: context.middlewareData.hide?.referenceHidden ? 'hidden' : 'visible',
         }}
         {...context.getFloatingProps(props)}
       />
