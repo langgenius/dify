@@ -75,6 +75,13 @@ const translation = {
     sortBy: '排序：',
     descending: '降序',
     ascending: '升序',
+    clearAll: '清空所有日志',
+    clearSuccess: '所有日志已成功清空',
+    clearFailed: '清空日志失败',
+    clearConfirm: {
+      title: '清空所有日志',
+      content: '确定要清空所有日志吗？此操作不可撤销。',
+    },
   },
   workflowTitle: '日志',
   workflowSubtitle: '日志记录了应用的执行情况',

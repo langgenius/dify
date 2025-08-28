@@ -1,5 +1,5 @@
 import type { Fetcher } from 'swr'
-import { get, post } from './base'
+import { del, get, post } from './base'
 import type {
   AgentLogDetailRequest,
   AgentLogDetailResponse,
@@ -77,4 +77,14 @@ export const fetchTracingList: Fetcher<NodeTracingListResponse, { url: string }>
 
 export const fetchAgentLogDetail = ({ appID, params }: { appID: string; params: AgentLogDetailRequest }) => {
   return get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
+}
+
+// Clear all chat conversations
+export const clearChatConversations = ({ appId }: { appId: string }) => {
+  return del<any>(`/apps/${appId}/chat-conversations`)
+}
+
+// Clear all completion conversations
+export const clearCompletionConversations = ({ appId }: { appId: string }) => {
+  return del<any>(`/apps/${appId}/completion-conversations`)
 }

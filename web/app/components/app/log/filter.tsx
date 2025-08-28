@@ -4,13 +4,17 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import dayjs from 'dayjs'
-import { RiCalendarLine } from '@remixicon/react'
+import { RiCalendarLine, RiDeleteBin6Line } from '@remixicon/react'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
-import { fetchAnnotationsCount } from '@/service/log'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import { clearChatConversations, clearCompletionConversations, fetchAnnotationsCount } from '@/service/log'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -32,11 +36,36 @@ type IFilterProps = {
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
+  onRefresh?: () => void
 }
 
-const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams, onRefresh }: IFilterProps) => {
   const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
+  const [showConfirm, setShowConfirm] = React.useState(false)
+  const [isClearing, setIsClearing] = React.useState(false)
+
+  const handleClearLogs = async () => {
+    setIsClearing(true)
+    try {
+      if (isChatMode)
+        await clearChatConversations({ appId })
+       else
+        await clearCompletionConversations({ appId })
+
+      notify({ type: 'success', message: t('appLog.filter.clearSuccess') })
+      onRefresh?.()
+    }
+ catch (error) {
+      notify({ type: 'error', message: t('appLog.filter.clearFailed') })
+    }
+ finally {
+      setIsClearing(false)
+      setShowConfirm(false)
+    }
+  }
+
   if (!data)
     return null
   return (
@@ -93,6 +122,27 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
             }}
           />
         </>
+      )}
+      <div className='ml-auto'>
+        <Button
+          variant='secondary'
+          size='small'
+          onClick={() => setShowConfirm(true)}
+          className='!h-8'
+        >
+          <RiDeleteBin6Line className='mr-1 h-4 w-4' />
+          {t('appLog.filter.clearAll')}
+        </Button>
+      </div>
+      {showConfirm && (
+        <Confirm
+          title={t('appLog.filter.clearConfirm.title')}
+          content={t('appLog.filter.clearConfirm.content')}
+          isShow={showConfirm}
+          onConfirm={handleClearLogs}
+          onCancel={() => setShowConfirm(false)}
+          isLoading={isClearing}
+        />
       )}
     </div>
   )
