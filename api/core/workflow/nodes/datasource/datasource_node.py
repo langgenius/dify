@@ -478,7 +478,7 @@ class DatasourceNode(Node):
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"json": json, "files": files, **variables, "text": text},
+                outputs={**variables},
                 metadata={
                     WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info,
                 },
