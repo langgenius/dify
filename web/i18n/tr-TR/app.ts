@@ -273,6 +273,10 @@ const translation = {
       runDesc: 'Hızlı komutlar çalıştır (tema, dil, ...)',
       searchPluginsDesc: 'Eklentilerinizi arayın ve gezinin',
       slashDesc: '/tema, /dil gibi komutları çalıştırın',
+      communityDesc: 'Açık Discord topluluğu',
+      accountDesc: 'Hesap sayfasına gidin',
+      feedbackDesc: 'Açık topluluk geri bildirim tartışmaları',
+      docDesc: 'Yardım belgelerini aç',
     },
     emptyState: {
       noAppsFound: 'Uygulama bulunamadı',
@@ -307,6 +311,7 @@ const translation = {
     inScope: '{{scope}}s içinde',
     tryDifferentSearch: 'Farklı bir arama terimi deneyin',
     noMatchingCommands: 'Eşleşen komut bulunamadı',
+    slashHint: 'Tüm mevcut komutları görmek için / yazın',
   },
 }
 

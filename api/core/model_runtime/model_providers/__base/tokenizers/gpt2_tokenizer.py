@@ -43,7 +43,7 @@ class GPT2Tokenizer:
                 except Exception:
                     from os.path import abspath, dirname, join
 
-                    from transformers import GPT2Tokenizer as TransformerGPT2Tokenizer  # type: ignore
+                    from transformers import GPT2Tokenizer as TransformerGPT2Tokenizer
 
                     base_path = abspath(__file__)
                     gpt2_tokenizer_path = join(dirname(base_path), "gpt2")
