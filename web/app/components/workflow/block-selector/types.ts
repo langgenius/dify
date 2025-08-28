@@ -45,6 +45,7 @@ export type DataSourceDefaultValue = {
   provider_name: string
   datasource_name: string
   datasource_label: string
+  title: string
 }
 
 export type ToolValue = {
