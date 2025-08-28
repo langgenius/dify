@@ -296,6 +296,7 @@ const translation = {
       languageCategoryDesc: '인터페이스 언어 전환',
       runDesc: '빠른 명령 실행 (테마, 언어 등...)',
       themeSystemDesc: '운영 체제의 외관을 따르세요',
+      slashDesc: '/theme, /lang와 같은 명령어를 실행하십시오.',
     },
     emptyState: {
       noAppsFound: '앱을 찾을 수 없습니다.',
@@ -310,6 +311,7 @@ const translation = {
       plugins: '플러그인',
       knowledgeBases: '기술 자료',
       workflowNodes: '워크플로 노드',
+      commands: '명령어',
     },
     searching: '검색...',
     searchTitle: '무엇이든 검색',

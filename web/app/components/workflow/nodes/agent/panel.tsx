@@ -101,6 +101,11 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           description={t(`${i18nPrefix}.outputVars.text`)}
         />
         <VarItem
+          name='usage'
+          type='object'
+          description={t(`${i18nPrefix}.outputVars.usage`)}
+        />
+        <VarItem
           name='files'
           type='Array[File]'
           description={t(`${i18nPrefix}.outputVars.files.title`)}

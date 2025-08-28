@@ -1,7 +1,7 @@
 import logging
 
-from flask_restful import fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import fields, marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.web import api
@@ -34,6 +34,8 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageListApi(WebApiResource):
@@ -83,6 +85,11 @@ class MessageListApi(WebApiResource):
 
 
 class MessageFeedbackApi(WebApiResource):
+    feedback_response_fields = {
+        "result": fields.String,
+    }
+
+    @marshal_with(feedback_response_fields)
     def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
@@ -145,11 +152,16 @@ class MessageMoreLikeThisApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
 class MessageSuggestedQuestionApi(WebApiResource):
+    suggested_questions_response_fields = {
+        "data": fields.List(fields.String),
+    }
+
+    @marshal_with(suggested_questions_response_fields)
     def get(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -176,7 +188,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
 from yarl import URL
 
 import contexts
@@ -617,8 +618,9 @@ class ToolManager:
                 WHERE tenant_id = :tenant_id
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
-        ids = [row.id for row in db.session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
-        return db.session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
+        with Session(db.engine, autoflush=False) as session:
+            ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
+            return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 
     @classmethod
     def list_providers_from_api(
@@ -959,7 +961,7 @@ class ToolManager:
         elif provider_type == ToolProviderType.WORKFLOW:
             return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.PLUGIN:
-            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+            provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
             if isinstance(provider, PluginToolProviderController):
                 try:
                     return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)

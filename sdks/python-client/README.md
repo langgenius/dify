@@ -141,8 +141,6 @@ with open(file_path, "rb") as file:
     result = response.json()
     print(f'upload_file_id: {result.get("id")}')
 ```
-  
-
 
 - Others
 
@@ -184,7 +182,8 @@ print('[rename result]')
 print(rename_conversation_response.json())
 ```
 
-* Using the Workflow Client
+- Using the Workflow Client
+
 ```python
 import json 
 import requests

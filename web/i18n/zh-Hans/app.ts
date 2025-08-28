@@ -252,7 +252,7 @@ const translation = {
   maxActiveRequestsPlaceholder: '0 表示不限制',
   maxActiveRequestsTip: '当前应用的最大活跃请求数（0 表示不限制）',
   gotoAnything: {
-    searchPlaceholder: '搜索或输入 @ 以使用命令...',
+    searchPlaceholder: '搜索或输入 @ 或 / 以使用命令...',
     searchTitle: '搜索任何内容',
     searching: '搜索中...',
     noResults: '未找到结果',
@@ -291,13 +291,14 @@ const translation = {
       languageCategoryTitle: '语言',
       languageCategoryDesc: '切换界面语言',
       languageChangeDesc: '更改界面语言',
+      slashDesc: '执行诸如 /theme、/lang 等命令',
     },
     emptyState: {
       noAppsFound: '未找到应用',
       noPluginsFound: '未找到插件',
       noKnowledgeBasesFound: '未找到知识库',
       noWorkflowNodesFound: '未找到工作流节点',
-      tryDifferentTerm: '尝试不同的搜索词或移除 {{mode}} 过滤器',
+      tryDifferentTerm: '尝试不同的搜索词',
       trySpecificSearch: '尝试使用 {{shortcuts}} 进行特定搜索',
     },
     groups: {
@@ -305,6 +306,7 @@ const translation = {
       plugins: '插件',
       knowledgeBases: '知识库',
       workflowNodes: '工作流节点',
+      commands: '命令',
     },
     noMatchingCommands: '未找到匹配的命令',
     tryDifferentSearch: '请尝试不同的搜索词',

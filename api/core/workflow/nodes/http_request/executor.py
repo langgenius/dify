@@ -12,6 +12,7 @@ from json_repair import repair_json
 
 from configs import dify_config
 from core.file import file_manager
+from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.entities.variable_pool import VariablePool
@@ -228,7 +229,9 @@ class Executor:
                     files: dict[str, list[tuple[str | None, bytes, str]]] = {}
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
-                            if file.related_id is not None:
+                            if file.related_id is not None or (
+                                file.transfer_method == FileTransferMethod.REMOTE_URL and file.remote_url is not None
+                            ):
                                 file_tuple = (
                                     file.filename,
                                     file_manager.download(file),
@@ -326,22 +329,16 @@ class Executor:
         """
         do http request depending on api bundle
         """
-        if self.method not in {
-            "get",
-            "head",
-            "post",
-            "put",
-            "delete",
-            "patch",
-            "options",
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "HEAD",
-            "OPTIONS",
-        }:
+        _METHOD_MAP = {
+            "get": ssrf_proxy.get,
+            "head": ssrf_proxy.head,
+            "post": ssrf_proxy.post,
+            "put": ssrf_proxy.put,
+            "delete": ssrf_proxy.delete,
+            "patch": ssrf_proxy.patch,
+        }
+        method_lc = self.method.lower()
+        if method_lc not in _METHOD_MAP:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
@@ -359,11 +356,11 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response = getattr(ssrf_proxy, self.method.lower())(**request_args)
+            response: httpx.Response = _METHOD_MAP[method_lc](**request_args)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
-        return response  # type: ignore
+        return response
 
     def invoke(self) -> Response:
         # assemble headers

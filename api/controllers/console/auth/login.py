@@ -2,15 +2,15 @@ from typing import cast
 
 import flask_login
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
+    AuthenticationFailedError,
     EmailCodeError,
-    EmailOrPasswordMismatchError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
@@ -79,7 +79,7 @@ class LoginApi(Resource):
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
-            raise EmailOrPasswordMismatchError()
+            raise AuthenticationFailedError()
         except services.errors.account.AccountNotFoundError:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -132,6 +132,7 @@ class ResetPasswordSendEmailApi(Resource):
             account = AccountService.get_user_through_email(args["email"])
         except AccountRegisterError as are:
             raise AccountInFreezeError()
+
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -221,7 +222,7 @@ class EmailCodeLoginApi(Resource):
                     email=user_email, name=user_email, interface_language=languages[0]
                 )
             except WorkSpaceNotAllowedCreateError:
-                return NotAllowedCreateWorkspace()
+                raise NotAllowedCreateWorkspace()
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:

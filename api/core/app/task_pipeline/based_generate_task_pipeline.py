@@ -52,7 +52,8 @@ class BasedGenerateTaskPipeline:
         elif isinstance(e, InvokeError | ValueError):
             err = e
         else:
-            err = Exception(e.description if getattr(e, "description", None) is not None else str(e))
+            description = getattr(e, "description", None)
+            err = Exception(description if description is not None else str(e))
 
         if not message_id or not session:
             return err

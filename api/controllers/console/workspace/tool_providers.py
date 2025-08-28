@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_login import current_user
-from flask_restful import (
+from flask_restx import (
     Resource,
     reqparse,
 )
@@ -95,7 +95,6 @@ class ToolBuiltinProviderInfoApi(Resource):
     def get(self, provider):
         user = current_user
 
-        user_id = user.id
         tenant_id = user.current_tenant_id
 
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))

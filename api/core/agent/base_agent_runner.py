@@ -512,7 +512,6 @@ class BaseAgentRunner(AppRunner):
         if not file_objs:
             return UserPromptMessage(content=message.query)
         prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
         for file in file_objs:
             prompt_message_contents.append(
                 file_manager.to_prompt_message_content(
@@ -520,4 +519,6 @@ class BaseAgentRunner(AppRunner):
                     image_detail_config=image_detail_config,
                 )
             )
+        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
+
         return UserPromptMessage(content=prompt_message_contents)

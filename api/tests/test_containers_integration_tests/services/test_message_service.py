@@ -484,7 +484,7 @@ class TestMessageService:
         # Verify feedback was deleted
         from extensions.ext_database import db
 
-        deleted_feedback = db.session.query(MessageFeedback).filter(MessageFeedback.id == feedback.id).first()
+        deleted_feedback = db.session.query(MessageFeedback).where(MessageFeedback.id == feedback.id).first()
         assert deleted_feedback is None
 
     def test_create_feedback_no_rating_when_not_exists(

@@ -38,6 +38,8 @@ from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
+logger = logging.getLogger(__name__)
+
 
 @click.command("reset-password", help="Reset the account password.")
 @click.option("--email", prompt=True, help="Account email to reset password for")
@@ -685,7 +687,7 @@ def upgrade_db():
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception:
-            logging.exception("Failed to execute database migration")
+            logger.exception("Failed to execute database migration")
         finally:
             lock.release()
     else:
@@ -733,7 +735,7 @@ where sites.id is null limit 1000"""
                 except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
-                    logging.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
+                    logger.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
                     continue
 
             if not processed_count:

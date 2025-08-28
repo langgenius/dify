@@ -276,6 +276,7 @@ const translation = {
       themeSystemDesc: 'Suivez l\'apparence de votre système d\'exploitation',
       languageCategoryDesc: 'Changer la langue de l\'interface',
       runDesc: 'Exécuter des commandes rapides (thème, langue, ...)',
+      slashDesc: 'Exécutez des commandes telles que /theme, /lang',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Aucune base de connaissances trouvée',
@@ -290,6 +291,7 @@ const translation = {
       workflowNodes: 'Nœuds de flux de travail',
       knowledgeBases: 'Bases de connaissances',
       plugins: 'Plug-ins',
+      commands: 'Commandes',
     },
     someServicesUnavailable: 'Certains services de recherche indisponibles',
     servicesUnavailableMessage: 'Certains services de recherche peuvent rencontrer des problèmes. Réessayez dans un instant.',

@@ -107,7 +107,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
         )}
       </div>
       <div className='px-4'>
-        <div className={cn('mx-auto mt-1 h-[1px] bg-divider-subtle', !expand && 'w-6')} />
+        <div className={cn('mx-auto mt-1 h-px bg-divider-subtle', !expand && 'w-6')} />
       </div>
       <nav
         className={`

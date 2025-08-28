@@ -291,6 +291,7 @@ const translation = {
       languageCategoryDesc: 'インターフェース言語を切り替える',
       themeCategoryDesc: 'アプリケーションのテーマを切り替える',
       runDesc: 'クイックコマンドを実行する（テーマ、言語、...）',
+      slashDesc: 'コマンドを実行します、例えば /theme や /lang のように',
     },
     emptyState: {
       noAppsFound: 'アプリが見つかりません',
@@ -305,6 +306,7 @@ const translation = {
       plugins: 'プラグイン',
       knowledgeBases: 'ナレッジベース',
       workflowNodes: 'ワークフローノード',
+      commands: 'コマンド',
     },
     noMatchingCommands: '一致するコマンドが見つかりません',
     tryDifferentSearch: '別の検索語句をお試しください',

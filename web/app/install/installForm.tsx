@@ -14,7 +14,7 @@ import Loading from '../components/base/loading'
 import classNames from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
-import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
+import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useDocLink } from '@/context/i18n'
@@ -54,12 +54,32 @@ const InstallForm = () => {
   })
 
   const onSubmit: SubmitHandler<AccountFormValues> = async (data) => {
+    // First, setup the admin account
     await setup({
       body: {
         ...data,
       },
     })
-    router.push('/signin')
+
+    // Then, automatically login with the same credentials
+    const loginRes = await login({
+      url: '/login',
+      body: {
+        email: data.email,
+        password: data.password,
+      },
+    })
+
+    // Store tokens and redirect to apps if login successful
+    if (loginRes.result === 'success') {
+      localStorage.setItem('console_token', loginRes.data.access_token)
+      localStorage.setItem('refresh_token', loginRes.data.refresh_token)
+      router.replace('/apps')
+    }
+ else {
+      // Fallback to signin page if auto-login fails
+      router.replace('/signin')
+    }
   }
 
   const handleSetting = async () => {

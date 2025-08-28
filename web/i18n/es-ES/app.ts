@@ -276,6 +276,7 @@ const translation = {
       themeDarkDesc: 'Usar apariencia oscura',
       languageCategoryDesc: 'Cambiar el idioma de la interfaz',
       themeCategoryDesc: 'Cambiar el tema de la aplicación',
+      slashDesc: 'Ejecuta comandos como /tema, /idioma',
     },
     emptyState: {
       noAppsFound: 'No se encontraron aplicaciones',
@@ -290,6 +291,7 @@ const translation = {
       workflowNodes: 'Nodos de flujo de trabajo',
       knowledgeBases: 'Bases de conocimiento',
       plugins: 'Complementos',
+      commands: 'Comandos',
     },
     clearToSearchAll: 'Borrar @ para buscar todo',
     noResults: 'No se han encontrado resultados',

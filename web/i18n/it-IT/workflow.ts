@@ -868,6 +868,7 @@ const translation = {
           upload_file_id: 'Carica l\'ID del file',
         },
         text: 'Contenuto generato dall\'agente',
+        usage: 'Informazioni sull\'utilizzo del modello',
         json: 'JSON generato dall\'agente',
       },
       checkList: {

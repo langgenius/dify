@@ -678,7 +678,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? <div className="px-6 py-4">
             <div className='flex h-[18px] items-center space-x-3'>
               <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
-              <div className='h-[1px] grow' style={{
+              <div className='h-px grow' style={{
                 background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
               }}></div>
             </div>

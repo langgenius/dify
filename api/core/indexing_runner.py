@@ -1,5 +1,4 @@
 import concurrent.futures
-import datetime
 import json
 import logging
 import re
@@ -9,7 +8,6 @@ import uuid
 from typing import Any, Optional, cast
 
 from flask import current_app
-from flask_login import current_user
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -30,15 +28,18 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from core.tools.utils.rag_web_reader import get_image_upload_file_ids
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 class IndexingRunner:
@@ -88,15 +89,15 @@ class IndexingRunner:
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e.description)
-                dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                dataset_document.stopped_at = naive_utc_now()
                 db.session.commit()
             except ObjectDeletedError:
-                logging.warning("Document deleted, document id: %s", dataset_document.id)
+                logger.warning("Document deleted, document id: %s", dataset_document.id)
             except Exception as e:
-                logging.exception("consume document failed")
+                logger.exception("consume document failed")
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e)
-                dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                dataset_document.stopped_at = naive_utc_now()
                 db.session.commit()
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
@@ -151,13 +152,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
         except Exception as e:
-            logging.exception("consume document failed")
+            logger.exception("consume document failed")
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
 
     def run_in_indexing_status(self, dataset_document: DatasetDocument):
@@ -209,13 +210,6 @@ class IndexingRunner:
                         documents.append(document)
 
             # build index
-            # get the process rule
-            processing_rule = (
-                db.session.query(DatasetProcessRule)
-                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                .first()
-            )
-
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             self._load(
@@ -226,13 +220,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
         except Exception as e:
-            logging.exception("consume document failed")
+            logger.exception("consume document failed")
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
 
     def indexing_estimate(
@@ -295,7 +289,7 @@ class IndexingRunner:
                 text_docs,
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,
             )
@@ -322,7 +316,7 @@ class IndexingRunner:
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception(
+                        logger.exception(
                             "Delete image_files failed while indexing_estimate, \
                                           image_upload_file_is: %s",
                             upload_file_id,
@@ -401,7 +395,7 @@ class IndexingRunner:
             after_indexing_status="splitting",
             extra_update_params={
                 DatasetDocument.word_count: sum(len(text_doc.page_content) for text_doc in text_docs),
-                DatasetDocument.parsing_completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DatasetDocument.parsing_completed_at: naive_utc_now(),
             },
         )
 
@@ -584,7 +578,7 @@ class IndexingRunner:
             after_indexing_status="completed",
             extra_update_params={
                 DatasetDocument.tokens: tokens,
-                DatasetDocument.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DatasetDocument.completed_at: naive_utc_now(),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
                 DatasetDocument.error: None,
             },
@@ -609,7 +603,7 @@ class IndexingRunner:
                     {
                         DocumentSegment.status: "completed",
                         DocumentSegment.enabled: True,
-                        DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                        DocumentSegment.completed_at: naive_utc_now(),
                     }
                 )
 
@@ -640,7 +634,7 @@ class IndexingRunner:
                 {
                     DocumentSegment.status: "completed",
                     DocumentSegment.enabled: True,
-                    DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    DocumentSegment.completed_at: naive_utc_now(),
                 }
             )
 
@@ -728,7 +722,7 @@ class IndexingRunner:
         doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX)
 
         # update document status to indexing
-        cur_time = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        cur_time = naive_utc_now()
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="indexing",
@@ -743,7 +737,7 @@ class IndexingRunner:
             dataset_document_id=dataset_document.id,
             update_params={
                 DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.indexing_at: naive_utc_now(),
             },
         )
         pass

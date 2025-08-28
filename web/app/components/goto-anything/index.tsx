@@ -18,7 +18,7 @@ import InstallFromMarketplace from '../plugins/install-plugin/install-from-marke
 import type { Plugin } from '../plugins/types'
 import { Command } from 'cmdk'
 import CommandSelector from './command-selector'
-import { RunCommandProvider } from './actions/run'
+import { SlashCommandProvider } from './actions/commands'
 
 type Props = {
   onHide?: () => void
@@ -34,12 +34,7 @@ const GotoAnything: FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [cmdVal, setCmdVal] = useState<string>('_')
   const inputRef = useRef<HTMLInputElement>(null)
-  const handleNavSearch = useCallback((q: string) => {
-    setShow(true)
-    setSearchQuery(q)
-    setCmdVal('')
-    requestAnimationFrame(() => inputRef.current?.focus())
-  }, [])
+
   // Filter actions based on context
   const Actions = useMemo(() => {
     // Create a filtered copy of actions based on current page context
@@ -48,9 +43,8 @@ const GotoAnything: FC<Props> = ({
       return AllActions
     }
     else {
-      // Exclude node action on non-workflow pages
-      const { app, knowledge, plugin, run } = AllActions
-      return { app, knowledge, plugin, run }
+      const { app, knowledge, plugin, slash } = AllActions
+      return { app, knowledge, plugin, slash }
     }
   }, [isWorkflowPage])
 
@@ -88,14 +82,18 @@ const GotoAnything: FC<Props> = ({
     wait: 300,
   })
 
-  const isCommandsMode = searchQuery.trim() === '@' || (searchQuery.trim().startsWith('@') && !matchAction(searchQuery.trim(), Actions))
+  const isCommandsMode = searchQuery.trim() === '@' || searchQuery.trim() === '/'
+    || (searchQuery.trim().startsWith('@') && !matchAction(searchQuery.trim(), Actions))
+    || (searchQuery.trim().startsWith('/') && !matchAction(searchQuery.trim(), Actions))
 
   const searchMode = useMemo(() => {
     if (isCommandsMode) return 'commands'
 
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
-    return action ? action.key : 'general'
+    return action
+      ? (action.key === '/' ? '@command' : action.key)
+      : 'general'
   }, [searchQueryDebouncedValue, Actions, isCommandsMode])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
@@ -140,7 +138,8 @@ const GotoAnything: FC<Props> = ({
 
     switch (result.type) {
       case 'command': {
-        const action = Object.values(Actions).find(a => a.key === '@run')
+        // Execute slash commands
+        const action = Actions.slash
         action?.action?.(result)
         break
       }
@@ -208,7 +207,7 @@ const GotoAnything: FC<Props> = ({
           </div>
           <div className='mt-1 text-xs text-text-quaternary'>
             {isCommandSearch
-              ? t('app.gotoAnything.emptyState.tryDifferentTerm', { mode: searchMode })
+              ? t('app.gotoAnything.emptyState.tryDifferentTerm')
               : t('app.gotoAnything.emptyState.trySpecificSearch', { shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })
             }
           </div>
@@ -242,6 +241,7 @@ const GotoAnything: FC<Props> = ({
 
   return (
     <>
+      <SlashCommandProvider />
       <Modal
         isShow={show}
         onClose={() => {
@@ -270,7 +270,7 @@ const GotoAnything: FC<Props> = ({
                   placeholder={t('app.gotoAnything.searchPlaceholder')}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
-                    if (!e.target.value.startsWith('@'))
+                    if (!e.target.value.startsWith('@') && !e.target.value.startsWith('/'))
                       clearSelection()
                   }}
                   className='flex-1 !border-0 !bg-transparent !shadow-none'
@@ -330,6 +330,7 @@ const GotoAnything: FC<Props> = ({
                           'plugin': 'app.gotoAnything.groups.plugins',
                           'knowledge': 'app.gotoAnything.groups.knowledgeBases',
                           'workflow-node': 'app.gotoAnything.groups.workflowNodes',
+                          'command': 'app.gotoAnything.groups.commands',
                         }
                         return t(typeMap[type] || `${type}s`)
                       })()} className='p-2 capitalize text-text-secondary'>
@@ -395,7 +396,6 @@ const GotoAnything: FC<Props> = ({
         </div>
 
       </Modal>
-      <RunCommandProvider onNavSearch={handleNavSearch} />
       {
         activePlugin && (
           <InstallFromMarketplace

@@ -8,6 +8,8 @@ import type { AddOAuthButtonProps } from './add-oauth-button'
 import AddApiKeyButton from './add-api-key-button'
 import type { AddApiKeyButtonProps } from './add-api-key-button'
 import type { PluginPayload } from '../types'
+import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 
 type AuthorizeProps = {
   pluginPayload: PluginPayload
@@ -17,6 +19,7 @@ type AuthorizeProps = {
   canApiKey?: boolean
   disabled?: boolean
   onUpdate?: () => void
+  notAllowCustomCredential?: boolean
 }
 const Authorize = ({
   pluginPayload,
@@ -26,6 +29,7 @@ const Authorize = ({
   canApiKey,
   disabled,
   onUpdate,
+  notAllowCustomCredential,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
@@ -62,18 +66,54 @@ const Authorize = ({
     }
   }, [canOAuth, theme, pluginPayload, t])
 
+  const OAuthButton = useMemo(() => {
+    const Item = (
+      <div className={cn('min-w-0 flex-[1]', notAllowCustomCredential && 'opacity-50')}>
+        <AddOAuthButton
+          {...oAuthButtonProps}
+          disabled={disabled || notAllowCustomCredential}
+          onUpdate={onUpdate}
+        />
+      </div>
+    )
+
+    if (notAllowCustomCredential) {
+      return (
+        <Tooltip popupContent={t('plugin.auth.credentialUnavailable')}>
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [notAllowCustomCredential, oAuthButtonProps, disabled, onUpdate, t])
+
+  const ApiKeyButton = useMemo(() => {
+    const Item = (
+      <div className={cn('min-w-0 flex-[1]', notAllowCustomCredential && 'opacity-50')}>
+        <AddApiKeyButton
+          {...apiKeyButtonProps}
+          disabled={disabled || notAllowCustomCredential}
+          onUpdate={onUpdate}
+        />
+      </div>
+    )
+
+    if (notAllowCustomCredential) {
+      return (
+        <Tooltip popupContent={t('plugin.auth.credentialUnavailable')}>
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [notAllowCustomCredential, apiKeyButtonProps, disabled, onUpdate, t])
+
   return (
     <>
       <div className='flex items-center space-x-1.5'>
         {
           canOAuth && (
-            <div className='min-w-0 flex-[1]'>
-              <AddOAuthButton
-                {...oAuthButtonProps}
-                disabled={disabled}
-                onUpdate={onUpdate}
-              />
-            </div>
+            OAuthButton
           )
         }
         {
@@ -87,13 +127,7 @@ const Authorize = ({
         }
         {
           canApiKey && (
-            <div className='min-w-0 flex-[1]'>
-              <AddApiKeyButton
-                {...apiKeyButtonProps}
-                disabled={disabled}
-                onUpdate={onUpdate}
-              />
-            </div>
+            ApiKeyButton
           )
         }
       </div>

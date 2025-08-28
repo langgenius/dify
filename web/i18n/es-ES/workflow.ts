@@ -843,6 +843,7 @@ const translation = {
         },
         json: 'JSON generado por el agente',
         text: 'Contenido generado por el agente',
+        usage: 'Información de uso del modelo',
       },
       checkList: {
         strategyNotSelected: 'Estrategia no seleccionada',

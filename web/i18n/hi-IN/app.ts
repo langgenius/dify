@@ -276,6 +276,7 @@ const translation = {
       themeCategoryDesc: 'ऐप की थीम बदलें',
       themeSystemDesc: 'अपने ऑपरेटिंग सिस्टम की उपस्थिति का पालन करें',
       runDesc: 'त्वरित कमांड चलाएँ (थीम, भाषा, ...)',
+      slashDesc: 'कमांड्स चलाएं जैसे /theme, /lang',
     },
     emptyState: {
       noPluginsFound: 'कोई प्लगइन नहीं मिले',
@@ -290,6 +291,7 @@ const translation = {
       knowledgeBases: 'ज्ञान आधार',
       plugins: 'प्लगइन्स',
       workflowNodes: 'कार्यप्रवाह नोड्स',
+      commands: 'आदेश',
     },
     noResults: 'कोई परिणाम नहीं मिले',
     clearToSearchAll: 'साफ़ @ सभी खोजने के लिए',

@@ -53,7 +53,6 @@ const CurrentBlockReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createCurrentBlockNode)),
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

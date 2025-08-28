@@ -276,6 +276,7 @@ const translation = {
       themeCategoryDesc: 'Schimbă tema aplicației',
       languageCategoryDesc: 'Schimbați limba interfeței',
       themeSystemDesc: 'Urmăriți aspectul sistemului de operare',
+      slashDesc: 'Execută comenzi precum /theme, /lang',
     },
     emptyState: {
       noAppsFound: 'Nu s-au găsit aplicații',
@@ -290,6 +291,7 @@ const translation = {
       workflowNodes: 'Noduri de flux de lucru',
       plugins: 'Pluginuri',
       apps: 'Aplicații',
+      commands: 'Comenzi',
     },
     useAtForSpecific: 'Utilizați @ pentru anumite tipuri',
     searchTemporarilyUnavailable: 'Căutare temporar indisponibilă',

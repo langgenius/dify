@@ -278,6 +278,7 @@ const translation = {
       themeDarkDesc: 'Verwenden Sie das dunkle Erscheinungsbild',
       runDesc: 'Führen Sie schnelle Befehle aus (Thema, Sprache, ...)',
       themeCategoryTitle: 'Thema',
+      slashDesc: 'Führen Sie Befehle wie /theme, /lang aus',
     },
     emptyState: {
       noPluginsFound: 'Keine Plugins gefunden',
@@ -292,6 +293,7 @@ const translation = {
       plugins: 'Plugins',
       apps: 'Apps',
       workflowNodes: 'Workflow-Knoten',
+      commands: 'Befehle',
     },
     clearToSearchAll: 'Löschen Sie @, um alle zu durchsuchen',
     searchTemporarilyUnavailable: 'Suche vorübergehend nicht verfügbar',

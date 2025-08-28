@@ -2,7 +2,7 @@ from urllib import parse
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, abort, marshal_with, reqparse
+from flask_restx import Resource, abort, marshal_with, reqparse
 
 import services
 from configs import dify_config
@@ -54,7 +54,7 @@ class MemberInviteEmailApi(Resource):
     @cloud_edition_billing_resource_check("members")
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("emails", type=str, required=True, location="json", action="append")
+        parser.add_argument("emails", type=list, required=True, location="json")
         parser.add_argument("role", type=str, required=True, default="admin", location="json")
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()

@@ -1,7 +1,7 @@
-import flask_restful
+import flask_restx
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -553,7 +553,7 @@ class DatasetIndexingStatusApi(Resource):
             }
             documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
-        return data
+        return data, 200
 
 
 class DatasetApiKeyApi(Resource):
@@ -589,7 +589,7 @@ class DatasetApiKeyApi(Resource):
         )
 
         if current_key_count >= self.max_keys:
-            flask_restful.abort(
+            flask_restx.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
@@ -629,7 +629,7 @@ class DatasetApiDeleteApi(Resource):
         )
 
         if key is None:
-            flask_restful.abort(404, message="API key not found")
+            flask_restx.abort(404, message="API key not found")
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

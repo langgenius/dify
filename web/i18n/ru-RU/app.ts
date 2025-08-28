@@ -276,6 +276,7 @@ const translation = {
       languageCategoryDesc: 'Переключите язык интерфейса',
       themeLightDesc: 'Используйте светлый внешний вид',
       themeSystemDesc: 'Следуйте внешнему виду вашей операционной системы',
+      slashDesc: 'Выполняйте команды, такие как /theme, /lang',
     },
     emptyState: {
       noPluginsFound: 'Плагины не найдены',
@@ -290,6 +291,7 @@ const translation = {
       plugins: 'Плагины',
       apps: 'Приложения',
       workflowNodes: 'Узлы рабочих процессов',
+      commands: 'Команды',
     },
     searching: 'Поиск...',
     noResults: 'Ничего не найдено',

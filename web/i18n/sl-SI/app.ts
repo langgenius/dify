@@ -276,6 +276,7 @@ const translation = {
       themeSystemDesc: 'Sledite videzu svojega operacijskega sistema',
       runDesc: 'Zaženi hitre ukaze (teme, jezik, ...)',
       languageChangeDesc: 'Spremeni jezik vmesnika',
+      slashDesc: 'Izvedi ukaze kot so /tema, /jezik',
     },
     emptyState: {
       noPluginsFound: 'Vtičnikov ni mogoče najti',
@@ -290,6 +291,7 @@ const translation = {
       apps: 'Aplikacije',
       knowledgeBases: 'Baze znanja',
       plugins: 'Vtičniki',
+      commands: 'Ukazi',
     },
     searching: 'Iskanje...',
     searchTitle: 'Poiščite karkoli',

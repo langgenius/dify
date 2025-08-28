@@ -1,3 +1,4 @@
+import contextlib
 import json
 import queue
 import threading
@@ -124,13 +125,10 @@ def test_sse_client_connection_validation():
             mock_event_source.iter_sse.return_value = [endpoint_event]
 
             # Test connection
-            try:
+            with contextlib.suppress(Exception):
                 with sse_client(test_url) as (read_queue, write_queue):
                     assert read_queue is not None
                     assert write_queue is not None
-            except Exception as e:
-                # Connection might fail due to mocking, but we're testing the validation logic
-                pass
 
 
 def test_sse_client_error_handling():
@@ -178,7 +176,7 @@ def test_sse_client_timeout_configuration():
             mock_event_source.iter_sse.return_value = []
             mock_sse_connect.return_value.__enter__.return_value = mock_event_source
 
-            try:
+            with contextlib.suppress(Exception):
                 with sse_client(
                     test_url, headers=custom_headers, timeout=custom_timeout, sse_read_timeout=custom_sse_timeout
                 ) as (read_queue, write_queue):
@@ -190,9 +188,6 @@ def test_sse_client_timeout_configuration():
                     assert call_args is not None
                     timeout_arg = call_args[1]["timeout"]
                     assert timeout_arg.read == custom_sse_timeout
-            except Exception:
-                # Connection might fail due to mocking, but we tested the configuration
-                pass
 
 
 def test_sse_transport_endpoint_validation():
@@ -251,12 +246,10 @@ def test_sse_client_queue_cleanup():
             # Mock connection that raises an exception
             mock_sse_connect.side_effect = Exception("Connection failed")
 
-            try:
+            with contextlib.suppress(Exception):
                 with sse_client(test_url) as (rq, wq):
                     read_queue = rq
                     write_queue = wq
-            except Exception:
-                pass  # Expected to fail
 
             # Queues should be cleaned up even on exception
             # Note: In real implementation, cleanup should put None to signal shutdown
@@ -283,11 +276,9 @@ def test_sse_client_headers_propagation():
             mock_event_source.iter_sse.return_value = []
             mock_sse_connect.return_value.__enter__.return_value = mock_event_source
 
-            try:
+            with contextlib.suppress(Exception):
                 with sse_client(test_url, headers=custom_headers):
                     pass
-            except Exception:
-                pass  # Expected due to mocking
 
             # Verify headers were passed to client factory
             mock_client_factory.assert_called_with(headers=custom_headers)
