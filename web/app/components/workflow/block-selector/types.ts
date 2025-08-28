@@ -46,6 +46,7 @@ export type DataSourceDefaultValue = {
   datasource_name: string
   datasource_label: string
   title: string
+  fileExtensions?: string[]
 }
 
 export type ToolValue = {

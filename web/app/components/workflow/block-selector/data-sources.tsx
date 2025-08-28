@@ -10,13 +10,14 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import type { ToolDefaultValue } from './types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
 import Tools from './tools'
 import { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
 
 type AllToolsProps = {
   className?: string
@@ -37,14 +38,22 @@ const DataSources = ({
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
-    onSelect(BlockEnum.DataSource, toolDefaultValue && {
+    let defaultValue: DataSourceDefaultValue = {
       plugin_id: toolDefaultValue?.provider_id,
       provider_type: toolDefaultValue?.provider_type,
       provider_name: toolDefaultValue?.provider_name,
       datasource_name: toolDefaultValue?.tool_name,
       datasource_label: toolDefaultValue?.tool_label,
       title: toolDefaultValue?.title,
-    })
+    }
+    // Update defaultValue with fileExtensions if this is the local file data source
+    if (toolDefaultValue?.provider_id === 'langgenius/file' && toolDefaultValue?.provider_name === 'file') {
+      defaultValue = {
+        ...defaultValue,
+        fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE,
+      }
+    }
+    onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
   }, [onSelect])
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
