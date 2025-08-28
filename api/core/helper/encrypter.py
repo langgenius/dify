@@ -17,6 +17,7 @@ def encrypt_token(tenant_id: str, token: str):
 
     if not (tenant := db.session.query(Tenant).where(Tenant.id == tenant_id).first()):
         raise ValueError(f"Tenant with id {tenant_id} not found")
+    assert tenant.encrypt_public_key is not None
     encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)
     return base64.b64encode(encrypted_token).decode()
 

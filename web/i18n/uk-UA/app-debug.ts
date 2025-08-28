@@ -363,6 +363,10 @@ const translation = {
     'localUpload': 'Локальне завантаження',
     'uploadFileTypes': 'Типи файлів для завантаження',
     'maxNumberOfUploads': 'Максимальна кількість завантажень',
+    'jsonSchema': 'JSON схема',
+    'optional': 'додатковий',
+    'json': 'JSON Код',
+    'checkbox': 'Чекбокс',
   },
   vision: {
     // Vision

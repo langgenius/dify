@@ -351,6 +351,10 @@ const translation = {
     'localUpload': 'Încărcare locală',
     'maxNumberOfUploads': 'Numărul maxim de încărcări',
     'both': 'Ambii',
+    'optional': 'opțional',
+    'jsonSchema': 'Schema JSON',
+    'checkbox': 'Caseta de selectare',
+    'json': 'Cod JSON',
   },
   vision: {
     name: 'Viziune',

@@ -345,6 +345,10 @@ const translation = {
     'content': 'Nội dung',
     'multi-files': 'Danh sách tập tin',
     'maxNumberOfUploads': 'Số lượt tải lên tối đa',
+    'json': 'Mã JSON',
+    'checkbox': 'Hộp kiểm',
+    'optional': 'tùy chọn',
+    'jsonSchema': 'Sơ đồ JSON',
   },
   vision: {
     name: 'Thị giác',

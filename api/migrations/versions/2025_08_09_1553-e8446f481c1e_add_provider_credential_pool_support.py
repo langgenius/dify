@@ -6,10 +6,10 @@ Create Date: 2025-08-09 15:53:54.341341
 
 """
 from alembic import op
+from libs.uuid_utils import uuidv7
 import models as models
 import sqlalchemy as sa
 from sqlalchemy.sql import table, column
-import uuid
 
 # revision identifiers, used by Alembic.
 revision = 'e8446f481c1e'
@@ -21,7 +21,7 @@ depends_on = None
 def upgrade():
     # Create provider_credentials table
     op.create_table('provider_credentials',
-    sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
+    sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuidv7()'), nullable=False),
     sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
     sa.Column('provider_name', sa.String(length=255), nullable=False),
     sa.Column('credential_name', sa.String(length=255), nullable=False),
@@ -63,7 +63,7 @@ def migrate_existing_providers_data():
         column('updated_at', sa.DateTime()),
         column('credential_id', models.types.StringUUID()),
     )
-    
+
     provider_credential_table = table('provider_credentials',
         column('id', models.types.StringUUID()),
         column('tenant_id', models.types.StringUUID()),
@@ -79,15 +79,15 @@ def migrate_existing_providers_data():
 
     # Query all existing providers data
     existing_providers = conn.execute(
-        sa.select(providers_table.c.id, providers_table.c.tenant_id, 
+        sa.select(providers_table.c.id, providers_table.c.tenant_id,
                  providers_table.c.provider_name, providers_table.c.encrypted_config,
                  providers_table.c.created_at, providers_table.c.updated_at)
         .where(providers_table.c.encrypted_config.isnot(None))
     ).fetchall()
-    
+
     # Iterate through each provider and insert into provider_credentials
     for provider in existing_providers:
-        credential_id = str(uuid.uuid4())
+        credential_id = str(uuidv7())
         if not provider.encrypted_config or provider.encrypted_config.strip() == '':
             continue
 
@@ -134,7 +134,7 @@ def downgrade():
 
 def migrate_data_back_to_providers():
     """Migrate data back from provider_credentials to providers table for downgrade"""
-    
+
     # Define table structure for data manipulation
     providers_table = table('providers',
         column('id', models.types.StringUUID()),
@@ -143,7 +143,7 @@ def migrate_data_back_to_providers():
         column('encrypted_config', sa.Text()),
         column('credential_id', models.types.StringUUID()),
     )
-    
+
     provider_credential_table = table('provider_credentials',
         column('id', models.types.StringUUID()),
         column('tenant_id', models.types.StringUUID()),
@@ -160,14 +160,14 @@ def migrate_data_back_to_providers():
         sa.select(providers_table.c.id, providers_table.c.credential_id)
         .where(providers_table.c.credential_id.isnot(None))
     ).fetchall()
-    
+
     # For each provider, get the credential data and update providers table
     for provider in providers_with_credentials:
         credential = conn.execute(
             sa.select(provider_credential_table.c.encrypted_config)
             .where(provider_credential_table.c.id == provider.credential_id)
         ).fetchone()
-        
+
         if credential:
             # Update providers table with encrypted_config from credential
             conn.execute(

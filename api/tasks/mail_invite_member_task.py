@@ -8,6 +8,8 @@ from configs import dify_config
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="mail")
 def send_invite_member_mail_task(language: str, to: str, token: str, inviter_name: str, workspace_name: str) -> None:
@@ -24,7 +26,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
     if not mail.is_inited():
         return
 
-    logging.info(click.style(f"Start send invite member mail to {to} in workspace {workspace_name}", fg="green"))
+    logger.info(click.style(f"Start send invite member mail to {to} in workspace {workspace_name}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -43,8 +45,6 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
         )
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"Send invite member mail to {to} succeeded: latency: {end_at - start_at}", fg="green")
-        )
+        logger.info(click.style(f"Send invite member mail to {to} succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("Send invite member mail to %s failed", to)
+        logger.exception("Send invite member mail to %s failed", to)

@@ -31,9 +31,37 @@ from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 
+logger = logging.getLogger(__name__)
+
 
 # define completion api for user
 class CompletionApi(WebApiResource):
+    @api.doc("Create Completion Message")
+    @api.doc(description="Create a completion message for text generation applications.")
+    @api.doc(
+        params={
+            "inputs": {"description": "Input variables for the completion", "type": "object", "required": True},
+            "query": {"description": "Query text for completion", "type": "string", "required": False},
+            "files": {"description": "Files to be processed", "type": "array", "required": False},
+            "response_mode": {
+                "description": "Response mode: blocking or streaming",
+                "type": "string",
+                "enum": ["blocking", "streaming"],
+                "required": False,
+            },
+            "retriever_from": {"description": "Source of retriever", "type": "string", "required": False},
+        }
+    )
+    @api.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "App Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -61,7 +89,7 @@ class CompletionApi(WebApiResource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -74,11 +102,24 @@ class CompletionApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
 class CompletionStopApi(WebApiResource):
+    @api.doc("Stop Completion Message")
+    @api.doc(description="Stop a running completion message task.")
+    @api.doc(params={"task_id": {"description": "Task ID to stop", "type": "string", "required": True}})
+    @api.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Task Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model, end_user, task_id):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -89,6 +130,34 @@ class CompletionStopApi(WebApiResource):
 
 
 class ChatApi(WebApiResource):
+    @api.doc("Create Chat Message")
+    @api.doc(description="Create a chat message for conversational applications.")
+    @api.doc(
+        params={
+            "inputs": {"description": "Input variables for the chat", "type": "object", "required": True},
+            "query": {"description": "User query/message", "type": "string", "required": True},
+            "files": {"description": "Files to be processed", "type": "array", "required": False},
+            "response_mode": {
+                "description": "Response mode: blocking or streaming",
+                "type": "string",
+                "enum": ["blocking", "streaming"],
+                "required": False,
+            },
+            "conversation_id": {"description": "Conversation UUID", "type": "string", "required": False},
+            "parent_message_id": {"description": "Parent message UUID", "type": "string", "required": False},
+            "retriever_from": {"description": "Source of retriever", "type": "string", "required": False},
+        }
+    )
+    @api.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "App Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -119,7 +188,7 @@ class ChatApi(WebApiResource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -134,11 +203,24 @@ class ChatApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
 class ChatStopApi(WebApiResource):
+    @api.doc("Stop Chat Message")
+    @api.doc(description="Stop a running chat message task.")
+    @api.doc(params={"task_id": {"description": "Task ID to stop", "type": "string", "required": True}})
+    @api.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Task Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model, end_user, task_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

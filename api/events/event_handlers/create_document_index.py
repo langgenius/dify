@@ -11,6 +11,8 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document
 
+logger = logging.getLogger(__name__)
+
 
 @document_index_created.connect
 def handle(sender, **kwargs):
@@ -19,7 +21,7 @@ def handle(sender, **kwargs):
     documents = []
     start_at = time.perf_counter()
     for document_id in document_ids:
-        logging.info(click.style(f"Start process document: {document_id}", fg="green"))
+        logger.info(click.style(f"Start process document: {document_id}", fg="green"))
 
         document = (
             db.session.query(Document)
@@ -44,6 +46,6 @@ def handle(sender, **kwargs):
             indexing_runner = IndexingRunner()
             indexing_runner.run(documents)
             end_at = time.perf_counter()
-            logging.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+            logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
         except DocumentIsPausedError as ex:
-            logging.info(click.style(str(ex), fg="yellow"))
+            logger.info(click.style(str(ex), fg="yellow"))

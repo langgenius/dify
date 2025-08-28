@@ -28,7 +28,7 @@ from models.enums import DraftVariableType
 from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -242,7 +242,7 @@ class WorkflowDraftVariableService:
         if conv_var is None:
             self._session.delete(instance=variable)
             self._session.flush()
-            _logger.warning(
+            logger.warning(
                 "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
             )
             return None
@@ -263,12 +263,12 @@ class WorkflowDraftVariableService:
         if variable.node_execution_id is None:
             self._session.delete(instance=variable)
             self._session.flush()
-            _logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
+            logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
         node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
         if node_exec is None:
-            _logger.warning(
+            logger.warning(
                 "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
                 variable.id,
                 variable.name,
@@ -351,7 +351,7 @@ class WorkflowDraftVariableService:
             return None
         segment = draft_var.get_value()
         if not isinstance(segment, StringSegment):
-            _logger.warning(
+            logger.warning(
                 "sys.conversation_id variable is not a string: app_id=%s, id=%s",
                 app_id,
                 draft_var.id,
@@ -681,7 +681,7 @@ class DraftVariableSaver:
         draft_vars = []
         for name, value in output.items():
             if not self._should_variable_be_saved(name):
-                _logger.debug(
+                logger.debug(
                     "Skip saving variable as it has been excluded by its node_type, name=%s, node_type=%s",
                     name,
                     self._node_type,

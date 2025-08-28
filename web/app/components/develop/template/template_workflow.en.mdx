@@ -7,10 +7,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
 <div>
   ### Base URL
-  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
-    ```javascript
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url} />
 
   ### Authentication
 
@@ -19,12 +16,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
   For all API requests, include your API Key in the `Authorization` HTTP Header, as shown below:
 
-  <CodeGroup title="Code">
-    ```javascript
-      Authorization: Bearer {API_KEY}
-
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode='Authorization: Bearer {API_KEY}' />
 </div>
 
 ---
@@ -45,8 +37,8 @@ Workflow applications offers non-session support and is ideal for translation, a
         The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
         The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
         File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
-        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions: 
-          - `type` (string) Supported type: 
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions:
+          - `type` (string) Supported type:
             - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
             - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
@@ -123,9 +115,9 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
         - `inputs` (object) Contents of all preceding node variables used in the node
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
-    - `event: text_chunk` Text fragment  
-      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API 
-      - `workflow_run_id` (string) Unique ID of workflow execution 
+    - `event: text_chunk` Text fragment
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
       - `event` (string) fixed to `text_chunk`
       - `data` (object) detail
         - `text` (string) Text content
@@ -190,25 +182,24 @@ Workflow applications offers non-session support and is ideal for translation, a
 
   </Col>
   <Col sticky>
-     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "response_mode": "streaming",
-        "user": "abc-123"
-    }'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
     <CodeGroup title="Example: file array as an input variable">
       ```json {{ title: 'File variable example' }}
       {
         "inputs": {
-          "{variable_name}": 
+          "{variable_name}":
           [
             {
             "transfer_method": "local_file",
@@ -264,7 +255,7 @@ Workflow applications offers non-session support and is ideal for translation, a
           headers = {
               "Authorization": "Bearer app-xxxxxxxx",
           }
-          
+
           try:
               print("Upload file...")
               with open(file_path, 'rb') as file:
@@ -275,7 +266,7 @@ Workflow applications offers non-session support and is ideal for translation, a
                       "user": user,
                       "type": "TXT"  # Set the file type to TXT
                   }
-                  
+
                   response = requests.post(upload_url, headers=headers, files=files, data=data)
                   if response.status_code == 201:  # 201 means creation is successful
                       print("File uploaded successfully")
@@ -350,7 +341,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
     ### Path
           - `workflow_id` (string) Required Workflow ID to specify a specific version of workflow
-      
+
       How to obtain: In the version history interface, click the copy icon on the right side of each version entry to copy the complete workflow ID. Each version entry contains a copyable ID field.
 
     ### Request Body
@@ -359,8 +350,8 @@ Workflow applications offers non-session support and is ideal for translation, a
         The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
         The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
         File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
-        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions: 
-          - `type` (string) Supported type: 
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions:
+          - `type` (string) Supported type:
             - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
             - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
@@ -437,8 +428,8 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
         - `inputs` (object) Contents of all preceding node variables used in the node
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
-    - `event: text_chunk` Text fragment  
-      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API 
+    - `event: text_chunk` Text fragment
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `workflow_run_id` (string) Unique ID of workflow execution
       - `event` (string) fixed to `text_chunk`
       - `data` (object) detail
@@ -505,23 +496,24 @@ Workflow applications offers non-session support and is ideal for translation, a
 
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="POST" label="/workflows/:workflow_id/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "response_mode": "streaming",
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/:workflow_id/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
     <CodeGroup title="Example: file array as an input variable">
       ```json {{ title: 'File variable example' }}
       {
         "inputs": {
-          "{variable_name}": 
+          "{variable_name}":
           [
             {
             "transfer_method": "local_file",
@@ -598,13 +590,14 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_run_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \
-      -H 'Authorization: Bearer {api_key}' \
-      -H 'Content-Type: application/json'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/run/:workflow_run_id"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -647,17 +640,16 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `result` (string) Always returns "success"
   </Col>
   <Col sticky>
-  ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/workflows/tasks/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \
-    -H 'Authorization: Bearer {api_key}' \
-    -H 'Content-Type: application/json' \
-    --data-raw '{
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/tasks/:task_id/stop"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{"user": "abc-123"}'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -717,16 +709,15 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@"/path/to/file"'
-    ```
-
-    </CodeGroup>
-
+  <CodeGroup
+    title="Request"
+    tag="POST"
+    label="/files/upload"
+    targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\
+--form 'user=abc-123'`}
+  />
 
   ### Response Example
   <CodeGroup title="Response">
@@ -756,7 +747,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 <Row>
   <Col>
     Preview or download uploaded files. This endpoint allows you to access files that have been previously uploaded via the File Upload API.
-    
+
     <i>Files can only be accessed if they belong to messages within the requesting application.</i>
 
     ### Path Parameters
@@ -784,25 +775,23 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\\n--header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/files/:file_id/preview"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     ### Download as Attachment
-    <CodeGroup title="Download Request" tag="GET" label="/files/:file_id/preview?as_attachment=true" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\n--header 'Authorization: Bearer {api_key}' \\\n--output downloaded_file.png`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
-    --header 'Authorization: Bearer {api_key}' \
-    --output downloaded_file.png
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Download Request"
+      tag="GET"
+      label="/files/:file_id/preview?as_attachment=true"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\
+--header 'Authorization: Bearer {api_key}' \\
+--output downloaded_file.png`}
+    />
 
     ### Response Headers Example
     <CodeGroup title="Response Headers">
@@ -889,14 +878,13 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/workflows/logs" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\\n --header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/workflows/logs?limit=1'
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/logs"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\
+--header 'Authorization: Bearer {api_key}'`}
+    />
     ### Response Example
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -956,12 +944,13 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `author_name` (string) application author name
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info' \
-      -H 'Authorization: Bearer {api_key}'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
@@ -1010,30 +999,30 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
-      - `document` (object) Document settings  
-        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Document number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `image` (object) Image settings  
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Image number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `audio` (object) Audio settings  
-        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Audio number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `video` (object) Video settings  
-        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Video number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `custom` (object) Custom settings  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Custom number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one. 
+      - `document` (object) Document settings
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Document number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `image` (object) Image settings
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Image number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `audio` (object) Audio settings
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Audio number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `video` (object) Video settings
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Video number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `custom` (object) Custom settings
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Custom number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)
@@ -1043,14 +1032,12 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/parameters"
+      targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1112,13 +1099,13 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `show_workflow_steps` (bool) Whether to show workflow details
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/site' \
-    -H 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/meta"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
