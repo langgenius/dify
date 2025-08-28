@@ -1,9 +1,17 @@
 import datetime
 import json
 from typing import Any, Optional
-
+import uuid as _uuid
 import requests
-import weaviate  # type: ignore
+from urllib.parse import urlparse
+
+import weaviate
+import weaviate.classes.config as wc
+
+from weaviate.classes.init import Auth
+from weaviate.classes.query import Filter, MetadataQuery
+from weaviate.exceptions import UnexpectedStatusCodeError
+from weaviate.classes.data import DataObject
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -15,7 +23,6 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-
 
 class WeaviateConfig(BaseModel):
     endpoint: str
@@ -29,41 +36,34 @@ class WeaviateConfig(BaseModel):
             raise ValueError("config WEAVIATE_ENDPOINT is required")
         return values
 
-
 class WeaviateVector(BaseVector):
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
         super().__init__(collection_name)
         self._client = self._init_client(config)
         self._attributes = attributes
 
-    def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
-        auth_config = weaviate.auth.AuthApiKey(api_key=config.api_key)
+    def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
+        p = urlparse(config.endpoint)
+        host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
+        http_secure = (p.scheme == "https")
+        http_port = p.port or (443 if http_secure else 80)
 
-        weaviate.connect.connection.has_grpc = False
+        grpc_host = host
+        grpc_secure = http_secure
+        grpc_port = 443 if grpc_secure else 50051
 
-        # Fix to minimize the performance impact of the deprecation check in weaviate-client 3.24.0,
-        # by changing the connection timeout to pypi.org from 1 second to 0.001 seconds.
-        # TODO: This can be removed once weaviate-client is updated to 3.26.7 or higher,
-        #       which does not contain the deprecation check.
-        if hasattr(weaviate.connect.connection, "PYPI_TIMEOUT"):
-            weaviate.connect.connection.PYPI_TIMEOUT = 0.001
-
-        try:
-            client = weaviate.Client(
-                url=config.endpoint, auth_client_secret=auth_config, timeout_config=(5, 60), startup_period=None
-            )
-        except requests.exceptions.ConnectionError:
-            raise ConnectionError("Vector database connection error")
-
-        client.batch.configure(
-            # `batch_size` takes an `int` value to enable auto-batching
-            # (`None` is used for manual batching)
-            batch_size=config.batch_size,
-            # dynamically update the `batch_size` based on import speed
-            dynamic=True,
-            # `timeout_retries` takes an `int` value to retry on time outs
-            timeout_retries=3,
+        client = weaviate.connect_to_custom(
+            http_host=host,
+            http_port=http_port,
+            http_secure=http_secure,
+            grpc_host=grpc_host,
+            grpc_port=grpc_port,
+            grpc_secure=grpc_secure,
+            auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
         )
+
+        if not client.is_ready():
+            raise ConnectionError("Vector database is not ready")
 
         return client
 
@@ -74,9 +74,7 @@ class WeaviateVector(BaseVector):
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             if not class_prefix.endswith("_Node"):
-                # original class_prefix
                 class_prefix += "_Node"
-
             return class_prefix
 
         dataset_id = dataset.id
@@ -86,199 +84,240 @@ class WeaviateVector(BaseVector):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        # create collection
         self._create_collection()
-        # create vector
         self.add_texts(texts, embeddings)
 
     def _create_collection(self):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
-            if redis_client.get(collection_exist_cache_key):
+            cache_key = f"vector_indexing_{self._collection_name}"
+            if redis_client.get(cache_key):
                 return
-            schema = self._default_schema(self._collection_name)
-            if not self._client.schema.contains(schema):
-                # create collection
-                self._client.schema.create_class(schema)
-            redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
+            try:
+                if not self._client.collections.exists(self._collection_name):
+                    self._client.collections.create(
+                        name=self._collection_name,
+                        properties=[
+                            wc.Property(
+                                name=Field.TEXT_KEY.value,
+                                data_type=wc.DataType.TEXT,
+                                tokenization=wc.Tokenization.WORD,
+                            ),
+                            wc.Property(name="document_id", data_type=wc.DataType.TEXT),
+                            wc.Property(name="doc_id", data_type=wc.DataType.TEXT),
+                            wc.Property(name="chunk_index", data_type=wc.DataType.INT),
+                        ],
+                        vector_config=wc.Configure.Vectors.self_provided(),
+                    )
+
+                self._ensure_properties()
+                redis_client.set(cache_key, 1, ex=3600)
+            except Exception as e:
+                print(f"Error creating collection {self._collection_name}: {e}")
+                raise
+
+    def _ensure_properties(self) -> None:
+        if not self._client.collections.exists(self._collection_name):
+            return
+
+        col = self._client.collections.use(self._collection_name)
+        cfg = col.config.get()
+        existing = {p.name for p in (cfg.properties or [])}
+
+        to_add = []
+        if "document_id" not in existing:
+            to_add.append(wc.Property(name="document_id", data_type=wc.DataType.TEXT))
+        if "doc_id" not in existing:
+            to_add.append(wc.Property(name="doc_id", data_type=wc.DataType.TEXT))
+        if "chunk_index" not in existing:
+            to_add.append(wc.Property(name="chunk_index", data_type=wc.DataType.INT))
+
+        for prop in to_add:
+            try:
+                col.config.add_property(prop)
+            except Exception as e:
+                print(f"Warning: Could not add property {prop.name}: {e}")
+
+    def _get_uuids(self, documents: list[Document]) -> list[str]:
+        import hashlib
+        
+        uuids = []
+        for doc in documents:
+            content_hash = hashlib.md5(doc.page_content.encode()).hexdigest()
+            uuid_str = content_hash[:8]
+            uuids.append(uuid_str)
+        
+        return uuids
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
-        ids = []
+        col = self._client.collections.use(self._collection_name)
+        objs: list[DataObject] = []
+        ids_out: list[str] = []
 
-        with self._client.batch as batch:
-            for i, text in enumerate(texts):
-                data_properties = {Field.TEXT_KEY.value: text}
-                if metadatas is not None:
-                    # metadata maybe None
-                    for key, val in (metadatas[i] or {}).items():
-                        data_properties[key] = self._json_serializable(val)
+        for i, text in enumerate(texts):
+            props: dict[str, Any] = {Field.TEXT_KEY.value: text}
+            meta = metadatas[i] or {}
+            for k, v in meta.items():
+                props[k] = self._json_serializable(v)
 
-                batch.add_data_object(
-                    data_object=data_properties,
-                    class_name=self._collection_name,
-                    uuid=uuids[i],
-                    vector=embeddings[i] if embeddings else None,
+            candidate = uuids[i] if uuids else None
+            uid = candidate if (candidate and self._is_uuid(candidate)) else str(_uuid.uuid4())
+            ids_out.append(uid)
+
+            vec_payload = None
+            if embeddings and i < len(embeddings) and embeddings[i]:
+                vec_payload = {"default": embeddings[i]}
+
+            objs.append(
+                DataObject(
+                    uuid=uid,
+                    properties=props,
+                    vector=vec_payload,
                 )
-                ids.append(uuids[i])
-        return ids
+            )
 
-    def delete_by_metadata_field(self, key: str, value: str):
-        # check whether the index already exists
-        schema = self._default_schema(self._collection_name)
-        if self._client.schema.contains(schema):
-            where_filter = {"operator": "Equal", "path": [key], "valueText": value}
+        batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
+        for start in range(0, len(objs), batch_size):
+            chunk = objs[start:start + batch_size]
+            if not chunk:
+                continue
+            col.data.insert_many(chunk)
 
-            self._client.batch.delete_objects(class_name=self._collection_name, where=where_filter, output="minimal")
+        return ids_out
+
+    def _is_uuid(self, val: str) -> bool:
+        try:
+            _uuid.UUID(str(val))
+            return True
+        except Exception:
+            return False
+
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
+        if not self._client.collections.exists(self._collection_name):
+            return
+
+        col = self._client.collections.use(self._collection_name)
+        col.data.delete_many(where=Filter.by_property(key).equal(value))
 
     def delete(self):
-        # check whether the index already exists
-        schema = self._default_schema(self._collection_name)
-        if self._client.schema.contains(schema):
-            self._client.schema.delete_class(self._collection_name)
+        if self._client.collections.exists(self._collection_name):
+            self._client.collections.delete(self._collection_name)
 
     def text_exists(self, id: str) -> bool:
-        collection_name = self._collection_name
-        schema = self._default_schema(self._collection_name)
-
-        # check whether the index already exists
-        if not self._client.schema.contains(schema):
+        if not self._client.collections.exists(self._collection_name):
             return False
-        result = (
-            self._client.query.get(collection_name)
-            .with_additional(["id"])
-            .with_where(
-                {
-                    "path": ["doc_id"],
-                    "operator": "Equal",
-                    "valueText": id,
-                }
-            )
-            .with_limit(1)
-            .do()
+
+        col = self._client.collections.use(self._collection_name)
+        res = col.query.fetch_objects(
+            filters=Filter.by_property("doc_id").equal(id),
+            limit=1,
+            return_properties=["doc_id"],
         )
 
-        if "errors" in result:
-            raise ValueError(f"Error during query: {result['errors']}")
-
-        entries = result["data"]["Get"][collection_name]
-        if len(entries) == 0:
-            return False
-
-        return True
+        return len(res.objects) > 0
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        # check whether the index already exists
-        schema = self._default_schema(self._collection_name)
-        if self._client.schema.contains(schema):
-            for uuid in ids:
-                try:
-                    self._client.data_object.delete(
-                        class_name=self._collection_name,
-                        uuid=uuid,
-                    )
-                except weaviate.UnexpectedStatusCodeException as e:
-                    # tolerate not found error
-                    if e.status_code != 404:
-                        raise e
+        if not self._client.collections.exists(self._collection_name):
+            return
+
+        col = self._client.collections.use(self._collection_name)
+
+        for uid in ids:
+            try:
+                col.data.delete_by_id(uid)
+            except UnexpectedStatusCodeError as e:
+                if getattr(e, "status_code", None) != 404:
+                    raise
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        """Look up similar documents by embedding vector in Weaviate."""
-        collection_name = self._collection_name
-        properties = self._attributes
-        properties.append(Field.TEXT_KEY.value)
-        query_obj = self._client.query.get(collection_name, properties)
+        if not self._client.collections.exists(self._collection_name):
+            return []
 
-        vector = {"vector": query_vector}
-        document_ids_filter = kwargs.get("document_ids_filter")
-        if document_ids_filter:
-            operands = []
-            for document_id_filter in document_ids_filter:
-                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
-            where_filter = {"operator": "Or", "operands": operands}
-            query_obj = query_obj.with_where(where_filter)
-        result = (
-            query_obj.with_near_vector(vector)
-            .with_limit(kwargs.get("top_k", 4))
-            .with_additional(["vector", "distance"])
-            .do()
+        col = self._client.collections.use(self._collection_name)
+        props = list({*self._attributes, "document_id", Field.TEXT_KEY.value})
+
+        where = None
+        doc_ids = kwargs.get("document_ids_filter") or []
+        if doc_ids:
+            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
+            where = ors[0]
+            for f in ors[1:]:
+                where = where | f
+
+        top_k = int(kwargs.get("top_k", 4))
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+
+        res = col.query.near_vector(
+            near_vector=query_vector,
+            limit=top_k,
+            return_properties=props,
+            return_metadata=MetadataQuery(distance=True),
+            include_vector=False,
+            filters=where,
+            target_vector="default",
         )
-        if "errors" in result:
-            raise ValueError(f"Error during query: {result['errors']}")
 
-        docs_and_scores = []
-        for res in result["data"]["Get"][collection_name]:
-            text = res.pop(Field.TEXT_KEY.value)
-            score = 1 - res["_additional"]["distance"]
-            docs_and_scores.append((Document(page_content=text, metadata=res), score))
+        docs: list[Document] = []
+        for obj in res.objects:
+            properties = dict(obj.properties or {})
+            text = properties.pop(Field.TEXT_KEY.value, "")
+            distance = (obj.metadata.distance if obj.metadata else None) or 1.0
+            score = 1.0 - distance
 
-        docs = []
-        for doc, score in docs_and_scores:
-            score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            # check score threshold
             if score > score_threshold:
-                if doc.metadata is not None:
-                    doc.metadata["score"] = score
-                    docs.append(doc)
-        # Sort the documents by score in descending order
-        docs = sorted(docs, key=lambda x: x.metadata.get("score", 0) if x.metadata else 0, reverse=True)
+                properties["score"] = score
+                docs.append(Document(page_content=text, metadata=properties))
+
+        docs.sort(key=lambda d: d.metadata.get("score", 0.0), reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        """Return docs using BM25F.
+        if not self._client.collections.exists(self._collection_name):
+            return []
 
-        Args:
-            query: Text to look up documents similar to.
+        col = self._client.collections.use(self._collection_name)
+        props = list(self._attributes) + [Field.TEXT_KEY.value]
 
-        Returns:
-            List of Documents most similar to the query.
-        """
-        collection_name = self._collection_name
-        content: dict[str, Any] = {"concepts": [query]}
-        properties = self._attributes
-        properties.append(Field.TEXT_KEY.value)
-        if kwargs.get("search_distance"):
-            content["certainty"] = kwargs.get("search_distance")
-        query_obj = self._client.query.get(collection_name, properties)
-        document_ids_filter = kwargs.get("document_ids_filter")
-        if document_ids_filter:
-            operands = []
-            for document_id_filter in document_ids_filter:
-                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
-            where_filter = {"operator": "Or", "operands": operands}
-            query_obj = query_obj.with_where(where_filter)
-        query_obj = query_obj.with_additional(["vector"])
-        properties = ["text"]
-        result = query_obj.with_bm25(query=query, properties=properties).with_limit(kwargs.get("top_k", 4)).do()
-        if "errors" in result:
-            raise ValueError(f"Error during query: {result['errors']}")
-        docs = []
-        for res in result["data"]["Get"][collection_name]:
-            text = res.pop(Field.TEXT_KEY.value)
-            additional = res.pop("_additional")
-            docs.append(Document(page_content=text, vector=additional["vector"], metadata=res))
+        where = None
+        doc_ids = kwargs.get("document_ids_filter") or []
+        if doc_ids:
+            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
+            where = ors[0]
+            for f in ors[1:]:
+                where = where | f
+
+        top_k = int(kwargs.get("top_k", 4))
+
+        res = col.query.bm25(
+            query=query,
+            query_properties=[Field.TEXT_KEY.value],
+            limit=top_k,
+            return_properties=props,
+            include_vector=True,
+            filters=where,
+        )
+
+        docs: list[Document] = []
+        for obj in res.objects:
+            properties = dict(obj.properties or {})
+            text = properties.pop(Field.TEXT_KEY.value, "")
+
+            vec = obj.vector
+            if isinstance(vec, dict):
+                vec = vec.get("default") or next(iter(vec.values()), None)
+
+            docs.append(Document(page_content=text, vector=vec, metadata=properties))
         return docs
-
-    def _default_schema(self, index_name: str) -> dict:
-        return {
-            "class": index_name,
-            "properties": [
-                {
-                    "name": "text",
-                    "dataType": ["text"],
-                }
-            ],
-        }
 
     def _json_serializable(self, value: Any) -> Any:
         if isinstance(value, datetime.datetime):
             return value.isoformat()
         return value
-
 
 class WeaviateVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> WeaviateVector:
@@ -288,8 +327,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
-
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name)) 
         return WeaviateVector(
             collection_name=collection_name,
             config=WeaviateConfig(
