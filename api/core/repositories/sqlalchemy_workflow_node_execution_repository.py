@@ -72,7 +72,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         # Extract tenant_id from user
         with self._session_factory() as session:
-            user = session.merge(user)
+            session.refresh(user)
             tenant_id = extract_tenant_id(user)
         if not tenant_id:
             raise ValueError("User must have a tenant_id or current_tenant_id")

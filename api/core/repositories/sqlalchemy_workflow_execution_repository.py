@@ -65,9 +65,8 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             raise ValueError(
                 f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
             )
-
         with self._session_factory() as session:
-            user = session.merge(user)
+            session.refresh(user)
             tenant_id = extract_tenant_id(user)
 
         if not tenant_id:
