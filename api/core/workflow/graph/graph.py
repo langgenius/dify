@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any, Optional, Protocol, cast
+from typing import Any, Protocol, cast
 
 from core.workflow.enums import NodeType
 from core.workflow.nodes.base.node import Node
@@ -36,10 +36,10 @@ class Graph:
     def __init__(
         self,
         *,
-        nodes: Optional[dict[str, Node]] = None,
-        edges: Optional[dict[str, Edge]] = None,
-        in_edges: Optional[dict[str, list[str]]] = None,
-        out_edges: Optional[dict[str, list[str]]] = None,
+        nodes: dict[str, Node] | None = None,
+        edges: dict[str, Edge] | None = None,
+        in_edges: dict[str, list[str]] | None = None,
+        out_edges: dict[str, list[str]] | None = None,
         root_node: Node,
     ):
         """
@@ -81,7 +81,7 @@ class Graph:
         cls,
         node_configs_map: dict[str, dict[str, Any]],
         edge_configs: list[dict[str, Any]],
-        root_node_id: Optional[str] = None,
+        root_node_id: str | None = None,
     ) -> str:
         """
         Find the root node ID if not specified.
@@ -192,7 +192,7 @@ class Graph:
         *,
         graph_config: Mapping[str, Any],
         node_factory: "NodeFactory",
-        root_node_id: Optional[str] = None,
+        root_node_id: str | None = None,
     ) -> "Graph":
         """
         Initialize graph
