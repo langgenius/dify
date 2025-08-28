@@ -6,5 +6,5 @@ SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/.."
 
 # run ty checks
-uv run --directory api --with ty \
+uv run --directory api --dev \
   ty check
