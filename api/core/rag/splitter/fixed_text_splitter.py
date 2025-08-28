@@ -55,62 +55,95 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         self._separators = separators or ["\n\n", "\n", " ", ""]
 
     def split_text(self, text: str) -> list[str]:
-        """Split incoming text and return chunks using the specified algorithm."""
+        """Split incoming text and return chunks."""
         if self._fixed_separator:
             chunks = text.split(self._fixed_separator)
         else:
             chunks = [text]
 
         final_chunks = []
-        for chunk in chunks:
-            if not chunk.strip():
-                continue
-
-            chunk_lengths = self._length_function([chunk])
-            chunk_length = chunk_lengths[0] if chunk_lengths else 0
-
-            if chunk_length <= self._chunk_size:
-                # NO -> Push the chunk into the list of chunks to save
-                final_chunks.append(chunk)
+        chunks_lengths = self._length_function(chunks)
+        for chunk, chunk_length in zip(chunks, chunks_lengths):
+            if chunk_length > self._chunk_size:
+                final_chunks.extend(self.recursive_split_text(chunk))
             else:
-                # YES -> Split current chunk on space character and reconstruct
-                final_chunks.extend(self._reconstruct_chunk_by_words(chunk))
+                final_chunks.append(chunk)
 
         return final_chunks
 
-    def _reconstruct_chunk_by_words(self, text: str) -> list[str]:
-        """
-        Reconstruct oversized chunk by splitting on spaces and rebuilding word by word.
-        """
-        words = text.split(" ")
-        chunks = []
-        current_chunk = ""
-
-        for word in words:
-            if not word:
-                continue
-
-            if current_chunk:
-                concatenee = " " + word
-            else:
-                concatenee = word
-
-            potential_chunk = current_chunk + concatenee
-            potential_lengths = self._length_function([potential_chunk])
-            potential_length = potential_lengths[0] if potential_lengths else 0
-
-            if potential_length > self._chunk_size:
-                # YES -> push the chunk in the list of chunks to save and start a new one
-                if current_chunk:  # Don't add empty chunks
-                    chunks.append(current_chunk)
-                current_chunk = word  # Start new chunk with just the word
-            else:
-                current_chunk = current_chunk + concatenee
-
-        if current_chunk:
-            chunks.append(current_chunk)
-
-        return chunks
-
     def recursive_split_text(self, text: str) -> list[str]:
-        return self.split_text(text)
+        """Split incoming text and return chunks."""
+
+        final_chunks = []
+        separator = self._separators[-1]
+        new_separators = []
+
+        for i, _s in enumerate(self._separators):
+            if _s == "":
+                separator = _s
+                break
+            if _s in text:
+                separator = _s
+                new_separators = self._separators[i + 1 :]
+                break
+
+        # Now that we have the separator, split the text
+        if separator:
+            if separator == " ":
+                splits = text.split(" ")
+                splits = [item + separator if i < len(splits) - 1 else item for i, item in enumerate(splits)]
+            else:
+                splits = text.split(separator)
+                splits = [item + separator if i < len(splits) else item for i, item in enumerate(splits)]
+        else:
+            splits = list(text)
+        splits = [s for s in splits if (s not in {"", "\n"})]
+        _good_splits = []
+        _good_splits_lengths = []  # cache the lengths of the splits
+        # _separator = "" if self._keep_separator else separator
+        _separator = separator if self._keep_separator else ""
+        s_lens = self._length_function(splits)
+        if separator != "":
+            for s, s_len in zip(splits, s_lens):
+                if s_len < self._chunk_size:
+                    _good_splits.append(s)
+                    _good_splits_lengths.append(s_len)
+                else:
+                    if _good_splits:
+                        merged_text = self._merge_splits(_good_splits, _separator, _good_splits_lengths)
+                        final_chunks.extend(merged_text)
+                        _good_splits = []
+                        _good_splits_lengths = []
+                    if not new_separators:
+                        final_chunks.append(s)
+                    else:
+                        other_info = self._split_text(s, new_separators)
+                        final_chunks.extend(other_info)
+
+            if _good_splits:
+                merged_text = self._merge_splits(_good_splits, _separator, _good_splits_lengths)
+                final_chunks.extend(merged_text)
+        else:
+            current_part = ""
+            current_length = 0
+            overlap_part = ""
+            overlap_part_length = 0
+            for s, s_len in zip(splits, s_lens):
+                if current_length + s_len <= self._chunk_size - self._chunk_overlap:
+                    current_part += s
+                    current_length += s_len
+                elif current_length + s_len <= self._chunk_size:
+                    current_part += s
+                    current_length += s_len
+                    overlap_part += s
+                    overlap_part_length += s_len
+                else:
+                    final_chunks.append(current_part)
+                    current_part = overlap_part + s
+                    current_length = s_len + overlap_part_length
+                    overlap_part = ""
+                    overlap_part_length = 0
+            if current_part:
+                final_chunks.append(current_part)
+
+        return final_chunks
