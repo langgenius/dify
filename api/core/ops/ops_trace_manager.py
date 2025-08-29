@@ -226,9 +226,9 @@ class OpsTraceManager:
 
         if not trace_config_data:
             return None
-
         # decrypt_token
-        app = db.session.query(App).where(App.id == app_id).first()
+        stmt = select(App).where(App.id == app_id)
+        app = db.session.scalar(stmt)
         if not app:
             raise ValueError("App not found")
 
@@ -295,20 +295,19 @@ class OpsTraceManager:
     @classmethod
     def get_app_config_through_message_id(cls, message_id: str):
         app_model_config = None
-        message_data = db.session.query(Message).where(Message.id == message_id).first()
+        message_stmt = select(Message).where(Message.id == message_id)
+        message_data = db.session.scalar(message_stmt)
         if not message_data:
             return None
         conversation_id = message_data.conversation_id
-        conversation_data = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+        conversation_stmt = select(Conversation).where(Conversation.id == conversation_id)
+        conversation_data = db.session.scalar(conversation_stmt)
         if not conversation_data:
             return None
 
         if conversation_data.app_model_config_id:
-            app_model_config = (
-                db.session.query(AppModelConfig)
-                .where(AppModelConfig.id == conversation_data.app_model_config_id)
-                .first()
-            )
+            config_stmt = select(AppModelConfig).where(AppModelConfig.id == conversation_data.app_model_config_id)
+            app_model_config = db.session.scalar(config_stmt)
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
             app_model_config = conversation_data.override_model_configs
 

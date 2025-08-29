@@ -3,6 +3,8 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
+from sqlalchemy import select
+
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -83,11 +85,10 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
     def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:
         if conversation:
-            app_model_config = (
-                db.session.query(AppModelConfig)
-                .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
-                .first()
+            stmt = select(AppModelConfig).where(
+                AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
+            app_model_config = db.session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -253,7 +254,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param conversation_id: conversation id
         :return: conversation
         """
-        conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+        stmt = select(Conversation).where(Conversation.id == conversation_id)
+        conversation = db.session.scalar(stmt)
 
         if not conversation:
             raise ConversationNotExistsError("Conversation not exists")
@@ -266,7 +268,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param message_id: message id
         :return: message
         """
-        message = db.session.query(Message).where(Message.id == message_id).first()
+        stmt = select(Message).where(Message.id == message_id)
+        message = db.session.scalar(stmt)
 
         if message is None:
             raise MessageNotExistsError("Message not exists")

@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
 from core.agent.entities import AgentEntity
@@ -44,8 +46,8 @@ class AgentChatAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(AgentChatAppConfig, app_config)
-
-        app_record = db.session.query(App).where(App.id == app_config.app_id).first()
+        app_stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.scalar(app_stmt)
         if not app_record:
             raise ValueError("App not found")
 
@@ -182,11 +184,12 @@ class AgentChatAppRunner(AppRunner):
 
         if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
-
-        conversation_result = db.session.query(Conversation).where(Conversation.id == conversation.id).first()
+        conversation_stmt = select(Conversation).where(Conversation.id == conversation.id)
+        conversation_result = db.session.scalar(conversation_stmt)
         if conversation_result is None:
             raise ValueError("Conversation not found")
-        message_result = db.session.query(Message).where(Message.id == message.id).first()
+        msg_stmt = select(Message).where(Message.id == message.id)
+        message_result = db.session.scalar(msg_stmt)
         if message_result is None:
             raise ValueError("Message not found")
         db.session.close()

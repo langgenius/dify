@@ -8,6 +8,7 @@ import uuid
 from typing import Any, Optional, cast
 
 from flask import current_app
+from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -56,13 +57,11 @@ class IndexingRunner:
 
                 if not dataset:
                     raise ValueError("no dataset found")
-
                 # get the process rule
-                processing_rule = (
-                    db.session.query(DatasetProcessRule)
-                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                    .first()
+                stmt = select(DatasetProcessRule).where(
+                    DatasetProcessRule.id == dataset_document.dataset_process_rule_id
                 )
+                processing_rule = db.session.scalar(stmt)
                 if not processing_rule:
                     raise ValueError("no process rule found")
                 index_type = dataset_document.doc_form
@@ -123,11 +122,8 @@ class IndexingRunner:
                     db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
             # get the process rule
-            processing_rule = (
-                db.session.query(DatasetProcessRule)
-                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                .first()
-            )
+            stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+            processing_rule = db.session.scalar(stmt)
             if not processing_rule:
                 raise ValueError("no process rule found")
 
@@ -208,7 +204,6 @@ class IndexingRunner:
                                     child_documents.append(child_document)
                                 document.children = child_documents
                         documents.append(document)
-
             # build index
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -310,7 +305,8 @@ class IndexingRunner:
                 # delete image files and related db records
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+                    stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+                    image_file = db.session.scalar(stmt)
                     if image_file is None:
                         continue
                     try:
@@ -339,10 +335,8 @@ class IndexingRunner:
         if dataset_document.data_source_type == "upload_file":
             if not data_source_info or "upload_file_id" not in data_source_info:
                 raise ValueError("no upload file found")
-
-            file_detail = (
-                db.session.query(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"]).one_or_none()
-            )
+            stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
+            file_detail = db.session.scalars(stmt).one_or_none()
 
             if file_detail:
                 extract_setting = ExtractSetting(

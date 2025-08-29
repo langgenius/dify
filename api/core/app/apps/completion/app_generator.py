@@ -6,6 +6,7 @@ from typing import Any, Literal, Union, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
+from sqlalchemy import select
 
 from configs import dify_config
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
@@ -248,17 +249,14 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        message = (
-            db.session.query(Message)
-            .where(
-                Message.id == message_id,
-                Message.app_id == app_model.id,
-                Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Message.from_account_id == (user.id if isinstance(user, Account) else None),
-            )
-            .first()
+        stmt = select(Message).where(
+            Message.id == message_id,
+            Message.app_id == app_model.id,
+            Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
+            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+            Message.from_account_id == (user.id if isinstance(user, Account) else None),
         )
+        message = db.session.scalar(stmt)
 
         if not message:
             raise MessageNotExistsError()

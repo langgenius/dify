@@ -1,6 +1,8 @@
 from collections.abc import Generator, Mapping
 from typing import Optional, Union
 
+from sqlalchemy import select
+
 from controllers.service_api.wraps import create_or_update_end_user_for_user_id
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -192,10 +194,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         get the user by user id
         """
-
-        user = db.session.query(EndUser).where(EndUser.id == user_id).first()
+        stmt = select(EndUser).where(EndUser.id == user_id)
+        user = db.session.scalar(stmt)
         if not user:
-            user = db.session.query(Account).where(Account.id == user_id).first()
+            stmt = select(Account).where(Account.id == user_id)
+            user = db.session.scalar(stmt)
 
         if not user:
             raise ValueError("user not found")

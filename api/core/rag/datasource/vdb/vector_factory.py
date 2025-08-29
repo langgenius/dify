@@ -3,6 +3,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
+from sqlalchemy import select
+
 from configs import dify_config
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -45,11 +47,10 @@ class Vector:
             vector_type = self._dataset.index_struct_dict["type"]
         else:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
-                whitelist = (
-                    db.session.query(Whitelist)
-                    .where(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
-                    .one_or_none()
+                stmt = select(Whitelist).where(
+                    Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
                 )
+                whitelist = db.session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
