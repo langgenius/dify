@@ -433,6 +433,7 @@ class WorkflowService:
                 node_type=NodeType(workflow_node_execution.node_type),
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=node_execution.id,
+                user=account,
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=node_execution.outputs)
             session.commit()

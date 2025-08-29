@@ -13,6 +13,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
+from core.file import helpers as file_helpers
 from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
@@ -41,6 +42,7 @@ def _convert_values_to_json_serializable_object(value: Segment) -> Any:
 
 
 def _serialize_var_value(variable: WorkflowDraftVariable) -> Any:
+    """Serialize variable value. If variable is truncated, return the truncated value."""
     value = variable.get_value()
     # create a copy of the value to avoid affecting the model cache.
     value = value.model_copy(deep=True)
@@ -74,6 +76,22 @@ def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     return value_type.exposed_type().value
 
 
+def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
+    """Serialize full_content information for large variables."""
+    if not variable.is_truncated():
+        return None
+
+    variable_file = variable.variable_file
+    assert variable_file is not None
+
+    return {
+        "size_bytes": variable_file.size,
+        "value_type": variable_file.value_type.exposed_type().value,
+        "length": variable_file.length,
+        "download_url": file_helpers.get_signed_file_url(variable_file.upload_file_id, as_attachment=True),
+    }
+
+
 _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "id": fields.String,
     "type": fields.String(attribute=lambda model: model.get_variable_type()),
@@ -83,11 +101,13 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "value_type": fields.String(attribute=_serialize_variable_type),
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
+    "is_truncated": fields.Boolean(attribute=lambda model: model.file_id is not None),
 }
 
 _WORKFLOW_DRAFT_VARIABLE_FIELDS = dict(
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     value=fields.Raw(attribute=_serialize_var_value),
+    full_content=fields.Raw(attribute=_serialize_full_content),
 )
 
 _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {

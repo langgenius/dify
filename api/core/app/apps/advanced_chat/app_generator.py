@@ -461,7 +461,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             stream=stream,
-            draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from),
+            draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from, account=user),
         )
 
         return AdvancedChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)

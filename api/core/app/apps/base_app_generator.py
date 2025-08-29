@@ -14,6 +14,7 @@ from core.workflow.repositories.draft_variable_repository import (
 )
 from factories import file_factory
 from libs.orjson import orjson_dumps
+from models import Account, EndUser
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -182,8 +183,9 @@ class BaseAppGenerator:
 
     @final
     @staticmethod
-    def _get_draft_var_saver_factory(invoke_from: InvokeFrom) -> DraftVariableSaverFactory:
+    def _get_draft_var_saver_factory(invoke_from: InvokeFrom, account: Account | EndUser) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
+            assert isinstance(account, Account)
 
             def draft_var_saver_factory(
                 session: Session,
@@ -200,6 +202,7 @@ class BaseAppGenerator:
                     node_type=node_type,
                     node_execution_id=node_execution_id,
                     enclosing_node_id=enclosing_node_id,
+                    user=account,
                 )
         else:
 
