@@ -28,7 +28,7 @@ class TestApiKeyAuthService:
         mock_binding.provider = self.provider
         mock_binding.disabled = False
 
-        mock_session.query.return_value.where.return_value.all.return_value = [mock_binding]
+        mock_session.scalars.return_value.all.return_value = [mock_binding]
 
         result = ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
@@ -39,7 +39,7 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_provider_auth_list_empty(self, mock_session):
         """Test get provider auth list - empty result"""
-        mock_session.query.return_value.where.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.return_value = []
 
         result = ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
@@ -48,7 +48,7 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_provider_auth_list_filters_disabled(self, mock_session):
         """Test get provider auth list - filters disabled items"""
-        mock_session.query.return_value.where.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.return_value = []
 
         ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
