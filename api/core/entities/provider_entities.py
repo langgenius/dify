@@ -116,6 +116,15 @@ class CustomModelConfiguration(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
+class UnaddedModelConfiguration(BaseModel):
+    """
+    Model class for provider unadded model configuration.
+    """
+
+    model: str
+    model_type: ModelType
+
+
 class CustomConfiguration(BaseModel):
     """
     Model class for provider custom configuration.
@@ -123,6 +132,7 @@ class CustomConfiguration(BaseModel):
 
     provider: Optional[CustomProviderConfiguration] = None
     models: list[CustomModelConfiguration] = []
+    can_added_models: list[UnaddedModelConfiguration] = []
 
 
 class ModelLoadBalancingConfiguration(BaseModel):

@@ -1054,6 +1054,7 @@ class ProviderConfiguration(BaseModel):
                     provider_name=self.provider.provider,
                     model_name=model,
                     model_type=model_type.to_origin_model_type(),
+                    is_valid=True,
                     credential_id=credential_id,
                 )
             else:

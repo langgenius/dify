@@ -72,6 +72,7 @@ class ModelProviderService:
 
             provider_config = provider_configuration.custom_configuration.provider
             model_config = provider_configuration.custom_configuration.models
+            can_added_models = provider_configuration.custom_configuration.can_added_models
 
             provider_response = ProviderResponse(
                 tenant_id=tenant_id,
@@ -95,6 +96,7 @@ class ModelProviderService:
                     current_credential_name=getattr(provider_config, "current_credential_name", None),
                     available_credentials=getattr(provider_config, "available_credentials", []),
                     custom_models=model_config,
+                    can_added_models=can_added_models,
                 ),
                 system_configuration=SystemConfigurationResponse(
                     enabled=provider_configuration.system_configuration.enabled,

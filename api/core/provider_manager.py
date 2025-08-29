@@ -538,6 +538,26 @@ class ProviderManager:
         ]
 
     @staticmethod
+    def can_added_model_list(
+        tenant_id: str, provider_name: str, existing_model_set: set[tuple[str, str]]
+    ) -> set[tuple[str, str]]:
+        """
+        Get the list of custom models from enterprise version not added to the provider's model list.
+
+        :param tenant_id: workspace id
+        :param provider_name: provider name
+        :return: list of model names
+        """
+        with Session(db.engine, expire_on_commit=False) as session:
+            stmt = select(ProviderModelCredential).where(
+                ProviderModelCredential.tenant_id == tenant_id, ProviderModelCredential.provider_name == provider_name
+            )
+
+            all_credentials = session.scalars(stmt).all()
+            all_model_set = {(credential.model_name, credential.model_type) for credential in all_credentials}
+            return all_model_set - existing_model_set
+
+    @staticmethod
     def _init_trial_provider_records(
         tenant_id: str, provider_name_to_provider_records_dict: dict[str, list[Provider]]
     ) -> dict[str, list[Provider]]:
@@ -696,6 +716,12 @@ class ProviderManager:
             else []
         )
 
+        existing_model_set = {(record.model_name, record.model_type) for record in provider_model_records}
+        not_added_custom_models = self.can_added_model_list(tenant_id, provider_entity.provider, existing_model_set)
+        can_added_models = [
+            {"model": item[0], "model_type": ModelType.value_of(item[1])} for item in list(not_added_custom_models)
+        ]
+
         # Get custom provider model credentials
         custom_model_configurations = []
         for provider_model_record in provider_model_records:
@@ -748,7 +774,11 @@ class ProviderManager:
                 )
             )
 
-        return CustomConfiguration(provider=custom_provider_configuration, models=custom_model_configurations)
+        return CustomConfiguration(
+            provider=custom_provider_configuration,
+            models=custom_model_configurations,
+            can_added_models=can_added_models,
+        )
 
     def _to_system_configuration(
         self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
