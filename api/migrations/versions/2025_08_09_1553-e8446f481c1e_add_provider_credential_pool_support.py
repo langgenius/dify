@@ -47,7 +47,7 @@ def upgrade():
         migrate_existing_providers_data()
     else:
         op.execute(
-            '-- [IMPORTANT] Data migration skippped!!!\n'
+            '-- [IMPORTANT] Data migration skipped!!!\n'
             "-- You should manually run data migration function `migrate_existing_providers_data`\n"
             f"-- inside file {__file__}\n"
             "-- Please review the migration script carefully!"
@@ -132,7 +132,7 @@ def downgrade():
         migrate_data_back_to_providers()
     else:
         op.execute(
-            '-- [IMPORTANT] Data migration skippped!!!\n'
+            '-- [IMPORTANT] Data migration skipped!!!\n'
             "-- You should manually run data migration function `migrate_data_back_to_providers`\n"
             f"-- inside file {__file__}\n"
             "-- Please review the migration script carefully!"
