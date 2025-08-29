@@ -1,6 +1,7 @@
 import uuid
-from typing import Optional
 from collections.abc import Sequence
+from typing import Optional
+
 from flask_login import current_user
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound
