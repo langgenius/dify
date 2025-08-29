@@ -1,8 +1,9 @@
 import json
 
+from sqlalchemy import select
+
 from core.helper import encrypter
 from extensions.ext_database import db
-from sqlalchemy import select
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 
