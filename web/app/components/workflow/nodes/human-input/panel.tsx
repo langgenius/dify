@@ -29,6 +29,7 @@ import copy from 'copy-to-clipboard'
 import { useBoolean } from 'ahooks'
 import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/workflow/store'
+import FormContentPreview from './components/form-content-preview'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -63,6 +64,11 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   }] = useBoolean(false)
   const panelWidth = useStore(state => state.panelWidth)
 
+  const [isPreview, {
+    toggle: togglePreview,
+    setFalse: hidePreview,
+  }] = useBoolean(false)
+
   return (
     <div className='py-2'>
       {/* delivery methods */}
@@ -76,7 +82,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <Divider className='!my-0 !h-px !bg-divider-subtle' />
       </div>
       {/* form content */}
-      <div className={cn('px-4 py-2', isExpandFormContent && 'fixed bottom-[8px] right-[4px] top-[189px] z-10 flex flex-col bg-components-panel-bg')} style={{ width: panelWidth }}>
+      <div className={cn('px-4 py-2', isExpandFormContent && 'fixed bottom-[8px] right-[4px] top-[189px] z-10 flex flex-col bg-components-panel-bg')} style={{ width: isExpandFormContent ? panelWidth : '100%' }}>
         <div className='mb-1 flex shrink-0 items-center justify-between'>
           <div className='flex h-6 items-center gap-0.5'>
             <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.formContent.title`)}</div>
@@ -85,7 +91,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             />
           </div>
           <div className='flex items-center '>
-            <Button variant='ghost' className='flex items-center space-x-1 px-2 text-components-button-ghost-text'>
+            <Button variant='ghost' className='flex items-center space-x-1 px-2 text-components-button-ghost-text' onClick={togglePreview}>
               <RiEyeLine className='size-3.5' />
               <div className='system-xs-medium'>{t(`${i18nPrefix}.formContent.preview`)}</div>
             </Button>
@@ -167,6 +173,15 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           onChange={handleTimeoutChange}
         />
       </div>
+
+      {isPreview && (
+        <FormContentPreview
+          content={inputs.form_content}
+          formInputs={inputs.inputs}
+          userActions={inputs.user_actions}
+          onClose={hidePreview}
+        />
+      )}
     </div>
   )
 }
