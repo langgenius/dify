@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
