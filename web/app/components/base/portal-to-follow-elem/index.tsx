@@ -144,7 +144,7 @@ export const PortalToFollowElemTrigger = (
         ...props,
         ...(children.props || {}),
         'data-state': context.open ? 'open' : 'closed',
-      } as any),
+      } as React.HTMLProps<HTMLElement>),
     )
   }
 
