@@ -29,7 +29,7 @@ def upgrade():
             "tenant_id",
             models.types.StringUUID(),
             nullable=False,
-            comment="The application to which the WorkflowDraftVariableFile belongs, referencing App.id",
+            comment="The tenant to which the WorkflowDraftVariableFile belongs, referencing Tenant.id",
         ),
         sa.Column(
             "app_id",
@@ -71,11 +71,14 @@ def upgrade():
                 nullable=True,
                 comment="Reference to WorkflowDraftVariableFile if variable is offloaded to external storage",
             )
-            sa.sa.Column(
+        )
+        batch_op.add_column(
+            sa.Column(
                 "is_default_value",
                 sa.Boolean,
-                nullable=False
-                server_default=sa.false(),
+                nullable=False,
+                server_default=sa.text(text="FALSE"),
+                comment="Indicates whether the current value is the default for a conversation variable. Always `FALSE` for other types of variables.",
             )
         )
         batch_op.create_index("workflow_draft_variable_file_id_idx", ["file_id"], unique=False)
