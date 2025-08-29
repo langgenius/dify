@@ -5,7 +5,7 @@ import {
   tagKeys,
 } from './constants'
 
-type Tag = {
+export type Tag = {
   name: string
   label: string
 }
