@@ -592,7 +592,7 @@ class OAuthProviderApp(Base):
         sa.Index("oauth_provider_app_client_id_idx", "client_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     app_icon = mapped_column(String(255), nullable=False)
     app_label = mapped_column(sa.JSON, nullable=False, server_default="{}")
     client_id = mapped_column(String(255), nullable=False)
