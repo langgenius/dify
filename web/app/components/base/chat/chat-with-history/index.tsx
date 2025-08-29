@@ -143,6 +143,9 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    loadMoreMessages,
+    hasMoreMessages,
+    loadingMore,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -186,6 +189,9 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setCurrentConversationInputs,
       allInputsHidden,
       initUserVariables,
+      loadMoreMessages,
+      hasMoreMessages,
+      loadingMore,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>
@@ -201,23 +207,26 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
 
   useAsyncEffect(async () => {
-    if (!initialized) {
-      if (!installedAppInfo) {
-        try {
-          await checkOrSetAccessToken()
-        }
-        catch (e: any) {
-          if (e.status === 404) {
-            setAppUnavailable(true)
-          }
-          else {
-            setIsUnknownReason(true)
-            setAppUnavailable(true)
-          }
-        }
-      }
+    if (initialized) return
+
+    if (installedAppInfo) {
       setInitialized(true)
+      return
     }
+
+    try {
+      await checkOrSetAccessToken()
+    }
+    catch (e: any) {
+      if (e.status === 404) {
+        setAppUnavailable(true)
+      }
+      else {
+        setIsUnknownReason(true)
+        setAppUnavailable(true)
+      }
+    }
+    setInitialized(true)
   }, [])
 
   if (!initialized)

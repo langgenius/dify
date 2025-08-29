@@ -60,6 +60,9 @@ export type ChatWithHistoryContextValue = {
     name?: string
     avatar_url?: string
   }
+  loadMoreMessages?: () => Promise<void>
+  hasMoreMessages?: boolean
+  loadingMore?: boolean
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -95,5 +98,8 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
   initUserVariables: {},
+  loadMoreMessages: async () => { /* noop */ },
+  hasMoreMessages: false,
+  loadingMore: false,
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)
