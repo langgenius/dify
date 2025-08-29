@@ -64,7 +64,7 @@ class ToolLabelManager:
             )
         ).all()
 
-        return [label_name for label_name in labels]
+        return  list(labels)
 
     @classmethod
     def get_tools_labels(cls, tool_providers: list[ToolProviderController]) -> dict[str, list[str]]:
