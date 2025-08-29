@@ -74,8 +74,9 @@ const Select: FC<ISelectProps> = ({
   useEffect(() => {
     let defaultSelect = null
     const existed = items.find((item: Item) => item.value === defaultValue)
-    if (existed)
-      defaultSelect = existed
+    if (existed) {
+      defaultSelect = existed;
+    }
 
     setSelectedItem(defaultSelect)
   }, [defaultValue, items])
@@ -217,8 +218,9 @@ const SimpleSelect: FC<ISelectProps> = ({
   useEffect(() => {
     let defaultSelect = null
     const existed = items.find((item: Item) => item.value === defaultValue)
-    if (existed)
-      defaultSelect = existed
+    if (existed) {
+      defaultSelect = existed;
+    }
 
     setSelectedItem(defaultSelect)
   }, [defaultValue])
