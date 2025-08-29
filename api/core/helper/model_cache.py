@@ -3,8 +3,8 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 model_cache = {}
 
-class ModelTypeInstanceCache:
 
+class ModelTypeInstanceCache:
     def __init__(self, model_type: ModelType = None, provider: str = ""):
         self.cache_key = f"model_type_instance:model_type:{model_type.value if model_type else ''}:provider:{provider}"
 

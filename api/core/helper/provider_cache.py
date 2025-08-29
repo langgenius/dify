@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from json import JSONDecodeError
 from typing import Any, Optional
 
-from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from extensions.ext_redis import redis_client
 
 
@@ -101,7 +101,10 @@ class ProviderConfigurationsCache:
                 cached_provider_configurations = cached_provider_configurations.decode("utf-8")
                 cached_provider_configurations = json.loads(cached_provider_configurations)
                 providerConfigurations = ProviderConfigurations(tenant_id=cached_provider_configurations["tenant_id"])
-                providerConfigurations.configurations = {key: ProviderConfiguration(**value) for key, value in cached_provider_configurations["configurations"].items()}
+                providerConfigurations.configurations = {
+                    key: ProviderConfiguration(**value)
+                    for key, value in cached_provider_configurations["configurations"].items()
+                }
 
             except Exception as e:
                 return None

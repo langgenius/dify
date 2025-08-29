@@ -3,6 +3,8 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 from typing import Optional
 
+from api.core.helper.model_cache import ModelTypeInstanceCache
+from api.core.helper.provider_cache import ProviderConfigurationsCache
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -29,9 +31,6 @@ from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
-
-from api.core.helper.model_cache import ModelTypeInstanceCache
-from api.core.helper.provider_cache import ProviderConfigurationsCache
 
 logger = logging.getLogger(__name__)
 
