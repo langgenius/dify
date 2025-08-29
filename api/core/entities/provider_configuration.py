@@ -5,37 +5,48 @@ from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
 from constants import HIDDEN_VALUE
-from core.entities.model_entities import (ModelStatus, ModelWithProviderEntity,
-                                          SimpleModelProviderEntity)
-from core.entities.provider_entities import (CustomConfiguration,
-                                             ModelSettings,
-                                             SystemConfiguration,
-                                             SystemConfigurationStatus)
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    ModelSettings,
+    SystemConfiguration,
+    SystemConfigurationStatus,
+)
 from core.helper import encrypter
-from core.helper.model_provider_cache import (ProviderCredentialsCache,
-                                              ProviderCredentialsCacheType)
-from core.model_runtime.entities.model_entities import (AIModelEntity,
-                                                        FetchFrom, ModelType)
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.entities.provider_entities import (
-    ConfigurateMethod, CredentialFormSchema, FormType, ProviderEntity)
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.model_providers.model_provider_factory import \
-    ModelProviderFactory
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.plugin.entities.plugin import ModelProviderID
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.provider import (LoadBalancingModelConfig, Provider,
-                             ProviderCredential, ProviderModel,
-                             ProviderModelCredential, ProviderModelSetting,
-                             ProviderType, TenantPreferredModelProvider)
-from pydantic import BaseModel, ConfigDict, Field
+from models.provider import (
+    LoadBalancingModelConfig,
+    Provider,
+    ProviderCredential,
+    ProviderModel,
+    ProviderModelCredential,
+    ProviderModelSetting,
+    ProviderType,
+    TenantPreferredModelProvider,
+)
 from services.enterprise.plugin_manager_service import (
-    CheckCredentialPolicyComplianceRequest, PluginCredentialType,
-    PluginManagerService)
+    CheckCredentialPolicyComplianceRequest,
+    PluginCredentialType,
+    PluginManagerService,
+)
 from services.feature_service import FeatureService
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -123,14 +134,28 @@ class ProviderConfiguration(BaseModel):
             return copy_credentials
         else:
             credentials = None
+            current_credential_id = None
+
             if self.custom_configuration.models:
                 for model_configuration in self.custom_configuration.models:
                     if model_configuration.model_type == model_type and model_configuration.model == model:
                         credentials = model_configuration.credentials
+                        current_credential_id = model_configuration.current_credential_id
                         break
 
             if not credentials and self.custom_configuration.provider:
                 credentials = self.custom_configuration.provider.credentials
+                current_credential_id = self.custom_configuration.provider.current_credential_id
+
+            # Check credential policy compliance for model providers
+            if FeatureService.get_system_features().plugin_manager.enabled and current_credential_id:
+                PluginManagerService.check_credential_policy_compliance(
+                    CheckCredentialPolicyComplianceRequest(
+                        dify_credential_id=current_credential_id,
+                        provider=self.provider.provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+                )
 
             return credentials
 
@@ -230,6 +255,16 @@ class ProviderConfiguration(BaseModel):
                     credentials[key] = encrypter.decrypt_token(tenant_id=self.tenant_id, token=credentials[key])
                 except Exception:
                     pass
+
+        # Check credential policy compliance for specific provider credentials
+        if FeatureService.get_system_features().plugin_manager.enabled and credential_id:
+            PluginManagerService.check_credential_policy_compliance(
+                CheckCredentialPolicyComplianceRequest(
+                    dify_credential_id=credential_id,
+                    provider=self.provider.provider,
+                    credential_type=PluginCredentialType.MODEL,
+                )
+            )
 
         return self.obfuscated_credentials(
             credentials=credentials,
@@ -688,6 +723,17 @@ class ProviderConfiguration(BaseModel):
 
         current_credential_id = credential_record.id
         current_credential_name = credential_record.credential_name
+
+        # Check credential policy compliance for specific model credentials
+        if FeatureService.get_system_features().plugin_manager.enabled and current_credential_id:
+            PluginManagerService.check_credential_policy_compliance(
+                CheckCredentialPolicyComplianceRequest(
+                    dify_credential_id=current_credential_id,
+                    provider=self.provider.provider,
+                    credential_type=PluginCredentialType.MODEL,
+                )
+            )
+
         credentials = self.obfuscated_credentials(
             credentials=credentials,
             credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
@@ -742,6 +788,17 @@ class ProviderConfiguration(BaseModel):
             ):
                 current_credential_id = model_configuration.current_credential_id
                 current_credential_name = model_configuration.current_credential_name
+
+                # Check credential policy compliance for model credentials
+                if FeatureService.get_system_features().plugin_manager.enabled and current_credential_id:
+                    PluginManagerService.check_credential_policy_compliance(
+                        CheckCredentialPolicyComplianceRequest(
+                            dify_credential_id=current_credential_id,
+                            provider=self.provider.provider,
+                            credential_type=PluginCredentialType.MODEL,
+                        )
+                    )
+
                 credentials = self.obfuscated_credentials(
                     credentials=model_configuration.credentials,
                     credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
