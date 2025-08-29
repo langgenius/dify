@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
+from alembic import command as alembic_command
+from alembic.config import Config
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
@@ -345,6 +347,12 @@ def _create_app_with_containers() -> Flask:
         with db.engine.connect() as conn, conn.begin():
             conn.execute(text(_UUIDv7SQL))
         db.create_all()
+        # migration_dir = _get_migration_dir()
+        # alembic_config = Config()
+        # alembic_config.config_file_name = str(migration_dir / "alembic.ini")
+        # alembic_config.set_main_option("sqlalchemy.url", _get_engine_url(db.engine))
+        # alembic_config.set_main_option("script_location", str(migration_dir))
+        # alembic_command.upgrade(revision="head", config=alembic_config)
     logger.info("Database schema created successfully")
 
     logger.info("Flask application configured and ready for testing")
