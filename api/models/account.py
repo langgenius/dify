@@ -151,7 +151,7 @@ class Account(UserMixin, Base):
             .where(TenantAccountJoin.account_id == self.id)
         )
         with Session(db.engine, expire_on_commit=False) as session:
-            tenant_account_join = session.scalar(query)
+            tenant_account_join = session.execute(query).first()
             if not tenant_account_join:
                 return
             tenant, join = tenant_account_join
