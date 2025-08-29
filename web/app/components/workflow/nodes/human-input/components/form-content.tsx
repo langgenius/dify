@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { BlockEnum } from '../../../types'
 import { useWorkflowVariableType } from '../../../hooks'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import type { FormInputItem } from '../types'
 import AddInputField from './add-input-field'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
@@ -24,6 +24,14 @@ type Props = {
   onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   onFormInputItemRemove: (varName: string) => void
   editorKey: number
+}
+
+const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
+  return <span className={cn('system-kbd mx-0.5 inline-flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray text-text-placeholder ', className)}>{children}</span>
+}
+
+const CtrlKey: FC = () => {
+  return <Key className={cn('mr-0', !isMac() && 'w-7')}>{isMac() ? '⌘' : 'Ctrl'}</Key>
 }
 
 const FormContent: FC<Props> = ({
@@ -132,7 +140,19 @@ const FormContent: FC<Props> = ({
           ),
         }]}
       />
-      <div className='system-xs-regular flex h-8 items-center text-components-input-text-placeholder'>Press / to insert variable, {isMac() ? '⌘' : 'Ctrl'} / to insert input field</div>
+      {isFocus && (
+        <div className='system-xs-regular flex h-8 items-center text-components-input-text-placeholder'>
+          <Trans
+            i18nKey='workflow.nodes.humanInput.formContent.hotkeyTip'
+            components={
+              {
+                Key: <Key>/</Key>,
+                CtrlKey: <CtrlKey />,
+              }
+            }
+          />
+        </div>
+      )}
     </div>
   )
 }

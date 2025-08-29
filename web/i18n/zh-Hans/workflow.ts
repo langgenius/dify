@@ -964,6 +964,7 @@ const translation = {
       formContent: {
         title: '表单内容',
         tooltip: '用户打开表单后看到的内容。支持 Markdown 格式。',
+        hotkeyTip: '按 <Key/> 插入变量，按 <CtrlKey/><Key/> 插入输入字段',
       },
       userActions: {
         title: '用户操作',
