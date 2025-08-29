@@ -77,7 +77,7 @@ const Select: FC<ISelectProps> = ({
       defaultSelect = existed
 
     setSelectedItem(defaultSelect)
-  }, [defaultValue])
+  }, [defaultValue, items])
 
   const filteredItems: Item[]
     = query === ''
@@ -86,17 +86,27 @@ const Select: FC<ISelectProps> = ({
         return item.name.toLowerCase().includes(query.toLowerCase())
       })
 
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (!document.activeElement?.closest('.headlessui-portal')) {
+        setOpen(false)
+      }
+    }, 100)
+  }
+
   return (
     <Combobox
       as="div"
       disabled={disabled}
       value={selectedItem}
       className={className}
-      onChange={(value: Item) => {
+      onChange={(value: Item | null) => {
         if (!disabled) {
           setSelectedItem(value)
-          setOpen(false)
-          onSelect(value)
+          if (value) {
+            setOpen(false)
+            onSelect(value)
+          }
         }
       }}>
       <div className={classNames('relative')}>
@@ -105,32 +115,42 @@ const Select: FC<ISelectProps> = ({
             ? <ComboboxInput
               className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
               onChange={(event) => {
-                if (!disabled)
-                  setQuery(event.target.value)
+                if (!disabled) {
+                  const val = event.target.value
+                  setQuery(val)
+                  setOpen(true) 
+                }
               }}
-              displayValue={(item: Item) => item?.name}
+              displayValue={(item: Item | null) => item?.name || ''}
+              onBlur={handleBlur}
             />
-            : <ComboboxButton onClick={
-              () => {
-                if (!disabled)
-                  setOpen(!open)
-              }
-            } className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}>
-              <div className='w-0 grow truncate text-left' title={selectedItem?.name}>{selectedItem?.name}</div>
-            </ComboboxButton>}
-          <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none" onClick={
-            () => {
-              if (!disabled)
+            : <ComboboxButton 
+                onClick={() => {
+                  if (!disabled) setOpen(!open)
+                }} 
+                className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}
+              >
+                <div className='w-0 grow truncate text-left' title={selectedItem?.name || ''}>{selectedItem?.name || ''}</div>
+              </ComboboxButton>
+          }
+          <ComboboxButton 
+            className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none" 
+            onClick={() => {
+              if (!disabled) {
                 setOpen(!open)
-            }
-          }>
+                if (!open && !allowSearch) {
+                  setQuery('')
+                }
+              }
+            }}
+          >
             {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
           </ComboboxButton>
         </div>
 
-        {(filteredItems.length > 0 && open) && (
+        {(open && (allowSearch ? filteredItems : items).length > 0) && (
           <ComboboxOptions className={`absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm ${overlayClassName}`}>
-            {filteredItems.map((item: Item) => (
+            {(allowSearch ? filteredItems : items).map((item: Item) => (
               <ComboboxOption
                 key={item.value}
                 value={item}
@@ -142,13 +162,13 @@ const Select: FC<ISelectProps> = ({
                   )
                 }
               >
-                {({ /* active, */ selected }) => (
+                {({ selected }) => (
                   <>
                     {renderOption
                       ? renderOption({ item, selected })
                       : (
                         <>
-                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                          <span className={classNames('block truncate', selected && 'font-normal')}>{item.name}</span>
                           {selected && (
                             <span
                               className={classNames(
