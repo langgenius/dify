@@ -2,13 +2,6 @@ name: DB Migration Test
 
 on:
   workflow_call:
-  pull_request:
-    branches:
-      - main
-      - plugins/beta
-    paths:
-      - api/migrations/**
-      - .github/workflows/db-migration-test.yml
 
 concurrency:
   group: db-migration-test-${{ github.ref }}
@@ -34,6 +27,12 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --project api
+      - name: Ensure Offline migration are supported
+        run: |
+          # upgrade
+          uv run --directory api flask db upgrade 'base:head' --sql
+          # downgrade
+          uv run --directory api flask db downgrade 'head:base' --sql
 
       - name: Prepare middleware env
         run: |
