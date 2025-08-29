@@ -61,8 +61,6 @@ const GenericTable: FC<GenericTableProps> = ({
   className,
   showHeader = false,
 }) => {
-  const DELETE_COL_WIDTH_CLASS = 'w-[56px]'
-
   // Build the rows to display while keeping a stable mapping to original data
   const displayRows = useMemo<DisplayRow[]>(() => {
     // Helper to check empty
@@ -211,17 +209,19 @@ const GenericTable: FC<GenericTableProps> = ({
         )}
         <div className="divide-y divide-divider-subtle">
           {displayRows.map(({ row, dataIndex, isVirtual }, renderIndex) => {
-            // Determine emptiness for UI-only controls visibility
-            const isEmpty = Object.values(row).every(value =>
-              value === '' || value === null || value === undefined || value === false,
-            )
-
             const rowKey = `row-${renderIndex}`
+
+            const hasContent = Object.values(row).some(v =>
+              v !== '' && v !== null && v !== undefined && v !== false,
+            )
 
             return (
               <div
                 key={rowKey}
-                className="group flex border-t border-divider-regular"
+                className={cn(
+                  'group relative flex border-t border-divider-regular',
+                  hasContent ? 'hover:bg-state-destructive-hover' : 'hover:bg-state-base-hover',
+                )}
                 style={{ minHeight: '28px' }}
               >
                 {columns.map((column, columnIndex) => (
@@ -237,20 +237,15 @@ const GenericTable: FC<GenericTableProps> = ({
                     {renderCell(column, row, dataIndex)}
                   </div>
                 ))}
-                {!readonly && data.length > 1 && !isEmpty && !isVirtual && (
-                  <div
-                    className={cn(
-                      'pointer-events-none absolute inset-y-0 right-0 hidden items-center justify-end rounded-lg bg-gradient-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-2 group-hover:pointer-events-auto group-hover:flex',
-                      DELETE_COL_WIDTH_CLASS,
-                    )}
-                  >
+                {!readonly && dataIndex !== null && hasContent && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
                     <button
                       type="button"
-                      onClick={() => dataIndex !== null && removeRow(dataIndex)}
-                      className="text-text-tertiary opacity-70 transition-colors hover:text-text-destructive hover:opacity-100"
+                      onClick={() => removeRow(dataIndex)}
+                      className="p-1"
                       aria-label="Delete row"
                     >
-                      <RiDeleteBinLine className="h-3.5 w-3.5" />
+                      <RiDeleteBinLine className="h-3.5 w-3.5 text-text-destructive" />
                     </button>
                   </div>
                 )}
