@@ -1,10 +1,7 @@
 name: Main CI Pipeline
 
 on:
-  workflow_run:
-    workflows: ["autofix.ci"]
-    types:
-      - completed
+  pull_request:
     branches: ["main"]
   push:
     branches: ["main"]
@@ -66,7 +63,6 @@ jobs:
 
   style-check:
     name: Style Check
-    needs: check-changes
     uses: ./.github/workflows/style.yml
 
   vdb-tests:
