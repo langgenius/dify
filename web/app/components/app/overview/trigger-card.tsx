@@ -27,20 +27,12 @@ const getTriggerIcon = (trigger: AppTrigger) => {
   const getStatusDot = () => {
     if (status === 'enabled') {
       return (
-        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border bg-components-badge-status-light-success-bg shadow-status-indicator-green-shadow"
-             style={{
-               borderColor: 'var(--color-components-badge-status-light-success-border-inner)',
-             }}
-        />
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-black/15 bg-green-500" />
       )
     }
  else {
       return (
-        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border bg-components-badge-status-light-warning-bg shadow-status-indicator-warning-shadow"
-             style={{
-               borderColor: 'var(--color-components-badge-status-light-warning-border-inner)',
-             }}
-        />
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
       )
     }
   }
