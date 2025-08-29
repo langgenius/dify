@@ -33,9 +33,7 @@ class SystemFeatureApi(Resource):
     @api.response(
         200,
         "Success",
-        api.model(
-            "SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}
-        ),
+        api.model("SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}),
     )
     def get(self):
         """Get system-wide feature configuration"""
