@@ -99,6 +99,20 @@ class OAuthSchema(BaseModel):
         default_factory=list, description="The schema of the OAuth credentials"
     )
 
+class SubscriptionSchema(BaseModel):
+    """
+    The subscription schema of the trigger provider
+    """
+
+    parameters_schema: list[ProviderConfig] | None = Field(
+        default_factory=list,
+        description="The parameters schema required to create a subscription",
+    )
+
+    properties_schema: list[ProviderConfig] | None = Field(
+        default_factory=list,
+        description="The configuration schema stored in the subscription entity",
+    )
 
 class TriggerProviderEntity(BaseModel):
     """
@@ -114,8 +128,7 @@ class TriggerProviderEntity(BaseModel):
         default=None,
         description="The OAuth schema of the trigger provider if OAuth is supported",
     )
-    subscription_schema: list[ProviderConfig] = Field(
-        default_factory=list,
+    subscription_schema: SubscriptionSchema = Field(
         description="The subscription schema for trigger(webhook, polling, etc.) subscription parameters",
     )
     triggers: list[TriggerEntity] = Field(default=[], description="The triggers of the trigger provider")

@@ -7,6 +7,7 @@ from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import (
     OAuthSchema,
+    SubscriptionSchema,
     TriggerDescription,
     TriggerEntity,
     TriggerParameter,
@@ -26,7 +27,9 @@ class TriggerProviderApiEntity(BaseModel):
     identity: TriggerProviderIdentity = Field(description="The identity of the trigger provider")
     credentials_schema: list[ProviderConfig] = Field(description="The credentials schema of the trigger provider")
     oauth_schema: Optional[OAuthSchema] = Field(description="The OAuth schema of the trigger provider")
-    subscription_schema: list[ProviderConfig] = Field(description="The subscription schema of the trigger provider")
+    subscription_schema: Optional[SubscriptionSchema] = Field(
+        description="The subscription schema of the trigger provider"
+    )
     triggers: list[TriggerEntity] = Field(description="The triggers of the trigger provider")
 
 
