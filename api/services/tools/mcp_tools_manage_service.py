@@ -126,14 +126,14 @@ class MCPToolManageService:
 
         try:
             with MCPClient(
-                server_url, 
-                provider_id, 
-                tenant_id, 
-                authed=authed, 
+                server_url,
+                provider_id,
+                tenant_id,
+                authed=authed,
                 for_list=True,
                 headers=headers,
                 timeout=timeout,
-                sse_read_timeout=sse_read_timeout
+                sse_read_timeout=sse_read_timeout,
             ) as mcp_client:
                 tools = mcp_client.list_tools()
         except MCPAuthError:
@@ -264,7 +264,7 @@ class MCPToolManageService:
         headers = mcp_provider.decrypted_headers
         timeout = mcp_provider.timeout
         sse_read_timeout = mcp_provider.sse_read_timeout
-        
+
         try:
             with MCPClient(
                 server_url,

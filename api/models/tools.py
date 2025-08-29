@@ -281,7 +281,7 @@ class MCPToolProvider(Base):
     timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"))
     sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("300"))
     # Custom headers for MCP server requests
-    headers: Mapped[str] = mapped_column(sa.Text, nullable=True)
+    headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()
