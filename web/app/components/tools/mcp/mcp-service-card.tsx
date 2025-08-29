@@ -142,7 +142,7 @@ function MCPServiceCard({
           <div className='flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3'>
             <div className='flex w-full items-center gap-3 self-stretch'>
               <div className='flex grow items-center'>
-                <div className='mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-500 p-1 shadow-md'>
+                <div className='mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
                   <Mcp className='h-4 w-4 text-text-primary-on-surface' />
                 </div>
                 <div className="group w-full">

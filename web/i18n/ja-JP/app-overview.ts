@@ -122,6 +122,14 @@ const translation = {
       accessibleAddress: 'サービス API エンドポイント',
       doc: 'API リファレンス',
     },
+    triggerInfo: {
+      title: 'トリガー',
+      explanation: 'ワークフロートリガー管理',
+      triggersAdded: '{{count}} 個のトリガーが追加されました',
+      noTriggerAdded: 'トリガーが追加されていません',
+      triggerStatusDescription: 'トリガーノードの状態がここに表示されます。',
+      learnAboutTriggers: 'トリガーについて学ぶ',
+    },
     status: {
       running: '稼働中',
       disable: '無効',
