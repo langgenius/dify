@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from json import JSONDecodeError
 from typing import Any, Optional
 
+from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration
 from extensions.ext_redis import redis_client
 
 
@@ -82,3 +83,49 @@ class NoOpProviderCredentialCache:
     def delete(self) -> None:
         """Delete cached provider credentials"""
         pass
+
+
+class ProviderConfigurationsCache:
+    def __init__(self, tenant_id: str):
+        self.cache_key = f"provider_configurations:tenant_id:{tenant_id}"
+
+    def get(self) -> Optional[ProviderConfigurations]:
+        """
+        Get cached provider configurations.
+
+        :return:
+        """
+        cached_provider_configurations = redis_client.get(self.cache_key)
+        if cached_provider_configurations:
+            try:
+                cached_provider_configurations = cached_provider_configurations.decode("utf-8")
+                cached_provider_configurations = json.loads(cached_provider_configurations)
+                providerConfigurations = ProviderConfigurations(tenant_id=cached_provider_configurations["tenant_id"])
+                providerConfigurations.configurations = {key: ProviderConfiguration(**value) for key, value in cached_provider_configurations["configurations"].items()}
+
+            except Exception as e:
+                return None
+
+            return providerConfigurations
+        else:
+            return None
+
+    def set(self, configurations: ProviderConfigurations) -> None:
+        """
+        Cache provider configurations.
+
+        :param configurations: provider configurations
+        :return:
+        """
+        try:
+            redis_client.setex(self.cache_key, 86400, configurations.model_dump_json())
+        except Exception as e:
+            print("JSONDecodeError", e)
+
+    def delete(self) -> None:
+        """
+        Delete cached provider configurations.
+
+        :return:
+        """
+        redis_client.delete(self.cache_key)

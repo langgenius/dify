@@ -51,6 +51,9 @@ from models.provider import (
 )
 from services.feature_service import FeatureService
 
+from api.core.helper.model_cache import ModelTypeInstanceCache
+from api.core.helper.provider_cache import ProviderConfigurationsCache
+
 
 class ProviderManager:
     """
@@ -254,14 +257,22 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        provider_configurations = self.get_configurations(tenant_id)
+        provider_configurations_cache = ProviderConfigurationsCache(tenant_id=tenant_id)
+        provider_configurations = provider_configurations_cache.get()
+        if provider_configurations is None:
+            provider_configurations = self.get_configurations(tenant_id)
+            provider_configurations_cache.set(provider_configurations)
 
         # get provider instance
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        model_type_instance = provider_configuration.get_model_type_instance(model_type)
+        model_instance_cache = ModelTypeInstanceCache(model_type=model_type, provider=provider)
+        model_type_instance = model_instance_cache.get()
+        if model_type_instance is None:
+            model_type_instance = provider_configuration.get_model_type_instance(model_type)
+            model_instance_cache.set(model_type_instance)
 
         return ProviderModelBundle(
             configuration=provider_configuration,
