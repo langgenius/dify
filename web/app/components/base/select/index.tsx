@@ -90,7 +90,7 @@ const Select: FC<ISelectProps> = ({
   const handleBlur = () => {
     setTimeout(() => {
       if (!document.activeElement?.closest('.headlessui-portal')) {
-        setOpen(false)
+        setOpen(false);
       }
     }, 100)
   }
@@ -125,22 +125,22 @@ const Select: FC<ISelectProps> = ({
               displayValue={(item: Item | null) => item?.name || ''}
               onBlur={handleBlur}
             />
-            : <ComboboxButton 
+            : <ComboboxButton
                 onClick={() => {
                   if (!disabled) setOpen(!open)
-                }} 
+                }}
                 className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}
               >
                 <div className='w-0 grow truncate text-left' title={selectedItem?.name || ''}>{selectedItem?.name || ''}</div>
               </ComboboxButton>
           }
-          <ComboboxButton 
-            className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none" 
+          <ComboboxButton
+            className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none"
             onClick={() => {
               if (!disabled) {
                 setOpen(!open)
                 if (!open && !allowSearch) {
-                  setQuery('')
+                  setQuery('');
                 }
               }
             }}
