@@ -202,6 +202,7 @@ class DatasourceNode(Node):
                         related_id=upload_file.id,
                         size=upload_file.size,
                         storage_key=upload_file.key,
+                        url=upload_file.source_url,
                     )
                     variable_pool.add([self._node_id, "file"], file_info)
                     # variable_pool.add([self.node_id, "file"], file_info.to_dict())

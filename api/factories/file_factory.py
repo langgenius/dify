@@ -345,7 +345,7 @@ def _build_from_datasource_file(
     )
 
     return File(
-        id=mapping.get("id"),
+        id=mapping.get("datasource_file_id"),
         tenant_id=tenant_id,
         filename=datasource_file.name,
         type=file_type,
@@ -356,6 +356,7 @@ def _build_from_datasource_file(
         mime_type=datasource_file.mime_type,
         size=datasource_file.size,
         storage_key=datasource_file.key,
+        url=datasource_file.source_url,
     )
 
 
