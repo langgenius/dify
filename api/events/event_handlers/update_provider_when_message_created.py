@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 _PROVIDER_LAST_USED_CACHE_PREFIX = "provider:last_used"
 # Default TTL for cache entries (10 minutes)
 _CACHE_TTL_SECONDS = 600
+LAST_USED_UPDATE_WINDOW_SECONDS = 60 * 5
 
 
 def _get_provider_cache_key(tenant_id: str, provider_name: str) -> str:
@@ -255,8 +256,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
                 now = datetime_utils.naive_utc_now()
                 last_update = _get_last_update_timestamp(cache_key)
 
-                update_window_seconds = 60 * 5
-                if last_update is None or (now - last_update).total_seconds() > update_window_seconds:
+                if last_update is None or (now - last_update).total_seconds() > LAST_USED_UPDATE_WINDOW_SECONDS:
                     update_values["last_used"] = values.last_used
                     _set_last_update_timestamp(cache_key, now)
 
