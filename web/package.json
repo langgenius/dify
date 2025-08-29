@@ -26,6 +26,7 @@
     "lint": "pnpx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "lint-only-show-error": "pnpx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
     "fix": "eslint --fix .",
+    "eslint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "eslint-fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
     "eslint-fix-only-show-error": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix --quiet",
     "eslint-complexity": "eslint --rule 'complexity: [error, {max: 15}]' --quiet",
