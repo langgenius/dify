@@ -135,6 +135,12 @@ const GenericTable: FC<GenericTableProps> = ({
                 replaceSpaceWithUnderscoreInVarNameInput(e.target)
               handleChange(e.target.value)
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                e.currentTarget.blur()
+              }
+            }}
             placeholder={column.placeholder}
             disabled={readonly}
             wrapperClassName="w-full min-w-0"
