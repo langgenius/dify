@@ -211,9 +211,9 @@ const GenericTable: FC<GenericTableProps> = ({
           {displayRows.map(({ row, dataIndex, isVirtual }, renderIndex) => {
             const rowKey = `row-${renderIndex}`
 
-            const hasContent = Object.values(row).some(v =>
-              v !== '' && v !== null && v !== undefined && v !== false,
-            )
+            // Check if primary identifier column has content
+            const primaryColumn = columns.find(col => col.key === 'key' || col.key === 'name')?.key || 'key'
+            const hasContent = row[primaryColumn] && String(row[primaryColumn]).trim() !== ''
 
             return (
               <div
