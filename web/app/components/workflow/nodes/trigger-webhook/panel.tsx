@@ -6,13 +6,13 @@ import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import useConfig from './use-config'
 import ParameterTable from './components/parameter-table'
 import HeaderTable from './components/header-table'
+import ParagraphInput from './components/paragraph-input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import copy from 'copy-to-clipboard'
@@ -50,7 +50,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleHeadersChange,
     handleParamsChange,
     handleBodyChange,
-    handleAsyncModeChange,
     handleStatusCodeChange,
     handleResponseBodyChange,
     generateWebhookUrl,
@@ -71,7 +70,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`)}>
           <div className="space-y-1">
-            <div className="flex gap-1" style={{ width: '368px', height: '32px' }}>
+            <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
                 <SimpleSelect
                   items={HTTP_METHODS}
@@ -105,7 +104,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
                 position="top"
                 offset={{ mainAxis: -20 }}
-                needsDelay={false}
+                needsDelay={true}
               >
                 <div
                   className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
@@ -130,9 +129,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             )}
           </div>
         </Field>
-        <span>{inputs.webhook_debug_url || ''}</span>
-
-        <Split />
 
         {/* Content Type */}
         <Field title={t(`${i18nPrefix}.contentType`)}>
@@ -151,8 +147,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           </div>
         </Field>
 
-        <Split />
-
         {/* Query Parameters */}
         <ParameterTable
           readonly={readOnly}
@@ -163,16 +157,12 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           showType={false}
         />
 
-        <Split />
-
         {/* Header Parameters */}
         <HeaderTable
           readonly={readOnly}
           headers={inputs.headers}
           onChange={handleHeadersChange}
         />
-
-        <Split />
 
         {/* Request Body Parameters */}
         <ParameterTable
@@ -191,17 +181,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <Field title={t(`${i18nPrefix}.responseConfiguration`)}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="system-sm-medium text-text-secondary">
-                {t(`${i18nPrefix}.asyncMode`)}
-              </span>
-              <Switch
-                defaultValue={inputs.async_mode}
-                onChange={handleAsyncModeChange}
-                disabled={readOnly}
-              />
-            </div>
-            <div>
-              <label className="system-sm-medium mb-2 block text-text-secondary">
+              <label className="system-sm-medium text-text-tertiary">
                 {t(`${i18nPrefix}.statusCode`)}
               </label>
               <Input
@@ -209,15 +189,18 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 value={inputs.status_code}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleStatusCodeChange(Number(e.target.value))}
                 disabled={readOnly}
+                wrapperClassName="w-[120px]"
+                className="h-8"
               />
             </div>
             <div>
-              <label className="system-sm-medium mb-2 block text-text-secondary">
+              <label className="system-sm-medium mb-2 block text-text-tertiary">
                 {t(`${i18nPrefix}.responseBody`)}
               </label>
-              <Input
+              <ParagraphInput
                 value={inputs.response_body}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleResponseBodyChange(e.target.value)}
+                onChange={handleResponseBodyChange}
+                placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`)}
                 disabled={readOnly}
               />
             </div>

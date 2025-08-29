@@ -32,7 +32,7 @@ const HeaderTable: FC<HeaderTableProps> = ({
       key: 'required',
       title: 'Required',
       type: 'switch',
-      width: 'w-[48px]',
+      width: 'w-[88px]',
     },
   ]
 
@@ -53,9 +53,9 @@ const HeaderTable: FC<HeaderTableProps> = ({
   // Handle data changes
   const handleDataChange = (data: GenericTableRow[]) => {
     const newHeaders: WebhookHeader[] = data
-      .filter(row => row.name && row.name.trim() !== '')
+      .filter(row => row.name && typeof row.name === 'string' && row.name.trim() !== '')
       .map(row => ({
-        name: row.name || '',
+        name: (row.name as string) || '',
         required: !!row.required,
       }))
     onChange(newHeaders)

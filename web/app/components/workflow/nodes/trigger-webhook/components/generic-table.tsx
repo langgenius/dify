@@ -5,6 +5,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import Input from '@/app/components/base/input'
 import Checkbox from '@/app/components/base/checkbox'
 import { SimpleSelect } from '@/app/components/base/select'
+import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import cn from '@/utils/classnames'
 
 // Column configuration types for table components
@@ -60,9 +61,6 @@ const GenericTable: FC<GenericTableProps> = ({
   className,
   showHeader = false,
 }) => {
-  const DELETE_COL_PADDING_CLASS = 'pr-[56px]'
-  const DELETE_COL_WIDTH_CLASS = 'w-[56px]'
-
   // Build the rows to display while keeping a stable mapping to original data
   const displayRows = useMemo<DisplayRow[]>(() => {
     // Helper to check empty
@@ -131,7 +129,18 @@ const GenericTable: FC<GenericTableProps> = ({
         return (
           <Input
             value={(value as string) || ''}
-            onChange={e => handleChange(e.target.value)}
+            onChange={(e) => {
+              // Format variable names (replace spaces with underscores)
+              if (column.key === 'key' || column.key === 'name')
+                replaceSpaceWithUnderscoreInVarNameInput(e.target)
+              handleChange(e.target.value)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                e.currentTarget.blur()
+              }
+            }}
             placeholder={column.placeholder}
             disabled={readonly}
             wrapperClassName="w-full min-w-0"
@@ -139,7 +148,7 @@ const GenericTable: FC<GenericTableProps> = ({
               // Ghost/inline style: looks like plain text until focus/hover
               'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
               'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
-              'system-sm-regular text-text-secondary placeholder:text-text-tertiary',
+              'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
             )}
           />
         )
@@ -158,20 +167,21 @@ const GenericTable: FC<GenericTableProps> = ({
               'h-6 rounded-none bg-transparent px-0 text-text-secondary',
               'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
             )}
-            optionWrapClassName="rounded-md"
+            optionWrapClassName="w-26 min-w-26 z-[5] -ml-3"
             notClearable
           />
         )
 
       case 'switch':
         return (
-          <Checkbox
-            id={`${column.key}-${String(dataIndex ?? 'v')}`}
-            checked={Boolean(value)}
-            onCheck={() => handleChange(!value)}
-            disabled={readonly}
-            className="!h-4 !w-4 shadow-none"
-          />
+          <div className="flex h-7 items-center">
+            <Checkbox
+              id={`${column.key}-${String(dataIndex ?? 'v')}`}
+              checked={Boolean(value)}
+              onCheck={() => handleChange(!value)}
+              disabled={readonly}
+            />
+          </div>
         )
 
       case 'custom':
@@ -184,73 +194,64 @@ const GenericTable: FC<GenericTableProps> = ({
 
   const renderTable = () => {
     return (
-      <div className="rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs">
+      <div className="rounded-lg border border-divider-regular">
         {showHeader && (
-          <div
-            className={cn(
-              'flex items-center gap-2 border-b border-divider-subtle px-3 py-2',
-              !readonly && DELETE_COL_PADDING_CLASS,
-            )}
-          >
-            {columns.map(column => (
+          <div className="system-xs-medium-uppercase flex h-7 items-center leading-7 text-text-tertiary">
+            {columns.map((column, index) => (
               <div
                 key={column.key}
                 className={cn(
-                  'text-xs uppercase text-text-tertiary',
-                  column.width && column.width.startsWith('w-') ? 'shrink-0' : 'min-w-0 flex-1 overflow-hidden',
+                  'h-full pl-3',
+                  column.width && column.width.startsWith('w-') ? 'shrink-0' : 'flex-1',
                   column.width,
+                  // Add right border except for last column
+                  index < columns.length - 1 && 'border-r border-divider-regular',
                 )}
               >
-                <span className="truncate">{column.title}</span>
+                {column.title}
               </div>
             ))}
           </div>
         )}
         <div className="divide-y divide-divider-subtle">
           {displayRows.map(({ row, dataIndex, isVirtual }, renderIndex) => {
-            // Determine emptiness for UI-only controls visibility
-            const isEmpty = Object.values(row).every(value =>
-              value === '' || value === null || value === undefined || value === false,
-            )
-
             const rowKey = `row-${renderIndex}`
+
+            // Check if primary identifier column has content
+            const primaryColumn = columns.find(col => col.key === 'key' || col.key === 'name')?.key || 'key'
+            const hasContent = row[primaryColumn] && String(row[primaryColumn]).trim() !== ''
 
             return (
               <div
                 key={rowKey}
                 className={cn(
-                  'group relative flex items-center gap-2 px-3 py-1.5 hover:bg-components-panel-on-panel-item-bg-hover',
-                  !readonly && DELETE_COL_PADDING_CLASS,
+                  'group relative flex border-t border-divider-regular',
+                  hasContent ? 'hover:bg-state-destructive-hover' : 'hover:bg-state-base-hover',
                 )}
+                style={{ minHeight: '28px' }}
               >
-                {columns.map(column => (
+                {columns.map((column, columnIndex) => (
                   <div
                     key={column.key}
                     className={cn(
-                      'relative',
-                      column.width && column.width.startsWith('w-') ? 'shrink-0' : 'min-w-0 flex-1',
+                      'shrink-0 pl-3',
                       column.width,
-                      // Avoid children overflow when content is long in flexible columns
-                      !(column.width && column.width.startsWith('w-')) && 'overflow-hidden',
+                      // Add right border except for last column
+                      columnIndex < columns.length - 1 && 'border-r border-divider-regular',
                     )}
                   >
                     {renderCell(column, row, dataIndex)}
                   </div>
                 ))}
-                {!readonly && data.length > 1 && !isEmpty && !isVirtual && (
-                  <div
-                    className={cn(
-                      'pointer-events-none absolute inset-y-0 right-0 hidden items-center justify-end rounded-lg bg-gradient-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-2 group-hover:pointer-events-auto group-hover:flex',
-                      DELETE_COL_WIDTH_CLASS,
-                    )}
-                  >
+                {!readonly && dataIndex !== null && hasContent && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
                     <button
                       type="button"
-                      onClick={() => dataIndex !== null && removeRow(dataIndex)}
-                      className="text-text-tertiary opacity-70 transition-colors hover:text-text-destructive hover:opacity-100"
+                      onClick={() => removeRow(dataIndex)}
+                      className="p-1"
                       aria-label="Delete row"
                     >
-                      <RiDeleteBinLine className="h-3.5 w-3.5" />
+                      <RiDeleteBinLine className="h-3.5 w-3.5 text-text-destructive" />
                     </button>
                   </div>
                 )}
@@ -272,7 +273,7 @@ const GenericTable: FC<GenericTableProps> = ({
       </div>
 
       {showPlaceholder ? (
-        <div className="py-8 text-center text-sm text-text-tertiary">
+        <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs font-normal leading-[18px] text-text-quaternary">
           {placeholder}
         </div>
       ) : (
