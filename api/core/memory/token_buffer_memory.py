@@ -32,11 +32,11 @@ class TokenBufferMemory:
         self.model_instance = model_instance
 
     def _build_prompt_message_with_files(
-        self, message_files: list[MessageFile], text_content: str, message: Message, app_record, is_user_message: bool
+        self, message_files: Sequence[MessageFile], text_content: str, message: Message, app_record, is_user_message: bool
     ) -> PromptMessage:
         """
         Build prompt message with files.
-        :param message_files: list of MessageFile objects
+        :param message_files: Sequence of MessageFile objects
         :param text_content: text content of the message
         :param message: Message object
         :param app_record: app record

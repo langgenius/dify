@@ -1,5 +1,5 @@
 import time
-
+from collections.abc import Sequence
 import click
 from sqlalchemy import select
 
@@ -31,7 +31,7 @@ def update_tidb_serverless_status_task():
     click.echo(click.style(f"Update tidb serverless status task success latency: {end_at - start_at}", fg="green"))
 
 
-def update_clusters(tidb_serverless_list: list[TidbAuthBinding]):
+def update_clusters(tidb_serverless_list: Sequence[TidbAuthBinding]):
     try:
         # batch 20
         for i in range(0, len(tidb_serverless_list), 20):

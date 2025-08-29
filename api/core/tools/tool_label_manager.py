@@ -64,7 +64,7 @@ class ToolLabelManager:
             )
         ).all()
 
-        return [label.label_name for label in labels]
+        return [label_name for label_name in labels]
 
     @classmethod
     def get_tools_labels(cls, tool_providers: list[ToolProviderController]) -> dict[str, list[str]]:
@@ -89,7 +89,7 @@ class ToolLabelManager:
             assert isinstance(controller, ApiToolProviderController | WorkflowToolProviderController)
             provider_ids.append(controller.provider_id)
 
-        labels: list[ToolLabelBinding] = db.session.scalars(
+        labels = db.session.scalars(
             select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))
         ).all()
 

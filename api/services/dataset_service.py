@@ -6,6 +6,7 @@ import secrets
 import time
 import uuid
 from collections import Counter
+from collections.abc import Sequence
 from typing import Any, Literal, Optional
 
 from flask_login import current_user
@@ -866,7 +867,7 @@ class DocumentService:
         return document
 
     @staticmethod
-    def get_document_by_ids(document_ids: list[str]) -> list[Document]:
+    def get_document_by_ids(document_ids: list[str]) -> Sequence[Document]:
         documents = db.session.scalars(
             select(Document).where(
                 Document.id.in_(document_ids),
@@ -878,7 +879,7 @@ class DocumentService:
         return documents
 
     @staticmethod
-    def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
+    def get_document_by_dataset_id(dataset_id: str) -> Sequence[Document]:
         documents = db.session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
@@ -889,7 +890,7 @@ class DocumentService:
         return documents
 
     @staticmethod
-    def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+    def get_working_documents_by_dataset_id(dataset_id: str) -> Sequence[Document]:
         documents = db.session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
@@ -902,14 +903,14 @@ class DocumentService:
         return documents
 
     @staticmethod
-    def get_error_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+    def get_error_documents_by_dataset_id(dataset_id: str) -> Sequence[Document]:
         documents = db.session.scalars(
             select(Document).where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
         ).all()
         return documents
 
     @staticmethod
-    def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:
+    def get_batch_documents(dataset_id: str, batch: str) -> Sequence[Document]:
         documents = db.session.scalars(
             select(Document).where(
                 Document.batch == batch,
