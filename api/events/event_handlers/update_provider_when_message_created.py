@@ -13,11 +13,44 @@ from core.entities.provider_entities import QuotaUnit, SystemConfiguration
 from core.plugin.entities.plugin import ModelProviderID
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client, redis_fallback
 from libs import datetime_utils
 from models.model import Message
 from models.provider import Provider, ProviderType
 
 logger = logging.getLogger(__name__)
+
+# Redis cache key prefix for provider last used timestamps
+_PROVIDER_LAST_USED_CACHE_PREFIX = "provider:last_used"
+# Default TTL for cache entries (10 minutes)
+_CACHE_TTL_SECONDS = 600
+
+
+def _get_provider_cache_key(tenant_id: str, provider_name: str) -> str:
+    """Generate Redis cache key for provider last used timestamp."""
+    return f"{_PROVIDER_LAST_USED_CACHE_PREFIX}:{tenant_id}:{provider_name}"
+
+
+@redis_fallback(default_return=None)
+def _get_last_update_timestamp(cache_key: str) -> Optional[datetime]:
+    """Get last update timestamp from Redis cache."""
+    try:
+        timestamp_str = redis_client.get(cache_key)
+        if timestamp_str:
+            return datetime.fromisoformat(timestamp_str.decode("utf-8"))
+        return None
+    except Exception as e:
+        logger.warning("Failed to get last update timestamp from Redis: %s", e)
+        return None
+
+
+@redis_fallback()
+def _set_last_update_timestamp(cache_key: str, timestamp: datetime) -> None:
+    """Set last update timestamp in Redis cache with TTL."""
+    try:
+        redis_client.setex(cache_key, _CACHE_TTL_SECONDS, timestamp.isoformat())
+    except Exception as e:
+        logger.warning("Failed to set last update timestamp in Redis: %s", e)
 
 
 class _ProviderUpdateFilters(BaseModel):
@@ -139,7 +172,7 @@ def handle(sender: Message, **kwargs):
             provider_name,
         )
 
-    except Exception as e:
+    except Exception:
         # Log failure with timing and context
         duration = time_module.perf_counter() - start_time
 
@@ -215,8 +248,18 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
             # Prepare values dict for SQLAlchemy update
             update_values = {}
-            # updateing to `last_used` is removed due to performance reason.
-            # ref: https://github.com/langgenius/dify/issues/24526
+
+            # Time-window based update for last_used to avoid hot row contention
+            if values.last_used is not None:
+                cache_key = _get_provider_cache_key(filters.tenant_id, filters.provider_name)
+                now = datetime_utils.naive_utc_now()
+                last_update = _get_last_update_timestamp(cache_key)
+
+                update_window_seconds = 60 * 5
+                if last_update is None or (now - last_update).total_seconds() > update_window_seconds:
+                    update_values["last_used"] = values.last_used
+                    _set_last_update_timestamp(cache_key, now)
+
             if values.quota_used is not None:
                 update_values["quota_used"] = values.quota_used
             # Skip the current update operation if no updates are required.
