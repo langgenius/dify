@@ -61,6 +61,7 @@ const Select: FC<ISelectProps> = ({
   disabled = false,
   onSelect,
   allowSearch = true,
+  placeholder = '',
   bgClassName = 'bg-components-input-bg-normal',
   overlayClassName,
   optionClassName,
@@ -89,11 +90,12 @@ const Select: FC<ISelectProps> = ({
   return (
     <Combobox
       as="div"
+      immediate={true}
       disabled={disabled}
       value={selectedItem}
       className={className}
       onChange={(value: Item) => {
-        if (!disabled) {
+        if (!disabled && value) {
           setSelectedItem(value)
           setOpen(false)
           onSelect(value)
@@ -103,6 +105,7 @@ const Select: FC<ISelectProps> = ({
         <div className='group text-text-secondary'>
           {allowSearch
             ? <ComboboxInput
+              placeholder={placeholder}
               className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
               onChange={(event) => {
                 if (!disabled)
@@ -128,7 +131,6 @@ const Select: FC<ISelectProps> = ({
           </ComboboxButton>
         </div>
 
-        {(filteredItems.length > 0 && open) && (
           <ComboboxOptions className={`absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm ${overlayClassName}`}>
             {filteredItems.map((item: Item) => (
               <ComboboxOption
@@ -165,7 +167,6 @@ const Select: FC<ISelectProps> = ({
               </ComboboxOption>
             ))}
           </ComboboxOptions>
-        )}
       </div>
     </Combobox >
   )
