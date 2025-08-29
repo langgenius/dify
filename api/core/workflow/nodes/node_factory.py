@@ -50,8 +50,8 @@ class DifyNodeFactory(NodeFactory):
             raise ValueError(f"Node {node_id} missing data information")
 
         node_type_str = node_data.get("type")
-        if not node_type_str:
-            raise ValueError(f"Node {node_id} missing type information")
+        if not is_str(node_type_str):
+            raise ValueError(f"Node {node_id} missing or invalid type information")
 
         try:
             node_type = NodeType(node_type_str)
