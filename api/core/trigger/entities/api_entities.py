@@ -15,12 +15,12 @@ from core.trigger.entities.entities import (
 )
 
 
-class TriggerProviderCredentialApiEntity(BaseModel):
-    id: str = Field(description="The unique id of the credential")
-    name: str = Field(description="The name of the credential")
-    provider: str = Field(description="The provider id of the credential")
+class TriggerProviderSubscriptionApiEntity(BaseModel):
+    id: str = Field(description="The unique id of the subscription")
+    name: str = Field(description="The name of the subscription")
+    provider: str = Field(description="The provider id of the subscription")
     credential_type: CredentialType = Field(description="The type of the credential")
-    credentials: dict = Field(description="The credentials of the credential")
+    credentials: dict = Field(description="The credentials of the subscription")
 
 
 class TriggerProviderApiEntity(BaseModel):
@@ -40,4 +40,4 @@ class TriggerApiEntity(BaseModel):
     output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
 
 
-__all__ = ["TriggerApiEntity", "TriggerProviderApiEntity", "TriggerProviderCredentialApiEntity"]
+__all__ = ["TriggerApiEntity", "TriggerProviderApiEntity", "TriggerProviderSubscriptionApiEntity"]

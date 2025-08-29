@@ -68,7 +68,7 @@ class ToolProviderCredentialsCache(ProviderCredentialsCache):
         return f"tool_credentials:tenant_id:{tenant_id}:provider:{provider}:credential_id:{credential_id}"
 
 
-class TriggerProviderCredentialCache(ProviderCredentialsCache):
+class TriggerProviderCredentialsCache(ProviderCredentialsCache):
     """Cache for trigger provider credentials"""
 
     def __init__(self, tenant_id: str, provider_id: str, credential_id: str):
@@ -81,7 +81,7 @@ class TriggerProviderCredentialCache(ProviderCredentialsCache):
         return f"trigger_credentials:tenant_id:{tenant_id}:provider_id:{provider_id}:credential_id:{credential_id}"
 
 
-class TriggerProviderOAuthClientCache(ProviderCredentialsCache):
+class TriggerProviderOAuthClientParamsCache(ProviderCredentialsCache):
     """Cache for trigger provider OAuth client"""
 
     def __init__(self, tenant_id: str, provider_id: str):

@@ -99,6 +99,7 @@ class OAuthSchema(BaseModel):
         default_factory=list, description="The schema of the OAuth credentials"
     )
 
+
 class SubscriptionSchema(BaseModel):
     """
     The subscription schema of the trigger provider
@@ -113,6 +114,7 @@ class SubscriptionSchema(BaseModel):
         default_factory=list,
         description="The configuration schema stored in the subscription entity",
     )
+
 
 class TriggerProviderEntity(BaseModel):
     """

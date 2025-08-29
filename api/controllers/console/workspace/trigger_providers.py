@@ -31,12 +31,12 @@ class TriggerProviderListApi(Resource):
         return jsonable_encoder(TriggerProviderService.list_trigger_providers(user.current_tenant_id))
 
 
-class TriggerProviderCredentialListApi(Resource):
+class TriggerProviderSubscriptionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider):
-        """List all trigger providers for the current tenant"""
+        """List all trigger subscriptions for the current tenant's provider"""
         user = current_user
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
@@ -45,7 +45,7 @@ class TriggerProviderCredentialListApi(Resource):
 
         try:
             return jsonable_encoder(
-                TriggerProviderService.list_trigger_provider_credentials(
+                TriggerProviderService.list_trigger_provider_subscriptions(
                     tenant_id=user.current_tenant_id, provider_id=TriggerProviderID(provider)
                 )
             )
@@ -54,12 +54,12 @@ class TriggerProviderCredentialListApi(Resource):
             raise
 
 
-class TriggerProviderCredentialsAddApi(Resource):
+class TriggerProviderSubscriptionsAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider):
-        """Add a new credential instance for a trigger provider"""
+        """Add a new subscription instance for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
@@ -99,46 +99,12 @@ class TriggerProviderCredentialsAddApi(Resource):
             raise
 
 
-class TriggerProviderCredentialsUpdateApi(Resource):
+class TriggerProviderSubscriptionsDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, credential_id):
-        """Update an existing credential instance"""
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-        if not user.is_admin_or_owner:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-        args = parser.parse_args()
-
-        try:
-            result = TriggerProviderService.update_trigger_provider(
-                tenant_id=user.current_tenant_id,
-                credential_id=credential_id,
-                credentials=args.get("credentials"),
-                name=args.get("name"),
-            )
-
-            return result
-
-        except ValueError as e:
-            raise BadRequest(str(e))
-        except Exception as e:
-            logger.exception("Error updating provider credential", exc_info=e)
-            raise
-
-
-class TriggerProviderCredentialsDeleteApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, credential_id):
-        """Delete a credential instance"""
+    def post(self, subscription_id):
+        """Delete a subscription instance"""
         user = current_user
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
@@ -148,7 +114,7 @@ class TriggerProviderCredentialsDeleteApi(Resource):
         try:
             result = TriggerProviderService.delete_trigger_provider(
                 tenant_id=user.current_tenant_id,
-                credential_id=credential_id,
+                subscription_id=subscription_id,
             )
             return result
 
@@ -290,8 +256,8 @@ class TriggerProviderOAuthRefreshTokenApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, credential_id):
-        """Refresh OAuth token for a trigger provider credential"""
+    def post(self, subscription_id):
+        """Refresh OAuth token for a trigger provider subscription"""
         user = current_user
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
@@ -301,7 +267,7 @@ class TriggerProviderOAuthRefreshTokenApi(Resource):
         try:
             result = TriggerProviderService.refresh_oauth_token(
                 tenant_id=user.current_tenant_id,
-                credential_id=credential_id,
+                subscription_id=subscription_id,
             )
             return result
 
@@ -413,17 +379,16 @@ class TriggerProviderOAuthClientManageApi(Resource):
 
 
 # Trigger provider endpoints
+api.add_resource(TriggerProviderListApi, "/workspaces/current/trigger-providers")
 api.add_resource(
-    TriggerProviderCredentialListApi, "/workspaces/current/trigger-provider/credentials/<path:provider>/list"
+    TriggerProviderSubscriptionListApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/list"
 )
 api.add_resource(
-    TriggerProviderCredentialsAddApi, "/workspaces/current/trigger-provider/credentials/<path:provider>/add"
+    TriggerProviderSubscriptionsAddApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/add"
 )
 api.add_resource(
-    TriggerProviderCredentialsUpdateApi, "/workspaces/current/trigger-provider/credentials/<path:credential_id>/update"
-)
-api.add_resource(
-    TriggerProviderCredentialsDeleteApi, "/workspaces/current/trigger-provider/credentials/<path:credential_id>/delete"
+    TriggerProviderSubscriptionsDeleteApi,
+    "/workspaces/current/trigger-provider/subscriptions/<path:subscription_id>/delete",
 )
 
 # OAuth
@@ -433,7 +398,7 @@ api.add_resource(
 api.add_resource(TriggerProviderOAuthCallbackApi, "/oauth/plugin/<path:provider>/trigger/callback")
 api.add_resource(
     TriggerProviderOAuthRefreshTokenApi,
-    "/workspaces/current/trigger-provider/credentials/<path:credential_id>/oauth/refresh",
+    "/workspaces/current/trigger-provider/subscriptions/<path:subscription_id>/oauth/refresh",
 )
 api.add_resource(
     TriggerProviderOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client"
