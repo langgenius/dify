@@ -1,10 +1,13 @@
 name: Main CI Pipeline
 
 on:
-  pull_request:
-    branches: [ "main" ]
+  workflow_run:
+    workflows: ["autofix.ci"]
+    types:
+      - completed
+    branches: ["main"]
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: write
@@ -17,12 +20,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # First, run autofix if needed
-  autofix:
-    name: Auto-fix code issues
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/autofix.yml
-          
   # Check which paths were changed to determine which tests to run
   check-changes:
     name: Check Changed Files
@@ -53,34 +50,33 @@ jobs:
             migration:
               - 'api/migrations/**'
               - '.github/workflows/db-migration-test.yml'
-  
-  # After autofix completes (or if no changes needed), run tests in parallel
+
+  # Run tests in parallel
   api-tests:
     name: API Tests
-    needs: [autofix, check-changes]
-    if: always() && !cancelled() && needs.check-changes.outputs.api-changed == 'true'
+    needs: check-changes
+    if: needs.check-changes.outputs.api-changed == 'true'
     uses: ./.github/workflows/api-tests.yml
-    
+
   web-tests:
     name: Web Tests
-    needs: [autofix, check-changes]
-    if: always() && !cancelled() && needs.check-changes.outputs.web-changed == 'true'
+    needs: check-changes
+    if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
-    
+
   style-check:
     name: Style Check
-    needs: autofix
-    if: always() && !cancelled()
+    needs: check-changes
     uses: ./.github/workflows/style.yml
-    
+
   vdb-tests:
     name: VDB Tests
-    needs: [autofix, check-changes]
-    if: always() && !cancelled() && needs.check-changes.outputs.vdb-changed == 'true'
+    needs: check-changes
+    if: needs.check-changes.outputs.vdb-changed == 'true'
     uses: ./.github/workflows/vdb-tests.yml
-    
+
   db-migration-test:
     name: DB Migration Test
-    needs: [autofix, check-changes]
-    if: always() && !cancelled() && needs.check-changes.outputs.migration-changed == 'true'
+    needs: check-changes
+    if: needs.check-changes.outputs.migration-changed == 'true'
     uses: ./.github/workflows/db-migration-test.yml
