@@ -26,6 +26,7 @@ type ModalProps = {
   footerSlot?: React.ReactNode
   bottomSlot?: React.ReactNode
   disabled?: boolean
+  containerClassName?: string
 }
 const Modal = ({
   onClose,
@@ -44,6 +45,7 @@ const Modal = ({
   footerSlot,
   bottomSlot,
   disabled,
+  containerClassName,
 }: ModalProps) => {
   const { t } = useTranslation()
 
@@ -79,7 +81,7 @@ const Modal = ({
           </div>
           {
             children && (
-              <div className='px-6 py-3'>{children}</div>
+              <div className={cn('px-6 py-3', containerClassName)}>{children}</div>
             )
           }
           <div className='flex justify-between p-6 pt-5'>

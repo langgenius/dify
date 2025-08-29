@@ -33,10 +33,11 @@ export type MarkdownProps = {
   className?: string
   customDisallowedElements?: string[]
   customComponents?: Record<string, React.ComponentType<any>>
+  pluginUniqueIdentifier?: string
 }
 
 export const Markdown = (props: MarkdownProps) => {
-  const { customComponents = {} } = props
+  const { customComponents = {}, pluginUniqueIdentifier } = props
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
@@ -76,11 +77,11 @@ export const Markdown = (props: MarkdownProps) => {
         disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}
         components={{
           code: CodeBlock,
-          img: Img,
+          img: props => <Img {...{ pluginUniqueIdentifier, ...props, src: props.src as string }} />,
           video: VideoBlock,
           audio: AudioBlock,
           a: Link,
-          p: Paragraph,
+          p: props => <Paragraph {...{ pluginUniqueIdentifier, ...props }} />,
           button: MarkdownButton,
           form: MarkdownForm,
           script: ScriptBlock as any,

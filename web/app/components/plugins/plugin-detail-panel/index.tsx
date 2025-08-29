@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useCallback } from 'react'
 import type { FC } from 'react'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
@@ -9,6 +9,7 @@ import AgentStrategyList from './agent-strategy-list'
 import Drawer from '@/app/components/base/drawer'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
+import { ReadmeEntrance } from '../readme-panel/entrance'
 
 type Props = {
   detail?: PluginDetail
@@ -21,11 +22,11 @@ const PluginDetailPanel: FC<Props> = ({
   onUpdate,
   onHide,
 }) => {
-  const handleUpdate = (isDelete = false) => {
+  const handleUpdate = useCallback((isDelete = false) => {
     if (isDelete)
       onHide()
     onUpdate()
-  }
+  }, [onHide, onUpdate])
 
   if (!detail)
     return null
@@ -42,16 +43,17 @@ const PluginDetailPanel: FC<Props> = ({
     >
       {detail && (
         <>
-          <DetailHeader
-            detail={detail}
-            onHide={onHide}
-            onUpdate={handleUpdate}
-          />
+          <DetailHeader detail={detail} onUpdate={handleUpdate} onHide={onHide} />
           <div className='grow overflow-y-auto'>
-            {!!detail.declaration.tool && <ActionList detail={detail} />}
-            {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
-            {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
-            {!!detail.declaration.model && <ModelList detail={detail} />}
+            <div className='flex min-h-full flex-col'>
+              <div className='flex-1'>
+                {!!detail.declaration.tool && <ActionList detail={detail} />}
+                {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
+                {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
+                {!!detail.declaration.model && <ModelList detail={detail} />}
+              </div>
+              <ReadmeEntrance detail={detail} className='mt-auto' />
+            </div>
           </div>
         </>
       )}

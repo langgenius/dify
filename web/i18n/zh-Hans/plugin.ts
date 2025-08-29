@@ -298,6 +298,11 @@ const translation = {
     clientInfo: '由于未找到此工具提供者的系统客户端密钥，因此需要手动设置，对于 redirect_uri，请使用',
     oauthClient: 'OAuth 客户端',
   },
+  readmeInfo: {
+    title: 'README',
+    needHelpCheckReadme: '需要帮助？查看 README。',
+    noReadmeAvailable: 'README 文档不可用',
+  },
 }
 
 export default translation

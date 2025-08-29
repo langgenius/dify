@@ -1,3 +1,5 @@
+import type { PluginDetail } from '../types'
+
 export enum AuthCategory {
   tool = 'tool',
   datasource = 'datasource',
@@ -7,6 +9,7 @@ export enum AuthCategory {
 export type PluginPayload = {
   category: AuthCategory
   provider: string
+  detail: PluginDetail
 }
 
 export enum CredentialTypeEnum {

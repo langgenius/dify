@@ -23,6 +23,8 @@ import type {
 } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/context'
 
 type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -154,16 +156,16 @@ const OAuthClientSettings = ({
           </div>
         )
       }
+      containerClassName='pt-0'
     >
-      <>
-        <AuthForm
-          formFromProps={form}
-          ref={formRef}
-          formSchemas={schemas}
-          defaultValues={editValues || defaultValues}
-          disabled={disabled}
-        />
-      </>
+      <ReadmeEntrance detail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      <AuthForm
+        formFromProps={form}
+        ref={formRef}
+        formSchemas={schemas}
+        defaultValues={editValues || defaultValues}
+        disabled={disabled}
+      />
     </Modal>
   )
 }

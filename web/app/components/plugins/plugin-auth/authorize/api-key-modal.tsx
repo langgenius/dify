@@ -20,6 +20,8 @@ import {
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/context'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
@@ -142,6 +144,7 @@ const ApiKeyModal = ({
       onExtraButtonClick={onRemove}
       disabled={disabled || isLoading || doingAction}
     >
+      <ReadmeEntrance detail={pluginPayload.detail} showType={ReadmeShowType.modal} />
       {
         isLoading && (
           <div className='flex h-40 items-center justify-center'>

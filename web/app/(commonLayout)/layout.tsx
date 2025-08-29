@@ -8,6 +8,7 @@ import Header from '@/app/components/header'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
 import { ProviderContextProvider } from '@/context/provider-context'
 import { ModalContextProvider } from '@/context/modal-context'
+import { ReadmePanelProvider } from '@/app/components/plugins/readme-panel/context'
 import GotoAnything from '@/app/components/goto-anything'
 
 const Layout = ({ children }: { children: ReactNode }) => {
@@ -19,11 +20,13 @@ const Layout = ({ children }: { children: ReactNode }) => {
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                {children}
-                <GotoAnything />
+                <ReadmePanelProvider>
+                  <HeaderWrapper>
+                    <Header />
+                  </HeaderWrapper>
+                  {children}
+                  <GotoAnything />
+                </ReadmePanelProvider>
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>

@@ -10,12 +10,15 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import Toast from '@/app/components/base/toast'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import cn from '@/utils/classnames'
+import { ReadmeEntrance } from '../readme-panel/entrance'
+import type { PluginDetail } from '../types'
 
 type Props = {
   formSchemas: any
   defaultValues?: any
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
+  pluginDetail: PluginDetail
 }
 
 const extractDefaultValues = (schemas: any[]) => {
@@ -32,6 +35,7 @@ const EndpointModal: FC<Props> = ({
   defaultValues = {},
   onCancel,
   onSaved,
+  pluginDetail,
 }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
@@ -55,9 +59,9 @@ const EndpointModal: FC<Props> = ({
         const value = processedCredential[field.name]
         if (typeof value === 'string')
           processedCredential[field.name] = value === 'true' || value === '1' || value === 'True'
-         else if (typeof value === 'number')
+        else if (typeof value === 'number')
           processedCredential[field.name] = value === 1
-         else if (typeof value === 'boolean')
+        else if (typeof value === 'boolean')
           processedCredential[field.name] = value
       }
     })
@@ -84,6 +88,7 @@ const EndpointModal: FC<Props> = ({
             </ActionButton>
           </div>
           <div className='system-xs-regular mt-0.5 text-text-tertiary'>{t('plugin.detailPanel.endpointModalDesc')}</div>
+          <ReadmeEntrance detail={pluginDetail} className='px-0 pt-3' />
         </div>
         <div className='grow overflow-y-auto'>
           <div className='px-4 py-2'>

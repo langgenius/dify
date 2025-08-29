@@ -8,6 +8,7 @@ import { noop } from 'lodash-es'
 type IModal = {
   className?: string
   wrapperClassName?: string
+  containerClassName?: string
   isShow: boolean
   onClose?: () => void
   title?: React.ReactNode
@@ -16,11 +17,13 @@ type IModal = {
   closable?: boolean
   overflowVisible?: boolean
   highPriority?: boolean // For modals that need to appear above dropdowns
+  noOverlay?: boolean
 }
 
 export default function Modal({
   className,
   wrapperClassName,
+  containerClassName,
   isShow,
   onClose = noop,
   title,
@@ -29,18 +32,19 @@ export default function Modal({
   closable = false,
   overflowVisible = false,
   highPriority = false,
+  noOverlay = false,
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
       <Dialog as="div" className={classNames('relative', highPriority ? 'z-[1100]' : 'z-[60]', wrapperClassName)} onClose={onClose}>
-        <TransitionChild>
+        {!noOverlay && <TransitionChild>
           <div className={classNames(
             'fixed inset-0 bg-background-overlay',
             'duration-300 ease-in data-[closed]:opacity-0',
             'data-[enter]:opacity-100',
             'data-[leave]:opacity-0',
           )} />
-        </TransitionChild>
+        </TransitionChild>}
 
         <div
           className="fixed inset-0 overflow-y-auto"
@@ -49,7 +53,7 @@ export default function Modal({
             e.stopPropagation()
           }}
         >
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className={classNames('flex min-h-full items-center justify-center p-4 text-center', containerClassName)}>
             <TransitionChild>
               <DialogPanel className={classNames(
                 'relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',

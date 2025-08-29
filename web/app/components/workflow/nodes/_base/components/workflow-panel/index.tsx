@@ -65,6 +65,7 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 
 type BasePanelProps = {
   children: ReactNode
@@ -169,11 +170,11 @@ const BasePanel: FC<BasePanelProps> = ({
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
-    if(data._singleRunningStatus === NodeRunningStatus.Running) {
+    if (data._singleRunningStatus === NodeRunningStatus.Running) {
       hasClickRunning.current = true
       setIsPaused(false)
     }
-    else if(data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
+    else if (data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
       setIsPaused(true)
       hasClickRunning.current = false
     }
@@ -248,9 +249,9 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
-  if(logParams.showSpecialResultPanel) {
+  if (logParams.showSpecialResultPanel) {
     return (
-    <div className={cn(
+      <div className={cn(
         'relative mr-1  h-full',
       )}>
         <div
@@ -340,7 +341,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
                       onClick={() => {
-                        if(isSingleRunning) {
+                        if (isSingleRunning) {
                           handleNodeDataUpdate({
                             id,
                             data: {
@@ -356,7 +357,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     >
                       {
                         isSingleRunning ? <Stop className='h-4 w-4 text-text-tertiary' />
-                        : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
+                          : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
                       }
                     </div>
                   </Tooltip>
@@ -387,6 +388,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 pluginPayload={{
                   provider: currCollection?.name || '',
                   category: AuthCategory.tool,
+                  detail: currCollection as any,
                 }}
               >
                 <div className='flex items-center justify-between pl-4 pr-3'>
@@ -398,6 +400,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     pluginPayload={{
                       provider: currCollection?.name || '',
                       category: AuthCategory.tool,
+                      detail: currCollection as any,
                     }}
                     onAuthorizationItemClick={handleAuthorizationItemClick}
                     credentialId={data.credential_id}
@@ -483,6 +486,8 @@ const BasePanel: FC<BasePanelProps> = ({
             {...passedLogParams}
           />
         )}
+
+        {data.type === BlockEnum.Tool && <ReadmeEntrance detail={currCollection as any} className='mt-auto' />}
       </div>
     </div>
   )

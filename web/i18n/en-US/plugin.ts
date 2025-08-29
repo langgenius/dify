@@ -298,6 +298,11 @@ const translation = {
     clientInfo: 'As no system client secrets found for this tool provider, setup it manually is required, for redirect_uri, please use',
     oauthClient: 'OAuth Client',
   },
+  readmeInfo: {
+    title: 'README',
+    needHelpCheckReadme: 'Need help? Check the README.',
+    noReadmeAvailable: 'No README available',
+  },
 }
 
 export default translation
