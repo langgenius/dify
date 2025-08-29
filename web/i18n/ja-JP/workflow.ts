@@ -1026,7 +1026,7 @@ const translation = {
       asyncMode: '非同期モード',
       statusCode: 'ステータスコード',
       responseBody: 'レスポンスボディ',
-      responseBodyPlaceholder: 'レスポンス本文',
+      responseBodyPlaceholder: 'ここにレスポンスボディを入力してください',
       headers: 'ヘッダー',
     },
   },

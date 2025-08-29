@@ -1026,7 +1026,7 @@ const translation = {
       asyncMode: 'Async Mode',
       statusCode: 'Status Code',
       responseBody: 'Response Body',
-      responseBodyPlaceholder: 'Response body content',
+      responseBodyPlaceholder: 'Write your response body here',
       headers: 'Headers',
     },
   },

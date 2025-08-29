@@ -1026,7 +1026,7 @@ const translation = {
       asyncMode: '异步模式',
       statusCode: '状态码',
       responseBody: '响应体',
-      responseBodyPlaceholder: '响应体内容',
+      responseBodyPlaceholder: '在此输入您的响应体',
       headers: 'Headers',
     },
   },

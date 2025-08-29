@@ -6,6 +6,7 @@ import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import useConfig from './use-config'
 import ParameterTable from './components/parameter-table'
 import HeaderTable from './components/header-table'
+import ParagraphInput from './components/paragraph-input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import type { NodePanelProps } from '@/app/components/workflow/types'
@@ -196,9 +197,10 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               <label className="system-sm-medium mb-2 block text-text-tertiary">
                 {t(`${i18nPrefix}.responseBody`)}
               </label>
-              <Input
+              <ParagraphInput
                 value={inputs.response_body}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleResponseBodyChange(e.target.value)}
+                onChange={handleResponseBodyChange}
+                placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`)}
                 disabled={readOnly}
               />
             </div>
