@@ -74,9 +74,8 @@ const Select: FC<ISelectProps> = ({
   useEffect(() => {
     let defaultSelect = null
     const existed = items.find((item: Item) => item.value === defaultValue)
-    if (existed) {
-      defaultSelect = existed;
-    }
+    if (existed)
+      defaultSelect = existed
 
     setSelectedItem(defaultSelect)
   }, [defaultValue, items])
@@ -90,9 +89,8 @@ const Select: FC<ISelectProps> = ({
 
   const handleBlur = () => {
     setTimeout(() => {
-      if (!document.activeElement?.closest('.headlessui-portal')) {
-        setOpen(false);
-      }
+      if (!document.activeElement?.closest('.headlessui-portal'))
+        setOpen(false)
     }, 100)
   }
 
@@ -140,9 +138,8 @@ const Select: FC<ISelectProps> = ({
             onClick={() => {
               if (!disabled) {
                 setOpen(!open)
-                if (!open && !allowSearch) {
-                  setQuery('');
-                }
+                if (!open && !allowSearch)
+                  setQuery('')
               }
             }}
           >
@@ -218,9 +215,8 @@ const SimpleSelect: FC<ISelectProps> = ({
   useEffect(() => {
     let defaultSelect = null
     const existed = items.find((item: Item) => item.value === defaultValue)
-    if (existed) {
-      defaultSelect = existed;
-    }
+    if (existed)
+      defaultSelect = existed
 
     setSelectedItem(defaultSelect)
   }, [defaultValue])
