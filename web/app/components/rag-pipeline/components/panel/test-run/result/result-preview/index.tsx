@@ -1,6 +1,4 @@
 import Button from '@/app/components/base/button'
-import { BlockEnum } from '@/app/components/workflow/types'
-import type { NodeTracing } from '@/types/workflow'
 import { RiLoader2Line } from '@remixicon/react'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +10,6 @@ type ResultTextProps = {
   isRunning?: boolean
   outputs?: any
   error?: string
-  tracing?: NodeTracing[]
   onSwitchToDetail: () => void
 }
 
@@ -20,21 +17,13 @@ const ResultPreview = ({
   isRunning,
   outputs,
   error,
-  tracing,
   onSwitchToDetail,
 }: ResultTextProps) => {
   const { t } = useTranslation()
 
-  const chunkInfo = useMemo(() => {
-    if (!outputs || !tracing)
-      return undefined
-    const knowledgeIndexNode = tracing.find(node => node.node_type === BlockEnum.KnowledgeBase)
-    return knowledgeIndexNode?.inputs?.chunks
-  }, [outputs, tracing])
-
   const previewChunks = useMemo(() => {
-    return formatPreviewChunks(chunkInfo, outputs)
-  }, [chunkInfo, outputs])
+    return formatPreviewChunks(outputs)
+  }, [outputs])
 
   return (
     <>
@@ -54,7 +43,7 @@ const ResultPreview = ({
       )}
       {outputs && previewChunks && (
         <div className='flex grow flex-col bg-background-body p-1'>
-          <ChunkCardList chunkInfo={previewChunks} />
+          <ChunkCardList chunkType={outputs.chunk_structure} chunkInfo={previewChunks} />
           <div className='system-xs-regular mt-1 flex items-center gap-x-2 text-text-tertiary'>
             <div className='h-px flex-1 bg-gradient-to-r from-background-gradient-mask-transparent to-divider-regular' />
             <span className='shrink-0truncate' title={t('pipeline.result.resultPreview.footerTip', { count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}>

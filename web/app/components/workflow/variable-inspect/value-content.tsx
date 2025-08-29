@@ -26,8 +26,10 @@ import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import { useStore } from '@/app/components/workflow/store'
-import { ChunkCardList, type ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list'
+import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
+import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import { PreviewMode } from '../../base/features/types'
+import { ChunkingMode } from '@/models/datasets'
 
 enum ViewMode {
   Code = 'code',
@@ -98,7 +100,11 @@ const DisplayContent = (props: DisplayContentProps) => {
         {viewMode === ViewMode.Preview && (
           type === ContentType.Markdown
             ? <Markdown className='grow overflow-auto rounded-lg !bg-white px-4 py-3' content={(mdString ?? '') as string} />
-            : <ChunkCardList chunkInfo={JSON.parse(jsonString!) as ChunkInfo} />
+            : <ChunkCardList
+              chunkType={ChunkingMode.text} // todo: delete mock data
+              parentMode={'full-doc'} // todo: delete mock data
+              chunkInfo={JSON.parse(jsonString!) as ChunkInfo}
+            />
         )}
       </div>
     </div>
