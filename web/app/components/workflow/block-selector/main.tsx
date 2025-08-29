@@ -197,6 +197,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             noBlocks={noBlocks}
             dataSources={dataSources}
             noTools={noTools}
+            onTagsChange={setTags}
           />
         </div>
       </PortalToFollowElemContent>

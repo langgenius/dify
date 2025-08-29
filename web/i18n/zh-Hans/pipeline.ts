@@ -31,6 +31,9 @@ const translation = {
       footerTip: '在测试运行模式下，最多预览 {{count}} 个分段',
     },
   },
+  ragToolSuggestions: {
+    title: 'RAG 工具推荐',
+  },
 }
 
 export default translation

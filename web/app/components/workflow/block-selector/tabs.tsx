@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { Dispatch, FC, SetStateAction } from 'react'
 import { memo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import type {
@@ -18,6 +18,7 @@ export type TabsProps = {
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
   tags: string[]
+  onTagsChange: Dispatch<SetStateAction<string[]>>
   onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
   blocks: NodeDefault[]
@@ -34,6 +35,7 @@ const Tabs: FC<TabsProps> = ({
   activeTab,
   onActiveTabChange,
   tags,
+  onTagsChange,
   searchText,
   onSelect,
   availableBlocksTypes,
@@ -109,6 +111,8 @@ const Tabs: FC<TabsProps> = ({
             workflowTools={workflowTools || []}
             mcpTools={mcpTools || []}
             canChooseMCPTool
+            onTagsChange={onTagsChange}
+            isInRAGPipeline={dataSources.length > 0}
           />
         )
       }

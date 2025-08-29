@@ -31,6 +31,9 @@ const translation = {
       footerTip: 'In test run mode, preview up to {{count}} chunks',
     },
   },
+  ragToolSuggestions: {
+    title: 'Suggestions for RAG',
+  },
 }
 
 export default translation
