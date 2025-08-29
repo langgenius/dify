@@ -277,6 +277,10 @@ const translation = {
       languageCategoryDesc: 'Schimbați limba interfeței',
       themeSystemDesc: 'Urmăriți aspectul sistemului de operare',
       slashDesc: 'Execută comenzi precum /theme, /lang',
+      feedbackDesc: 'Discuții de feedback deschis pentru comunitate',
+      docDesc: 'Deschide documentația de ajutor',
+      communityDesc: 'Deschide comunitatea Discord',
+      accountDesc: 'Navigați la pagina de cont',
     },
     emptyState: {
       noAppsFound: 'Nu s-au găsit aplicații',
@@ -311,6 +315,7 @@ const translation = {
     inScope: 'în {{scope}}s',
     noMatchingCommands: 'Nu s-au găsit comenzi potrivite',
     tryDifferentSearch: 'Încercați un alt termen de căutare',
+    slashHint: 'Tastați / pentru a vedea toate comenzile disponibile',
   },
 }
 

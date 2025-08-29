@@ -73,8 +73,8 @@ class ExtractProcessor:
                             suffix = "." + match.group(1)
                         else:
                             suffix = ""
-            # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
-            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+            # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
+            file_path = f"{temp_dir}/{tempfile.gettempdir()}{suffix}"
             Path(file_path).write_bytes(response.content)
             extract_setting = ExtractSetting(datasource_type="upload_file", document_model="text_model")
             if return_text:

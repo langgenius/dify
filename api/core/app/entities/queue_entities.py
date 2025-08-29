@@ -169,7 +169,7 @@ class QueueLoopNextEvent(AppQueueEvent):
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
     parallel_mode_run_id: Optional[str] = None
-    """iteratoin run in parallel mode run id"""
+    """iteration run in parallel mode run id"""
     node_run_index: int
     output: Optional[Any] = None  # output for the current loop
 
