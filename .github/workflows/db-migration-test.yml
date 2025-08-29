@@ -1,6 +1,7 @@
 name: DB Migration Test
 
 on:
+  workflow_call:
   pull_request:
     branches:
       - main
