@@ -122,7 +122,7 @@ class Account(UserMixin, Base):
             tenant_join_query = select(TenantAccountJoin).where(
                 TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
             )
-            tenant_join = session.scalars(tenant_join_query).first()
+            tenant_join = session.scalar(tenant_join_query)
             tenant_query = select(Tenant).where(Tenant.id == tenant.id)
             # TODO: A workaround to reload the tenant with `expire_on_commit=False`, allowing
             # access to it after the session has been closed.
@@ -151,7 +151,7 @@ class Account(UserMixin, Base):
             .where(TenantAccountJoin.account_id == self.id)
         )
         with Session(db.engine, expire_on_commit=False) as session:
-            tenant_account_join = session.execute(query).one_or_none()
+            tenant_account_join = session.scalar(query)
             if not tenant_account_join:
                 return
             tenant, join = tenant_account_join
