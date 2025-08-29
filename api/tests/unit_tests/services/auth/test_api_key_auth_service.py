@@ -34,7 +34,9 @@ class TestApiKeyAuthService:
 
         assert len(result) == 1
         assert result[0].tenant_id == self.tenant_id
-        mock_session.query.assert_called_once_with(DataSourceApiKeyAuthBinding)
+        assert mock_session.scalars.call_count == 1
+        select_arg = mock_session.scalars.call_args[0][0]
+        assert "data_source_api_key_auth_binding" in str(select_arg).lower()
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_provider_auth_list_empty(self, mock_session):
@@ -51,11 +53,12 @@ class TestApiKeyAuthService:
         mock_session.scalars.return_value.all.return_value = []
 
         ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
-
-        # Verify where conditions include disabled.is_(False)
-        where_call = mock_session.query.return_value.where.call_args[0]
-        assert len(where_call) == 2  # tenant_id and disabled filter conditions
-
+        select_stmt = mock_session.scalars.call_args[0][0]
+        where_clauses = list(getattr(select_stmt, "_where_criteria", []) or [])
+        # Ensure both tenant filter and disabled filter exist
+        where_strs = [str(c).lower() for c in where_clauses]
+        assert any("tenant_id" in s for s in where_strs)
+        assert any("disabled" in s and "= false" in s.replace(" ", "") for s in where_strs)
     @patch("services.auth.api_key_auth_service.db.session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
