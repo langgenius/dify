@@ -59,6 +59,7 @@ class TestApiKeyAuthService:
         where_strs = [str(c).lower() for c in where_clauses]
         assert any("tenant_id" in s for s in where_strs)
         assert any("disabled" in s and "= false" in s.replace(" ", "") for s in where_strs)
+
     @patch("services.auth.api_key_auth_service.db.session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
