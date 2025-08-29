@@ -70,7 +70,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
       <div className='space-y-4 px-4 pb-3 pt-2'>
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`)}>
-          <div className="space-y-3">
+          <div className="space-y-1">
             <div className="flex gap-1" style={{ width: '368px', height: '32px' }}>
               <div className="w-26 shrink-0">
                 <SimpleSelect
