@@ -1,6 +1,7 @@
 name: autofix.ci
 on:
-  workflow_call:
+  pull_request:
+    branches: ["main"]
 permissions:
   contents: read
 
@@ -14,7 +15,7 @@ jobs:
       # Use uv to ensure we have the same ruff version in CI and locally.
       - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.12" 
+          python-version: "3.12"
       - run: |
           cd api
           uv sync --dev
