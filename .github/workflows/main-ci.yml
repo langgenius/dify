@@ -8,6 +8,7 @@ permissions:
   contents: write
   pull-requests: write
   checks: write
+  statuses: write
 
 concurrency:
   group: main-ci-${{ github.head_ref || github.run_id }}
