@@ -11,9 +11,11 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
+import { SimpleSelect } from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import copy from 'copy-to-clipboard'
 
 const i18nPrefix = 'workflow.nodes.triggerWebhook'
 
@@ -39,6 +41,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
+  const [debugUrlCopied, setDebugUrlCopied] = React.useState(false)
   const {
     readOnly,
     inputs,
@@ -67,18 +70,22 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
       <div className='space-y-4 px-4 pb-3 pt-2'>
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`)}>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <div className="w-28 shrink-0">
-                <Select
+          <div className="space-y-1">
+            <div className="flex gap-1" style={{ width: '368px', height: '32px' }}>
+              <div className="w-26 shrink-0">
+                <SimpleSelect
                   items={HTTP_METHODS}
                   defaultValue={inputs.method}
                   onSelect={item => handleMethodChange(item.value as HttpMethod)}
                   disabled={readOnly}
+                  className="h-8 pr-8 text-sm"
+                  wrapperClassName="h-8"
+                  optionWrapClassName="w-26 min-w-26 z-[5]"
                   allowSearch={false}
+                  notClearable={true}
                 />
               </div>
-              <div className="flex flex-1 gap-2">
+              <div className="flex-1" style={{ width: '284px' }}>
                 <InputWithCopy
                   value={inputs.webhook_url || ''}
                   placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`)}
@@ -92,6 +99,35 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 />
               </div>
             </div>
+            {inputs.webhook_debug_url && (
+              <Tooltip
+                popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`) : t(`${i18nPrefix}.debugUrlCopy`)}
+                popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
+                position="top"
+                offset={{ mainAxis: -20 }}
+                needsDelay={false}
+              >
+                <div
+                  className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
+                  style={{ width: '368px', height: '38px' }}
+                  onClick={() => {
+                    copy(inputs.webhook_debug_url || '')
+                    setDebugUrlCopied(true)
+                    setTimeout(() => setDebugUrlCopied(false), 2000)
+                  }}
+                >
+                  <div className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
+                  <div className="flex-1" style={{ width: '352px', height: '32px' }}>
+                    <div className="text-xs leading-4 text-text-tertiary">
+                      {t(`${i18nPrefix}.debugUrlTitle`)}
+                    </div>
+                    <div className="truncate text-xs leading-4 text-text-primary">
+                      {inputs.webhook_debug_url}
+                    </div>
+                  </div>
+                </div>
+              </Tooltip>
+            )}
           </div>
         </Field>
         <span>{inputs.webhook_debug_url || ''}</span>
@@ -100,13 +136,19 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
 
         {/* Content Type */}
         <Field title={t(`${i18nPrefix}.contentType`)}>
-          <Select
-            items={CONTENT_TYPES}
-            defaultValue={inputs['content-type']}
-            onSelect={item => handleContentTypeChange(item.value as string)}
-            disabled={readOnly}
-            allowSearch={false}
-          />
+          <div className="w-full">
+            <SimpleSelect
+              items={CONTENT_TYPES}
+              defaultValue={inputs['content-type']}
+              onSelect={item => handleContentTypeChange(item.value as string)}
+              disabled={readOnly}
+              className="h-8 text-sm"
+              wrapperClassName="h-8"
+              optionWrapClassName="min-w-48 z-[5]"
+              allowSearch={false}
+              notClearable={true}
+            />
+          </div>
         </Field>
 
         <Split />
