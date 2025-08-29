@@ -1,0 +1,129 @@
+name: Main CI Pipeline
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: main-ci-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # First, run autofix if needed
+  autofix:
+    name: Auto-fix code issues
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    outputs:
+      changes-made: ${{ steps.check-changes.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          
+      - name: Run Python fixes
+        run: |
+          cd api
+          uv sync --dev
+          # Fix lint errors
+          uv run ruff check --fix-only .
+          # Format code
+          uv run ruff format .
+          
+      - name: Run ast-grep
+        run: |
+          uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
+          
+      - name: Run mdformat
+        run: |
+          uvx mdformat .
+          
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if [ -n "$(git diff --name-only)" ]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "Auto-fix: Apply code formatting and linting fixes"
+          git push
+          
+  # Check which paths were changed to determine which tests to run
+  check-changes:
+    name: Check Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      api-changed: ${{ steps.changes.outputs.api }}
+      web-changed: ${{ steps.changes.outputs.web }}
+      vdb-changed: ${{ steps.changes.outputs.vdb }}
+      migration-changed: ${{ steps.changes.outputs.migration }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - 'docker/**'
+              - '.github/workflows/api-tests.yml'
+            web:
+              - 'web/**'
+            vdb:
+              - 'api/core/rag/datasource/**'
+              - 'docker/**'
+              - '.github/workflows/vdb-tests.yml'
+              - 'api/uv.lock'
+              - 'api/pyproject.toml'
+            migration:
+              - 'api/migrations/**'
+              - '.github/workflows/db-migration-test.yml'
+  
+  # After autofix completes (or if no changes needed), run tests in parallel
+  api-tests:
+    name: API Tests
+    needs: [autofix, check-changes]
+    if: always() && !cancelled() && needs.check-changes.outputs.api-changed == 'true'
+    uses: ./.github/workflows/api-tests.yml
+    
+  web-tests:
+    name: Web Tests
+    needs: [autofix, check-changes]
+    if: always() && !cancelled() && needs.check-changes.outputs.web-changed == 'true'
+    uses: ./.github/workflows/web-tests.yml
+    
+  style-check:
+    name: Style Check
+    needs: autofix
+    if: always() && !cancelled()
+    uses: ./.github/workflows/style.yml
+    
+  vdb-tests:
+    name: VDB Tests
+    needs: [autofix, check-changes]
+    if: always() && !cancelled() && needs.check-changes.outputs.vdb-changed == 'true'
+    uses: ./.github/workflows/vdb-tests.yml
+    
+  db-migration-test:
+    name: DB Migration Test
+    needs: [autofix, check-changes]
+    if: always() && !cancelled() && needs.check-changes.outputs.migration-changed == 'true'
+    uses: ./.github/workflows/db-migration-test.yml
