@@ -88,7 +88,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
@@ -110,7 +109,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
         query_variable_selector: inputs.query_variable_selector.length > 0 ? inputs.query_variable_selector : query_variable_selector,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleClassesChange = useCallback((newClasses: any) => {
@@ -122,7 +120,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   }, [inputs, setInputs])
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string].includes(varPayload.type)
+    return [VarType.number, VarType.string, VarType.object].includes(varPayload.type)
   }, [])
 
   const filterVisionInputVar = useCallback((varPayload: Var) => {
@@ -165,7 +163,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   }, [inputs, setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return varPayload.type === VarType.string
+    return [VarType.string, VarType.object].includes(varPayload.type)
   }, [])
 
   const handleSortTopic = useCallback((newTopics: (Topic & { id: string })[]) => {

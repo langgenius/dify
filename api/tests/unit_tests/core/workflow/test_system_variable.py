@@ -24,6 +24,26 @@ COMPLETE_VALID_DATA: dict[str, Any] = {
     "workflow_run_id": "eb4704b5-2274-47f2-bfcd-0452daa82cb5",
 }
 
+# Test data for LLM usage
+from decimal import Decimal
+
+from core.model_runtime.entities.llm_entities import LLMUsage
+
+LLM_USAGE_DATA = {
+    "prompt_tokens": 100,
+    "prompt_unit_price": Decimal("0.001"),
+    "prompt_price_unit": Decimal(1000),
+    "prompt_price": Decimal("0.1"),
+    "completion_tokens": 50,
+    "completion_unit_price": Decimal("0.002"),
+    "completion_price_unit": Decimal(1000),
+    "completion_price": Decimal("0.1"),
+    "total_tokens": 150,
+    "total_price": Decimal("0.2"),
+    "currency": "USD",
+    "latency": 1.5,
+}
+
 
 def create_test_file() -> File:
     """Create a test File object for serialization tests."""
@@ -57,6 +77,7 @@ class TestSystemVariableSerialization:
         assert system_var.dialogue_count == COMPLETE_VALID_DATA["dialogue_count"]
         assert system_var.workflow_execution_id == COMPLETE_VALID_DATA["workflow_run_id"]
         assert system_var.files == []
+        assert system_var.llm_usage is None
 
         # Test with minimal data (only required fields)
         minimal_var = SystemVariable(**VALID_BASE_DATA)
@@ -68,6 +89,7 @@ class TestSystemVariableSerialization:
         assert minimal_var.dialogue_count is None
         assert minimal_var.workflow_execution_id is None
         assert minimal_var.files == []
+        assert minimal_var.llm_usage is None
 
     def test_alias_handling(self):
         """Test workflow_execution_id vs workflow_run_id alias resolution - core deserialization logic."""
@@ -95,6 +117,33 @@ class TestSystemVariableSerialization:
         # Test neither present - should be None
         system_var4 = SystemVariable(**VALID_BASE_DATA)
         assert system_var4.workflow_execution_id is None
+
+    def test_llm_usage_field(self):
+        """Test LLM usage field in SystemVariable."""
+        # Test with LLM usage data
+        llm_usage = LLMUsage(**LLM_USAGE_DATA)
+        data_with_llm_usage = {**VALID_BASE_DATA, "llm_usage": llm_usage}
+        system_var = SystemVariable(**data_with_llm_usage)
+
+        assert system_var.llm_usage is not None
+        assert system_var.llm_usage.total_tokens == 150
+        assert system_var.llm_usage.total_price == Decimal("0.2")
+        assert system_var.llm_usage.currency == "USD"
+
+        # Test to_dict method includes llm_usage
+        var_dict = system_var.to_dict()
+        assert "llm_usage" in var_dict
+        # The to_dict method converts LLMUsage to dict using model_dump(mode='json')
+        assert var_dict["llm_usage"] == llm_usage.model_dump(mode="json")
+
+        # Test with empty LLM usage
+        empty_llm_usage = LLMUsage.empty_usage()
+        data_with_empty_llm_usage = {**VALID_BASE_DATA, "llm_usage": empty_llm_usage}
+        system_var_empty = SystemVariable(**data_with_empty_llm_usage)
+
+        assert system_var_empty.llm_usage is not None
+        assert system_var_empty.llm_usage.total_tokens == 0
+        assert system_var_empty.llm_usage.total_price == Decimal("0.0")
 
     def test_serialization_round_trip(self):
         """Test that serialize → deserialize produces the same result with alias handling."""
