@@ -24,6 +24,7 @@ type Props = {
   onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   onFormInputItemRemove: (varName: string) => void
   editorKey: number
+  isExpand: boolean
 }
 
 const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
@@ -44,6 +45,7 @@ const FormContent: FC<Props> = ({
   onFormInputItemRename,
   onFormInputItemRemove,
   editorKey,
+  isExpand,
 }) => {
   const { t } = useTranslation()
   const filterVar = () => true
@@ -90,12 +92,13 @@ const FormContent: FC<Props> = ({
   }] = useBoolean(false)
 
   return (
-    <div className={cn('rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal px-3 pt-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active')}>
+    <div className={cn('flex grow flex-col rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal pt-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active', !isFocus && 'pb-[32px]')}>
       <PromptEditor
         key={editorKey}
         value={value}
         onChange={onChange}
-        className='min-h-[80px]'
+        className={cn('min-h-[80px] ', isExpand && 'h-full')}
+        wrapperClassName={cn('max-h-[300px] overflow-y-auto px-3', isExpand && 'h-0 max-h-full grow')}
         onFocus={setFocus}
         onBlur={setBlur}
         hitlInputBlock={{
@@ -141,7 +144,7 @@ const FormContent: FC<Props> = ({
         }]}
       />
       {isFocus && (
-        <div className='system-xs-regular flex h-8 items-center text-components-input-text-placeholder'>
+        <div className='system-xs-regular flex h-8 shrink-0 items-center px-3 text-components-input-text-placeholder'>
           <Trans
             i18nKey='workflow.nodes.humanInput.formContent.hotkeyTip'
             components={

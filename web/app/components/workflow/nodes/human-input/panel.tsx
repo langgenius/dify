@@ -2,6 +2,10 @@ import type { FC } from 'react'
 import React from 'react'
 import {
   RiAddLine,
+  RiClipboardLine,
+  RiCollapseDiagonalLine,
+  RiExpandDiagonalLine,
+  RiEyeLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
@@ -19,6 +23,12 @@ import { VarType } from '@/app/components/workflow/types'
 import type { Var } from '@/app/components/workflow/types'
 import FormContent from './components/form-content'
 import { genActionId } from './utils'
+import Button from '@/app/components/base/button'
+import Toast from '@/app/components/base/toast'
+import copy from 'copy-to-clipboard'
+import { useBoolean } from 'ahooks'
+import cn from '@/utils/classnames'
+import { useStore } from '@/app/components/workflow/store'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -48,6 +58,11 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     },
   })
 
+  const [isExpandFormContent, {
+    toggle: toggleExpandFormContent,
+  }] = useBoolean(true)
+  const panelWidth = useStore(state => state.panelWidth)
+
   return (
     <div className='py-2'>
       {/* delivery methods */}
@@ -61,13 +76,31 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <Divider className='!my-0 !h-px !bg-divider-subtle' />
       </div>
       {/* form content */}
-      <div className='px-4 py-2'>
-        <div className='mb-1 flex items-center justify-between'>
+      <div className={cn('px-4 py-2', isExpandFormContent && 'fixed bottom-[8px] right-[4px] top-[189px] z-10 flex flex-col bg-components-panel-bg')} style={{ width: panelWidth }}>
+        <div className='mb-1 flex shrink-0 items-center justify-between'>
           <div className='flex h-6 items-center gap-0.5'>
             <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.formContent.title`)}</div>
             <Tooltip
               popupContent={t(`${i18nPrefix}.formContent.tooltip`)}
             />
+          </div>
+          <div className='flex items-center '>
+            <Button variant='ghost' className='flex items-center space-x-1 px-2 text-components-button-ghost-text'>
+              <RiEyeLine className='size-3.5' />
+              <div className='system-xs-medium'>Preview</div>
+            </Button>
+            <div className='ml-3 mr-2 h-3 w-px bg-divider-regular'></div>
+            <div className='flex items-center space-x-1'>
+              <div className='flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover' onClick={() => {
+                copy(inputs.form_content)
+                Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+              }}>
+                <RiClipboardLine className='h-4 w-4 text-text-secondary' />
+              </div>
+              <div className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')} onClick={toggleExpandFormContent}>
+                {isExpandFormContent ? <RiCollapseDiagonalLine className='h-4 w-4' /> : <RiExpandDiagonalLine className='h-4 w-4' />}
+              </div>
+            </div>
           </div>
         </div>
         <FormContent
@@ -80,6 +113,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           onFormInputsChange={handleFormInputsChange}
           onFormInputItemRename={handleFormInputItemRename}
           onFormInputItemRemove={handleFormInputItemRemove}
+          isExpand={isExpandFormContent}
         />
       </div>
       {/* user actions */}
