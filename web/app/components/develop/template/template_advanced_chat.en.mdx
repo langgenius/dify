@@ -57,16 +57,18 @@ Chat applications support session persistence, allowing previous chat history to
       Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
+          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision/Video capability.
           - `type` (string) Supported type:
-            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
-            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
-            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
-            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
-            - `custom` (Other file types)
-          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
-          - `url` (string) Image URL (when the transfer method is `remote_url`)
-          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+            - `document` Supported types include: 'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` Supported types include: 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` Supported types include: 'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` Supported types include: 'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` Supported types include: other file types
+          - `transfer_method` (string) Transfer method:
+            - `remote_url`: File URL.
+            - `local_file`: Upload file.
+          - `url` File URL. (Only when transfer method is `remote_url`).
+          - `upload_file_id` Upload file ID. (Only when transfer method is `local_file`).
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
       Auto-generate title, default is `true`.

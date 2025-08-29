@@ -39,16 +39,18 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         ファイルリストは、テキスト理解と質問への回答を組み合わせたファイルの入力に適しています。モデルがファイルの解析と理解機能をサポートしている場合にのみ使用できます。
 
         変数がファイルリストの場合、リストの各要素は以下の属性を持つ必要があります。
-          - `type` (string) サポートされているタイプ:
-            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
-            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
-            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
-            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
-            - `custom` (他のファイルタイプ)
-          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
-          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
-          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
-
+          - `type` (string) サポートされるタイプ：
+            - `document` サポートされるタイプには以下が含まれます：'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` サポートされるタイプには以下が含まれます：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` サポートされるタイプには以下が含まれます：'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` サポートされるタイプには以下が含まれます：'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` サポートされるタイプには以下が含まれます：その他のファイルタイプ
+          - `transfer_method` (string) 転送方法:
+            - `remote_url`: ファイルのURL。
+            - `local_file`: ファイルをアップロード。
+          - `url` ファイルのURL。（転送方法が `remote_url` の場合のみ）。
+          - `upload_file_id` アップロードされたファイルID。（転送方法が `local_file` の場合のみ）。
+          
       - `response_mode` (string) 必須
         応答の返却モードを指定します。サポートされているモード：
         - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）を通じてタイプライターのような出力を実装します。

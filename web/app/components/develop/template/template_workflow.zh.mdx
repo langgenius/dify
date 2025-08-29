@@ -342,14 +342,17 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         inputs 参数包含了多组键值对（Key/Value pairs），每组的键对应一个特定变量，每组的值则是该变量的具体值。变量可以是文件列表类型。
         文件列表类型变量适用于传入文件结合文本理解并回答问题，仅当模型支持该类型文件解析能力时可用。如果该变量是文件列表类型，该变量对应的值应是列表格式，其中每个元素应包含以下内容：
           - `type` (string) 支持类型：
-            - `document` 具体类型包含：'TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `document` 具体类型包含：'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
             - `image` 具体类型包含：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
-            - `audio` 具体类型包含：'MP3', 'M4A', 'WAV', 'WEBM', 'AMR'
-            - `video` 具体类型包含：'MP4', 'MOV', 'MPEG', 'MPGA'
+            - `audio` 具体类型包含：'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` 具体类型包含：'MP4', 'MOV', 'MPEG', 'WEBM'
             - `custom` 具体类型包含：其他文件类型
-          - `transfer_method` (string) 传递方式，`remote_url` 图片地址 / `local_file` 上传文件
-          - `url` (string) 图片地址（仅当传递方式为 `remote_url` 时）
-          - `upload_file_id` (string)  上传文件 ID（仅当传递方式为 `local_file` 时）
+          - `transfer_method` (string)  传递方式:
+            - `remote_url`: 文件地址。
+            - `local_file`: 上传文件。
+          - `url` 文件地址。（仅当传递方式为 `remote_url` 时）。
+          - `upload_file_id` 上传文件 ID。（仅当传递方式为 `local_file `时）。
+          
       - `response_mode` (string) Required
         返回响应模式，支持：
         - `streaming` 流式模式（推荐）。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。

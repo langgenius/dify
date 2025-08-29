@@ -4,7 +4,7 @@ import os
 from typing import Optional, cast
 
 import pandas as pd
-from openpyxl import load_workbook  # type: ignore
+from openpyxl import load_workbook
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document

@@ -522,33 +522,6 @@ class AppModelConfig(Base):
         self.file_upload = json.dumps(model_config.get("file_upload")) if model_config.get("file_upload") else None
         return self
 
-    def copy(self):
-        new_app_model_config = AppModelConfig(
-            id=self.id,
-            app_id=self.app_id,
-            opening_statement=self.opening_statement,
-            suggested_questions=self.suggested_questions,
-            suggested_questions_after_answer=self.suggested_questions_after_answer,
-            speech_to_text=self.speech_to_text,
-            text_to_speech=self.text_to_speech,
-            more_like_this=self.more_like_this,
-            sensitive_word_avoidance=self.sensitive_word_avoidance,
-            external_data_tools=self.external_data_tools,
-            model=self.model,
-            user_input_form=self.user_input_form,
-            dataset_query_variable=self.dataset_query_variable,
-            pre_prompt=self.pre_prompt,
-            agent_mode=self.agent_mode,
-            retriever_resource=self.retriever_resource,
-            prompt_type=self.prompt_type,
-            chat_prompt_config=self.chat_prompt_config,
-            completion_prompt_config=self.completion_prompt_config,
-            dataset_configs=self.dataset_configs,
-            file_upload=self.file_upload,
-        )
-
-        return new_app_model_config
-
 
 class RecommendedApp(Base):
     __tablename__ = "recommended_apps"
@@ -605,6 +578,32 @@ class InstalledApp(Base):
     def tenant(self):
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
+
+
+class OAuthProviderApp(Base):
+    """
+    Globally shared OAuth provider app information.
+    Only for Dify Cloud.
+    """
+
+    __tablename__ = "oauth_provider_apps"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="oauth_provider_app_pkey"),
+        sa.Index("oauth_provider_app_client_id_idx", "client_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    app_icon = mapped_column(String(255), nullable=False)
+    app_label = mapped_column(sa.JSON, nullable=False, server_default="{}")
+    client_id = mapped_column(String(255), nullable=False)
+    client_secret = mapped_column(String(255), nullable=False)
+    redirect_uris = mapped_column(sa.JSON, nullable=False, server_default="[]")
+    scope = mapped_column(
+        String(255),
+        nullable=False,
+        server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
+    )
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
 
 
 class Conversation(Base):
