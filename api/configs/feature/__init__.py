@@ -499,6 +499,22 @@ class UpdateConfig(BaseSettings):
     )
 
 
+class WorkflowVariableTruncationConfig(BaseSettings):
+    WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
+        # 100KB
+        1024_000,
+        description="Maximum size for variable to trigger final truncation.",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
+        50000,
+        description="maximum length for string to trigger tuncation, measure in number of characters",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
+        100,
+        description="maximum length for array to trigger truncation.",
+    )
+
+
 class WorkflowConfig(BaseSettings):
     """
     Configuration for workflow execution
@@ -1025,5 +1041,6 @@ class FeatureConfig(
     CeleryBeatConfig,
     CeleryScheduleTasksConfig,
     WorkflowLogConfig,
+    WorkflowVariableTruncationConfig,
 ):
     pass
