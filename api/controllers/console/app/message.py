@@ -95,18 +95,22 @@ class ChatMessageListApi(Resource):
                 .all()
             )
 
+        # Initialize has_more based on whether we have a full page
         if len(history_messages) == args["limit"]:
             current_page_first_message = history_messages[-1]
-
-        has_more = db.session.scalar(
-            select(
-                exists().where(
-                    Message.conversation_id == conversation.id,
-                    Message.created_at < current_page_first_message.created_at,
-                    Message.id != current_page_first_message.id,
+            # Check if there are more messages before the current page
+            has_more = db.session.scalar(
+                select(
+                    exists().where(
+                        Message.conversation_id == conversation.id,
+                        Message.created_at < current_page_first_message.created_at,
+                        Message.id != current_page_first_message.id,
+                    )
                 )
             )
-        )
+        else:
+            # If we don't have a full page, there are no more messages
+            has_more = False
 
         history_messages = list(reversed(history_messages))
 

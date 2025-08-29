@@ -55,7 +55,7 @@ class AppGenerateService:
                 cls.system_rate_limiter.increment_rate_limit(app_model.tenant_id)
 
         # app level rate limiter
-        max_active_request = AppGenerateService._get_max_active_requests(app_model)
+        max_active_request = cls._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
         try:

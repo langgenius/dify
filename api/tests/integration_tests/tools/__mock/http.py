@@ -3,7 +3,6 @@ from typing import Literal
 
 import httpx
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 
 from core.helper import ssrf_proxy
 
@@ -30,7 +29,7 @@ class MockedHttp:
 
 
 @pytest.fixture
-def setup_http_mock(request, monkeypatch: MonkeyPatch):
+def setup_http_mock(request, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(ssrf_proxy, "make_request", MockedHttp.httpx_request)
     yield
     monkeypatch.undo()
