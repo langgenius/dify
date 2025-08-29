@@ -44,8 +44,6 @@ class TagService:
                 TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id
             )
         ).all()
-        if not tag_bindings:
-            return Sequence()
         return tag_bindings
 
     @staticmethod
