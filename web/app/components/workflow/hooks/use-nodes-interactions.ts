@@ -63,6 +63,8 @@ import {
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { deleteWebhookUrl } from '@/service/apps'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 // Entry node deletion restriction has been removed to allow empty workflows
 
@@ -74,6 +76,7 @@ export const useNodesInteractions = () => {
   const reactflow = useReactFlow()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const appId = useAppStore.getState().appDetail?.id
   const {
     checkNestedParallelLimit,
     getAfterNodesInSameBranch,
@@ -588,6 +591,18 @@ export const useNodesInteractions = () => {
       return
 
     deleteNodeInspectorVars(nodeId)
+
+    if (currentNode.data.type === BlockEnum.TriggerWebhook) {
+      if (appId) {
+        try {
+          deleteWebhookUrl({ appId, nodeId })
+        }
+        catch (error) {
+          console.error('Failed to delete webhook URL:', error)
+        }
+      }
+    }
+
     if (currentNode.data.type === BlockEnum.Iteration) {
       const iterationChildren = nodes.filter(node => node.parentId === currentNode.id)
 

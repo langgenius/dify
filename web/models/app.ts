@@ -168,3 +168,12 @@ export type TracingConfig = {
   tracing_provider: TracingProvider
   tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig
 }
+
+export type WebhookTriggerResponse = {
+  id: string
+  webhook_id: string
+  webhook_url: string
+  webhook_debug_url: string
+  node_id: string
+  created_at: string
+}
