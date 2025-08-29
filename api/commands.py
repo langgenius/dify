@@ -177,13 +177,13 @@ def migrate_annotation_vector_database():
             per_page = 50
             with Session(db.engine, expire_on_commit=False) as session:
                 apps = (
-                session.query(App)
-                .where(App.status == "normal")
-                .order_by(App.created_at.desc())
-                .limit(per_page)
-                .offset((page - 1) * per_page)
-                .all()
-            )
+                    session.query(App)
+                    .where(App.status == "normal")
+                    .order_by(App.created_at.desc())
+                    .limit(per_page)
+                    .offset((page - 1) * per_page)
+                    .all()
+                )
             if not apps:
                 break
         except SQLAlchemyError:
@@ -199,8 +199,8 @@ def migrate_annotation_vector_database():
                 click.echo(f"Creating app annotation index: {app.id}")
                 with Session(db.engine, expire_on_commit=False) as session:
                     app_annotation_setting = (
-                    session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
-                )
+                        session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
+                    )
 
                 if not app_annotation_setting:
                     skipped_count = skipped_count + 1
@@ -209,10 +209,10 @@ def migrate_annotation_vector_database():
                 # get dataset_collection_binding info
                 with Session(db.engine, expire_on_commit=False) as session:
                     dataset_collection_binding = (
-                    session.query(DatasetCollectionBinding)
-                    .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
-                    .first()
-                )
+                        session.query(DatasetCollectionBinding)
+                        .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
+                        .first()
+                    )
                 if not dataset_collection_binding:
                     click.echo(f"App annotation collection binding not found: {app.id}")
                     continue
