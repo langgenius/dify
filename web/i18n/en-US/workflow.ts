@@ -965,6 +965,7 @@ const translation = {
         title: 'Form Content',
         tooltip: 'What users will see after opening the form. Supports Markdown formatting.',
         hotkeyTip: 'Press <Key/> to insert variable, <CtrlKey/><Key/> to insert input field',
+        preview: 'Preview',
       },
       userActions: {
         title: 'User Actions',

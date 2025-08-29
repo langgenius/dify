@@ -60,7 +60,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
 
   const [isExpandFormContent, {
     toggle: toggleExpandFormContent,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
   const panelWidth = useStore(state => state.panelWidth)
 
   return (
@@ -87,9 +87,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           <div className='flex items-center '>
             <Button variant='ghost' className='flex items-center space-x-1 px-2 text-components-button-ghost-text'>
               <RiEyeLine className='size-3.5' />
-              <div className='system-xs-medium'>Preview</div>
+              <div className='system-xs-medium'>{t(`${i18nPrefix}.formContent.preview`)}</div>
             </Button>
-            <div className='ml-3 mr-2 h-3 w-px bg-divider-regular'></div>
+            <div className='mx-2 h-3 w-px bg-divider-regular'></div>
             <div className='flex items-center space-x-1'>
               <div className='flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover' onClick={() => {
                 copy(inputs.form_content)
