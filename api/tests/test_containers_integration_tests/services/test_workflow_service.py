@@ -1421,14 +1421,17 @@ class TestWorkflowService:
 
         # Mock successful node execution
         def mock_successful_invoke():
-            from core.workflow.enums import WorkflowNodeExecutionStatus
+            import uuid
+            from datetime import datetime
+
+            from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
             from core.workflow.graph_events import NodeRunSucceededEvent
             from core.workflow.node_events import NodeRunResult
             from core.workflow.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = "start"  # Use valid NodeType
+            mock_node.node_type = NodeType.START
             mock_node.title = "Test Node"
             mock_node.error_strategy = None
 
@@ -1441,8 +1444,14 @@ class TestWorkflowService:
                 metadata={"total_tokens": 100},  # Use valid metadata field
             )
 
-            # Create mock event
-            mock_event = NodeRunSucceededEvent(node_run_result=mock_result)
+            # Create mock event with all required fields
+            mock_event = NodeRunSucceededEvent(
+                id=str(uuid.uuid4()),
+                node_id=node_id,
+                node_type=NodeType.START,
+                node_run_result=mock_result,
+                start_at=datetime.now(),
+            )
 
             # Return node and generator
             def event_generator():
@@ -1460,7 +1469,9 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        assert result.node_type == "start"  # Should match the mock node type
+        from core.workflow.enums import NodeType
+
+        assert result.node_type == NodeType.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
         from core.workflow.enums import WorkflowNodeExecutionStatus
@@ -1485,14 +1496,17 @@ class TestWorkflowService:
 
         # Mock failed node execution
         def mock_failed_invoke():
-            from core.workflow.enums import WorkflowNodeExecutionStatus
+            import uuid
+            from datetime import datetime
+
+            from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
             from core.workflow.graph_events import NodeRunFailedEvent
             from core.workflow.node_events import NodeRunResult
             from core.workflow.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = "llm"  # Use valid NodeType
+            mock_node.node_type = NodeType.LLM
             mock_node.title = "Test Node"
             mock_node.error_strategy = None
 
@@ -1503,8 +1517,15 @@ class TestWorkflowService:
                 error="Test error message",
             )
 
-            # Create mock event
-            mock_event = NodeRunFailedEvent(node_run_result=mock_result)
+            # Create mock event with all required fields
+            mock_event = NodeRunFailedEvent(
+                id=str(uuid.uuid4()),
+                node_id=node_id,
+                node_type=NodeType.LLM,
+                node_run_result=mock_result,
+                error="Test error message",
+                start_at=datetime.now(),
+            )
 
             # Return node and generator
             def event_generator():
@@ -1544,14 +1565,17 @@ class TestWorkflowService:
 
         # Mock node execution with continue_on_error
         def mock_continue_on_error_invoke():
-            from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionStatus
+            import uuid
+            from datetime import datetime
+
+            from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
             from core.workflow.graph_events import NodeRunFailedEvent
             from core.workflow.node_events import NodeRunResult
             from core.workflow.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = "tool"  # Use valid NodeType
+            mock_node.node_type = NodeType.TOOL
             mock_node.title = "Test Node"
             mock_node.error_strategy = ErrorStrategy.DEFAULT_VALUE
             mock_node.default_value_dict = {"default_output": "default_value"}
@@ -1563,8 +1587,15 @@ class TestWorkflowService:
                 error="Test error message",
             )
 
-            # Create mock event
-            mock_event = NodeRunFailedEvent(node_run_result=mock_result)
+            # Create mock event with all required fields
+            mock_event = NodeRunFailedEvent(
+                id=str(uuid.uuid4()),
+                node_id=node_id,
+                node_type=NodeType.TOOL,
+                node_run_result=mock_result,
+                error="Test error message",
+                start_at=datetime.now(),
+            )
 
             # Return node and generator
             def event_generator():
