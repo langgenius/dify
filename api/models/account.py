@@ -219,9 +219,7 @@ class Tenant(Base):
 
     def get_accounts(self) -> list[Account]:
         return (
-            db.session.query(Account)
-            .where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
-            .all()
+            db.session.scalars(select(Account).where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)).all()
         )
 
     @property

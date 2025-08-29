@@ -86,15 +86,11 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         document_context_list = []
         index_node_ids = [document.metadata["doc_id"] for document in all_documents if document.metadata]
         segments = (
-            db.session.query(DocumentSegment)
-            .where(
-                DocumentSegment.dataset_id.in_(self.dataset_ids),
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
-                DocumentSegment.index_node_id.in_(index_node_ids),
-            )
-            .all()
+            db.session.scalars(select(DocumentSegment).where(DocumentSegment.dataset_id.in_(self.dataset_ids),
+            DocumentSegment.completed_at.isnot(None),
+            DocumentSegment.status == "completed",
+            DocumentSegment.enabled == True,
+            DocumentSegment.index_node_id.in_(index_node_ids),)).all()
         )
 
         if segments:

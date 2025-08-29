@@ -32,16 +32,12 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         :return:
         """
         recommended_apps = (
-            db.session.query(RecommendedApp)
-            .where(RecommendedApp.is_listed == True, RecommendedApp.language == language)
-            .all()
+            db.session.scalars(select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == language)).all()
         )
 
         if len(recommended_apps) == 0:
             recommended_apps = (
-                db.session.query(RecommendedApp)
-                .where(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])
-                .all()
+                db.session.scalars(select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])).all()
             )
 
         categories = set()

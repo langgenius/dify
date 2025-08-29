@@ -33,12 +33,10 @@ class InstalledAppsListApi(Resource):
 
         if app_id:
             installed_apps = (
-                db.session.query(InstalledApp)
-                .where(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
-                .all()
+                db.session.scalars(select(InstalledApp).where(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))).all()
             )
         else:
-            installed_apps = db.session.query(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id).all()
+            installed_apps = db.session.scalars(select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)).all()
 
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_app_list: list[dict[str, Any]] = [

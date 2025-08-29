@@ -42,7 +42,7 @@ class DatasetDocumentStore:
     @property
     def docs(self) -> dict[str, Document]:
         document_segments = (
-            db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id).all()
+            db.session.scalars(select(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id)).all()
         )
 
         output = {}

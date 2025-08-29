@@ -247,9 +247,7 @@ class AppAnnotationService:
         db.session.delete(annotation)
 
         annotation_hit_histories = (
-            db.session.query(AppAnnotationHitHistory)
-            .where(AppAnnotationHitHistory.annotation_id == annotation_id)
-            .all()
+            db.session.scalars(select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation_id)).all()
         )
         if annotation_hit_histories:
             for annotation_hit_history in annotation_hit_histories:

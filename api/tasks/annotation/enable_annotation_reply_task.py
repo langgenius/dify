@@ -39,7 +39,7 @@ def enable_annotation_reply_task(
         db.session.close()
         return
 
-    annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id).all()
+    annotations = db.session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
     enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
     enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
 

@@ -958,7 +958,7 @@ class DatasetRetrieval:
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
     ) -> Optional[list[dict[str, Any]]]:
         # get all metadata field
-        metadata_fields = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
+        metadata_fields = db.session.scalars(select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         # get metadata model config
         if metadata_model_config is None:

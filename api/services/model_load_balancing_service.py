@@ -308,14 +308,10 @@ class ModelLoadBalancingService:
             raise ValueError("Invalid load balancing configs")
 
         current_load_balancing_configs = (
-            db.session.query(LoadBalancingModelConfig)
-            .where(
-                LoadBalancingModelConfig.tenant_id == tenant_id,
-                LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
-                LoadBalancingModelConfig.model_name == model,
-            )
-            .all()
+            db.session.scalars(select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id,
+            LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+            LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
+            LoadBalancingModelConfig.model_name == model,)).all()
         )
 
         # id as key, config as value

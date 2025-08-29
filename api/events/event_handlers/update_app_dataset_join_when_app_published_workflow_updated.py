@@ -15,7 +15,7 @@ def handle(sender, **kwargs):
     published_workflow = cast(Workflow, published_workflow)
 
     dataset_ids = get_dataset_ids_from_workflow(published_workflow)
-    app_dataset_joins = db.session.query(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id).all()
+    app_dataset_joins = db.session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
 
     removed_dataset_ids: set[str] = set()
     if not app_dataset_joins:

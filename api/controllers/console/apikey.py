@@ -60,9 +60,7 @@ class BaseApiKeyListResource(Resource):
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         keys = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .all()
+            db.session.scalars(select(ApiToken).where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)).all()
         )
         return {"items": keys}
 

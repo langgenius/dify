@@ -85,7 +85,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 index_type = document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-                segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
+                segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
                 index_node_ids = [segment.index_node_id for segment in segments]
 
                 # delete from vector index

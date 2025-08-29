@@ -34,7 +34,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         if not dataset:
             raise Exception("Document has no dataset")
 
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids)).all()
+        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))).all()
         # check segment is exist
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
@@ -59,7 +59,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
 
             db.session.commit()
         if file_ids:
-            files = db.session.query(UploadFile).where(UploadFile.id.in_(file_ids)).all()
+            files = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
             for file in files:
                 try:
                     storage.delete(file.key)

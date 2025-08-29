@@ -30,9 +30,7 @@ class TagService:
         if not tag_ids or len(tag_ids) == 0:
             return []
         tags = (
-            db.session.query(Tag)
-            .where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
-            .all()
+            db.session.scalars(select(Tag).where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)).all()
         )
         if not tags:
             return []
@@ -41,9 +39,7 @@ class TagService:
         if not tag_ids or len(tag_ids) == 0:
             return []
         tag_bindings = (
-            db.session.query(TagBinding.target_id)
-            .where(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)
-            .all()
+            db.session.scalars(select(TagBinding.target_id).where(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)).all()
         )
         if not tag_bindings:
             return []
@@ -55,9 +51,7 @@ class TagService:
         if not tag_type or not tag_name:
             return []
         tags = (
-            db.session.query(Tag)
-            .where(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
-            .all()
+            db.session.scalars(select(Tag).where(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)).all()
         )
         if not tags:
             return []
@@ -117,7 +111,7 @@ class TagService:
             raise NotFound("Tag not found")
         db.session.delete(tag)
         # delete tag binding
-        tag_bindings = db.session.query(TagBinding).where(TagBinding.tag_id == tag_id).all()
+        tag_bindings = db.session.scalars(select(TagBinding).where(TagBinding.tag_id == tag_id)).all()
         if tag_bindings:
             for tag_binding in tag_bindings:
                 db.session.delete(tag_binding)

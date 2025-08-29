@@ -128,12 +128,8 @@ class TokenBufferMemory:
         for message in messages:
             # Process user message with files
             user_files = (
-                db.session.query(MessageFile)
-                .where(
-                    MessageFile.message_id == message.id,
-                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
-                )
-                .all()
+                db.session.scalars(select(MessageFile).where(MessageFile.message_id == message.id,
+                (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),)).all()
             )
 
             if user_files:
@@ -150,9 +146,7 @@ class TokenBufferMemory:
 
             # Process assistant message with files
             assistant_files = (
-                db.session.query(MessageFile)
-                .where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
-                .all()
+                db.session.scalars(select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")).all()
             )
 
             if assistant_files:
