@@ -20,16 +20,69 @@ export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
 }
 
-const getTriggerIcon = (triggerType: string) => {
-  switch (triggerType) {
+const getTriggerIcon = (trigger: AppTrigger) => {
+  const { trigger_type, icon, status } = trigger
+
+  // Status dot styling based on trigger status
+  const getStatusDot = () => {
+    if (status === 'enabled') {
+      return (
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border bg-components-badge-status-light-success-bg shadow-status-indicator-green-shadow"
+             style={{
+               borderColor: 'var(--color-components-badge-status-light-success-border-inner)',
+             }}
+        />
+      )
+    }
+ else {
+      return (
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border bg-components-badge-status-light-warning-bg shadow-status-indicator-warning-shadow"
+             style={{
+               borderColor: 'var(--color-components-badge-status-light-warning-border-inner)',
+             }}
+        />
+      )
+    }
+  }
+
+  const baseIconClasses = 'relative flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-white/2 shadow-xs'
+
+  switch (trigger_type) {
     case 'trigger-webhook':
-      return <WebhookLine className="h-4 w-4 text-text-secondary" />
+      return (
+        <div className={`${baseIconClasses} bg-util-colors-blue-blue-500 text-white`}>
+          <WebhookLine className="h-4 w-4" />
+          {getStatusDot()}
+        </div>
+      )
     case 'trigger-schedule':
-      return <Schedule className="h-4 w-4 text-text-secondary" />
+      return (
+        <div className={`${baseIconClasses} bg-util-colors-violet-violet-500 text-white`}>
+          <Schedule className="h-4 w-4" />
+          {getStatusDot()}
+        </div>
+      )
     case 'trigger-plugin':
-      return <WebhookLine className="h-4 w-4 text-text-secondary" />
+      return (
+        <div className={`${baseIconClasses} bg-util-colors-white-white-500`}>
+          {icon ? (
+            <div
+              className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
+              style={{ backgroundImage: `url(${icon})` }}
+            />
+          ) : (
+            <WebhookLine className="h-4 w-4 text-text-secondary" />
+          )}
+          {getStatusDot()}
+        </div>
+      )
     default:
-      return <WebhookLine className="h-4 w-4 text-text-secondary" />
+      return (
+        <div className={`${baseIconClasses} bg-util-colors-blue-blue-500 text-white`}>
+          <WebhookLine className="h-4 w-4" />
+          {getStatusDot()}
+        </div>
+      )
   }
 }
 
@@ -101,7 +154,7 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
               <div key={trigger.id}>
                 <div className="flex w-full items-center gap-3">
                   <div className="flex grow items-center gap-2">
-                    {getTriggerIcon(trigger.trigger_type)}
+                    {getTriggerIcon(trigger)}
                     <div className="system-sm-medium text-text-secondary">
                       {trigger.title}
                     </div>
