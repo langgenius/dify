@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
@@ -26,7 +27,17 @@ from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
+
+api = ExternalApi(
+    bp,
+    version="1.0",
+    title="Console API",
+    description="Console management APIs for app configuration, monitoring, and administration",
+    doc="/docs",  # Enable Swagger UI at /console/api/docs
+)
+
+# Create namespace
+console_ns = Namespace("console", description="Console management API operations", path="/")
 
 # File
 api.add_resource(FileApi, "/files/upload")
@@ -43,7 +54,7 @@ api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm"
 api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
 
 # Import other controllers
-from . import admin, apikey, extension, feature, ping, setup, version
+from . import admin, apikey, extension, feature, init_validate, ping, setup, version
 
 # Import app controllers
 from .app import (
@@ -94,6 +105,25 @@ from .explore import (
     recommended_app,
     saved_message,
 )
+
+# Import tag controllers
+from .tag import tags
+
+# Import workspace controllers
+from .workspace import (
+    account,
+    agent_providers,
+    endpoint,
+    load_balancing_config,
+    members,
+    model_providers,
+    models,
+    plugin,
+    tool_providers,
+    workspace,
+)
+
+api.add_namespace(console_ns)
 
 # Explore Audio
 api.add_resource(ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text", endpoint="installed_app_audio")
@@ -164,21 +194,4 @@ api.add_resource(
 api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_app_id>/workflows/run")
 api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
-)
-
-# Import tag controllers
-from .tag import tags
-
-# Import workspace controllers
-from .workspace import (
-    account,
-    agent_providers,
-    endpoint,
-    load_balancing_config,
-    members,
-    model_providers,
-    models,
-    plugin,
-    tool_providers,
-    workspace,
 )

@@ -32,6 +32,7 @@ from services.errors.audio import (
 logger = logging.getLogger(__name__)
 
 
+@api.route("/audio-to-text")
 class AudioApi(WebApiResource):
     audio_to_text_response_fields = {
         "text": fields.String,
@@ -85,6 +86,7 @@ class AudioApi(WebApiResource):
             raise InternalServerError()
 
 
+@api.route("/text-to-audio")
 class TextApi(WebApiResource):
     text_to_audio_response_fields = {
         "audio_url": fields.String,
@@ -145,7 +147,3 @@ class TextApi(WebApiResource):
         except Exception as e:
             logger.exception("Failed to handle post request to TextApi")
             raise InternalServerError()
-
-
-api.add_resource(AudioApi, "/audio-to-text")
-api.add_resource(TextApi, "/text-to-audio")

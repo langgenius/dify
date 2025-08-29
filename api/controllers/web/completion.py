@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 # define completion api for user
+@api.route("/completion-messages")
 class CompletionApi(WebApiResource):
     @api.doc("Create Completion Message")
     @api.doc(description="Create a completion message for text generation applications.")
@@ -106,6 +107,7 @@ class CompletionApi(WebApiResource):
             raise InternalServerError()
 
 
+@api.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(WebApiResource):
     @api.doc("Stop Completion Message")
     @api.doc(description="Stop a running completion message task.")
@@ -129,6 +131,7 @@ class CompletionStopApi(WebApiResource):
         return {"result": "success"}, 200
 
 
+@api.route("/chat-messages")
 class ChatApi(WebApiResource):
     @api.doc("Create Chat Message")
     @api.doc(description="Create a chat message for conversational applications.")
@@ -207,6 +210,7 @@ class ChatApi(WebApiResource):
             raise InternalServerError()
 
 
+@api.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(WebApiResource):
     @api.doc("Stop Chat Message")
     @api.doc(description="Stop a running chat message task.")
@@ -229,9 +233,3 @@ class ChatStopApi(WebApiResource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
         return {"result": "success"}, 200
-
-
-api.add_resource(CompletionApi, "/completion-messages")
-api.add_resource(CompletionStopApi, "/completion-messages/<string:task_id>/stop")
-api.add_resource(ChatApi, "/chat-messages")
-api.add_resource(ChatStopApi, "/chat-messages/<string:task_id>/stop")

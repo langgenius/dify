@@ -29,6 +29,7 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
+@api.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
     @api.doc("Run Workflow")
     @api.doc(description="Execute a workflow with provided inputs and files.")
@@ -84,6 +85,7 @@ class WorkflowRunApi(WebApiResource):
             raise InternalServerError()
 
 
+@api.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(WebApiResource):
     @api.doc("Stop Workflow Task")
     @api.doc(description="Stop a running workflow task.")
@@ -113,7 +115,3 @@ class WorkflowTaskStopApi(WebApiResource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
         return {"result": "success"}
-
-
-api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")

@@ -11,6 +11,7 @@ from models.model import Site
 from services.feature_service import FeatureService
 
 
+@api.route("/site")
 class AppSiteApi(WebApiResource):
     """Resource for app sites."""
 
@@ -80,9 +81,6 @@ class AppSiteApi(WebApiResource):
         can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
 
         return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
-
-
-api.add_resource(AppSiteApi, "/site")
 
 
 class AppSiteInfo:
