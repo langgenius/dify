@@ -1,7 +1,8 @@
 import logging
 from argparse import ArgumentTypeError
-from typing import Literal, cast
 from collections.abc import Sequence
+from typing import Literal, cast
+
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, marshal, marshal_with, reqparse
