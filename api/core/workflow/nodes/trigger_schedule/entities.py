@@ -17,4 +17,3 @@ class TriggerScheduleNodeData(BaseNodeData):
     cron_expression: Optional[str] = Field(default=None, description="Cron expression for cron mode")
     visual_config: Optional[dict] = Field(default=None, description="Visual configuration details")
     timezone: str = Field(default="UTC", description="Timezone for schedule execution")
-    enabled: bool = Field(default=True, description="Whether the schedule is enabled")

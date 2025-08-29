@@ -40,31 +40,29 @@ class TriggerScheduleNode(BaseNode):
     @classmethod
     def version(cls) -> str:
         return "1"
+    
+    @classmethod
+    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+        return {
+            "type": "trigger-schedule",
+            "config": {
+                "mode": "visual",
+                "frequency": "weekly",
+                "visual_config": {
+                    "time": "11:30 AM",
+                    "on_minute": 0,
+                    "weekdays": ["sun"],
+                    "monthly_days": [1]
+                },
+                "timezone": "UTC"
+            }
+        }
 
     def _run(self) -> NodeRunResult:
-        node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
-
-        # Set system variables as node outputs
-        for var in system_inputs:
-            node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
-
-        # Add schedule-specific outputs
-        triggered_at = datetime.now(UTC)
-        node_inputs["triggered_at"] = triggered_at.isoformat()
-        node_inputs["timezone"] = self._node_data.timezone
-        node_inputs["mode"] = self._node_data.mode
-        node_inputs["enabled"] = self._node_data.enabled
-
-        # Add configuration details based on mode
-        if self._node_data.mode == "cron" and self._node_data.cron_expression:
-            node_inputs["cron_expression"] = self._node_data.cron_expression
-        elif self._node_data.mode == "visual":
-            node_inputs["frequency"] = self._node_data.frequency or "unknown"
-            if self._node_data.visual_config:
-                node_inputs["visual_config"] = self._node_data.visual_config
+        current_time = datetime.now(UTC)
+        node_outputs = {"current_time": current_time.isoformat()}
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs=node_inputs,
+            outputs=node_outputs,
         )
