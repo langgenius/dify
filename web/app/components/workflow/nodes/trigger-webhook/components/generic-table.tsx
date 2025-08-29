@@ -139,7 +139,7 @@ const GenericTable: FC<GenericTableProps> = ({
               // Ghost/inline style: looks like plain text until focus/hover
               'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
               'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
-              'system-sm-regular text-text-secondary placeholder:text-text-tertiary',
+              'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
             )}
           />
         )
@@ -272,7 +272,7 @@ const GenericTable: FC<GenericTableProps> = ({
       </div>
 
       {showPlaceholder ? (
-        <div className="py-8 text-center text-sm text-text-tertiary">
+        <div className="py-8 text-center text-sm text-text-quaternary">
           {placeholder}
         </div>
       ) : (
