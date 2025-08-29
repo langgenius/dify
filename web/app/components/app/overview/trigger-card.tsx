@@ -85,15 +85,12 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
               </div>
               <div className="group w-full">
                 <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
-                  {t('appOverview.overview.triggerInfo.title')}
+                  {triggerCount > 0
+                    ? t('appOverview.overview.triggerInfo.triggersAdded', { count: triggerCount })
+                    : t('appOverview.overview.triggerInfo.noTriggerAdded')
+                  }
                 </div>
               </div>
-            </div>
-            <div className="system-xs-medium text-text-tertiary">
-              {triggerCount > 0
-                ? t('appOverview.overview.triggerInfo.triggersAdded', { count: triggerCount })
-                : t('appOverview.overview.triggerInfo.noTriggerAdded')
-              }
             </div>
           </div>
         </div>
@@ -133,8 +130,7 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
 
         {triggerCount === 0 && (
           <div className="p-3">
-            <Divider className="mb-3" />
-            <div className="system-xs-regular leading-4 text-text-quaternary">
+            <div className="system-xs-regular leading-4 text-text-tertiary">
               {t('appOverview.overview.triggerInfo.triggerStatusDescription')}{' '}
               <Link
                 href="#"
