@@ -5,6 +5,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import Input from '@/app/components/base/input'
 import Checkbox from '@/app/components/base/checkbox'
 import { SimpleSelect } from '@/app/components/base/select'
+import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import cn from '@/utils/classnames'
 
 // Column configuration types for table components
@@ -60,7 +61,6 @@ const GenericTable: FC<GenericTableProps> = ({
   className,
   showHeader = false,
 }) => {
-  const DELETE_COL_PADDING_CLASS = 'pr-[56px]'
   const DELETE_COL_WIDTH_CLASS = 'w-[56px]'
 
   // Build the rows to display while keeping a stable mapping to original data
@@ -131,7 +131,12 @@ const GenericTable: FC<GenericTableProps> = ({
         return (
           <Input
             value={(value as string) || ''}
-            onChange={e => handleChange(e.target.value)}
+            onChange={(e) => {
+              // Format variable names (replace spaces with underscores)
+              if (column.key === 'key' || column.key === 'name')
+                replaceSpaceWithUnderscoreInVarNameInput(e.target)
+              handleChange(e.target.value)
+            }}
             placeholder={column.placeholder}
             disabled={readonly}
             wrapperClassName="w-full min-w-0"
@@ -158,20 +163,21 @@ const GenericTable: FC<GenericTableProps> = ({
               'h-6 rounded-none bg-transparent px-0 text-text-secondary',
               'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
             )}
-            optionWrapClassName="rounded-md"
+            optionWrapClassName="w-26 min-w-26 z-[5] -ml-3"
             notClearable
           />
         )
 
       case 'switch':
         return (
-          <Checkbox
-            id={`${column.key}-${String(dataIndex ?? 'v')}`}
-            checked={Boolean(value)}
-            onCheck={() => handleChange(!value)}
-            disabled={readonly}
-            className="!h-4 !w-4 shadow-none"
-          />
+          <div className="flex h-7 items-center">
+            <Checkbox
+              id={`${column.key}-${String(dataIndex ?? 'v')}`}
+              checked={Boolean(value)}
+              onCheck={() => handleChange(!value)}
+              disabled={readonly}
+            />
+          </div>
         )
 
       case 'custom':
@@ -184,24 +190,21 @@ const GenericTable: FC<GenericTableProps> = ({
 
   const renderTable = () => {
     return (
-      <div className="rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs">
+      <div className="rounded-lg border border-divider-regular">
         {showHeader && (
-          <div
-            className={cn(
-              'flex items-center gap-2 border-b border-divider-subtle px-3 py-2',
-              !readonly && DELETE_COL_PADDING_CLASS,
-            )}
-          >
-            {columns.map(column => (
+          <div className="system-xs-medium-uppercase flex h-7 items-center leading-7 text-text-tertiary">
+            {columns.map((column, index) => (
               <div
                 key={column.key}
                 className={cn(
-                  'text-xs uppercase text-text-tertiary',
-                  column.width && column.width.startsWith('w-') ? 'shrink-0' : 'min-w-0 flex-1 overflow-hidden',
+                  'h-full pl-3',
+                  column.width && column.width.startsWith('w-') ? 'shrink-0' : 'flex-1',
                   column.width,
+                  // Add right border except for last column
+                  index < columns.length - 1 && 'border-r border-divider-regular',
                 )}
               >
-                <span className="truncate">{column.title}</span>
+                {column.title}
               </div>
             ))}
           </div>
@@ -218,20 +221,17 @@ const GenericTable: FC<GenericTableProps> = ({
             return (
               <div
                 key={rowKey}
-                className={cn(
-                  'group relative flex items-center gap-2 px-3 py-1.5 hover:bg-components-panel-on-panel-item-bg-hover',
-                  !readonly && DELETE_COL_PADDING_CLASS,
-                )}
+                className="group flex border-t border-divider-regular"
+                style={{ minHeight: '28px' }}
               >
-                {columns.map(column => (
+                {columns.map((column, columnIndex) => (
                   <div
                     key={column.key}
                     className={cn(
-                      'relative',
-                      column.width && column.width.startsWith('w-') ? 'shrink-0' : 'min-w-0 flex-1',
+                      'shrink-0 pl-3',
                       column.width,
-                      // Avoid children overflow when content is long in flexible columns
-                      !(column.width && column.width.startsWith('w-')) && 'overflow-hidden',
+                      // Add right border except for last column
+                      columnIndex < columns.length - 1 && 'border-r border-divider-regular',
                     )}
                   >
                     {renderCell(column, row, dataIndex)}
@@ -272,7 +272,7 @@ const GenericTable: FC<GenericTableProps> = ({
       </div>
 
       {showPlaceholder ? (
-        <div className="py-8 text-center text-sm text-text-quaternary">
+        <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs font-normal leading-[18px] text-text-quaternary">
           {placeholder}
         </div>
       ) : (

@@ -71,7 +71,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`)}>
           <div className="space-y-1">
-            <div className="flex gap-1" style={{ width: '368px', height: '32px' }}>
+            <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
                 <SimpleSelect
                   items={HTTP_METHODS}

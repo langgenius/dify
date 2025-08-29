@@ -63,7 +63,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
         key: 'type',
         title: 'Type',
         type: (isRequestBody ? 'select' : 'input') as ColumnConfig['type'],
-        width: 'w-[96px]',
+        width: 'w-[78px]',
         placeholder: 'Type',
         options: isRequestBody ? typeOptions : undefined,
       }]
@@ -72,14 +72,14 @@ const ParameterTable: FC<ParameterTableProps> = ({
       key: 'required',
       title: 'Required',
       type: 'switch',
-      width: 'w-[48px]',
+      width: 'w-[88px]',
     },
   ]
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
     key: '',
-    type: '',
+    type: isRequestBody ? 'string' : '',
     required: false,
   }
 
