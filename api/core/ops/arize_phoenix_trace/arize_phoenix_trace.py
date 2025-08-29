@@ -1,3 +1,4 @@
+from sqlalchemy import select
 import hashlib
 import json
 import logging
@@ -5,6 +6,8 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Optional, Union, cast
 from urllib.parse import urlparse
+
+from sqlalchemy import select
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry import trace

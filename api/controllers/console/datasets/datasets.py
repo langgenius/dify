@@ -1,3 +1,4 @@
+from sqlalchemy import select
 import flask_restx
 from flask import request
 from flask_login import current_user

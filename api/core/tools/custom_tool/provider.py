@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from pydantic import Field
 
 from core.entities.provider_entities import ProviderConfig

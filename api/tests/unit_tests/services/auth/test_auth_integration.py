@@ -1,3 +1,4 @@
+from sqlalchemy import select
 """
 API Key Authentication System Integration Tests
 """
