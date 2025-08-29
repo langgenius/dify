@@ -1016,6 +1016,7 @@ const translation = {
       noQueryParameters: 'No query parameters configured',
       noHeaders: 'No headers configured',
       noBodyParameters: 'No body parameters configured',
+      debugUrlTitle: 'For test runs, always use this URL',
       errorHandling: 'Error Handling',
       errorStrategy: 'Error Handling',
       responseConfiguration: 'Response Configuration',

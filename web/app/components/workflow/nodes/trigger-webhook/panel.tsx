@@ -97,13 +97,16 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               </div>
             </div>
             {inputs.webhook_debug_url && (
-              <div className="mt-2 rounded-lg bg-components-panel-bg-alt p-2">
-                <label className="mb-1 block text-xs font-medium text-text-tertiary">
-                  Debug URL
-                </label>
-                <code className="block break-all font-mono text-xs text-text-secondary">
-                  {inputs.webhook_debug_url}
-                </code>
+              <div className="flex gap-1.5 px-1 py-1.5" style={{ width: '368px', height: '38px' }}>
+                <div className="w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
+                <div className="flex-1" style={{ width: '352px', height: '32px' }}>
+                  <div className="text-xs leading-4 text-text-tertiary">
+                    {t(`${i18nPrefix}.debugUrlTitle`)}
+                  </div>
+                  <div className="truncate text-xs leading-4 text-text-secondary">
+                    {inputs.webhook_debug_url}
+                  </div>
+                </div>
               </div>
             )}
           </div>
