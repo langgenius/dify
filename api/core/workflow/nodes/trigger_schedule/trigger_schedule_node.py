@@ -39,7 +39,7 @@ class TriggerScheduleNode(BaseNode):
     @classmethod
     def version(cls) -> str:
         return "1"
-    
+
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
         return {
@@ -47,14 +47,9 @@ class TriggerScheduleNode(BaseNode):
             "config": {
                 "mode": "visual",
                 "frequency": "weekly",
-                "visual_config": {
-                    "time": "11:30 AM",
-                    "on_minute": 0,
-                    "weekdays": ["sun"],
-                    "monthly_days": [1]
-                },
-                "timezone": "UTC"
-            }
+                "visual_config": {"time": "11:30 AM", "on_minute": 0, "weekdays": ["sun"], "monthly_days": [1]},
+                "timezone": "UTC",
+            },
         }
 
     def _run(self) -> NodeRunResult:
