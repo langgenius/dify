@@ -94,6 +94,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             </div>
           </div>
         </Field>
+        <span>{inputs.webhook_debug_url || ''}</span>
 
         <Split />
 

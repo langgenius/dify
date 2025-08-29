@@ -19,6 +19,7 @@ export type WebhookHeader = {
 
 export type WebhookTriggerNodeType = CommonNodeType & {
   'webhook_url'?: string
+  'webhook_debug_url'?: string
   'method': HttpMethod
   'content-type': string
   'headers': WebhookHeader[]
