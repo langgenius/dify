@@ -1,5 +1,5 @@
 from flask_login import current_user
-from flask_restx import Resource
+from flask_restx import Resource, fields
 
 from libs.login import login_required
 from services.feature_service import FeatureService
@@ -15,7 +15,7 @@ class FeatureApi(Resource):
     @api.response(
         200,
         "Success",
-        api.model("FeatureResponse", {"features": api.fields.Raw(description="Feature configuration object")}),
+        api.model("FeatureResponse", {"features": fields.Raw(description="Feature configuration object")}),
     )
     @setup_required
     @login_required
@@ -34,7 +34,7 @@ class SystemFeatureApi(Resource):
         200,
         "Success",
         api.model(
-            "SystemFeatureResponse", {"features": api.fields.Raw(description="System feature configuration object")}
+            "SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}
         ),
     )
     def get(self):

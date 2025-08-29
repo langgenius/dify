@@ -2,7 +2,7 @@ import json
 import logging
 
 import requests
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from packaging import version
 
 from configs import dify_config
@@ -27,11 +27,11 @@ class VersionApi(Resource):
         api.model(
             "VersionResponse",
             {
-                "version": api.fields.String(description="Latest version number"),
-                "release_date": api.fields.String(description="Release date of latest version"),
-                "release_notes": api.fields.String(description="Release notes for latest version"),
-                "can_auto_update": api.fields.Boolean(description="Whether auto-update is supported"),
-                "features": api.fields.Raw(description="Feature flags and capabilities"),
+                "version": fields.String(description="Latest version number"),
+                "release_date": fields.String(description="Release date of latest version"),
+                "release_notes": fields.String(description="Release notes for latest version"),
+                "can_auto_update": fields.Boolean(description="Whether auto-update is supported"),
+                "features": fields.Raw(description="Feature flags and capabilities"),
             },
         ),
     )

@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from flask_restx import Resource, fields
 
 from . import api, console_ns
 
@@ -10,7 +10,7 @@ class PingApi(Resource):
     @api.response(
         200,
         "Success",
-        api.model("PingResponse", {"result": api.fields.String(description="Health check result", example="pong")}),
+        api.model("PingResponse", {"result": fields.String(description="Health check result", example="pong")}),
     )
     def get(self):
         """Health check endpoint for connection testing"""

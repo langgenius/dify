@@ -1,5 +1,5 @@
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 
 from configs import dify_config
 from libs.helper import StrLen, email, extract_remote_ip
@@ -23,8 +23,8 @@ class SetupApi(Resource):
         api.model(
             "SetupStatusResponse",
             {
-                "step": api.fields.String(description="Setup step status", enum=["not_started", "finished"]),
-                "setup_at": api.fields.String(description="Setup completion time (ISO format)", required=False),
+                "step": fields.String(description="Setup step status", enum=["not_started", "finished"]),
+                "setup_at": fields.String(description="Setup completion time (ISO format)", required=False),
             },
         ),
     )
@@ -46,13 +46,13 @@ class SetupApi(Resource):
         api.model(
             "SetupRequest",
             {
-                "email": api.fields.String(required=True, description="Admin email address"),
-                "name": api.fields.String(required=True, description="Admin name (max 30 characters)"),
-                "password": api.fields.String(required=True, description="Admin password"),
+                "email": fields.String(required=True, description="Admin email address"),
+                "name": fields.String(required=True, description="Admin name (max 30 characters)"),
+                "password": fields.String(required=True, description="Admin password"),
             },
         )
     )
-    @api.response(201, "Success", api.model("SetupResponse", {"result": api.fields.String(description="Setup result")}))
+    @api.response(201, "Success", api.model("SetupResponse", {"result": fields.String(description="Setup result")}))
     @api.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
     def post(self):

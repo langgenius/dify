@@ -1,7 +1,7 @@
 import os
 
 from flask import session
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,7 +25,7 @@ class InitValidateAPI(Resource):
         "Success",
         model=api.model(
             "InitStatusResponse",
-            {"status": api.fields.String(description="Initialization status", enum=["finished", "not_started"])},
+            {"status": fields.String(description="Initialization status", enum=["finished", "not_started"])},
         ),
     )
     def get(self):
@@ -40,13 +40,13 @@ class InitValidateAPI(Resource):
     @api.expect(
         api.model(
             "InitValidateRequest",
-            {"password": api.fields.String(required=True, description="Initialization password", max_length=30)},
+            {"password": fields.String(required=True, description="Initialization password", max_length=30)},
         )
     )
     @api.response(
         201,
         "Success",
-        model=api.model("InitValidateResponse", {"result": api.fields.String(description="Operation result")}),
+        model=api.model("InitValidateResponse", {"result": fields.String(description="Operation result")}),
     )
     @api.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
