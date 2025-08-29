@@ -31,6 +31,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
@@ -425,6 +426,9 @@ class WorkflowService:
         if workflow_node_execution is None:
             raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
+        with Session(db.engine) as session:
+            outputs = workflow_node_execution.load_full_outputs(session, storage)
+
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
                 session=session,
@@ -435,7 +439,7 @@ class WorkflowService:
                 node_execution_id=node_execution.id,
                 user=account,
             )
-            draft_var_saver.save(process_data=node_execution.process_data, outputs=node_execution.outputs)
+            draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
             session.commit()
 
         return workflow_node_execution

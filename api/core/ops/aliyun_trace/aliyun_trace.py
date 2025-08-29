@@ -283,7 +283,7 @@ class AliyunDataTrace(BaseTraceInstance):
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
             user=service_account,
-            app_id=trace_info.metadata.get("app_id"),
+            app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
         # Get all executions for this workflow run

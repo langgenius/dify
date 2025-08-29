@@ -11,7 +11,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from core.workflow.nodes.enums import NodeType
 
@@ -90,6 +90,7 @@ class WorkflowNodeExecution(BaseModel):
     title: str  # Display title of the node
 
     # Execution data
+    # The `inputs` and `outputs` fields hold the full content
     inputs: Optional[Mapping[str, Any]] = None  # Input variables used by this node
     process_data: Optional[Mapping[str, Any]] = None  # Intermediate processing data
     outputs: Optional[Mapping[str, Any]] = None  # Output variables produced by this node
@@ -105,6 +106,58 @@ class WorkflowNodeExecution(BaseModel):
     # Timing information
     created_at: datetime  # When execution started
     finished_at: Optional[datetime] = None  # When execution completed
+
+    _truncated_inputs: Mapping[str, Any] | None = PrivateAttr(None)
+    _truncated_outputs: Mapping[str, Any] | None = PrivateAttr(None)
+    _truncated_process_data: Mapping[str, Any] | None = PrivateAttr(None)
+
+    def get_truncated_inputs(self) -> Mapping[str, Any] | None:
+        return self._truncated_inputs
+
+    def get_truncated_outputs(self) -> Mapping[str, Any] | None:
+        return self._truncated_outputs
+
+    def get_truncated_process_data(self) -> Mapping[str, Any] | None:
+        return self._truncated_process_data
+
+    def set_truncated_inputs(self, truncated_inputs: Mapping[str, Any] | None):
+        self._truncated_inputs = truncated_inputs
+
+    def set_truncated_outputs(self, truncated_outputs: Mapping[str, Any] | None):
+        self._truncated_outputs = truncated_outputs
+
+    def set_truncated_process_data(self, truncated_process_data: Mapping[str, Any] | None):
+        self._truncated_process_data = truncated_process_data
+
+    def get_response_inputs(self) -> Mapping[str, Any] | None:
+        inputs = self.get_truncated_inputs()
+        if inputs:
+            return inputs
+        return self.inputs
+
+    @property
+    def inputs_truncated(self):
+        return self._truncated_inputs is not None
+
+    @property
+    def outputs_truncated(self):
+        return self._truncated_outputs is not None
+
+    @property
+    def process_data_truncated(self):
+        return self._truncated_process_data is not None
+
+    def get_response_outputs(self) -> Mapping[str, Any] | None:
+        outputs = self.get_truncated_outputs()
+        if outputs is not None:
+            return outputs
+        return self.outputs
+
+    def get_response_process_data(self) -> Mapping[str, Any] | None:
+        process_data = self.get_truncated_process_data()
+        if process_data is not None:
+            return process_data
+        return self.process_data
 
     def update_from_mapping(
         self,

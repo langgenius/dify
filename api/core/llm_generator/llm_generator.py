@@ -29,6 +29,7 @@ from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_engine.entities.event import AgentLogEvent
+from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel, db
 
 logger = logging.getLogger(__name__)
@@ -443,7 +444,9 @@ class LLMGenerator:
     ) -> dict:
         from services.workflow_service import WorkflowService
 
-        app: App | None = db.session.query(App).where(App.id == flow_id).first()
+        session = db.session()
+
+        app: App | None = session.query(App).where(App.id == flow_id).first()
         if not app:
             raise ValueError("App not found.")
         workflow = WorkflowService().get_draft_workflow(app_model=app)
@@ -487,8 +490,9 @@ class LLMGenerator:
 
             return [dict_of_event(event) for event in parsed]
 
+        inputs = last_run.load_full_inputs(session, storage)
         last_run_dict = {
-            "inputs": last_run.inputs_dict,
+            "inputs": inputs,
             "status": last_run.status,
             "error": last_run.error,
             "agent_log": agent_log_of(last_run),
