@@ -57,9 +57,9 @@ class AnswerStreamGenerateRoute(BaseModel):
     AnswerStreamGenerateRoute entity
     """
 
-    answer_dependencies: dict[str, list[str]] = Field(
-        ..., description="answer dependencies (answer node id -> dependent answer node ids)"
-    )
     answer_generate_route: dict[str, list[GenerateRouteChunk]] = Field(
         ..., description="answer generate route (answer node id -> generate route chunks)"
+    )
+    answer_dependencies: dict[str, list[str]] = Field(
+        default_factory=dict, description="answer dependencies (answer node id -> dependent answer node ids)"
     )
