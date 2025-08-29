@@ -4,7 +4,7 @@ from flask_restx import fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
@@ -38,7 +38,7 @@ from services.message_service import MessageService
 logger = logging.getLogger(__name__)
 
 
-@api.route("/messages")
+@web_ns.route("/messages")
 class MessageListApi(WebApiResource):
     message_fields = {
         "id": fields.String,
@@ -63,9 +63,9 @@ class MessageListApi(WebApiResource):
         "data": fields.List(fields.Nested(message_fields)),
     }
 
-    @api.doc("Get Message List")
-    @api.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
-    @api.doc(
+    @web_ns.doc("Get Message List")
+    @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
+    @web_ns.doc(
         params={
             "conversation_id": {"description": "Conversation UUID", "type": "string", "required": True},
             "first_id": {"description": "First message ID for pagination", "type": "string", "required": False},
@@ -77,7 +77,7 @@ class MessageListApi(WebApiResource):
             },
         }
     )
-    @api.doc(
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request",
@@ -109,16 +109,16 @@ class MessageListApi(WebApiResource):
             raise NotFound("First Message Not Exists.")
 
 
-@api.route("/messages/<uuid:message_id>/feedbacks")
+@web_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(WebApiResource):
     feedback_response_fields = {
         "result": fields.String,
     }
 
-    @api.doc("Create Message Feedback")
-    @api.doc(description="Submit feedback (like/dislike) for a specific message.")
-    @api.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
-    @api.doc(
+    @web_ns.doc("Create Message Feedback")
+    @web_ns.doc(description="Submit feedback (like/dislike) for a specific message.")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
         params={
             "rating": {
                 "description": "Feedback rating",
@@ -129,7 +129,7 @@ class MessageFeedbackApi(WebApiResource):
             "content": {"description": "Feedback content/comment", "type": "string", "required": False},
         }
     )
-    @api.doc(
+    @web_ns.doc(
         responses={
             200: "Feedback submitted successfully",
             400: "Bad Request",
@@ -162,11 +162,11 @@ class MessageFeedbackApi(WebApiResource):
         return {"result": "success"}
 
 
-@api.route("/messages/<uuid:message_id>/more-like-this")
+@web_ns.route("/messages/<uuid:message_id>/more-like-this")
 class MessageMoreLikeThisApi(WebApiResource):
-    @api.doc("Generate More Like This")
-    @api.doc(description="Generate a new completion similar to an existing message (completion apps only).")
-    @api.doc(
+    @web_ns.doc("Generate More Like This")
+    @web_ns.doc(description="Generate a new completion similar to an existing message (completion apps only).")
+    @web_ns.doc(
         params={
             "message_id": {"description": "Message UUID", "type": "string", "required": True},
             "response_mode": {
@@ -177,7 +177,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             },
         }
     )
-    @api.doc(
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request - Not a completion app or feature disabled",
@@ -230,16 +230,16 @@ class MessageMoreLikeThisApi(WebApiResource):
             raise InternalServerError()
 
 
-@api.route("/messages/<uuid:message_id>/suggested-questions")
+@web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
     suggested_questions_response_fields = {
         "data": fields.List(fields.String),
     }
 
-    @api.doc("Get Suggested Questions")
-    @api.doc(description="Get suggested follow-up questions after a message (chat apps only).")
-    @api.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
-    @api.doc(
+    @web_ns.doc("Get Suggested Questions")
+    @web_ns.doc(description="Get suggested follow-up questions after a message (chat apps only).")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request - Not a chat app or feature disabled",

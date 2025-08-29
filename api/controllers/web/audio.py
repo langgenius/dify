@@ -5,7 +5,7 @@ from flask_restx import fields, marshal_with, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -32,16 +32,16 @@ from services.errors.audio import (
 logger = logging.getLogger(__name__)
 
 
-@api.route("/audio-to-text")
+@web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
     audio_to_text_response_fields = {
         "text": fields.String,
     }
 
     @marshal_with(audio_to_text_response_fields)
-    @api.doc("Audio to Text")
-    @api.doc(description="Convert audio file to text using speech-to-text service.")
-    @api.doc(
+    @web_ns.doc("Audio to Text")
+    @web_ns.doc(description="Convert audio file to text using speech-to-text service.")
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request",
@@ -86,7 +86,7 @@ class AudioApi(WebApiResource):
             raise InternalServerError()
 
 
-@api.route("/text-to-audio")
+@web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
     text_to_audio_response_fields = {
         "audio_url": fields.String,
@@ -94,9 +94,9 @@ class TextApi(WebApiResource):
     }
 
     @marshal_with(text_to_audio_response_fields)
-    @api.doc("Text to Audio")
-    @api.doc(description="Convert text to audio using text-to-speech service.")
-    @api.doc(
+    @web_ns.doc("Text to Audio")
+    @web_ns.doc(description="Convert text to audio using text-to-speech service.")
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request",

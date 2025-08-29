@@ -2,7 +2,7 @@ from flask_restx import fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import NotFound
 
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from fields.conversation_fields import message_file_fields
@@ -23,7 +23,7 @@ message_fields = {
 }
 
 
-@api.route("/saved-messages")
+@web_ns.route("/saved-messages")
 class SavedMessageListApi(WebApiResource):
     saved_message_infinite_scroll_pagination_fields = {
         "limit": fields.Integer,
@@ -35,9 +35,9 @@ class SavedMessageListApi(WebApiResource):
         "result": fields.String,
     }
 
-    @api.doc("Get Saved Messages")
-    @api.doc(description="Retrieve paginated list of saved messages for a completion application.")
-    @api.doc(
+    @web_ns.doc("Get Saved Messages")
+    @web_ns.doc(description="Retrieve paginated list of saved messages for a completion application.")
+    @web_ns.doc(
         params={
             "last_id": {"description": "Last message ID for pagination", "type": "string", "required": False},
             "limit": {
@@ -48,7 +48,7 @@ class SavedMessageListApi(WebApiResource):
             },
         }
     )
-    @api.doc(
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request - Not a completion app",
@@ -70,14 +70,14 @@ class SavedMessageListApi(WebApiResource):
 
         return SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
 
-    @api.doc("Save Message")
-    @api.doc(description="Save a specific message for later reference.")
-    @api.doc(
+    @web_ns.doc("Save Message")
+    @web_ns.doc(description="Save a specific message for later reference.")
+    @web_ns.doc(
         params={
             "message_id": {"description": "Message UUID to save", "type": "string", "required": True},
         }
     )
-    @api.doc(
+    @web_ns.doc(
         responses={
             200: "Message saved successfully",
             400: "Bad Request - Not a completion app",
@@ -104,16 +104,16 @@ class SavedMessageListApi(WebApiResource):
         return {"result": "success"}
 
 
-@api.route("/saved-messages/<uuid:message_id>")
+@web_ns.route("/saved-messages/<uuid:message_id>")
 class SavedMessageApi(WebApiResource):
     delete_response_fields = {
         "result": fields.String,
     }
 
-    @api.doc("Delete Saved Message")
-    @api.doc(description="Remove a message from saved messages.")
-    @api.doc(params={"message_id": {"description": "Message UUID to delete", "type": "string", "required": True}})
-    @api.doc(
+    @web_ns.doc("Delete Saved Message")
+    @web_ns.doc(description="Remove a message from saved messages.")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID to delete", "type": "string", "required": True}})
+    @web_ns.doc(
         responses={
             204: "Message removed successfully",
             400: "Bad Request - Not a completion app",
