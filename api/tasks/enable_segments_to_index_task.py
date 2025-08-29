@@ -45,11 +45,13 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
     # sync index processor
     index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
 
-    segments = (
-        db.session.scalars(select(DocumentSegment).where(DocumentSegment.id.in_(segment_ids),
-        DocumentSegment.dataset_id == dataset_id,
-        DocumentSegment.document_id == document_id,)).all()
-    )
+    segments = db.session.scalars(
+        select(DocumentSegment).where(
+            DocumentSegment.id.in_(segment_ids),
+            DocumentSegment.dataset_id == dataset_id,
+            DocumentSegment.document_id == document_id,
+        )
+    ).all()
     if not segments:
         logger.info(click.style(f"Segments not found: {segment_ids}", fg="cyan"))
         db.session.close()

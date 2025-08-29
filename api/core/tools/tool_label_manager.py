@@ -55,10 +55,12 @@ class ToolLabelManager:
         else:
             raise ValueError("Unsupported tool type")
 
-        labels = (
-            db.session.scalars(select(ToolLabelBinding.label_name).where(ToolLabelBinding.tool_id == provider_id,
-            ToolLabelBinding.tool_type == controller.provider_type.value,)).all()
-        )
+        labels = db.session.scalars(
+            select(ToolLabelBinding.label_name).where(
+                ToolLabelBinding.tool_id == provider_id,
+                ToolLabelBinding.tool_type == controller.provider_type.value,
+            )
+        ).all()
 
         return [label.label_name for label in labels]
 
@@ -85,9 +87,9 @@ class ToolLabelManager:
             assert isinstance(controller, ApiToolProviderController | WorkflowToolProviderController)
             provider_ids.append(controller.provider_id)
 
-        labels: list[ToolLabelBinding] = (
-            db.session.scalars(select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))).all()
-        )
+        labels: list[ToolLabelBinding] = db.session.scalars(
+            select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))
+        ).all()
 
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 

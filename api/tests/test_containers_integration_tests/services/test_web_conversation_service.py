@@ -354,12 +354,14 @@ class TestWebConversationService:
         # Verify only one pinned conversation record exists
         from extensions.ext_database import db
 
-        pinned_conversations = (
-            db.session.scalars(select(PinnedConversation).where(PinnedConversation.app_id == app.id,
-            PinnedConversation.conversation_id == conversation.id,
-            PinnedConversation.created_by_role == "account",
-            PinnedConversation.created_by == account.id,)).all()
-        )
+        pinned_conversations = db.session.scalars(
+            select(PinnedConversation).where(
+                PinnedConversation.app_id == app.id,
+                PinnedConversation.conversation_id == conversation.id,
+                PinnedConversation.created_by_role == "account",
+                PinnedConversation.created_by == account.id,
+            )
+        ).all()
 
         assert len(pinned_conversations) == 1
 

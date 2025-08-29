@@ -208,7 +208,9 @@ class Dataset(Base):
 
     @property
     def doc_metadata(self):
-        dataset_metadatas = db.session.scalars(select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)).all()
+        dataset_metadatas = db.session.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)
+        ).all()
 
         doc_metadata = [
             {
@@ -1047,9 +1049,9 @@ class ExternalKnowledgeApis(Base):
 
     @property
     def dataset_bindings(self):
-        external_knowledge_bindings = (
-            db.session.scalars(select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)).all()
-        )
+        external_knowledge_bindings = db.session.scalars(
+            select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
+        ).all()
         dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
         datasets = db.session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
         dataset_bindings = []

@@ -954,7 +954,9 @@ class TestTagService:
         from extensions.ext_database import db
 
         # Verify only one binding exists
-        bindings = db.session.scalars(select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)).all()
+        bindings = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)
+        ).all()
         assert len(bindings) == 1
 
     def test_save_tag_binding_invalid_target_type(self, db_session_with_containers, mock_external_service_dependencies):
@@ -1064,7 +1066,9 @@ class TestTagService:
         # No error should be raised, and database state should remain unchanged
         from extensions.ext_database import db
 
-        bindings = db.session.scalars(select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)).all()
+        bindings = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)
+        ).all()
         assert len(bindings) == 0
 
     def test_check_target_exists_knowledge_success(

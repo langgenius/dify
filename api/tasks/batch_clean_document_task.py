@@ -34,7 +34,9 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         if not dataset:
             raise Exception("Document has no dataset")
 
-        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))).all()
+        segments = db.session.scalars(
+            select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
+        ).all()
         # check segment is exist
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]

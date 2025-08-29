@@ -31,9 +31,9 @@ def mail_clean_document_notify_task():
 
     # send document clean notify mail
     try:
-        dataset_auto_disable_logs = (
-            db.session.scalars(select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.notified == False)).all()
-        )
+        dataset_auto_disable_logs = db.session.scalars(
+            select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.notified == False)
+        ).all()
         # group by tenant_id
         dataset_auto_disable_logs_map: dict[str, list[DatasetAutoDisableLog]] = defaultdict(list)
         for dataset_auto_disable_log in dataset_auto_disable_logs:

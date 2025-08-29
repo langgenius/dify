@@ -307,12 +307,14 @@ class ModelLoadBalancingService:
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
 
-        current_load_balancing_configs = (
-            db.session.scalars(select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id,
-            LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-            LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
-            LoadBalancingModelConfig.model_name == model,)).all()
-        )
+        current_load_balancing_configs = db.session.scalars(
+            select(LoadBalancingModelConfig).where(
+                LoadBalancingModelConfig.tenant_id == tenant_id,
+                LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
+                LoadBalancingModelConfig.model_name == model,
+            )
+        ).all()
 
         # id as key, config as value
         current_load_balancing_configs_dict = {config.id: config for config in current_load_balancing_configs}

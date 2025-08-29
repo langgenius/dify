@@ -36,12 +36,14 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
         if action == "remove":
             index_processor.clean(dataset, None, with_keywords=False)
         elif action == "add":
-            dataset_documents = (
-                db.session.scalars(select(DatasetDocument).where(DatasetDocument.dataset_id == dataset_id,
-                DatasetDocument.indexing_status == "completed",
-                DatasetDocument.enabled == True,
-                DatasetDocument.archived == False,)).all()
-            )
+            dataset_documents = db.session.scalars(
+                select(DatasetDocument).where(
+                    DatasetDocument.dataset_id == dataset_id,
+                    DatasetDocument.indexing_status == "completed",
+                    DatasetDocument.enabled == True,
+                    DatasetDocument.archived == False,
+                )
+            ).all()
 
             if dataset_documents:
                 dataset_documents_ids = [doc.id for doc in dataset_documents]
@@ -85,12 +87,14 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                         )
                         db.session.commit()
         elif action == "update":
-            dataset_documents = (
-                db.session.scalars(select(DatasetDocument).where(DatasetDocument.dataset_id == dataset_id,
-                DatasetDocument.indexing_status == "completed",
-                DatasetDocument.enabled == True,
-                DatasetDocument.archived == False,)).all()
-            )
+            dataset_documents = db.session.scalars(
+                select(DatasetDocument).where(
+                    DatasetDocument.dataset_id == dataset_id,
+                    DatasetDocument.indexing_status == "completed",
+                    DatasetDocument.enabled == True,
+                    DatasetDocument.archived == False,
+                )
+            ).all()
             # add new index
             if dataset_documents:
                 # update document status

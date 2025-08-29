@@ -724,10 +724,12 @@ class DatasetService:
             }
         # get recent 30 days auto disable logs
         start_date = datetime.datetime.now() - datetime.timedelta(days=30)
-        dataset_auto_disable_logs = (
-            db.session.scalars(select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.dataset_id == dataset_id,
-            DatasetAutoDisableLog.created_at >= start_date,)).all()
-        )
+        dataset_auto_disable_logs = db.session.scalars(
+            select(DatasetAutoDisableLog).where(
+                DatasetAutoDisableLog.dataset_id == dataset_id,
+                DatasetAutoDisableLog.created_at >= start_date,
+            )
+        ).all()
         if dataset_auto_disable_logs:
             return {
                 "document_ids": [log.document_id for log in dataset_auto_disable_logs],
@@ -865,48 +867,56 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_ids(document_ids: list[str]) -> list[Document]:
-        documents = (
-            db.session.scalars(select(Document).where(Document.id.in_(document_ids),
-            Document.enabled == True,
-            Document.indexing_status == "completed",
-            Document.archived == False,)).all()
-        )
+        documents = db.session.scalars(
+            select(Document).where(
+                Document.id.in_(document_ids),
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+        ).all()
         return documents
 
     @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = (
-            db.session.scalars(select(Document).where(Document.dataset_id == dataset_id,
-            Document.enabled == True,)).all()
-        )
+        documents = db.session.scalars(
+            select(Document).where(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+            )
+        ).all()
 
         return documents
 
     @staticmethod
     def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = (
-            db.session.scalars(select(Document).where(Document.dataset_id == dataset_id,
-            Document.enabled == True,
-            Document.indexing_status == "completed",
-            Document.archived == False,)).all()
-        )
+        documents = db.session.scalars(
+            select(Document).where(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+        ).all()
 
         return documents
 
     @staticmethod
     def get_error_documents_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = (
-            db.session.scalars(select(Document).where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))).all()
-        )
+        documents = db.session.scalars(
+            select(Document).where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
+        ).all()
         return documents
 
     @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:
-        documents = (
-            db.session.scalars(select(Document).where(Document.batch == batch,
-            Document.dataset_id == dataset_id,
-            Document.tenant_id == current_user.current_tenant_id,)).all()
-        )
+        documents = db.session.scalars(
+            select(Document).where(
+                Document.batch == batch,
+                Document.dataset_id == dataset_id,
+                Document.tenant_id == current_user.current_tenant_id,
+            )
+        ).all()
 
         return documents
 
@@ -2354,12 +2364,14 @@ class SegmentService:
         if not segment_ids or len(segment_ids) == 0:
             return
         if action == "enable":
-            segments = (
-                db.session.scalars(select(DocumentSegment).where(DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.enabled == False,)).all()
-            )
+            segments = db.session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == document.id,
+                    DocumentSegment.enabled == False,
+                )
+            ).all()
             if not segments:
                 return
             real_deal_segment_ids = []
@@ -2377,12 +2389,14 @@ class SegmentService:
 
             enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         elif action == "disable":
-            segments = (
-                db.session.scalars(select(DocumentSegment).where(DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.enabled == True,)).all()
-            )
+            segments = db.session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == document.id,
+                    DocumentSegment.enabled == True,
+                )
+            ).all()
             if not segments:
                 return
             real_deal_segment_ids = []
@@ -2451,11 +2465,13 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
     ) -> list[ChildChunk]:
-        child_chunks = (
-            db.session.scalars(select(ChildChunk).where(ChildChunk.dataset_id == dataset.id,
-            ChildChunk.document_id == document.id,
-            ChildChunk.segment_id == segment.id,)).all()
-        )
+        child_chunks = db.session.scalars(
+            select(ChildChunk).where(
+                ChildChunk.dataset_id == dataset.id,
+                ChildChunk.document_id == document.id,
+                ChildChunk.segment_id == segment.id,
+            )
+        ).all()
         child_chunks_map = {chunk.id: chunk for chunk in child_chunks}
 
         new_child_chunks, update_child_chunks, delete_child_chunks, new_child_chunks_args = [], [], [], []
@@ -2711,9 +2727,11 @@ class DatasetCollectionBindingService:
 class DatasetPermissionService:
     @classmethod
     def get_dataset_partial_member_list(cls, dataset_id):
-        user_list_query = (
-            db.session.scalars(select(DatasetPermission.account_id,).where(DatasetPermission.dataset_id == dataset_id)).all()
-        )
+        user_list_query = db.session.scalars(
+            select(
+                DatasetPermission.account_id,
+            ).where(DatasetPermission.dataset_id == dataset_id)
+        ).all()
 
         user_list = []
         for user in user_list_query:

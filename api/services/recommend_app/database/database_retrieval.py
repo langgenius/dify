@@ -31,14 +31,14 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         :param language: language
         :return:
         """
-        recommended_apps = (
-            db.session.scalars(select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == language)).all()
-        )
+        recommended_apps = db.session.scalars(
+            select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == language)
+        ).all()
 
         if len(recommended_apps) == 0:
-            recommended_apps = (
-                db.session.scalars(select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])).all()
-            )
+            recommended_apps = db.session.scalars(
+                select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])
+            ).all()
 
         categories = set()
         recommended_apps_result = []

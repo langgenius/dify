@@ -69,7 +69,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 # clean old data
                 index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-                segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                ).all()
                 if segments:
                     index_node_ids = [segment.index_node_id for segment in segments]
                     # delete from vector index

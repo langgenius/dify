@@ -186,7 +186,9 @@ class WorkflowToolManageService:
         :param tenant_id: the tenant id
         :return: the list of tools
         """
-        db_tools = db.session.scalars(select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)).all()
+        db_tools = db.session.scalars(
+            select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
+        ).all()
 
         tools: list[WorkflowToolProviderController] = []
         for provider in db_tools:

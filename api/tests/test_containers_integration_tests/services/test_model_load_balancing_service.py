@@ -468,7 +468,7 @@ class TestModelLoadBalancingService:
         assert load_balancing_config.id is not None
 
         # Verify inherit config was created in database
-        inherit_configs = (
-            db.session.scalars(select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__")).all()
-        )
+        inherit_configs = db.session.scalars(
+            select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__")
+        ).all()
         assert len(inherit_configs) == 1

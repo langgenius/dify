@@ -410,9 +410,11 @@ class DatasetIndexingEstimateApi(Resource):
         extract_settings = []
         if args["info_list"]["data_source_type"] == "upload_file":
             file_ids = args["info_list"]["file_info_list"]["file_ids"]
-            file_details = (
-                db.session.scalars(select(UploadFile).where(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids))).all()
-            )
+            file_details = db.session.scalars(
+                select(UploadFile).where(
+                    UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids)
+                )
+            ).all()
 
             if file_details is None:
                 raise NotFound("File not found.")
@@ -513,9 +515,11 @@ class DatasetIndexingStatusApi(Resource):
     @account_initialization_required
     def get(self, dataset_id):
         dataset_id = str(dataset_id)
-        documents = (
-            db.session.scalars(select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == current_user.current_tenant_id)).all()
-        )
+        documents = db.session.scalars(
+            select(Document).where(
+                Document.dataset_id == dataset_id, Document.tenant_id == current_user.current_tenant_id
+            )
+        ).all()
         documents_status = []
         for document in documents:
             completed_segments = (
@@ -562,9 +566,11 @@ class DatasetApiKeyApi(Resource):
     @account_initialization_required
     @marshal_with(api_key_list)
     def get(self):
-        keys = (
-            db.session.scalars(select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)).all()
-        )
+        keys = db.session.scalars(
+            select(ApiToken).where(
+                ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id
+            )
+        ).all()
         return {"items": keys}
 
     @setup_required

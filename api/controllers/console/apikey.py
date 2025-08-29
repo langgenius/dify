@@ -59,9 +59,11 @@ class BaseApiKeyListResource(Resource):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        keys = (
-            db.session.scalars(select(ApiToken).where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)).all()
-        )
+        keys = db.session.scalars(
+            select(ApiToken).where(
+                ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
+            )
+        ).all()
         return {"items": keys}
 
     @marshal_with(api_key_fields)

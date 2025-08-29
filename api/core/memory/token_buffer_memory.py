@@ -127,10 +127,12 @@ class TokenBufferMemory:
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             # Process user message with files
-            user_files = (
-                db.session.scalars(select(MessageFile).where(MessageFile.message_id == message.id,
-                (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),)).all()
-            )
+            user_files = db.session.scalars(
+                select(MessageFile).where(
+                    MessageFile.message_id == message.id,
+                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
+                )
+            ).all()
 
             if user_files:
                 user_prompt_message = self._build_prompt_message_with_files(
@@ -145,9 +147,9 @@ class TokenBufferMemory:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 
             # Process assistant message with files
-            assistant_files = (
-                db.session.scalars(select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")).all()
-            )
+            assistant_files = db.session.scalars(
+                select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
+            ).all()
 
             if assistant_files:
                 assistant_prompt_message = self._build_prompt_message_with_files(

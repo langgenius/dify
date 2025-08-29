@@ -514,7 +514,9 @@ class KnowledgeRetrievalNode(BaseNode):
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
     ) -> list[dict[str, Any]]:
         # get all metadata field
-        metadata_fields = db.session.scalars(select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))).all()
+        metadata_fields = db.session.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        ).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         if node_data.metadata_model_config is None:
             raise ValueError("metadata_model_config is required")

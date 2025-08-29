@@ -29,18 +29,20 @@ class TagService:
         # Check if tag_ids is not empty to avoid WHERE false condition
         if not tag_ids or len(tag_ids) == 0:
             return []
-        tags = (
-            db.session.scalars(select(Tag).where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)).all()
-        )
+        tags = db.session.scalars(
+            select(Tag).where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
+        ).all()
         if not tags:
             return []
         tag_ids = [tag.id for tag in tags]
         # Check if tag_ids is not empty to avoid WHERE false condition
         if not tag_ids or len(tag_ids) == 0:
             return []
-        tag_bindings = (
-            db.session.scalars(select(TagBinding.target_id).where(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)).all()
-        )
+        tag_bindings = db.session.scalars(
+            select(TagBinding.target_id).where(
+                TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id
+            )
+        ).all()
         if not tag_bindings:
             return []
         results = [tag_binding.target_id for tag_binding in tag_bindings]
@@ -50,9 +52,9 @@ class TagService:
     def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str) -> list:
         if not tag_type or not tag_name:
             return []
-        tags = (
-            db.session.scalars(select(Tag).where(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)).all()
-        )
+        tags = db.session.scalars(
+            select(Tag).where(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
+        ).all()
         if not tags:
             return []
         return tags
