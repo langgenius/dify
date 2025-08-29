@@ -180,16 +180,20 @@ class WeaviateVector(BaseVector):
                     vector=vec_payload,
                 )
             )
-            
-        # TODO: The below code can be used instead of the for loop below
-        # col.data.insert_many(objs)
 
+
+        # batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
+        # for start in range(0, len(objs), batch_size):
+        #     chunk = objs[start:start + batch_size]
+        #     if not chunk:
+        #         continue
+        #     col.data.insert_many(chunk)
+        
+        
         batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
-        for start in range(0, len(objs), batch_size):
-            chunk = objs[start:start + batch_size]
-            if not chunk:
-                continue
-            col.data.insert_many(chunk)
+        with col.data.batch.dynamic(batch_size=batch_size) as batch:
+            for obj in objs:
+                batch.add_object(obj)
 
         return ids_out
 
