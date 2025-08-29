@@ -131,8 +131,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           </div>
         </Field>
 
-        <Split />
-
         {/* Content Type */}
         <Field title={t(`${i18nPrefix}.contentType`)}>
           <div className="w-full">
@@ -150,8 +148,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           </div>
         </Field>
 
-        <Split />
-
         {/* Query Parameters */}
         <ParameterTable
           readonly={readOnly}
@@ -162,16 +158,12 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           showType={false}
         />
 
-        <Split />
-
         {/* Header Parameters */}
         <HeaderTable
           readonly={readOnly}
           headers={inputs.headers}
           onChange={handleHeadersChange}
         />
-
-        <Split />
 
         {/* Request Body Parameters */}
         <ParameterTable
