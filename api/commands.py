@@ -1233,15 +1233,17 @@ def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:
 
 def _count_orphaned_draft_variables() -> dict[str, Any]:
     """
-    Count orphaned draft variables by app.
+    Count orphaned draft variables by app, including associated file counts.
 
     Returns:
-        Dictionary with statistics about orphaned variables
+        Dictionary with statistics about orphaned variables and files
     """
-    query = """
+    # Count orphaned variables by app
+    variables_query = """
         SELECT
             wdv.app_id,
-            COUNT(*) as variable_count
+            COUNT(*) as variable_count,
+            COUNT(wdv.file_id) as file_count
         FROM workflow_draft_variables AS wdv
         WHERE NOT EXISTS(
             SELECT 1 FROM apps WHERE apps.id = wdv.app_id
@@ -1251,14 +1253,24 @@ def _count_orphaned_draft_variables() -> dict[str, Any]:
     """
 
     with db.engine.connect() as conn:
-        result = conn.execute(sa.text(query))
-        orphaned_by_app = {row[0]: row[1] for row in result}
+        result = conn.execute(sa.text(variables_query))
+        orphaned_by_app = {}
+        total_files = 0
+        
+        for row in result:
+            app_id, variable_count, file_count = row
+            orphaned_by_app[app_id] = {
+                "variables": variable_count,
+                "files": file_count
+            }
+            total_files += file_count
 
-        total_orphaned = sum(orphaned_by_app.values())
+        total_orphaned = sum(app_data["variables"] for app_data in orphaned_by_app.values())
         app_count = len(orphaned_by_app)
 
         return {
             "total_orphaned_variables": total_orphaned,
+            "total_orphaned_files": total_files,
             "orphaned_app_count": app_count,
             "orphaned_by_app": orphaned_by_app,
         }
@@ -1287,6 +1299,7 @@ def cleanup_orphaned_draft_variables(
     stats = _count_orphaned_draft_variables()
 
     logger.info("Found %s orphaned draft variables", stats["total_orphaned_variables"])
+    logger.info("Found %s associated offload files", stats["total_orphaned_files"])
     logger.info("Across %s non-existent apps", stats["orphaned_app_count"])
 
     if stats["total_orphaned_variables"] == 0:
@@ -1295,10 +1308,10 @@ def cleanup_orphaned_draft_variables(
 
     if dry_run:
         logger.info("DRY RUN: Would delete the following:")
-        for app_id, count in sorted(stats["orphaned_by_app"].items(), key=lambda x: x[1], reverse=True)[
+        for app_id, data in sorted(stats["orphaned_by_app"].items(), key=lambda x: x[1]["variables"], reverse=True)[
             :10
         ]:  # Show top 10
-            logger.info("  App %s: %s variables", app_id, count)
+            logger.info("  App %s: %s variables, %s files", app_id, data["variables"], data["files"])
         if len(stats["orphaned_by_app"]) > 10:
             logger.info("  ... and %s more apps", len(stats["orphaned_by_app"]) - 10)
         return
@@ -1307,7 +1320,8 @@ def cleanup_orphaned_draft_variables(
     if not force:
         click.confirm(
             f"Are you sure you want to delete {stats['total_orphaned_variables']} "
-            f"orphaned draft variables from {stats['orphaned_app_count']} apps?",
+            f"orphaned draft variables and {stats['total_orphaned_files']} associated files "
+            f"from {stats['orphaned_app_count']} apps?",
             abort=True,
         )
 
