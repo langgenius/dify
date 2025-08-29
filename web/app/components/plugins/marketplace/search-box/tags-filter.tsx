@@ -1,40 +1,29 @@
 'use client'
 
 import { useState } from 'react'
-import type { ReactElement } from 'react'
-import {
-  RiCloseCircleFill,
-  RiFilter3Line,
-  RiPriceTag3Line,
-} from '@remixicon/react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Checkbox from '@/app/components/base/checkbox'
-import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import MarketplaceTrigger from './trigger/marketplace'
+import ToolSelectorTrigger from './trigger/tool-selector'
 
 type TagsFilterProps = {
   tags: string[]
   onTagsChange: (tags: string[]) => void
-  size: 'small' | 'large'
+  usedInMarketplace?: boolean
   locale?: string
-  emptyTrigger?: ReactElement
-  className?: string
-  triggerClassName?: string
 }
 const TagsFilter = ({
   tags,
   onTagsChange,
-  size,
+  usedInMarketplace = false,
   locale,
-  emptyTrigger,
-  className,
-  triggerClassName,
 }: TagsFilterProps) => {
   const { t } = useMixedTranslation(locale)
   const [open, setOpen] = useState(false)
@@ -63,55 +52,29 @@ const TagsFilter = ({
         className='shrink-0'
         onClick={() => setOpen(v => !v)}
       >
-        <div className={cn(
-          'ml-0.5 mr-1.5 flex  select-none items-center text-text-tertiary',
-          size === 'large' && 'h-8 py-1',
-          size === 'small' && 'h-7 py-0.5 ',
-          className,
-        )}>
-          {
-            !emptyTrigger && (
-              <div className='p-0.5'>
-                <RiFilter3Line className='h-4 w-4' />
-              </div>
-            )
-          }
-          <div className={cn(
-            'system-sm-medium flex items-center p-1',
-            size === 'large' && 'p-1',
-            size === 'small' && 'px-0.5 py-1',
-            triggerClassName,
-          )}>
-            {
-              !selectedTagsLength && (emptyTrigger || t('pluginTags.allTags'))
-            }
-            {
-              !!selectedTagsLength && tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')
-            }
-            {
-              selectedTagsLength > 2 && (
-                <div className='system-xs-medium ml-1 text-text-tertiary'>
-                  +{selectedTagsLength - 2}
-                </div>
-              )
-            }
-          </div>
-          {
-            !!selectedTagsLength && (
-              <RiCloseCircleFill
-                className='h-4 w-4 cursor-pointer text-text-quaternary'
-                onClick={() => onTagsChange([])}
-              />
-            )
-          }
-          {
-            !selectedTagsLength && !emptyTrigger && (
-              <div className='cursor-pointer rounded-md p-0.5 hover:bg-state-base-hover'>
-                <RiPriceTag3Line className='h-4 w-4 text-text-tertiary' />
-              </div>
-            )
-          }
-        </div>
+        {
+          usedInMarketplace && (
+            <MarketplaceTrigger
+              selectedTagsLength={selectedTagsLength}
+              open={open}
+              tags={tags}
+              tagsMap={tagsMap}
+              locale={locale}
+              onTagsChange={onTagsChange}
+            />
+          )
+        }
+        {
+          !usedInMarketplace && (
+            <ToolSelectorTrigger
+              selectedTagsLength={selectedTagsLength}
+              open={open}
+              tags={tags}
+              tagsMap={tagsMap}
+              onTagsChange={onTagsChange}
+            />
+          )
+        }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
         <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>

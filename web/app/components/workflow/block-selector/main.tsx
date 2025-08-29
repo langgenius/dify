@@ -184,7 +184,6 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     onSearchChange={setSearchText}
                     tags={tags}
                     onTagsChange={setTags}
-                    size='small'
                     placeholder={t('plugin.searchTools')!}
                     inputClassName='grow'
                   />
