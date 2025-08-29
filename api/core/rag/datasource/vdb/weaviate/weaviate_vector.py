@@ -180,6 +180,9 @@ class WeaviateVector(BaseVector):
                     vector=vec_payload,
                 )
             )
+            
+        # TODO: The below code can be used instead of the for loop below
+        # col.data.insert_many(objs)
 
         batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
         for start in range(0, len(objs), batch_size):
