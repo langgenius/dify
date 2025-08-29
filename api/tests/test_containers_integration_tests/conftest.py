@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
+from dotenv import load_dotenv
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
@@ -22,6 +23,18 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
+
+# Getting the absolute path of the current file's directory
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+
+print(f"Current file directory: {ABS_PATH}")
+
+# Getting the absolute path of the project's root directory
+PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
+
+print(f"Project directory: {PROJECT_DIR}")
+
+load_dotenv(os.path.normpath(os.path.join(PROJECT_DIR, ".env")), override=True)
 
 from app_factory import create_app
 from models import db
