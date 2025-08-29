@@ -1022,7 +1022,7 @@ const translation = {
       debugUrlCopied: 'コピーしました！',
       errorHandling: 'エラー処理',
       errorStrategy: 'エラー処理',
-      responseConfiguration: 'レスポンス設定',
+      responseConfiguration: 'レスポンス',
       asyncMode: '非同期モード',
       statusCode: 'ステータスコード',
       responseBody: 'レスポンスボディ',

@@ -12,7 +12,6 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import copy from 'copy-to-clipboard'
@@ -50,7 +49,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleHeadersChange,
     handleParamsChange,
     handleBodyChange,
-    handleAsyncModeChange,
     handleStatusCodeChange,
     handleResponseBodyChange,
     generateWebhookUrl,
@@ -182,17 +180,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <Field title={t(`${i18nPrefix}.responseConfiguration`)}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="system-sm-medium text-text-secondary">
-                {t(`${i18nPrefix}.asyncMode`)}
-              </span>
-              <Switch
-                defaultValue={inputs.async_mode}
-                onChange={handleAsyncModeChange}
-                disabled={readOnly}
-              />
-            </div>
-            <div>
-              <label className="system-sm-medium mb-2 block text-text-secondary">
+              <label className="system-sm-medium text-text-tertiary">
                 {t(`${i18nPrefix}.statusCode`)}
               </label>
               <Input
@@ -200,10 +188,12 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 value={inputs.status_code}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleStatusCodeChange(Number(e.target.value))}
                 disabled={readOnly}
+                wrapperClassName="w-[120px]"
+                className="h-8"
               />
             </div>
             <div>
-              <label className="system-sm-medium mb-2 block text-text-secondary">
+              <label className="system-sm-medium mb-2 block text-text-tertiary">
                 {t(`${i18nPrefix}.responseBody`)}
               </label>
               <Input

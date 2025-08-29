@@ -1022,7 +1022,7 @@ const translation = {
       debugUrlCopied: '已复制！',
       errorHandling: '错误处理',
       errorStrategy: '错误处理',
-      responseConfiguration: '响应配置',
+      responseConfiguration: '响应',
       asyncMode: '异步模式',
       statusCode: '状态码',
       responseBody: '响应体',
