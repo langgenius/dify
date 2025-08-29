@@ -30,7 +30,6 @@ export const useAvailableNodesMetaData = () => {
       metaData: {
         ...knowledgeBaseDefault.metaData,
         isRequired: true,
-        isUndeletable: true,
       },
     },
     {
