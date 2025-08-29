@@ -12,7 +12,7 @@ trigger_fields = {
     "updated_at": fields.DateTime(dt_format="iso8601"),
 }
 
-triggers_list_fields = {"triggers": fields.List(fields.Nested(trigger_fields))}
+triggers_list_fields = {"data": fields.List(fields.Nested(trigger_fields))}
 
 
 webhook_trigger_fields = {

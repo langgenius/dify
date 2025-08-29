@@ -122,6 +122,14 @@ const translation = {
       accessibleAddress: 'Service API Endpoint',
       doc: 'API Reference',
     },
+    triggerInfo: {
+      title: 'Triggers',
+      explanation: 'Workflow trigger management',
+      triggersAdded: '{{count}} Triggers added',
+      noTriggerAdded: 'No trigger added',
+      triggerStatusDescription: 'Trigger node status appears here.',
+      learnAboutTriggers: 'Learn about Triggers',
+    },
     status: {
       running: 'In Service',
       disable: 'Disabled',

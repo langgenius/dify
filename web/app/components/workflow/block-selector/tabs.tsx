@@ -72,6 +72,7 @@ const Tabs: FC<TabsProps> = ({
               searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
+              tags={tags}
             />
           </div>
         )

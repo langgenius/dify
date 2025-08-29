@@ -286,7 +286,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                             {selected && !hideChecked && (
                               <span
                                 className={classNames(
-                                  'absolute inset-y-0 right-0 flex items-center pr-4 text-text-accent',
+                                  'absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent',
                                 )}
                               >
                                 <RiCheckLine className="h-4 w-4" aria-hidden="true" />

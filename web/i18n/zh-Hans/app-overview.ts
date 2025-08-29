@@ -122,6 +122,14 @@ const translation = {
       accessibleAddress: 'API 访问凭据',
       doc: '查阅 API 文档',
     },
+    triggerInfo: {
+      title: '触发器',
+      explanation: '工作流触发器管理',
+      triggersAdded: '已添加 {{count}} 个触发器',
+      noTriggerAdded: '未添加触发器',
+      triggerStatusDescription: '触发器节点状态显示在这里。',
+      learnAboutTriggers: '了解触发器',
+    },
     status: {
       running: '运行中',
       disable: '已停用',

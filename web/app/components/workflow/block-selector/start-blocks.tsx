@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
 } from 'react'
 import { useNodes } from 'reactflow'
@@ -17,12 +18,14 @@ type StartBlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
+  onContentStateChange?: (hasContent: boolean) => void
 }
 
 const StartBlocks = ({
   searchText,
   onSelect,
   availableBlocksTypes = [],
+  onContentStateChange,
 }: StartBlocksProps) => {
   const { t } = useTranslation()
   const nodes = useNodes()
@@ -48,11 +51,15 @@ const StartBlocks = ({
 
   const isEmpty = filteredBlocks.length === 0
 
+  useEffect(() => {
+    onContentStateChange?.(!isEmpty)
+  }, [isEmpty, onContentStateChange])
+
   const renderBlock = useCallback((block: typeof START_BLOCKS[0]) => (
     <Tooltip
       key={block.type}
       position='right'
-      popupClassName='w-[200px]'
+      popupClassName='w-[224px] rounded-xl'
       needsDelay={false}
       popupContent={(
         <div>
@@ -62,7 +69,12 @@ const StartBlocks = ({
             type={block.type}
           />
           <div className='system-md-medium mb-1 text-text-primary'>{block.title}</div>
-          <div className='system-xs-regular text-text-tertiary'>{nodesExtraData[block.type].about}</div>
+          <div className='system-xs-regular text-text-secondary'>{nodesExtraData[block.type].about}</div>
+          {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
+            <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>
+              {t('tools.author')} {t('workflow.difyTeam')}
+            </div>
+          )}
         </div>
       )}
     >
@@ -84,27 +96,23 @@ const StartBlocks = ({
     </Tooltip>
   ), [nodesExtraData, onSelect, t])
 
+  if (isEmpty)
+    return null
+
   return (
-    <div className='min-w-[400px] max-w-[500px] p-1'>
-      {isEmpty && (
-        <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>
-          {t('workflow.tabs.noResult')}
-        </div>
-      )}
-      {!isEmpty && (
-        <div className='mb-1'>
-          {filteredBlocks.map((block, index) => (
-            <div key={block.type}>
-              {renderBlock(block)}
-              {block.type === BlockEnumValues.Start && index < filteredBlocks.length - 1 && (
-                <div className='my-1 px-3'>
-                  <div className='border-t border-divider-subtle' />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+    <div className='p-1'>
+      <div className='mb-1'>
+        {filteredBlocks.map((block, index) => (
+          <div key={block.type}>
+            {renderBlock(block)}
+            {block.type === BlockEnumValues.Start && index < filteredBlocks.length - 1 && (
+              <div className='my-1 px-3'>
+                <div className='border-t border-divider-subtle' />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
