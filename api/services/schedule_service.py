@@ -44,27 +44,12 @@ class ScheduleService:
         cron_expression: str,
         timezone: str,
     ) -> WorkflowSchedulePlan:
-        """
-        Create a new workflow schedule.
-
-        Args:
-            session: Database session
-            tenant_id: Tenant ID
-            app_id: Application ID
-            node_id: Starting node ID
-            cron_expression: Cron expression
-            timezone: Timezone for cron evaluation
-
-        Returns:
-            Created WorkflowSchedulePlan instance
-        """
-        # Calculate initial next run time
+        # Pre-calculate next_run_at to ensure the schedule is valid before persisting
         next_run_at = ScheduleService.calculate_next_run_at(
             cron_expression,
             timezone,
         )
 
-        # Create schedule record
         schedule = WorkflowSchedulePlan(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -85,27 +70,15 @@ class ScheduleService:
         schedule_id: str,
         updates: dict,
     ) -> Optional[WorkflowSchedulePlan]:
-        """
-        Update a schedule with the provided changes.
-
-        Args:
-            session: Database session
-            schedule_id: Schedule ID to update
-            updates: Dictionary of fields to update
-
-        Returns:
-            Updated schedule or None if not found
-        """
         schedule = session.get(WorkflowSchedulePlan, schedule_id)
         if not schedule:
             return None
 
-        # Apply updates
         for field, value in updates.items():
             if hasattr(schedule, field):
                 setattr(schedule, field, value)
 
-        # Recalculate next_run_at if schedule parameters changed
+        # Ensure next_run_at stays accurate when schedule timing changes
         if any(field in updates for field in ["cron_expression", "timezone"]):
             next_run_at = ScheduleService.calculate_next_run_at(
                 schedule.cron_expression,
@@ -121,16 +94,6 @@ class ScheduleService:
         session: Session,
         schedule_id: str,
     ) -> bool:
-        """
-        Delete a schedule.
-
-        Args:
-            session: Database session
-            schedule_id: Schedule ID to delete
-
-        Returns:
-            True if deleted, False if not found
-        """
         schedule = session.get(WorkflowSchedulePlan, schedule_id)
         if not schedule:
             return False
@@ -142,17 +105,9 @@ class ScheduleService:
     @staticmethod
     def get_tenant_owner(session: Session, tenant_id: str) -> Optional[Account]:
         """
-        Get the owner account for a tenant.
-        Used to execute scheduled workflows on behalf of the tenant owner.
-
-        Args:
-            session: Database session
-            tenant_id: Tenant ID
-
-        Returns:
-            Owner Account or None
+        Returns an account to execute scheduled workflows on behalf of the tenant.
+        Prioritizes owner over admin to ensure proper authorization hierarchy.
         """
-        # Query for owner role in tenant
         result = session.execute(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == "owner")
@@ -160,7 +115,7 @@ class ScheduleService:
         ).scalar_one_or_none()
 
         if not result:
-            # Fallback to any admin if no owner
+            # Owner may not exist in some tenant configurations, fallback to admin
             result = session.execute(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == "admin")
@@ -178,28 +133,20 @@ class ScheduleService:
         schedule_id: str,
     ) -> Optional[datetime]:
         """
-        Calculate and update the next run time for a schedule.
-        Used after a schedule has been triggered.
-
-        Args:
-            session: Database session
-            schedule_id: Schedule ID
-
-        Returns:
-            New next_run_at datetime or None
+        Advances the schedule to its next execution time after a successful trigger.
+        Uses current time as base to prevent missing executions during delays.
         """
         schedule = session.get(WorkflowSchedulePlan, schedule_id)
         if not schedule:
             return None
 
-        # Calculate next run time
+        # Base on current time to handle execution delays gracefully
         next_run_at = ScheduleService.calculate_next_run_at(
             schedule.cron_expression,
             schedule.timezone,
-            base_time=datetime.now(UTC),  # Use current time as base
+            base_time=datetime.now(UTC),
         )
 
-        # Update schedule
         schedule.next_run_at = next_run_at
         session.flush()
         return next_run_at
@@ -207,13 +154,8 @@ class ScheduleService:
     @staticmethod
     def extract_schedule_config(workflow: Workflow) -> Optional[dict]:
         """
-        Extract schedule configuration from workflow graph.
-
-        Args:
-            workflow: Workflow instance
-
-        Returns:
-            Schedule configuration dict or None if no schedule node found
+        Extracts schedule configuration from workflow graph for synchronization.
+        Normalizes both visual and cron modes into a unified cron expression format.
         """
         try:
             graph_data = workflow.graph_dict
@@ -223,16 +165,14 @@ class ScheduleService:
         if not graph_data:
             return None
 
-        # Find schedule trigger node in graph
         for node in graph_data.get("nodes", []):
             node_data = node.get("data", {})
             if node_data.get("type") == NodeType.TRIGGER_SCHEDULE.value:
-                # Extract configuration
                 mode = node_data.get("mode", "visual")
                 timezone = node_data.get("timezone", "UTC")
                 node_id = node.get("id", "start")
 
-                # Convert to cron expression
+                # Normalize both modes to cron expression for consistent storage
                 cron_expression = None
                 if mode == "cron":
                     cron_expression = node_data.get("cron_expression")
@@ -256,26 +196,18 @@ class ScheduleService:
     @staticmethod
     def visual_to_cron(frequency: str, visual_config: dict) -> Optional[str]:
         """
-        Convert visual schedule configuration to cron expression.
-
-        Args:
-            frequency: Schedule frequency (hourly, daily, weekly, monthly)
-            visual_config: Visual configuration with time, weekdays, etc.
-
-        Returns:
-            Cron expression string or None if invalid
+        Converts user-friendly visual schedule settings to cron expression.
+        Maintains consistency with frontend UI expectations while supporting croniter's extended syntax.
         """
         if not frequency or not visual_config:
             return None
 
         try:
             if frequency == "hourly":
-                # Run at specific minute of every hour
                 on_minute = visual_config.get("on_minute", 0)
                 return f"{on_minute} * * * *"
 
             elif frequency == "daily":
-                # Run daily at specific time
                 time_str = visual_config.get("time", "12:00 PM")
                 hour, minute = ScheduleService.parse_time(time_str)
                 if hour is None or minute is None:
@@ -283,7 +215,6 @@ class ScheduleService:
                 return f"{minute} {hour} * * *"
 
             elif frequency == "weekly":
-                # Run weekly on specific days at specific time
                 time_str = visual_config.get("time", "12:00 PM")
                 hour, minute = ScheduleService.parse_time(time_str)
                 if hour is None or minute is None:
@@ -293,7 +224,7 @@ class ScheduleService:
                 if not weekdays:
                     return None
 
-                # Convert weekday names to cron format (0-6, where 0=Sunday)
+                # Map to cron's 0-6 format where 0=Sunday for standard cron compatibility
                 weekday_map = {"sun": "0", "mon": "1", "tue": "2", "wed": "3", "thu": "4", "fri": "5", "sat": "6"}
                 cron_weekdays = []
                 for day in weekdays:
@@ -306,7 +237,6 @@ class ScheduleService:
                 return f"{minute} {hour} * * {','.join(sorted(cron_weekdays))}"
 
             elif frequency == "monthly":
-                # Run monthly on specific days at specific time
                 time_str = visual_config.get("time", "12:00 PM")
                 hour, minute = ScheduleService.parse_time(time_str)
                 if hour is None or minute is None:
@@ -316,11 +246,10 @@ class ScheduleService:
                 if not monthly_days:
                     return None
 
-                # Convert monthly days to cron format
                 cron_days = []
                 for day in monthly_days:
                     if day == "last":
-                        # Use 'L' to represent the last day of month (supported by croniter)
+                        # croniter supports 'L' for last day of month, avoiding hardcoded day ranges
                         cron_days.append("L")
                     elif isinstance(day, int) and 1 <= day <= 31:
                         cron_days.append(str(day))
@@ -328,7 +257,7 @@ class ScheduleService:
                 if not cron_days:
                     return None
 
-                # Sort numeric days, but keep 'L' at the end if present
+                # Keep 'L' at end for readability while sorting numeric days
                 numeric_days = [d for d in cron_days if d != "L"]
                 has_last = "L" in cron_days
 
@@ -349,16 +278,10 @@ class ScheduleService:
     @staticmethod
     def parse_time(time_str: str) -> tuple[Optional[int], Optional[int]]:
         """
-        Parse time string in format "HH:MM AM/PM" to 24-hour format.
-
-        Args:
-            time_str: Time string like "11:30 AM" or "2:45 PM"
-
-        Returns:
-            Tuple of (hour, minute) in 24-hour format, or (None, None) if invalid
+        Parses 12-hour time format to 24-hour for cron compatibility.
+        Handles edge cases like 12:00 AM (midnight) and 12:00 PM (noon).
         """
         try:
-            # Split time and period
             parts = time_str.strip().split()
             if len(parts) != 2:
                 return None, None
@@ -369,7 +292,6 @@ class ScheduleService:
             if period not in ["AM", "PM"]:
                 return None, None
 
-            # Parse hour and minute
             time_parts = time_part.split(":")
             if len(time_parts) != 2:
                 return None, None
@@ -377,11 +299,10 @@ class ScheduleService:
             hour = int(time_parts[0])
             minute = int(time_parts[1])
 
-            # Validate ranges
             if hour < 1 or hour > 12 or minute < 0 or minute > 59:
                 return None, None
 
-            # Convert to 24-hour format
+            # Handle 12-hour to 24-hour edge cases
             if period == "PM" and hour != 12:
                 hour += 12
             elif period == "AM" and hour == 12:
