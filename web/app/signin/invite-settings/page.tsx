@@ -18,6 +18,7 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { noop } from 'lodash-es'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
@@ -60,7 +61,8 @@ export default function InviteSettingsPage() {
         localStorage.setItem('console_token', res.data.access_token)
         localStorage.setItem('refresh_token', res.data.refresh_token)
         await setLocaleOnClient(language, false)
-        router.replace('/apps')
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        router.replace(redirectUrl || '/apps')
       }
     }
     catch {
