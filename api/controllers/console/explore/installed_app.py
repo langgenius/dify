@@ -1,11 +1,10 @@
-from sqlalchemy import select
 import logging
 from typing import Any
 
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, inputs, marshal_with, reqparse
-from sqlalchemy import and_
+from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import api

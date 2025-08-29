@@ -1,9 +1,9 @@
-from sqlalchemy import select
 import logging
 import time
 from collections import defaultdict
 
 import click
+from sqlalchemy import select
 
 import app
 from configs import dify_config

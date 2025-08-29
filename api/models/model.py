@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import json
 import re
 import uuid
@@ -6,6 +5,8 @@ from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+
+from sqlalchemy import select
 
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config

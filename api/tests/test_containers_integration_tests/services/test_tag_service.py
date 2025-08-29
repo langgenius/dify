@@ -1,8 +1,8 @@
-from sqlalchemy import select
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole

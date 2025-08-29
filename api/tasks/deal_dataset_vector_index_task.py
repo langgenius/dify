@@ -1,10 +1,10 @@
-from sqlalchemy import select
 import logging
 import time
 from typing import Literal
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory

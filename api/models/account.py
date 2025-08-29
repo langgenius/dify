@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import enum
 import json
 from datetime import datetime
@@ -219,9 +218,13 @@ class Tenant(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
-        return list(db.session.scalars(
-            select(Account).where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
-        ).all())
+        return list(
+            db.session.scalars(
+                select(Account).where(
+                    Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id
+                )
+            ).all()
+        )
 
     @property
     def custom_config_dict(self) -> dict:

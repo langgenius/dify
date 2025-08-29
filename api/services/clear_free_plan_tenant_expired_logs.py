@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import datetime
 import json
 import logging
@@ -7,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import click
 from flask import Flask, current_app
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config

@@ -1,9 +1,9 @@
-from sqlalchemy import select
 import threading
 from typing import Any
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager

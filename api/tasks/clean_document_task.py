@@ -1,10 +1,10 @@
-from sqlalchemy import select
 import logging
 import time
 from typing import Optional
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids

@@ -1,5 +1,6 @@
-from sqlalchemy import select
 from typing import Optional
+
+from sqlalchemy import select
 
 from constants.languages import languages
 from extensions.ext_database import db

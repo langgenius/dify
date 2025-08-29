@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import json
 
 from flask import request

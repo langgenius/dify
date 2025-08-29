@@ -1,9 +1,9 @@
-from sqlalchemy import select
 import logging
 import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document

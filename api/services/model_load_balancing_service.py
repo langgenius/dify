@@ -1,8 +1,9 @@
-from sqlalchemy import select
 import json
 import logging
 from json import JSONDecodeError
 from typing import Optional, Union
+
+from sqlalchemy import select
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration

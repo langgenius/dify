@@ -1,9 +1,9 @@
-from sqlalchemy import select
 import logging
 import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner

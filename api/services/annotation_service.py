@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import uuid
 from typing import cast
 

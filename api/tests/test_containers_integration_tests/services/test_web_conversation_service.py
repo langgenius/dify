@@ -1,8 +1,8 @@
-from sqlalchemy import select
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account

@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import hashlib
 import json
 import logging
@@ -6,8 +5,6 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Optional, Union, cast
 from urllib.parse import urlparse
-
-from sqlalchemy import select
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry import trace
@@ -18,6 +15,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.trace import SpanContext, TraceFlags, TraceState
+from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import ArizeConfig, PhoenixConfig

@@ -1,7 +1,7 @@
-from sqlalchemy import select
 import time
 
 import click
+from sqlalchemy import select
 
 import app
 from configs import dify_config

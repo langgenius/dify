@@ -1,9 +1,8 @@
-from sqlalchemy import select
 import uuid
 from typing import Optional
 
 from flask_login import current_user
-from sqlalchemy import func
+from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db

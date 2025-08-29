@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import base64
 import enum
 import hashlib

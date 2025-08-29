@@ -1,4 +1,3 @@
-from sqlalchemy import select
 from typing import Any, Optional
 
 import flask_restx

@@ -1,5 +1,6 @@
-from sqlalchemy import select
 from typing import cast
+
+from sqlalchemy import select
 
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData

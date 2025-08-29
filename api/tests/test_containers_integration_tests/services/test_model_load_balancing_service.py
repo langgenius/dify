@@ -1,8 +1,8 @@
-from sqlalchemy import select
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.model import Account, Tenant

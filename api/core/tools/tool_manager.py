@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import json
 import logging
 import mimetypes
@@ -10,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
 

@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import json
 from unittest.mock import Mock, patch
 

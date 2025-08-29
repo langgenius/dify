@@ -1,4 +1,3 @@
-from sqlalchemy import select
 import json
 import logging
 import uuid
