@@ -207,7 +207,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_nodes.append(child_document)
         return child_nodes
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
         parent_childs = ParentChildStructureChunk(**chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:
@@ -257,7 +257,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     vector = Vector(dataset)
                     vector.create(all_child_documents)
 
-    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+
         parent_childs = ParentChildStructureChunk(**chunks)
         preview = []
         for parent_child in parent_childs.parent_child_chunks:

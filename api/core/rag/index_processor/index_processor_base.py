@@ -38,11 +38,11 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
         raise NotImplementedError
 
     @abstractmethod
-    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         raise NotImplementedError
 
     @abstractmethod

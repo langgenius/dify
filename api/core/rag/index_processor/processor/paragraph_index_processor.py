@@ -131,33 +131,37 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
-        paragraph = GeneralStructureChunk(**chunks)
-        documents = []
-        for content in paragraph.general_chunks:
-            metadata = {
-                "dataset_id": dataset.id,
-                "document_id": document.id,
-                "doc_id": str(uuid.uuid4()),
-                "doc_hash": helper.generate_text_hash(content),
-            }
-            doc = Document(page_content=content, metadata=metadata)
-            documents.append(doc)
-        if documents:
-            # save node to document segment
-            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
-            # add document segments
-            doc_store.add_documents(docs=documents, save_child=False)
-            if dataset.indexing_technique == "high_quality":
-                vector = Vector(dataset)
-                vector.create(documents)
-            elif dataset.indexing_technique == "economy":
-                keyword = Keyword(dataset)
-                keyword.add_texts(documents)
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+        if isinstance(chunks, list):
+            documents = []
+            for content in chunks:
+                metadata = {
+                    "dataset_id": dataset.id,
+                    "document_id": document.id,
+                    "doc_id": str(uuid.uuid4()),
+                    "doc_hash": helper.generate_text_hash(content),
+                }
+                doc = Document(page_content=content, metadata=metadata)
+                documents.append(doc)
+            if documents:
+                # save node to document segment
+                doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+                # add document segments
+                doc_store.add_documents(docs=documents, save_child=False)
+                if dataset.indexing_technique == "high_quality":
+                    vector = Vector(dataset)
+                    vector.create(documents)
+                elif dataset.indexing_technique == "economy":
+                    keyword = Keyword(dataset)
+                    keyword.add_texts(documents)
+        else:
+            raise ValueError("Chunks is not a list")
 
-    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
-        paragraph = GeneralStructureChunk(**chunks)
-        preview = []
-        for content in paragraph.general_chunks:
-            preview.append({"content": content})
-        return {"preview": preview, "total_segments": len(paragraph.general_chunks)}
+    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+        if isinstance(chunks, list):
+            preview = []
+            for content in chunks:
+                preview.append({"content": content})
+            return {"preview": preview, "total_segments": len(chunks)}
+        else:
+            raise ValueError("Chunks is not a list")

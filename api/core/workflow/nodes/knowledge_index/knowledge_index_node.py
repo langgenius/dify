@@ -174,7 +174,7 @@ class KnowledgeIndexNode(Node):
             "display_status": document.indexing_status,
         }
 
-    def _get_preview_output(self, chunk_structure: str, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+    def _get_preview_output(self, chunk_structure: str, chunks: Any) -> Mapping[str, Any]:
         index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
         return index_processor.format_preview(chunks)
 

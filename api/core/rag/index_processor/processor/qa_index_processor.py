@@ -166,7 +166,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
         qa_chunks = QAStructureChunk(**chunks)
         documents = []
         for qa_chunk in qa_chunks.qa_chunks:
@@ -189,7 +189,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             else:
                 raise ValueError("Indexing technique must be high quality.")
 
-    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         qa_chunks = QAStructureChunk(**chunks)
         preview = []
         for qa_chunk in qa_chunks.qa_chunks:
