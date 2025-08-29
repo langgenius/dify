@@ -1,6 +1,7 @@
 name: Run VDB Tests
 
 on:
+  workflow_call:
   pull_request:
     branches:
       - main

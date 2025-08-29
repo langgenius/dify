@@ -1,4 +1,3 @@
-import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union, final
 
@@ -14,6 +13,7 @@ from core.workflow.repositories.draft_variable_repository import (
     NoopDraftVariableSaver,
 )
 from factories import file_factory
+from libs.orjson import orjson_dumps
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -174,7 +174,7 @@ class BaseAppGenerator:
             def gen():
                 for message in generator:
                     if isinstance(message, Mapping | dict):
-                        yield f"data: {json.dumps(message)}\n\n"
+                        yield f"data: {orjson_dumps(message)}\n\n"
                     else:
                         yield f"event: {message}\n\n"
 
