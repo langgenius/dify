@@ -11,7 +11,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
+import { SimpleSelect } from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 
@@ -67,18 +67,22 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
       <div className='space-y-4 px-4 pb-3 pt-2'>
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`)}>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <div className="w-28 shrink-0">
-                <Select
+          <div className="space-y-3">
+            <div className="flex gap-1" style={{ width: '368px', height: '32px' }}>
+              <div className="w-26 shrink-0">
+                <SimpleSelect
                   items={HTTP_METHODS}
                   defaultValue={inputs.method}
                   onSelect={item => handleMethodChange(item.value as HttpMethod)}
                   disabled={readOnly}
+                  className="h-8 pr-8 text-sm"
+                  wrapperClassName="h-8"
+                  optionWrapClassName="w-26 min-w-26"
                   allowSearch={false}
+                  notClearable={true}
                 />
               </div>
-              <div className="flex flex-1 gap-2">
+              <div className="flex-1" style={{ width: '284px' }}>
                 <InputWithCopy
                   value={inputs.webhook_url || ''}
                   placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`)}
@@ -92,21 +96,36 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 />
               </div>
             </div>
+            {inputs.webhook_debug_url && (
+              <div className="mt-2 rounded-lg bg-components-panel-bg-alt p-2">
+                <label className="mb-1 block text-xs font-medium text-text-tertiary">
+                  Debug URL
+                </label>
+                <code className="block break-all font-mono text-xs text-text-secondary">
+                  {inputs.webhook_debug_url}
+                </code>
+              </div>
+            )}
           </div>
         </Field>
-        <span>{inputs.webhook_debug_url || ''}</span>
 
         <Split />
 
         {/* Content Type */}
         <Field title={t(`${i18nPrefix}.contentType`)}>
-          <Select
-            items={CONTENT_TYPES}
-            defaultValue={inputs['content-type']}
-            onSelect={item => handleContentTypeChange(item.value as string)}
-            disabled={readOnly}
-            allowSearch={false}
-          />
+          <div className="w-full">
+            <SimpleSelect
+              items={CONTENT_TYPES}
+              defaultValue={inputs['content-type']}
+              onSelect={item => handleContentTypeChange(item.value as string)}
+              disabled={readOnly}
+              className="h-8 text-sm"
+              wrapperClassName="h-8"
+              optionWrapClassName="min-w-48"
+              allowSearch={false}
+              notClearable={true}
+            />
+          </div>
         </Field>
 
         <Split />
