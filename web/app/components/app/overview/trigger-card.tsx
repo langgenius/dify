@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { Schedule, TriggerAll, WebhookLine } from '@/app/components/base/icons/src/vender/workflow'
 import Switch from '@/app/components/base/switch'
-import Divider from '@/app/components/base/divider'
-import Indicator from '@/app/components/header/indicator'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
@@ -142,32 +140,26 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
 
         {triggerCount > 0 && (
           <div className="flex flex-col gap-2 p-3">
-            {triggers.map((trigger, index) => (
-              <div key={trigger.id}>
-                <div className="flex w-full items-center gap-3">
-                  <div className="flex grow items-center gap-2">
-                    {getTriggerIcon(trigger)}
-                    <div className="system-sm-medium text-text-secondary">
-                      {trigger.title}
-                    </div>
+            {triggers.map(trigger => (
+              <div key={trigger.id} className="flex w-full items-center gap-3">
+                <div className="flex grow items-center gap-2">
+                  {getTriggerIcon(trigger)}
+                  <div className="system-sm-medium text-text-secondary">
+                    {trigger.title}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Indicator color={trigger.status === 'enabled' ? 'green' : 'yellow'} />
-                    <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
-                      {trigger.status === 'enabled'
-                        ? t('appOverview.overview.status.running')
-                        : t('appOverview.overview.status.disable')}
-                    </div>
-                  </div>
-                  <Switch
-                    defaultValue={trigger.status === 'enabled'}
-                    onChange={enabled => onToggleTrigger(trigger, enabled)}
-                    disabled={!isCurrentWorkspaceEditor}
-                  />
                 </div>
-                {index < triggers.length - 1 && (
-                  <Divider className="my-2" />
-                )}
+                <div className="flex items-center">
+                  <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
+                    {trigger.status === 'enabled'
+                      ? t('appOverview.overview.status.running')
+                      : t('appOverview.overview.status.disable')}
+                  </div>
+                </div>
+                <Switch
+                  defaultValue={trigger.status === 'enabled'}
+                  onChange={enabled => onToggleTrigger(trigger, enabled)}
+                  disabled={!isCurrentWorkspaceEditor}
+                />
               </div>
             ))}
           </div>
