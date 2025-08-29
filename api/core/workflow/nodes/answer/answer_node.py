@@ -72,9 +72,17 @@ class AnswerNode(BaseNode):
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
 
+        output_variables = self._node_data.outputs
+
+        outputs = {}
+        for variable_selector in output_variables:
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            value = variable.to_object() if variable is not None else None
+            outputs[variable_selector.variable] = value
+
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={"answer": answer, "files": ArrayFileSegment(value=files)},
+            outputs={"answer": answer, "files": ArrayFileSegment(value=files), "outputs": outputs},
         )
 
     @classmethod

@@ -7,6 +7,7 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
   defaultValue: {
     variables: [],
     answer: '',
+    outputs: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

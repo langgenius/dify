@@ -193,6 +193,15 @@ class GraphEngine:
                             self.graph_runtime_state.outputs["answer"] = self.graph_runtime_state.outputs[
                                 "answer"
                             ].strip()
+
+                            # Only save the user-defined output variables, not the entire node output
+                            if (
+                                item.route_node_state.node_run_result
+                                and item.route_node_state.node_run_result.outputs
+                                and "outputs" in item.route_node_state.node_run_result.outputs
+                            ):
+                                user_outputs = item.route_node_state.node_run_result.outputs.get("outputs", {})
+                                self.graph_runtime_state.outputs.update(user_outputs)
                 except Exception as e:
                     logger.exception("Graph run failed")
                     yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))

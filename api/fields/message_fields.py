@@ -59,6 +59,7 @@ message_fields = {
     "conversation_id": fields.String,
     "parent_message_id": fields.String,
     "inputs": FilesContainedField,
+    "outputs": fields.Raw(attribute="outputs_dict"),
     "query": fields.String,
     "answer": fields.String(attribute="re_sign_file_url_answer"),
     "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
