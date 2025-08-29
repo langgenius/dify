@@ -47,7 +47,7 @@ describe('SVG Attribute Error Reproduction', () => {
           console.log(`  ${index + 1}. ${error.substring(0, 100)}...`)
         })
       }
- else {
+      else {
         console.log('No inkscape errors found in this render')
       }
 
@@ -150,7 +150,7 @@ describe('SVG Attribute Error Reproduction', () => {
 
     if (problematicKeys.length > 0)
       console.log(`🚨 PROBLEM: Still found problematic attributes: ${problematicKeys.join(', ')}`)
-     else
+    else
       console.log('✅ No problematic attributes found after normalization')
   })
 })
