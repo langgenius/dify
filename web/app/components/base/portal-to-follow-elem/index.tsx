@@ -42,7 +42,7 @@ export function usePortalToFollowElem({
   enhancedScrollHandling = false,
 }: PortalToFollowElemOptions = {}) {
   const setOpen = setControlledOpen
-
+  const container = document.getElementById('workflow-container') || document.body
   const data = useFloating({
     placement,
     open,
@@ -57,12 +57,12 @@ export function usePortalToFollowElem({
       }),
       shift(enhancedScrollHandling ? {
         padding: 8,
-        boundary: document.body,
+        boundary: container,
         altBoundary: true,
       } : { padding: 5 }),
       ...(enhancedScrollHandling ? [hide({
         // hide when the reference element is not visible
-        boundary: document.body,
+        boundary: container,
       })] : []),
       size({
         apply({ rects, elements }) {
