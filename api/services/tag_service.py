@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-
+from collections.abc import Sequence
 from flask_login import current_user
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound
@@ -25,7 +25,7 @@ class TagService:
         return results
 
     @staticmethod
-    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list) -> list:
+    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list) -> Sequence:
         # Check if tag_ids is not empty to avoid WHERE false condition
         if not tag_ids or len(tag_ids) == 0:
             return []
@@ -44,9 +44,8 @@ class TagService:
             )
         ).all()
         if not tag_bindings:
-            return []
-        results = [tag_binding.target_id for tag_binding in tag_bindings]
-        return results
+            return Sequence()
+        return tag_bindings
 
     @staticmethod
     def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str) -> list:
