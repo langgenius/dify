@@ -1,5 +1,6 @@
 import time
 from collections.abc import Sequence
+
 import click
 from sqlalchemy import select
 

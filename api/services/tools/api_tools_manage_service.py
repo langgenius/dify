@@ -444,9 +444,7 @@ class ApiToolManageService:
         list api tools
         """
         # get all api providers
-        db_providers = (
-            db.session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
-        )
+        db_providers = db.session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
 
         result: list[ToolProviderApiEntity] = []
 
