@@ -668,7 +668,7 @@ class ToolManager:
 
             # get db api providers
             if "api" in filters:
-                db_api_providers: list[ApiToolProvider] = db.session.scalars(
+                db_api_providers = db.session.scalars(
                     select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)
                 ).all()
 
@@ -691,7 +691,7 @@ class ToolManager:
 
             if "workflow" in filters:
                 # get workflow providers
-                workflow_providers: list[WorkflowToolProvider] = db.session.scalars(
+                workflow_providers = db.session.scalars(
                     select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
                 ).all()
 
