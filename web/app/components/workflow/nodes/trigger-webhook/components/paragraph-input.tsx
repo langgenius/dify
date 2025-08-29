@@ -42,7 +42,7 @@ const ParagraphInput: FC<ParagraphInputProps> = ({
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="w-full resize-none border-0 bg-transparent pl-8 font-mono text-xs leading-[20px] text-text-secondary outline-none placeholder:text-text-quaternary"
+          className="w-full resize-none border-0 bg-transparent pl-6 font-mono text-xs leading-[20px] text-text-secondary outline-none placeholder:text-text-quaternary"
           style={{
             minHeight: `${Math.max(3, lineCount) * 20}px`,
             lineHeight: '20px',

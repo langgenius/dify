@@ -104,7 +104,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
                 position="top"
                 offset={{ mainAxis: -20 }}
-                needsDelay={false}
+                needsDelay={true}
               >
                 <div
                   className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
