@@ -38,8 +38,7 @@ const ImageGallery: FC<Props> = ({
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
       {/* TODO: support preview */}
       {srcs.map((src, index) => (
-
-        <img
+        !src ? null : <img
           key={index}
           className={s.item}
           style={imgStyle}

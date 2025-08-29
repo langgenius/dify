@@ -2,7 +2,7 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { CreateButtonType, CreateSubscriptionButton } from '@/app/components/plugins/plugin-detail-panel/subscription-list/create'
 import { SubscriptionSelectorEntry } from '@/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry'
-import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/subscription-list/store'
+import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { useSubscriptionList } from '@/app/components/plugins/plugin-detail-panel/subscription-list/use-subscription-list'
 import useConfig from '@/app/components/workflow/nodes/trigger-plugin/use-config'
 import type { Node } from '@/app/components/workflow/types'

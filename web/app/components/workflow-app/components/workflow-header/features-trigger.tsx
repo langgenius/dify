@@ -3,7 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useEdges, useNodes, useStore as useReactflowStore } from 'reactflow'
+import { useEdges, useNodes } from 'reactflow'
 import { RiApps2AddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -37,6 +37,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
 import { useIsChatMode } from '../../hooks'
+import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { Node } from '@/app/components/workflow/types'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -51,11 +53,12 @@ const FeaturesTrigger = () => {
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
   const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
-  const startVariables = useReactflowStore(
-    s => s.getNodes().find(node => node.data.type === BlockEnum.Start)?.data.variables,
-  )
+
   const nodes = useNodes<CommonNodeType>()
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
+
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -185,6 +188,7 @@ const FeaturesTrigger = () => {
           onToggle: onPublisherToggle,
           workflowToolAvailable: lastPublishedHasUserInput,
           crossAxisOffset: 4,
+          missingStartNode: !startNode,
         }}
       />
     </>

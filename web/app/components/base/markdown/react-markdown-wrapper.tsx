@@ -25,10 +25,11 @@ export type ReactMarkdownWrapperProps = {
   latexContent: any
   customDisallowedElements?: string[]
   customComponents?: Record<string, React.ComponentType<any>>
+  pluginUniqueIdentifier?: string
 }
 
 export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
-  const { customComponents, latexContent } = props
+  const { customComponents, latexContent, pluginUniqueIdentifier } = props
 
   return (
     <ReactMarkdown
@@ -40,7 +41,7 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
       rehypePlugins={[
         RehypeKatex,
         RehypeRaw as any,
-          // The Rehype plug-in is used to remove the ref attribute of an element
+        // The Rehype plug-in is used to remove the ref attribute of an element
         () => {
           return (tree: any) => {
             const iterate = (node: any) => {
@@ -63,11 +64,11 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
       disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}
       components={{
         code: CodeBlock,
-        img: Img,
+        img: (props: any) => <Img {...props} pluginUniqueIdentifier={pluginUniqueIdentifier} />,
         video: VideoBlock,
         audio: AudioBlock,
         a: Link,
-        p: Paragraph,
+        p: (props: any) => <Paragraph {...props} pluginUniqueIdentifier={pluginUniqueIdentifier} />,
         button: MarkdownButton,
         form: MarkdownForm,
         script: ScriptBlock as any,

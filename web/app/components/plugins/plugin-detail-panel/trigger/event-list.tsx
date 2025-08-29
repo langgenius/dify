@@ -5,7 +5,7 @@ import { useTriggerProviderInfo } from '@/service/use-triggers'
 import cn from '@/utils/classnames'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginStore } from '../subscription-list/store'
+import { usePluginStore } from '../store'
 import { EventDetailDrawer } from './event-detail-drawer'
 
 type TriggerEventCardProps = {

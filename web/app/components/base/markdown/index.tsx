@@ -17,10 +17,11 @@ const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper').then(mod 
 export type MarkdownProps = {
   content: string
   className?: string
+  pluginUniqueIdentifier?: string
 } & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements'>
 
 export const Markdown = (props: MarkdownProps) => {
-  const { customComponents = {} } = props
+  const { customComponents = {}, pluginUniqueIdentifier } = props
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
@@ -28,7 +29,7 @@ export const Markdown = (props: MarkdownProps) => {
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
-      <ReactMarkdown latexContent={latexContent} customComponents={customComponents} customDisallowedElements={props.customDisallowedElements} />
+      <ReactMarkdown pluginUniqueIdentifier={pluginUniqueIdentifier} latexContent={latexContent} customComponents={customComponents} customDisallowedElements={props.customDisallowedElements} />
     </div>
   )
 }

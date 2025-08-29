@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useTriggerSubscriptions } from '@/service/use-triggers'
-import { usePluginStore, usePluginSubscriptionStore } from './store'
+import { usePluginStore } from '../store'
+import { usePluginSubscriptionStore } from './store'
 
 export const useSubscriptionList = () => {
   const detail = usePluginStore(state => state.detail)

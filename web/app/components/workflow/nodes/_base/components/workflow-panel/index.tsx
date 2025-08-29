@@ -78,6 +78,7 @@ import PanelWrap from '../before-run-form/panel-wrap'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import { TriggerSubscription } from './trigger-subscription'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -492,6 +493,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 pluginPayload={{
                   provider: currToolCollection?.name || '',
                   category: AuthCategory.tool,
+                  detail: currToolCollection as any,
                 }}
               >
                 <div className='flex items-center justify-between pl-4 pr-3'>
@@ -503,6 +505,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     pluginPayload={{
                       provider: currToolCollection?.name || '',
                       category: AuthCategory.tool,
+                      detail: currToolCollection as any,
                     }}
                     onAuthorizationItemClick={handleAuthorizationItemClick}
                     credentialId={data.credential_id}
@@ -619,6 +622,9 @@ const BasePanel: FC<BasePanelProps> = ({
             {...passedLogParams}
           />
         )}
+
+        {data.type === BlockEnum.Tool && <ReadmeEntrance pluginDetail={currToolCollection as any} className='mt-auto' />}
+        {data.type === BlockEnum.DataSource && <ReadmeEntrance pluginDetail={currentDataSource as any} className='mt-auto' />}
       </div>
     </div>
   )

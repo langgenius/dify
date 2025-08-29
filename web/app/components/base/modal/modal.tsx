@@ -27,6 +27,7 @@ type ModalProps = {
   bottomSlot?: React.ReactNode
   disabled?: boolean
   containerClassName?: string
+  clickOutsideNotClose?: boolean
 }
 const Modal = ({
   onClose,
@@ -46,6 +47,7 @@ const Modal = ({
   bottomSlot,
   disabled,
   containerClassName,
+  clickOutsideNotClose = false,
 }: ModalProps) => {
   const { t } = useTranslation()
 
@@ -53,7 +55,7 @@ const Modal = ({
     <PortalToFollowElem open>
       <PortalToFollowElemContent
         className='z-[9998] flex h-full w-full items-center justify-center bg-background-overlay'
-        onClick={onClose}
+        onClick={clickOutsideNotClose ? undefined : onClose}
       >
         <div
           className={cn(

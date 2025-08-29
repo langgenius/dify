@@ -128,13 +128,13 @@ const DetailHeader = ({
       return false
     if (!autoUpgradeInfo || !isFromMarketplace)
       return false
-    if(autoUpgradeInfo.strategy_setting === 'disabled')
+    if (autoUpgradeInfo.strategy_setting === 'disabled')
       return false
-    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
+    if (autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
       return true
-    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.partial && autoUpgradeInfo.include_plugins.includes(plugin_id))
+    if (autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.partial && autoUpgradeInfo.include_plugins.includes(plugin_id))
       return true
-    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.exclude && !autoUpgradeInfo.exclude_plugins.includes(plugin_id))
+    if (autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.exclude && !autoUpgradeInfo.exclude_plugins.includes(plugin_id))
       return true
     return false
   }, [autoUpgradeInfo, plugin_id, isFromMarketplace])
@@ -331,6 +331,7 @@ const DetailHeader = ({
             pluginPayload={{
               provider: provider?.name || '',
               category: AuthCategory.tool,
+              detail,
             }}
           />
         )

@@ -20,7 +20,7 @@ import {
 } from '@remixicon/react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginStore } from '../store'
+import { usePluginStore } from '../../store'
 
 type Props = {
   oauthConfig?: TriggerOAuthConfig

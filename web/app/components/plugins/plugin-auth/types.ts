@@ -1,3 +1,5 @@
+import type { PluginDetail } from '../types'
+
 export type { AddApiKeyButtonProps } from './authorize/add-api-key-button'
 export type { AddOAuthButtonProps } from './authorize/add-oauth-button'
 
@@ -11,6 +13,7 @@ export enum AuthCategory {
 export type PluginPayload = {
   category: AuthCategory
   provider: string
+  detail: PluginDetail
 }
 
 export enum CredentialTypeEnum {
