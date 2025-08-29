@@ -10,6 +10,7 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import languages
@@ -53,8 +54,8 @@ def reset_password(email, new_password, password_confirm):
     if str(new_password).strip() != str(password_confirm).strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
-
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+    with Session(db.engine, expire_on_commit=False) as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -92,8 +93,8 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
-
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+    with Session(db.engine, expire_on_commit=False) as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -131,8 +132,8 @@ def reset_encrypt_key_pair():
     if dify_config.EDITION != "SELF_HOSTED":
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
-
-    tenants = db.session.query(Tenant).all()
+    with Session(db.engine, expire_on_commit=False) as session:
+        tenants = session.query(Tenant).all()
     for tenant in tenants:
         if not tenant:
             click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
@@ -174,8 +175,9 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             per_page = 50
-            apps = (
-                db.session.query(App)
+            with Session(db.engine, expire_on_commit=False) as session:
+                apps = (
+                session.query(App)
                 .where(App.status == "normal")
                 .order_by(App.created_at.desc())
                 .limit(per_page)
@@ -195,8 +197,9 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                app_annotation_setting = (
-                    db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
+                with Session(db.engine, expire_on_commit=False) as session:
+                    app_annotation_setting = (
+                    session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
                 )
 
                 if not app_annotation_setting:
@@ -204,15 +207,17 @@ def migrate_annotation_vector_database():
                     click.echo(f"App annotation setting disabled: {app.id}")
                     continue
                 # get dataset_collection_binding info
-                dataset_collection_binding = (
-                    db.session.query(DatasetCollectionBinding)
+                with Session(db.engine, expire_on_commit=False) as session:
+                    dataset_collection_binding = (
+                    session.query(DatasetCollectionBinding)
                     .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
                     .first()
                 )
                 if not dataset_collection_binding:
                     click.echo(f"App annotation collection binding not found: {app.id}")
                     continue
-                annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
+                with Session(db.engine, expire_on_commit=False) as session:
+                    annotations = session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
