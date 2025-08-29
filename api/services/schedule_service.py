@@ -144,7 +144,6 @@ class ScheduleService:
         next_run_at = ScheduleService.calculate_next_run_at(
             schedule.cron_expression,
             schedule.timezone,
-            base_time=datetime.now(UTC),
         )
 
         schedule.next_run_at = next_run_at
