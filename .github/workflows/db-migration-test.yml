@@ -2,13 +2,6 @@ name: DB Migration Test
 
 on:
   workflow_call:
-  pull_request:
-    branches:
-      - main
-      - plugins/beta
-    paths:
-      - api/migrations/**
-      - .github/workflows/db-migration-test.yml
 
 concurrency:
   group: db-migration-test-${{ github.ref }}
