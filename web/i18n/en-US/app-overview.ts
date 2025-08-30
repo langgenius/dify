@@ -38,6 +38,10 @@ const translation = {
       regenerate: 'Regenerate',
       regenerateNotice: 'Do you want to regenerate the public URL?',
       preUseReminder: 'Please enable web app before continuing.',
+      enableTooltip: {
+        description: 'To enable this feature, please add a User Input node to the canvas.',
+        learnMore: 'Learn more',
+      },
       settings: {
         entry: 'Settings',
         title: 'Web App Settings',

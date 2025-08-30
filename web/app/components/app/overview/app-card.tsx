@@ -41,7 +41,8 @@ import AccessControl from '../app-access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
+import { useDocLink } from '@/context/i18n'
 
 export type IAppCardProps = {
   className?: string
@@ -68,6 +69,7 @@ function AppCard({
   const pathname = usePathname()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === 'workflow' ? appInfo.id : '')
+  const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -103,10 +105,14 @@ function AppCard({
   const basicName = isApp
     ? t('appOverview.overview.appInfo.title')
     : t('appOverview.overview.apiInfo.title')
-  const hasStartNode = currentWorkflow?.graph?.nodes.find(node => node.data.type === BlockEnum.Start)
-  const isWorkflowAndMissingStart = appInfo.mode === 'workflow' && !hasStartNode
-  const toggleDisabled = isWorkflowAndMissingStart || (isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager)
-  const runningStatus = isWorkflowAndMissingStart ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
+  const isWorkflowApp = appInfo.mode === 'workflow'
+  const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
+  const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
+  const missingEntryNode = isWorkflowApp && !hasEntryNode
+  const hasInsufficientPermissions = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode
+  const runningStatus = (appUnpublished || missingEntryNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
+  const isMinimalState = appUnpublished || missingEntryNode
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
   const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
@@ -180,10 +186,10 @@ function AppCard({
   return (
     <div
       className={
-        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''}`}
+        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${isMinimalState ? 'h-12' : ''}`}
     >
       <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl`}>
-        <div className='flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3'>
+        <div className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}>
           <div className='flex w-full items-center gap-3 self-stretch'>
             <AppBasic
               iconType={cardType}
@@ -205,9 +211,37 @@ function AppCard({
                   : t('appOverview.overview.status.disable')}
               </div>
             </div>
-            <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
+            {isApp ? (
+              <Tooltip
+                popupContent={
+                  toggleDisabled && (appUnpublished || missingEntryNode) ? (
+                    <>
+                      <div className="mb-1 text-xs font-normal text-text-secondary">
+                        {t('appOverview.overview.appInfo.enableTooltip.description')}
+                      </div>
+                      <div
+                        className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
+                        onClick={() => window.open(docLink('/guides/workflow/node/start'), '_blank')}
+                      >
+                        {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+                      </div>
+                    </>
+                  ) : ''
+                }
+                position="right"
+                popupClassName="w-58 max-w-60 rounded-xl border-[0.5px] p-3.5 shadow-lg backdrop-blur-[10px]"
+                offset={24}
+              >
+                <div>
+                  <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
+                </div>
+              </Tooltip>
+            ) : (
+              <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
+            )}
           </div>
-          <div className='flex flex-col items-start justify-center self-stretch'>
+          {!isMinimalState && (
+            <div className='flex flex-col items-start justify-center self-stretch'>
             <div className="system-xs-medium pb-1 text-text-tertiary">
               {isApp
                 ? t('appOverview.overview.appInfo.accessibleAddress')
@@ -256,7 +290,8 @@ function AppCard({
               )}
             </div>
           </div>
-          {isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
+          )}
+          {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
             <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
             <div className='flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2'
               onClick={handleClickAccessControl}>
@@ -292,9 +327,10 @@ function AppCard({
             </div>
           </div>}
         </div>
-        <div className={'flex items-center gap-1 self-stretch p-3'}>
-          {!isApp && <SecretKeyButton appId={appInfo.id} />}
-          {OPERATIONS_MAP[cardType].map((op) => {
+        {!isMinimalState && (
+          <div className={'flex items-center gap-1 self-stretch p-3'}>
+            {!isApp && <SecretKeyButton appId={appInfo.id} />}
+            {OPERATIONS_MAP[cardType].map((op) => {
             const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
                 ? false
@@ -322,7 +358,8 @@ function AppCard({
               </Button>
             )
           })}
-        </div>
+          </div>
+        )}
       </div>
       {isApp
         ? (
