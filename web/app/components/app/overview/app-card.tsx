@@ -103,11 +103,14 @@ function AppCard({
   const basicName = isApp
     ? t('appOverview.overview.appInfo.title')
     : t('appOverview.overview.apiInfo.title')
+  const isWorkflowApp = appInfo.mode === 'workflow'
+  const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
   const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
-  const isWorkflowAndMissingStart = appInfo.mode === 'workflow' && !hasEntryNode
-  const toggleDisabled = isWorkflowAndMissingStart || (isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager)
-  const runningStatus = isWorkflowAndMissingStart ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
-  const isMinimalState = isWorkflowAndMissingStart
+  const missingEntryNode = isWorkflowApp && !hasEntryNode
+  const hasInsufficientPermissions = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode
+  const runningStatus = (appUnpublished || missingEntryNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
+  const isMinimalState = appUnpublished || missingEntryNode
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
   const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`

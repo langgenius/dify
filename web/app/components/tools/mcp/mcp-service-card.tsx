@@ -70,13 +70,16 @@ function MCPServiceCard({
   const { data: detail } = useMCPServerDetail(appId)
   const { id, status, server_code } = detail ?? {}
 
+  const isWorkflowApp = appInfo.mode === 'workflow'
   const appUnpublished = isAdvancedApp ? !currentWorkflow?.graph : !basicAppConfig.updated_at
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp` : '***********'
   const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
-  const toggleDisabled = !isCurrentWorkspaceEditor || appUnpublished || !hasEntryNode
-  const isMinimalState = appInfo.mode === 'workflow' && !hasEntryNode
+  const missingEntryNode = isWorkflowApp && !hasEntryNode
+  const hasInsufficientPermissions = !isCurrentWorkspaceEditor
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode
+  const isMinimalState = appUnpublished || missingEntryNode
 
   const [activated, setActivated] = useState(serverActivated)
 
