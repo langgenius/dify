@@ -103,7 +103,7 @@ def init_app(app: DifyApp):
     def shutdown_tracer():
         provider = trace.get_tracer_provider()
         if hasattr(provider, "force_flush"):
-            provider.force_flush()
+            provider.force_flush()  # ty: ignore [call-non-callable]
 
     class ExceptionLoggingHandler(logging.Handler):
         """Custom logging handler that creates spans for logging.exception() calls"""

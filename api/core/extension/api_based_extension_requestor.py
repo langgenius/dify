@@ -43,9 +43,9 @@ class APIBasedExtensionRequestor:
                 timeout=self.timeout,
                 proxies=proxies,
             )
-        except requests.exceptions.Timeout:
+        except requests.Timeout:
             raise ValueError("request timeout")
-        except requests.exceptions.ConnectionError:
+        except requests.ConnectionError:
             raise ValueError("request connection error")
 
         if response.status_code != 200:

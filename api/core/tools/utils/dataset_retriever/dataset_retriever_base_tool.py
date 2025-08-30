@@ -1,7 +1,6 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
-from msal_extensions.persistence import ABC  # type: ignore
 from pydantic import BaseModel, ConfigDict
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler

@@ -12,7 +12,7 @@ import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
 
 if TYPE_CHECKING:
-    from clickzetta import Connection
+    from clickzetta.connector.v0.connection import Connection  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field

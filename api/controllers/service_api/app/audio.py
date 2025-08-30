@@ -55,7 +55,7 @@ class AudioApi(Resource):
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user)
+            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.id)
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
