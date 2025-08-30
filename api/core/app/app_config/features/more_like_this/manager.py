@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field, ValidationError
 
+
 class MoreLikeThisConfig(BaseModel):
     enabled: bool = False
+
 
 class AppConfigModel(BaseModel):
     more_like_this: MoreLikeThisConfig = Field(default_factory=MoreLikeThisConfig)
@@ -23,4 +25,6 @@ class MoreLikeThisConfigManager:
         try:
             return AppConfigModel.model_validate(config).dict(), ["more_like_this"]
         except ValidationError as e:
-            raise ValueError("more_like_this must be of dict type and enabled in more_like_this must be of boolean type")
+            raise ValueError(
+                "more_like_this must be of dict type and enabled in more_like_this must be of boolean type"
+            )
