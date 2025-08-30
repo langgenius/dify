@@ -57,7 +57,7 @@ class TestClearFreePlanTenantExpiredLogs:
     def test_clear_message_related_tables_no_records_found(self, mock_session, sample_message_ids):
         """Test when no related records are found."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.filter.return_value.all.return_value = []
+            mock_session.query.return_value.where.return_value.all.return_value = []
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
@@ -70,7 +70,7 @@ class TestClearFreePlanTenantExpiredLogs:
     ):
         """Test when records are found and have to_dict method."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.filter.return_value.all.return_value = sample_records
+            mock_session.query.return_value.where.return_value.all.return_value = sample_records
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
@@ -123,7 +123,7 @@ class TestClearFreePlanTenantExpiredLogs:
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
             mock_storage.save.side_effect = Exception("Storage error")
 
-            mock_session.query.return_value.filter.return_value.all.return_value = sample_records
+            mock_session.query.return_value.where.return_value.all.return_value = sample_records
 
             # Should not raise exception
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
@@ -138,7 +138,7 @@ class TestClearFreePlanTenantExpiredLogs:
             record.id = "record-1"
             record.to_dict.side_effect = Exception("Serialization error")
 
-            mock_session.query.return_value.filter.return_value.all.return_value = [record]
+            mock_session.query.return_value.where.return_value.all.return_value = [record]
 
             # Should not raise exception
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
@@ -149,7 +149,7 @@ class TestClearFreePlanTenantExpiredLogs:
     def test_clear_message_related_tables_deletion_called(self, mock_session, sample_message_ids, sample_records):
         """Test that deletion is called for found records."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.filter.return_value.all.return_value = sample_records
+            mock_session.query.return_value.where.return_value.all.return_value = sample_records
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
@@ -161,7 +161,7 @@ class TestClearFreePlanTenantExpiredLogs:
     ):
         """Test that logging output is generated."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.filter.return_value.all.return_value = sample_records
+            mock_session.query.return_value.where.return_value.all.return_value = sample_records
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
