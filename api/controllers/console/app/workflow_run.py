@@ -93,10 +93,12 @@ class WorkflowRunNodeExecutionListApi(Resource):
 
         workflow_run_service = WorkflowRunService()
         user = cast("Account | EndUser", current_user)
+        # Extract tenant_id from user for the updated method signature
+        tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
         node_executions = workflow_run_service.get_workflow_run_node_executions(
             app_model=app_model,
             run_id=run_id,
-            user=user,
+            tenant_id=tenant_id,
         )
 
         return {"data": node_executions}
