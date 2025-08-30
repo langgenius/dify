@@ -21,8 +21,10 @@ const SwrInitializer = ({
   const searchParams = useSearchParams()
   const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
   const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
-  const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
-  const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
+  // Tokens are now stored in cookies, no need to check localStorage
+  // Keep these for backward compatibility check
+  const consoleTokenFromLocalStorage = null
+  const refreshTokenFromLocalStorage = null
   const pathname = usePathname()
   const [init, setInit] = useState(false)
 
@@ -57,13 +59,10 @@ const SwrInitializer = ({
           router.replace('/install')
           return
         }
-        if (!((consoleToken && refreshToken) || (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage))) {
-          router.replace('/signin')
-          return
-        }
+        // With cookie-based auth, we don't need to check localStorage
+        // If tokens are in URL params, backend should handle setting cookies
         if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
-          consoleToken && localStorage.setItem('console_token', consoleToken)
-          refreshToken && localStorage.setItem('refresh_token', refreshToken)
+          // Redirect to remove tokens from URL (backend will set cookies)
           const redirectUrl = resolvePostLoginRedirect(searchParams)
           if (redirectUrl)
             location.replace(redirectUrl)
