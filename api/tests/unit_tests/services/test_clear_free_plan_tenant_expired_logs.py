@@ -101,7 +101,7 @@ class TestClearFreePlanTenantExpiredLogs:
                 records.append(record)
 
             # Mock records for first table only, empty for others
-            mock_session.query.return_value.filter.return_value.all.side_effect = [
+            mock_session.query.return_value.where.return_value.all.side_effect = [
                 records,
                 [],
                 [],
@@ -129,7 +129,7 @@ class TestClearFreePlanTenantExpiredLogs:
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
             # Should still delete records even if backup fails
-            assert mock_session.query.return_value.filter.return_value.delete.called
+            assert mock_session.query.return_value.where.return_value.delete.called
 
     def test_clear_message_related_tables_serialization_error_continues(self, mock_session, sample_message_ids):
         """Test that method continues even when record serialization fails."""
@@ -144,7 +144,7 @@ class TestClearFreePlanTenantExpiredLogs:
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
             # Should still delete records even if serialization fails
-            assert mock_session.query.return_value.filter.return_value.delete.called
+            assert mock_session.query.return_value.where.return_value.delete.called
 
     def test_clear_message_related_tables_deletion_called(self, mock_session, sample_message_ids, sample_records):
         """Test that deletion is called for found records."""
@@ -154,7 +154,7 @@ class TestClearFreePlanTenantExpiredLogs:
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
             # Should call delete for each table that has records
-            assert mock_session.query.return_value.filter.return_value.delete.called
+            assert mock_session.query.return_value.where.return_value.delete.called
 
     def test_clear_message_related_tables_logging_output(
         self, mock_session, sample_message_ids, sample_records, capsys
