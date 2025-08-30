@@ -130,7 +130,7 @@ class MessageFeedbackApi(Resource):
 
         message_id = str(args["message_id"])
 
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
             raise NotFound("Message Not Exists.")
