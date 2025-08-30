@@ -112,7 +112,8 @@ class IterationNode(BaseNode):
         if not variable:
             raise IteratorVariableNotFoundError(f"iterator variable {self._node_data.iterator_selector} not found")
 
-        if not isinstance(variable, ArrayVariable) and not isinstance(variable, NoneVariable):
+        # Check if variable is a valid array type (ArrayVariable or ArraySegment) or NoneVariable
+        if not isinstance(variable, (ArrayVariable, ArraySegment)) and not isinstance(variable, NoneVariable):
             raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
 
         if isinstance(variable, NoneVariable) or len(variable.value) == 0:
@@ -514,7 +515,6 @@ class IterationNode(BaseNode):
                                 iteration_node_type=self.type_,
                                 iteration_node_data=self._node_data,
                                 index=next_index,
-                                parallel_mode_run_id=parallel_mode_run_id,
                                 pre_iteration_output=None,
                                 duration=duration,
                             )
@@ -535,7 +535,6 @@ class IterationNode(BaseNode):
                                 iteration_node_type=self.type_,
                                 iteration_node_data=self._node_data,
                                 index=next_index,
-                                parallel_mode_run_id=parallel_mode_run_id,
                                 pre_iteration_output=None,
                                 duration=duration,
                             )
@@ -611,7 +610,6 @@ class IterationNode(BaseNode):
                 iteration_node_type=self.type_,
                 iteration_node_data=self._node_data,
                 index=next_index,
-                parallel_mode_run_id=parallel_mode_run_id,
                 pre_iteration_output=current_iteration_output or None,
                 duration=duration,
             )
