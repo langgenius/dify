@@ -41,7 +41,7 @@ import AccessControl from '../app-access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
 
 export type IAppCardProps = {
   className?: string
@@ -103,8 +103,8 @@ function AppCard({
   const basicName = isApp
     ? t('appOverview.overview.appInfo.title')
     : t('appOverview.overview.apiInfo.title')
-  const hasStartNode = currentWorkflow?.graph?.nodes.find(node => node.data.type === BlockEnum.Start)
-  const isWorkflowAndMissingStart = appInfo.mode === 'workflow' && !hasStartNode
+  const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
+  const isWorkflowAndMissingStart = appInfo.mode === 'workflow' && !hasEntryNode
   const toggleDisabled = isWorkflowAndMissingStart || (isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager)
   const runningStatus = isWorkflowAndMissingStart ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
   const { app_base_url, access_token } = appInfo.site ?? {}
