@@ -450,6 +450,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         worker_thread.start()
 
+        # release database connection, because the following new thread operations may take a long time
+        db.session.refresh(workflow)
+        db.session.refresh(message)
+        db.session.refresh(user)
+        db.session.close()
+
         # return response or stream generator
         response = self._handle_advanced_chat_response(
             application_generate_entity=application_generate_entity,

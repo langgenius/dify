@@ -3,6 +3,9 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -253,7 +256,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param conversation_id: conversation id
         :return: conversation
         """
-        conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id))
 
         if not conversation:
             raise ConversationNotExistsError("Conversation not exists")
@@ -266,7 +270,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param message_id: message id
         :return: message
         """
-        message = db.session.query(Message).where(Message.id == message_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message = session.scalar(select(Message).where(Message.id == message_id))
 
         if message is None:
             raise MessageNotExistsError("Message not exists")
