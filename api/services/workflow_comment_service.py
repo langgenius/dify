@@ -17,6 +17,14 @@ class WorkflowCommentService:
     """Service for managing workflow comments."""
 
     @staticmethod
+    def _validate_content(content: str) -> None:
+        if len(content.strip()) == 0:
+            raise ValueError("Comment content cannot be empty")
+
+        if len(content) > 1000:
+            raise ValueError("Comment content cannot exceed 1000 characters")
+
+    @staticmethod
     def get_comments(tenant_id: str, app_id: str) -> list[WorkflowComment]:
         """Get all comments for a workflow."""
         with Session(db.engine) as session:
@@ -68,11 +76,8 @@ class WorkflowCommentService:
         mentioned_user_ids: Optional[list[str]] = None,
     ) -> WorkflowComment:
         """Create a new workflow comment."""
-        if len(content.strip()) == 0:
-            raise ValueError("Comment content cannot be empty")
+        WorkflowCommentService._validate_content(content)
 
-        if len(content) > 1000:
-            raise ValueError("Comment content cannot exceed 1000 characters")
         with Session(db.engine) as session:
             comment = WorkflowComment(
                 tenant_id=tenant_id,
@@ -114,13 +119,9 @@ class WorkflowCommentService:
         mentioned_user_ids: Optional[list[str]] = None,
     ) -> dict:
         """Update a workflow comment."""
-        if len(content.strip()) == 0:
-            raise ValueError("Comment content cannot be empty")
+        WorkflowCommentService._validate_content(content)
 
-        if len(content) > 1000:
-            raise ValueError("Comment content cannot exceed 1000 characters")
-
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             # Get comment with validation
             stmt = (
                 select(WorkflowComment)
@@ -224,11 +225,7 @@ class WorkflowCommentService:
         mentioned_user_ids: Optional[list[str]] = None
     ) -> dict:
         """Add a reply to a workflow comment."""
-        if len(content.strip()) == 0:
-            raise ValueError("Reply content cannot be empty")
-
-        if len(content) > 1000:
-            raise ValueError("Reply content cannot exceed 1000 characters")
+        WorkflowCommentService._validate_content(content)
 
         with Session(db.engine, expire_on_commit=False) as session:
             # Check if comment exists
@@ -268,11 +265,7 @@ class WorkflowCommentService:
         mentioned_user_ids: Optional[list[str]] = None
     ) -> WorkflowCommentReply:
         """Update a comment reply."""
-        if len(content.strip()) == 0:
-            raise ValueError("Reply content cannot be empty")
-
-        if len(content) > 1000:
-            raise ValueError("Reply content cannot exceed 1000 characters")
+        WorkflowCommentService._validate_content(content)
         
         with Session(db.engine, expire_on_commit=False) as session:
             reply = session.get(WorkflowCommentReply, reply_id)
@@ -304,6 +297,7 @@ class WorkflowCommentService:
                     session.add(mention)
 
             session.commit()
+            session.refresh(reply)  # Refresh to get updated timestamp
 
             return {
                     "id": reply.id,
