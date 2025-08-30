@@ -470,6 +470,12 @@ const translation = {
         instruction: 'Anleitung',
         regenerate: 'Regenerieren',
       },
+      reasoningFormat: {
+        tooltip: 'Inhalte aus Denk-Tags extrahieren und im Feld reasoning_content speichern.',
+        separated: 'Separate Denk tags',
+        title: 'Aktivieren Sie die Trennung von Argumentations-Tags',
+        tagged: 'Behalte die Denk-Tags',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Abfragevariable',

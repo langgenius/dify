@@ -470,6 +470,12 @@ const translation = {
         stringValidations: 'การตรวจสอบสตริง',
         required: 'จำเป็นต้องใช้',
       },
+      reasoningFormat: {
+        tagged: 'รักษาความคิดเกี่ยวกับแท็ก',
+        separated: 'แยกแท็กความคิดเห็น',
+        tooltip: 'ดึงเนื้อหาจากแท็กคิดและเก็บไว้ในฟิลด์ reasoning_content.',
+        title: 'เปิดใช้งานการแยกแท็กการเหตุผล',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'ตัวแปรแบบสอบถาม',

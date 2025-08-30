@@ -470,6 +470,12 @@ const translation = {
         generateJsonSchema: 'Générer un schéma JSON',
         resultTip: 'Voici le résultat généré. Si vous n\'êtes pas satisfait, vous pouvez revenir en arrière et modifier votre demande.',
       },
+      reasoningFormat: {
+        title: 'Activer la séparation des balises de raisonnement',
+        tagged: 'Gardez les étiquettes de pensée',
+        separated: 'Séparer les balises de réflexion',
+        tooltip: 'Extraire le contenu des balises think et le stocker dans le champ reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variable de requête',

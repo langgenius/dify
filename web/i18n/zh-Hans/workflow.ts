@@ -477,6 +477,12 @@ const translation = {
           saveSchema: '请先完成当前字段的编辑',
         },
       },
+      reasoningFormat: {
+        tooltip: '从think标签中提取内容，并将其存储在reasoning_content字段中。',
+        title: '启用推理标签分离',
+        tagged: '保持思考标签',
+        separated: '分开思考标签',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',

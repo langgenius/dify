@@ -470,6 +470,12 @@ const translation = {
         import: 'Importar desde JSON',
         resetDefaults: 'Restablecer',
       },
+      reasoningFormat: {
+        tagged: 'Mantén las etiquetas de pensamiento',
+        separated: 'Separar etiquetas de pensamiento',
+        title: 'Habilitar la separación de etiquetas de razonamiento',
+        tooltip: 'Extraer contenido de las etiquetas de pensamiento y almacenarlo en el campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variable de consulta',
