@@ -87,7 +87,6 @@ class PromptMessageUtil:
             if isinstance(prompt_message.content, list):
                 for content in prompt_message.content:
                     if content.type == PromptMessageContentType.TEXT:
-                        content = cast(TextPromptMessageContent, content)
                         text += content.data
                     else:
                         content = cast(ImagePromptMessageContent, content)

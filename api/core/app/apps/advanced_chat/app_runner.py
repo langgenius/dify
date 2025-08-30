@@ -140,7 +140,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 environment_variables=self._workflow.environment_variables,
                 # Based on the definition of `VariableUnion`,
                 # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
-                conversation_variables=cast(list[VariableUnion], conversation_variables),
+                conversation_variables=conversation_variables,
             )
 
             # init graph

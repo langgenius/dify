@@ -2,7 +2,7 @@
 
 import contextlib
 from collections.abc import Iterator
-from typing import Optional, cast
+from typing import Optional
 
 from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -27,7 +27,7 @@ class PdfExtractor(BaseExtractor):
         plaintext_file_exists = False
         if self._file_cache_key:
             with contextlib.suppress(FileNotFoundError):
-                text = cast(bytes, storage.load(self._file_cache_key)).decode("utf-8")
+                text = storage.load(self._file_cache_key).decode("utf-8")
                 plaintext_file_exists = True
                 return [Document(page_content=text)]
         documents = list(self.load())

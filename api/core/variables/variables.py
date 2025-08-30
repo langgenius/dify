@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, TypeAlias, cast
+from typing import Annotated, TypeAlias
 from uuid import uuid4
 
 from pydantic import Discriminator, Field, Tag
@@ -86,7 +86,7 @@ class SecretVariable(StringVariable):
 
     @property
     def log(self) -> str:
-        return cast(str, encrypter.obfuscated_token(self.value))
+        return encrypter.obfuscated_token(self.value)
 
 
 class NoneVariable(NoneSegment, Variable):

@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -57,7 +57,7 @@ class ToolNode(BaseNode):
         Run the tool node
         """
 
-        node_data = cast(ToolNodeData, self._node_data)
+        node_data = self._node_data
 
         # fetch tool icon
         tool_info = {

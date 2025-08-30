@@ -302,12 +302,12 @@ def _extract_text_from_yaml(file_content: bytes) -> str:
             encoding = "utf-8"
 
         yaml_data = yaml.safe_load_all(file_content.decode(encoding, errors="ignore"))
-        return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
     except (UnicodeDecodeError, LookupError, yaml.YAMLError) as e:
         # If decoding fails, try with utf-8 as last resort
         try:
             yaml_data = yaml.safe_load_all(file_content.decode("utf-8", errors="ignore"))
-            return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+            return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
         except (UnicodeDecodeError, yaml.YAMLError):
             raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
