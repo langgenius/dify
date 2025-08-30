@@ -177,14 +177,29 @@ class WorkflowCommentService:
     @staticmethod
     def delete_comment(tenant_id: str, app_id: str, comment_id: str, user_id: str) -> None:
         """Delete a workflow comment."""
-        comment = WorkflowCommentService.get_comment(tenant_id, app_id, comment_id)
+        with Session(db.engine, expire_on_commit=False) as session:
+            comment = WorkflowCommentService.get_comment(tenant_id, app_id, comment_id, session)
 
-        # Only the creator can delete the comment
-        if comment.created_by != user_id:
-            raise Forbidden("Only the comment creator can delete it")
+            # Only the creator can delete the comment
+            if comment.created_by != user_id:
+                raise Forbidden("Only the comment creator can delete it")
 
-        db.session.delete(comment)
-        db.session.commit()
+            # Delete associated mentions (both comment and reply mentions)
+            mentions = session.scalars(
+                select(WorkflowCommentMention).where(WorkflowCommentMention.comment_id == comment_id)
+            ).all()
+            for mention in mentions:
+                session.delete(mention)
+
+            # Delete associated replies
+            replies = session.scalars(
+                select(WorkflowCommentReply).where(WorkflowCommentReply.comment_id == comment_id)
+            ).all()
+            for reply in replies:
+                session.delete(reply)
+
+            session.delete(comment)
+            session.commit()
 
     @staticmethod
     def resolve_comment(tenant_id: str, app_id: str, comment_id: str, user_id: str) -> WorkflowComment:
@@ -233,7 +248,7 @@ class WorkflowCommentService:
                     # Create mention linking to specific reply
                     mention = WorkflowCommentMention(
                         comment_id=comment_id,
-                        reply_id=reply.id,  # This is a reply mention
+                        reply_id=reply.id,
                         mentioned_user_id=user_id
                     )
                     session.add(mention)
@@ -289,25 +304,33 @@ class WorkflowCommentService:
                     session.add(mention)
 
             session.commit()
-            
-        return {
-                "id": reply.id,
-                "updated_at": reply.updated_at
-            }
+
+            return {
+                    "id": reply.id,
+                    "updated_at": reply.updated_at
+                }
 
     @staticmethod
     def delete_reply(reply_id: str, user_id: str) -> None:
         """Delete a comment reply."""
-        reply = db.session.get(WorkflowCommentReply, reply_id)
-        if not reply:
-            raise NotFound("Reply not found")
+        with Session(db.engine, expire_on_commit=False) as session:
+            reply = session.get(WorkflowCommentReply, reply_id)
+            if not reply:
+                raise NotFound("Reply not found")
 
-        # Only the creator can delete the reply
-        if reply.created_by != user_id:
-            raise Forbidden("Only the reply creator can delete it")
+            # Only the creator can delete the reply
+            if reply.created_by != user_id:
+                raise Forbidden("Only the reply creator can delete it")
 
-        db.session.delete(reply)
-        db.session.commit()
+            # Delete associated mentions first
+            mentions = session.scalars(
+                select(WorkflowCommentMention).where(WorkflowCommentMention.reply_id == reply_id)
+            ).all()
+            for mention in mentions:
+                session.delete(mention)
+
+            session.delete(reply)
+            session.commit()
 
     @staticmethod
     def validate_comment_access(comment_id: str, tenant_id: str, app_id: str) -> WorkflowComment:

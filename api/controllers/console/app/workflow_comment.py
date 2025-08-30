@@ -118,7 +118,7 @@ class WorkflowCommentDetailApi(Resource):
             user_id=current_user.id,
         )
 
-        return {"message": "Comment deleted successfully"}, 200
+        return {"result": "success"}, 204
 
 
 class WorkflowCommentResolveApi(Resource):
@@ -132,22 +132,6 @@ class WorkflowCommentResolveApi(Resource):
     def post(self, app_model: App, comment_id: str):
         """Resolve a workflow comment."""
         comment = WorkflowCommentService.resolve_comment(
-            tenant_id=current_user.current_tenant_id,
-            app_id=app_model.id,
-            comment_id=comment_id,
-            user_id=current_user.id,
-        )
-
-        return comment
-
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @get_app_model
-    @marshal_with(workflow_comment_resolve_fields)
-    def delete(self, app_model: App, comment_id: str):
-        """Reopen a resolved workflow comment."""
-        comment = WorkflowCommentService.reopen_comment(
             tenant_id=current_user.current_tenant_id,
             app_id=app_model.id,
             comment_id=comment_id,
@@ -229,7 +213,7 @@ class WorkflowCommentReplyDetailApi(Resource):
 
         WorkflowCommentService.delete_reply(reply_id=reply_id, user_id=current_user.id)
 
-        return {"message": "Reply deleted successfully"}, 200
+        return {"result": "success"}, 204
 
 
 # Register API routes
