@@ -140,7 +140,9 @@ class WorkflowCommentReply(Base):
     content: Mapped[str] = mapped_column(db.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
+    updated_at: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
     # Relationships
     comment: Mapped["WorkflowComment"] = relationship("WorkflowComment", back_populates="replies")
 

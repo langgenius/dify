@@ -95,8 +95,5 @@ workflow_comment_reply_create_fields = {
 # Reply update response fields
 workflow_comment_reply_update_fields = {
     "id": fields.String,
-    "content": fields.String,
-    "created_by": fields.String,
-    "created_by_account": fields.Nested(comment_account_fields, allow_null=True),
-    "created_at": TimestampField,
+    "updated_at": TimestampField,
 }

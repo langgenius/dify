@@ -44,6 +44,7 @@ def upgrade():
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('created_by', models.types.StringUUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['comment_id'], ['workflow_comments.id'], name=op.f('workflow_comment_replies_comment_id_fkey'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name='workflow_comment_replies_pkey')
     )
