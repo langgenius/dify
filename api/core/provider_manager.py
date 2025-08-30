@@ -34,7 +34,6 @@ from core.model_runtime.entities.provider_entities import (
     ProviderEntity,
 )
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -49,6 +48,7 @@ from models.provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 

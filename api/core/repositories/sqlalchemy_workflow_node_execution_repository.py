@@ -12,12 +12,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from core.workflow.nodes.enums import NodeType
+from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
@@ -215,7 +211,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             # Update the in-memory cache for faster subsequent lookups
             # Only cache if we have a node_execution_id to use as the cache key
             if db_model.node_execution_id:
-                logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
     def get_db_models_by_workflow_run(

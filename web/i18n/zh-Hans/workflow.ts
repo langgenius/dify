@@ -92,7 +92,6 @@ const translation = {
     importWarning: '注意',
     importWarningDetails: 'DSL 版本差异可能影响部分功能表现',
     importSuccess: '导入成功',
-    parallelRun: '并行运行',
     parallelTip: {
       click: {
         title: '点击',

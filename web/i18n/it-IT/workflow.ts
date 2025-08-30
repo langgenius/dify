@@ -90,7 +90,6 @@ const translation = {
       depthLimit: 'Limite di livelli di annidamento parallelo di {{num}} livelli',
       limit: 'Il parallelismo è limitato ai rami {{num}}.',
     },
-    parallelRun: 'Corsa parallela',
     disconnect: 'Disconnettere',
     jumpToNode: 'Vai a questo nodo',
     addParallelNode: 'Aggiungi nodo parallelo',

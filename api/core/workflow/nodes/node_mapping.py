@@ -1,12 +1,12 @@
 from collections.abc import Mapping
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.agent.agent_node import AgentNode
-from core.workflow.nodes.answer import AnswerNode
-from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.answer.answer_node import AnswerNode
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code import CodeNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode
-from core.workflow.nodes.end import EndNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request import HttpRequestNode
 from core.workflow.nodes.if_else import IfElseNode
 from core.workflow.nodes.iteration import IterationNode, IterationStartNode
@@ -30,7 +30,7 @@ LATEST_VERSION = "latest"
 #
 # TODO(QuantumGhost): This could be automated with either metaclass or `__init_subclass__`
 # hook. Try to avoid duplication of node information.
-NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
+NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[Node]]] = {
     NodeType.START: {
         LATEST_VERSION: StartNode,
         "1": StartNode,

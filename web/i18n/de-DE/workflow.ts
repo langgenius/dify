@@ -86,7 +86,6 @@ const translation = {
       limit: 'Die Parallelität ist auf {{num}} Zweige beschränkt.',
       depthLimit: 'Begrenzung der parallelen Verschachtelungsschicht von {{num}} Schichten',
     },
-    parallelRun: 'Paralleler Lauf',
     disconnect: 'Trennen',
     jumpToNode: 'Zu diesem Knoten springen',
     addParallelNode: 'Parallelen Knoten hinzufügen',

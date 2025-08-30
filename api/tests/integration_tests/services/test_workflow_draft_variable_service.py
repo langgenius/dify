@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from core.variables.variables import StringVariable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes import NodeType
+from extensions.ext_database import db
 from factories.variable_factory import build_segment
 from libs import datetime_utils
-from models import db
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel
 from services.workflow_draft_variable_service import DraftVarLoader, VariableResetError, WorkflowDraftVariableService
 

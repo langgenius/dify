@@ -86,7 +86,6 @@ const translation = {
       limit: 'El paralelismo se limita a {{num}} ramas.',
       depthLimit: 'Límite de capa de anidamiento paralelo de capas {{num}}',
     },
-    parallelRun: 'Ejecución paralela',
     disconnect: 'Desconectar',
     jumpToNode: 'Saltar a este nodo',
     addParallelNode: 'Agregar nodo paralelo',

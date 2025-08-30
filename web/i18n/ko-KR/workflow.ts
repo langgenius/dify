@@ -88,7 +88,6 @@ const translation = {
       depthLimit: '평행 중첩 레이어 {{num}}개 레이어의 제한',
       limit: '병렬 처리는 {{num}}개의 분기로 제한됩니다.',
     },
-    parallelRun: '병렬 실행',
     disconnect: '분리하다',
     jumpToNode: '이 노드로 이동',
     addParallelNode: '병렬 노드 추가',
