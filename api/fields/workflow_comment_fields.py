@@ -84,16 +84,6 @@ workflow_comment_resolve_fields = {
     "resolved": fields.Boolean,
     "resolved_at": TimestampField,
     "resolved_by": fields.String,
-    "resolved_by_account": fields.Nested(comment_account_fields, allow_null=True),
-}
-
-# Comment pagination fields
-workflow_comment_pagination_fields = {
-    "data": fields.List(fields.Nested(workflow_comment_basic_fields), attribute="data"),
-    "has_more": fields.Boolean,
-    "total": fields.Integer,
-    "page": fields.Integer,
-    "limit": fields.Integer,
 }
 
 # Reply creation response fields (simplified)

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from werkzeug.exceptions import Forbidden, NotFound
 
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.helper import uuid_value
 from models import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
 
@@ -31,9 +32,9 @@ class WorkflowCommentService:
             return comments
 
     @staticmethod
-    def get_comment(tenant_id: str, app_id: str, comment_id: str) -> WorkflowComment:
+    def get_comment(tenant_id: str, app_id: str, comment_id: str, session: Session = None) -> WorkflowComment:
         """Get a specific comment."""
-        with Session(db.engine) as session:
+        def _get_comment(session: Session) -> WorkflowComment:
             stmt = (
                 select(WorkflowComment)
                 .options(selectinload(WorkflowComment.replies), selectinload(WorkflowComment.mentions))
@@ -45,10 +46,16 @@ class WorkflowCommentService:
             )
             comment = session.scalar(stmt)
 
-        if not comment:
-            raise NotFound("Comment not found")
+            if not comment:
+                raise NotFound("Comment not found")
 
-        return comment
+            return comment
+
+        if session is not None:
+            return _get_comment(session)
+        else:
+            with Session(db.engine, expire_on_commit=False) as session:
+                return _get_comment(session)
 
     @staticmethod
     def create_comment(
@@ -182,31 +189,16 @@ class WorkflowCommentService:
     @staticmethod
     def resolve_comment(tenant_id: str, app_id: str, comment_id: str, user_id: str) -> WorkflowComment:
         """Resolve a workflow comment."""
-        comment = WorkflowCommentService.get_comment(tenant_id, app_id, comment_id)
+        with Session(db.engine, expire_on_commit=False) as session:
+            comment = WorkflowCommentService.get_comment(tenant_id, app_id, comment_id, session)
+            if comment.resolved:
+                return comment
 
-        if comment.resolved:
-            return comment
-
-        comment.resolved = True
-        comment.resolved_at = db.func.current_timestamp()
-        comment.resolved_by = user_id
-
-        db.session.commit()
-        return comment
-
-    @staticmethod
-    def reopen_comment(tenant_id: str, app_id: str, comment_id: str, user_id: str) -> WorkflowComment:
-        """Reopen a resolved workflow comment."""
-        comment = WorkflowCommentService.get_comment(tenant_id, app_id, comment_id)
-
-        if not comment.resolved:
-            return comment
-
-        comment.resolved = False
-        comment.resolved_at = None
-        comment.resolved_by = None
-
-        db.session.commit()
+            comment.resolved = True
+            comment.resolved_at = naive_utc_now()
+            comment.resolved_by = user_id
+            session.commit()
+            
         return comment
 
     @staticmethod
