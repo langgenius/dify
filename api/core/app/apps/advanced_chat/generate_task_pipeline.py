@@ -73,7 +73,6 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
-from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Conversation, EndUser, Message, MessageFile
@@ -939,10 +938,6 @@ class AdvancedChatAppGenerateTaskPipeline:
             self._task_state.metadata.usage = usage
         else:
             self._task_state.metadata.usage = LLMUsage.empty_usage()
-        message_was_created.send(
-            message,
-            application_generate_entity=self._application_generate_entity,
-        )
 
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """
