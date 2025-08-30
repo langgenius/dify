@@ -21,6 +21,14 @@ if TYPE_CHECKING:
 
 
 class BaseAppGenerator:
+    """
+    Base class for generating applications.
+
+    This class provides common functionalities for preparing and validating user inputs,
+    handling file uploads, and converting messages to event streams. It is intended
+    to be subclassed by specific application type generators.
+    """
+
     def _prepare_user_inputs(
         self,
         *,
@@ -29,6 +37,15 @@ class BaseAppGenerator:
         tenant_id: str,
         strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
+        """
+        Prepare user inputs by validating and sanitizing them.
+
+        :param user_inputs: A dictionary of user-provided inputs.
+        :param variables: A sequence of variable entities to validate against.
+        :param tenant_id: The ID of the tenant.
+        :param strict_type_validation: A boolean indicating whether to perform strict type validation.
+        :return: A dictionary of prepared user inputs.
+        """
         user_inputs = user_inputs or {}
         # Filter input variables from form configuration, handle required fields, default values, and option values
         user_inputs = {
@@ -89,6 +106,13 @@ class BaseAppGenerator:
         variable_entity: "VariableEntity",
         value: Any,
     ):
+        """
+        Validate a single user input against a variable entity.
+
+        :param variable_entity: The variable entity to validate against.
+        :param value: The value of the user input.
+        :return: The validated value.
+        """
         if value is None:
             if variable_entity.required:
                 raise ValueError(f"{variable_entity.variable} is required in input form")
@@ -148,6 +172,12 @@ class BaseAppGenerator:
         return value
 
     def _sanitize_value(self, value: Any) -> Any:
+        """
+        Sanitize a value by removing null characters from strings.
+
+        :param value: The value to sanitize.
+        :return: The sanitized value.
+        """
         if isinstance(value, str):
             return value.replace("\x00", "")
         return value
@@ -155,7 +185,10 @@ class BaseAppGenerator:
     @classmethod
     def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
         """
-        Convert messages into event stream
+        Convert messages into event stream.
+
+        :param generator: A generator or a dictionary of messages.
+        :return: A generator that yields messages in event stream format.
         """
         if isinstance(generator, dict):
             return generator
@@ -173,6 +206,12 @@ class BaseAppGenerator:
     @final
     @staticmethod
     def _get_draft_var_saver_factory(invoke_from: InvokeFrom) -> DraftVariableSaverFactory:
+        """
+        Get a factory for creating draft variable savers.
+
+        :param invoke_from: The source of the invocation.
+        :return: A factory for creating draft variable savers.
+        """
         if invoke_from == InvokeFrom.DEBUGGER:
 
             def draft_var_saver_factory(
