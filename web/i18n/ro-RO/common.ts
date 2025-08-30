@@ -198,7 +198,6 @@ const translation = {
     showAppLength: 'Afișează {{length}} aplicații',
     delete: 'Șterge contul',
     deleteTip: 'Ștergerea contului vă va șterge definitiv toate datele și nu pot fi recuperate.',
-    deleteConfirmTip: 'Pentru a confirma, trimiteți următoarele din e-mailul înregistrat la ',
     account: 'Cont',
     studio: 'Dify Studio',
     myAccount: 'Contul meu',

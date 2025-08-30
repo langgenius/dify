@@ -246,25 +246,6 @@ const translation = {
     },
   },
   automatic: {
-    title: 'Orchestrazione automatizzata delle applicazioni',
-    description:
-      'Descrivi il tuo scenario, Dify orchestrerà un\'applicazione per te.',
-    intendedAudience: 'Chi è il pubblico di destinazione?',
-    intendedAudiencePlaceHolder: 'es. Studente',
-    solveProblem: 'Quali problemi sperano che l\'IA possa risolvere per loro?',
-    solveProblemPlaceHolder:
-      'es. Estrarre approfondimenti e riassumere informazioni da lunghi rapporti e articoli',
-    generate: 'Genera',
-    audiencesRequired: 'Pubblico richiesto',
-    problemRequired: 'Problema richiesto',
-    resTitle: 'Abbiamo orchestrato la seguente applicazione per te.',
-    apply: 'Applica questa orchestrazione',
-    noData:
-      'Descrivi il tuo caso d\'uso a sinistra, l\'anteprima dell\'orchestrazione verrà mostrata qui.',
-    loading: 'Orchestrazione dell\'applicazione per te...',
-    overwriteTitle: 'Sovrascrivere la configurazione esistente?',
-    overwriteMessage:
-      'Applicando questa orchestrazione sovrascriverai la configurazione esistente.',
   },
   resetConfig: {
     title: 'Confermare il ripristino?',
@@ -587,9 +568,7 @@ const translation = {
       },
     },
     instruction: 'Disposizioni',
-    noDataLine1: 'Descrivi il tuo caso d\'uso a sinistra,',
     title: 'Generatore di prompt',
-    instructionPlaceHolder: 'Scrivi istruzioni chiare e specifiche.',
     loading: 'Orchestrare l\'applicazione per te...',
     apply: 'Applicare',
     overwriteMessage: 'L\'applicazione di questo prompt sovrascriverà la configurazione esistente.',
@@ -597,7 +576,6 @@ const translation = {
     overwriteTitle: 'Sovrascrivere la configurazione esistente?',
     resTitle: 'Prompt generato',
     generate: 'Generare',
-    noDataLine2: 'L\'anteprima dell\'orchestrazione verrà visualizzata qui.',
     tryIt: 'Provalo',
     to: 'a',
     dismiss: 'Ignora',

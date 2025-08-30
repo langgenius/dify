@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Bilgi Oluştur',
-      update: 'Veri ekle',
       fallbackRoute: 'Bilgi',
     },
     one: 'Veri kaynağı seçin',

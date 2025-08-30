@@ -115,15 +115,6 @@ const translation = {
       description: 'Pridobite vse zmogljivosti in podporo za velike sisteme kritične za misijo.',
       includesTitle: 'Vse v načrtu Ekipa, plus:',
       features: {
-        0: 'Prilagodljive rešitve za uvajanje na ravni podjetij',
-        2: 'Ekskluzivne funkcije za podjetja',
-        7: 'Posodobitve in vzdrževanje s strani Dify Official',
-        8: 'Strokovna tehnična podpora',
-        1: 'Dovoljenje za komercialno licenco',
-        3: 'Več delovnih prostorov in upravljanje podjetja',
-        5: 'Dogovorjene pogodbe o ravni storitev s strani Dify Partners',
-        6: 'Napredna varnost in nadzor',
-        4: 'SSO',
       },
       priceTip: 'Letno zaračunavanje samo',
       price: 'Po meri',
@@ -132,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        1: 'En delovni prostor',
-        0: 'Vse osnovne funkcije, izdane v javnem repozitoriju',
-        2: 'Skladen z odprtokodno licenco Dify',
       },
       includesTitle: 'Brezplačne funkcije:',
       price: 'Brezplačno',
@@ -145,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        1: 'En delovni prostor',
-        3: 'Prednostna podpora po e-pošti in klepetu',
-        2: 'Prilagajanje logotipa in blagovne znamke WebApp',
-        0: 'Samostojna zanesljivost različnih ponudnikov storitev v oblaku',
       },
       name: 'Premium',
       priceTip: 'Na podlagi oblaka Marketplace',

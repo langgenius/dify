@@ -209,8 +209,6 @@ const translation = {
     delete: 'Elimina Account',
     deleteTip:
       'Eliminando il tuo account cancellerai permanentemente tutti i tuoi dati e non sarà possibile recuperarli.',
-    deleteConfirmTip:
-      'Per confermare, invia il seguente messaggio dalla tua email registrata a ',
     myAccount: 'Il mio account',
     account: 'Conto',
     studio: 'Dify Studio',

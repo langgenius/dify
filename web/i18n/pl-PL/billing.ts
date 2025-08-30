@@ -125,15 +125,6 @@ const translation = {
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
       features: {
-        2: 'Wyjątkowe funkcje dla przedsiębiorstw',
-        7: 'Aktualizacje i konserwacja przez Dify oficjalnie',
-        4: 'Usługi rejestracji jednokrotnej',
-        1: 'Autoryzacja licencji komercyjnej',
-        0: 'Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej',
-        5: 'Umowy SLA wynegocjowane przez Dify Partners',
-        8: 'Profesjonalne wsparcie techniczne',
-        3: 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem',
-        6: 'Zaawansowane zabezpieczenia i kontrola',
       },
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
@@ -142,9 +133,6 @@ const translation = {
     },
     community: {
       features: {
-        1: 'Pojedyncza przestrzeń robocza',
-        2: 'Zgodny z licencją Dify Open Source',
-        0: 'Wszystkie podstawowe funkcje udostępnione w repozytorium publicznym',
       },
       includesTitle: 'Darmowe funkcje:',
       name: 'Społeczność',
@@ -155,10 +143,6 @@ const translation = {
     },
     premium: {
       features: {
-        1: 'Pojedyncza przestrzeń robocza',
-        2: 'Personalizacja logo i brandingu aplikacji internetowej',
-        3: 'Priorytetowa pomoc techniczna przez e-mail i czat',
-        0: 'Niezawodność samodzielnego zarządzania przez różnych dostawców usług w chmurze',
       },
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',

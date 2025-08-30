@@ -115,15 +115,6 @@ const translation = {
       description: 'Obțineți capacități și asistență complete pentru sisteme critice la scară largă.',
       includesTitle: 'Tot ce este în planul Echipă, plus:',
       features: {
-        6: 'Securitate și controale avansate',
-        1: 'Autorizare licență comercială',
-        2: 'Funcții exclusive pentru întreprinderi',
-        0: 'Soluții de implementare scalabile la nivel de întreprindere',
-        5: 'SLA-uri negociate de partenerii Dify',
-        3: 'Mai multe spații de lucru și managementul întreprinderii',
-        7: 'Actualizări și întreținere de către Dify oficial',
-        8: 'Asistență tehnică profesională',
-        4: 'SSO',
       },
       for: 'Pentru echipe de mari dimensiuni',
       price: 'Personalizat',
@@ -132,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Toate caracteristicile de bază lansate în depozitul public',
-        2: 'Respectă licența Dify Open Source',
-        1: 'Spațiu de lucru unic',
       },
       description: 'Pentru utilizatori individuali, echipe mici sau proiecte necomerciale',
       btnText: 'Începe cu Comunitatea',
@@ -145,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        3: 'Asistență prioritară prin e-mail și chat',
-        1: 'Spațiu de lucru unic',
-        0: 'Fiabilitate autogestionată de diverși furnizori de cloud',
-        2: 'Personalizarea logo-ului și brandingului WebApp',
       },
       btnText: 'Obține Premium în',
       description: 'Pentru organizații și echipe de dimensiuni medii',

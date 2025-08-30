@@ -115,15 +115,6 @@ const translation = {
       description: 'Obtenha capacidades completas e suporte para sistemas críticos em larga escala.',
       includesTitle: 'Tudo no plano Equipe, além de:',
       features: {
-        3: 'Vários espaços de trabalho e gerenciamento corporativo',
-        2: 'Recursos exclusivos da empresa',
-        6: 'Segurança e controles avançados',
-        4: 'SSO',
-        8: 'Suporte Técnico Profissional',
-        0: 'Soluções de implantação escaláveis de nível empresarial',
-        7: 'Atualizações e manutenção por Dify oficialmente',
-        1: 'Autorização de Licença Comercial',
-        5: 'SLAs negociados pela Dify Partners',
       },
       btnText: 'Contate Vendas',
       priceTip: 'Faturamento Anual Apenas',
@@ -132,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Todos os principais recursos lançados no repositório público',
-        2: 'Está em conformidade com a licença de código aberto Dify',
-        1: 'Espaço de trabalho individual',
       },
       name: 'Comunidade',
       description: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
@@ -145,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        2: 'Personalização do logotipo e da marca do WebApp',
-        1: 'Espaço de trabalho individual',
-        0: 'Confiabilidade autogerenciada por vários provedores de nuvem',
-        3: 'Suporte prioritário por e-mail e bate-papo',
       },
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',

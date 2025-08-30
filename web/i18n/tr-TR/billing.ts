@@ -115,15 +115,6 @@ const translation = {
       description: 'Büyük ölçekli kritik sistemler için tam yetenekler ve destek.',
       includesTitle: 'Takım plandaki her şey, artı:',
       features: {
-        8: 'Profesyonel Teknik Destek',
-        1: 'Ticari Lisans Yetkilendirmesi',
-        6: 'Gelişmiş Güvenlik ve Kontroller',
-        5: 'Dify Partners tarafından müzakere edilen SLA\'lar',
-        4: 'SSO',
-        2: 'Özel Kurumsal Özellikler',
-        0: 'Kurumsal Düzeyde Ölçeklenebilir Dağıtım Çözümleri',
-        7: 'Resmi olarak Dify tarafından Güncellemeler ve Bakım',
-        3: 'Çoklu Çalışma Alanları ve Kurumsal Yönetim',
       },
       priceTip: 'Yıllık Faturalama Sadece',
       for: 'Büyük boyutlu Takımlar için',
@@ -132,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        1: 'Tek Çalışma Alanı',
-        0: 'Genel depo altında yayınlanan tüm temel özellikler',
-        2: 'Dify Açık Kaynak Lisansı ile uyumludur',
       },
       price: 'Ücretsiz',
       includesTitle: 'Ücretsiz Özellikler:',
@@ -145,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        1: 'Tek Çalışma Alanı',
-        0: 'Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendini Yöneten Güvenilirlik',
-        2: 'WebApp Logosu ve Marka Özelleştirmesi',
-        3: 'Öncelikli E-posta ve Sohbet Desteği',
       },
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',

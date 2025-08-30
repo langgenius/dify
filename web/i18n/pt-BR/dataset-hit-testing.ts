@@ -2,7 +2,6 @@ const translation = {
   title: 'Teste de Recuperação',
   desc: 'Teste o efeito de recuperação do conhecimento com base no texto de consulta fornecido.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Recentes',
   table: {
     header: {
       source: 'Origem',

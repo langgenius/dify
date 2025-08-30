@@ -244,26 +244,6 @@ const translation = {
     },
   },
   automatic: {
-    title: 'Zautomatyzowana orkiestracja aplikacji',
-    description:
-      'Opisz swój scenariusz, Dify zorkiestruje aplikację dla Ciebie.',
-    intendedAudience: 'Dla kogo jest przeznaczona ta aplikacja?',
-    intendedAudiencePlaceHolder: 'np. Uczeń',
-    solveProblem:
-      'Jakie problemy mają nadzieję, że AI może rozwiązać dla nich?',
-    solveProblemPlaceHolder:
-      'np. Wyciąganie wniosków i podsumowanie informacji z długich raportów i artykułów',
-    generate: 'Generuj',
-    audiencesRequired: 'Wymagana publiczności',
-    problemRequired: 'Wymagany problem',
-    resTitle: 'Stworzyliśmy następującą aplikację dla Ciebie.',
-    apply: 'Zastosuj tę orkiestrację',
-    noData:
-      'Opisz swój przypadek po lewej, podgląd orkiestracji pojawi się tutaj.',
-    loading: 'Orkiestracja aplikacji dla Ciebie...',
-    overwriteTitle: 'Zastąpić istniejącą konfigurację?',
-    overwriteMessage:
-      'Zastosowanie tej orkiestracji zastąpi istniejącą konfigurację.',
   },
   resetConfig: {
     title: 'Potwierdź reset?',
@@ -582,19 +562,16 @@ const translation = {
         name: 'Polerka do pisania',
       },
     },
-    instructionPlaceHolder: 'Napisz jasne i konkretne instrukcje.',
     instruction: 'Instrukcje',
     generate: 'Stworzyć',
     tryIt: 'Spróbuj',
     overwriteMessage: 'Zastosowanie tego monitu spowoduje zastąpienie istniejącej konfiguracji.',
     resTitle: 'Wygenerowany monit',
-    noDataLine1: 'Opisz swój przypadek użycia po lewej stronie,',
     title: 'Generator podpowiedzi',
     apply: 'Zastosować',
     overwriteTitle: 'Nadpisać istniejącą konfigurację?',
     loading: 'Orkiestracja aplikacji dla Ciebie...',
     description: 'Generator podpowiedzi używa skonfigurowanego modelu do optymalizacji podpowiedzi w celu uzyskania wyższej jakości i lepszej struktury. Napisz jasne i szczegółowe instrukcje.',
-    noDataLine2: 'W tym miejscu zostanie wyświetlony podgląd orkiestracji.',
     idealOutput: 'Idealny wynik',
     to: 'do',
     version: 'Wersja',

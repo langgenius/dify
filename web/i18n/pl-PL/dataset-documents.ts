@@ -30,7 +30,6 @@ const translation = {
       sync: 'Synchronizuj',
       resume: 'Wznów',
       pause: 'Pauza',
-      download: 'Pobierz plik',
     },
     index: {
       enable: 'Włącz',
@@ -344,7 +343,6 @@ const translation = {
     keywords: 'Słowa kluczowe',
     addKeyWord: 'Dodaj słowo kluczowe',
     keywordError: 'Maksymalna długość słowa kluczowego wynosi 20',
-    characters: 'znaków',
     hitCount: 'Liczba odwołań',
     vectorHash: 'Wektor hash: ',
     questionPlaceholder: 'dodaj pytanie tutaj',
