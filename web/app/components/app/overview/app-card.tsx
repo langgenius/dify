@@ -107,6 +107,7 @@ function AppCard({
   const isWorkflowAndMissingStart = appInfo.mode === 'workflow' && !hasEntryNode
   const toggleDisabled = isWorkflowAndMissingStart || (isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager)
   const runningStatus = isWorkflowAndMissingStart ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
+  const isMinimalState = isWorkflowAndMissingStart
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
   const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
@@ -180,10 +181,10 @@ function AppCard({
   return (
     <div
       className={
-        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''}`}
+        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${isMinimalState ? 'h-12' : ''}`}
     >
       <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl`}>
-        <div className='flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3'>
+        <div className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}>
           <div className='flex w-full items-center gap-3 self-stretch'>
             <AppBasic
               iconType={cardType}
@@ -207,7 +208,8 @@ function AppCard({
             </div>
             <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
           </div>
-          <div className='flex flex-col items-start justify-center self-stretch'>
+          {!isMinimalState && (
+            <div className='flex flex-col items-start justify-center self-stretch'>
             <div className="system-xs-medium pb-1 text-text-tertiary">
               {isApp
                 ? t('appOverview.overview.appInfo.accessibleAddress')
@@ -256,7 +258,8 @@ function AppCard({
               )}
             </div>
           </div>
-          {isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
+          )}
+          {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
             <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
             <div className='flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2'
               onClick={handleClickAccessControl}>
@@ -292,9 +295,10 @@ function AppCard({
             </div>
           </div>}
         </div>
-        <div className={'flex items-center gap-1 self-stretch p-3'}>
-          {!isApp && <SecretKeyButton appId={appInfo.id} />}
-          {OPERATIONS_MAP[cardType].map((op) => {
+        {!isMinimalState && (
+          <div className={'flex items-center gap-1 self-stretch p-3'}>
+            {!isApp && <SecretKeyButton appId={appInfo.id} />}
+            {OPERATIONS_MAP[cardType].map((op) => {
             const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
                 ? false
@@ -322,7 +326,8 @@ function AppCard({
               </Button>
             )
           })}
-        </div>
+          </div>
+        )}
       </div>
       {isApp
         ? (

@@ -76,6 +76,7 @@ function MCPServiceCard({
   const serverURL = serverPublished ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp` : '***********'
   const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
   const toggleDisabled = !isCurrentWorkspaceEditor || appUnpublished || !hasEntryNode
+  const isMinimalState = appInfo.mode === 'workflow' && !hasEntryNode
 
   const [activated, setActivated] = useState(serverActivated)
 
@@ -138,9 +139,9 @@ function MCPServiceCard({
 
   return (
     <>
-      <div className={cn('w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight')}>
+      <div className={cn('w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight', isMinimalState && 'h-12')}>
         <div className='rounded-xl bg-background-default'>
-          <div className='flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3'>
+          <div className={cn('flex w-full flex-col items-start justify-center gap-3 self-stretch p-3', isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle')}>
             <div className='flex w-full items-center gap-3 self-stretch'>
               <div className='flex grow items-center'>
                 <div className='mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
@@ -168,7 +169,8 @@ function MCPServiceCard({
                 </div>
               </Tooltip>
             </div>
-            <div className='flex flex-col items-start justify-center self-stretch'>
+            {!isMinimalState && (
+              <div className='flex flex-col items-start justify-center self-stretch'>
               <div className="system-xs-medium pb-1 text-text-tertiary">
                 {t('tools.mcp.server.url')}
               </div>
@@ -200,9 +202,11 @@ function MCPServiceCard({
                   </>
                 )}
               </div>
-            </div>
+              </div>
+            )}
           </div>
-          <div className='flex items-center gap-1 self-stretch p-3'>
+          {!isMinimalState && (
+            <div className='flex items-center gap-1 self-stretch p-3'>
             <Button
               disabled={toggleDisabled}
               size='small'
@@ -215,7 +219,8 @@ function MCPServiceCard({
                     <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
                   </div>
             </Button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
       {showMCPServerModal && (
