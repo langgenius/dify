@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, JSX } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'

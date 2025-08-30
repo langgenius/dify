@@ -9,7 +9,12 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
   return get<AppListResponse>(url, { params })
 }
 
-export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
+export const fetchAppDetail: Fetcher<AppDetailResponse, { url: string; id: string }> = ({ url, id }) => {
+  return get<AppDetailResponse>(`${url}/${id}`)
+}
+
+// Direct API call function for non-SWR usage
+export const fetchAppDetailDirect = async ({ url, id }: { url: string; id: string }): Promise<AppDetailResponse> => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }
 
@@ -21,8 +26,9 @@ export const createApp: Fetcher<AppDetailResponse, { name: string; icon_type?: A
   return post<AppDetailResponse>('apps', { body: { name, icon_type, icon, icon_background, mode, description, model_config: config } })
 }
 
-export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string; description: string; use_icon_as_answer_icon?: boolean }> = ({ appID, name, icon_type, icon, icon_background, description, use_icon_as_answer_icon }) => {
-  return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon_type, icon, icon_background, description, use_icon_as_answer_icon } })
+export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string; description: string; use_icon_as_answer_icon?: boolean; max_active_requests?: number | null }> = ({ appID, name, icon_type, icon, icon_background, description, use_icon_as_answer_icon, max_active_requests }) => {
+  const body = { name, icon_type, icon, icon_background, description, use_icon_as_answer_icon, max_active_requests }
+  return put<AppDetailResponse>(`apps/${appID}`, { body })
 }
 
 export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string | null; mode: AppMode; description?: string }> = ({ appID, name, icon_type, icon, icon_background, mode, description }) => {

@@ -1,4 +1,4 @@
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 
 import {
   categoryKeys,

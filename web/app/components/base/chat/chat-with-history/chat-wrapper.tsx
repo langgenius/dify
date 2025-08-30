@@ -23,6 +23,8 @@ import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
+import { formatBooleanInputs } from '@/utils/model-config'
+import Avatar from '../../avatar'
 
 const ChatWrapper = () => {
   const {
@@ -48,6 +50,7 @@ const ChatWrapper = () => {
     setClearChatList,
     setIsResponding,
     allInputsHidden,
+    initUserVariables,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -87,7 +90,7 @@ const ChatWrapper = () => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -119,7 +122,6 @@ const ChatWrapper = () => {
   useEffect(() => {
     if (currentChatInstanceRef.current)
       currentChatInstanceRef.current.handleStop = handleStop
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -130,7 +132,7 @@ const ChatWrapper = () => {
     const data: any = {
       query: message,
       files,
-      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
+      inputs: formatBooleanInputs(inputsForms, currentConversationId ? currentConversationInputs : newConversationInputs),
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
@@ -238,7 +240,7 @@ const ChatWrapper = () => {
       className='h-full overflow-hidden bg-chatbot-bg'
     >
       <Chat
-        appData={appData}
+        appData={appData ?? undefined}
         config={appConfig}
         chatList={messageList}
         isResponding={respondingState}
@@ -266,6 +268,14 @@ const ChatWrapper = () => {
         inputDisabled={inputDisabled}
         isMobile={isMobile}
         sidebarCollapseState={sidebarCollapseState}
+        questionIcon={
+          initUserVariables?.avatar_url
+            ? <Avatar
+              avatar={initUserVariables.avatar_url}
+              name={initUserVariables.name || 'user'}
+              size={40}
+            /> : undefined
+        }
       />
     </div>
   )

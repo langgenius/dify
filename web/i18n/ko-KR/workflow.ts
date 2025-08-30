@@ -111,14 +111,15 @@ const translation = {
     exportJPEG: 'JPEG 로 내보내기',
     exitVersions: '종료 버전',
     exportImage: '이미지 내보내기',
-    noExist: '해당 변수가 없습니다.',
     exportSVG: 'SVG 로 내보내기',
     versionHistory: '버전 기록',
     exportPNG: 'PNG 로 내보내기',
-    referenceVar: '참조 변수',
     addBlock: '노드 추가',
     needAnswerNode: '답변 노드를 추가해야 합니다.',
     needEndNode: '종단 노드를 추가해야 합니다.',
+    tagBound: '이 태그를 사용하는 앱 수',
+    currentView: '현재 보기',
+    currentWorkflow: '현재 워크플로',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -135,6 +136,8 @@ const translation = {
       valuePlaceholder: '환경 값',
       secretTip:
         '민감한 정보나 데이터를 정의하는 데 사용되며, DSL 설정은 유출 방지를 위해 구성됩니다.',
+      description: '설명',
+      descriptionPlaceholder: '변수에 대해 설명하세요',
     },
     export: {
       title: '비밀 환경 변수를 내보내시겠습니까?',
@@ -228,7 +231,6 @@ const translation = {
   tabs: {
     'tools': '도구',
     'allTool': '전체',
-    'builtInTool': '내장',
     'customTool': '사용자 정의',
     'workflowTool': '워크플로우',
     'question-understand': '질문 이해',
@@ -241,6 +243,8 @@ const translation = {
     'agent': '에이전트 전략',
     'blocks': '노드',
     'searchBlock': '검색 노드',
+    'allAdded': '모두 추가됨',
+    'addAll': '모두 추가',
   },
   blocks: {
     'start': '시작',
@@ -306,6 +310,18 @@ const translation = {
     zoomTo50: '50% 로 확대',
     zoomTo100: '100% 로 확대',
     zoomToFit: '화면에 맞게 확대',
+    alignCenter: '중앙',
+    alignRight: '오른쪽',
+    alignLeft: '왼쪽',
+    vertical: '세로',
+    alignTop: '상단',
+    alignMiddle: '중간',
+    alignNodes: '노드 정렬',
+    distributeVertical: '수직 등간격',
+    horizontal: '가로',
+    selectionAlignment: '선택 정렬',
+    alignBottom: '하단',
+    distributeHorizontal: '수평 등간격',
   },
   panel: {
     userInputField: '사용자 입력 필드',
@@ -385,6 +401,10 @@ const translation = {
         times: '번',
         ms: '미에스',
         retries: '{{숫자}} 재시도',
+      },
+      typeSwitch: {
+        input: '입력 값',
+        variable: '변수를 사용하세요',
       },
     },
     start: {
@@ -516,6 +536,7 @@ const translation = {
           conditions: '조건',
         },
         title: '메타데이터 필터링',
+        tip: '메타데이터 필터링은 시스템 내에서 관련 정보를 검색하는 과정을 정제하고 제어하기 위해 메타데이터 속성(예: 태그, 카테고리 또는 접근 권한)을 사용하는 과정입니다.',
       },
     },
     http: {
@@ -565,6 +586,10 @@ const translation = {
         title: 'cURL 에서 가져오기',
         placeholder: '여기에 cURL 문자열 붙여 넣기',
       },
+      verifySSL: {
+        title: 'SSL 인증서 확인',
+        warningTooltip: 'SSL 검증을 비활성화하는 것은 프로덕션 환경에서는 권장되지 않습니다. 이는 연결이 중간자 공격과 같은 보안 위협에 취약하게 만들므로 개발 또는 테스트에서만 사용해야 합니다.',
+      },
     },
     code: {
       inputVars: '입력 변수',
@@ -573,6 +598,7 @@ const translation = {
       advancedDependenciesTip:
         '더 많은 시간이 소요되거나 기본으로 내장되지 않은 일부 미리 로드된 종속성을 여기에 추가하세요',
       searchDependencies: '종속성 검색',
+      syncFunctionSignature: '코드에 함수 시그니처 동기화하기',
     },
     templateTransform: {
       inputVars: '입력 변수',
@@ -602,7 +628,6 @@ const translation = {
         'not empty': '비어 있지 않음',
         'null': 'null 임',
         'not null': 'null 이 아님',
-        'regex match': '정규식 일치',
         'in': '안으로',
         'exists': '존재',
         'all of': '모두의',
@@ -625,7 +650,6 @@ const translation = {
       },
       select: '고르다',
       addSubVariable: '하위 변수',
-      condition: '조건',
     },
     variableAssigner: {
       title: '변수 할당',
@@ -695,12 +719,16 @@ const translation = {
         json: '도구로 생성된 JSON',
       },
       authorize: '권한 부여',
+      insertPlaceholder1: '타이프하거나 누르세요',
+      settings: '설정',
+      insertPlaceholder2: '변수를 삽입하다',
     },
     questionClassifiers: {
       model: '모델',
       inputVars: '입력 변수',
       outputVars: {
         className: '클래스 이름',
+        usage: '모델 사용 정보',
       },
       class: '클래스',
       classNamePlaceholder: '클래스 이름을 작성하세요',
@@ -715,6 +743,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '입력 변수',
+      outputVars: {
+        isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
+        errorReason: '오류 원인',
+        usage: '모델 사용 정보',
+      },
       extractParameters: '매개변수 추출',
       importFromTool: '도구에서 가져오기',
       addExtractParameter: '추출 매개변수 추가',
@@ -737,8 +770,6 @@ const translation = {
       reasoningMode: '추론 모드',
       reasoningModeTip:
         '모델의 함수 호출 또는 프롬프트에 대한 지시 응답 능력을 기반으로 적절한 추론 모드를 선택할 수 있습니다.',
-      isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
-      errorReason: '오류 원인',
     },
     iteration: {
       deleteTitle: '반복 노드를 삭제하시겠습니까?',
@@ -854,6 +885,7 @@ const translation = {
         },
         json: '에이전트 생성 JSON',
         text: '상담원이 생성한 콘텐츠',
+        usage: '모델 사용 정보',
       },
       checkList: {
         strategyNotSelected: '전략이 선택되지 않음',
@@ -889,6 +921,8 @@ const translation = {
       modelNotSelected: '모델이 선택되지 않음',
       toolbox: '도구',
       linkToPlugin: '플러그인에 대한 링크',
+      parameterSchema: '파라미터 스키마',
+      clickToViewParameterSchema: '매개변수 스키마 보려면 클릭하세요.',
     },
     loop: {
       ErrorMethod: {
@@ -958,6 +992,7 @@ const translation = {
       restoreFailure: '버전을 복원하지 못했습니다.',
       deleteFailure: '버전을 삭제하지 못했습니다.',
       updateSuccess: '버전이 업데이트되었습니다.',
+      copyIdSuccess: '클립보드에 복사된 ID',
     },
     editVersionInfo: '버전 정보 편집',
     latest: '최신',
@@ -968,6 +1003,7 @@ const translation = {
     title: '버전 기록',
     deletionTip: '삭제는 되돌릴 수 없으니, 확인해 주시기 바랍니다.',
     restorationTip: '버전 복원 후 현재 초안이 덮어쓰여질 것입니다.',
+    copyId: 'ID 복사',
   },
   debug: {
     noData: {
@@ -998,6 +1034,20 @@ const translation = {
     },
     settingsTab: '설정',
     lastRunTab: '마지막 실행',
+    relations: {
+      dependencies: '종속성',
+      dependentsDescription: '이 노드에 의존하는 노드',
+      noDependents: '부양가족 없음',
+      noDependencies: '종속성 없음',
+      dependents: '부양 가족',
+      dependenciesDescription: '이 노드가 의존하는 노드',
+    },
+    relationsTab: '관계',
+    copyLastRun: '마지막 실행 복사',
+    noLastRunFound: '이전 실행이 없습니다.',
+    noMatchingInputsFound: '지난 실행에서 일치하는 입력을 찾을 수 없습니다.',
+    copyLastRunError: '마지막 실행 입력을 복사하는 데 실패했습니다.',
+    lastOutput: '마지막 출력',
   },
 }
 

@@ -32,7 +32,7 @@ export type InputProps = {
   unit?: string
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
 
-const Input = ({
+const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   size,
   disabled,
   destructive,
@@ -47,12 +47,13 @@ const Input = ({
   onChange = noop,
   unit,
   ...props
-}: InputProps) => {
+}, ref) => {
   const { t } = useTranslation()
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
       {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
       <input
+        ref={ref}
         style={styleCss}
         className={cn(
           'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
@@ -92,6 +93,8 @@ const Input = ({
       }
     </div>
   )
-}
+})
+
+Input.displayName = 'Input'
 
 export default Input

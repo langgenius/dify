@@ -6,6 +6,8 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
+      - "build/**"
+      - "release/e-*"
     tags:
       - "*"
 

@@ -16,6 +16,7 @@ import type {
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { PluginMeta } from '../plugins/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -92,6 +93,8 @@ export type CommonNodeType<T = {}> = {
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
+  credential_id?: string
+  _dimmed?: boolean
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
@@ -107,7 +110,8 @@ export type CommonEdgeType = {
   isInLoop?: boolean
   loop_id?: string
   sourceType: BlockEnum
-  targetType: BlockEnum
+  targetType: BlockEnum,
+  _isTemp?: boolean,
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
@@ -149,6 +153,7 @@ export type EnvironmentVariable = {
   name: string
   value: any
   value_type: 'string' | 'number' | 'secret'
+  description: string
 }
 
 export type ConversationVariable = {
@@ -175,9 +180,11 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
+  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
+  jsonObject = 'json_object', // only object support define json schema
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
   singleFile = 'file',
@@ -203,6 +210,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
+  json_schema?: string // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -261,6 +269,7 @@ export enum VarType {
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
+  arrayBoolean = 'array[boolean]',
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',
@@ -291,6 +300,7 @@ export type NodeOutPutVar = {
   vars: Var[]
   isStartNode?: boolean
   isLoop?: boolean
+  isFlat?: boolean
 }
 
 export type Block = {
@@ -409,6 +419,7 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
+  meta: PluginMeta
 }
 
 export enum SupportUploadFileTypes {
@@ -441,4 +452,9 @@ export enum VersionHistoryContextMenuOptions {
   restore = 'restore',
   edit = 'edit',
   delete = 'delete',
+  copyId = 'copyId',
+}
+
+export type ChildNodeTypeCount = {
+  [key: string]: number;
 }

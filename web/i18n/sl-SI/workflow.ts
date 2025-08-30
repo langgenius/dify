@@ -113,6 +113,9 @@ const translation = {
     autoSaved: 'Samodejno shranjeno',
     configure: 'Konfiguriraj',
     inRunMode: 'V načinu izvajanja',
+    tagBound: 'Število aplikacij, ki uporabljajo to oznako',
+    currentView: 'Trenutni pogled',
+    currentWorkflow: 'Trenutni potek dela',
   },
   env: {
     modal: {
@@ -124,6 +127,8 @@ const translation = {
       type: 'Tip',
       editTitle: 'Uredi okoljsko spremenljivko',
       secretTip: 'Uporablja se za opredelitev občutljivih informacij ali podatkov, s konfiguriranimi nastavitvami DSL za preprečevanje puščanja.',
+      description: 'Opis',
+      descriptionPlaceholder: 'Opisujte spremenljivko',
     },
     export: {
       export: 'Izvozi DSL z skrivnimi vrednostmi',
@@ -143,6 +148,7 @@ const translation = {
       objectKey: 'Ključ',
       valuePlaceholder: 'Privzeta vrednost, pustite prazno, da je ne nastavite',
       description: 'Opis',
+      descriptionPlaceholder: 'Opisujte spremenljivko',
       type: 'Tip',
       value: 'Privzeta vrednost',
       name: 'Ime',
@@ -153,7 +159,6 @@ const translation = {
       objectType: 'Tip',
       oneByOne: 'Dodaj eno po eno',
       objectValue: 'Privzeta vrednost',
-      descriptionPlaceholder: 'Opisujte spremenljivko',
     },
     updatedAt: 'Posodobljeno ob',
     docLink: 'Obiščite našo dokumentacijo, da se naučite več.',
@@ -229,6 +234,8 @@ const translation = {
     'blocks': 'Vozlišča',
     'question-understand': 'Vprašanje Razumevanje',
     'agent': 'Agentska strategija',
+    'addAll': 'Dodaj vse',
+    'allAdded': 'Vse dodano',
   },
   blocks: {
     'iteration': 'Iteracija',
@@ -274,6 +281,7 @@ const translation = {
     'start': 'Določite začetne parametre za zagon delovnega toka',
     'variable-assigner': 'Združite večpodružinske spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
     'variable-aggregator': 'Združite večpodružnične spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
+    'assigner': 'Vožnji vozlišča za dodelitev spremenljivk se uporablja za dodeljevanje vrednosti spremenljivkam, ki jih je mogoče zapisati (kot so spremenljivke za pogovor).',
   },
   operator: {
     zoomOut: 'Zoomirati ven',
@@ -281,6 +289,18 @@ const translation = {
     zoomIn: 'Zoom in',
     zoomTo50: 'Povečaj na 50%',
     zoomTo100: 'Povečaj na 100%',
+    alignMiddle: 'Sredina',
+    alignBottom: 'Spodaj',
+    alignCenter: 'Center',
+    distributeVertical: 'Razporedi navpično',
+    alignRight: 'Desno',
+    alignTop: 'Vrh',
+    vertical: 'Navpičen',
+    distributeHorizontal: 'Razporedi vodoravno',
+    selectionAlignment: 'Poravnava izbora',
+    alignNodes: 'Poravnava vozlišč',
+    horizontal: 'Vodoraven',
+    alignLeft: 'Levo',
   },
   variableReference: {
     conversationVars: 'pogovorne spremenljivke',
@@ -307,6 +327,7 @@ const translation = {
     organizeBlocks: 'Organizirajte vozlišča',
     minimize: 'Izhod iz celotnega zaslona',
     maximize: 'Maksimiziraj platno',
+    optional: '(neobvezno)',
   },
   nodes: {
     common: {
@@ -364,6 +385,10 @@ const translation = {
       },
       insertVarTip: 'Vstavite spremenljivko',
       outputVars: 'Izhodne spremenljivke',
+      typeSwitch: {
+        variable: 'Uporabi spremenljivko',
+        input: 'Vhodna vrednost',
+      },
     },
     start: {
       outputVars: {
@@ -488,6 +513,7 @@ const translation = {
           add: 'Dodaj pogoj',
         },
         title: 'Filtriranje metapodatkov',
+        tip: 'Filtriranje metapodatkov je postopek uporabe metapodatkovnih atributov (kot so oznake, kategorije ali dovoljenja za dostop) za natančnejše določanje in nadzorovanje pridobivanja relevantnih informacij znotraj sistema.',
       },
       queryVariable: 'Vprašanje spremenljivka',
       knowledge: 'Znanje',
@@ -539,6 +565,10 @@ const translation = {
       value: 'Vrednost',
       params: 'Parametri',
       insertVarPlaceholder: 'vnesite \'/\' za vstavljanje spremenljivke',
+      verifySSL: {
+        title: 'Preverite SSL certifikat',
+        warningTooltip: 'Onemogočanje preverjanja SSL ni priporočljivo za proizvodna okolja. To bi se moralo uporabljati le pri razvoju ali testiranju, saj povezavo izpostavi varnostnim grožnjam, kot so napadi človek-v-sredini.',
+      },
     },
     code: {
       searchDependencies: 'Išči odvisnosti',
@@ -546,6 +576,7 @@ const translation = {
       outputVars: 'Izhodne spremenljivke',
       inputVars: 'Vhodne spremenljivke',
       advancedDependenciesTip: 'Dodajte nekaj vnaprej naloženih odvisnosti, ki potrebujejo več časa za obdelavo ali niso privzete vgrajene.',
+      syncFunctionSignature: 'Sinhronizirajte podpis funkcije s kodo',
     },
     templateTransform: {
       outputVars: {
@@ -663,10 +694,14 @@ const translation = {
       },
       inputVars: 'Vhodne spremenljivke',
       authorize: 'Pooblasti',
+      insertPlaceholder2: 'vstavite spremenljivko',
+      insertPlaceholder1: 'Vnesite ali pritisnite',
+      settings: 'Nastavitve',
     },
     questionClassifiers: {
       outputVars: {
         className: 'Ime razreda',
+        usage: 'Informacije o uporabi modela',
       },
       instruction: 'Navodilo',
       addClass: 'Dodaj razred',
@@ -692,16 +727,19 @@ const translation = {
         requiredContent: 'Zahtevano se uporablja le kot referenca za sklepanje modela in ne kot obvezno validacijo izhodnih parametrov.',
       },
       extractParameters: 'Izvleči parametre',
-      errorReason: 'Razlog za napako',
       instruction: 'Navodilo',
       instructionTip: 'Vnesite dodatna navodila, da pomagate izvleku parametrov razumeti, kako izvleči parametre.',
       reasoningMode: 'Način razmišljanja',
-      isSuccess: 'Ali je uspeh. Na uspehu je vrednost 1, na neuspehu je vrednost 0.',
       importFromTool: 'Uvoz iz orodij',
       advancedSetting: 'Napredno nastavitev',
       addExtractParameter: 'Dodaj parameter za ekstrakcijo',
       extractParametersNotSet: 'Parameterji za ekstrakcijo niso nastavljeni',
       inputVar: 'Vhodna spremenljivka',
+      outputVars: {
+        isSuccess: 'Ali je uspeh. Na uspehu je vrednost 1, na neuspehu je vrednost 0.',
+        errorReason: 'Razlog za napako',
+        usage: 'Informacije o uporabi modela',
+      },
       reasoningModeTip: 'Lahko izberete ustrezen način razmišljanja glede na sposobnost modela, da se odzove na navodila za klic funkcij ali pozive.',
     },
     iteration: {
@@ -844,6 +882,7 @@ const translation = {
         },
         json: 'agent generiran json',
         text: 'vsebina, ki jo je ustvaril agent',
+        usage: 'informacije o uporabi modela',
       },
       checkList: {
         strategyNotSelected: 'Strategija ni izbrana',
@@ -875,6 +914,8 @@ const translation = {
       toolNotAuthorizedTooltip: '{{tool}} Ni pooblaščen',
       strategyNotFoundDescAndSwitchVersion: 'Nameščena različica vtičnika ne podpira te strategije. Kliknite za preklop na drugo različico.',
       pluginNotInstalledDesc: 'Ta vtičnik je nameščen iz GitHuba. Prosimo, da greste v vtičnike in ga ponovo namestite.',
+      parameterSchema: 'Parametrska shema',
+      clickToViewParameterSchema: 'Kliknite za prikaz sheme parametrov',
     },
   },
   tracing: {
@@ -901,6 +942,7 @@ const translation = {
       restoreSuccess: 'Obnovljena različica',
       restoreFailure: 'Obnavljanje različice ni uspelo',
       updateSuccess: 'Različica posodobljena',
+      copyIdSuccess: 'ID kopiran v odložišče',
     },
     defaultName: 'Nepodpisana različica',
     deletionTip: 'Izbris je nepovraten, prosim potrdite.',
@@ -911,6 +953,7 @@ const translation = {
     nameThisVersion: 'Poimenujte to različico',
     releaseNotesPlaceholder: 'Opisujte, kaj se je spremenilo',
     restorationTip: 'Po obnovitvi različice bo trenutni osnutek prepisan.',
+    copyId: 'Kopiraj ID',
   },
   debug: {
     noData: {
@@ -940,6 +983,20 @@ const translation = {
     },
     settingsTab: 'Nastavitve',
     lastRunTab: 'Zadnji zagon',
+    relations: {
+      dependencies: 'Odvisnosti',
+      dependents: 'Odvisnim',
+      noDependents: 'Brez vzdrževanih oseb',
+      dependentsDescription: 'Vozlišča, ki se zanašajo na to vozlišče',
+      dependenciesDescription: 'Vozlišča, na katera se zanaša to vozlišče',
+      noDependencies: 'Brez odvisnosti',
+    },
+    relationsTab: 'Odnose',
+    copyLastRun: 'Kopiraj zadnji zagon',
+    copyLastRunError: 'Kopiranje vhodov zadnjega zagona ni uspelo',
+    noLastRunFound: 'Nobenega prejšnjega zagona ni bilo najdenega.',
+    noMatchingInputsFound: 'Ni podatkov, ki bi ustrezali prejšnjemu zagonu',
+    lastOutput: 'Nazadnje izhod',
   },
 }
 

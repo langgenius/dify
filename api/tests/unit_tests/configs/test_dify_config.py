@@ -1,5 +1,6 @@
 import os
 
+import pytest
 from flask import Flask
 from packaging.version import Version
 from yarl import URL
@@ -7,7 +8,7 @@ from yarl import URL
 from configs.app_config import DifyConfig
 
 
-def test_dify_config(monkeypatch):
+def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # clear system environment variables
     os.environ.clear()
 
@@ -47,7 +48,7 @@ def test_dify_config(monkeypatch):
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
 # This is due to `pymilvus` loading all the variables from the `.env` file into `os.environ`.
-def test_flask_configs(monkeypatch):
+def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     flask_app = Flask("app")
     # clear system environment variables
     os.environ.clear()
@@ -88,6 +89,8 @@ def test_flask_configs(monkeypatch):
         "pool_pre_ping": False,
         "pool_recycle": 3600,
         "pool_size": 30,
+        "pool_use_lifo": False,
+        "pool_reset_on_return": None,
     }
 
     assert config["CONSOLE_WEB_URL"] == "https://example.com"
@@ -98,7 +101,7 @@ def test_flask_configs(monkeypatch):
     assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://127.0.0.1:8194/v1"
 
 
-def test_inner_api_config_exist(monkeypatch):
+def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
@@ -116,7 +119,7 @@ def test_inner_api_config_exist(monkeypatch):
     assert len(config.INNER_API_KEY) > 0
 
 
-def test_db_extras_options_merging(monkeypatch):
+def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     """Test that DB_EXTRAS options are properly merged with default timezone setting"""
     # Set environment variables
     monkeypatch.setenv("DB_USERNAME", "postgres")
@@ -136,3 +139,67 @@ def test_db_extras_options_merging(monkeypatch):
     options = engine_options["connect_args"]["options"]
     assert "search_path=myschema" in options
     assert "timezone=UTC" in options
+
+
+@pytest.mark.parametrize(
+    ("broker_url", "expected_host", "expected_port", "expected_username", "expected_password", "expected_db"),
+    [
+        ("redis://localhost:6379/1", "localhost", 6379, None, None, "1"),
+        ("redis://:password@localhost:6379/1", "localhost", 6379, None, "password", "1"),
+        ("redis://:mypass%23123@localhost:6379/1", "localhost", 6379, None, "mypass#123", "1"),
+        ("redis://user:pass%40word@redis-host:6380/2", "redis-host", 6380, "user", "pass@word", "2"),
+        ("redis://admin:complex%23pass%40word@127.0.0.1:6379/0", "127.0.0.1", 6379, "admin", "complex#pass@word", "0"),
+        (
+            "redis://user%40domain:secret%23123@redis.example.com:6380/3",
+            "redis.example.com",
+            6380,
+            "user@domain",
+            "secret#123",
+            "3",
+        ),
+        # Password containing %23 substring (double encoding scenario)
+        ("redis://:mypass%2523@localhost:6379/1", "localhost", 6379, None, "mypass%23", "1"),
+        # Username and password both containing encoded characters
+        ("redis://user%2525%40:pass%2523@localhost:6379/1", "localhost", 6379, "user%25@", "pass%23", "1"),
+    ],
+)
+def test_celery_broker_url_with_special_chars_password(
+    monkeypatch: pytest.MonkeyPatch,
+    broker_url,
+    expected_host,
+    expected_port,
+    expected_username,
+    expected_password,
+    expected_db,
+):
+    """Test that CELERY_BROKER_URL with various formats are handled correctly."""
+    from kombu.utils.url import parse_url
+
+    # clear system environment variables
+    os.environ.clear()
+
+    # Set up basic required environment variables (following existing pattern)
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    # Set the CELERY_BROKER_URL to test
+    monkeypatch.setenv("CELERY_BROKER_URL", broker_url)
+
+    # Create config and verify the URL is stored correctly
+    config = DifyConfig()
+    assert broker_url == config.CELERY_BROKER_URL
+
+    # Test actual parsing behavior using kombu's parse_url (same as production)
+    redis_config = parse_url(config.CELERY_BROKER_URL)
+
+    # Verify the parsing results match expectations (using kombu's field names)
+    assert redis_config["hostname"] == expected_host
+    assert redis_config["port"] == expected_port
+    assert redis_config["userid"] == expected_username  # kombu uses 'userid' not 'username'
+    assert redis_config["password"] == expected_password
+    assert redis_config["virtual_host"] == expected_db  # kombu uses 'virtual_host' not 'db'

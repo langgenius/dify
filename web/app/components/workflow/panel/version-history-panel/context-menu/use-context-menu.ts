@@ -29,9 +29,12 @@ const useContextMenu = (props: ContextMenuProps) => {
           key: VersionHistoryContextMenuOptions.edit,
           name: t('workflow.versionHistory.nameThisVersion'),
         },
+      {
+        key: VersionHistoryContextMenuOptions.copyId,
+        name: t('workflow.versionHistory.copyId'),
+      },
     ]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isNamedVersion])
+  }, [isNamedVersion, t])
 
   return {
     deleteOperation,

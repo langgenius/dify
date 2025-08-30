@@ -71,6 +71,7 @@ const config = {
       boxShadow: {
         'xs': '0px 1px 2px 0px rgba(16, 24, 40, 0.05)',
         'sm': '0px 1px 2px 0px rgba(16, 24, 40, 0.06), 0px 1px 3px 0px rgba(16, 24, 40, 0.10)',
+        'sm-no-bottom': '0px -1px 2px 0px rgba(16, 24, 40, 0.06), 0px -1px 3px 0px rgba(16, 24, 40, 0.10)',
         'md': '0px 2px 4px -2px rgba(16, 24, 40, 0.06), 0px 4px 8px -2px rgba(16, 24, 40, 0.10)',
         'lg': '0px 4px 6px -2px rgba(16, 24, 40, 0.03), 0px 12px 16px -4px rgba(16, 24, 40, 0.08)',
         'xl': '0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08)',
@@ -88,6 +89,9 @@ const config = {
       },
       fontSize: {
         '2xs': '0.625rem',
+      },
+      backgroundColor: {
+        'background-gradient-bg-fill-chat-bubble-bg-3': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-3)',
       },
       backgroundImage: {
         'chatbot-bg': 'var(--color-chatbot-bg)',

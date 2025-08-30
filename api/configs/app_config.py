@@ -41,7 +41,7 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
             case RemoteSettingsSourceName.NACOS:
                 remote_source = NacosSettingsSource(current_state)
             case _:
-                logger.warning(f"Unsupported remote source: {remote_source_name}")
+                logger.warning("Unsupported remote source: %s", remote_source_name)
                 return {}
 
         d: dict[str, Any] = {}

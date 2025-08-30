@@ -73,6 +73,8 @@ const translation = {
     exportPNG: '导出为 PNG',
     exportJPEG: '导出为 JPEG',
     exportSVG: '导出为 SVG',
+    currentView: '当前视图',
+    currentWorkflow: '整个工作流',
     model: '模型',
     workflowAsTool: '发布为工具',
     configureRequired: '需要进行配置',
@@ -113,6 +115,7 @@ const translation = {
     openInExplore: '在“探索”中打开',
     loadMore: '加载更多',
     noHistory: '没有历史版本',
+    tagBound: '使用此标签的应用数量',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -127,6 +130,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '变量值',
       secretTip: '用于定义敏感信息或数据，导出 DSL 时设置了防泄露机制。',
+      description: '描述',
+      descriptionPlaceholder: '变量的描述',
     },
     export: {
       title: '导出 Secret 类型环境变量？',
@@ -210,7 +215,6 @@ const translation = {
     startRun: '开始运行',
     running: '运行中',
     testRunIteration: '测试运行迭代',
-    testRunLoop: '测试运行循环',
     back: '返回',
     iteration: '迭代',
     loop: '循环',
@@ -230,6 +234,8 @@ const translation = {
     'utilities': '工具',
     'noResult': '未找到匹配项',
     'agent': 'Agent 策略',
+    'allAdded': '已添加全部',
+    'addAll': '添加全部',
   },
   blocks: {
     'start': '开始',
@@ -283,6 +289,18 @@ const translation = {
     zoomTo50: '缩放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自适应视图',
+    alignNodes: '对齐节点',
+    alignLeft: '左对齐',
+    alignCenter: '居中对齐',
+    alignRight: '右对齐',
+    alignTop: '顶部对齐',
+    alignMiddle: '中部对齐',
+    alignBottom: '底部对齐',
+    vertical: '垂直方向',
+    horizontal: '水平方向',
+    distributeHorizontal: '水平等间距',
+    distributeVertical: '垂直等间距',
+    selectionAlignment: '选择对齐',
   },
   variableReference: {
     noAvailableVars: '没有可用变量',
@@ -366,6 +384,10 @@ const translation = {
         times: '次',
         ms: '毫秒',
         retries: '{{num}} 重试次数',
+      },
+      typeSwitch: {
+        input: '输入值',
+        variable: '使用变量',
       },
     },
     start: {
@@ -543,6 +565,10 @@ const translation = {
         title: '导入 cURL',
         placeholder: '粘贴 cURL 字符串',
       },
+      verifySSL: {
+        title: '验证 SSL 证书',
+        warningTooltip: '不建议在生产环境中禁用 SSL 验证。这仅应在开发或测试中使用，因为它会使连接容易受到诸如中间人攻击等安全威胁。',
+      },
     },
     code: {
       inputVars: '输入变量',
@@ -579,8 +605,8 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
-        'in': '是',
-        'not in': '不是',
+        'in': '在',
+        'not in': '不在',
         'all of': '全部是',
         'exists': '存在',
         'not exists': '不存在',
@@ -657,6 +683,9 @@ const translation = {
     tool: {
       authorize: '授权',
       inputVars: '输入变量',
+      settings: '设置',
+      insertPlaceholder1: '键入',
+      insertPlaceholder2: '插入变量',
       outputVars: {
         text: '工具生成的内容',
         files: {
@@ -674,6 +703,7 @@ const translation = {
       inputVars: '输入变量',
       outputVars: {
         className: '分类名称',
+        usage: '模型用量信息',
       },
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',
@@ -687,6 +717,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '输入变量',
+      outputVars: {
+        isSuccess: '是否成功。成功时值为 1，失败时值为 0。',
+        errorReason: '错误原因',
+        usage: '模型用量信息',
+      },
       extractParameters: '提取参数',
       importFromTool: '从工具导入',
       addExtractParameter: '添加提取参数',
@@ -706,8 +741,6 @@ const translation = {
       advancedSetting: '高级设置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根据模型对于 Function calling 或 Prompt 的指令响应能力选择合适的推理模式',
-      isSuccess: '是否成功。成功时值为 1，失败时值为 0。',
-      errorReason: '错误原因',
     },
     iteration: {
       deleteTitle: '删除迭代节点？',
@@ -861,6 +894,7 @@ const translation = {
       },
       outputVars: {
         text: 'agent 生成的内容',
+        usage: '模型用量信息',
         files: {
           title: 'agent 生成的文件',
           type: '支持类型。现在只支持图片',
@@ -880,6 +914,8 @@ const translation = {
         install: '安装',
         cancel: '取消',
       },
+      clickToViewParameterSchema: '点击查看参数 schema',
+      parameterSchema: '参数 Schema',
     },
   },
   tracing: {
@@ -899,6 +935,7 @@ const translation = {
     defaultName: '未命名',
     nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
+    copyId: '复制 ID',
     editField: {
       title: '标题',
       releaseNotes: '发布说明',
@@ -915,11 +952,18 @@ const translation = {
       deleteFailure: '删除失败',
       updateSuccess: '版本信息已更新',
       updateFailure: '更新失败',
+      copyIdSuccess: 'ID 已复制到剪贴板',
     },
   },
   debug: {
     settingsTab: '设置',
     lastRunTab: '上次运行',
+    relationsTab: '关系',
+    copyLastRun: '复制上次运行值',
+    noLastRunFound: '未找到上次运行记录',
+    noMatchingInputsFound: '上次运行中未找到匹配的输入',
+    lastRunInputsCopied: '已复制{{count}}个输入值',
+    copyLastRunError: '复制上次运行输入失败',
     noData: {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
@@ -944,6 +988,15 @@ const translation = {
       envNode: '环境变量',
       chatNode: '会话变量',
       systemNode: '系统变量',
+    },
+    lastOutput: '上次输出',
+    relations: {
+      dependencies: '依赖',
+      dependents: '被依赖',
+      dependenciesDescription: '本节点依赖的其他节点',
+      dependentsDescription: '依赖于本节点的其他节点',
+      noDependencies: '无依赖',
+      noDependents: '无被依赖',
     },
   },
 }

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import type {
   BlockEnum,
+  ChildNodeTypeCount,
   Node,
 } from '../../types'
 import {
@@ -113,10 +114,17 @@ export const useNodeIterationInteractions = () => {
     const nodes = getNodes()
     const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_ITERATION_START_NODE)
     const newIdMapping = { ...idMapping }
+    const childNodeTypeCount: ChildNodeTypeCount = {}
 
     const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
+
+      if(!childNodeTypeCount[childNodeType])
+        childNodeTypeCount[childNodeType] = nodesWithSameType.length + 1
+      else
+        childNodeTypeCount[childNodeType] = childNodeTypeCount[childNodeType] + 1
+
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),
         data: {
@@ -126,7 +134,7 @@ export const useNodeIterationInteractions = () => {
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${childNodeType}`),
+          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${childNodeTypeCount[childNodeType]}` : t(`workflow.blocks.${childNodeType}`),
           iteration_id: newNodeId,
         },
         position: child.position,

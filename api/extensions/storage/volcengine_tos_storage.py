@@ -25,7 +25,7 @@ class VolcengineTosStorage(BaseStorage):
     def load_once(self, filename: str) -> bytes:
         data = self.client.get_object(bucket=self.bucket_name, key=filename).read()
         if not isinstance(data, bytes):
-            raise TypeError("Expected bytes, got {}".format(type(data).__name__))
+            raise TypeError(f"Expected bytes, got {type(data).__name__}")
         return data
 
     def load_stream(self, filename: str) -> Generator:

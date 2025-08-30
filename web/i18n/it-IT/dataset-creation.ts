@@ -28,6 +28,7 @@ const translation = {
     uploader: {
       title: 'Carica file',
       button: 'Trascina e rilascia file o cartelle, oppure',
+      buttonSingleFile: 'Trascina e rilascia un file, oppure',
       browse: 'Sfoglia',
       tip: 'Supporta {{supportTypes}}. Max {{size}}MB ciascuno.',
       validation: {

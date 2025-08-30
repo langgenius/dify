@@ -14,7 +14,7 @@ import Divider from '@/app/components/base/divider'
 import type {
   StrategyDetail as StrategyDetailType,
 } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n'
+import type { Locale } from '@/i18n-config'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
@@ -63,6 +63,8 @@ const StrategyDetail: FC<Props> = ({
       return t('tools.setBuiltInTools.number')
     if (type === 'text-input')
       return t('tools.setBuiltInTools.string')
+    if (type === 'checkbox')
+      return 'boolean'
     if (type === 'file')
       return t('tools.setBuiltInTools.file')
     if (type === 'array[tools]')

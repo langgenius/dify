@@ -122,13 +122,13 @@ class RetryConfig(BaseModel):
 class BaseNodeData(ABC, BaseModel):
     title: str
     desc: Optional[str] = None
+    version: str = "1"
     error_strategy: Optional[ErrorStrategy] = None
     default_value: Optional[list[DefaultValue]] = None
-    version: str = "1"
     retry_config: RetryConfig = RetryConfig()
 
     @property
-    def default_value_dict(self):
+    def default_value_dict(self) -> dict[str, Any]:
         if self.default_value:
             return {item.key: item.value for item in self.default_value}
         return {}

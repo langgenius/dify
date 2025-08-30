@@ -11,7 +11,8 @@ from core.workflow.nodes.list_operator.entities import (
     FilterCondition,
     Limit,
     ListOperatorNodeData,
-    OrderBy,
+    Order,
+    OrderByConfig,
 )
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
 from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
@@ -27,22 +28,25 @@ def list_operator_node():
                 FilterCondition(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])
             ],
         ),
-        "order_by": OrderBy(enabled=False, value="asc"),
+        "order_by": OrderByConfig(enabled=False, value=Order.ASC),
         "limit": Limit(enabled=False, size=0),
         "extract_by": ExtractConfig(enabled=False, serial="1"),
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData(**config)
+    node_config = {
+        "id": "test_node_id",
+        "data": node_data.model_dump(),
+    }
     node = ListOperatorNode(
         id="test_node_id",
-        config={
-            "id": "test_node_id",
-            "data": node_data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=MagicMock(),
         graph=MagicMock(),
         graph_runtime_state=MagicMock(),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node

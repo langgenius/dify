@@ -20,7 +20,8 @@ async function getRawInputsFromUrlParams(): Promise<Record<string, any>> {
   const inputs: Record<string, any> = {}
   const entriesArray = Array.from(urlParams.entries())
   entriesArray.forEach(([key, value]) => {
-    if (!key.startsWith('sys.'))
+    const prefixArray = ['sys.', 'user.']
+    if (!prefixArray.some(prefix => key.startsWith(prefix)))
       inputs[key] = decodeURIComponent(value)
   })
   return inputs
@@ -63,6 +64,17 @@ async function getProcessedUserVariablesFromUrlParams(): Promise<Record<string, 
         userVariables[key.slice(5)] = await decodeBase64AndDecompress(decodeURIComponent(value))
     }),
   )
+  return userVariables
+}
+
+async function getRawUserVariablesFromUrlParams(): Promise<Record<string, any>> {
+  const urlParams = new URLSearchParams(window.location.search)
+  const userVariables: Record<string, any> = {}
+  const entriesArray = Array.from(urlParams.entries())
+  entriesArray.forEach(([key, value]) => {
+    if (key.startsWith('user.'))
+      userVariables[key.slice(5)] = decodeURIComponent(value)
+  })
   return userVariables
 }
 
@@ -213,6 +225,7 @@ export {
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   getProcessedUserVariablesFromUrlParams,
+  getRawUserVariablesFromUrlParams,
   isValidGeneratedAnswer,
   getLastAnswer,
   buildChatItemTree,

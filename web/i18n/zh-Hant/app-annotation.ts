@@ -9,8 +9,6 @@ const translation = {
   table: {
     header: {
       question: '提問',
-      match: '匹配',
-      response: '回覆',
       answer: '答案',
       createdAt: '建立時間',
       hits: '命中次數',
@@ -19,6 +17,7 @@ const translation = {
       bulkImport: '批次匯入',
       bulkExport: '批次匯出',
       clearAll: '刪除所有標註',
+      clearAllConfirm: '要刪除所有標註嗎？',
     },
   },
   editModal: {
@@ -70,7 +69,6 @@ const translation = {
     noHitHistory: '沒有命中歷史',
   },
   hitHistoryTable: {
-    question: '問題',
     query: '提問',
     match: '匹配',
     response: '回覆',
@@ -85,6 +83,15 @@ const translation = {
     configConfirmBtn: '儲存',
   },
   embeddingModelSwitchTip: '標註文字向量化模型，切換模型會重新嵌入，產生額外費用消耗',
+  list: {
+    delete: {
+      title: '您確定要刪除嗎？',
+    },
+  },
+  batchAction: {
+    selected: '選擇的',
+    delete: '刪除',
+  },
 }
 
 export default translation

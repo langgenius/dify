@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import cn from '@/utils/classnames'
 
-type AutoHeightTextareaProps =
-  & React.DetailedHTMLProps<React.TextareaHTMLAttributes<HTMLTextAreaElement>, HTMLTextAreaElement>
+type AutoHeightTextareaProps
+  = & React.DetailedHTMLProps<React.TextareaHTMLAttributes<HTMLTextAreaElement>, HTMLTextAreaElement>
   & { outerClassName?: string }
 
 const AutoHeightTextarea = (

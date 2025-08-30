@@ -32,9 +32,12 @@ type Props = {
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const { inputs } = useStore(s => ({
+    inputs: s.inputs,
+    setInputs: s.setInputs,
+  }))
   const fileSettings = useFeatures(s => s.features.file)
   const nodes = useNodes<StartNodeType>()
-  const inputs = useStore(s => s.inputs)
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const {
@@ -43,6 +46,14 @@ const InputsPanel = ({ onRun }: Props) => {
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
   const { checkInputsForm } = useCheckInputsForms()
+
+  const initialInputs = { ...inputs }
+  if (startVariables) {
+    startVariables.forEach((variable) => {
+      if (variable.default)
+       initialInputs[variable.variable] = variable.default
+    })
+  }
 
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -80,11 +91,11 @@ const InputsPanel = ({ onRun }: Props) => {
   }
 
   const doRun = useCallback(() => {
-    if (!checkInputsForm(inputs, variables as any))
+    if (!checkInputsForm(initialInputs, variables as any))
       return
     onRun()
-    handleRun({ inputs: getProcessedInputs(inputs, variables as any), files })
-  }, [files, handleRun, inputs, onRun, variables, checkInputsForm])
+    handleRun({ inputs: getProcessedInputs(initialInputs, variables as any), files })
+  }, [files, handleRun, initialInputs, onRun, variables, checkInputsForm])
 
   const canRun = useMemo(() => {
     if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
@@ -106,7 +117,7 @@ const InputsPanel = ({ onRun }: Props) => {
                 autoFocus={index === 0}
                 className='!block'
                 payload={variable}
-                value={inputs[variable.variable]}
+                value={initialInputs[variable.variable]}
                 onChange={v => handleValueChange(variable.variable, v)}
               />
             </div>

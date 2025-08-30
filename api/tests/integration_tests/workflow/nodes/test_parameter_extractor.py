@@ -8,11 +8,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.entities import AssistantPromptMessage
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
@@ -64,26 +64,25 @@ def init_parameter_extractor_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather in SF",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa", files=[], query="what's the weather in SF", conversation_id="abababa"
+        ),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(["a", "b123", "args1"], 1)
-    variable_pool.add(["a", "b123", "args2"], 2)
+    variable_pool.add(["a", "args1"], 1)
+    variable_pool.add(["a", "args2"], 2)
 
-    return ParameterExtractorNode(
+    node = ParameterExtractorNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
     )
+    node.init_node_data(config.get("data", {}))
+    return node
 
 
 def test_function_calling_parameter_extractor(setup_model_mock):

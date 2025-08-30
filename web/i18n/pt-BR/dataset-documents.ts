@@ -30,6 +30,7 @@ const translation = {
       sync: 'Sincronizar',
       resume: 'Retomar',
       pause: 'Pausa',
+      download: 'Baixar arquivo',
     },
     index: {
       enable: 'Habilitar',
@@ -376,6 +377,7 @@ const translation = {
     regeneratingMessage: 'Isso pode demorar um pouco, por favor aguarde...',
     edited: 'EDIÇÃO',
     editedAt: 'Editado em',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     expandChunks: 'Expandir pedaços',
     collapseChunks: 'Recolher partes',
     regenerationConfirmMessage: 'A regeneração de partes filhas substituirá as partes filhas atuais, incluindo partes editadas e partes recém-adicionadas. A regeneração não pode ser desfeita.',

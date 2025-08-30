@@ -30,6 +30,7 @@ const translation = {
       sync: 'Sincronizează',
       pause: 'Pauză',
       resume: 'Reia',
+      download: 'Descărcați fișierul',
     },
     index: {
       enable: 'Activează',
@@ -362,6 +363,7 @@ const translation = {
     characters_one: 'caracter',
     regenerationSuccessTitle: 'Regenerare finalizată',
     editedAt: 'Editat la',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     addChunk: 'Adăugați o bucată',
     chunk: 'Bucată',
     chunks_one: 'BUCATĂ',

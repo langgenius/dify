@@ -24,6 +24,7 @@ import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/v
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 
 import {
+  AGENT_OUTPUT_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
@@ -49,11 +50,20 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'conversation'
 }
 
-const inputVarTypeToVarType = (type: InputVarType): VarType => {
+export const hasValidChildren = (children: any): boolean => {
+  return children && (
+    (Array.isArray(children) && children.length > 0)
+    || (!Array.isArray(children) && Object.keys((children as StructuredOutput)?.schema?.properties || {}).length > 0)
+  )
+}
+
+export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
+    [InputVarType.checkbox]: VarType.boolean,
     [InputVarType.singleFile]: VarType.file,
     [InputVarType.multiFiles]: VarType.arrayFile,
+    [InputVarType.jsonObject]: VarType.object,
   } as any)[type] || VarType.string
 }
 
@@ -139,19 +149,57 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   if (isStructuredOutput) {
     childrenResult = findExceptVarInStructuredOutput(children, filterVar)
   }
- else if (Array.isArray(children)) {
-    childrenResult = children.filter((item: Var) => {
-      const { children: itemChildren } = item
-      const currSelector = [...value_selector, item.variable]
+  else if (Array.isArray(children)) {
+    childrenResult = children
+      .map((item: Var) => {
+        const { children: itemChildren } = item
+        const currSelector = [...value_selector, item.variable]
 
-      if (!itemChildren)
-        return filterVar(item, currSelector)
+        if (!itemChildren) {
+          return {
+            item,
+            filteredObj: null,
+            passesFilter: filterVar(item, currSelector),
+          }
+        }
 
-      const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contain file children
-      return filteredObj.children && (filteredObj.children as Var[])?.length > 0
-    })
+        const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false)
+        const itemHasValidChildren = hasValidChildren(filteredObj.children)
+
+        let passesFilter
+        if ((item.type === VarType.object || item.type === VarType.file) && itemChildren)
+          passesFilter = itemHasValidChildren || filterVar(item, currSelector)
+        else
+          passesFilter = itemHasValidChildren
+
+        return {
+          item,
+          filteredObj,
+          passesFilter,
+        }
+      })
+      .filter(({ passesFilter }) => passesFilter)
+      .map(({ item, filteredObj }) => {
+        const { children: itemChildren } = item
+        if (!itemChildren || !filteredObj)
+          return item
+
+        return {
+          ...item,
+          children: filteredObj.children,
+        }
+      })
+
+    if (isFile && Array.isArray(childrenResult)) {
+      if (childrenResult.length === 0) {
+        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map(key => ({
+          variable: key,
+          type: key === 'size' ? VarType.number : VarType.string,
+        }))
+      }
+    }
   }
- else {
+  else {
     childrenResult = []
   }
 
@@ -182,14 +230,27 @@ const formatItem = (
         variables,
       } = data as StartNodeType
       res.vars = variables.map((v) => {
-        return {
+        const type = inputVarTypeToVarType(v.type)
+        const varRes: Var = {
           variable: v.variable,
-          type: inputVarTypeToVarType(v.type),
+          type,
           isParagraph: v.type === InputVarType.paragraph,
           isSelect: v.type === InputVarType.select,
           options: v.options,
           required: v.required,
         }
+        try {
+          if(type === VarType.object && v.json_schema) {
+            varRes.children = {
+              schema: JSON.parse(v.json_schema),
+            }
+          }
+        }
+        catch (error) {
+          console.error('Error formatting variable:', error)
+        }
+
+        return varRes
       })
       if (isChatMode) {
         res.vars.push({
@@ -453,6 +514,7 @@ const formatItem = (
       res.vars = [
         ...outputs,
         ...TOOL_OUTPUT_STRUCT,
+        ...AGENT_OUTPUT_STRUCT,
       ]
       break
     }
@@ -462,6 +524,7 @@ const formatItem = (
         return {
           variable: `env.${env.name}`,
           type: env.value_type,
+          description: env.description,
         }
       }) as Var[]
       break
@@ -472,7 +535,7 @@ const formatItem = (
         return {
           variable: `conversation.${chatVar.name}`,
           type: chatVar.value_type,
-          des: chatVar.description,
+          description: chatVar.description,
         }
       }) as Var[]
       break
@@ -611,6 +674,7 @@ const getIterationItemType = ({
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
+  const isChatVar = isConversationVar(valueSelector)
 
   const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
 
@@ -620,7 +684,7 @@ const getIterationItemType = ({
   let arrayType: VarType = VarType.string
 
   let curr: any = targetVar.vars
-  if (isSystem) {
+  if (isSystem || isChatVar) {
     arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
   }
   else {
@@ -641,10 +705,12 @@ const getIterationItemType = ({
       return VarType.string
     case VarType.arrayNumber:
       return VarType.number
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
-      return VarType.any
+      return VarType.arrayObject // Use more specific type instead of any
     case VarType.arrayFile:
       return VarType.file
     default:
@@ -694,6 +760,8 @@ const getLoopItemType = ({
       return VarType.number
     case VarType.arrayObject:
       return VarType.object
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.array:
       return VarType.any
     case VarType.arrayFile:
@@ -975,6 +1043,15 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).flatMap((c) => {
+        const selectors: ValueSelector[] = []
+        if (c.variable_selector)
+          selectors.push(c.variable_selector)
+        // Handle sub-variable conditions
+        if (c.sub_variable_condition && c.sub_variable_condition.conditions)
+          selectors.push(...c.sub_variable_condition.conditions.map(subC => subC.variable_selector || []).filter(sel => sel.length > 0))
+        return selectors
+      }))
       break
     }
     case BlockEnum.Code: {
@@ -994,6 +1071,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [payload.query_variable_selector]
       const varInInstructions = matchNotSystemVars([payload.instruction || ''])
       res.push(...varInInstructions)
+
+      const classes = payload.classes.map(c => c.name)
+      res.push(...matchNotSystemVars(classes))
       break
     }
     case BlockEnum.HttpRequest: {
@@ -1206,6 +1286,26 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
             if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
               c.variable_selector = newVarSelector
             return c
+          })
+        }
+        if (payload.cases) {
+          payload.cases = payload.cases.map((caseItem) => {
+            if (caseItem.conditions) {
+              caseItem.conditions = caseItem.conditions.map((c) => {
+                if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
+                  c.variable_selector = newVarSelector
+                // Handle sub-variable conditions
+                if (c.sub_variable_condition && c.sub_variable_condition.conditions) {
+                  c.sub_variable_condition.conditions = c.sub_variable_condition.conditions.map((subC) => {
+                    if (subC.variable_selector?.join('.') === oldVarSelector.join('.'))
+                      subC.variable_selector = newVarSelector
+                    return subC
+                  })
+                }
+                return c
+              })
+            }
+            return caseItem
           })
         }
         break

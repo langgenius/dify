@@ -107,14 +107,15 @@ const translation = {
     loadMore: '載入更多工作流',
     noHistory: '無歷史記錄',
     publishUpdate: '發布更新',
-    referenceVar: '參考變量',
     exportSVG: '匯出為 SVG',
     exportPNG: '匯出為 PNG',
-    noExist: '沒有這個變數',
     versionHistory: '版本歷史',
     exitVersions: '退出版本',
     exportImage: '匯出圖像',
     exportJPEG: '匯出為 JPEG',
+    tagBound: '使用此標籤的應用程式數量',
+    currentView: '當前檢視',
+    currentWorkflow: '當前工作流程',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -129,6 +130,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '環境值',
       secretTip: '用於定義敏感信息或數據，DSL 設置配置為防止洩露。',
+      description: '描述',
+      descriptionPlaceholder: '描述此變數',
     },
     export: {
       title: '導出機密環境變數？',
@@ -221,7 +224,6 @@ const translation = {
     'blocks': '節點',
     'tools': '工具',
     'allTool': '全部',
-    'builtInTool': '內置',
     'customTool': '自定義',
     'workflowTool': '工作流',
     'question-understand': '問題理解',
@@ -232,6 +234,8 @@ const translation = {
     'searchTool': '搜索工具',
     'agent': '代理策略',
     'plugin': '插件',
+    'allAdded': '所有已添加的',
+    'addAll': '全部添加',
   },
   blocks: {
     'start': '開始',
@@ -285,6 +289,18 @@ const translation = {
     zoomTo50: '縮放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自適應視圖',
+    alignNodes: '對齊節點',
+    distributeVertical: '垂直等間距',
+    alignLeft: '左對齊',
+    distributeHorizontal: '水平等間距',
+    vertical: '垂直',
+    alignTop: '頂部對齊',
+    alignCenter: '居中對齊',
+    horizontal: '水平',
+    selectionAlignment: '選擇對齊',
+    alignRight: '右對齊',
+    alignBottom: '底部對齊',
+    alignMiddle: '中部對齊',
   },
   panel: {
     userInputField: '用戶輸入字段',
@@ -361,6 +377,10 @@ const translation = {
         times: '次',
         ms: '毫秒',
         retries: '{{num}}重試',
+      },
+      typeSwitch: {
+        input: '輸入值',
+        variable: '使用變數',
       },
     },
     start: {
@@ -488,6 +508,7 @@ const translation = {
           placeholder: '輸入數值',
         },
         title: '元數據過濾',
+        tip: '元數據過濾是使用元數據屬性（如標籤、類別或訪問權限）來精煉和控制在系統內檢索相關信息的過程。',
       },
     },
     http: {
@@ -537,6 +558,10 @@ const translation = {
         placeholder: '在此處粘貼 cURL 字串',
         title: '從 cURL 導入',
       },
+      verifySSL: {
+        title: '驗證 SSL 證書',
+        warningTooltip: '不建議在生產環境中禁用SSL驗證。這僅應用於開發或測試，因為這樣會使連接容易受到中間人攻擊等安全威脅的威脅。',
+      },
     },
     code: {
       inputVars: '輸入變量',
@@ -573,7 +598,6 @@ const translation = {
         'not empty': '不為空',
         'null': '空',
         'not null': '不為空',
-        'regex match': '正則表達式匹配',
         'all of': '全部',
         'exists': '存在',
         'in': '在',
@@ -596,7 +620,6 @@ const translation = {
       },
       select: '選擇',
       addSubVariable: '子變數',
-      condition: '條件',
     },
     variableAssigner: {
       title: '變量賦值',
@@ -664,12 +687,16 @@ const translation = {
         },
         json: '工具生成的 JSON',
       },
+      insertPlaceholder2: '插入變量',
+      insertPlaceholder1: '輸入或按壓',
+      settings: '設定',
     },
     questionClassifiers: {
       model: '模型',
       inputVars: '輸入變量',
       outputVars: {
         className: '分類名稱',
+        usage: '模型用量信息',
       },
       class: '分類',
       classNamePlaceholder: '輸入你的分類名稱',
@@ -683,6 +710,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '輸入變量',
+      outputVars: {
+        isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
+        errorReason: '錯誤原因',
+        usage: '模型用量信息',
+      },
       extractParameters: '提取參數',
       importFromTool: '從工具導入',
       addExtractParameter: '添加提取參數',
@@ -702,8 +734,6 @@ const translation = {
       advancedSetting: '高級設置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根據模型對於 Function calling 或 Prompt 的指令響應能力選擇合適的推理模式',
-      isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
-      errorReason: '錯誤原因',
     },
     iteration: {
       deleteTitle: '刪除迭代節點？',
@@ -812,6 +842,7 @@ const translation = {
           upload_file_id: '上傳檔 ID',
         },
         text: '代理生成的內容',
+        usage: '模型用量信息',
         json: '代理生成的 JSON',
       },
       checkList: {
@@ -844,6 +875,8 @@ const translation = {
       linkToPlugin: '連結到插件',
       pluginNotInstalled: '此插件未安裝',
       notAuthorized: '未授權',
+      clickToViewParameterSchema: '點擊查看參數架構',
+      parameterSchema: '參數架構',
     },
     loop: {
       ErrorMethod: {
@@ -909,6 +942,7 @@ const translation = {
       updateSuccess: '版本已更新',
       deleteSuccess: '版本已刪除',
       deleteFailure: '無法刪除版本',
+      copyIdSuccess: 'ID 已複製到剪貼板',
     },
     nameThisVersion: '給這個版本命名',
     latest: '最新',
@@ -919,8 +953,12 @@ const translation = {
     deletionTip: '刪除是不可逆的，請確認。',
     releaseNotesPlaceholder: '描述發生了什麼變化',
     defaultName: '未命名版本',
+    copyId: '複製ID',
   },
   debug: {
+    settingsTab: '設定',
+    lastRunTab: '最後一次運行',
+    relationsTab: '關係',
     noData: {
       runThisNode: '運行此節點',
       description: '上次運行的結果將顯示在這裡',
@@ -946,8 +984,19 @@ const translation = {
       emptyTip: '在畫布上逐步執行節點或逐步運行節點後，您可以在變數檢視中查看節點變數的當前值。',
       resetConversationVar: '將對話變數重置為默認值',
     },
-    settingsTab: '設定',
-    lastRunTab: '最後一次運行',
+    relations: {
+      dependencies: '依賴',
+      dependents: '被依賴',
+      dependenciesDescription: '此節點所依賴的其他節點',
+      dependentsDescription: '依賴此節點的其他節點',
+      noDependencies: '無依賴',
+      noDependents: '無被依賴',
+    },
+    copyLastRun: '複製上一次運行',
+    copyLastRunError: '未能複製上一次運行的輸入',
+    noMatchingInputsFound: '在上次運行中未找到匹配的輸入',
+    noLastRunFound: '沒有找到之前的運行',
+    lastOutput: '最後的輸出',
   },
 }
 

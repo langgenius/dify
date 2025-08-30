@@ -68,7 +68,7 @@ class CommonValidator:
         if credential_form_schema.max_length:
             if len(value) > credential_form_schema.max_length:
                 raise ValueError(
-                    f"Variable {credential_form_schema.variable} length should not"
+                    f"Variable {credential_form_schema.variable} length should not be"
                     f" greater than {credential_form_schema.max_length}"
                 )
 

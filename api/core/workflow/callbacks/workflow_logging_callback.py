@@ -232,14 +232,14 @@ class WorkflowLoggingCallback(WorkflowCallback):
         Publish loop started
         """
         self.print_text("\n[LoopRunStartedEvent]", color="blue")
-        self.print_text(f"Loop Node ID: {event.loop_id}", color="blue")
+        self.print_text(f"Loop Node ID: {event.loop_node_id}", color="blue")
 
     def on_workflow_loop_next(self, event: LoopRunNextEvent) -> None:
         """
         Publish loop next
         """
         self.print_text("\n[LoopRunNextEvent]", color="blue")
-        self.print_text(f"Loop Node ID: {event.loop_id}", color="blue")
+        self.print_text(f"Loop Node ID: {event.loop_node_id}", color="blue")
         self.print_text(f"Loop Index: {event.index}", color="blue")
 
     def on_workflow_loop_completed(self, event: LoopRunSucceededEvent | LoopRunFailedEvent) -> None:
@@ -250,7 +250,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
             "\n[LoopRunSucceededEvent]" if isinstance(event, LoopRunSucceededEvent) else "\n[LoopRunFailedEvent]",
             color="blue",
         )
-        self.print_text(f"Node ID: {event.loop_id}", color="blue")
+        self.print_text(f"Loop Node ID: {event.loop_node_id}", color="blue")
 
     def print_text(self, text: str, color: Optional[str] = None, end: str = "\n") -> None:
         """Print text with highlighting and no end characters."""

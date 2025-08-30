@@ -12,6 +12,9 @@ const withMDX = require('@next/mdx')({
     // providerImportSource: "@mdx-js/react",
   },
 })
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
 
 // the default url to prevent parse url error when running jest
 const hasSetWebPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
@@ -24,7 +27,10 @@ const nextConfig = {
   basePath,
   assetPrefix,
   webpack: (config, { dev, isServer }) => {
-    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+    if (dev) {
+      config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+    }
+
     return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
@@ -66,4 +72,4 @@ const nextConfig = {
   output: 'standalone',
 }
 
-module.exports = withMDX(nextConfig)
+module.exports = withBundleAnalyzer(withMDX(nextConfig))

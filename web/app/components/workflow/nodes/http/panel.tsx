@@ -10,6 +10,7 @@ import type { HttpNodeType } from './types'
 import Timeout from './components/timeout'
 import CurlPanel from './components/curl-panel'
 import cn from '@/utils/classnames'
+import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -47,6 +48,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     showCurlPanel,
     hideCurlPanel,
     handleCurlImport,
+    handleSSLVerifyChange,
   } = useConfig(id, data)
   // To prevent prompt editor in body not update data.
   if (!isDataReady)
@@ -123,6 +125,18 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             payload={inputs.body}
             onChange={setBody}
           />
+        </Field>
+        <Field
+          title={t(`${i18nPrefix}.verifySSL.title`)}
+          tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`)}
+          operations={
+            <Switch
+              defaultValue={!!inputs.ssl_verify}
+              onChange={handleSSLVerifyChange}
+              size='md'
+              disabled={readOnly}
+            />
+          }>
         </Field>
       </div>
       <Split />

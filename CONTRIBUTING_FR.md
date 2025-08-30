@@ -34,11 +34,11 @@ N'oubliez pas de lier un problème existant ou d'ouvrir un nouveau problème dan
 
 Comment nous priorisons :
 
-  | Type de Problème                                              | Priorité        |
-  | ------------------------------------------------------------ | --------------- |
-  | Bugs dans les fonctions principales (service cloud, impossibilité de se connecter, applications qui ne fonctionnent pas, failles de sécurité) | Critique        |
-  | Bugs non critiques, améliorations de performance             | Priorité Moyenne |
-  | Corrections mineures (fautes de frappe, UI confuse mais fonctionnelle) | Priorité Basse  |
+| Type de Problème | Priorité |
+| ------------------------------------------------------------ | --------------- |
+| Bugs dans les fonctions principales (service cloud, impossibilité de se connecter, applications qui ne fonctionnent pas, failles de sécurité) | Critique |
+| Bugs non critiques, améliorations de performance | Priorité Moyenne |
+| Corrections mineures (fautes de frappe, UI confuse mais fonctionnelle) | Priorité Basse |
 
 ### Demandes de fonctionnalités
 
@@ -52,23 +52,25 @@ Comment nous priorisons :
 
 Comment nous priorisons :
 
-  | Type de Fonctionnalité                                        | Priorité        |
-  | ------------------------------------------------------------ | --------------- |
-  | Fonctionnalités hautement prioritaires étiquetées par un membre de l'équipe | Priorité Haute  |
-  | Demandes populaires de fonctionnalités de notre [tableau de feedback communautaire](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Priorité Moyenne |
-  | Fonctionnalités non essentielles et améliorations mineures   | Priorité Basse  |
-  | Précieuses mais non immédiates                               | Fonctionnalité Future |
+| Type de Fonctionnalité | Priorité |
+| ------------------------------------------------------------ | --------------- |
+| Fonctionnalités hautement prioritaires étiquetées par un membre de l'équipe | Priorité Haute |
+| Demandes populaires de fonctionnalités de notre [tableau de feedback communautaire](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Priorité Moyenne |
+| Fonctionnalités non essentielles et améliorations mineures | Priorité Basse |
+| Précieuses mais non immédiates | Fonctionnalité Future |
+
 ## Soumettre votre PR
 
 ### Processus de Pull Request
 
 1. Forkez le dépôt
-2. Avant de rédiger une PR, veuillez créer un problème pour discuter des changements que vous souhaitez apporter
-3. Créez une nouvelle branche pour vos changements
-4. Veuillez ajouter des tests pour vos changements en conséquence
-5. Assurez-vous que votre code passe les tests existants
-6. Veuillez lier le problème dans la description de la PR, `fixes #<numéro_du_problème>`
-7. Faites fusionner votre code !
+1. Avant de rédiger une PR, veuillez créer un problème pour discuter des changements que vous souhaitez apporter
+1. Créez une nouvelle branche pour vos changements
+1. Veuillez ajouter des tests pour vos changements en conséquence
+1. Assurez-vous que votre code passe les tests existants
+1. Veuillez lier le problème dans la description de la PR, `fixes #<numéro_du_problème>`
+1. Faites fusionner votre code !
+
 ### Configuration du projet
 
 #### Frontend
@@ -82,12 +84,14 @@ Pour configurer le service backend, veuillez consulter nos [instructions détail
 #### Autres choses à noter
 
 Nous recommandons de revoir attentivement ce document avant de procéder à la configuration, car il contient des informations essentielles sur :
+
 - Prérequis et dépendances
 - Étapes d'installation
 - Détails de configuration
 - Conseils courants de dépannage
 
 N'hésitez pas à nous contacter si vous rencontrez des problèmes pendant le processus de configuration.
+
 ## Obtenir de l'aide
 
-Si jamais vous êtes bloqué ou avez une question urgente en contribuant, envoyez-nous simplement vos questions via le problème GitHub concerné, ou rejoignez notre [Discord](https://discord.gg/8Tpq4AcN9c) pour une discussion rapide. 
+Si jamais vous êtes bloqué ou avez une question urgente en contribuant, envoyez-nous simplement vos questions via le problème GitHub concerné, ou rejoignez notre [Discord](https://discord.gg/8Tpq4AcN9c) pour une discussion rapide.

@@ -105,7 +105,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
               }
             </div>
           </div>
-          <div className='h-[1px] bg-divider-regular' />
+          <div className='h-px bg-divider-regular' />
           <div className='p-1'>
             <div
               className='flex h-8 cursor-pointer items-center px-3 text-sm text-text-accent'

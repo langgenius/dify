@@ -1,7 +1,7 @@
 from functools import wraps
 
 from flask_login import current_user
-from flask_restful import Resource
+from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError
@@ -28,7 +28,7 @@ def installed_app_required(view=None):
 
             installed_app = (
                 db.session.query(InstalledApp)
-                .filter(
+                .where(
                     InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_user.current_tenant_id
                 )
                 .first()

@@ -32,7 +32,7 @@ const AccessControlDialog = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-background-overlay bg-opacity-25" />
+          <div className="bg-background-overlay/25 fixed inset-0" />
         </Transition.Child>
 
         <div className="fixed inset-0 flex items-center justify-center">
@@ -47,7 +47,7 @@ const AccessControlDialog = ({
           >
             <Dialog.Panel className={cn('relative h-auto min-h-[323px] w-[600px] overflow-y-auto rounded-2xl bg-components-panel-bg p-0 shadow-xl transition-all', className)}>
               <div onClick={() => close()} className="absolute right-5 top-5 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">
-                <RiCloseLine className='h-5 w-5' />
+                <RiCloseLine className='h-5 w-5 text-text-tertiary' />
               </div>
               {children}
             </Dialog.Panel>

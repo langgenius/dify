@@ -87,7 +87,7 @@ class PhoenixConfig(BaseTracingConfig):
     @field_validator("endpoint")
     @classmethod
     def endpoint_validator(cls, v, info: ValidationInfo):
-        return cls.validate_endpoint_url(v, "https://app.phoenix.arize.com")
+        return validate_url_with_path(v, "https://app.phoenix.arize.com")
 
 
 class LangfuseConfig(BaseTracingConfig):
@@ -102,7 +102,7 @@ class LangfuseConfig(BaseTracingConfig):
     @field_validator("host")
     @classmethod
     def host_validator(cls, v, info: ValidationInfo):
-        return cls.validate_endpoint_url(v, "https://api.langfuse.com")
+        return validate_url_with_path(v, "https://api.langfuse.com")
 
 
 class LangSmithConfig(BaseTracingConfig):
@@ -175,6 +175,23 @@ class AliyunConfig(BaseTracingConfig):
     app_name: str = "dify_app"
     license_key: str
     endpoint: str
+
+    @field_validator("app_name")
+    @classmethod
+    def app_name_validator(cls, v, info: ValidationInfo):
+        return cls.validate_project_field(v, "dify_app")
+
+    @field_validator("license_key")
+    @classmethod
+    def license_key_validator(cls, v, info: ValidationInfo):
+        if not v or v.strip() == "":
+            raise ValueError("License key cannot be empty")
+        return v
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        return cls.validate_endpoint_url(v, "https://tracing-analysis-dc-hz.aliyuncs.com")
 
 
 OPS_FILE_PATH = "ops_trace/"

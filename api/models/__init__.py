@@ -34,6 +34,7 @@ from .model import (
     App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
+    AppMCPServer,
     AppMode,
     AppModelConfig,
     Conversation,
@@ -103,6 +104,7 @@ __all__ = [
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
     "AppDatasetJoin",
+    "AppMCPServer",  # Added
     "AppMode",
     "AppModelConfig",
     "BuiltinToolProvider",

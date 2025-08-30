@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -13,7 +13,7 @@ class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
-    completion_params: dict[str, Any] = {}
+    completion_params: dict[str, Any] = Field(default_factory=dict)
 
 
 class ContextConfig(BaseModel):
@@ -65,7 +65,7 @@ class LLMNodeData(BaseNodeData):
     memory: Optional[MemoryConfig] = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
-    structured_output: dict | None = None
+    structured_output: Mapping[str, Any] | None = None
     # We used 'structured_output_enabled' in the past, but it's not a good name.
     structured_output_switch_on: bool = Field(False, alias="structured_output_enabled")
 

@@ -1,0 +1,32 @@
+name: autofix.ci
+on:
+  pull_request:
+    branches: ["main"]
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Use uv to ensure we have the same ruff version in CI and locally.
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: |
+          cd api
+          uv sync --dev
+          # Fix lint errors
+          uv run ruff check --fix-only .
+          # Format code
+          uv run ruff format .
+      - name: ast-grep
+        run: |
+          uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
+      - name: mdformat
+        run: |
+          uvx mdformat .
+      - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

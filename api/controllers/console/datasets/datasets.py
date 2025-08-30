@@ -1,7 +1,7 @@
-import flask_restful
+import flask_restx
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -41,7 +41,7 @@ def _validate_name(name):
 
 
 def _validate_description_length(description):
-    if len(description) > 400:
+    if description and len(description) > 400:
         raise ValueError("Description cannot exceed 400 characters.")
     return description
 
@@ -113,7 +113,7 @@ class DatasetListApi(Resource):
         )
         parser.add_argument(
             "description",
-            type=str,
+            type=_validate_description_length,
             nullable=True,
             required=False,
             default="",
@@ -210,10 +210,6 @@ class DatasetApi(Resource):
                 data["embedding_available"] = False
         else:
             data["embedding_available"] = True
-
-        if data.get("permission") == "partial_members":
-            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-            data.update({"partial_member_list": part_users_list})
 
         return data, 200
 
@@ -416,7 +412,7 @@ class DatasetIndexingEstimateApi(Resource):
             file_ids = args["info_list"]["file_info_list"]["file_ids"]
             file_details = (
                 db.session.query(UploadFile)
-                .filter(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids))
+                .where(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids))
                 .all()
             )
 
@@ -521,14 +517,14 @@ class DatasetIndexingStatusApi(Resource):
         dataset_id = str(dataset_id)
         documents = (
             db.session.query(Document)
-            .filter(Document.dataset_id == dataset_id, Document.tenant_id == current_user.current_tenant_id)
+            .where(Document.dataset_id == dataset_id, Document.tenant_id == current_user.current_tenant_id)
             .all()
         )
         documents_status = []
         for document in documents:
             completed_segments = (
                 db.session.query(DocumentSegment)
-                .filter(
+                .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
                     DocumentSegment.status != "re_segment",
@@ -537,7 +533,7 @@ class DatasetIndexingStatusApi(Resource):
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                 .count()
             )
             # Create a dictionary with document attributes and additional fields
@@ -557,7 +553,7 @@ class DatasetIndexingStatusApi(Resource):
             }
             documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
-        return data
+        return data, 200
 
 
 class DatasetApiKeyApi(Resource):
@@ -572,7 +568,7 @@ class DatasetApiKeyApi(Resource):
     def get(self):
         keys = (
             db.session.query(ApiToken)
-            .filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
+            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
             .all()
         )
         return {"items": keys}
@@ -588,12 +584,12 @@ class DatasetApiKeyApi(Resource):
 
         current_key_count = (
             db.session.query(ApiToken)
-            .filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
+            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
             .count()
         )
 
         if current_key_count >= self.max_keys:
-            flask_restful.abort(
+            flask_restx.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
@@ -624,7 +620,7 @@ class DatasetApiDeleteApi(Resource):
 
         key = (
             db.session.query(ApiToken)
-            .filter(
+            .where(
                 ApiToken.tenant_id == current_user.current_tenant_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
@@ -633,9 +629,9 @@ class DatasetApiDeleteApi(Resource):
         )
 
         if key is None:
-            flask_restful.abort(404, message="API key not found")
+            flask_restx.abort(404, message="API key not found")
 
-        db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
+        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()
 
         return {"result": "success"}, 204
@@ -687,6 +683,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.TENCENT
                 | VectorType.MATRIXONE
+                | VectorType.CLICKZETTA
             ):
                 return {
                     "retrieval_method": [
@@ -735,6 +732,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.TENCENT
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.MATRIXONE
+                | VectorType.CLICKZETTA
             ):
                 return {
                     "retrieval_method": [

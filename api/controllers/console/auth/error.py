@@ -27,7 +27,19 @@ class InvalidTokenError(BaseHTTPException):
 
 class PasswordResetRateLimitExceededError(BaseHTTPException):
     error_code = "password_reset_rate_limit_exceeded"
-    description = "Too many password reset emails have been sent. Please try again in 1 minutes."
+    description = "Too many password reset emails have been sent. Please try again in 1 minute."
+    code = 429
+
+
+class EmailChangeRateLimitExceededError(BaseHTTPException):
+    error_code = "email_change_rate_limit_exceeded"
+    description = "Too many email change emails have been sent. Please try again in 1 minute."
+    code = 429
+
+
+class OwnerTransferRateLimitExceededError(BaseHTTPException):
+    error_code = "owner_transfer_rate_limit_exceeded"
+    description = "Too many owner transfer emails have been sent. Please try again in 1 minute."
     code = 429
 
 
@@ -41,6 +53,12 @@ class EmailOrPasswordMismatchError(BaseHTTPException):
     error_code = "email_or_password_mismatch"
     description = "The email or password is mismatched."
     code = 400
+
+
+class AuthenticationFailedError(BaseHTTPException):
+    error_code = "authentication_failed"
+    description = "Invalid email or password."
+    code = 401
 
 
 class EmailPasswordLoginLimitError(BaseHTTPException):
@@ -65,3 +83,39 @@ class EmailPasswordResetLimitError(BaseHTTPException):
     error_code = "email_password_reset_limit"
     description = "Too many failed password reset attempts. Please try again in 24 hours."
     code = 429
+
+
+class EmailChangeLimitError(BaseHTTPException):
+    error_code = "email_change_limit"
+    description = "Too many failed email change attempts. Please try again in 24 hours."
+    code = 429
+
+
+class EmailAlreadyInUseError(BaseHTTPException):
+    error_code = "email_already_in_use"
+    description = "A user with this email already exists."
+    code = 400
+
+
+class OwnerTransferLimitError(BaseHTTPException):
+    error_code = "owner_transfer_limit"
+    description = "Too many failed owner transfer attempts. Please try again in 24 hours."
+    code = 429
+
+
+class NotOwnerError(BaseHTTPException):
+    error_code = "not_owner"
+    description = "You are not the owner of the workspace."
+    code = 400
+
+
+class CannotTransferOwnerToSelfError(BaseHTTPException):
+    error_code = "cannot_transfer_owner_to_self"
+    description = "You cannot transfer ownership to yourself."
+    code = 400
+
+
+class MemberNotInTenantError(BaseHTTPException):
+    error_code = "member_not_in_tenant"
+    description = "The member is not in the workspace."
+    code = 400

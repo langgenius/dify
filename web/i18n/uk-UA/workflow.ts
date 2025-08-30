@@ -103,9 +103,7 @@ const translation = {
     addFailureBranch: 'Додано гілку помилки',
     noHistory: 'Без історії',
     loadMore: 'Завантажте більше робочих процесів',
-    referenceVar: 'Посилальна змінна',
     exportPNG: 'Експортувати як PNG',
-    noExist: 'Такої змінної не існує',
     exitVersions: 'Вихідні версії',
     versionHistory: 'Історія версій',
     publishUpdate: 'Опублікувати оновлення',
@@ -115,6 +113,9 @@ const translation = {
     addBlock: 'Додати вузол',
     needEndNode: 'Необхідно додати кінцевий вузол',
     needAnswerNode: 'Вузол Відповіді повинен бути доданий',
+    tagBound: 'Кількість додатків, що використовують цей тег',
+    currentView: 'Поточний вигляд',
+    currentWorkflow: 'Поточний робочий процес',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Значення',
       valuePlaceholder: 'значення середовища',
       secretTip: 'Використовується для визначення конфіденційної інформації або даних, з налаштуваннями DSL, сконфігурованими для запобігання витоку.',
+      description: 'Опис',
+      descriptionPlaceholder: 'Опишіть змінну',
     },
     export: {
       title: 'Експортувати секретні змінні середовища?',
@@ -219,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Інструменти',
     'allTool': 'Усі',
-    'builtInTool': 'Вбудовані',
     'customTool': 'Користувацькі',
     'workflowTool': 'Робочий потік',
     'question-understand': 'Розуміння питань',
@@ -232,6 +234,8 @@ const translation = {
     'agent': 'Стратегія агента',
     'blocks': 'Вузли',
     'searchBlock': 'Пошуковий вузол',
+    'addAll': 'Додати все',
+    'allAdded': 'Всі додані',
   },
   blocks: {
     'start': 'Початок',
@@ -285,6 +289,18 @@ const translation = {
     zoomTo50: 'Збільшити до 50%',
     zoomTo100: 'Збільшити до 100%',
     zoomToFit: 'Збільшити для підгонки',
+    alignCenter: 'Центр',
+    alignRight: 'Праворуч',
+    vertical: 'Вертикальний',
+    alignBottom: 'Низ',
+    alignLeft: 'Ліворуч',
+    alignTop: 'Верх',
+    horizontal: 'Горизонтальний',
+    alignMiddle: 'По центру',
+    distributeVertical: 'Розподілити по вертикалі',
+    distributeHorizontal: 'Розподілити по горизонталі',
+    selectionAlignment: 'Вирівнювання вибору',
+    alignNodes: 'Вирівнювання вузлів',
   },
   panel: {
     userInputField: 'Поле введення користувача',
@@ -361,6 +377,10 @@ const translation = {
         retrySuccessful: 'Повторна спроба успішна',
         retryFailedTimes: '{{times}} повторні спроби не вдалися',
         retryTimes: 'Повторіть спробу {{times}} у разі невдачі',
+      },
+      typeSwitch: {
+        input: 'Вхідне значення',
+        variable: 'Використовуйте змінну',
       },
     },
     start: {
@@ -488,6 +508,7 @@ const translation = {
           add: 'Додати умову',
         },
         title: 'Фільтрація метаданих',
+        tip: 'Фільтрація метаданих — це процес використання атрибутів метаданих (таких як теги, категорії або права доступу) для уточнення та контролю отримання відповідної інформації в системі.',
       },
     },
     http: {
@@ -537,6 +558,10 @@ const translation = {
         title: 'Імпорт з cURL',
         placeholder: 'Вставте сюди рядок cURL',
       },
+      verifySSL: {
+        title: 'Перевірити SSL сертифікат',
+        warningTooltip: 'Вимкнення перевірки SSL не рекомендується для виробничих середовищ. Це слід використовувати лише в розробці або тестуванні, оскільки це робить з\'єднання вразливим до загроз безпеці, таких як атаки «людина посередині».',
+      },
     },
     code: {
       inputVars: 'Вхідні змінні',
@@ -544,6 +569,7 @@ const translation = {
       advancedDependencies: 'Розширені залежності',
       advancedDependenciesTip: 'Додайте тут деякі попередньо завантажені залежності, які потребують більше часу для споживання або не є за замовчуванням вбудованими',
       searchDependencies: 'Шукати залежності',
+      syncFunctionSignature: 'Синхронізувати підпис функції з кодом',
     },
     templateTransform: {
       inputVars: 'Вхідні змінні',
@@ -572,7 +598,6 @@ const translation = {
         'not empty': 'не порожній',
         'null': 'є null',
         'not null': 'не є null',
-        'regex match': 'Регулярний вираз збігу',
         'in': 'В',
         'all of': 'Всі з',
         'exists': 'Існує',
@@ -595,7 +620,6 @@ const translation = {
       },
       select: 'Виберіть',
       addSubVariable: 'Підзмінна',
-      condition: 'Умова',
     },
     variableAssigner: {
       title: 'Присвоєння змінних',
@@ -663,12 +687,16 @@ const translation = {
         json: 'JSON, згенерований інструментом',
       },
       authorize: 'Уповноважити',
+      settings: 'Налаштування',
+      insertPlaceholder2: 'вставте змінну',
+      insertPlaceholder1: 'Введіть або натисніть',
     },
     questionClassifiers: {
       model: 'модель',
       inputVars: 'Вхідні змінні',
       outputVars: {
         className: 'Назва класу',
+        usage: 'Інформація про використання моделі',
       },
       class: 'Клас',
       classNamePlaceholder: 'Напишіть назву вашого класу',
@@ -682,6 +710,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Вхідна змінна',
+      outputVars: {
+        isSuccess: 'Є успіх. У разі успіху значення 1, у разі невдачі значення 0.',
+        errorReason: 'Причина помилки',
+        usage: 'Інформація про використання моделі',
+      },
       extractParameters: 'Витягти параметри',
       importFromTool: 'Імпорт з інструментів',
       addExtractParameter: 'Додати параметр витягування',
@@ -701,8 +734,6 @@ const translation = {
       advancedSetting: 'Розширене налаштування',
       reasoningMode: 'Режим інференції',
       reasoningModeTip: 'Ви можете вибрати відповідний режим інференції залежно від здатності моделі реагувати на інструкції щодо викликів функцій або запитів.',
-      isSuccess: 'Є успіх. У разі успіху значення 1, у разі невдачі значення 0.',
-      errorReason: 'Причина помилки',
     },
     iteration: {
       deleteTitle: 'Видалити вузол ітерації?',
@@ -811,6 +842,7 @@ const translation = {
           title: 'Файли, створені агентом',
         },
         text: 'Контент, створений агентом',
+        usage: 'Інформація про використання моделі',
         json: 'Агент згенерував JSON',
       },
       checkList: {
@@ -843,6 +875,8 @@ const translation = {
       pluginNotInstalledDesc: 'Цей плагін встановлюється з GitHub. Будь ласка, перейдіть до Плагіни для перевстановлення',
       modelNotSelected: 'Модель не обрана',
       strategyNotFoundDescAndSwitchVersion: 'Встановлена версія плагіна не забезпечує цю стратегію. Натисніть, щоб змінити версію.',
+      parameterSchema: 'Схема параметрів',
+      clickToViewParameterSchema: 'Натисніть, щоб переглянути схему параметрів',
     },
     loop: {
       ErrorMethod: {
@@ -908,6 +942,7 @@ const translation = {
       deleteSuccess: 'Версія видалена',
       restoreSuccess: 'Версія відновлена',
       updateFailure: 'Не вдалося оновити версію',
+      copyIdSuccess: 'ID скопійовано в буфер обміну',
     },
     defaultName: 'Без назви версія',
     restorationTip: 'Після відновлення версії нинішній проект буде перезаписано.',
@@ -918,6 +953,7 @@ const translation = {
     editVersionInfo: 'Редагувати інформацію про версію',
     nameThisVersion: 'Назвіть цю версію',
     latest: 'Останні новини',
+    copyId: 'Копіювати ідентифікатор',
   },
   debug: {
     noData: {
@@ -947,6 +983,20 @@ const translation = {
     },
     lastRunTab: 'Останній запуск',
     settingsTab: 'Налаштування',
+    relations: {
+      noDependents: 'Без утриманців',
+      dependents: 'Утриманців',
+      dependencies: 'Залежностей',
+      noDependencies: 'Відсутність залежностей',
+      dependenciesDescription: 'Вузли, на які спирається цей вузол',
+      dependentsDescription: 'Вузли, які спираються на цей вузол',
+    },
+    relationsTab: 'Відносин',
+    copyLastRun: 'Копіювати останній запуск',
+    noLastRunFound: 'Жодного попереднього запуску не знайдено.',
+    copyLastRunError: 'Не вдалося скопіювати вхідні дані останнього виконання',
+    noMatchingInputsFound: 'Не знайдено відповідних вхідних даних з останнього запуску',
+    lastOutput: 'Останній вихід',
   },
 }
 

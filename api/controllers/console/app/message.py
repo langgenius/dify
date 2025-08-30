@@ -1,8 +1,9 @@
 import logging
 
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx.inputs import int_range
+from sqlalchemy import exists, select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
@@ -33,6 +34,8 @@ from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 
+logger = logging.getLogger(__name__)
+
 
 class ChatMessageListApi(Resource):
     message_infinite_scroll_pagination_fields = {
@@ -55,7 +58,7 @@ class ChatMessageListApi(Resource):
 
         conversation = (
             db.session.query(Conversation)
-            .filter(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
+            .where(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
             .first()
         )
 
@@ -65,7 +68,7 @@ class ChatMessageListApi(Resource):
         if args["first_id"]:
             first_message = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id, Message.id == args["first_id"])
+                .where(Message.conversation_id == conversation.id, Message.id == args["first_id"])
                 .first()
             )
 
@@ -74,7 +77,7 @@ class ChatMessageListApi(Resource):
 
             history_messages = (
                 db.session.query(Message)
-                .filter(
+                .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < first_message.created_at,
                     Message.id != first_message.id,
@@ -86,27 +89,28 @@ class ChatMessageListApi(Resource):
         else:
             history_messages = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id)
+                .where(Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.desc())
                 .limit(args["limit"])
                 .all()
             )
 
-        has_more = False
+        # Initialize has_more based on whether we have a full page
         if len(history_messages) == args["limit"]:
             current_page_first_message = history_messages[-1]
-            rest_count = (
-                db.session.query(Message)
-                .filter(
-                    Message.conversation_id == conversation.id,
-                    Message.created_at < current_page_first_message.created_at,
-                    Message.id != current_page_first_message.id,
+            # Check if there are more messages before the current page
+            has_more = db.session.scalar(
+                select(
+                    exists().where(
+                        Message.conversation_id == conversation.id,
+                        Message.created_at < current_page_first_message.created_at,
+                        Message.id != current_page_first_message.id,
+                    )
                 )
-                .count()
             )
-
-            if rest_count > 0:
-                has_more = True
+        else:
+            # If we don't have a full page, there are no more messages
+            has_more = False
 
         history_messages = list(reversed(history_messages))
 
@@ -183,7 +187,7 @@ class MessageAnnotationCountApi(Resource):
     @account_initialization_required
     @get_app_model
     def get(self, app_model):
-        count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_model.id).count()
+        count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
 
         return {"count": count}
 
@@ -215,7 +219,7 @@ class MessageSuggestedQuestionApi(Resource):
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}
@@ -230,7 +234,7 @@ class MessageApi(Resource):
     def get(self, app_model, message_id):
         message_id = str(message_id)
 
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
             raise NotFound("Message Not Exists.")

@@ -23,6 +23,7 @@ const translation = {
     uploader: {
       title: 'Tải lên tệp văn bản',
       button: 'Kéo và thả các tập tin hoặc thư mục, hoặc',
+      buttonSingleFile: 'Kéo và thả tệp hoặc',
       browse: 'Chọn tệp',
       tip: 'Hỗ trợ {{supportTypes}}. Tối đa {{size}}MB mỗi tệp.',
       validation: {

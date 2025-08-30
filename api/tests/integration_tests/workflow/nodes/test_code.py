@@ -9,12 +9,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
@@ -50,13 +50,13 @@ def init_code_node(code_config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"},
+        system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(["code", "123", "args1"], 1)
-    variable_pool.add(["code", "123", "args2"], 2)
+    variable_pool.add(["code", "args1"], 1)
+    variable_pool.add(["code", "args2"], 2)
 
     node = CodeNode(
         id=str(uuid.uuid4()),
@@ -65,6 +65,10 @@ def init_code_node(code_config: dict):
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=code_config,
     )
+
+    # Initialize node data
+    if "data" in code_config:
+        node.init_node_data(code_config["data"])
 
     return node
 
@@ -92,9 +96,9 @@ def test_execute_code(setup_code_executor_mock):
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -103,8 +107,8 @@ def test_execute_code(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args2"], 2)
+    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
 
     # execute node
     result = node._run()
@@ -138,9 +142,9 @@ def test_execute_code_output_validator(setup_code_executor_mock):
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -149,8 +153,8 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args2"], 2)
+    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
 
     # execute node
     result = node._run()
@@ -213,9 +217,9 @@ def test_execute_code_output_validator_depth():
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -234,10 +238,10 @@ def test_execute_code_output_validator_depth():
         "object_validator": {"result": 1, "depth": {"depth": {"depth": 1}}},
     }
 
-    node.node_data = cast(CodeNodeData, node.node_data)
+    node._node_data = cast(CodeNodeData, node._node_data)
 
     # validate
-    node._transform_result(result, node.node_data.outputs)
+    node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -250,7 +254,7 @@ def test_execute_code_output_validator_depth():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -263,7 +267,7 @@ def test_execute_code_output_validator_depth():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -276,7 +280,7 @@ def test_execute_code_output_validator_depth():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
 
 
 def test_execute_code_output_object_list():
@@ -303,9 +307,9 @@ def test_execute_code_output_object_list():
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -330,10 +334,10 @@ def test_execute_code_output_object_list():
         ]
     }
 
-    node.node_data = cast(CodeNodeData, node.node_data)
+    node._node_data = cast(CodeNodeData, node._node_data)
 
     # validate
-    node._transform_result(result, node.node_data.outputs)
+    node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -353,4 +357,36 @@ def test_execute_code_output_object_list():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
+
+
+def test_execute_code_scientific_notation():
+    code = """
+    def main() -> dict:
+        return {
+            "result": -8.0E-5
+        }
+    """
+    code = "\n".join([line[4:] for line in code.split("\n")])
+
+    code_config = {
+        "id": "code",
+        "data": {
+            "outputs": {
+                "result": {
+                    "type": "number",
+                },
+            },
+            "title": "123",
+            "variables": [],
+            "answer": "123",
+            "code_language": "python3",
+            "code": code,
+        },
+    }
+
+    node = init_code_node(code_config)
+    # execute node
+    result = node._run()
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED

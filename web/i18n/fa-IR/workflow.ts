@@ -104,9 +104,7 @@ const translation = {
     noHistory: 'بدون تاریخچه',
     loadMore: 'بارگذاری گردش کار بیشتر',
     exportPNG: 'صادرات به فرمت PNG',
-    noExist: 'هیچگونه متغیری وجود ندارد',
     exitVersions: 'نسخه‌های خروجی',
-    referenceVar: 'متغیر مرجع',
     exportSVG: 'صادرات به فرمت SVG',
     exportJPEG: 'صادرات به فرمت JPEG',
     exportImage: 'تصویر را صادر کنید',
@@ -115,6 +113,9 @@ const translation = {
     needEndNode: 'باید گره پایان اضافه شود',
     needAnswerNode: 'باید گره پاسخ اضافه شود',
     addBlock: 'نود اضافه کنید',
+    tagBound: 'تعداد برنامه‌هایی که از این برچسب استفاده می‌کنند',
+    currentView: 'نمای فعلی',
+    currentWorkflow: 'گردش کار فعلی',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
@@ -129,6 +130,8 @@ const translation = {
       value: 'مقدار',
       valuePlaceholder: 'مقدار متغیر',
       secretTip: 'برای تعریف اطلاعات حساس یا داده‌ها، با تنظیمات DSL برای جلوگیری از نشت پیکربندی شده است.',
+      description: 'توضیحات',
+      descriptionPlaceholder: 'متغیر را توصیف کنید',
     },
     export: {
       title: 'آیا متغیرهای محیطی مخفی را صادر کنید؟',
@@ -219,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'ابزارها',
     'allTool': 'همه',
-    'builtInTool': 'درون‌ساخت',
     'customTool': 'سفارشی',
     'workflowTool': 'جریان کار',
     'question-understand': 'درک سوال',
@@ -232,6 +234,8 @@ const translation = {
     'agent': 'استراتژی نمایندگی',
     'blocks': 'گره‌ها',
     'searchBlock': 'گره جستجو',
+    'addAll': 'همه را اضافه کنید',
+    'allAdded': 'همه اضافه شده است',
   },
   blocks: {
     'start': 'شروع',
@@ -285,6 +289,18 @@ const translation = {
     zoomTo50: 'بزرگ‌نمایی به 50%',
     zoomTo100: 'بزرگ‌نمایی به 100%',
     zoomToFit: 'تناسب با اندازه',
+    horizontal: 'افقی',
+    alignBottom: 'پایین',
+    alignRight: 'راست',
+    vertical: 'عمودی',
+    alignCenter: 'مرکز',
+    alignLeft: 'چپ',
+    distributeVertical: 'توزیع عمودی',
+    distributeHorizontal: 'توزیع افقی',
+    alignTop: 'بالا',
+    alignNodes: 'تراز کردن گره ها',
+    selectionAlignment: 'تراز انتخاب',
+    alignMiddle: 'وسط',
   },
   panel: {
     userInputField: 'فیلد ورودی کاربر',
@@ -361,6 +377,10 @@ const translation = {
         retryTimes: '{{times}} بار در صورت شکست دوباره امتحان کنید',
         retrySuccessful: 'امتحان مجدد با موفقیت انجام دهید',
         retryFailedTimes: '{{بار}} تلاش های مجدد ناموفق بود',
+      },
+      typeSwitch: {
+        input: 'مقدار ورودی',
+        variable: 'از متغیر استفاده کن',
       },
     },
     start: {
@@ -488,6 +508,7 @@ const translation = {
           conditions: 'شرایط',
         },
         title: 'فیلتر کردن فراداده',
+        tip: 'فیلتر کردن متاداده فرایند استفاده از ویژگی‌های متاداده (مانند برچسب‌ها، دسته‌ها یا مجوزهای دسترسی) برای تصفیه و کنترل بازیابی اطلاعات مرتبط در یک سیستم است.',
       },
     },
     http: {
@@ -537,6 +558,10 @@ const translation = {
         title: 'وارد کردن از cURL',
         placeholder: 'رشته cURL را اینجا بچسبانید',
       },
+      verifySSL: {
+        title: 'گواهی SSL را تأیید کنید',
+        warningTooltip: 'غیرفعال کردن تأیید SSL برای محیط‌های تولید توصیه نمی‌شود. این فقط باید در توسعه یا آزمایش استفاده شود، زیرا این کار اتصال را در معرض تهدیدات امنیتی مانند حملات میانی قرار می‌دهد.',
+      },
     },
     code: {
       inputVars: 'متغیرهای ورودی',
@@ -544,6 +569,7 @@ const translation = {
       advancedDependencies: 'وابستگی‌های پیشرفته',
       advancedDependenciesTip: 'برخی وابستگی‌های پیش‌بارگذاری شده که زمان بیشتری برای مصرف نیاز دارند یا به طور پیش‌فرض در اینجا موجود نیستند، اضافه کنید',
       searchDependencies: 'جستجوی وابستگی‌ها',
+      syncFunctionSignature: 'امضای تابع همگام‌سازی را به کد متصل کنید',
     },
     templateTransform: {
       inputVars: 'متغیرهای ورودی',
@@ -572,7 +598,6 @@ const translation = {
         'not empty': 'خالی نیست',
         'null': 'خالی',
         'not null': 'خالی نیست',
-        'regex match': 'مسابقه regex',
         'in': 'در',
         'not exists': 'وجود ندارد',
         'all of': 'همه از',
@@ -595,7 +620,6 @@ const translation = {
       },
       select: 'انتخاب',
       addSubVariable: 'متغیر فرعی',
-      condition: 'شرط',
     },
     variableAssigner: {
       title: 'تخصیص متغیرها',
@@ -663,12 +687,16 @@ const translation = {
         json: 'json تولید شده توسط ابزار',
       },
       authorize: 'مجوز دادن',
+      settings: 'تنظیمات',
+      insertPlaceholder2: 'متغیر را وارد کنید',
+      insertPlaceholder1: 'نوع کنید یا فشار دهید',
     },
     questionClassifiers: {
       model: 'مدل',
       inputVars: 'متغیرهای ورودی',
       outputVars: {
         className: 'نام کلاس',
+        usage: 'اطلاعات استفاده از مدل',
       },
       class: 'کلاس',
       classNamePlaceholder: 'نام کلاس خود را بنویسید',
@@ -682,6 +710,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'متغیر ورودی',
+      outputVars: {
+        isSuccess: 'موفقیت‌آمیز است. در صورت موفقیت مقدار 1 و در صورت شکست مقدار 0 است.',
+        errorReason: 'دلیل خطا',
+        usage: 'اطلاعات استفاده از مدل',
+      },
       extractParameters: 'استخراج پارامترها',
       importFromTool: 'وارد کردن از ابزارها',
       addExtractParameter: 'افزودن پارامتر استخراج شده',
@@ -701,8 +734,6 @@ const translation = {
       advancedSetting: 'تنظیمات پیشرفته',
       reasoningMode: 'حالت استدلال',
       reasoningModeTip: 'می‌توانید حالت استدلال مناسب را بر اساس توانایی مدل برای پاسخ به دستورات برای فراخوانی عملکردها یا پیشنهادات انتخاب کنید.',
-      isSuccess: 'موفقیت‌آمیز است. در صورت موفقیت مقدار 1 و در صورت شکست مقدار 0 است.',
-      errorReason: 'دلیل خطا',
     },
     iteration: {
       deleteTitle: 'حذف نود تکرار؟',
@@ -811,6 +842,7 @@ const translation = {
           type: 'نوع پشتیبانی. اکنون فقط از تصویر پشتیبانی می کند',
         },
         text: 'محتوای تولید شده توسط عامل',
+        usage: 'اطلاعات استفاده از مدل',
         json: 'عامل JSON را تولید کرد',
       },
       checkList: {
@@ -843,6 +875,8 @@ const translation = {
       strategyNotFoundDesc: 'نسخه افزونه نصب شده این استراتژی را ارائه نمی دهد.',
       strategyNotFoundDescAndSwitchVersion: 'نسخه افزونه نصب شده این استراتژی را ارائه نمی دهد. برای تغییر نسخه کلیک کنید.',
       model: 'مدل',
+      parameterSchema: 'طرح پارامتر',
+      clickToViewParameterSchema: 'برای مشاهده طرح پارامتر کلیک کنید',
     },
     loop: {
       ErrorMethod: {
@@ -908,6 +942,7 @@ const translation = {
       deleteFailure: 'حذف نسخه موفق نبود',
       restoreFailure: 'بازگرداندن نسخه ناموفق بود',
       updateFailure: 'به‌روزرسانی نسخه ناموفق بود',
+      copyIdSuccess: 'شناسه در کلیپ بورد کپی شده است',
     },
     latest: 'آخرین',
     editVersionInfo: 'ویرایش اطلاعات نسخه',
@@ -918,6 +953,7 @@ const translation = {
     releaseNotesPlaceholder: 'شرح دهید چه چیزی تغییر کرده است',
     restorationTip: 'پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.',
     deletionTip: 'حذف غیرقابل برگشت است، لطفا تأیید کنید.',
+    copyId: 'شناسه کپی',
   },
   debug: {
     noData: {
@@ -947,6 +983,20 @@ const translation = {
     },
     settingsTab: 'تنظیمات',
     lastRunTab: 'آخرین اجرا',
+    relations: {
+      dependents: 'وابسته',
+      dependencies: 'وابسته',
+      noDependents: 'بدون وابستگان',
+      noDependencies: 'بدون وابستگی',
+      dependenciesDescription: 'گره هایی که این گره به آنها متکی است',
+      dependentsDescription: 'گره هایی که به این گره متکی هستند',
+    },
+    relationsTab: 'روابط',
+    copyLastRun: 'کپی آخرین اجرا',
+    noLastRunFound: 'هیچ اجرای قبلی یافت نشد',
+    noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
+    copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
+    lastOutput: 'آخرین خروجی',
   },
 }
 

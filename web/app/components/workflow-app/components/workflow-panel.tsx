@@ -4,17 +4,35 @@ import { useStore } from '@/app/components/workflow/store'
 import {
   useIsChatMode,
 } from '../hooks'
-import DebugAndPreview from '@/app/components/workflow/panel/debug-and-preview'
-import Record from '@/app/components/workflow/panel/record'
-import WorkflowPreview from '@/app/components/workflow/panel/workflow-preview'
-import ChatRecord from '@/app/components/workflow/panel/chat-record'
-import ChatVariablePanel from '@/app/components/workflow/panel/chat-variable-panel'
-import GlobalVariablePanel from '@/app/components/workflow/panel/global-variable-panel'
-import VersionHistoryPanel from '@/app/components/workflow/panel/version-history-panel'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import MessageLogModal from '@/app/components/base/message-log-modal'
 import type { PanelProps } from '@/app/components/workflow/panel'
 import Panel from '@/app/components/workflow/panel'
+import dynamic from 'next/dynamic'
+
+const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
+  ssr: false,
+})
+const Record = dynamic(() => import('@/app/components/workflow/panel/record'), {
+  ssr: false,
+})
+const ChatRecord = dynamic(() => import('@/app/components/workflow/panel/chat-record'), {
+  ssr: false,
+})
+const DebugAndPreview = dynamic(() => import('@/app/components/workflow/panel/debug-and-preview'), {
+  ssr: false,
+})
+const WorkflowPreview = dynamic(() => import('@/app/components/workflow/panel/workflow-preview'), {
+  ssr: false,
+})
+const ChatVariablePanel = dynamic(() => import('@/app/components/workflow/panel/chat-variable-panel'), {
+  ssr: false,
+})
+const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/panel/global-variable-panel'), {
+  ssr: false,
+})
+const VersionHistoryPanel = dynamic(() => import('@/app/components/workflow/panel/version-history-panel'), {
+  ssr: false,
+})
 
 const WorkflowPanelOnLeft = () => {
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({

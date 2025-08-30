@@ -14,6 +14,7 @@ class CommonParameterType(StrEnum):
     APP_SELECTOR = "app-selector"
     MODEL_SELECTOR = "model-selector"
     TOOLS_SELECTOR = "array[tools]"
+    ANY = "any"
 
     # Dynamic select parameter
     # Once you are not sure about the available options until authorization is done
@@ -21,6 +22,9 @@ class CommonParameterType(StrEnum):
     DYNAMIC_SELECT = "dynamic-select"
 
     # TOOL_SELECTOR = "tool-selector"
+    # MCP object and array type parameters
+    ARRAY = "array"
+    OBJECT = "object"
 
 
 class AppSelectorScope(StrEnum):

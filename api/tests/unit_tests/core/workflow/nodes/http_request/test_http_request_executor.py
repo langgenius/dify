@@ -7,12 +7,13 @@ from core.workflow.nodes.http_request import (
 )
 from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout
 from core.workflow.nodes.http_request.executor import Executor
+from core.workflow.system_variable import SystemVariable
 
 
 def test_executor_with_json_body_and_number_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "number"], 42)
@@ -48,7 +49,7 @@ def test_executor_with_json_body_and_number_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json == {"number": 42}
     assert executor.data is None
     assert executor.files is None
@@ -65,7 +66,7 @@ def test_executor_with_json_body_and_number_variable():
 def test_executor_with_json_body_and_object_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
@@ -101,7 +102,7 @@ def test_executor_with_json_body_and_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json == {"name": "John Doe", "age": 30, "email": "john@example.com"}
     assert executor.data is None
     assert executor.files is None
@@ -120,7 +121,7 @@ def test_executor_with_json_body_and_object_variable():
 def test_executor_with_json_body_and_nested_object_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
@@ -156,7 +157,7 @@ def test_executor_with_json_body_and_nested_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json == {"object": {"name": "John Doe", "age": 30, "email": "john@example.com"}}
     assert executor.data is None
     assert executor.files is None
@@ -174,7 +175,7 @@ def test_executor_with_json_body_and_nested_object_variable():
 
 
 def test_extract_selectors_from_template_with_newline():
-    variable_pool = VariablePool()
+    variable_pool = VariablePool(system_variables=SystemVariable.empty())
     variable_pool.add(("node_id", "custom_query"), "line1\nline2")
     node_data = HttpRequestNodeData(
         title="Test JSON Body with Nested Object Variable",
@@ -201,7 +202,7 @@ def test_extract_selectors_from_template_with_newline():
 def test_executor_with_form_data():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "text_field"], "Hello, World!")
@@ -242,14 +243,17 @@ def test_executor_with_form_data():
     # Check the executor's data
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/upload"
-    assert "Content-Type" in executor.headers
-    assert "multipart/form-data" in executor.headers["Content-Type"]
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json is None
     # '__multipart_placeholder__' is expected when no file inputs exist,
     # to ensure the request is treated as multipart/form-data by the backend.
     assert executor.files == [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
     assert executor.content is None
+
+    # After fix for #23829: When placeholder files exist, Content-Type is removed
+    # to let httpx handle Content-Type and boundary automatically
+    headers = executor._assembling_headers()
+    assert "Content-Type" not in headers or "multipart/form-data" not in headers.get("Content-Type", "")
 
     # Check that the form data is correctly loaded in executor.data
     assert isinstance(executor.data, dict)
@@ -280,7 +284,11 @@ def test_init_headers():
             authorization=HttpRequestNodeAuthorization(type="no-auth"),
         )
         timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
-        return Executor(node_data=node_data, timeout=timeout, variable_pool=VariablePool())
+        return Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=VariablePool(system_variables=SystemVariable.empty()),
+        )
 
     executor = create_executor("aa\n cc:")
     executor._init_headers()
@@ -310,7 +318,11 @@ def test_init_params():
             authorization=HttpRequestNodeAuthorization(type="no-auth"),
         )
         timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
-        return Executor(node_data=node_data, timeout=timeout, variable_pool=VariablePool())
+        return Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=VariablePool(system_variables=SystemVariable.empty()),
+        )
 
     # Test basic key-value pairs
     executor = create_executor("key1:value1\nkey2:value2")

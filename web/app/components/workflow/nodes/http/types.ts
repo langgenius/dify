@@ -81,4 +81,5 @@ export type HttpNodeType = CommonNodeType & {
   body: Body
   authorization: Authorization
   timeout: Timeout
+  ssl_verify?: boolean
 }

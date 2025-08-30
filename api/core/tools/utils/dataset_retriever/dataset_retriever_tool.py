@@ -57,7 +57,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
     def _run(self, query: str) -> str:
         dataset = (
-            db.session.query(Dataset).filter(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id).first()
+            db.session.query(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id).first()
         )
 
         if not dataset:
@@ -190,7 +190,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
                             document = (
                                 db.session.query(DatasetDocument)  # type: ignore
-                                .filter(
+                                .where(
                                     DatasetDocument.id == segment.document_id,
                                     DatasetDocument.enabled == True,
                                     DatasetDocument.archived == False,

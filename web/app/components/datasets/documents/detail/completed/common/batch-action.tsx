@@ -43,8 +43,8 @@ const BatchAction: FC<IBatchActionProps> = ({
     hideDeleteConfirm()
   }
   return (
-    <div className={classNames('w-full flex justify-center gap-x-2', className)}>
-      <div className='flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]'>
+    <div className={classNames('pointer-events-none flex w-full justify-center gap-x-2', className)}>
+      <div className='pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]'>
         <div className='inline-flex items-center gap-x-2 py-1 pl-2 pr-3'>
           <span className='flex h-5 w-5 items-center justify-center rounded-md bg-text-accent px-1 py-0.5 text-xs font-medium text-text-primary-on-surface'>
             {selectedIds.length}

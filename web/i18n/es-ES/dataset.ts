@@ -204,6 +204,7 @@ const translation = {
       name: 'Nombre',
       description: 'Puedes gestionar todos los metadatos en este conocimiento aquí. Las modificaciones se sincronizarán en todos los documentos.',
       disabled: 'desactivar',
+      builtIn: 'Integrado',
     },
     documentMetadata: {
       technicalParameters: 'Parámetros técnicos',

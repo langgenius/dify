@@ -38,6 +38,9 @@ class PluginService:
         plugin_id: str
         version: str
         unique_identifier: str
+        status: str
+        deprecated_reason: str
+        alternative_plugin_id: str
 
     REDIS_KEY_PREFIX = "plugin_service:latest_plugin:"
     REDIS_TTL = 60 * 5  # 5 minutes
@@ -71,6 +74,9 @@ class PluginService:
                         plugin_id=plugin_id,
                         version=manifest.latest_version,
                         unique_identifier=manifest.latest_package_identifier,
+                        status=manifest.status,
+                        deprecated_reason=manifest.deprecated_reason,
+                        alternative_plugin_id=manifest.alternative_plugin_id,
                     )
 
                     # Store in Redis
@@ -195,6 +201,17 @@ class PluginService:
         """
         manager = PluginInstaller()
         return manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
+
+    @staticmethod
+    def is_plugin_verified(tenant_id: str, plugin_unique_identifier: str) -> bool:
+        """
+        Check if the plugin is verified
+        """
+        manager = PluginInstaller()
+        try:
+            return manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier).verified
+        except Exception:
+            return False
 
     @staticmethod
     def fetch_install_tasks(tenant_id: str, page: int, page_size: int) -> Sequence[PluginInstallTask]:
@@ -427,6 +444,9 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        # collect actual plugin_unique_identifiers
+        actual_plugin_unique_identifiers = []
+        metas = []
         features = FeatureService.get_system_features()
 
         # check if already downloaded
@@ -437,6 +457,8 @@ class PluginService:
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
                 # already downloaded, skip
+                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
+                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
             except Exception:
                 # plugin not installed, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
@@ -447,17 +469,15 @@ class PluginService:
                 )
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(response.verification)
+                # use response plugin_unique_identifier
+                actual_plugin_unique_identifiers.append(response.unique_identifier)
+                metas.append({"plugin_unique_identifier": response.unique_identifier})
 
         return manager.install_from_identifiers(
             tenant_id,
-            plugin_unique_identifiers,
+            actual_plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
-            [
-                {
-                    "plugin_unique_identifier": plugin_unique_identifier,
-                }
-                for plugin_unique_identifier in plugin_unique_identifiers
-            ],
+            metas,
         )
 
     @staticmethod

@@ -24,21 +24,14 @@ const translation = {
     contractSales: 'Skontaktuj się z działem sprzedaży',
     contractOwner: 'Skontaktuj się z zarządcą zespołu',
     startForFree: 'Zacznij za darmo',
-    getStartedWith: 'Rozpocznij z ',
     contactSales: 'Kontakt z działem sprzedaży',
     talkToSales: 'Porozmawiaj z działem sprzedaży',
     modelProviders: 'Dostawcy modeli',
-    teamMembers: 'Członkowie zespołu',
     buildApps: 'Twórz aplikacje',
     vectorSpace: 'Przestrzeń wektorowa',
-    vectorSpaceBillingTooltip:
-      'Każdy 1MB może przechowywać około 1,2 miliona znaków z wektoryzowanych danych (szacowane na podstawie OpenAI Embeddings, różni się w zależności od modelu).',
     vectorSpaceTooltip:
       'Przestrzeń wektorowa jest systemem pamięci długoterminowej wymaganym dla LLM, aby zrozumieć Twoje dane.',
-    documentsUploadQuota: 'Limit przesyłanych dokumentów',
     documentProcessingPriority: 'Priorytet przetwarzania dokumentów',
-    documentProcessingPriorityTip:
-      'Dla wyższego priorytetu przetwarzania dokumentów, ulepsz swój plan.',
     documentProcessingPriorityUpgrade:
       'Przetwarzaj więcej danych z większą dokładnością i w szybszym tempie.',
     priority: {
@@ -112,21 +105,18 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       description: '200 razy darmowa próba GPT',
-      includesTitle: 'Zawiera:',
       for: 'Darmowy okres próbny podstawowych funkcji',
     },
     professional: {
       name: 'Profesjonalny',
       description:
         'Dla osób fizycznych i małych zespołów, aby odblokować więcej mocy w przystępnej cenie.',
-      includesTitle: 'Wszystko w darmowym planie, plus:',
       for: 'Dla niezależnych deweloperów/małych zespołów',
     },
     team: {
       name: 'Zespół',
       description:
         'Współpracuj bez ograniczeń i ciesz się najwyższą wydajnością.',
-      includesTitle: 'Wszystko w planie Profesjonalnym, plus:',
       for: 'Dla średniej wielkości zespołów',
     },
     enterprise: {
@@ -135,15 +125,15 @@ const translation = {
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
       features: {
-        3: 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem',
-        5: 'Wynegocjowane SLA przez Dify Partners',
-        0: 'Rozwiązania do wdrożeń na dużą skalę klasy przedsiębiorstw',
-        8: 'Profesjonalne wsparcie techniczne',
-        2: 'Ekskluzywne funkcje przedsiębiorstwa',
-        6: 'Zaawansowane zabezpieczenia i kontrola',
-        7: 'Aktualizacje i konserwacja przez Dify Oficjalnie',
-        4: 'SSO',
+        2: 'Wyjątkowe funkcje dla przedsiębiorstw',
+        7: 'Aktualizacje i konserwacja przez Dify oficjalnie',
+        4: 'Usługi rejestracji jednokrotnej',
         1: 'Autoryzacja licencji komercyjnej',
+        0: 'Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej',
+        5: 'Umowy SLA wynegocjowane przez Dify Partners',
+        8: 'Profesjonalne wsparcie techniczne',
+        3: 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem',
+        6: 'Zaawansowane zabezpieczenia i kontrola',
       },
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
@@ -152,9 +142,9 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Wszystkie funkcje podstawowe wydane w publicznym repozytorium',
-        1: 'Jedno Miejsce Pracy',
-        2: 'Zgodne z licencją Dify Open Source',
+        1: 'Pojedyncza przestrzeń robocza',
+        2: 'Zgodny z licencją Dify Open Source',
+        0: 'Wszystkie podstawowe funkcje udostępnione w repozytorium publicznym',
       },
       includesTitle: 'Darmowe funkcje:',
       name: 'Społeczność',
@@ -165,10 +155,10 @@ const translation = {
     },
     premium: {
       features: {
-        0: 'Samozarządzana niezawodność różnych dostawców chmury',
-        1: 'Jedno miejsce pracy',
-        3: 'Priorytetowe wsparcie przez e-mail i czat',
-        2: 'Logo aplikacji internetowej i dostosowanie marki',
+        1: 'Pojedyncza przestrzeń robocza',
+        2: 'Personalizacja logo i brandingu aplikacji internetowej',
+        3: 'Priorytetowa pomoc techniczna przez e-mail i czat',
+        0: 'Niezawodność samodzielnego zarządzania przez różnych dostawców usług w chmurze',
       },
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',
@@ -185,8 +175,6 @@ const translation = {
     fullSolution: 'Ulepsz swój plan, aby uzyskać więcej miejsca.',
   },
   apps: {
-    fullTipLine1: 'Ulepsz swój plan, aby',
-    fullTipLine2: 'tworzyć więcej aplikacji.',
     fullTip1des: 'Osiągnąłeś limit tworzenia aplikacji w tym planie.',
     fullTip1: 'Zaktualizuj, aby stworzyć więcej aplikacji',
     fullTip2: 'Osiągnięto limit planu',

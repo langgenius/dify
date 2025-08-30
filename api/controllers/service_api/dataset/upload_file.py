@@ -1,6 +1,6 @@
 from werkzeug.exceptions import NotFound
 
-from controllers.service_api import api
+from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import (
     DatasetApiResource,
 )
@@ -11,13 +11,27 @@ from models.model import UploadFile
 from services.dataset_service import DocumentService
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/upload-file")
 class UploadFileApi(DatasetApiResource):
+    @service_api_ns.doc("get_upload_file")
+    @service_api_ns.doc(description="Get upload file information and download URL")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Upload file information retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, or upload file not found",
+        }
+    )
     def get(self, tenant_id, dataset_id, document_id):
-        """Get upload file."""
+        """Get upload file information and download URL.
+
+        Returns information about an uploaded file including its download URL.
+        """
         # check dataset
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -31,7 +45,7 @@ class UploadFileApi(DatasetApiResource):
         data_source_info = document.data_source_info_dict
         if data_source_info and "upload_file_id" in data_source_info:
             file_id = data_source_info["upload_file_id"]
-            upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+            upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
             if not upload_file:
                 raise NotFound("UploadFile not found.")
         else:
@@ -49,6 +63,3 @@ class UploadFileApi(DatasetApiResource):
             "created_by": upload_file.created_by,
             "created_at": upload_file.created_at.timestamp(),
         }, 200
-
-
-api.add_resource(UploadFileApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/upload-file")

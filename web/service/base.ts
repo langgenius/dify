@@ -103,7 +103,7 @@ function unicodeToChar(text: string) {
   if (!text)
     return ''
 
-  return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
+  return text.replace(/\\u([0-9a-f]{4})/g, (_match, p1) => {
     return String.fromCharCode(Number.parseInt(p1, 16))
   })
 }
@@ -115,7 +115,7 @@ function requiredWebSSOLogin(message?: string, code?: number) {
     params.append('message', message)
   if (code)
     params.append('code', String(code))
-  globalThis.location.href = `/webapp-signin?${params.toString()}`
+  globalThis.location.href = `${globalThis.location.origin}${basePath}/webapp-signin?${params.toString()}`
 }
 
 export function format(text: string) {
@@ -398,9 +398,7 @@ export const ssePost = async (
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
-          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
-            ssePost(url, fetchOptions, otherOptions)
-          }).catch(() => {
+          if (isPublicAPI) {
             res.json().then((data: any) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
@@ -413,11 +411,18 @@ export const ssePost = async (
 
                 if (data.code === 'unauthorized') {
                   removeAccessToken()
-                  globalThis.location.reload()
+                  requiredWebSSOLogin()
                 }
               }
             })
-          })
+          }
+          else {
+            refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
+              ssePost(url, fetchOptions, otherOptions)
+            }).catch((err) => {
+              console.error(err)
+            })
+          }
         }
         else {
           res.json().then((data) => {
@@ -507,7 +512,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         removeAccessToken()
-        globalThis.location.reload()
+        requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {

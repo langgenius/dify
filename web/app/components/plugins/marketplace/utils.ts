@@ -38,8 +38,14 @@ export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<strin
   return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
 }
 
+export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {
+  if (plugin.type === 'bundle')
+    return `/bundles/${plugin.org}/${plugin.name}`
+  return `/plugins/${plugin.org}/${plugin.name}`
+}
+
 export const getMarketplacePluginsByCollectionId = async (collectionId: string, query?: CollectionsAndPluginsSearchParams) => {
-  let plugins = [] as Plugin[]
+  let plugins: Plugin[]
 
   try {
     const url = `${MARKETPLACE_API_PREFIX}/collections/${collectionId}/plugins`

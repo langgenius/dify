@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.ops.entities.config_entity import (
+    AliyunConfig,
     ArizeConfig,
     LangfuseConfig,
     LangSmithConfig,
@@ -23,6 +24,7 @@ class TestTracingProviderEnum:
         assert TracingProviderEnum.LANGSMITH == "langsmith"
         assert TracingProviderEnum.OPIK == "opik"
         assert TracingProviderEnum.WEAVE == "weave"
+        assert TracingProviderEnum.ALIYUN == "aliyun"
 
 
 class TestArizeConfig:
@@ -100,9 +102,14 @@ class TestPhoenixConfig:
         assert config.project == "default"
 
     def test_endpoint_validation_with_path(self):
-        """Test endpoint validation normalizes URL by removing path"""
-        config = PhoenixConfig(endpoint="https://custom.phoenix.com/api/v1")
-        assert config.endpoint == "https://custom.phoenix.com"
+        """Test endpoint validation with path"""
+        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
+        assert config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
+
+    def test_endpoint_validation_without_path(self):
+        """Test endpoint validation without path"""
+        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com")
+        assert config.endpoint == "https://app.phoenix.arize.com"
 
 
 class TestLangfuseConfig:
@@ -114,6 +121,13 @@ class TestLangfuseConfig:
         assert config.public_key == "public_key"
         assert config.secret_key == "secret_key"
         assert config.host == "https://custom.langfuse.com"
+
+    def test_valid_config_with_path(self):
+        host = "https://custom.langfuse.com/api/v1"
+        config = LangfuseConfig(public_key="public_key", secret_key="secret_key", host=host)
+        assert config.public_key == "public_key"
+        assert config.secret_key == "secret_key"
+        assert config.host == host
 
     def test_default_values(self):
         """Test default values are set correctly"""
@@ -272,6 +286,71 @@ class TestWeaveConfig:
             WeaveConfig(api_key="key", project="project", host="ftp://invalid.host.com")
 
 
+class TestAliyunConfig:
+    """Test cases for AliyunConfig"""
+
+    def test_valid_config(self):
+        """Test valid Aliyun configuration"""
+        config = AliyunConfig(
+            app_name="test_app",
+            license_key="test_license_key",
+            endpoint="https://custom.tracing-analysis-dc-hz.aliyuncs.com",
+        )
+        assert config.app_name == "test_app"
+        assert config.license_key == "test_license_key"
+        assert config.endpoint == "https://custom.tracing-analysis-dc-hz.aliyuncs.com"
+
+    def test_default_values(self):
+        """Test default values are set correctly"""
+        config = AliyunConfig(license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com")
+        assert config.app_name == "dify_app"
+
+    def test_missing_required_fields(self):
+        """Test that required fields are enforced"""
+        with pytest.raises(ValidationError):
+            AliyunConfig()
+
+        with pytest.raises(ValidationError):
+            AliyunConfig(license_key="test_license")
+
+        with pytest.raises(ValidationError):
+            AliyunConfig(endpoint="https://tracing-analysis-dc-hz.aliyuncs.com")
+
+    def test_app_name_validation_empty(self):
+        """Test app_name validation with empty value"""
+        config = AliyunConfig(
+            license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com", app_name=""
+        )
+        assert config.app_name == "dify_app"
+
+    def test_endpoint_validation_empty(self):
+        """Test endpoint validation with empty value"""
+        config = AliyunConfig(license_key="test_license", endpoint="")
+        assert config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
+
+    def test_endpoint_validation_with_path(self):
+        """Test endpoint validation normalizes URL by removing path"""
+        config = AliyunConfig(
+            license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
+        )
+        assert config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
+
+    def test_endpoint_validation_invalid_scheme(self):
+        """Test endpoint validation rejects invalid schemes"""
+        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+            AliyunConfig(license_key="test_license", endpoint="ftp://invalid.tracing-analysis-dc-hz.aliyuncs.com")
+
+    def test_endpoint_validation_no_scheme(self):
+        """Test endpoint validation rejects URLs without scheme"""
+        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+            AliyunConfig(license_key="test_license", endpoint="invalid.tracing-analysis-dc-hz.aliyuncs.com")
+
+    def test_license_key_required(self):
+        """Test that license_key is required and cannot be empty"""
+        with pytest.raises(ValidationError):
+            AliyunConfig(license_key="", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com")
+
+
 class TestConfigIntegration:
     """Integration tests for configuration classes"""
 
@@ -284,6 +363,7 @@ class TestConfigIntegration:
             LangSmithConfig(api_key="key", project="project"),
             OpikConfig(api_key="key"),
             WeaveConfig(api_key="key", project="project"),
+            AliyunConfig(license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com"),
         ]
 
         for config in configs:
@@ -293,17 +373,27 @@ class TestConfigIntegration:
         """Test that URL normalization works consistently across configs"""
         # Test that paths are removed from endpoints
         arize_config = ArizeConfig(endpoint="https://arize.com/api/v1/test")
-        phoenix_config = PhoenixConfig(endpoint="https://phoenix.com/api/v2/")
+        phoenix_with_path_config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
+        phoenix_without_path_config = PhoenixConfig(endpoint="https://app.phoenix.arize.com")
+        aliyun_config = AliyunConfig(
+            license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
+        )
 
         assert arize_config.endpoint == "https://arize.com"
-        assert phoenix_config.endpoint == "https://phoenix.com"
+        assert phoenix_with_path_config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
+        assert phoenix_without_path_config.endpoint == "https://app.phoenix.arize.com"
+        assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
 
     def test_project_default_values(self):
         """Test that project default values are set correctly"""
         arize_config = ArizeConfig(project="")
         phoenix_config = PhoenixConfig(project="")
         opik_config = OpikConfig(project="")
+        aliyun_config = AliyunConfig(
+            license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com", app_name=""
+        )
 
         assert arize_config.project == "default"
         assert phoenix_config.project == "default"
         assert opik_config.project == "Default Project"
+        assert aliyun_config.app_name == "dify_app"

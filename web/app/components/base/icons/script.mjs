@@ -75,7 +75,7 @@ Icon.displayName = '<%= svgName %>'
 export default Icon
 `.trim())
 
-  await writeFile(path.resolve(currentPath, `${fileName}.json`), JSON.stringify(svgData, '', '\t'))
+  await writeFile(path.resolve(currentPath, `${fileName}.json`), `${JSON.stringify(svgData, '', '\t')}\n`)
   await writeFile(path.resolve(currentPath, `${fileName}.tsx`), `${componentRender({ svgName: fileName })}\n`)
 
   const indexingRender = template(`

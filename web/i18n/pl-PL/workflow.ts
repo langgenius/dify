@@ -108,13 +108,14 @@ const translation = {
     versionHistory: 'Historia wersji',
     exportSVG: 'Eksportuj jako SVG',
     exportJPEG: 'Eksportuj jako JPEG',
-    noExist: 'Nie ma takiej zmiennej',
     exportPNG: 'Eksportuj jako PNG',
     publishUpdate: 'Opublikuj aktualizację',
-    referenceVar: 'Zmienna odniesienia',
     addBlock: 'Dodaj węzeł',
     needEndNode: 'Należy dodać węzeł końcowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
+    tagBound: 'Liczba aplikacji korzystających z tego tagu',
+    currentWorkflow: 'Bieżący przepływ pracy',
+    currentView: 'Bieżący widok',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Wartość',
       valuePlaceholder: 'wartość środowiska',
       secretTip: 'Używane do definiowania wrażliwych informacji lub danych, z ustawieniami DSL skonfigurowanymi do zapobiegania wyciekom.',
+      description: 'Opis',
+      descriptionPlaceholder: 'Opisz zmienną',
     },
     export: {
       title: 'Eksportować tajne zmienne środowiskowe?',
@@ -219,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Narzędzia',
     'allTool': 'Wszystkie',
-    'builtInTool': 'Wbudowane',
     'customTool': 'Niestandardowe',
     'workflowTool': 'Przepływ pracy',
     'question-understand': 'Zrozumienie pytania',
@@ -232,6 +234,8 @@ const translation = {
     'plugin': 'Wtyczka',
     'searchBlock': 'Wyszukaj węzeł',
     'blocks': 'Węzły',
+    'addAll': 'Dodaj wszystko',
+    'allAdded': 'Wszystko dodane',
   },
   blocks: {
     'start': 'Start',
@@ -285,6 +289,18 @@ const translation = {
     zoomTo50: 'Powiększ do 50%',
     zoomTo100: 'Powiększ do 100%',
     zoomToFit: 'Dopasuj do ekranu',
+    alignMiddle: 'Środek',
+    alignTop: 'Do góry',
+    distributeHorizontal: 'Rozmieść poziomo',
+    alignCenter: 'Centrum',
+    alignRight: 'Prawy',
+    alignNodes: 'Wyrównywanie węzłów',
+    selectionAlignment: 'Wyrównanie zaznaczenia',
+    horizontal: 'Poziomy',
+    distributeVertical: 'Rozmieść pionowo',
+    alignBottom: 'Dół',
+    alignLeft: 'Lewy',
+    vertical: 'Pionowy',
   },
   panel: {
     userInputField: 'Pole wprowadzania użytkownika',
@@ -361,6 +377,10 @@ const translation = {
         retryOnFailure: 'Ponawianie próby w przypadku niepowodzenia',
         retryFailedTimes: '{{times}} ponawianie prób nie powiodło się',
         ms: 'Ms',
+      },
+      typeSwitch: {
+        variable: 'Użyj zmiennej',
+        input: 'Wartość wejściowa',
       },
     },
     start: {
@@ -488,6 +508,7 @@ const translation = {
           select: 'Wybierz zmienną...',
         },
         title: 'Filtrowanie metadanych',
+        tip: 'Filtracja metadanych to proces wykorzystania atrybutów metadanych (takich jak tagi, kategorie lub uprawnienia dostępu) do precyzowania i kontrolowania pozyskiwania istotnych informacji w systemie.',
       },
     },
     http: {
@@ -537,6 +558,10 @@ const translation = {
         placeholder: 'Wklej tutaj ciąg cURL',
         title: 'Importowanie z cURL',
       },
+      verifySSL: {
+        title: 'Zweryfikuj certyfikat SSL',
+        warningTooltip: 'Wyłączenie weryfikacji SSL nie jest zalecane w środowiskach produkcyjnych. Powinno to być używane tylko w rozwoju lub testowaniu, ponieważ naraża połączenie na zagrożenia bezpieczeństwa, takie jak ataki typu man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Zmienne wejściowe',
@@ -544,6 +569,7 @@ const translation = {
       advancedDependencies: 'Zaawansowane zależności',
       advancedDependenciesTip: 'Dodaj niektóre preładowane zależności, które zajmują więcej czasu lub nie są domyślnie wbudowane',
       searchDependencies: 'Wyszukaj zależności',
+      syncFunctionSignature: 'Zsynchronizuj sygnaturę funkcji z kodem',
     },
     templateTransform: {
       inputVars: 'Zmienne wejściowe',
@@ -572,7 +598,6 @@ const translation = {
         'not empty': 'nie jest pusty',
         'null': 'jest null',
         'not null': 'nie jest null',
-        'regex match': 'Dopasowanie wyrażenia regularnego',
         'in': 'w',
         'not exists': 'nie istnieje',
         'exists': 'Istnieje',
@@ -595,7 +620,6 @@ const translation = {
       },
       addSubVariable: 'Zmienna podrzędna',
       select: 'Wybrać',
-      condition: 'Stan',
     },
     variableAssigner: {
       title: 'Przypisz zmienne',
@@ -663,12 +687,16 @@ const translation = {
         json: 'JSON wygenerowany przez narzędzien',
       },
       authorize: 'Autoryzuj',
+      insertPlaceholder2: 'wstaw zmienną',
+      settings: 'Ustawienia',
+      insertPlaceholder1: 'Wpisz lub naciśnij',
     },
     questionClassifiers: {
       model: 'model',
       inputVars: 'Zmienne wejściowe',
       outputVars: {
         className: 'Nazwa klasy',
+        usage: 'Informacje o użyciu modelu',
       },
       class: 'Klasa',
       classNamePlaceholder: 'Napisz nazwę swojej klasy',
@@ -682,6 +710,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Zmienna wejściowa',
+      outputVars: {
+        isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
+        errorReason: 'Powód błędu',
+        usage: 'Informacje o użyciu modelu',
+      },
       extractParameters: 'Wyodrębnij parametry',
       importFromTool: 'Importuj z narzędzi',
       addExtractParameter: 'Dodaj parametr wyodrębniania',
@@ -701,8 +734,6 @@ const translation = {
       advancedSetting: 'Zaawansowane ustawienia',
       reasoningMode: 'Tryb wnioskowania',
       reasoningModeTip: 'Możesz wybrać odpowiedni tryb wnioskowania w zależności od zdolności modelu do reagowania na instrukcje dotyczące wywoływania funkcji lub zapytań.',
-      isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
-      errorReason: 'Powód błędu',
     },
     iteration: {
       deleteTitle: 'Usunąć węzeł iteracji?',
@@ -812,6 +843,7 @@ const translation = {
         },
         json: 'Kod JSON wygenerowany przez agenta',
         text: 'Treści generowane przez agentów',
+        usage: 'Informacje o użyciu modelu',
       },
       checkList: {
         strategyNotSelected: 'Nie wybrano strategii',
@@ -843,6 +875,8 @@ const translation = {
       learnMore: 'Dowiedz się więcej',
       strategyNotSet: 'Nie ustawiono strategii agentalnej',
       model: 'model',
+      parameterSchema: 'Schemat parametrów',
+      clickToViewParameterSchema: 'Kliknij, aby zobaczyć schemat parametrów',
     },
     loop: {
       ErrorMethod: {
@@ -908,6 +942,7 @@ const translation = {
       deleteSuccess: 'Wersja usunięta',
       restoreSuccess: 'Wersja przywrócona',
       restoreFailure: 'Nie udało się przywrócić wersji',
+      copyIdSuccess: 'Identyfikator skopiowany do schowka',
     },
     currentDraft: 'Aktualny szkic',
     nameThisVersion: 'Nazwij tę wersję',
@@ -918,6 +953,7 @@ const translation = {
     editVersionInfo: 'Edytuj informacje o wersji',
     deletionTip: 'Usunięcie jest nieodwracalne, proszę potwierdzić.',
     restorationTip: 'Po przywróceniu wersji bieżący szkic zostanie nadpisany.',
+    copyId: 'Kopiuj ID',
   },
   debug: {
     noData: {
@@ -947,6 +983,20 @@ const translation = {
     },
     settingsTab: 'Ustawienia',
     lastRunTab: 'Ostatnie uruchomienie',
+    relations: {
+      dependencies: 'Zależności',
+      dependenciesDescription: 'Węzły, na których opiera się ten węzeł',
+      noDependents: 'Brak osób na utrzymaniu',
+      dependents: 'Zależności',
+      dependentsDescription: 'Węzły, które opierają się na tym węźle',
+      noDependencies: 'Brak zależności',
+    },
+    relationsTab: 'Stosunków',
+    copyLastRun: 'Kopiuj ostatnie uruchomienie',
+    noLastRunFound: 'Nie znaleziono poprzedniego biegu.',
+    noMatchingInputsFound: 'Nie znaleziono pasujących danych wejściowych z ostatniego uruchomienia',
+    copyLastRunError: 'Nie udało się skopiować danych wejściowych z ostatniego uruchomienia',
+    lastOutput: 'Ostatni wynik',
   },
 }
 

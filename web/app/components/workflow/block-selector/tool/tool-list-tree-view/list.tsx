@@ -12,14 +12,20 @@ type Props = {
   payload: Record<string, ToolWithProvider[]>
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
 
 const ToolListTreeView: FC<Props> = ({
   payload,
   hasSearchText,
   onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
   selectedTools,
+  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const getI18nGroupName = useCallback((name: string) => {
@@ -46,7 +52,10 @@ const ToolListTreeView: FC<Props> = ({
           toolList={payload[groupName]}
           hasSearchText={hasSearchText}
           onSelect={onSelect}
+          canNotSelectMultiple={canNotSelectMultiple}
+          onSelectMultiple={onSelectMultiple}
           selectedTools={selectedTools}
+          canChooseMCPTool={canChooseMCPTool}
         />
       ))}
     </div>

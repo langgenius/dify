@@ -27,7 +27,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
@@ -65,7 +65,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.message_id or trace_info.workflow_run_id
+        trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
         if trace_info.start_time is None:
             trace_info.start_time = datetime.now()
         message_dotted_order = (
@@ -145,10 +145,10 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=service_account,
-            app_id=trace_info.metadata.get("app_id"),
+            app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
@@ -206,12 +206,9 @@ class LangSmithDataTrace(BaseTraceInstance):
             prompt_tokens = 0
             completion_tokens = 0
             try:
-                if outputs.get("usage"):
-                    prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
-                    completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
-                else:
-                    prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
-                    completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
+                usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                prompt_tokens = usage_data.get("prompt_tokens", 0)
+                completion_tokens = usage_data.get("completion_tokens", 0)
             except Exception:
                 logger.error("Failed to extract usage", exc_info=True)
 
@@ -264,7 +261,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         if message_data.from_end_user_id:
             end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
+                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
@@ -292,7 +289,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             parent_run_id=None,
         )
@@ -321,7 +318,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             id=str(uuid.uuid4()),
         )
@@ -353,7 +350,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -383,7 +380,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -412,7 +409,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -442,7 +439,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error=trace_info.error or "",
         )
@@ -467,7 +464,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -506,7 +503,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.delete_project(project_name=random_project_name)
             return True
         except Exception as e:
-            logger.debug(f"LangSmith API check failed: {str(e)}")
+            logger.debug("LangSmith API check failed: %s", str(e))
             raise ValueError(f"LangSmith API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -525,5 +522,5 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
             return project_url.split("/r/")[0]
         except Exception as e:
-            logger.debug(f"LangSmith get run url failed: {str(e)}")
+            logger.debug("LangSmith get run url failed: %s", str(e))
             raise ValueError(f"LangSmith get run url failed: {str(e)}")

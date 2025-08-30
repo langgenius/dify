@@ -1,3 +1,5 @@
+import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+
 export type FormValue = Record<string, any>
 
 export type TypeWithI18N<T = string> = {
@@ -19,6 +21,9 @@ export enum FormTypeEnum {
   toolSelector = 'tool-selector',
   multiToolSelector = 'array[tools]',
   appSelector = 'app-selector',
+  any = 'any',
+  object = 'object',
+  array = 'array',
   dynamicSelect = 'dynamic-select',
 }
 
@@ -81,6 +86,7 @@ export enum ModelStatusEnum {
   quotaExceeded = 'quota-exceeded',
   noPermission = 'no-permission',
   disabled = 'disabled',
+  credentialRemoved = 'credential-removed',
 }
 
 export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
@@ -109,6 +115,7 @@ export type FormShowOnObject = {
 }
 
 export type CredentialFormSchemaBase = {
+  name: string
   variable: string
   label: TypeWithI18N
   type: FormTypeEnum
@@ -118,6 +125,7 @@ export type CredentialFormSchemaBase = {
   show_on: FormShowOnObject[]
   url?: string
   scope?: string
+  input_schema?: SchemaRoot
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
@@ -146,6 +154,7 @@ export type ModelItem = {
   model_properties: Record<string, string | number>
   load_balancing_enabled: boolean
   deprecated?: boolean
+  has_invalid_load_balancing_configs?: boolean
 }
 
 export enum PreferredProviderTypeEnum {
@@ -174,6 +183,29 @@ export type QuotaConfiguration = {
   is_valid: boolean
 }
 
+export type Credential = {
+  credential_id: string
+  credential_name?: string
+  from_enterprise?: boolean
+  not_allowed_to_use?: boolean
+}
+
+export type CustomModel = {
+  model: string
+  model_type: ModelTypeEnum
+}
+
+export type CustomModelCredential = CustomModel & {
+  credentials?: Record<string, any>
+  available_model_credentials?: Credential[]
+  current_credential_id?: string
+}
+
+export type CredentialWithModel = Credential & {
+  model: string
+  model_type: ModelTypeEnum
+}
+
 export type ModelProvider = {
   provider: string
   label: TypeWithI18N
@@ -200,12 +232,17 @@ export type ModelProvider = {
   preferred_provider_type: PreferredProviderTypeEnum
   custom_configuration: {
     status: CustomConfigurationStatusEnum
+    current_credential_id?: string
+    current_credential_name?: string
+    available_credentials?: Credential[]
+    custom_models?: CustomModelCredential[]
   }
   system_configuration: {
     enabled: boolean
     current_quota_type: CurrentSystemQuotaTypeEnum
     quota_configurations: QuotaConfiguration[]
   }
+  allow_custom_token?: boolean
 }
 
 export type Model = {
@@ -265,9 +302,24 @@ export type ModelLoadBalancingConfigEntry = {
   in_cooldown?: boolean
   /** cooldown time (in seconds) */
   ttl?: number
+  credential_id?: string
 }
 
 export type ModelLoadBalancingConfig = {
   enabled: boolean
   configs: ModelLoadBalancingConfigEntry[]
+}
+
+export type ProviderCredential = {
+  credentials: Record<string, any>
+  name: string
+  credential_id: string
+}
+
+export type ModelCredential = {
+  credentials: Record<string, any>
+  load_balancing: ModelLoadBalancingConfig
+  available_credentials: Credential[]
+  current_credential_id?: string
+  current_credential_name?: string
 }

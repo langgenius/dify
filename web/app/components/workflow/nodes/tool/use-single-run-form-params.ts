@@ -34,7 +34,12 @@ const useSingleRunFormParams = ({
   const hadVarParams = Object.keys(inputs.tool_parameters)
     .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
     .map(k => inputs.tool_parameters[k])
-  const varInputs = getInputVars(hadVarParams.map((p) => {
+
+  const hadVarSettings = Object.keys(inputs.tool_configurations)
+    .filter(key => typeof inputs.tool_configurations[key] === 'object' && inputs.tool_configurations[key].type && inputs.tool_configurations[key].type !== VarType.constant)
+    .map(k => inputs.tool_configurations[k])
+
+  const varInputs = getInputVars([...hadVarParams, ...hadVarSettings].map((p) => {
     if (p.type === VarType.variable) {
       // handle the old wrong value not crash the page
       if (!(p.value as any).join)
@@ -55,8 +60,11 @@ const useSingleRunFormParams = ({
     const res = produce(inputVarValues, (draft) => {
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
         const { type, value } = inputs.tool_parameters[key]
-        if (type === VarType.constant && (value === undefined || value === null))
+        if (type === VarType.constant && (value === undefined || value === null)) {
+            if(!draft.tool_parameters || !draft.tool_parameters[key])
+            return
           draft[key] = value
+        }
       })
     })
     return res
@@ -80,7 +88,13 @@ const useSingleRunFormParams = ({
   const toolIcon = useToolIcon(payload)
 
   const getDependentVars = () => {
-    return varInputs.map(item => item.variable.slice(1, -1).split('.'))
+    return varInputs.map((item) => {
+      // Guard against null/undefined variable to prevent app crash
+      if (!item.variable || typeof item.variable !== 'string')
+        return []
+
+      return item.variable.slice(1, -1).split('.')
+    }).filter(arr => arr.length > 0)
   }
 
   return {

@@ -11,7 +11,7 @@ class ApiKeyAuthService:
     def get_provider_auth_list(tenant_id: str) -> list:
         data_source_api_key_bindings = (
             db.session.query(DataSourceApiKeyAuthBinding)
-            .filter(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.disabled.is_(False))
+            .where(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.disabled.is_(False))
             .all()
         )
         return data_source_api_key_bindings
@@ -36,7 +36,7 @@ class ApiKeyAuthService:
     def get_auth_credentials(tenant_id: str, category: str, provider: str):
         data_source_api_key_bindings = (
             db.session.query(DataSourceApiKeyAuthBinding)
-            .filter(
+            .where(
                 DataSourceApiKeyAuthBinding.tenant_id == tenant_id,
                 DataSourceApiKeyAuthBinding.category == category,
                 DataSourceApiKeyAuthBinding.provider == provider,
@@ -53,7 +53,7 @@ class ApiKeyAuthService:
     def delete_provider_auth(tenant_id: str, binding_id: str):
         data_source_api_key_binding = (
             db.session.query(DataSourceApiKeyAuthBinding)
-            .filter(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.id == binding_id)
+            .where(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.id == binding_id)
             .first()
         )
         if data_source_api_key_binding:

@@ -3,32 +3,26 @@ import logging
 from collections.abc import Generator
 from typing import Any, Optional, cast
 
-from flask_login import current_user
-
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import (
+    ToolEntity,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolProviderType,
+)
 from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
-from models.account import Account
-from models.model import App, EndUser
+from libs.login import current_user
+from models.model import App
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
 
 class WorkflowTool(Tool):
-    workflow_app_id: str
-    version: str
-    workflow_entities: dict[str, Any]
-    workflow_call_depth: int
-    thread_pool_id: Optional[str] = None
-    workflow_as_tool_id: str
-
-    label: str
-
     """
     Workflow tool.
     """
@@ -85,11 +79,11 @@ class WorkflowTool(Tool):
         generator = WorkflowAppGenerator()
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
-
+        assert current_user is not None
         result = generator.generate(
             app_model=app,
             workflow=workflow,
-            user=cast("Account | EndUser", current_user),
+            user=current_user,
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
             streaming=False,
@@ -137,12 +131,12 @@ class WorkflowTool(Tool):
         if not version:
             workflow = (
                 db.session.query(Workflow)
-                .filter(Workflow.app_id == app_id, Workflow.version != "draft")
+                .where(Workflow.app_id == app_id, Workflow.version != Workflow.VERSION_DRAFT)
                 .order_by(Workflow.created_at.desc())
                 .first()
             )
         else:
-            workflow = db.session.query(Workflow).filter(Workflow.app_id == app_id, Workflow.version == version).first()
+            workflow = db.session.query(Workflow).where(Workflow.app_id == app_id, Workflow.version == version).first()
 
         if not workflow:
             raise ValueError("workflow not found or not published")
@@ -153,7 +147,7 @@ class WorkflowTool(Tool):
         """
         get the app by app id
         """
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             raise ValueError("app not found")
 
@@ -189,7 +183,7 @@ class WorkflowTool(Tool):
 
                             files.append(file_dict)
                     except Exception:
-                        logger.exception(f"Failed to transform file {file}")
+                        logger.exception("Failed to transform file %s", file)
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 

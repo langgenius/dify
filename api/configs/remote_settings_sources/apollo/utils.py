@@ -24,7 +24,7 @@ def url_encode_wrapper(params):
 
 
 def no_key_cache_key(namespace, key):
-    return "{}{}{}".format(namespace, len(namespace), key)
+    return f"{namespace}{len(namespace)}{key}"
 
 
 # Returns whether the obtained value is obtained, and None if it does not

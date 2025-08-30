@@ -8,10 +8,12 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
 import { updateBuiltInToolCredential } from '@/service/tools'
-import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import {
+  getConfiguredValue,
+  toolParametersToFormSchemas,
+} from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
-import { VarType as VarVarType } from '@/app/components/workflow/types'
-import type { InputVar, Var } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import {
   useFetchToolsData,
   useNodesReadOnly,
@@ -26,17 +28,18 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const language = useLanguage()
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ToolNodeType>(id, payload)
   /*
-  * tool_configurations: tool setting, not dynamic setting
-  * tool_parameters: tool dynamic setting(by user)
+  * tool_configurations: tool setting, not dynamic setting (form type = form)
+  * tool_parameters: tool dynamic setting(form type = llm)
   * output_schema: tool dynamic output
   */
-  const { provider_id, provider_type, tool_name, tool_configurations, output_schema } = inputs
+  const { provider_id, provider_type, tool_name, tool_configurations, output_schema, tool_parameters } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
 
-  const currentTools = (() => {
+  const currentTools = useMemo(() => {
     switch (provider_type) {
       case CollectionType.builtIn:
         return buildInTools
@@ -44,10 +47,12 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         return customTools
       case CollectionType.workflow:
         return workflowTools
+      case CollectionType.mcp:
+        return mcpTools
       default:
         return []
     }
-  })()
+  }, [buildInTools, customTools, mcpTools, provider_type, workflowTools])
   const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
 
   // Auth
@@ -91,10 +96,10 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const value = newConfig[key]
         if (schema?.type === 'boolean') {
           if (typeof value === 'string')
-            newConfig[key] = Number.parseInt(value, 10)
+            newConfig[key] = value === 'true' || value === '1'
 
-          if (typeof value === 'boolean')
-            newConfig[key] = value ? 1 : 0
+          if (typeof value === 'number')
+            newConfig[key] = value === 1
         }
 
         if (schema?.type === 'number-input') {
@@ -107,12 +112,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     doSetInputs(newInputs)
   }, [doSetInputs, formSchemas, hasShouldTransferTypeSettingInput])
   const [notSetDefaultValue, setNotSetDefaultValue] = useState(false)
-  const toolSettingValue = (() => {
+  const toolSettingValue = useMemo(() => {
     if (notSetDefaultValue)
       return tool_configurations
-
-    return addDefaultValue(tool_configurations, toolSettingSchema)
-  })()
+    return getConfiguredValue(tool_configurations, toolSettingSchema)
+  }, [notSetDefaultValue, toolSettingSchema, tool_configurations])
   const setToolSettingValue = useCallback((value: Record<string, any>) => {
     setNotSetDefaultValue(true)
     setInputs({
@@ -121,16 +125,20 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
   }, [inputs, setInputs])
 
+  const formattingParameters = () => {
+    const inputsWithDefaultValue = produce(inputs, (draft) => {
+      if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0)
+        draft.tool_configurations = getConfiguredValue(tool_configurations, toolSettingSchema)
+      if (!draft.tool_parameters || Object.keys(draft.tool_parameters).length === 0)
+        draft.tool_parameters = getConfiguredValue(tool_parameters, toolInputVarSchema)
+    })
+    return inputsWithDefaultValue
+  }
+
   useEffect(() => {
     if (!currTool)
       return
-    const inputsWithDefaultValue = produce(inputs, (draft) => {
-      if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0)
-        draft.tool_configurations = addDefaultValue(tool_configurations, toolSettingSchema)
-
-      if (!draft.tool_parameters)
-        draft.tool_parameters = {}
-    })
+    const inputsWithDefaultValue = formattingParameters()
     setInputs(inputsWithDefaultValue)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTool])
@@ -142,19 +150,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       tool_parameters: value,
     })
   }, [inputs, setInputs])
-
-  const [currVarIndex, setCurrVarIndex] = useState(-1)
-  const currVarType = toolInputVarSchema[currVarIndex]?._type
-  const handleOnVarOpen = useCallback((index: number) => {
-    setCurrVarIndex(index)
-  }, [])
-
-  const filterVar = useCallback((varPayload: Var) => {
-    if (currVarType)
-      return varPayload.type === currVarType
-
-    return varPayload.type !== VarVarType.arrayFile
-  }, [currVarType])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
@@ -220,8 +215,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setToolSettingValue,
     toolInputVarSchema,
     setInputVar,
-    handleOnVarOpen,
-    filterVar,
     currCollection,
     isShowAuthBtn,
     showSetAuth,

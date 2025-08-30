@@ -13,12 +13,18 @@ const getBooleanConfig = (envVar: string | undefined, dataAttrKey: DatasetAttr, 
 }
 
 const getNumberConfig = (envVar: string | undefined, dataAttrKey: DatasetAttr, defaultValue: number) => {
-  if (envVar)
-    return Number.parseInt(envVar)
+  if (envVar) {
+    const parsed = Number.parseInt(envVar)
+    if (!Number.isNaN(parsed) && parsed > 0)
+      return parsed
+  }
 
   const attrValue = globalThis.document?.body?.getAttribute(dataAttrKey)
-  if (attrValue)
-    return Number.parseInt(attrValue)
+  if (attrValue) {
+    const parsed = Number.parseInt(attrValue)
+    if (!Number.isNaN(parsed) && parsed > 0)
+      return parsed
+  }
   return defaultValue
 }
 
@@ -265,13 +271,17 @@ export const FULL_DOC_PREVIEW_LENGTH = 50
 export const JSON_SCHEMA_MAX_DEPTH = 10
 
 export const MAX_TOOLS_NUM = getNumberConfig(process.env.NEXT_PUBLIC_MAX_TOOLS_NUM, DatasetAttr.DATA_PUBLIC_MAX_TOOLS_NUM, 10)
+export const MAX_PARALLEL_LIMIT = getNumberConfig(process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT, DatasetAttr.DATA_PUBLIC_MAX_PARALLEL_LIMIT, 10)
 export const TEXT_GENERATION_TIMEOUT_MS = getNumberConfig(process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS, DatasetAttr.DATA_PUBLIC_TEXT_GENERATION_TIMEOUT_MS, 60000)
 export const LOOP_NODE_MAX_COUNT = getNumberConfig(process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT, DatasetAttr.DATA_PUBLIC_LOOP_NODE_MAX_COUNT, 100)
 export const MAX_ITERATIONS_NUM = getNumberConfig(process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM, DatasetAttr.DATA_PUBLIC_MAX_ITERATIONS_NUM, 99)
 export const MAX_TREE_DEPTH = getNumberConfig(process.env.NEXT_PUBLIC_MAX_TREE_DEPTH, DatasetAttr.DATA_PUBLIC_MAX_TREE_DEPTH, 50)
 
+export const ALLOW_UNSAFE_DATA_SCHEME = getBooleanConfig(process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME, DatasetAttr.DATA_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME, false)
 export const ENABLE_WEBSITE_JINAREADER = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER, DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER, true)
 export const ENABLE_WEBSITE_FIRECRAWL = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL, DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL, true)
 export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, false)
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
+
+export const validPassword = /^(?=.*[a-zA-Z])(?=.*\d)\S{8,}$/

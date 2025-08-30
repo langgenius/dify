@@ -31,6 +31,7 @@ const translation = {
       sync: 'Sincronizar',
       resume: 'Reanudar',
       pause: 'Pausa',
+      download: 'Descargar archivo',
     },
     index: {
       enable: 'Habilitar',
@@ -342,7 +343,6 @@ const translation = {
     keywords: 'Palabras clave',
     addKeyWord: 'Agregar palabra clave',
     keywordError: 'La longitud máxima de la palabra clave es 20',
-    characters: 'caracteres',
     hitCount: 'Cantidad de recuperación',
     vectorHash: 'Hash de vector: ',
     questionPlaceholder: 'agregar pregunta aquí',
@@ -377,6 +377,7 @@ const translation = {
     editChildChunk: 'Editar fragmento secundario',
     regeneratingTitle: 'Regeneración de fragmentos secundarios',
     editedAt: 'Editado en',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     searchResults_zero: 'RESULTADO',
     clearFilter: 'Borrar filtro',
     newChildChunk: 'Nuevo fragmento secundario',

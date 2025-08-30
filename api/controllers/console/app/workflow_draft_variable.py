@@ -2,7 +2,7 @@ import logging
 from typing import Any, NoReturn
 
 from flask import Response
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -21,6 +21,7 @@ from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import App, AppMode, db
+from models.account import Account
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -68,13 +69,18 @@ def _create_pagination_parser():
     return parser
 
 
+def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
+    value_type = workflow_draft_var.value_type
+    return value_type.exposed_type().value
+
+
 _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "id": fields.String,
     "type": fields.String(attribute=lambda model: model.get_variable_type()),
     "name": fields.String,
     "description": fields.String,
     "selector": fields.List(fields.String, attribute=lambda model: model.get_selector()),
-    "value_type": fields.String,
+    "value_type": fields.String(attribute=_serialize_variable_type),
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
 }
@@ -90,7 +96,7 @@ _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
     "name": fields.String,
     "description": fields.String,
     "selector": fields.List(fields.String, attribute=lambda model: model.get_selector()),
-    "value_type": fields.String,
+    "value_type": fields.String(attribute=_serialize_variable_type),
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
 }
@@ -130,6 +136,7 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def wrapper(*args, **kwargs):
+        assert isinstance(current_user, Account)
         if not current_user.is_editor:
             raise Forbidden()
         return f(*args, **kwargs)
@@ -158,11 +165,11 @@ class WorkflowVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-        workflow_vars = draft_var_srv.list_variables_without_values(
-            app_id=app_model.id,
-            page=args.page,
-            limit=args.limit,
-        )
+            workflow_vars = draft_var_srv.list_variables_without_values(
+                app_id=app_model.id,
+                page=args.page,
+                limit=args.limit,
+            )
 
         return workflow_vars
 
@@ -396,7 +403,7 @@ class EnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.value,
+                    "value_type": v.value_type.exposed_type().value,
                     "value": v.value,
                     # Do not track edited for env vars.
                     "edited": False,

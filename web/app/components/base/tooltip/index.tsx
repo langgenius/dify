@@ -6,6 +6,8 @@ import type { OffsetOptions, Placement } from '@floating-ui/react'
 import { RiQuestionLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { tooltipManager } from './TooltipManager'
+
 export type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
@@ -33,7 +35,7 @@ const Tooltip: FC<TooltipProps> = ({
   noDecoration,
   offset,
   asChild = true,
-  needsDelay = false,
+  needsDelay = true,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -56,22 +58,26 @@ const Tooltip: FC<TooltipProps> = ({
     isHoverTriggerRef.current = isHoverTrigger
   }, [isHoverTrigger])
 
+  const close = () => setOpen(false)
+
   const handleLeave = (isTrigger: boolean) => {
     if (isTrigger)
       setNotHoverTrigger()
-
     else
       setNotHoverPopup()
 
     // give time to move to the popup
     if (needsDelay) {
       setTimeout(() => {
-        if (!isHoverPopupRef.current && !isHoverTriggerRef.current)
+        if (!isHoverPopupRef.current && !isHoverTriggerRef.current) {
           setOpen(false)
-      }, 500)
+          tooltipManager.clear(close)
+        }
+      }, 300)
     }
     else {
       setOpen(false)
+      tooltipManager.clear(close)
     }
   }
 
@@ -87,6 +93,7 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseEnter={() => {
           if (triggerMethod === 'hover') {
             setHoverTrigger()
+            tooltipManager.register(close)
             setOpen(true)
           }
         }}
@@ -101,7 +108,7 @@ const Tooltip: FC<TooltipProps> = ({
       >
         {popupContent && (<div
           className={cn(
-            !noDecoration && 'system-xs-regular relative break-words rounded-md bg-components-panel-bg px-3 py-2 text-text-tertiary shadow-lg',
+            !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
             popupClassName,
           )}
           onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}

@@ -30,7 +30,6 @@ import {
 } from '../utils'
 import {
   PARALLEL_DEPTH_LIMIT,
-  PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
@@ -40,6 +39,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchAllBuiltInTools,
   fetchAllCustomTools,
+  fetchAllMCPTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
 import { CollectionType } from '@/app/components/tools/types'
@@ -47,6 +47,7 @@ import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/ite
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
 import { canFindTool } from '@/utils'
+import { MAX_PARALLEL_LIMIT } from '@/config'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -258,19 +259,17 @@ export const useWorkflow = () => {
 
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
-    const afterNodes = getAfterNodesInSameBranch(nodeId)
-    const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
-    if (effectNodes.length > 0) {
-      const newNodes = getNodes().map((node) => {
-        if (effectNodes.find(n => n.id === node.id))
+    const allNodes = getNodes()
+    const affectedNodes = findUsedVarNodes(oldValeSelector, allNodes)
+    if (affectedNodes.length > 0) {
+      const newNodes = allNodes.map((node) => {
+        if (affectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, oldValeSelector, newVarSelector)
 
         return node
       })
       setNodes(newNodes)
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store])
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
@@ -309,9 +308,9 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const connectedEdges = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === nodeHandle)
-    if (connectedEdges.length > PARALLEL_LIMIT - 1) {
+    if (connectedEdges.length > MAX_PARALLEL_LIMIT - 1) {
       const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
+      setShowTips(t('workflow.common.parallelTip.limit', { num: MAX_PARALLEL_LIMIT }))
       return false
     }
 
@@ -445,6 +444,13 @@ export const useFetchToolsData = () => {
         workflowTools: workflowTools || [],
       })
     }
+    if (type === 'mcp') {
+      const mcpTools = await fetchAllMCPTools()
+
+      workflowStore.setState({
+        mcpTools: mcpTools || [],
+      })
+    }
   }, [workflowStore])
 
   return {
@@ -491,20 +497,23 @@ export const useToolIcon = (data: Node['data']) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+
   const toolIcon = useMemo(() => {
-    if(!data)
+    if (!data)
       return ''
     if (data.type === BlockEnum.Tool) {
-      let targetTools = buildInTools
+      let targetTools = workflowTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools
       else if (data.provider_type === CollectionType.custom)
         targetTools = customTools
-      else
-        targetTools = workflowTools
+      else if (data.provider_type === CollectionType.mcp)
+        targetTools = mcpTools
+
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
-  }, [data, buildInTools, customTools, workflowTools])
+  }, [data, buildInTools, customTools, mcpTools, workflowTools])
 
   return toolIcon
 }

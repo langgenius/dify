@@ -20,7 +20,7 @@ services:
     ports:
       - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: [ 'CMD', 'pg_isready', '-h', 'db', '-U', '${PGUSER:-postgres}', '-d', '${POSTGRES_DB:-dify}' ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -71,7 +71,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.1.3-local
+    image: langgenius/dify-plugin-daemon:0.2.0-local
     restart: always
     env_file:
       - ./middleware.env

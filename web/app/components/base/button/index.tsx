@@ -51,7 +51,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {children}
-        {loading && <Spinner loading={loading} className={classNames('!text-white !h-3 !w-3 !border-2 !ml-1', spinnerClassName)} />}
+        {loading && <Spinner loading={loading} className={classNames('!ml-1 !h-3 !w-3 !border-2 !text-white', spinnerClassName)} />}
       </button>
     )
   },

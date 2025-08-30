@@ -1,7 +1,7 @@
-import json
 from collections import defaultdict
 from typing import Any, Optional
 
+import orjson
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -24,7 +24,7 @@ class Jieba(BaseKeyword):
         self._config = KeywordTableConfig()
 
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
             keyword_table = self._get_dataset_keyword_table()
@@ -43,7 +43,7 @@ class Jieba(BaseKeyword):
             return self
 
     def add_texts(self, texts: list[Document], **kwargs):
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
 
@@ -76,7 +76,7 @@ class Jieba(BaseKeyword):
         return id in set.union(*keyword_table.values())
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table = self._get_dataset_keyword_table()
             if keyword_table is not None:
@@ -93,11 +93,11 @@ class Jieba(BaseKeyword):
 
         documents = []
         for chunk_index in sorted_chunk_indices:
-            segment_query = db.session.query(DocumentSegment).filter(
+            segment_query = db.session.query(DocumentSegment).where(
                 DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id == chunk_index
             )
             if document_ids_filter:
-                segment_query = segment_query.filter(DocumentSegment.document_id.in_(document_ids_filter))
+                segment_query = segment_query.where(DocumentSegment.document_id.in_(document_ids_filter))
             segment = segment_query.first()
 
             if segment:
@@ -116,7 +116,7 @@ class Jieba(BaseKeyword):
         return documents
 
     def delete(self) -> None:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             dataset_keyword_table = self.dataset.dataset_keyword_table
             if dataset_keyword_table:
@@ -134,13 +134,13 @@ class Jieba(BaseKeyword):
         dataset_keyword_table = self.dataset.dataset_keyword_table
         keyword_data_source_type = dataset_keyword_table.data_source_type
         if keyword_data_source_type == "database":
-            dataset_keyword_table.keyword_table = json.dumps(keyword_table_dict, cls=SetEncoder)
+            dataset_keyword_table.keyword_table = dumps_with_sets(keyword_table_dict)
             db.session.commit()
         else:
             file_key = "keyword_files/" + self.dataset.tenant_id + "/" + self.dataset.id + ".txt"
             if storage.exists(file_key):
                 storage.delete(file_key)
-            storage.save(file_key, json.dumps(keyword_table_dict, cls=SetEncoder).encode("utf-8"))
+            storage.save(file_key, dumps_with_sets(keyword_table_dict).encode("utf-8"))
 
     def _get_dataset_keyword_table(self) -> Optional[dict]:
         dataset_keyword_table = self.dataset.dataset_keyword_table
@@ -156,12 +156,11 @@ class Jieba(BaseKeyword):
                 data_source_type=keyword_data_source_type,
             )
             if keyword_data_source_type == "database":
-                dataset_keyword_table.keyword_table = json.dumps(
+                dataset_keyword_table.keyword_table = dumps_with_sets(
                     {
                         "__type__": "keyword_table",
                         "__data__": {"index_id": self.dataset.id, "summary": None, "table": {}},
-                    },
-                    cls=SetEncoder,
+                    }
                 )
             db.session.add(dataset_keyword_table)
             db.session.commit()
@@ -214,7 +213,7 @@ class Jieba(BaseKeyword):
     def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]):
         document_segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
+            .where(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
             .first()
         )
         if document_segment:
@@ -252,8 +251,13 @@ class Jieba(BaseKeyword):
         self._save_dataset_keyword_table(keyword_table)
 
 
-class SetEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, set):
-            return list(obj)
-        return super().default(obj)
+def set_orjson_default(obj: Any) -> Any:
+    """Default function for orjson serialization of set types"""
+    if isinstance(obj, set):
+        return list(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def dumps_with_sets(obj: Any) -> str:
+    """JSON dumps with set support using orjson"""
+    return orjson.dumps(obj, default=set_orjson_default).decode("utf-8")

@@ -8,6 +8,7 @@ import DatasetConfig from '../dataset-config'
 import HistoryPanel from '../config-prompt/conversation-history/history-panel'
 import ConfigVision from '../config-vision'
 import ConfigDocument from './config-document'
+import ConfigAudio from './config-audio'
 import AgentTools from './agent/agent-tools'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
@@ -84,6 +85,8 @@ const Config: FC = () => {
         <ConfigVision />
 
         <ConfigDocument />
+
+        <ConfigAudio />
 
         {/* Chat History */}
         {isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (

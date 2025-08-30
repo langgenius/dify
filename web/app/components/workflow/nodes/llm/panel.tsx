@@ -60,7 +60,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
-    filterJinjia2InputVar,
+    filterJinja2InputVar,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -82,7 +82,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}` })
         handleCompletionParamsChange(filtered)
       }
-      catch (e) {
+      catch {
         Toast.notify({ type: 'error', message: t('common.error') })
         handleCompletionParamsChange({})
       }
@@ -166,7 +166,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               list={inputs.prompt_config?.jinja2_variables || []}
               onChange={handleVarListChange}
               onVarNameChange={handleVarNameChange}
-              filterVar={filterJinjia2InputVar}
+              filterVar={filterJinja2InputVar}
               isSupportFileVar={false}
             />
           </Field>
@@ -281,6 +281,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             name='text'
             type='string'
             description={t(`${i18nPrefix}.outputVars.output`)}
+          />
+          <VarItem
+            name='usage'
+            type='object'
+            description={t(`${i18nPrefix}.outputVars.usage`)}
           />
           {inputs.structured_output_enabled && (
             <>

@@ -131,10 +131,34 @@ export const useSelectionInteractions = () => {
     setEdges(newEdges)
   }, [store])
 
+  const handleSelectionContextMenu = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.classList.contains('react-flow__nodesselection-rect'))
+      return
+
+    e.preventDefault()
+    const container = document.querySelector('#workflow-container')
+    const { x, y } = container!.getBoundingClientRect()
+    workflowStore.setState({
+      selectionMenu: {
+        top: e.clientY - y,
+        left: e.clientX - x,
+      },
+    })
+  }, [workflowStore])
+
+  const handleSelectionContextmenuCancel = useCallback(() => {
+    workflowStore.setState({
+      selectionMenu: undefined,
+    })
+  }, [workflowStore])
+
   return {
     handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
     handleSelectionCancel,
+    handleSelectionContextMenu,
+    handleSelectionContextmenuCancel,
   }
 }

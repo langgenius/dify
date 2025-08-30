@@ -1,4 +1,4 @@
-from typing import Optional, Protocol
+from typing import Protocol
 
 from core.workflow.entities.workflow_execution import WorkflowExecution
 
@@ -26,17 +26,5 @@ class WorkflowExecutionRepository(Protocol):
 
         Args:
             execution: The WorkflowExecution instance to save or update
-        """
-        ...
-
-    def get(self, execution_id: str) -> Optional[WorkflowExecution]:
-        """
-        Retrieve a WorkflowExecution by its ID.
-
-        Args:
-            execution_id: The workflow execution ID
-
-        Returns:
-            The WorkflowExecution instance if found, None otherwise
         """
         ...

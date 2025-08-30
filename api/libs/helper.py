@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
-from flask_restful import fields
+from flask_restx import fields
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -25,6 +25,33 @@ from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
     from models.account import Account
+    from models.model import EndUser
+
+logger = logging.getLogger(__name__)
+
+
+def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+    """
+    Extract tenant_id from Account or EndUser object.
+
+    Args:
+        user: Account or EndUser object
+
+    Returns:
+        tenant_id string if available, None otherwise
+
+    Raises:
+        ValueError: If user is neither Account nor EndUser
+    """
+    from models.account import Account
+    from models.model import EndUser
+
+    if isinstance(user, Account):
+        return user.current_tenant_id
+    elif isinstance(user, EndUser):
+        return user.tenant_id
+    else:
+        raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
 def run(script):
@@ -32,7 +59,7 @@ def run(script):
 
 
 class AppIconUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 
@@ -47,7 +74,7 @@ class AppIconUrlField(fields.Raw):
 
 
 class AvatarUrlField(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         if obj is None:
             return None
 
@@ -70,7 +97,7 @@ def email(email):
     if re.match(pattern, email) is not None:
         return email
 
-    error = "{email} is not a valid email.".format(email=email)
+    error = f"{email} is not a valid email."
     raise ValueError(error)
 
 
@@ -82,7 +109,7 @@ def uuid_value(value):
         uuid_obj = uuid.UUID(value)
         return str(uuid_obj)
     except ValueError:
-        error = "{value} is not a valid uuid.".format(value=value)
+        error = f"{value} is not a valid uuid."
         raise ValueError(error)
 
 
@@ -101,7 +128,7 @@ def timestamp_value(timestamp):
             raise ValueError
         return int_timestamp
     except ValueError:
-        error = "{timestamp} is not a valid timestamp.".format(timestamp=timestamp)
+        error = f"{timestamp} is not a valid timestamp."
         raise ValueError(error)
 
 
@@ -117,25 +144,6 @@ class StrLen:
         if length > self.max_length:
             error = "Invalid {arg}: {val}. {arg} cannot exceed length {length}".format(
                 arg=self.argument, val=value, length=self.max_length
-            )
-            raise ValueError(error)
-
-        return value
-
-
-class FloatRange:
-    """Restrict input to an float in a range (inclusive)"""
-
-    def __init__(self, low, high, argument="argument"):
-        self.low = low
-        self.high = high
-        self.argument = argument
-
-    def __call__(self, value):
-        value = _get_float(value)
-        if value < self.low or value > self.high:
-            error = "Invalid {arg}: {val}. {arg} must be within the range {lo} - {hi}".format(
-                arg=self.argument, val=value, lo=self.low, hi=self.high
             )
             raise ValueError(error)
 
@@ -163,14 +171,14 @@ def _get_float(value):
     try:
         return float(value)
     except (TypeError, ValueError):
-        raise ValueError("{} is not a valid float".format(value))
+        raise ValueError(f"{value} is not a valid float")
 
 
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string
 
-    error = "{timezone_string} is not a valid timezone.".format(timezone_string=timezone_string)
+    error = f"{timezone_string} is not a valid timezone."
     raise ValueError(error)
 
 
@@ -293,8 +301,8 @@ class TokenManager:
         if expiry_minutes is None:
             raise ValueError(f"Expiry minutes for {token_type} token is not set")
         token_key = cls._get_token_key(token, token_type)
-        expiry_time = int(expiry_minutes * 60)
-        redis_client.setex(token_key, expiry_time, json.dumps(token_data))
+        expiry_seconds = int(expiry_minutes * 60)
+        redis_client.setex(token_key, expiry_seconds, json.dumps(token_data))
 
         if account_id:
             cls._set_current_token_for_account(account_id, token, token_type, expiry_minutes)
@@ -315,7 +323,7 @@ class TokenManager:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
-            logging.warning(f"{token_type} token {token} not found with key {key}")
+            logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
         token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data
@@ -328,11 +336,11 @@ class TokenManager:
 
     @classmethod
     def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_hours: Union[int, float]
+        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
     ):
         key = cls._get_account_token_key(account_id, token_type)
-        expiry_time = int(expiry_hours * 60 * 60)
-        redis_client.setex(key, expiry_time, token)
+        expiry_seconds = int(expiry_minutes * 60)
+        redis_client.setex(key, expiry_seconds, token)
 
     @classmethod
     def _get_account_token_key(cls, account_id: str, token_type: str) -> str:

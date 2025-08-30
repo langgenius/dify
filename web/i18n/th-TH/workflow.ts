@@ -105,9 +105,7 @@ const translation = {
     noHistory: 'ไม่มีประวัติ',
     versionHistory: 'ประวัติรุ่น',
     exportPNG: 'ส่งออกเป็น PNG',
-    noExist: 'ไม่มีตัวแปรดังกล่าว',
     exportJPEG: 'ส่งออกเป็น JPEG',
-    referenceVar: 'ตัวแปรอ้างอิง',
     publishUpdate: 'เผยแพร่การอัปเดต',
     exitVersions: 'ออกเวอร์ชัน',
     exportImage: 'ส่งออกภาพ',
@@ -115,6 +113,9 @@ const translation = {
     needAnswerNode: 'ต้องเพิ่มโหนดคำตอบ',
     addBlock: 'เพิ่มโนด',
     needEndNode: 'ต้องเพิ่มโหนดจบ',
+    tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
+    currentWorkflow: 'เวิร์กโฟลว์ปัจจุบัน',
+    currentView: 'ปัจจุบัน View',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
@@ -129,6 +130,8 @@ const translation = {
       value: 'ค่า',
       valuePlaceholder: 'ค่า env',
       secretTip: 'ใช้เพื่อกําหนดข้อมูลหรือข้อมูลที่ละเอียดอ่อน โดยมีการตั้งค่า DSL ที่กําหนดค่าไว้เพื่อป้องกันการรั่วไหล',
+      description: 'คำอธิบาย',
+      descriptionPlaceholder: 'อธิบายตัวแปร',
     },
     export: {
       title: 'ส่งออกตัวแปรสภาพแวดล้อม Secret หรือไม่',
@@ -220,7 +223,6 @@ const translation = {
     'searchTool': 'เครื่องมือค้นหา',
     'tools': 'เครื่อง มือ',
     'allTool': 'ทั้งหมด',
-    'builtInTool': 'ในตัว',
     'customTool': 'ธรรมเนียม',
     'workflowTool': 'เวิร์กโฟลว์',
     'question-understand': 'คําถาม: เข้าใจ',
@@ -232,6 +234,8 @@ const translation = {
     'plugin': 'ปลั๊กอิน',
     'searchBlock': 'ค้นหาโหนด',
     'blocks': 'โหนด',
+    'allAdded': 'ทั้งหมดที่เพิ่มเข้ามา',
+    'addAll': 'เพิ่มทั้งหมด',
   },
   blocks: {
     'start': 'เริ่ม',
@@ -285,6 +289,18 @@ const translation = {
     zoomTo50: 'ซูมไปที่ 50%',
     zoomTo100: 'ซูมไปที่ 100%',
     zoomToFit: 'ซูมให้พอดี',
+    alignBottom: 'ด้านล่าง',
+    alignCenter: 'ศูนย์กลาง',
+    alignMiddle: 'กลาง',
+    horizontal: 'แนวนอน',
+    vertical: 'แนวตั้ง',
+    alignTop: 'ด้านบน',
+    distributeVertical: 'ระยะห่างแนวตั้ง',
+    alignLeft: 'ซ้าย',
+    selectionAlignment: 'การจัดตําแหน่งการเลือก',
+    distributeHorizontal: 'ระยะห่างแนวนอน',
+    alignRight: 'ขวา',
+    alignNodes: 'จัดตําแหน่งโหนด',
   },
   panel: {
     userInputField: 'ฟิลด์ป้อนข้อมูลของผู้ใช้',
@@ -361,6 +377,10 @@ const translation = {
         times: 'ครั้ง',
         retries: '{{num}} ลอง',
         ms: 'นางสาว',
+      },
+      typeSwitch: {
+        input: 'ค่าป้อนข้อมูล',
+        variable: 'ใช้ตัวแปร',
       },
     },
     start: {
@@ -488,6 +508,7 @@ const translation = {
           placeholder: 'ใส่ค่า',
         },
         title: 'การกรองข้อมูลเมตา',
+        tip: 'การกรองข้อมูลเมตาดาต้าเป็นกระบวนการที่ใช้คุณลักษณะของเมตาดาต้า (เช่น แท็ก หมวดหมู่ หรือสิทธิการเข้าถึง) เพื่อปรับแต่งและควบคุมการดึงข้อมูลที่เกี่ยวข้องภายในระบบ.',
       },
     },
     http: {
@@ -537,6 +558,10 @@ const translation = {
         title: 'นําเข้าจาก cURL',
         placeholder: 'วางสตริง cURL ที่นี่',
       },
+      verifySSL: {
+        title: 'ตรวจสอบใบรับรอง SSL',
+        warningTooltip: 'การปิดการตรวจสอบ SSL ไม่แนะนำให้ใช้ในสภาพแวดล้อมการผลิต ควรใช้เฉพาะในระหว่างการพัฒนาหรือการทดสอบเท่านั้น เนื่องจากจะทำให้การเชื่อมต่อมีความเสี่ยงต่อภัยคุกคามด้านความปลอดภัย เช่น การโจมตีแบบ Man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'ตัวแปรอินพุต',
@@ -544,6 +569,7 @@ const translation = {
       advancedDependencies: 'การพึ่งพาขั้นสูง',
       advancedDependenciesTip: 'เพิ่มการพึ่งพาที่โหลดไว้ล่วงหน้าซึ่งใช้เวลามากขึ้นในการใช้หรือไม่ใช่ค่าเริ่มต้นในตัวที่นี่',
       searchDependencies: 'การพึ่งพาการค้นหา',
+      syncFunctionSignature: 'ซิงก์ลายเซ็นฟังก์ชันให้ตรงกับโค้ด',
     },
     templateTransform: {
       inputVars: 'ตัวแปรอินพุต',
@@ -594,7 +620,6 @@ const translation = {
       selectVariable: 'เลือกตัวแปร...',
       addSubVariable: 'ตัวแปรย่อย',
       select: 'เลือก',
-      condition: 'เงื่อนไข',
     },
     variableAssigner: {
       title: 'กําหนดตัวแปร',
@@ -662,12 +687,16 @@ const translation = {
         json: 'เครื่องมือสร้าง JSON',
       },
       authorize: 'อนุญาต',
+      insertPlaceholder2: 'แทรกตัวแปร',
+      insertPlaceholder1: 'พิมพ์หรือลงทะเบียน',
+      settings: 'การตั้งค่า',
     },
     questionClassifiers: {
       model: 'แบบ',
       inputVars: 'ตัวแปรอินพุต',
       outputVars: {
         className: 'ชื่อคลาส',
+        usage: 'ข้อมูลการใช้งานรุ่น',
       },
       class: 'ประเภท',
       classNamePlaceholder: 'เขียนชื่อชั้นเรียนของคุณ',
@@ -681,6 +710,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'ตัวแปรอินพุต',
+      outputVars: {
+        isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
+        errorReason: 'สาเหตุข้อผิดพลาด',
+        usage: 'ข้อมูลการใช้งานรุ่น',
+      },
       extractParameters: 'แยกพารามิเตอร์',
       importFromTool: 'นําเข้าจากเครื่องมือ',
       addExtractParameter: 'เพิ่มพารามิเตอร์การแยกข้อมูล',
@@ -700,8 +734,6 @@ const translation = {
       advancedSetting: 'การตั้งค่าขั้นสูง',
       reasoningMode: 'โหมดการให้เหตุผล',
       reasoningModeTip: 'คุณสามารถเลือกโหมดการให้เหตุผลที่เหมาะสมตามความสามารถของโมเดลในการตอบสนองต่อคําแนะนําสําหรับการเรียกใช้ฟังก์ชันหรือข้อความแจ้ง',
-      isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
-      errorReason: 'สาเหตุข้อผิดพลาด',
     },
     iteration: {
       deleteTitle: 'ลบโหนดการทําซ้ํา?',
@@ -810,6 +842,7 @@ const translation = {
           type: 'ประเภทการสนับสนุน ตอนนี้รองรับเฉพาะรูปภาพ',
         },
         text: 'เนื้อหาที่สร้างตัวแทน',
+        usage: 'ข้อมูลการใช้งานรุ่น',
         json: 'ตัวแทนสร้าง JSON',
       },
       checkList: {
@@ -842,6 +875,8 @@ const translation = {
       tools: 'เครื่อง มือ',
       modelNotSelected: 'ไม่ได้เลือกรุ่น',
       linkToPlugin: 'ลิงก์ไปยังปลั๊กอิน',
+      parameterSchema: 'แบบจำลองพารามิเตอร์',
+      clickToViewParameterSchema: 'คลิกเพื่อดูโครงร่างพารามิเตอร์',
     },
     loop: {
       ErrorMethod: {
@@ -907,6 +942,7 @@ const translation = {
       restoreSuccess: 'เวอร์ชันที่กู้คืน',
       restoreFailure: 'ไม่สามารถกู้คืนเวอร์ชันได้',
       updateSuccess: 'อัปเดตเวอร์ชัน',
+      copyIdSuccess: 'คัดลอกรหัสไปยังคลิปบอร์ด',
     },
     releaseNotesPlaceholder: 'อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร',
     currentDraft: 'ร่างปัจจุบัน',
@@ -917,6 +953,7 @@ const translation = {
     nameThisVersion: 'ชื่อเวอร์ชันนี้',
     title: 'เวอร์ชัน',
     latest: 'ล่าสุด',
+    copyId: 'คัดลอก ID',
   },
   debug: {
     noData: {
@@ -946,6 +983,20 @@ const translation = {
     },
     settingsTab: 'การตั้งค่า',
     lastRunTab: 'รอบสุดท้าย',
+    relations: {
+      dependents: 'ผู้อยู่ในอุปการะ',
+      dependencies: 'อ้าง อิง',
+      dependenciesDescription: 'โหนดที่โหนดนี้อาศัย',
+      noDependencies: 'ไม่มีการพึ่งพา',
+      noDependents: 'ไม่มีผู้อยู่ในอุปการะ',
+      dependentsDescription: 'โหนดที่อาศัยโหนดนี้',
+    },
+    relationsTab: 'สัมพันธ์',
+    copyLastRun: 'คัดลอกการทำงานล่าสุด',
+    noLastRunFound: 'ไม่พบการทำงานก่อนหน้า',
+    copyLastRunError: 'ไม่สามารถคัดลอกข้อมูลการทำงานครั้งสุดท้ายได้',
+    noMatchingInputsFound: 'ไม่พบข้อมูลที่ตรงกันจากการรันครั้งล่าสุด',
+    lastOutput: 'ผลลัพธ์สุดท้าย',
   },
 }
 

@@ -1,23 +1,11 @@
-import json
 from collections.abc import Mapping
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel
 
 from core.file.models import File
 from core.variables import Segment
-
-
-class WorkflowRuntimeTypeEncoder(json.JSONEncoder):
-    def default(self, o: Any):
-        if isinstance(o, Segment):
-            return o.value
-        elif isinstance(o, File):
-            return o.to_dict()
-        elif isinstance(o, BaseModel):
-            return o.model_dump(mode="json")
-        else:
-            return super().default(o)
 
 
 class WorkflowRuntimeTypeConverter:
@@ -30,6 +18,9 @@ class WorkflowRuntimeTypeConverter:
             return value
         if isinstance(value, (bool, int, str, float)):
             return value
+        if isinstance(value, Decimal):
+            # Convert Decimal to float for JSON serialization
+            return float(value)
         if isinstance(value, Segment):
             return self._to_json_encodable_recursive(value.value)
         if isinstance(value, File):

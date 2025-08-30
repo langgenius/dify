@@ -16,6 +16,7 @@ class AgentToolEntity(BaseModel):
     tool_name: str
     tool_parameters: dict[str, Any] = Field(default_factory=dict)
     plugin_unique_identifier: str | None = None
+    credential_id: str | None = None
 
 
 class AgentPromptEntity(BaseModel):

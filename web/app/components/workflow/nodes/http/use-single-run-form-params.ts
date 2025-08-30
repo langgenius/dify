@@ -62,7 +62,13 @@ const useSingleRunFormParams = ({
   }, [inputVarValues, setInputVarValues, varInputs])
 
   const getDependentVars = () => {
-    return varInputs.map(item => item.variable.slice(1, -1).split('.'))
+    return varInputs.map((item) => {
+      // Guard against null/undefined variable to prevent app crash
+      if (!item.variable || typeof item.variable !== 'string')
+        return []
+
+      return item.variable.slice(1, -1).split('.')
+    }).filter(arr => arr.length > 0)
   }
 
   return {

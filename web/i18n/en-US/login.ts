@@ -79,7 +79,7 @@ const translation = {
   validate: 'Validate',
   checkCode: {
     checkYourEmail: 'Check your email',
-    tips: 'We send a verification code to <strong>{{email}}</strong>',
+    tipsPrefix: 'We send a verification code to ',
     validTime: 'Bear in mind that the code is valid for 5 minutes',
     verificationCode: 'Verification code',
     verificationCodePlaceholder: 'Enter 6-digit code',
@@ -105,6 +105,7 @@ const translation = {
   licenseInactive: 'License Inactive',
   licenseInactiveTip: 'The Dify Enterprise license for your workspace is inactive. Please contact your administrator to continue using Dify.',
   webapp: {
+    login: 'Login',
     noLoginMethod: 'Authentication method not configured for web app',
     noLoginMethodTip: 'Please contact the system admin to add an authentication method.',
     disabled: 'Webapp authentication is disabled. Please contact the system admin to enable it. You can try to use the app directly.',

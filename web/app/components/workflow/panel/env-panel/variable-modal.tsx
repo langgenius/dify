@@ -10,7 +10,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
-import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 export type ModalPropsType = {
   env?: EnvironmentVariable
@@ -29,6 +29,7 @@ const VariableModal = ({
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<any>()
+  const [description, setDescription] = React.useState<string>('')
 
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
@@ -43,7 +44,7 @@ const VariableModal = ({
   }
 
   const handleVarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    replaceSpaceWithUnderscreInVarNameInput(e.target)
+    replaceSpaceWithUnderscoreInVarNameInput(e.target)
     if (!!e.target.value && !checkVariableName(e.target.value))
       return
     setName(e.target.value || '')
@@ -67,6 +68,7 @@ const VariableModal = ({
       value_type: type,
       name,
       value: type === 'number' ? Number(value) : value,
+      description,
     })
     onClose()
   }
@@ -76,6 +78,7 @@ const VariableModal = ({
       setType(env.value_type)
       setName(env.name)
       setValue(env.value_type === 'secret' ? envSecrets[env.id] : env.value)
+      setDescription(env.description)
     }
   }, [env, envSecrets])
 
@@ -141,7 +144,7 @@ const VariableModal = ({
           </div>
         </div>
         {/* value */}
-        <div className=''>
+        <div className='mb-4'>
           <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
             {
@@ -158,6 +161,18 @@ const VariableModal = ({
                   type="number"
                 />
             }
+          </div>
+        </div>
+        {/* description */}
+        <div className=''>
+          <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.env.modal.description')}</div>
+          <div className='flex'>
+            <textarea
+              className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+              value={description}
+              placeholder={t('workflow.env.modal.descriptionPlaceholder') || ''}
+              onChange={e => setDescription(e.target.value)}
+            />
           </div>
         </div>
       </div>
