@@ -221,6 +221,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - default
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -302,6 +304,8 @@ services:
     ports:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
+    networks:
+      - default
 
   # The Weaviate vector store.
   weaviate:
