@@ -93,7 +93,7 @@ def _delete_batch_with_retry(workflow_run_ids: list[str], attempt_count: int) ->
         with db.session.begin_nested():
             message_data = (
                 db.session.query(Message.id, Message.conversation_id)
-                .filter(Message.workflow_run_id.in_(workflow_run_ids))
+                .where(Message.workflow_run_id.in_(workflow_run_ids))
                 .all()
             )
             message_id_list = [msg.id for msg in message_data]

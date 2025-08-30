@@ -166,7 +166,7 @@ class TestAppDslService:
         assert result.imported_dsl_version == ""
 
         # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
+        apps_count = db_session_with_containers.query(App).where(App.tenant_id == account.current_tenant_id).count()
         assert apps_count == 1  # Only the original test app
 
     def test_import_app_missing_yaml_url(self, db_session_with_containers, mock_external_service_dependencies):
@@ -191,7 +191,7 @@ class TestAppDslService:
         assert result.imported_dsl_version == ""
 
         # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
+        apps_count = db_session_with_containers.query(App).where(App.tenant_id == account.current_tenant_id).count()
         assert apps_count == 1  # Only the original test app
 
     def test_import_app_invalid_import_mode(self, db_session_with_containers, mock_external_service_dependencies):
@@ -215,7 +215,7 @@ class TestAppDslService:
             )
 
         # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
+        apps_count = db_session_with_containers.query(App).where(App.tenant_id == account.current_tenant_id).count()
         assert apps_count == 1  # Only the original test app
 
     def test_export_dsl_chat_app_success(self, db_session_with_containers, mock_external_service_dependencies):
