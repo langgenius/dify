@@ -871,6 +871,18 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable check upgradable plugin task",
         default=True,
     )
+    ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK: bool = Field(
+        description="Enable workflow schedule poller task",
+        default=True,
+    )
+    WORKFLOW_SCHEDULE_POLLER_INTERVAL: int = Field(
+        description="Workflow schedule poller interval in minutes",
+        default=1,
+    )
+    WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: int = Field(
+        description="Maximum number of schedules to process in each poll batch",
+        default=100,
+    )
 
 
 class PositionConfig(BaseSettings):

@@ -19,10 +19,6 @@ from models.workflow import AppTrigger, AppTriggerStatus, WorkflowWebhookTrigger
 logger = logging.getLogger(__name__)
 
 
-
-
-
-
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
@@ -87,7 +83,7 @@ class WebhookTriggerApi(Resource):
         base_url = dify_config.SERVICE_API_URL
         webhook_trigger.webhook_url = f"{base_url}/triggers/webhook/{webhook_trigger.webhook_id}"
         webhook_trigger.webhook_debug_url = f"{base_url}/triggers/webhook-debug/{webhook_trigger.webhook_id}"
-        
+
         return webhook_trigger
 
     @setup_required
@@ -231,7 +227,7 @@ class AppTriggerEnableApi(Resource):
             trigger.icon = url_prefix + trigger.provider_name + "/icon"
         else:
             trigger.icon = ""
-        
+
         return trigger
 
 

@@ -74,10 +74,10 @@ class TenantDailyRateLimiter:
             Number of seconds until UTC midnight
         """
         utc_now = datetime.utcnow()
-        
+
         # Get next midnight in UTC
         next_midnight = datetime.combine(utc_now.date() + timedelta(days=1), time.min)
-        
+
         return int((next_midnight - utc_now).total_seconds())
 
     def check_and_consume(self, tenant_id: str, max_daily_limit: int) -> bool:
@@ -174,9 +174,9 @@ class TenantDailyRateLimiter:
         """
         tz = pytz.timezone(timezone_str)
         utc_now = datetime.utcnow()
-        
+
         # Get next midnight in UTC, then convert to tenant's timezone
         next_utc_midnight = datetime.combine(utc_now.date() + timedelta(days=1), time.min)
         next_utc_midnight = pytz.UTC.localize(next_utc_midnight)
-        
+
         return next_utc_midnight.astimezone(tz)
