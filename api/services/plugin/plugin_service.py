@@ -3,6 +3,8 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 from typing import Optional
 
+from api.core.helper.model_cache import ModelTypeInstanceCache
+from api.core.helper.provider_cache import ProviderConfigurationsCache
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -232,6 +234,10 @@ class PluginService:
         Delete a plugin installation task
         """
         manager = PluginInstaller()
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.delete_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
@@ -242,6 +248,10 @@ class PluginService:
         Delete all plugin installation task items
         """
         manager = PluginInstaller()
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.delete_all_plugin_installation_task_items(tenant_id)
 
     @staticmethod
@@ -250,6 +260,10 @@ class PluginService:
         Delete a plugin installation task item
         """
         manager = PluginInstaller()
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.delete_plugin_installation_task_item(tenant_id, task_id, identifier)
 
     @staticmethod
@@ -267,6 +281,9 @@ class PluginService:
 
         # check if plugin pkg is already downloaded
         manager = PluginInstaller()
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
 
         features = FeatureService.get_system_features()
 
@@ -310,6 +327,10 @@ class PluginService:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
@@ -337,6 +358,10 @@ class PluginService:
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return response
 
     @staticmethod
@@ -359,6 +384,10 @@ class PluginService:
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return response
 
     @staticmethod
@@ -378,6 +407,9 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
@@ -394,6 +426,10 @@ class PluginService:
         PluginService._check_marketplace_only_permission()
 
         manager = PluginInstaller()
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.install_from_identifiers(
             tenant_id,
             [plugin_unique_identifier],
@@ -473,6 +509,9 @@ class PluginService:
                 actual_plugin_unique_identifiers.append(response.unique_identifier)
                 metas.append({"plugin_unique_identifier": response.unique_identifier})
 
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.install_from_identifiers(
             tenant_id,
             actual_plugin_unique_identifiers,
@@ -483,6 +522,10 @@ class PluginService:
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
         manager = PluginInstaller()
+
+        ProviderConfigurationsCache(tenant_id=tenant_id).delete()
+        ModelTypeInstanceCache().clear()
+
         return manager.uninstall(tenant_id, plugin_installation_id)
 
     @staticmethod
