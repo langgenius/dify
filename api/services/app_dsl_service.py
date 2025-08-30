@@ -598,12 +598,18 @@ class AppDslService:
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
-        export_data["dependencies"] = [
-            jsonable_encoder(d.model_dump())
-            for d in DependenciesAnalysisService.generate_dependencies(
-                tenant_id=app_model.tenant_id, dependencies=dependencies
-            )
-        ]
+        dependencies_list = DependenciesAnalysisService.generate_dependencies(
+            tenant_id=app_model.tenant_id, dependencies=dependencies
+        )
+        # Clean marketplace plugin identifiers by removing checksums
+        export_dependencies = []
+        for d in dependencies_list:
+            dep_dict = d.model_dump()
+            if d.type == PluginDependency.Type.Marketplace:
+                # Use the property that strips checksum instead of raw value
+                dep_dict["value"]["marketplace_plugin_unique_identifier"] = d.value.plugin_unique_identifier
+            export_dependencies.append(jsonable_encoder(dep_dict))
+        export_data["dependencies"] = export_dependencies
 
     @classmethod
     def _append_model_config_export_data(cls, export_data: dict, app_model: App) -> None:
@@ -626,12 +632,18 @@ class AppDslService:
         export_data["model_config"] = model_config
 
         dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
-        export_data["dependencies"] = [
-            jsonable_encoder(d.model_dump())
-            for d in DependenciesAnalysisService.generate_dependencies(
-                tenant_id=app_model.tenant_id, dependencies=dependencies
-            )
-        ]
+        dependencies_list = DependenciesAnalysisService.generate_dependencies(
+            tenant_id=app_model.tenant_id, dependencies=dependencies
+        )
+        # Clean marketplace plugin identifiers by removing checksums
+        export_dependencies = []
+        for d in dependencies_list:
+            dep_dict = d.model_dump()
+            if d.type == PluginDependency.Type.Marketplace:
+                # Use the property that strips checksum instead of raw value
+                dep_dict["value"]["marketplace_plugin_unique_identifier"] = d.value.plugin_unique_identifier
+            export_dependencies.append(jsonable_encoder(dep_dict))
+        export_data["dependencies"] = export_dependencies
 
     @classmethod
     def _extract_dependencies_from_workflow(cls, workflow: Workflow) -> list[str]:
