@@ -101,7 +101,6 @@ const AllTools = ({
         category: PluginType.tool,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText, tags, enable_marketplace])
 
   const pluginRef = useRef<ListRef>(null)

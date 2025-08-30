@@ -26,12 +26,14 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_alias_service import WorkflowAliasService
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,9 @@ chat_parser.add_argument(
     help="Auto generate conversation name",
 )
 chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+chat_parser.add_argument(
+    "workflow_alias", type=str, required=False, location="json", help="Workflow alias for advanced chat"
+)
 
 
 @service_api_ns.route("/completion-messages")
@@ -188,6 +193,11 @@ class ChatApi(Resource):
             raise NotChatAppError()
 
         args = chat_parser.parse_args()
+        # Add workflow_alias support
+        if "workflow_alias" not in args:
+            args["workflow_alias"] = None
+
+        self._resolve_workflow_alias(app_model, args)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -229,6 +239,25 @@ class ChatApi(Resource):
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
+
+    def _resolve_workflow_alias(self, app_model: App, args: dict) -> None:
+        """
+        Resolve workflow_alias to workflow_id
+        Priority: workflow_alias > workflow_id > latest published workflow
+        """
+        if args.get("workflow_alias"):
+            workflow_alias_service = WorkflowAliasService()
+            workflow = workflow_alias_service.get_workflow_by_alias(
+                session=db.session,
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                alias_name=args["workflow_alias"],
+            )
+
+            if not workflow:
+                raise WorkflowNotFoundError(f"Workflow with alias '{args['workflow_alias']}' not found")
+
+            args["workflow_id"] = workflow.id
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")

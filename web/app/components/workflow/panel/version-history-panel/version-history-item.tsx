@@ -5,6 +5,9 @@ import ContextMenu from './context-menu'
 import cn from '@/utils/classnames'
 import type { VersionHistory } from '@/types/workflow'
 import { type VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
+import type { WorkflowAlias } from '@/app/components/workflow/types'
+
+import Tag from '@/app/components/base/tag'
 
 type VersionHistoryItemProps = {
   item: VersionHistory
@@ -13,6 +16,7 @@ type VersionHistoryItemProps = {
   onClick: (item: VersionHistory) => void
   handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   isLast: boolean
+  aliases: WorkflowAlias[]
 }
 
 const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
@@ -41,6 +45,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   onClick,
   handleClickMenuItem,
   isLast,
+  aliases,
 }) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = useState(false)
@@ -102,6 +107,31 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             </div>
           )}
         </div>
+        {!isDraft && aliases && aliases.length > 0 && (
+          <div className='mt-0.5 flex flex-wrap items-center gap-0.5'>
+            {aliases
+              .sort((a: WorkflowAlias, b: WorkflowAlias) => {
+                if (a.alias_type === 'system' && b.alias_type !== 'system') return -1
+                if (a.alias_type !== 'system' && b.alias_type === 'system') return 1
+                return 0
+              })
+              .slice(0, 2)
+              .map((alias: WorkflowAlias) => (
+                <Tag
+                  key={alias.id}
+                  color={alias.alias_type === 'system' ? 'red' : 'green'}
+                  className="px-1.5 py-0.5 text-xs"
+                >
+                  {alias.alias_name}
+                </Tag>
+              ))}
+            {aliases.length > 2 && (
+              <span className="ml-1 text-xs text-text-tertiary">
+                +{aliases.length - 2}
+              </span>
+            )}
+          </div>
+        )}
         {
           !isDraft && (
             <div className='system-xs-regular break-words text-text-secondary'>

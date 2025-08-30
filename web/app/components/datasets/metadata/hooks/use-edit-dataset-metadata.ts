@@ -28,7 +28,6 @@ const useEditDatasetMetadata = ({
       showEditModal()
       localStorage.removeItem(isShowManageMetadataLocalStorageKey)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
