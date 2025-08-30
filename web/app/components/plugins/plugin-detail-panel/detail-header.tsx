@@ -61,7 +61,7 @@ const DetailHeader = ({
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
-    const { userProfile: { timezone } } = useAppContext()
+  const { userProfile: { timezone } } = useAppContext()
 
   const { theme } = useTheme()
   const locale = useGetLanguage()

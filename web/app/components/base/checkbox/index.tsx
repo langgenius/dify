@@ -12,12 +12,12 @@ type CheckboxProps = {
 }
 
 const Checkbox = ({
-    id,
-    checked,
-    onCheck,
-    className,
-    disabled,
-    indeterminate,
+  id,
+  checked,
+  onCheck,
+  className,
+  disabled,
+  indeterminate,
 }: CheckboxProps) => {
   const checkClassName = (checked || indeterminate)
     ? 'bg-components-checkbox-bg text-components-checkbox-icon hover:bg-components-checkbox-bg-hover'

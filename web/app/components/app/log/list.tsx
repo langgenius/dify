@@ -112,72 +112,72 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
   const newChatList: IChatItem[] = []
   try {
     messages.forEach((item: ChatMessage) => {
-    const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
-    newChatList.push({
-      id: `question-${item.id}`,
-      content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
-      isAnswer: false,
-      message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-      parentMessageId: item.parent_message_id || undefined,
-    })
+      const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
+      newChatList.push({
+        id: `question-${item.id}`,
+        content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
+        isAnswer: false,
+        message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+        parentMessageId: item.parent_message_id || undefined,
+      })
 
-    const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
-    newChatList.push({
-      id: item.id,
-      content: item.answer,
-      agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-      feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
-      adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
-      feedbackDisabled: false,
-      isAnswer: true,
-      message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-      log: [
-        ...item.message,
-        ...(item.message[item.message.length - 1]?.role !== 'assistant'
-          ? [
-            {
-              role: 'assistant',
-              text: item.answer,
-              files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-            },
-          ]
-          : []),
-      ] as IChatItem['log'],
-      workflow_run_id: item.workflow_run_id,
-      conversationId,
-      input: {
-        inputs: item.inputs,
-        query: item.query,
-      },
-      more: {
-        time: dayjs.unix(item.created_at).tz(timezone).format(format),
-        tokens: item.answer_tokens + item.message_tokens,
-        latency: item.provider_response_latency.toFixed(2),
-      },
-      citation: item.metadata?.retriever_resources,
-      annotation: (() => {
-        if (item.annotation_hit_history) {
-          return {
-            id: item.annotation_hit_history.annotation_id,
-            authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
-            created_at: item.annotation_hit_history.created_at,
+      const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+      newChatList.push({
+        id: item.id,
+        content: item.answer,
+        agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
+        feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
+        adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
+        feedbackDisabled: false,
+        isAnswer: true,
+        message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+        log: [
+          ...item.message,
+          ...(item.message[item.message.length - 1]?.role !== 'assistant'
+            ? [
+              {
+                role: 'assistant',
+                text: item.answer,
+                files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+              },
+            ]
+            : []),
+        ] as IChatItem['log'],
+        workflow_run_id: item.workflow_run_id,
+        conversationId,
+        input: {
+          inputs: item.inputs,
+          query: item.query,
+        },
+        more: {
+          time: dayjs.unix(item.created_at).tz(timezone).format(format),
+          tokens: item.answer_tokens + item.message_tokens,
+          latency: item.provider_response_latency.toFixed(2),
+        },
+        citation: item.metadata?.retriever_resources,
+        annotation: (() => {
+          if (item.annotation_hit_history) {
+            return {
+              id: item.annotation_hit_history.annotation_id,
+              authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
+              created_at: item.annotation_hit_history.created_at,
+            }
           }
-        }
 
-        if (item.annotation) {
-          return {
-            id: item.annotation.id,
-            authorName: item.annotation.account.name,
-            logAnnotation: item.annotation,
-            created_at: 0,
+          if (item.annotation) {
+            return {
+              id: item.annotation.id,
+              authorName: item.annotation.account.name,
+              logAnnotation: item.annotation,
+              created_at: 0,
+            }
           }
-        }
 
-        return undefined
-      })(),
-      parentMessageId: `question-${item.id}`,
+          return undefined
+        })(),
+        parentMessageId: `question-${item.id}`,
+      })
     })
-  })
 
     return newChatList
   }
@@ -503,7 +503,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
       setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
     }
- catch (error) {
+    catch (error) {
       console.error(error)
       setHasMore(false)
     }
@@ -522,7 +522,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     if (outerDiv && outerDiv.scrollHeight > outerDiv.clientHeight) {
       scrollContainer = outerDiv
     }
-     else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
+    else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
       scrollContainer = scrollableDiv
     }
     else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {

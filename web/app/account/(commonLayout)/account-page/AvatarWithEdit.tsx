@@ -106,7 +106,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
             onClick={() => {
               if (hoverArea === 'right' && !onAvatarError)
                 setIsShowDeleteConfirm(true)
-               else
+              else
                 setIsShowAvatarPicker(true)
             }}
             onMouseMove={(e) => {

@@ -339,7 +339,7 @@ const VarReferencePicker: FC<Props> = ({
       const data = await fetchDynamicOptions()
       setDynamicOptions(data?.options || [])
     }
- finally {
+    finally {
       setIsLoading(false)
     }
   }

@@ -226,7 +226,7 @@ const TagSelector: FC<TagSelectorProps> = ({
       const res = await fetchTagList(type)
       setTagList(res)
     }
- catch (error) {
+    catch (error) {
       setTagList([])
     }
   }

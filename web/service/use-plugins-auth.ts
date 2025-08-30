@@ -19,11 +19,11 @@ export const useGetPluginCredentialInfo = (
     enabled: !!url,
     queryKey: [NAME_SPACE, 'credential-info', url],
     queryFn: () => get<{
-        allow_custom_token?: boolean
-        supported_credential_types: string[]
-        credentials: Credential[]
-        is_oauth_custom_client_enabled: boolean
-      }>(url),
+      allow_custom_token?: boolean
+      supported_credential_types: string[]
+      credentials: Credential[]
+      is_oauth_custom_client_enabled: boolean
+    }>(url),
     staleTime: 0,
   })
 }
@@ -107,11 +107,11 @@ export const useGetPluginOAuthUrl = (
     mutationKey: [NAME_SPACE, 'oauth-url', url],
     mutationFn: () => {
       return get<
-      {
-        authorization_url: string
-        state: string
-        context_id: string
-      }>(url)
+        {
+          authorization_url: string
+          state: string
+          context_id: string
+        }>(url)
     },
   })
 }
@@ -143,9 +143,9 @@ export const useSetPluginOAuthCustomClient = (
 ) => {
   return useMutation({
     mutationFn: (params: {
-        client_params: Record<string, any>
-        enable_oauth_custom_client: boolean
-      }) => {
+      client_params: Record<string, any>
+      enable_oauth_custom_client: boolean
+    }) => {
       return post<{ result: string }>(url, { body: params })
     },
   })

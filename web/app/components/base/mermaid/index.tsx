@@ -529,9 +529,9 @@ const Flowchart = React.forwardRef((props: {
       {isLoading && !svgString && (
         <div className='px-[26px] py-4'>
           <LoadingAnim type='text'/>
-            <div className="mt-2 text-sm text-gray-500">
-              {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
-            </div>
+          <div className="mt-2 text-sm text-gray-500">
+            {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
+          </div>
         </div>
       )}
 

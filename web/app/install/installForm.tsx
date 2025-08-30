@@ -76,7 +76,7 @@ const InstallForm = () => {
       localStorage.setItem('refresh_token', loginRes.data.refresh_token)
       router.replace('/apps')
     }
- else {
+    else {
       // Fallback to signin page if auto-login fails
       router.replace('/signin')
     }

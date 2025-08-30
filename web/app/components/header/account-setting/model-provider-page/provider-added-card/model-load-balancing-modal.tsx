@@ -200,8 +200,8 @@ const ModelLoadBalancingModal = ({
                   <div className='grow'>
                     <div className='text-sm text-text-secondary'>{
                       providerFormSchemaPredefined
-                       ? t('common.modelProvider.auth.providerManaged')
-                       : t('common.modelProvider.auth.specifyModelCredential')
+                        ? t('common.modelProvider.auth.providerManaged')
+                        : t('common.modelProvider.auth.specifyModelCredential')
                     }</div>
                     <div className='text-xs text-text-tertiary'>{
                       providerFormSchemaPredefined

@@ -20,9 +20,9 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
 
   const Icon = generatorType === GeneratorType.prompt ? MagicEdit : CodeAssistant
   useEffect(() => {
-      if (!editor.hasNodes([CurrentBlockNode]))
-        throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
-    }, [editor])
+    if (!editor.hasNodes([CurrentBlockNode]))
+      throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
+  }, [editor])
 
   return (
     <div

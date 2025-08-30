@@ -60,7 +60,7 @@ const Toast = ({
       || (type === 'warning' && 'bg-toast-warning-bg')
       || (type === 'error' && 'bg-toast-error-bg')
       || (type === 'info' && 'bg-toast-info-bg')
-      }`}
+    }`}
     />
     <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
       <div className={`flex items-center justify-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>

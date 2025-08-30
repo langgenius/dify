@@ -31,8 +31,6 @@ const useKeyValueList = (value: string, onChange: (value: string) => void, noFil
     const newValue = list.filter(item => item.key && item.value).map(item => `${item.key}:${item.value}`).join('\n')
     if (newValue !== value)
       onChange(newValue)
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, noFilter])
   const addItem = useCallback(() => {
     setList([...list, {

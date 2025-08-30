@@ -193,11 +193,17 @@ export default combine(
       'node/prefer-global/process': 'off',
       'node/prefer-global/buffer': 'off',
       'node/no-callback-literal': 'off',
+      'eslint-comments/no-unused-disable': 'off',
+      'tailwindcss/no-arbitrary-value': 'off',
+      'tailwindcss/classnames-order': 'off',
+      'style/indent': ['error', 2, {
+        SwitchCase: 1,
+        ignoreComments: true,
 
+      }],
       // useful, but big change
       'unicorn/prefer-number-properties': 'warn',
       'unicorn/no-new-array': 'warn',
-      'style/indent': 'off',
     },
   },
   // suppress error for `no-undef` rule

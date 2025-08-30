@@ -416,7 +416,7 @@ const SelectionContextmenu = () => {
         </div>
         <div className='h-px bg-divider-regular'></div>
         <div className='p-1'>
-            <div className='system-xs-medium px-2 py-2 text-text-tertiary'>
+          <div className='system-xs-medium px-2 py-2 text-text-tertiary'>
             {t('workflow.operator.horizontal')}
           </div>
           <div

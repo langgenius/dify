@@ -161,7 +161,7 @@ const CSVUploader: FC<Props> = ({
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFile = e.target.files?.[0]
     if (!isValid(currentFile))
-       return
+      return
 
     initialUpload(currentFile)
   }

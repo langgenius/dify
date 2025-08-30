@@ -196,7 +196,7 @@ describe('Plugin Tool Workflow Integration', () => {
           const _pluginId = (tool.uniqueIdentifier as any).split(':')[0]
         }).toThrow()
       }
- else {
+      else {
         // Valid tools should work fine
         expect(() => {
           const _pluginId = tool.uniqueIdentifier.split(':')[0]

@@ -51,7 +51,7 @@ const InputsPanel = ({ onRun }: Props) => {
   if (startVariables) {
     startVariables.forEach((variable) => {
       if (variable.default)
-       initialInputs[variable.variable] = variable.default
+        initialInputs[variable.variable] = variable.default
     })
   }
 

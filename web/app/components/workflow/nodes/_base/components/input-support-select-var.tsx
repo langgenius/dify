@@ -53,7 +53,6 @@ const Editor: FC<Props> = ({
 
   useEffect(() => {
     onFocusChange?.(isFocus)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocus])
 
   return (

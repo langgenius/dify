@@ -62,12 +62,12 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
   }, [appSidebarExpand, setAppSiderbarExpand])
 
   if (inWorkflowCanvas && hideHeader) {
- return (
+    return (
       <div className='flex w-0 shrink-0'>
         <AppSidebarDropdown navigation={navigation} />
       </div>
     )
-}
+  }
 
   return (
     <div

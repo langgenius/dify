@@ -205,7 +205,7 @@ export const searchAnything = async (
       const results = await action.search(query, query, locale)
       return { success: true, data: results, actionType: action.key }
     }
- catch (error) {
+    catch (error) {
       console.warn(`Search failed for ${action.key}:`, error)
       return { success: false, data: [], actionType: action.key, error }
     }
@@ -220,7 +220,7 @@ export const searchAnything = async (
     if (result.status === 'fulfilled' && result.value.success) {
       allResults.push(...result.value.data)
     }
- else {
+    else {
       const actionKey = globalSearchActions[index]?.key || 'unknown'
       failedActions.push(actionKey)
     }

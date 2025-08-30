@@ -121,7 +121,7 @@ describe('Sidebar Animation Issues Reproduction', () => {
     }))
   })
 
-    describe('Issue #1: Toggle Button Position Movement - FIXED', () => {
+  describe('Issue #1: Toggle Button Position Movement - FIXED', () => {
     it('should verify consistent padding prevents button position shift', () => {
       let expanded = false
       const handleToggle = () => {

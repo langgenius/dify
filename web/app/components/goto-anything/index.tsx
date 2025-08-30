@@ -166,7 +166,7 @@ const GotoAnything: FC<Props> = ({
     acc[result.type].push(result)
     return acc
   }, {} as { [key: string]: SearchResult[] }),
-    [searchResults])
+  [searchResults])
 
   const emptyResult = useMemo(() => {
     if (searchResults.length || !searchQuery.trim() || isLoading || isCommandsMode)

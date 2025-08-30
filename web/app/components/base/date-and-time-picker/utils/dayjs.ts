@@ -131,7 +131,7 @@ export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, l
     // Output format with time
     return date.format('YYYY-MM-DDTHH:mm:ss.SSSZ')
   }
- else {
+  else {
     // Date-only output format without timezone
     return date.format('YYYY-MM-DD')
   }

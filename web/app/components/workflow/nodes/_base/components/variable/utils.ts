@@ -694,9 +694,9 @@ const getIterationItemType = ({
       curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
 
       if (isLast)
-      arrayType = curr?.type
+        arrayType = curr?.type
       else if (curr?.type === VarType.object || curr?.type === VarType.file)
-      curr = curr.children || []
+        curr = curr.children || []
     }
   }
 

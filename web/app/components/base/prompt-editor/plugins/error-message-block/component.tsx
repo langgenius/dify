@@ -16,9 +16,9 @@ const ErrorMessageBlockComponent: FC<Props> = ({
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_ERROR_MESSAGE_COMMAND)
 
   useEffect(() => {
-      if (!editor.hasNodes([ErrorMessageBlockNode]))
-        throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
-    }, [editor])
+    if (!editor.hasNodes([ErrorMessageBlockNode]))
+      throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
+  }, [editor])
 
   return (
     <div
