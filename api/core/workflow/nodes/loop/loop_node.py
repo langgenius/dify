@@ -185,6 +185,7 @@ class LoopNode(BaseNode):
                     current_index=i,
                     start_at=start_at,
                     inputs=inputs,
+                    is_last_loop=(i == loop_count - 1),
                 )
                 loop_end_time = naive_utc_now()
 
@@ -284,6 +285,7 @@ class LoopNode(BaseNode):
         current_index: int,
         start_at: datetime,
         inputs: dict,
+        is_last_loop: bool = False,
     ) -> Generator[NodeEvent | InNodeEvent, None, dict]:
         """Run a single loop iteration.
         Returns:
@@ -331,8 +333,7 @@ class LoopNode(BaseNode):
                     )
                     if check_break_result:
                         break
-                else:
-                    check_break_result = True
+                # If no conditions are available, continue the loop (don't break)
                 yield self._handle_event_metadata(event=event, iter_run_index=current_index)
                 break
 
@@ -418,18 +419,20 @@ class LoopNode(BaseNode):
         if check_break_result:
             return {"check_break_result": True}
 
-        # Move to next loop
-        next_index = current_index + 1
-        variable_pool.add([self.node_id, "index"], next_index)
+        # Only update index if this is not the last loop
+        if not is_last_loop:
+            # Move to next loop - update index after capturing outputs
+            next_index = current_index + 1
+            variable_pool.add([self.node_id, "index"], next_index)
 
-        yield LoopRunNextEvent(
-            loop_id=self.id,
-            loop_node_id=self.node_id,
-            loop_node_type=self.type_,
-            loop_node_data=self._node_data,
-            index=next_index,
-            pre_loop_output=self._node_data.outputs,
-        )
+            yield LoopRunNextEvent(
+                loop_id=self.id,
+                loop_node_id=self.node_id,
+                loop_node_type=self.type_,
+                loop_node_data=self._node_data,
+                index=next_index,
+                pre_loop_output=self._node_data.outputs,
+            )
 
         return {"check_break_result": False}
 
