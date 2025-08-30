@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
 
@@ -667,9 +668,9 @@ class ToolManager:
 
             # get db api providers
             if "api" in filters:
-                db_api_providers: list[ApiToolProvider] = (
-                    db.session.query(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).all()
-                )
+                db_api_providers = db.session.scalars(
+                    select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)
+                ).all()
 
                 api_provider_controllers: list[dict[str, Any]] = [
                     {"provider": provider, "controller": ToolTransformService.api_provider_to_controller(provider)}
@@ -690,9 +691,9 @@ class ToolManager:
 
             if "workflow" in filters:
                 # get workflow providers
-                workflow_providers: list[WorkflowToolProvider] = (
-                    db.session.query(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id).all()
-                )
+                workflow_providers = db.session.scalars(
+                    select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
+                ).all()
 
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []
                 for workflow_provider in workflow_providers:

@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Any, Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -41,9 +41,9 @@ class DatasetDocumentStore:
 
     @property
     def docs(self) -> dict[str, Document]:
-        document_segments = (
-            db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id).all()
-        )
+        document_segments = db.session.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id)
+        ).all()
 
         output = {}
         for document_segment in document_segments:

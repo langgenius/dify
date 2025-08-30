@@ -1,4 +1,7 @@
 import json
+from collections.abc import Sequence
+
+from sqlalchemy import select
 
 from core.helper import encrypter
 from extensions.ext_database import db
@@ -8,12 +11,12 @@ from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 
 class ApiKeyAuthService:
     @staticmethod
-    def get_provider_auth_list(tenant_id: str) -> list:
-        data_source_api_key_bindings = (
-            db.session.query(DataSourceApiKeyAuthBinding)
-            .where(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.disabled.is_(False))
-            .all()
-        )
+    def get_provider_auth_list(tenant_id: str) -> Sequence:
+        data_source_api_key_bindings = db.session.scalars(
+            select(DataSourceApiKeyAuthBinding).where(
+                DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.disabled.is_(False)
+            )
+        ).all()
         return data_source_api_key_bindings
 
     @staticmethod

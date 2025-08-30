@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from httpx import get
+from sqlalchemy import select
 
 from core.entities.provider_entities import ProviderConfig
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -443,9 +444,7 @@ class ApiToolManageService:
         list api tools
         """
         # get all api providers
-        db_providers: list[ApiToolProvider] = (
-            db.session.query(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).all() or []
-        )
+        db_providers = db.session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
 
         result: list[ToolProviderApiEntity] = []
 

@@ -492,7 +492,7 @@ class BaseAgentRunner(AppRunner):
         return result
 
     def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        files = db.session.query(MessageFile).where(MessageFile.message_id == message.id).all()
+        files = db.session.scalars(select(MessageFile).where(MessageFile.message_id == message.id)).all()
         if not files:
             return UserPromptMessage(content=message.query)
         if message.app_model_config:
