@@ -61,6 +61,7 @@ class MCPToolManageService:
         server_identifier: str,
         timeout: float,
         sse_read_timeout: float,
+        headers: dict[str, str] | None = None,
     ) -> ToolProviderApiEntity:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         existing_provider = (
@@ -95,6 +96,7 @@ class MCPToolManageService:
             server_identifier=server_identifier,
             timeout=timeout,
             sse_read_timeout=sse_read_timeout,
+            headers=json.dumps(headers) if headers else None,
         )
         db.session.add(mcp_tool)
         db.session.commit()
@@ -118,9 +120,21 @@ class MCPToolManageService:
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         server_url = mcp_provider.decrypted_server_url
         authed = mcp_provider.authed
+        headers = mcp_provider.decrypted_headers
+        timeout = mcp_provider.timeout
+        sse_read_timeout = mcp_provider.sse_read_timeout
 
         try:
-            with MCPClient(server_url, provider_id, tenant_id, authed=authed, for_list=True) as mcp_client:
+            with MCPClient(
+                server_url,
+                provider_id,
+                tenant_id,
+                authed=authed,
+                for_list=True,
+                headers=headers,
+                timeout=timeout,
+                sse_read_timeout=sse_read_timeout,
+            ) as mcp_client:
                 tools = mcp_client.list_tools()
         except MCPAuthError:
             raise ValueError("Please auth the tool first")
@@ -172,6 +186,7 @@ class MCPToolManageService:
         server_identifier: str,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
+        headers: dict[str, str] | None = None,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
 
@@ -207,6 +222,8 @@ class MCPToolManageService:
                 mcp_provider.timeout = timeout
             if sse_read_timeout is not None:
                 mcp_provider.sse_read_timeout = sse_read_timeout
+            if headers is not None:
+                mcp_provider.headers = json.dumps(headers) if headers else None
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()
@@ -242,6 +259,12 @@ class MCPToolManageService:
 
     @classmethod
     def _re_connect_mcp_provider(cls, server_url: str, provider_id: str, tenant_id: str):
+        # Get the existing provider to access headers and timeout settings
+        mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
+        headers = mcp_provider.decrypted_headers
+        timeout = mcp_provider.timeout
+        sse_read_timeout = mcp_provider.sse_read_timeout
+
         try:
             with MCPClient(
                 server_url,
@@ -249,6 +272,9 @@ class MCPToolManageService:
                 tenant_id,
                 authed=False,
                 for_list=True,
+                headers=headers,
+                timeout=timeout,
+                sse_read_timeout=sse_read_timeout,
             ) as mcp_client:
                 tools = mcp_client.list_tools()
                 return {
