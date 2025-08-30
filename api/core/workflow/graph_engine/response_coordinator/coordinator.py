@@ -161,7 +161,7 @@ class ResponseStreamCoordinator:
         # Step 2: For each complete path, filter edges based on node blocking behavior
         filtered_paths: list[Path] = []
         for path in all_complete_paths:
-            blocking_edges = []
+            blocking_edges: list[str] = []
             for edge_id in path:
                 edge = self.graph.edges[edge_id]
                 source_node = self.graph.nodes[edge.tail]
@@ -260,7 +260,7 @@ class ResponseStreamCoordinator:
                 if event.is_final:
                     self.registry.close_stream(event.selector)
                 return self.try_flush()
-            elif isinstance(event, NodeRunSucceededEvent):
+            else:
                 # Skip cause we share the same variable pool.
                 #
                 # for variable_name, variable_value in event.node_run_result.outputs.items():
@@ -426,7 +426,7 @@ class ResponseStreamCoordinator:
                         # Wait for more data
                         break
 
-                elif isinstance(segment, TextSegment):
+                else:
                     segment_events = self._process_text_segment(segment)
                     events.extend(segment_events)
                     self.active_session.index += 1

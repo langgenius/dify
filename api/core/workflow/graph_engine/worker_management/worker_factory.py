@@ -10,6 +10,7 @@ from typing import final
 from flask import Flask
 
 from core.workflow.graph import Graph
+from core.workflow.graph_events import GraphNodeEventBase
 
 from ..worker import Worker
 
@@ -42,7 +43,7 @@ class WorkerFactory:
     def create_worker(
         self,
         ready_queue: queue.Queue[str],
-        event_queue: queue.Queue,
+        event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         on_idle_callback: Callable[[int], None] | None = None,
         on_active_callback: Callable[[int], None] | None = None,

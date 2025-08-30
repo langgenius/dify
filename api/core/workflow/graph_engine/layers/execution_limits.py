@@ -13,6 +13,8 @@ import time
 from enum import Enum
 from typing import final
 
+from typing_extensions import override
+
 from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType
 from core.workflow.graph_engine.layers import Layer
 from core.workflow.graph_events import (
@@ -63,6 +65,7 @@ class ExecutionLimitsLayer(Layer):
         self._execution_ended = False
         self._abort_sent = False  # Track if abort command has been sent
 
+    @override
     def on_graph_start(self) -> None:
         """Called when graph execution starts."""
         self.start_time = time.time()
@@ -73,6 +76,7 @@ class ExecutionLimitsLayer(Layer):
 
         self.logger.debug("Execution limits monitoring started")
 
+    @override
     def on_event(self, event: GraphEngineEvent) -> None:
         """
         Called for every event emitted by the engine.
@@ -95,6 +99,7 @@ class ExecutionLimitsLayer(Layer):
             if self._reached_time_limitation():
                 self._send_abort_command(LimitType.TIME_LIMIT)
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         """Called when graph execution ends."""
         if self._execution_started and not self._execution_ended:

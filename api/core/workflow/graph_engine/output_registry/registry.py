@@ -7,7 +7,7 @@ thread-safe storage for node outputs.
 
 from collections.abc import Sequence
 from threading import RLock
-from typing import TYPE_CHECKING, Union, final
+from typing import TYPE_CHECKING, Any, Union, final
 
 from core.variables import Segment
 from core.workflow.entities.variable_pool import VariablePool
@@ -31,13 +31,15 @@ class OutputRegistry:
         """Initialize empty registry with thread-safe storage."""
         self._lock = RLock()
         self._scalars = variable_pool
-        self._streams: dict[tuple, Stream] = {}
+        self._streams: dict[tuple[str, ...], Stream] = {}
 
-    def _selector_to_key(self, selector: Sequence[str]) -> tuple:
+    def _selector_to_key(self, selector: Sequence[str]) -> tuple[str, ...]:
         """Convert selector list to tuple key for internal storage."""
         return tuple(selector)
 
-    def set_scalar(self, selector: Sequence[str], value: Union[str, int, float, bool, dict, list]) -> None:
+    def set_scalar(
+        self, selector: Sequence[str], value: Union[str, int, float, bool, dict[str, Any], list[Any]]
+    ) -> None:
         """
         Set a scalar value for the given selector.
 

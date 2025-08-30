@@ -46,7 +46,7 @@ class ActivityTracker:
             List of idle worker IDs
         """
         current_time = time.time()
-        idle_workers = []
+        idle_workers: list[int] = []
 
         with self._lock:
             for worker_id, (is_active, last_change) in self._worker_activity.items():

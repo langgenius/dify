@@ -7,6 +7,7 @@ import threading
 from typing import final
 
 from core.workflow.graph import Graph
+from core.workflow.graph_events import GraphNodeEventBase
 
 from ..worker import Worker
 from .activity_tracker import ActivityTracker
@@ -26,7 +27,7 @@ class WorkerPool:
     def __init__(
         self,
         ready_queue: queue.Queue[str],
-        event_queue: queue.Queue,
+        event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         worker_factory: WorkerFactory,
         dynamic_scaler: DynamicScaler,

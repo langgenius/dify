@@ -9,6 +9,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any, final
 
+from typing_extensions import override
+
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
@@ -93,13 +95,14 @@ class DebugLoggingLayer(Layer):
         if not data:
             return "{}"
 
-        formatted_items = []
+        formatted_items: list[str] = []
         for key, value in data.items():
             formatted_value = self._truncate_value(value)
             formatted_items.append(f"  {key}: {formatted_value}")
 
         return "{\n" + ",\n".join(formatted_items) + "\n}"
 
+    @override
     def on_graph_start(self) -> None:
         """Log graph execution start."""
         self.logger.info("=" * 80)
@@ -112,7 +115,7 @@ class DebugLoggingLayer(Layer):
 
             # Log inputs if available
             if self.graph_runtime_state.variable_pool:
-                initial_vars = {}
+                initial_vars: dict[str, Any] = {}
                 # Access the variable dictionary directly
                 for node_id, variables in self.graph_runtime_state.variable_pool.variable_dictionary.items():
                     for var_key, var in variables.items():
@@ -121,6 +124,7 @@ class DebugLoggingLayer(Layer):
                 if initial_vars:
                     self.logger.info("  Initial variables: %s", self._format_dict(initial_vars))
 
+    @override
     def on_event(self, event: GraphEngineEvent) -> None:
         """Log individual events based on their type."""
         event_class = event.__class__.__name__
@@ -222,6 +226,7 @@ class DebugLoggingLayer(Layer):
             # Log unknown events at debug level
             self.logger.debug("Event: %s", event_class)
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         """Log graph execution end with summary statistics."""
         self.logger.info("=" * 80)

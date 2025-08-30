@@ -73,7 +73,7 @@ class CommandProcessor:
         if handler:
             try:
                 handler.handle(command, self.graph_execution)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error handling command %s", command.__class__.__name__)
         else:
             logger.warning("No handler registered for command: %s", command.__class__.__name__)

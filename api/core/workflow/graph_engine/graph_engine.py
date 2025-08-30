@@ -213,7 +213,9 @@ class GraphEngine:
         # Capture context for workers
         flask_app: Flask | None = None
         try:
-            flask_app = current_app._get_current_object()  # type: ignore
+            app = current_app._get_current_object()  # type: ignore
+            if isinstance(app, Flask):
+                flask_app = app
         except RuntimeError:
             pass
 
