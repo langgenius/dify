@@ -9,7 +9,8 @@ class PluginAutoUpgradeService:
     def get_strategy(tenant_id: str) -> TenantPluginAutoUpgradeStrategy | None:
         with Session(db.engine) as session:
             return (
-                session.query(TenantPluginAutoUpgradeStrategy).where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+                session.query(TenantPluginAutoUpgradeStrategy)
+                .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
                 .first()
             )
 
@@ -24,7 +25,8 @@ class PluginAutoUpgradeService:
     ) -> bool:
         with Session(db.engine) as session:
             exist_strategy = (
-                session.query(TenantPluginAutoUpgradeStrategy).where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+                session.query(TenantPluginAutoUpgradeStrategy)
+                .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
                 .first()
             )
             if not exist_strategy:
@@ -51,7 +53,8 @@ class PluginAutoUpgradeService:
     def exclude_plugin(tenant_id: str, plugin_id: str) -> bool:
         with Session(db.engine) as session:
             exist_strategy = (
-                session.query(TenantPluginAutoUpgradeStrategy).where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+                session.query(TenantPluginAutoUpgradeStrategy)
+                .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
                 .first()
             )
             if not exist_strategy:

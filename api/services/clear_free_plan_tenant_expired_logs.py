@@ -321,7 +321,9 @@ class ClearFreePlanTenantExpiredLogs:
                     workflow_app_log_ids = [workflow_app_log.id for workflow_app_log in workflow_app_logs]
 
                     # delete workflow app logs
-                    session.query(WorkflowAppLog).where(WorkflowAppLog.id.in_(workflow_app_log_ids)).delete(synchronize_session=False)
+                    session.query(WorkflowAppLog).where(WorkflowAppLog.id.in_(workflow_app_log_ids)).delete(
+                        synchronize_session=False
+                    )
                     session.commit()
 
                     click.echo(
