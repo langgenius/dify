@@ -18,7 +18,7 @@ class MoreLikeThisConfigManager:
         :param config: model config args
         """
         validated_config, _ = cls.validate_and_set_defaults(config)
-        return validated_config["more_like_this"]["enabled"]
+        return AppConfigModel.model_validate(validated_config).more_like_this.enabled
 
     @classmethod
     def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
