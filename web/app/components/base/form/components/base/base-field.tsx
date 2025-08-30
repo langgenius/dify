@@ -12,6 +12,7 @@ import PureSelect from '@/app/components/base/select/pure'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
 
 export type BaseFieldProps = {
@@ -101,6 +102,12 @@ const BaseField = ({
       return conditionValue === condition.value
     })
   }, [values, show_on])
+
+  const booleanRadioValue = useMemo(() => {
+    if (value === null || value === undefined)
+      return undefined
+    return value ? 1 : 0
+  }, [value])
 
   if (!show)
     return null
@@ -202,6 +209,18 @@ const BaseField = ({
                 ))
               }
             </div>
+          )
+        }
+        {
+          formSchema.type === FormTypeEnum.boolean && (
+            <Radio.Group
+              className='flex w-fit items-center'
+              value={booleanRadioValue}
+              onChange={val => field.handleChange(val === 1)}
+            >
+              <Radio value={1} className='!mr-1'>True</Radio>
+              <Radio value={0}>False</Radio>
+            </Radio.Group>
           )
         }
         {
