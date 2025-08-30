@@ -12,7 +12,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import Workflow, WorkflowWebhookTrigger
+from models.workflow import AppTrigger, AppTriggerStatus, AppTriggerType, Workflow, WorkflowWebhookTrigger
 from services.async_workflow_service import AsyncWorkflowService
 from services.workflow.entities import TriggerData
 
@@ -34,6 +34,23 @@ class WebhookService:
             )
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")
+
+            # Check if the corresponding AppTrigger is enabled
+            app_trigger = (
+                session.query(AppTrigger)
+                .filter(
+                    AppTrigger.app_id == webhook_trigger.app_id,
+                    AppTrigger.node_id == webhook_trigger.node_id,
+                    AppTrigger.trigger_type == AppTriggerType.TRIGGER_WEBHOOK,
+                )
+                .first()
+            )
+            
+            if not app_trigger:
+                raise ValueError(f"App trigger not found for webhook {webhook_id}")
+            
+            if app_trigger.status != AppTriggerStatus.ENABLED:
+                raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
             # Get workflow
             workflow = (
