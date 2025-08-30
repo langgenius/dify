@@ -217,13 +217,13 @@ function AppCard({
                   toggleDisabled && (appUnpublished || missingEntryNode) ? (
                     <>
                       <div className="mb-1 text-xs font-normal text-text-secondary">
-                        To enable this feature, please add a User Input node to the canvas.
+                        {t('appOverview.overview.appInfo.enableTooltip.description')}
                       </div>
                       <div
                         className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
                         onClick={() => window.open(docLink('/guides/workflow/node/start'), '_blank')}
                       >
-                        Learn more
+                        {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
                       </div>
                     </>
                   ) : ''

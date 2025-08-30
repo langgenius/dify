@@ -38,6 +38,10 @@ const translation = {
       regenerate: '重新生成',
       regenerateNotice: '您是否要重新生成公开访问 URL？',
       preUseReminder: '使用前请先打开开关',
+      enableTooltip: {
+        description: '要启用此功能，请在画布中添加用户输入节点。',
+        learnMore: '了解更多',
+      },
       settings: {
         entry: '设置',
         title: 'web app 设置',

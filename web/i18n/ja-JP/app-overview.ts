@@ -37,6 +37,10 @@ const translation = {
       regenerate: '再生成',
       regenerateNotice: '公開 URL を再生成しますか？',
       preUseReminder: '続行する前に Web アプリを有効にしてください。',
+      enableTooltip: {
+        description: 'この機能を有効にするには、キャンバスにユーザー入力ノードを追加してください。',
+        learnMore: '詳細を見る',
+      },
       settings: {
         entry: '設定',
         title: 'Web アプリの設定',
