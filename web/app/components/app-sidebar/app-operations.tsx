@@ -62,7 +62,7 @@ const AppOperations = ({ primaryOperations, secondaryOperations, gap }: {
           key={operation.id}
           size={'small'}
           variant={'secondary'}
-          className="gap-[1px]"
+          className="gap-[1px] px-1.5"
           onClick={operation.onClick}>
           {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
           <span className="system-xs-medium text-components-button-secondary-text">
@@ -85,7 +85,7 @@ const AppOperations = ({ primaryOperations, secondaryOperations, gap }: {
             <Button
               size={'small'}
               variant={'secondary'}
-              className='gap-1'
+              className='gap-1 px-1.5'
             >
               <RiMoreFill className='h-3.5 w-3.5 text-components-button-secondary-text' />
               <span className='system-xs-medium text-components-button-secondary-text'>{t('common.operation.more')}</span>

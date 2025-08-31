@@ -10,7 +10,6 @@ import WeekdaySelector from './components/weekday-selector'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import dayjs from 'dayjs'
 import NextExecutionTimes from './components/next-execution-times'
-import ExecuteNowButton from './components/execute-now-button'
 import MonthlyDaysSelector from './components/monthly-days-selector'
 import OnMinuteSelector from './components/on-minute-selector'
 import Input from '@/app/components/base/input'
@@ -33,11 +32,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
     handleTimeChange,
     handleOnMinuteChange,
   } = useConfig(id, data)
-
-  const handleExecuteNow = () => {
-    // TODO: Implement execute now functionality
-    console.log('Execute now clicked')
-  }
 
   return (
     <div className='mt-2'>
@@ -146,9 +140,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
 
         <NextExecutionTimes data={inputs} />
 
-        <div className="pt-2">
-          <ExecuteNowButton onClick={handleExecuteNow} />
-        </div>
       </div>
     </div>
   )
