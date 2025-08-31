@@ -3,6 +3,8 @@ import sys
 from collections.abc import Mapping
 from typing import Any
 
+from api.controllers.mcp.mcp import MCPRequestError
+from api.core.mcp import types as mcp_types
 from flask import Blueprint, Flask, current_app, got_request_exception
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
@@ -81,6 +83,27 @@ def register_external_error_handlers(api: Api) -> None:
         got_request_exception.send(current_app, exception=e)
         status_code = 429
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
+        return data, status_code
+
+    @api.errorhandler(MCPRequestError)
+    def handle_mcp_request_error(e: MCPRequestError):
+        got_request_exception.send(current_app, exception=e)
+
+        # Map MCP error codes to HTTP status codes
+        error_code = e.error_code
+        if error_code in (mcp_types.INVALID_REQUEST, mcp_types.INVALID_PARAMS):
+            status_code = 400
+        elif error_code == mcp_types.METHOD_NOT_FOUND:
+            status_code = 404
+        elif error_code == mcp_types.INTERNAL_ERROR:
+            status_code = 500
+        elif error_code == mcp_types.PARSE_ERROR:
+            status_code = 400
+        else:
+            # Default to 500 for unknown MCP error codes
+            status_code = 500
+
+        data = {"code": "mcp_request_error", "message": e.message, "mcp_error_code": error_code, "status": status_code}
         return data, status_code
 
     @api.errorhandler(Exception)
