@@ -23,7 +23,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode
       ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
+      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
     return nodes.filter(type => type !== BlockEnum.Start)
   },
   checkValid(_payload: WebhookTriggerNodeType, _t: any) {
