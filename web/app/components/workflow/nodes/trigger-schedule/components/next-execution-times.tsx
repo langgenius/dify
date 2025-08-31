@@ -23,13 +23,15 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
       <label className="block text-xs font-medium text-gray-500">
         {t('workflow.nodes.triggerSchedule.nextExecutionTimes')}
       </label>
-      <div className="space-y-2 rounded-lg bg-components-input-bg-normal p-3">
+      <div className="flex min-h-[80px] flex-col rounded-lg bg-components-input-bg-normal py-2">
         {executionTimes.map((time, index) => (
-          <div key={index} className="flex items-baseline gap-3 text-xs text-text-secondary">
-            <span className="select-none font-mono leading-none text-text-quaternary">
+          <div key={index} className="flex items-baseline text-xs">
+            <span className="w-6 select-none text-right font-mono font-normal leading-[150%] tracking-wider text-text-quaternary">
               {String(index + 1).padStart(2, '0')}
             </span>
-            <span className="leading-none">{time}</span>
+            <span className="pl-2 pr-3 font-mono font-normal leading-[150%] tracking-wider text-text-secondary">
+              {time}
+            </span>
           </div>
         ))}
       </div>
