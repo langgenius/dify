@@ -39,7 +39,7 @@ from .orchestration import Dispatcher, ExecutionCoordinator
 from .output_registry import OutputRegistry
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
-from .state_management import EdgeStateManager, ExecutionTracker, NodeStateManager
+from .state_management import UnifiedStateManager
 from .worker_management import ActivityTracker, DynamicScaler, WorkerFactory, WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -119,10 +119,8 @@ class GraphEngine:
     def _initialize_subsystems(self) -> None:
         """Initialize all subsystems with proper dependency injection."""
 
-        # State management
-        self.node_state_manager = NodeStateManager(self.graph, self.ready_queue)
-        self.edge_state_manager = EdgeStateManager(self.graph)
-        self.execution_tracker = ExecutionTracker()
+        # Unified state management - single instance handles all state operations
+        self.state_manager = UnifiedStateManager(self.graph, self.ready_queue)
 
         # Response coordination
         self.output_registry = OutputRegistry(self.graph_runtime_state.variable_pool)
@@ -139,20 +137,20 @@ class GraphEngine:
         self.node_readiness_checker = NodeReadinessChecker(self.graph)
         self.edge_processor = EdgeProcessor(
             graph=self.graph,
-            edge_state_manager=self.edge_state_manager,
-            node_state_manager=self.node_state_manager,
+            edge_state_manager=self.state_manager,
+            node_state_manager=self.state_manager,
             response_coordinator=self.response_coordinator,
         )
         self.skip_propagator = SkipPropagator(
             graph=self.graph,
-            edge_state_manager=self.edge_state_manager,
-            node_state_manager=self.node_state_manager,
+            edge_state_manager=self.state_manager,
+            node_state_manager=self.state_manager,
         )
         self.branch_handler = BranchHandler(
             graph=self.graph,
             edge_processor=self.edge_processor,
             skip_propagator=self.skip_propagator,
-            edge_state_manager=self.edge_state_manager,
+            edge_state_manager=self.state_manager,
         )
 
         # Event handler registry with all dependencies
@@ -164,8 +162,8 @@ class GraphEngine:
             event_collector=self.event_collector,
             branch_handler=self.branch_handler,
             edge_processor=self.edge_processor,
-            node_state_manager=self.node_state_manager,
-            execution_tracker=self.execution_tracker,
+            node_state_manager=self.state_manager,
+            execution_tracker=self.state_manager,
             error_handler=self.error_handler,
         )
 
@@ -182,8 +180,8 @@ class GraphEngine:
         # Orchestration
         self.execution_coordinator = ExecutionCoordinator(
             graph_execution=self.graph_execution,
-            node_state_manager=self.node_state_manager,
-            execution_tracker=self.execution_tracker,
+            node_state_manager=self.state_manager,
+            execution_tracker=self.state_manager,
             event_handler=self.event_handler_registry,
             event_collector=self.event_collector,
             command_processor=self.command_processor,
@@ -335,8 +333,8 @@ class GraphEngine:
 
         # Enqueue root node
         root_node = self.graph.root_node
-        self.node_state_manager.enqueue_node(root_node.id)
-        self.execution_tracker.add(root_node.id)
+        self.state_manager.enqueue_node(root_node.id)
+        self.state_manager.add(root_node.id)
 
         # Start dispatcher
         self.dispatcher.start()

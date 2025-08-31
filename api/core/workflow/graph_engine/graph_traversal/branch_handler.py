@@ -8,7 +8,7 @@ from typing import final
 from core.workflow.graph import Graph
 from core.workflow.graph_events.node import NodeRunStreamChunkEvent
 
-from ..state_management import EdgeStateManager
+from ..state_management import UnifiedStateManager
 from .edge_processor import EdgeProcessor
 from .skip_propagator import SkipPropagator
 
@@ -27,7 +27,7 @@ class BranchHandler:
         graph: Graph,
         edge_processor: EdgeProcessor,
         skip_propagator: SkipPropagator,
-        edge_state_manager: EdgeStateManager,
+        edge_state_manager: UnifiedStateManager,
     ) -> None:
         """
         Initialize the branch handler.

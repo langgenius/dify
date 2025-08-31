@@ -34,7 +34,7 @@ ignore_imports =
 [importlinter:contract:rsc]
 name = RSC
 type = layers
-layers = 
+layers =
     graph_engine
     response_coordinator
     output_registry
@@ -44,7 +44,7 @@ containers =
 [importlinter:contract:worker]
 name = Worker
 type = layers
-layers = 
+layers =
     graph_engine
     worker
 containers =
@@ -77,18 +77,8 @@ forbidden_modules =
     core.workflow.graph_engine.layers
     core.workflow.graph_engine.protocols
 
-[importlinter:contract:state-management-layers]
-name = State Management Layers
-type = layers
-layers =
-    execution_tracker
-    node_state_manager
-    edge_state_manager
-containers =
-    core.workflow.graph_engine.state_management
-
 [importlinter:contract:worker-management-layers]
-name = Worker Management Layers  
+name = Worker Management Layers
 type = layers
 layers =
     worker_pool

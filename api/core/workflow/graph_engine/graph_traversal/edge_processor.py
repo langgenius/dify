@@ -10,7 +10,7 @@ from core.workflow.graph import Edge, Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent
 
 from ..response_coordinator import ResponseStreamCoordinator
-from ..state_management import EdgeStateManager, NodeStateManager
+from ..state_management import UnifiedStateManager
 
 
 @final
@@ -25,8 +25,8 @@ class EdgeProcessor:
     def __init__(
         self,
         graph: Graph,
-        edge_state_manager: EdgeStateManager,
-        node_state_manager: NodeStateManager,
+        edge_state_manager: UnifiedStateManager,
+        node_state_manager: UnifiedStateManager,
         response_coordinator: ResponseStreamCoordinator,
     ) -> None:
         """

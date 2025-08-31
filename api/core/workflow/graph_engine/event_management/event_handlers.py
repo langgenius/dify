@@ -32,7 +32,7 @@ from ..response_coordinator import ResponseStreamCoordinator
 if TYPE_CHECKING:
     from ..error_handling import ErrorHandler
     from ..graph_traversal import BranchHandler, EdgeProcessor
-    from ..state_management import ExecutionTracker, NodeStateManager
+    from ..state_management import UnifiedStateManager
     from .event_collector import EventCollector
 
 logger = logging.getLogger(__name__)
@@ -56,8 +56,8 @@ class EventHandlerRegistry:
         event_collector: "EventCollector",
         branch_handler: "BranchHandler",
         edge_processor: "EdgeProcessor",
-        node_state_manager: "NodeStateManager",
-        execution_tracker: "ExecutionTracker",
+        node_state_manager: "UnifiedStateManager",
+        execution_tracker: "UnifiedStateManager",
         error_handler: "ErrorHandler",
     ) -> None:
         """
