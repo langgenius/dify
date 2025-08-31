@@ -1,10 +1,11 @@
 import logging
 
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import Resource, fields, marshal_with, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from fields.member_fields import account_with_role_fields
 from fields.workflow_comment_fields import (
     workflow_comment_basic_fields,
     workflow_comment_create_fields,
@@ -16,6 +17,7 @@ from fields.workflow_comment_fields import (
 )
 from libs.login import current_user, login_required
 from models import App
+from services.account_service import TenantService
 from services.workflow_comment_service import WorkflowCommentService
 
 logger = logging.getLogger(__name__)
@@ -216,6 +218,20 @@ class WorkflowCommentReplyDetailApi(Resource):
         return {"result": "success"}, 204
 
 
+class WorkflowCommentMentionUsersApi(Resource):
+    """API for getting mentionable users for workflow comments."""
+
+    @login_required
+    @setup_required
+    @account_initialization_required
+    @get_app_model
+    @marshal_with({"users": fields.List(fields.Nested(account_with_role_fields))})
+    def get(self, app_model: App):
+        """Get all users in current tenant for mentions."""        
+        members = TenantService.get_tenant_members(current_user.current_tenant)
+        return {"users": members}
+
+
 # Register API routes
 api.add_resource(WorkflowCommentListApi, "/apps/<uuid:app_id>/workflow/comments")
 api.add_resource(WorkflowCommentDetailApi, "/apps/<uuid:app_id>/workflow/comments/<string:comment_id>")
@@ -224,3 +240,4 @@ api.add_resource(WorkflowCommentReplyApi, "/apps/<uuid:app_id>/workflow/comments
 api.add_resource(
     WorkflowCommentReplyDetailApi, "/apps/<uuid:app_id>/workflow/comments/<string:comment_id>/replies/<string:reply_id>"
 )
+api.add_resource(WorkflowCommentMentionUsersApi, "/apps/<uuid:app_id>/workflow/comments/mention-users")
