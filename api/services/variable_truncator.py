@@ -7,6 +7,7 @@ from configs import dify_config
 from core.variables.segments import (
     ArrayFileSegment,
     ArraySegment,
+    BooleanSegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
@@ -78,8 +79,13 @@ class VariableTruncator:
             string_length_limit=dify_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH,
         )
 
-    def truncate_io_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
-        """`truncate_inputs_output` is used to truncate the `inputs` / `outputs` of a WorkflowNodeExecution record."""
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        """
+        `truncate_variable_mapping` is responsible for truncating variable mappings
+        generated during workflow execution, such as `inputs`, `process_data`, or `outputs`
+        of a WorkflowNodeExecution record. This ensures the mappings remain within the
+        specified size limits while preserving their structure.
+        """
         size = self.calculate_json_size(v)
         if size < self._max_size_bytes:
             return v, False
@@ -101,6 +107,23 @@ class VariableTruncator:
             budget -= self.calculate_json_size(truncated_value) + 2  # ":" and ","
         return truncated_mapping, is_truncated
 
+    @staticmethod
+    def _segment_need_truncation(segment: Segment) -> bool:
+        if isinstance(
+            segment,
+            (NoneSegment, FloatSegment, IntegerSegment, FileSegment, BooleanSegment, ArrayFileSegment),
+        ):
+            return False
+        return True
+
+    @staticmethod
+    def _json_value_needs_truncation(value: Any) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, (bool, int, float)):
+            return False
+        return True
+
     def truncate(self, segment: Segment) -> TruncationResult:
         """
         Apply smart truncation to a variable value.
@@ -112,13 +135,7 @@ class VariableTruncator:
             TruncationResult with truncated data and truncation status
         """
 
-        if isinstance(segment, IntegerSegment):
-            if isinstance(segment.value, bool):
-                # TODO: here we need to support boolean types here
-                return TruncationResult(result=IntegerSegment(value=int(segment.value)), truncated=False)
-            return TruncationResult(result=segment, truncated=False)
-        # we don't truncate ArrayFileSegment, as the number of files in one variable is relatiely small.
-        elif isinstance(segment, (NoneSegment, FloatSegment, FileSegment, ArrayFileSegment)):
+        if not VariableTruncator._segment_need_truncation(segment):
             return TruncationResult(result=segment, truncated=False)
 
         # Apply type-specific truncation with target size

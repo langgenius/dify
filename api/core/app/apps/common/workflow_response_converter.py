@@ -335,7 +335,7 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueIterationStartEvent,
     ) -> IterationNodeStartStreamResponse:
-        new_inputs, truncated = self._truncator.truncate_io_mapping(event.inputs or {})
+        new_inputs, truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
         return IterationNodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -391,8 +391,8 @@ class WorkflowResponseConverter:
     ) -> IterationNodeCompletedStreamResponse:
         json_converter = WorkflowRuntimeTypeConverter()
 
-        new_inputs, inputs_truncated = self._truncator.truncate_io_mapping(event.inputs or {})
-        new_outputs, outputs_truncated = self._truncator.truncate_io_mapping(
+        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
             json_converter.to_json_encodable(event.outputs) or {}
         )
         return IterationNodeCompletedStreamResponse(
@@ -426,7 +426,7 @@ class WorkflowResponseConverter:
     def workflow_loop_start_to_stream_response(
         self, *, task_id: str, workflow_execution_id: str, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
-        new_inputs, truncated = self._truncator.truncate_io_mapping(event.inputs or {})
+        new_inputs, truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
         return LoopNodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -481,8 +481,8 @@ class WorkflowResponseConverter:
         event: QueueLoopCompletedEvent,
     ) -> LoopNodeCompletedStreamResponse:
         json_converter = WorkflowRuntimeTypeConverter()
-        new_inputs, inputs_truncated = self._truncator.truncate_io_mapping(event.inputs or {})
-        new_outputs, outputs_truncated = self._truncator.truncate_io_mapping(
+        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
             json_converter.to_json_encodable(event.outputs) or {}
         )
         return LoopNodeCompletedStreamResponse(

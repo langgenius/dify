@@ -274,7 +274,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         converter = WorkflowRuntimeTypeConverter()
         json_encodable_value = converter.to_json_encodable(values)
         truncator = self._create_truncator()
-        truncated_values, truncated = truncator.truncate_io_mapping(json_encodable_value)
+        truncated_values, truncated = truncator.truncate_variable_mapping(json_encodable_value)
         if not truncated:
             return None
 

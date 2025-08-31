@@ -14,8 +14,6 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
-from alembic import command as alembic_command
-from alembic.config import Config
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
