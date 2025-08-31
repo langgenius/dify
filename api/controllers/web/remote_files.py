@@ -14,8 +14,8 @@ from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
+from extensions.ext_database import db
 from fields.file_fields import build_file_with_signed_url_model, build_remote_file_info_model
-from models import db
 from services.file_service import FileService
 
 

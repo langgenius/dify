@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound
 import services
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.files import files_ns
-from models import db
+from extensions.ext_database import db
 from services.account_service import TenantService
 from services.file_service import FileService
 

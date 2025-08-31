@@ -3,9 +3,9 @@ import uuid
 import pytest
 from sqlalchemy.orm import Session, joinedload, selectinload
 
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models import db
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom

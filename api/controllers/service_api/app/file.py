@@ -12,8 +12,9 @@ from controllers.common.errors import (
 )
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from extensions.ext_database import db
 from fields.file_fields import build_file_model
-from models import App, EndUser, db
+from models import App, EndUser
 from services.file_service import FileService
 
 

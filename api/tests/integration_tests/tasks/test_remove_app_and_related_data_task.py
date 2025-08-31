@@ -5,7 +5,8 @@ import pytest
 from sqlalchemy import delete
 
 from core.variables.segments import StringSegment
-from models import Tenant, db
+from extensions.ext_database import db
+from models import Tenant
 from models.enums import CreatorUserRole
 from models.model import App, UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
@@ -259,6 +260,7 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
 
         # Create WorkflowDraftVariableFile records
         from core.variables.types import SegmentType
+
         var_file1 = WorkflowDraftVariableFile(
             tenant_id=tenant.id,
             app_id=app.id,

@@ -11,8 +11,8 @@ from controllers.common.errors import (
 )
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from extensions.ext_database import db
 from fields.file_fields import build_file_model
-from models import db
 from services.file_service import FileService
 
 

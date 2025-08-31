@@ -14,8 +14,8 @@ from controllers.common.errors import (
 )
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
+from extensions.ext_database import db
 from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
-from models import db
 from models.account import Account
 from services.file_service import FileService
 

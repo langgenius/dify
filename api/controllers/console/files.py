@@ -20,9 +20,9 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     setup_required,
 )
+from extensions.ext_database import db
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
-from models import db
 from services.file_service import FileService
 
 PREVIEW_WORDS_LIMIT = 3000
