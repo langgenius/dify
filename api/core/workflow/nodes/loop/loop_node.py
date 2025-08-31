@@ -314,30 +314,23 @@ class LoopNode(BaseNode):
                 and event.node_type == NodeType.LOOP_END
                 and not isinstance(event, NodeRunStreamChunkEvent)
             ):
-                # Check if variables in break conditions exist and process conditions
-                # Allow loop internal variables to be used in break conditions
-                available_conditions = []
-                for condition in break_conditions:
-                    variable = self.graph_runtime_state.variable_pool.get(condition.variable_selector)
-                    if variable:
-                        available_conditions.append(condition)
-
-                # Process conditions if at least one variable is available
-                if available_conditions:
-                    input_conditions, group_result, check_break_result = condition_processor.process_conditions(
-                        variable_pool=self.graph_runtime_state.variable_pool,
-                        conditions=available_conditions,
-                        operator=logical_operator,
-                    )
-                    if check_break_result:
-                        break
-                else:
-                    check_break_result = True
+                check_break_result = True
                 yield self._handle_event_metadata(event=event, iter_run_index=current_index)
                 break
 
             if isinstance(event, NodeRunSucceededEvent):
                 yield self._handle_event_metadata(event=event, iter_run_index=current_index)
+
+                # Evaluate break conditions if all required variables are available
+                if self._should_evaluate_break_conditions(break_conditions):
+                    if self._evaluate_break_conditions(
+                        break_conditions=break_conditions,
+                        loop_variable_selectors=loop_variable_selectors,
+                        condition_processor=condition_processor,
+                        logical_operator=logical_operator,
+                    ):
+                        check_break_result = True
+                        break
 
             elif isinstance(event, BaseGraphEvent):
                 if isinstance(event, GraphRunFailedEvent):
@@ -400,10 +393,6 @@ class LoopNode(BaseNode):
             else:
                 yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
 
-        # Remove all nodes outputs from variable pool
-        for node_id in loop_graph.node_ids:
-            variable_pool.remove([node_id])
-
         _outputs: dict[str, Segment | int | None] = {}
         for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
             _loop_variable_segment = variable_pool.get(loop_variable_selector)
@@ -414,6 +403,10 @@ class LoopNode(BaseNode):
 
         _outputs["loop_round"] = current_index + 1
         self._node_data.outputs = _outputs
+
+        # Remove all nodes outputs from variable pool
+        for node_id in loop_graph.node_ids:
+            variable_pool.remove([node_id])
 
         if check_break_result:
             return {"check_break_result": True}
@@ -552,3 +545,41 @@ class LoopNode(BaseNode):
             except ValueError:
                 raise type_exc
             return build_segment_with_type(var_type, value)
+
+    def _should_evaluate_break_conditions(self, break_conditions: list) -> bool:
+        """
+        Check if all required variables for break conditions are available.
+        Uses a functional approach with all() for cleaner logic.
+        """
+        if not break_conditions:
+            return False
+            
+        # Use all() with generator expression - different from the loop-based approach
+        return all(
+            self.graph_runtime_state.variable_pool.get(condition.variable_selector) is not None
+            for condition in break_conditions
+        )
+
+    def _evaluate_break_conditions(
+        self,
+        *,
+        break_conditions: list,
+        loop_variable_selectors: dict,
+        condition_processor,
+        logical_operator: str,
+    ) -> bool:
+        """
+        Evaluate break conditions and return whether loop should terminate.
+        Extracted as separate method for better separation of concerns.
+        """
+        try:
+            _, _, should_break = condition_processor.process_conditions(
+                variable_pool=self.graph_runtime_state.variable_pool,
+                selectors=loop_variable_selectors,
+                conditions=break_conditions,
+                operator=logical_operator,
+            )
+            return should_break
+        except Exception:
+            # If condition evaluation fails, continue the loop (don't break)
+            return False

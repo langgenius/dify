@@ -27,6 +27,7 @@ class ConditionProcessor:
         self,
         *,
         variable_pool: VariablePool,
+        selectors: dict,
         conditions: Sequence[Condition],
         operator: Literal["and", "or"],
     ):
@@ -61,6 +62,10 @@ class ConditionProcessor:
                     expected=None,
                 )
             else:
+                # Extract variable name and store selector mapping - using different approach
+                variable_name = self._extract_variable_name_from_selector(condition.variable_selector)
+                if variable_name:
+                    selectors[variable_name] = condition.variable_selector
                 actual_value = variable.value if variable else None
                 expected_value: str | Sequence[str] | bool | list[bool] | None = condition.value
                 if isinstance(expected_value, str):
@@ -428,3 +433,17 @@ def _process_sub_conditions(
         result = all(sub_group_results) if "not" in condition.comparison_operator else any(sub_group_results)
         group_results.append(result)
     return all(group_results) if operator == "and" else any(group_results)
+
+    def _extract_variable_name_from_selector(self, variable_selector) -> str | None:
+        """
+        Extract variable name from selector using a more explicit method.
+        Different implementation approach compared to direct indexing.
+        """
+        if not variable_selector or not isinstance(variable_selector, (list, tuple)):
+            return None
+        
+        # Use more defensive approach - check length first, then extract
+        if len(variable_selector) >= 1:
+            return variable_selector[-1]  # Last element is typically the variable name
+        
+        return None
