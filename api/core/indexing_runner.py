@@ -359,6 +359,7 @@ class IndexingRunner:
             extract_setting = ExtractSetting(
                 datasource_type="notion_import",
                 notion_info={
+                    "credential_id": data_source_info["credential_id"],
                     "notion_workspace_id": data_source_info["notion_workspace_id"],
                     "notion_obj_id": data_source_info["notion_page_id"],
                     "notion_page_type": data_source_info["type"],

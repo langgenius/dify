@@ -3,7 +3,7 @@ import io
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
@@ -50,22 +50,25 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import (
-    ModelInvokeCompletedEvent,
-    NodeEvent,
-    RunCompletedEvent,
-    RunRetrieverResourceEvent,
-    RunStreamChunkEvent,
+from core.workflow.entities import GraphInitParams, VariablePool
+from core.workflow.enums import (
+    ErrorStrategy,
+    NodeType,
+    SystemVariableKey,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
+from core.workflow.node_events import (
+    ModelInvokeCompletedEvent,
+    NodeEventBase,
+    NodeRunResult,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamCompletedEvent,
+)
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
+from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 
 from . import llm_utils
 from .entities import (
@@ -88,14 +91,13 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
-    from core.workflow.graph_engine.entities.event import InNodeEvent
+    from core.workflow.entities import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
 
-class LLMNode(BaseNode):
-    _node_type = NodeType.LLM
+class LLMNode(Node):
+    node_type = NodeType.LLM
 
     _node_data: LLMNodeData
 
@@ -110,10 +112,7 @@ class LLMNode(BaseNode):
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
-        thread_pool_id: Optional[str] = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
     ) -> None:
@@ -121,10 +120,7 @@ class LLMNode(BaseNode):
             id=id,
             config=config,
             graph_init_params=graph_init_params,
-            graph=graph,
             graph_runtime_state=graph_runtime_state,
-            previous_node_id=previous_node_id,
-            thread_pool_id=thread_pool_id,
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs: list[File] = []
@@ -161,9 +157,9 @@ class LLMNode(BaseNode):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator[Union[NodeEvent, "InNodeEvent"], None, None]:
-        node_inputs: Optional[dict[str, Any]] = None
-        process_data = None
+    def _run(self) -> Generator:
+        node_inputs: dict[str, Any] = {}
+        process_data: dict[str, Any] = {}
         result_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
@@ -181,8 +177,6 @@ class LLMNode(BaseNode):
 
             # merge inputs
             inputs.update(jinja_inputs)
-
-            node_inputs = {}
 
             # fetch files
             files = (
@@ -255,13 +249,14 @@ class LLMNode(BaseNode):
                 structured_output=self._node_data.structured_output,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
-                node_id=self.node_id,
+                node_id=self._node_id,
+                node_type=self.node_type,
             )
 
             structured_output: LLMStructuredOutput | None = None
 
             for event in generator:
-                if isinstance(event, RunStreamChunkEvent):
+                if isinstance(event, StreamChunkEvent):
                     yield event
                 elif isinstance(event, ModelInvokeCompletedEvent):
                     result_text = event.text
@@ -290,8 +285,15 @@ class LLMNode(BaseNode):
             if self._file_outputs is not None:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            # Send final chunk event to indicate streaming is complete
+            yield StreamChunkEvent(
+                selector=[self._node_id, "text"],
+                chunk="",
+                is_final=True,
+            )
+
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=node_inputs,
                     process_data=process_data,
@@ -305,8 +307,8 @@ class LLMNode(BaseNode):
                 )
             )
         except ValueError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
                     inputs=node_inputs,
@@ -316,8 +318,8 @@ class LLMNode(BaseNode):
             )
         except Exception as e:
             logger.exception("error while executing llm node")
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
                     inputs=node_inputs,
@@ -338,7 +340,8 @@ class LLMNode(BaseNode):
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
-    ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
+        node_type: NodeType,
+    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
         )
@@ -374,6 +377,7 @@ class LLMNode(BaseNode):
             file_saver=file_saver,
             file_outputs=file_outputs,
             node_id=node_id,
+            node_type=node_type,
         )
 
     @staticmethod
@@ -383,7 +387,8 @@ class LLMNode(BaseNode):
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
-    ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
+        node_type: NodeType,
+    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         # For blocking mode
         if isinstance(invoke_result, LLMResult):
             event = LLMNode.handle_blocking_result(
@@ -414,7 +419,11 @@ class LLMNode(BaseNode):
                         file_outputs=file_outputs,
                     ):
                         full_text_buffer.write(text_part)
-                        yield RunStreamChunkEvent(chunk_content=text_part, from_variable_selector=[node_id, "text"])
+                        yield StreamChunkEvent(
+                            selector=[node_id, "text"],
+                            chunk=text_part,
+                            is_final=False,
+                        )
 
                     # Update the whole metadata
                     if not model and result.model:
@@ -811,6 +820,8 @@ class LLMNode(BaseNode):
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # graph_config is not used in this node type
+        _ = graph_config  # Explicitly mark as unused
         # Create typed NodeData from dict
         typed_node_data = LLMNodeData.model_validate(node_data)
 
@@ -1069,10 +1080,6 @@ class LLMNode(BaseNode):
         else:
             logger.warning("unknown contents type encountered, type=%s", type(contents))
             yield str(contents)
-
-    @property
-    def continue_on_error(self) -> bool:
-        return self._node_data.error_strategy is not None
 
     @property
     def retry(self) -> bool:

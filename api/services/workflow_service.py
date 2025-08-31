@@ -3,7 +3,6 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, Optional, cast
-from uuid import uuid4
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -15,16 +14,13 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from core.workflow.entities import VariablePool, WorkflowNodeExecution
+from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import InNodeEvent
+from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import ErrorStrategy
-from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.event.types import NodeEvent
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.system_variable import SystemVariable
@@ -275,12 +271,13 @@ class WorkflowService:
             type=draft_workflow.type,
             version=Workflow.version_from_datetime(naive_utc_now()),
             graph=draft_workflow.graph,
-            features=draft_workflow.features,
             created_by=account.id,
             environment_variables=draft_workflow.environment_variables,
             conversation_variables=draft_workflow.conversation_variables,
             marked_name=marked_name,
             marked_comment=marked_comment,
+            rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
+            features=draft_workflow.features,
         )
 
         # commit db session changes
@@ -404,7 +401,7 @@ class WorkflowService:
 
         # run draft workflow node
         start_at = time.perf_counter()
-        node_execution = self._handle_node_run_result(
+        node_execution = self._handle_single_step_result(
             invoke_node_fn=lambda: run,
             start_at=start_at,
             node_id=node_id,
@@ -453,7 +450,7 @@ class WorkflowService:
         # run free workflow node
         start_at = time.perf_counter()
 
-        node_execution = self._handle_node_run_result(
+        node_execution = self._handle_single_step_result(
             invoke_node_fn=lambda: WorkflowEntry.run_free_node(
                 node_id=node_id,
                 node_data=node_data,
@@ -467,102 +464,128 @@ class WorkflowService:
 
         return node_execution
 
-    def _handle_node_run_result(
+    def _handle_single_step_result(
         self,
-        invoke_node_fn: Callable[[], tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]],
+        invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
         start_at: float,
         node_id: str,
     ) -> WorkflowNodeExecution:
-        try:
-            node, node_events = invoke_node_fn()
+        """
+        Handle single step execution and return WorkflowNodeExecution.
 
-            node_run_result: NodeRunResult | None = None
-            for event in node_events:
-                if isinstance(event, RunCompletedEvent):
-                    node_run_result = event.run_result
+        Args:
+            invoke_node_fn: Function to invoke node execution
+            start_at: Execution start time
+            node_id: ID of the node being executed
 
-                    # sign output files
-                    # node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
-                    break
+        Returns:
+            WorkflowNodeExecution: The execution result
+        """
+        node, node_run_result, run_succeeded, error = self._execute_node_safely(invoke_node_fn)
 
-            if not node_run_result:
-                raise ValueError("Node run failed with no run result")
-            # single step debug mode error handling return
-            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.continue_on_error:
-                node_error_args: dict[str, Any] = {
-                    "status": WorkflowNodeExecutionStatus.EXCEPTION,
-                    "error": node_run_result.error,
-                    "inputs": node_run_result.inputs,
-                    "metadata": {"error_strategy": node.error_strategy},
-                }
-                if node.error_strategy is ErrorStrategy.DEFAULT_VALUE:
-                    node_run_result = NodeRunResult(
-                        **node_error_args,
-                        outputs={
-                            **node.default_value_dict,
-                            "error_message": node_run_result.error,
-                            "error_type": node_run_result.error_type,
-                        },
-                    )
-                else:
-                    node_run_result = NodeRunResult(
-                        **node_error_args,
-                        outputs={
-                            "error_message": node_run_result.error,
-                            "error_type": node_run_result.error_type,
-                        },
-                    )
-            run_succeeded = node_run_result.status in (
-                WorkflowNodeExecutionStatus.SUCCEEDED,
-                WorkflowNodeExecutionStatus.EXCEPTION,
-            )
-            error = node_run_result.error if not run_succeeded else None
-        except WorkflowNodeRunFailedError as e:
-            node = e._node
-            run_succeeded = False
-            node_run_result = None
-            error = e._error
-
-        # Create a NodeExecution domain model
+        # Create base node execution
         node_execution = WorkflowNodeExecution(
-            id=str(uuid4()),
-            workflow_id="",  # This is a single-step execution, so no workflow ID
+            id=str(uuid.uuid4()),
+            workflow_id="",  # Single-step execution has no workflow ID
             index=1,
             node_id=node_id,
-            node_type=node.type_,
+            node_type=node.node_type,
             title=node.title,
             elapsed_time=time.perf_counter() - start_at,
             created_at=naive_utc_now(),
             finished_at=naive_utc_now(),
         )
 
+        # Populate execution result data
+        self._populate_execution_result(node_execution, node_run_result, run_succeeded, error)
+
+        return node_execution
+
+    def _execute_node_safely(
+        self, invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]]
+    ) -> tuple[Node, NodeRunResult | None, bool, str | None]:
+        """
+        Execute node safely and handle errors according to error strategy.
+
+        Returns:
+            Tuple of (node, node_run_result, run_succeeded, error)
+        """
+        try:
+            node, node_events = invoke_node_fn()
+            node_run_result = next(
+                (
+                    event.node_run_result
+                    for event in node_events
+                    if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent))
+                ),
+                None,
+            )
+
+            if not node_run_result:
+                raise ValueError("Node execution failed - no result returned")
+
+            # Apply error strategy if node failed
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.error_strategy:
+                node_run_result = self._apply_error_strategy(node, node_run_result)
+
+            run_succeeded = node_run_result.status in (
+                WorkflowNodeExecutionStatus.SUCCEEDED,
+                WorkflowNodeExecutionStatus.EXCEPTION,
+            )
+            error = node_run_result.error if not run_succeeded else None
+
+            return node, node_run_result, run_succeeded, error
+
+        except WorkflowNodeRunFailedError as e:
+            return e._node, None, False, e._error
+
+    def _apply_error_strategy(self, node: Node, node_run_result: NodeRunResult) -> NodeRunResult:
+        """Apply error strategy when node execution fails."""
+        # TODO(Novice): Maybe we should apply error strategy to node level?
+        error_outputs = {
+            "error_message": node_run_result.error,
+            "error_type": node_run_result.error_type,
+        }
+
+        # Add default values if strategy is DEFAULT_VALUE
+        if node.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+            error_outputs.update(node.default_value_dict)
+
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.EXCEPTION,
+            error=node_run_result.error,
+            inputs=node_run_result.inputs,
+            metadata={WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node.error_strategy},
+            outputs=error_outputs,
+        )
+
+    def _populate_execution_result(
+        self,
+        node_execution: WorkflowNodeExecution,
+        node_run_result: NodeRunResult | None,
+        run_succeeded: bool,
+        error: str | None,
+    ) -> None:
+        """Populate node execution with result data."""
         if run_succeeded and node_run_result:
-            # Set inputs, process_data, and outputs as dictionaries (not JSON strings)
-            inputs = WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
-            process_data = (
+            node_execution.inputs = (
+                WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
+            )
+            node_execution.process_data = (
                 WorkflowEntry.handle_special_values(node_run_result.process_data)
                 if node_run_result.process_data
                 else None
             )
-            outputs = node_run_result.outputs
-
-            node_execution.inputs = inputs
-            node_execution.process_data = process_data
-            node_execution.outputs = outputs
+            node_execution.outputs = node_run_result.outputs
             node_execution.metadata = node_run_result.metadata
 
-            # Map status from WorkflowNodeExecutionStatus to NodeExecutionStatus
-            if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
-                node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
-            elif node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
-                node_execution.status = WorkflowNodeExecutionStatus.EXCEPTION
+            # Set status and error based on result
+            node_execution.status = node_run_result.status
+            if node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
                 node_execution.error = node_run_result.error
         else:
-            # Set failed status and error
             node_execution.status = WorkflowNodeExecutionStatus.FAILED
             node_execution.error = error
-
-        return node_execution
 
     def convert_to_workflow(self, app_model: App, account: Account, args: dict) -> App:
         """

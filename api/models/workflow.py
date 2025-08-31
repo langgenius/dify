@@ -14,7 +14,7 @@ from core.file.models import File
 from core.variables import utils as variable_utils
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -50,6 +50,7 @@ class WorkflowType(Enum):
 
     WORKFLOW = "workflow"
     CHAT = "chat"
+    RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowType":
@@ -145,6 +146,9 @@ class Workflow(Base):
     _conversation_variables: Mapped[str] = mapped_column(
         "conversation_variables", sa.Text, nullable=False, server_default="{}"
     )
+    _rag_pipeline_variables: Mapped[str] = mapped_column(
+        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}"
+    )
 
     VERSION_DRAFT = "draft"
 
@@ -161,6 +165,7 @@ class Workflow(Base):
         created_by: str,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
+        rag_pipeline_variables: list[dict],
         marked_name: str = "",
         marked_comment: str = "",
     ) -> "Workflow":
@@ -175,6 +180,7 @@ class Workflow(Base):
         workflow.created_by = created_by
         workflow.environment_variables = environment_variables or []
         workflow.conversation_variables = conversation_variables or []
+        workflow.rag_pipeline_variables = rag_pipeline_variables or []
         workflow.marked_name = marked_name
         workflow.marked_comment = marked_comment
         workflow.created_at = naive_utc_now()
@@ -316,6 +322,12 @@ class Workflow(Base):
 
         return variables
 
+    def rag_pipeline_user_input_form(self) -> list:
+        # get user_input_form from start node
+        variables: list[Any] = self.rag_pipeline_variables
+
+        return variables
+
     @property
     def unique_hash(self) -> str:
         """
@@ -427,6 +439,7 @@ class Workflow(Base):
             "features": self.features_dict,
             "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
+            "rag_pipeline_variables": self.rag_pipeline_variables,
         }
         return result
 
@@ -444,6 +457,23 @@ class Workflow(Base):
     def conversation_variables(self, value: Sequence[Variable]) -> None:
         self._conversation_variables = json.dumps(
             {var.name: var.model_dump() for var in value},
+            ensure_ascii=False,
+        )
+
+    @property
+    def rag_pipeline_variables(self) -> list[dict]:
+        # TODO: find some way to init `self._conversation_variables` when instance created.
+        if self._rag_pipeline_variables is None:
+            self._rag_pipeline_variables = "{}"
+
+        variables_dict: dict[str, Any] = json.loads(self._rag_pipeline_variables)
+        results = list(variables_dict.values())
+        return results
+
+    @rag_pipeline_variables.setter
+    def rag_pipeline_variables(self, values: list[dict]) -> None:
+        self._rag_pipeline_variables = json.dumps(
+            {item["variable"]: item for item in values},
             ensure_ascii=False,
         )
 
@@ -611,6 +641,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
 
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
+    RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
 class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offload_data` preloaded in most cases.

@@ -89,7 +89,6 @@ const translation = {
     jumpToNode: 'Bu düğüme atla',
     addParallelNode: 'Paralel Düğüm Ekle',
     disconnect: 'Ayırmak',
-    parallelRun: 'Paralel Koşu',
     parallel: 'PARALEL',
     branch: 'DAL',
     featuresDocLink: 'Daha fazla bilgi edinin',

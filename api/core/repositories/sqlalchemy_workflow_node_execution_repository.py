@@ -15,12 +15,8 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from core.workflow.nodes.enums import NodeType
+from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_storage import storage
@@ -344,7 +340,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             # Update the in-memory cache for faster subsequent lookups
             # Only cache if we have a node_execution_id to use as the cache key
             if db_model.node_execution_id:
-                logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
     def save_execution_data(self, execution: WorkflowNodeExecution):
@@ -411,6 +406,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: Optional[OrderConfig] = None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
@@ -436,7 +432,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                WorkflowNodeExecutionModel.triggered_from == triggered_from,
             )
 
             if self._app_id:
@@ -470,6 +466,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: Optional[OrderConfig] = None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.
@@ -487,7 +484,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             A list of NodeExecution instances
         """
         # Get the database models using the new method
-        db_models = self.get_db_models_by_workflow_run(workflow_run_id, order_config)
+        db_models = self.get_db_models_by_workflow_run(workflow_run_id, order_config, triggered_from)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)

@@ -10,6 +10,8 @@ import './styles/globals.css'
 import './styles/markdown.scss'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { DatasetAttr } from '@/types/feature'
+import { Instrument_Serif } from 'next/font/google'
+import cn from '@/utils/classnames'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -18,6 +20,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   userScalable: false,
 }
+
+const instrumentSerif = Instrument_Serif({
+  weight: ['400'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  variable: '--font-instrument-serif',
+})
 
 const LocaleLayout = async ({
   children,
@@ -51,15 +60,15 @@ const LocaleLayout = async ({
   }
 
   return (
-    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
+    <html lang={locale ?? 'en'} className={cn('h-full', instrumentSerif.variable)} suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#FFFFFF" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name='theme-color' content='#FFFFFF' />
+        <meta name='mobile-web-app-capable' content='yes' />
+        <meta name='apple-mobile-web-app-capable' content='yes' />
+        <meta name='apple-mobile-web-app-status-bar-style' content='default' />
       </head>
       <body
-        className="color-scheme h-full select-auto"
+        className='color-scheme h-full select-auto'
         {...datasetMap}
       >
         <ThemeProvider

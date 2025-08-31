@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
+import { RiBracesLine, RiEyeLine } from '@remixicon/react'
 import Textarea from '@/app/components/base/textarea'
+import { Markdown } from '@/app/components/base/markdown'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
@@ -12,8 +15,8 @@ import {
 import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
-import { useFeatures } from '@/app/components/base/features/hooks'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { SegmentedControl } from '@/app/components/base/segmented-control'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -22,6 +25,91 @@ import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
+import { useStore } from '@/app/components/workflow/store'
+import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
+import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
+import { PreviewMode } from '../../base/features/types'
+import { ChunkingMode } from '@/models/datasets'
+
+enum ViewMode {
+  Code = 'code',
+  Preview = 'preview',
+}
+
+enum ContentType {
+  Markdown = 'markdown',
+  Chunks = 'chunks',
+}
+
+type DisplayContentProps = {
+  type: ContentType
+  mdString?: string
+  jsonString?: string
+  readonly: boolean
+  handleTextChange?: (value: string) => void
+  handleEditorChange?: (value: string) => void
+}
+
+const DisplayContent = (props: DisplayContentProps) => {
+  const { type, mdString, jsonString, readonly, handleTextChange, handleEditorChange } = props
+  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Code)
+  const [isFocused, setIsFocused] = useState(false)
+  const { t } = useTranslation()
+
+  return (
+    <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline outline-1 outline-components-input-border-active')}>
+      <div className='flex shrink-0 items-center justify-between p-1'>
+        <div className='system-xs-semibold-uppercase flex items-center px-2 py-0.5 text-text-secondary'>
+          {type.toUpperCase()}
+        </div>
+        <SegmentedControl
+          options={[
+            { value: ViewMode.Code, text: t('workflow.nodes.templateTransform.code'), Icon: RiBracesLine },
+            { value: ViewMode.Preview, text: t('workflow.common.preview'), Icon: RiEyeLine },
+          ]}
+          value={viewMode}
+          onChange={setViewMode}
+          size='small'
+          padding='with'
+          activeClassName='!text-text-accent-light-mode-only'
+          btnClassName='!pl-1.5 !pr-0.5 gap-[3px]'
+        />
+      </div>
+      <div className='flex flex-1 overflow-auto rounded-b-[10px] pl-3 pr-1'>
+        {viewMode === ViewMode.Code && (
+          type === ContentType.Markdown
+            ? <Textarea
+              readOnly={readonly}
+              disabled={readonly}
+              className='h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none'
+              value={mdString as any}
+              onChange={e => handleTextChange?.(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+            />
+            : <SchemaEditor
+              readonly={readonly}
+              className='overflow-y-auto bg-transparent'
+              hideTopMenu
+              schema={jsonString!}
+              onUpdate={handleEditorChange!}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+            />
+        )}
+        {viewMode === ViewMode.Preview && (
+          type === ContentType.Markdown
+            ? <Markdown className='grow overflow-auto rounded-lg !bg-white px-4 py-3' content={(mdString ?? '') as string} />
+            : <ChunkCardList
+              chunkType={ChunkingMode.text} // todo: delete mock data
+              parentMode={'full-doc'} // todo: delete mock data
+              chunkInfo={JSON.parse(jsonString!) as ChunkInfo}
+            />
+        )}
+      </div>
+    </div>
+  )
+}
 
 type Props = {
   currentVar: VarInInspect
@@ -43,6 +131,14 @@ const ValueContent = ({
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
   const JSONEditorDisabled = currentVar.value_type === 'array[any]'
+  const fileUploadConfig = useStore(s => s.fileUploadConfig)
+
+  const hasChunks = useMemo(() => {
+    return currentVar.value_type === 'object'
+      && currentVar.value
+      && typeof currentVar.value === 'object'
+      && ['parent_child_chunks', 'general_chunks', 'qa_chunks'].some(key => key in currentVar.value)
+  }, [currentVar.value_type, currentVar.value])
 
   const formatFileValue = (value: VarInInspect) => {
     if (value.value_type === 'file')
@@ -56,7 +152,6 @@ const ValueContent = ({
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
-  const fileFeature = useFeatures(s => s.features.file)
   const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
@@ -172,7 +267,14 @@ const ValueContent = ({
     >
       <div className={cn('grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
-          <Textarea
+          currentVar.value_type === 'string' ? (
+            <DisplayContent
+              type={ContentType.Markdown}
+              mdString={value as any}
+              readonly={textEditorDisabled}
+              handleTextChange={handleTextChange}
+            />
+          ) : <Textarea
             readOnly={textEditorDisabled}
             disabled={textEditorDisabled}
             className='h-full'
@@ -210,13 +312,20 @@ const ValueContent = ({
           )
         }
         {showJSONEditor && (
-          <SchemaEditor
-            readonly={JSONEditorDisabled}
-            className='overflow-y-auto'
-            hideTopMenu
-            schema={json}
-            onUpdate={handleEditorChange}
-          />
+          hasChunks
+            ? <DisplayContent
+              type={ContentType.Chunks}
+              jsonString={json ?? '{}'}
+              readonly={JSONEditorDisabled}
+              handleEditorChange={handleEditorChange}
+            />
+            : <SchemaEditor
+              readonly={JSONEditorDisabled}
+              className='overflow-y-auto'
+              hideTopMenu
+              schema={json}
+              onUpdate={handleEditorChange}
+            />
         )}
         {showFileEditor && (
           <div className='max-w-[460px]'>
@@ -237,8 +346,12 @@ const ValueContent = ({
                   ...FILE_EXTS[SupportUploadFileTypes.video],
                 ],
                 allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-                number_limits: currentVar.value_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig?.workflow_file_upload_limit || 5,
-                fileUploadConfig: (fileFeature as any).fileUploadConfig,
+                number_limits: currentVar.value_type === 'file' ? 1 : fileUploadConfig?.workflow_file_upload_limit || 5,
+                fileUploadConfig,
+                preview_config: {
+                  mode: PreviewMode.NewPage,
+                  file_type_list: ['application/pdf'],
+                },
               }}
               isDisabled={textEditorDisabled}
             />

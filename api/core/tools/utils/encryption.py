@@ -123,11 +123,15 @@ class ProviderConfigEncrypter:
         return data
 
 
-def create_provider_encrypter(tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache):
+def create_provider_encrypter(
+    tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache
+) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
     return ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache), cache
 
 
-def create_tool_provider_encrypter(tenant_id: str, controller: ToolProviderController):
+def create_tool_provider_encrypter(
+    tenant_id: str, controller: ToolProviderController
+) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
     cache = SingletonProviderCredentialsCache(
         tenant_id=tenant_id,
         provider_type=controller.provider_type.value,

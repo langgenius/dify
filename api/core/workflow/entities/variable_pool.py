@@ -9,8 +9,13 @@ from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import FileSegment, ObjectSegment
-from core.variables.variables import VariableUnion
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.variables.variables import RAGPipelineVariableInput, VariableUnion
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    RAG_PIPELINE_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
 
@@ -46,6 +51,10 @@ class VariablePool(BaseModel):
         description="Conversation variables.",
         default_factory=list,
     )
+    rag_pipeline_variables: list[RAGPipelineVariableInput] = Field(
+        description="RAG pipeline variables.",
+        default_factory=list,
+    )
 
     def model_post_init(self, context: Any, /) -> None:
         # Create a mapping from field names to SystemVariableKey enum values
@@ -56,6 +65,16 @@ class VariablePool(BaseModel):
         # Add conversation variables to the variable pool
         for var in self.conversation_variables:
             self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
+        # Add rag pipeline variables to the variable pool
+        if self.rag_pipeline_variables:
+            rag_pipeline_variables_map = defaultdict(dict)
+            for rag_var in self.rag_pipeline_variables:
+                node_id = rag_var.variable.belong_to_node_id
+                key = rag_var.variable.variable
+                value = rag_var.value
+                rag_pipeline_variables_map[node_id][key] = value
+            for key, value in rag_pipeline_variables_map.items():
+                self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """

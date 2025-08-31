@@ -503,9 +503,9 @@ class CredentialType(enum.StrEnum):
     @classmethod
     def of(cls, credential_type: str) -> "CredentialType":
         type_name = credential_type.lower()
-        if type_name == "api-key":
+        if type_name in {"api-key", "api_key"}:
             return cls.API_KEY
-        elif type_name == "oauth2":
+        elif type_name in {"oauth2", "oauth"}:
             return cls.OAUTH2
         else:
             raise ValueError(f"Invalid credential type: {credential_type}")

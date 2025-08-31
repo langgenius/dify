@@ -79,6 +79,7 @@ const translation = {
     Create: 'Create',
     Cancel: 'Cancel',
     Confirm: 'Confirm',
+    import: 'Import',
     nameNotEmpty: 'Name cannot be empty',
     appTemplateNotSelected: 'Please select a template',
     appTypeRequired: 'Please select an app type',

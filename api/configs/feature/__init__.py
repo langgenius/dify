@@ -545,6 +545,28 @@ class WorkflowConfig(BaseSettings):
         default=200 * 1024,
     )
 
+    # GraphEngine Worker Pool Configuration
+    GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
+        description="Minimum number of workers per GraphEngine instance",
+        default=1,
+    )
+
+    GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum number of workers per GraphEngine instance",
+        default=10,
+    )
+
+    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
+        description="Queue depth threshold that triggers worker scale up",
+        default=3,
+    )
+
+    GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
+        description="Seconds of idle time before scaling down workers",
+        default=5.0,
+        ge=0.1,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """

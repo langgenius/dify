@@ -15,7 +15,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { get } from '@/service/base'
 import { createDocument } from '@/service/datasets'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
@@ -23,8 +23,7 @@ import { DataSourceType, ProcessMode } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
-import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { useIndexStatus } from './list'
+import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import useDocumentListQueryState from './hooks/use-document-list-query-state'
@@ -36,6 +35,7 @@ import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-datas
 import { SimpleSelect } from '../../base/select'
 import StatusItem from './detail/completed/status-item'
 import type { Item } from '@/app/components/base/select'
+import { useIndexStatus } from './status-item/hooks'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -104,7 +104,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const [limit, setLimit] = useState<number>(query.limit)
 
   const router = useRouter()
-  const { dataset } = useDatasetDetailContext()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
   const [timerCanRun, setTimerCanRun] = useState(true)
   const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
@@ -184,7 +184,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     }
   }, [documentsRes])
 
-  const invalidDocumentDetail = useInvalidDocumentDetailKey()
+  const invalidDocumentDetail = useInvalidDocumentDetail()
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
 
@@ -231,6 +231,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
+    // if dataset is create from pipeline, redirect to create from pipeline page
+    if (dataset?.runtime_mode === 'rag_pipeline') {
+      router.push(`/datasets/${datasetId}/documents/create-from-pipeline`)
+      return
+    }
     if (isDataSourceNotion) {
       setNotionPageSelectorModalVisible(true)
       return
@@ -283,7 +288,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     })
     invalidDocumentList()
     setTimerCanRun(true)
-    // mutateDatasetIndexingStatus(undefined, { revalidate: true })
     setNotionPageSelectorModalVisible(false)
   }
 
@@ -396,6 +400,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         </div>
         {isListLoading
           ? <Loading type='app' />
+          // eslint-disable-next-line sonarjs/no-nested-conditional
           : total > 0
             ? <List
               embeddingAvailable={embeddingAvailable}

@@ -37,14 +37,12 @@ class WorkflowTool(Tool):
         entity: ToolEntity,
         runtime: ToolRuntime,
         label: str = "Workflow",
-        thread_pool_id: Optional[str] = None,
     ):
         self.workflow_app_id = workflow_app_id
         self.workflow_as_tool_id = workflow_as_tool_id
         self.version = version
         self.workflow_entities = workflow_entities
         self.workflow_call_depth = workflow_call_depth
-        self.thread_pool_id = thread_pool_id
         self.label = label
 
         super().__init__(entity=entity, runtime=runtime)
@@ -88,7 +86,6 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
-            workflow_thread_pool_id=self.thread_pool_id,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})

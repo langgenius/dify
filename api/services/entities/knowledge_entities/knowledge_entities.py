@@ -23,6 +23,7 @@ class NotionPage(BaseModel):
 
 
 class NotionInfo(BaseModel):
+    credential_id: str
     workspace_id: str
     pages: list[NotionPage]
 

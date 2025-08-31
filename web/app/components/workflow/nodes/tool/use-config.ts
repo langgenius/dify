@@ -30,9 +30,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   /*
   * tool_configurations: tool setting, not dynamic setting (form type = form)
   * tool_parameters: tool dynamic setting(form type = llm)
-  * output_schema: tool dynamic output
   */
-  const { provider_id, provider_type, tool_name, tool_configurations, output_schema, tool_parameters } = inputs
+  const { provider_id, provider_type, tool_name, tool_configurations, tool_parameters } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
@@ -53,7 +52,9 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         return []
     }
   }, [buildInTools, customTools, mcpTools, provider_type, workflowTools])
-  const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
+  const currCollection = useMemo(() => {
+    return currentTools.find(item => canFindTool(item.id, provider_id))
+  }, [currentTools, provider_id])
 
   // Auth
   const needAuth = !!currCollection?.allow_delete
@@ -75,13 +76,19 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     hideSetAuthModal()
   }, [currCollection?.name, hideSetAuthModal, t, handleFetchAllTools, provider_type])
 
-  const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
+  const currTool = useMemo(() => {
+    return currCollection?.tools.find(tool => tool.name === tool_name)
+  }, [currCollection, tool_name])
   const formSchemas = useMemo(() => {
     return currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   }, [currTool])
-  const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
+  const toolInputVarSchema = useMemo(() => {
+    return formSchemas.filter((item: any) => item.form === 'llm')
+  }, [formSchemas])
   // use setting
-  const toolSettingSchema = formSchemas.filter((item: any) => item.form !== 'llm')
+  const toolSettingSchema = useMemo(() => {
+    return formSchemas.filter((item: any) => item.form !== 'llm')
+  }, [formSchemas])
   const hasShouldTransferTypeSettingInput = toolSettingSchema.some(item => item.type === 'boolean' || item.type === 'number-input')
 
   const setInputs = useCallback((value: ToolNodeType) => {
@@ -140,7 +147,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       return
     const inputsWithDefaultValue = formattingParameters()
     setInputs(inputsWithDefaultValue)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTool])
 
   // setting when call
@@ -175,8 +181,10 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const outputSchema = useMemo(() => {
     const res: any[] = []
-    if (!output_schema)
-      return []
+    const output_schema = currTool?.output_schema
+    if (!output_schema || !output_schema.properties)
+      return res
+
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]
       const type = output.type
@@ -191,20 +199,21 @@ const useConfig = (id: string, payload: ToolNodeType) => {
           name: outputKey,
           type: output.type === 'array'
             ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-            : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+            : `${output.type?.slice(0, 1).toLocaleUpperCase()}${output.type?.slice(1)}`,
           description: output.description,
         })
       }
     })
     return res
-  }, [output_schema])
+  }, [currTool])
 
   const hasObjectOutput = useMemo(() => {
-    if (!output_schema)
+    const output_schema = currTool?.output_schema
+    if (!output_schema || !output_schema.properties)
       return false
     const properties = output_schema.properties
     return Object.keys(properties).some(key => properties[key].type === 'object')
-  }, [output_schema])
+  }, [currTool])
 
   return {
     readOnly,

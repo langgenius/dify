@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
   FloatingPortal,
   autoUpdate,
@@ -8,6 +8,7 @@ import {
   offset,
   shift,
   size,
+  useClick,
   useDismiss,
   useFloating,
   useFocus,
@@ -34,17 +35,23 @@ export type PortalToFollowElemOptions = {
 
 export function usePortalToFollowElem({
   placement = 'bottom',
-  open,
+  open: controlledOpen,
   offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
   triggerPopupSameWidth,
 }: PortalToFollowElemOptions = {}) {
-  const setOpen = setControlledOpen
   const container = document.getElementById('workflow-container') || document.body
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    setLocalOpen(newOpen)
+    setControlledOpen?.(newOpen)
+  }, [setControlledOpen, setLocalOpen])
+
   const data = useFloating({
     placement,
     open,
-    onOpenChange: setOpen,
+    onOpenChange: handleOpenChange,
     whileElementsMounted: autoUpdate,
     middleware: [
       offset(offsetValue),
@@ -83,16 +90,25 @@ export function usePortalToFollowElem({
   const dismiss = useDismiss(context)
   const role = useRole(context, { role: 'tooltip' })
 
-  const interactions = useInteractions([hover, focus, dismiss, role])
+  const click = useClick(context)
+
+  const interactionsArray = useMemo(() => {
+    const result = [hover, focus, dismiss, role]
+
+    if (!setControlledOpen)
+      result.push(click)
+    return result
+  }, [setControlledOpen, hover, focus, dismiss, role, click])
+  const interactions = useInteractions(interactionsArray)
 
   return React.useMemo(
     () => ({
       open,
-      setOpen,
+      setOpen: handleOpenChange,
       ...interactions,
       ...data,
     }),
-    [open, setOpen, interactions, data],
+    [open, handleOpenChange, interactions, data],
   )
 }
 

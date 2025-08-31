@@ -9,7 +9,8 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_app
-from models import Account, DifySetup, Tenant, TenantAccountJoin, db
+from extensions.ext_database import db
+from models import Account, DifySetup, Tenant, TenantAccountJoin
 from services.account_service import AccountService, RegisterService
 
 

@@ -1,20 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useBoolean, useDebounceFn } from 'ahooks'
+import { useBoolean } from 'ahooks'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { pick, uniq } from 'lodash-es'
 import {
-  RiArchive2Line,
-  RiDeleteBinLine,
   RiEditLine,
-  RiEqualizer2Line,
-  RiLoopLeftLine,
-  RiMoreFill,
-  RiPauseCircleLine,
-  RiPlayCircleLine,
 } from '@remixicon/react'
-import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
@@ -24,380 +16,26 @@ import s from './style.module.css'
 import RenameModal from './rename-modal'
 import BatchAction from './detail/completed/common/batch-action'
 import cn from '@/utils/classnames'
-import Switch from '@/app/components/base/switch'
-import Divider from '@/app/components/base/divider'
-import Popover from '@/app/components/base/popover'
-import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
-import Toast, { ToastContext } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
-import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator'
-import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
-import { ChunkingMode, DataSourceType, DocumentActionType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
+import { ChunkingMode, DataSourceType, DocumentActionType, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
-import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
-import { noop } from 'lodash-es'
-
-export const useIndexStatus = () => {
-  const { t } = useTranslation()
-  return {
-    queuing: { color: 'orange', text: t('datasetDocuments.list.status.queuing') }, // waiting
-    indexing: { color: 'blue', text: t('datasetDocuments.list.status.indexing') }, // indexing splitting parsing cleaning
-    paused: { color: 'orange', text: t('datasetDocuments.list.status.paused') }, // paused
-    error: { color: 'red', text: t('datasetDocuments.list.status.error') }, // error
-    available: { color: 'green', text: t('datasetDocuments.list.status.available') }, // completed，archived = false，enabled = true
-    enabled: { color: 'green', text: t('datasetDocuments.list.status.enabled') }, // completed，archived = false，enabled = true
-    disabled: { color: 'gray', text: t('datasetDocuments.list.status.disabled') }, // completed，archived = false，enabled = false
-    archived: { color: 'gray', text: t('datasetDocuments.list.status.archived') }, // completed，archived = true
-  }
-}
-
-const STATUS_TEXT_COLOR_MAP: ColorMap = {
-  green: 'text-util-colors-green-green-600',
-  orange: 'text-util-colors-warning-warning-600',
-  red: 'text-util-colors-red-red-600',
-  blue: 'text-util-colors-blue-light-blue-light-600',
-  yellow: 'text-util-colors-warning-warning-600',
-  gray: 'text-text-tertiary',
-}
-
-// status item for list
-export const StatusItem: FC<{
-  status: DocumentDisplayStatus
-  reverse?: boolean
-  scene?: 'list' | 'detail'
-  textCls?: string
-  errorMessage?: string
-  detail?: {
-    enabled: boolean
-    archived: boolean
-    id: string
-  }
-  datasetId?: string
-  onUpdate?: (operationName?: string) => void
-
-}> = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate }) => {
-  const DOC_INDEX_STATUS_MAP = useIndexStatus()
-  const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
-  const { enabled = false, archived = false, id = '' } = detail || {}
-  const { notify } = useContext(ToastContext)
-  const { t } = useTranslation()
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
-
-  const onOperate = async (operationName: OperationName) => {
-    let opApi = deleteDocument
-    switch (operationName) {
-      case 'enable':
-        opApi = enableDocument
-        break
-      case 'disable':
-        opApi = disableDocument
-        break
-    }
-    const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
-    if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onUpdate?.()
-      // onUpdate?.(operationName)
-    }
-    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
-  }
-
-  const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
-    if (operationName === 'enable' && enabled)
-      return
-    if (operationName === 'disable' && !enabled)
-      return
-    onOperate(operationName)
-  }, { wait: 500 })
-
-  const embedding = useMemo(() => {
-    return ['queuing', 'indexing', 'paused'].includes(localStatus)
-  }, [localStatus])
-
-  return <div className={
-    cn('flex items-center',
-      reverse ? 'flex-row-reverse' : '',
-      scene === 'detail' ? s.statusItemDetail : '')
-  }>
-    <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
-    <span className={cn(`${STATUS_TEXT_COLOR_MAP[DOC_INDEX_STATUS_MAP[localStatus].color as keyof typeof STATUS_TEXT_COLOR_MAP]} text-sm`, textCls)}>
-      {DOC_INDEX_STATUS_MAP[localStatus]?.text}
-    </span>
-    {
-      errorMessage && (
-        <Tooltip
-          popupContent={
-            <div className='max-w-[260px] break-all'>{errorMessage}</div>
-          }
-          triggerClassName='ml-1 w-4 h-4'
-        />
-      )
-    }
-    {
-      scene === 'detail' && (
-        <div className='ml-1.5 flex items-center justify-between'>
-          <Tooltip
-            popupContent={t('datasetDocuments.list.action.enableWarning')}
-            popupClassName='text-text-secondary system-xs-medium'
-            disabled={!archived}
-          >
-            <Switch
-              defaultValue={archived ? false : enabled}
-              onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-              disabled={embedding || archived}
-              size='md'
-            />
-          </Tooltip>
-        </div>
-      )
-    }
-  </div>
-}
-
-type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync' | 'un_archive' | 'pause' | 'resume'
-
-// operation action for list and detail
-export const OperationAction: FC<{
-  embeddingAvailable: boolean
-  detail: {
-    name: string
-    enabled: boolean
-    archived: boolean
-    id: string
-    data_source_type: string
-    doc_form: string
-    display_status?: string
-  }
-  datasetId: string
-  onUpdate: (operationName?: string) => void
-  scene?: 'list' | 'detail'
-  className?: string
-}> = ({ embeddingAvailable, datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
-  const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
-  const [showModal, setShowModal] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const { notify } = useContext(ToastContext)
-  const { t } = useTranslation()
-  const router = useRouter()
-  const { mutateAsync: archiveDocument } = useDocumentArchive()
-  const { mutateAsync: unArchiveDocument } = useDocumentUnArchive()
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
-  const { mutateAsync: syncDocument } = useSyncDocument()
-  const { mutateAsync: syncWebsite } = useSyncWebsite()
-  const { mutateAsync: pauseDocument } = useDocumentPause()
-  const { mutateAsync: resumeDocument } = useDocumentResume()
-  const isListScene = scene === 'list'
-
-  const onOperate = async (operationName: OperationName) => {
-    let opApi
-    switch (operationName) {
-      case 'archive':
-        opApi = archiveDocument
-        break
-      case 'un_archive':
-        opApi = unArchiveDocument
-        break
-      case 'enable':
-        opApi = enableDocument
-        break
-      case 'disable':
-        opApi = disableDocument
-        break
-      case 'sync':
-        if (data_source_type === 'notion_import')
-          opApi = syncDocument
-        else
-          opApi = syncWebsite
-        break
-      case 'pause':
-        opApi = pauseDocument
-        break
-      case 'resume':
-        opApi = resumeDocument
-        break
-      default:
-        opApi = deleteDocument
-        setDeleting(true)
-        break
-    }
-    const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
-    if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onUpdate(operationName)
-    }
-    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
-    if (operationName === 'delete')
-      setDeleting(false)
-  }
-
-  const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
-    if (operationName === 'enable' && enabled)
-      return
-    if (operationName === 'disable' && !enabled)
-      return
-    onOperate(operationName)
-  }, { wait: 500 })
-
-  const [currDocument, setCurrDocument] = useState<{
-    id: string
-    name: string
-  } | null>(null)
-  const [isShowRenameModal, {
-    setTrue: setShowRenameModalTrue,
-    setFalse: setShowRenameModalFalse,
-  }] = useBoolean(false)
-  const handleShowRenameModal = useCallback((doc: {
-    id: string
-    name: string
-  }) => {
-    setCurrDocument(doc)
-    setShowRenameModalTrue()
-  }, [setShowRenameModalTrue])
-  const handleRenamed = useCallback(() => {
-    onUpdate()
-  }, [onUpdate])
-
-  return <div className='flex items-center' onClick={e => e.stopPropagation()}>
-    {isListScene && !embeddingAvailable && (
-      <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
-    )}
-    {isListScene && embeddingAvailable && (
-      <>
-        {archived
-          ? <Tooltip
-            popupContent={t('datasetDocuments.list.action.enableWarning')}
-            popupClassName='!font-semibold'
-          >
-            <div>
-              <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
-            </div>
-          </Tooltip>
-          : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size='md' />
-        }
-        <Divider className='!ml-4 !mr-2 !h-3' type='vertical' />
-      </>
-    )}
-    {embeddingAvailable && (
-      <>
-        <Tooltip
-          popupContent={t('datasetDocuments.list.action.settings')}
-          popupClassName='text-text-secondary system-xs-medium'
-          needsDelay={false}
-        >
-          <button
-            className={cn('mr-2 cursor-pointer rounded-lg',
-              !isListScene
-                ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
-                : 'p-0.5 hover:bg-state-base-hover')}
-            onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
-            <RiEqualizer2Line className='h-4 w-4 text-components-button-secondary-text' />
-          </button>
-        </Tooltip>
-        <Popover
-          htmlContent={
-            <div className='w-full py-1'>
-              {!archived && (
-                <>
-                  <div className={s.actionItem} onClick={() => {
-                    handleShowRenameModal({
-                      id: detail.id,
-                      name: detail.name,
-                    })
-                  }}>
-                    <RiEditLine className='h-4 w-4 text-text-tertiary' />
-                    <span className={s.actionName}>{t('datasetDocuments.list.table.rename')}</span>
-                  </div>
-                  {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
-                    <div className={s.actionItem} onClick={() => onOperate('sync')}>
-                      <RiLoopLeftLine className='h-4 w-4 text-text-tertiary' />
-                      <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
-                    </div>
-                  )}
-                  <Divider className='my-1' />
-                </>
-              )}
-              {!archived && display_status?.toLowerCase() === 'indexing' && (
-                <div className={s.actionItem} onClick={() => onOperate('pause')}>
-                  <RiPauseCircleLine className='h-4 w-4 text-text-tertiary' />
-                  <span className={s.actionName}>{t('datasetDocuments.list.action.pause')}</span>
-                </div>
-              )}
-              {!archived && display_status?.toLowerCase() === 'paused' && (
-                <div className={s.actionItem} onClick={() => onOperate('resume')}>
-                  <RiPlayCircleLine className='h-4 w-4 text-text-tertiary' />
-                  <span className={s.actionName}>{t('datasetDocuments.list.action.resume')}</span>
-                </div>
-              )}
-              {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
-                <RiArchive2Line className='h-4 w-4 text-text-tertiary' />
-                <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
-              </div>}
-              {archived && (
-                <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
-                  <RiArchive2Line className='h-4 w-4 text-text-tertiary' />
-                  <span className={s.actionName}>{t('datasetDocuments.list.action.unarchive')}</span>
-                </div>
-              )}
-              <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
-                <RiDeleteBinLine className={'h-4 w-4 text-text-tertiary group-hover:text-text-destructive'} />
-                <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('datasetDocuments.list.action.delete')}</span>
-              </div>
-            </div>
-          }
-          trigger='click'
-          position='br'
-          btnElement={
-            <div className={cn(s.commonIcon)}>
-              <RiMoreFill className='h-4 w-4 text-components-button-secondary-text' />
-            </div>
-          }
-          btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}
-          popupClassName='!w-full'
-          className={`!z-20 flex h-fit !w-[200px] justify-end ${className}`}
-        />
-      </>
-    )}
-    {showModal
-      && <Confirm
-        isShow={showModal}
-        isLoading={deleting}
-        isDisabled={deleting}
-        title={t('datasetDocuments.list.delete.title')}
-        content={t('datasetDocuments.list.delete.content')}
-        confirmText={t('common.operation.sure')}
-        onConfirm={() => onOperate('delete')}
-        onCancel={() => setShowModal(false)}
-      />
-    }
-
-    {isShowRenameModal && currDocument && (
-      <RenameModal
-        datasetId={datasetId}
-        documentId={currDocument.id}
-        name={currDocument.name}
-        onClose={setShowRenameModalFalse}
-        onSaved={handleRenamed}
-      />
-    )}
-  </div>
-}
+import StatusItem from './status-item'
+import Operations from './operations'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
@@ -475,8 +113,8 @@ const DocumentList: FC<IDocumentListProps> = ({
     if (statusFilter.value !== 'all') {
       filteredDocs = filteredDocs.filter(doc =>
         typeof doc.display_status === 'string'
-          && typeof statusFilter.value === 'string'
-          && doc.display_status.toLowerCase() === statusFilter.value.toLowerCase(),
+        && typeof statusFilter.value === 'string'
+        && doc.display_status.toLowerCase() === statusFilter.value.toLowerCase(),
       )
     }
 
@@ -602,6 +240,8 @@ const DocumentList: FC<IDocumentListProps> = ({
       const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentIds: selectedIds }) as Promise<CommonResponse>)
 
       if (!e) {
+        if (actionName === DocumentActionType.delete)
+          onSelectedIdChange([])
         Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         onUpdate()
       }
@@ -719,7 +359,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                   }
                 </td>
                 <td>
-                  <OperationAction
+                  <Operations
                     embeddingAvailable={embeddingAvailable}
                     datasetId={datasetId}
                     detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}

@@ -86,7 +86,6 @@ const translation = {
       limit: 'Song song được giới hạn trong các nhánh {{num}}.',
       depthLimit: 'Giới hạn lớp lồng song song của {{num}} layer',
     },
-    parallelRun: 'Chạy song song',
     disconnect: 'Ngắt kết nối',
     jumpToNode: 'Chuyển đến nút này',
     addParallelNode: 'Thêm nút song song',

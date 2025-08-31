@@ -19,6 +19,7 @@ def init_app(app: DifyApp):
         reset_email,
         reset_encrypt_key_pair,
         reset_password,
+        setup_datasource_oauth_client,
         setup_system_tool_oauth_client,
         upgrade_db,
         vdb_migrate,
@@ -44,6 +45,7 @@ def init_app(app: DifyApp):
         remove_orphaned_files_on_storage,
         setup_system_tool_oauth_client,
         cleanup_orphaned_draft_variables,
+        setup_datasource_oauth_client,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

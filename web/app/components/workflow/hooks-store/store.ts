@@ -7,14 +7,24 @@ import {
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
+import type {
+  BlockEnum,
+  NodeDefault,
+} from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VarInInspect } from '@/types/workflow'
 import type {
   Node,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import type { FlowType } from '@/types/common'
+import type { FileUpload } from '../../base/features/types'
 
-type CommonHooksFnMap = {
+export type AvailableNodesMetaData = {
+  nodes: NodeDefault[]
+  nodesMap?: Record<BlockEnum, NodeDefault<any>>
+}
+export type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: {
@@ -33,6 +43,10 @@ type CommonHooksFnMap = {
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
+  availableNodesMetaData?: AvailableNodesMetaData
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
+  exportCheck?: () => Promise<void>
+  handleExportDSL?: (include?: boolean) => Promise<void>
   fetchInspectVars: () => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
@@ -50,8 +64,8 @@ type CommonHooksFnMap = {
   invalidateConversationVarValues: () => void
   configsMap?: {
     flowId: string
-    conversationVarsUrl: string
-    systemVarsUrl: string
+    flowType: FlowType
+    fileSettings: FileUpload
   }
 }
 
@@ -71,6 +85,15 @@ export const createHooksStore = ({
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
+  availableNodesMetaData = {
+    nodes: [],
+  },
+  getWorkflowRunAndTraceUrl = () => ({
+    runUrl: '',
+    traceUrl: '',
+  }),
+  exportCheck = async () => noop(),
+  handleExportDSL = async () => noop(),
   fetchInspectVars = async () => noop(),
   hasNodeInspectVars = () => false,
   hasSetInspectVar = () => false,
@@ -100,6 +123,10 @@ export const createHooksStore = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

@@ -97,7 +97,11 @@ def to_prompt_message_content(
 
 
 def download(f: File, /):
-    if f.transfer_method in (FileTransferMethod.TOOL_FILE, FileTransferMethod.LOCAL_FILE):
+    if f.transfer_method in (
+        FileTransferMethod.TOOL_FILE,
+        FileTransferMethod.LOCAL_FILE,
+        FileTransferMethod.DATASOURCE_FILE,
+    ):
         return _download_file_content(f._storage_key)
     elif f.transfer_method == FileTransferMethod.REMOTE_URL:
         response = ssrf_proxy.get(f.remote_url, follow_redirects=True)

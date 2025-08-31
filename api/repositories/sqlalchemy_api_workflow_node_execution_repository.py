@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import delete, desc, select
+from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.workflow import WorkflowNodeExecutionModel
@@ -108,7 +108,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             WorkflowNodeExecutionModel.tenant_id == tenant_id,
             WorkflowNodeExecutionModel.app_id == app_id,
             WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-        ).order_by(desc(WorkflowNodeExecutionModel.index))
+        ).order_by(asc(WorkflowNodeExecutionModel.created_at))
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()

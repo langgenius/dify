@@ -26,7 +26,7 @@ import GetCodeGeneratorResModal from '../../app/configuration/config/code-genera
 import { AppType } from '@/types/app'
 import { useHooksStore } from '../hooks-store'
 import { useCallback, useMemo } from 'react'
-import { useNodesInteractions } from '../hooks'
+import { useNodesInteractions, useToolIcon } from '../hooks'
 import { CodeLanguage } from '../nodes/code/types'
 import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
 import type { GenRes } from '@/service/debug'
@@ -52,6 +52,7 @@ const Right = ({
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const toolIcon = useToolIcon(currentNodeVar?.nodeData)
 
   const {
     resetConversationVar,
@@ -177,6 +178,7 @@ const Right = ({
                     className='shrink-0'
                     type={currentNodeVar.nodeType as BlockEnum}
                     size='xs'
+                    toolIcon={toolIcon}
                   />
                   <div className='system-sm-regular shrink-0 text-text-secondary'>{currentNodeVar.title}</div>
                   <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>

@@ -13,12 +13,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.workflow_node_execution import (
+from core.workflow.entities import (
     WorkflowNodeExecution,
+)
+from core.workflow.enums import (
+    NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom

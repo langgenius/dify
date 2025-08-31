@@ -90,7 +90,6 @@ const translation = {
       depthLimit: '{{num}} परतों की समानांतर नेस्टिंग परत सीमा',
     },
     disconnect: 'अलग करना',
-    parallelRun: 'समानांतर रन',
     jumpToNode: 'इस नोड पर जाएं',
     addParallelNode: 'समानांतर नोड जोड़ें',
     parallel: 'समानांतर',

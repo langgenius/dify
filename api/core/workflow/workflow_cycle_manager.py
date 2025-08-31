@@ -8,8 +8,6 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.queue_entities import (
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
@@ -17,13 +15,17 @@ from core.app.entities.queue_entities import (
 from core.app.task_pipeline.exc import WorkflowRunNotFoundError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
-from core.workflow.entities.workflow_node_execution import (
+from core.workflow.entities import (
+    WorkflowExecution,
     WorkflowNodeExecution,
+)
+from core.workflow.enums import (
+    SystemVariableKey,
+    WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
+    WorkflowType,
 )
-from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
@@ -194,10 +196,7 @@ class WorkflowCycleManager:
     def handle_workflow_node_execution_failed(
         self,
         *,
-        event: QueueNodeFailedEvent
-        | QueueNodeInIterationFailedEvent
-        | QueueNodeInLoopFailedEvent
-        | QueueNodeExceptionEvent,
+        event: QueueNodeFailedEvent | QueueNodeExceptionEvent,
     ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
@@ -362,7 +361,7 @@ class WorkflowCycleManager:
         self,
         *,
         workflow_execution: WorkflowExecution,
-        event: Union[QueueNodeStartedEvent, QueueNodeRetryEvent],
+        event: QueueNodeStartedEvent,
         status: WorkflowNodeExecutionStatus,
         error: Optional[str] = None,
         created_at: Optional[datetime] = None,
@@ -378,7 +377,7 @@ class WorkflowCycleManager:
         }
 
         domain_execution = WorkflowNodeExecution(
-            id=str(uuid4()),
+            id=event.node_execution_id,
             workflow_id=workflow_execution.workflow_id,
             workflow_execution_id=workflow_execution.id_,
             predecessor_node_id=event.predecessor_node_id,
@@ -386,7 +385,7 @@ class WorkflowCycleManager:
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,
             node_type=event.node_type,
-            title=event.node_data.title,
+            title=event.node_title,
             status=status,
             metadata=metadata,
             created_at=created_at,
@@ -406,8 +405,6 @@ class WorkflowCycleManager:
         event: Union[
             QueueNodeSucceededEvent,
             QueueNodeFailedEvent,
-            QueueNodeInIterationFailedEvent,
-            QueueNodeInLoopFailedEvent,
             QueueNodeExceptionEvent,
         ],
         status: WorkflowNodeExecutionStatus,

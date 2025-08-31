@@ -43,7 +43,7 @@ api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm"
 api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
 
 # Import other controllers
-from . import admin, apikey, extension, feature, ping, setup, version
+from . import admin, apikey, extension, feature, ping, setup, spec, version
 
 # Import app controllers
 from .app import (
@@ -85,6 +85,15 @@ from .datasets import (
     hit_testing,
     metadata,
     website,
+)
+from .datasets.rag_pipeline import (
+    datasource_auth,
+    datasource_content_preview,
+    rag_pipeline,
+    rag_pipeline_datasets,
+    rag_pipeline_draft_variable,
+    rag_pipeline_import,
+    rag_pipeline_workflow,
 )
 
 # Import explore controllers

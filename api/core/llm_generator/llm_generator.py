@@ -28,9 +28,10 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_engine.entities.event import AgentLogEvent
+from core.workflow.node_events import AgentLogEvent
+from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models import App, Message, WorkflowNodeExecutionModel, db
+from models import App, Message, WorkflowNodeExecutionModel
 
 logger = logging.getLogger(__name__)
 

@@ -86,7 +86,6 @@ const translation = {
       depthLimit: 'Limita straturilor de imbricare paralelă a {{num}} straturi',
       limit: 'Paralelismul este limitat la {{num}} ramuri.',
     },
-    parallelRun: 'Rulare paralelă',
     disconnect: 'Deconecta',
     jumpToNode: 'Sari la acest nod',
     addParallelNode: 'Adăugare nod paralel',

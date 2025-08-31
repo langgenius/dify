@@ -8,6 +8,8 @@ type SchemaEditorProps = {
   hideTopMenu?: boolean
   className?: string
   readonly?: boolean
+  onFocus?: () => void
+  onBlur?: () => void
 }
 
 const SchemaEditor: FC<SchemaEditorProps> = ({
@@ -16,6 +18,8 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
   hideTopMenu,
   className,
   readonly = false,
+  onFocus,
+  onBlur,
 }) => {
   return (
     <CodeEditor
@@ -25,6 +29,8 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
       value={schema}
       onUpdate={onUpdate}
       hideTopMenu={hideTopMenu}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   )
 }

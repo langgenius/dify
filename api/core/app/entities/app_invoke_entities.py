@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -11,7 +11,7 @@ from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
 
 
-class InvokeFrom(Enum):
+class InvokeFrom(StrEnum):
     """
     Invoke From.
     """
@@ -35,6 +35,7 @@ class InvokeFrom(Enum):
     # DEBUGGER indicates that this invocation is from
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
+    PUBLISHED = "published"
 
     @classmethod
     def value_of(cls, value: str):
@@ -220,6 +221,41 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig
     workflow_execution_id: str
+
+    class SingleIterationRunEntity(BaseModel):
+        """
+        Single Iteration Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_iteration_run: Optional[SingleIterationRunEntity] = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None
+
+
+class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
+    """
+    RAG Pipeline Application Generate Entity.
+    """
+
+    # pipeline config
+    pipeline_config: WorkflowUIBasedAppConfig
+    datasource_type: str
+    datasource_info: Mapping[str, Any]
+    dataset_id: str
+    batch: str
+    document_id: Optional[str] = None
+    start_node_id: Optional[str] = None
 
     class SingleIterationRunEntity(BaseModel):
         """

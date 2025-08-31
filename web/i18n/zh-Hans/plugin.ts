@@ -9,6 +9,7 @@ const translation = {
     agents: 'Agent 策略',
     extensions: '扩展',
     bundles: '插件集',
+    datasources: '数据源',
   },
   categorySingle: {
     model: '模型',
@@ -16,6 +17,7 @@ const translation = {
     agent: 'Agent 策略',
     extension: '扩展',
     bundle: '插件集',
+    datasource: '数据源',
   },
   search: '搜索',
   allCategories: '所有类别',
@@ -300,6 +302,8 @@ const translation = {
     credentialUnavailable: '自定义凭据当前不可用，请联系管理员。',
     customCredentialUnavailable: '自定义凭据当前不可用',
     unavailable: '不可用',
+    connectedWorkspace: '已连接的工作区',
+    emptyAuth: '请配置凭据',
   },
 }
 

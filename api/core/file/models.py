@@ -115,11 +115,10 @@ class File(BaseModel):
             if self.related_id is None:
                 raise ValueError("Missing file related_id")
             return helpers.get_signed_file_url(upload_file_id=self.related_id)
-        elif self.transfer_method == FileTransferMethod.TOOL_FILE:
+        elif self.transfer_method == FileTransferMethod.TOOL_FILE or self.transfer_method == FileTransferMethod.DATASOURCE_FILE:
             assert self.related_id is not None
             assert self.extension is not None
             return sign_tool_file(tool_file_id=self.related_id, extension=self.extension)
-
     def to_plugin_parameter(self) -> dict[str, Any]:
         return {
             "dify_model_identity": FILE_MODEL_IDENTITY,

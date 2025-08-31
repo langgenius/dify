@@ -45,6 +45,7 @@ const translation = {
     setVarValuePlaceholder: '设置变量值',
     needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
+    needAdd: '必须添加{{node}}节点',
     needEndNode: '必须添加结束节点',
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',
@@ -92,7 +93,6 @@ const translation = {
     importWarning: '注意',
     importWarningDetails: 'DSL 版本差异可能影响部分功能表现',
     importSuccess: '导入成功',
-    parallelRun: '并行运行',
     parallelTip: {
       click: {
         title: '点击',
@@ -211,8 +211,10 @@ const translation = {
     toolParameterRequired: '{{field}}: 参数 [{{param}}] 不能为空',
   },
   singleRun: {
-    testRun: '测试运行 ',
+    testRun: '测试运行',
     startRun: '开始运行',
+    preparingDataSource: '准备数据源',
+    reRun: '重新运行',
     running: '运行中',
     testRunIteration: '测试运行迭代',
     back: '返回',
@@ -236,6 +238,8 @@ const translation = {
     'agent': 'Agent 策略',
     'allAdded': '已添加全部',
     'addAll': '添加全部',
+    'sources': '数据源',
+    'searchDataSource': '搜索数据源',
   },
   blocks: {
     'start': '开始',
@@ -260,6 +264,8 @@ const translation = {
     'loop-start': '循环开始',
     'loop': '循环',
     'loop-end': '退出循环',
+    'knowledge-index': '知识库',
+    'datasource': '数据源',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -282,6 +288,8 @@ const translation = {
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
     'agent': '调用大型语言模型回答问题或处理自然语言',
+    'knowledge-index': '知识库节点',
+    'datasource': '数据源节点',
   },
   operator: {
     zoomIn: '放大',
@@ -389,6 +397,7 @@ const translation = {
         input: '输入值',
         variable: '使用变量',
       },
+      inputVars: '输入变量',
     },
     start: {
       required: '必填',
@@ -916,6 +925,24 @@ const translation = {
       },
       clickToViewParameterSchema: '点击查看参数 schema',
       parameterSchema: '参数 Schema',
+    },
+    dataSource: {
+      supportedFileFormats: '支持的文件格式',
+      supportedFileFormatsPlaceholder: '文件格式，例如：doc',
+    },
+    knowledgeBase: {
+      chunkStructure: '分段结构',
+      chooseChunkStructure: '选择分段结构',
+      chunkStructureTip: {
+        title: '请选择分段结构',
+        message: 'Dify 知识库支持三种分块结构：通用、父子和问答。每个知识库只能有一种结构。前一节点的输出必须与所选的分块结构相匹配。请注意，分块结构的选择会影响可用的索引方法。',
+        learnMore: '了解更多',
+      },
+      changeChunkStructure: '更改分段结构',
+      aboutRetrieval: '关于知识检索。',
+      chunkIsRequired: '分段结构是必需的',
+      indexMethodIsRequired: '索引方法是必需的',
+      retrievalSettingIsRequired: '检索设置是必需的',
     },
   },
   tracing: {

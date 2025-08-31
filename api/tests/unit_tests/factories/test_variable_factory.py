@@ -371,7 +371,7 @@ def test_build_segment_array_any_properties():
     # Test properties
     assert segment.text == str(mixed_values)
     assert segment.log == str(mixed_values)
-    assert segment.markdown == "string\n42\nNone"
+    assert segment.markdown == "- string\n- 42\n- None"
     assert segment.to_object() == mixed_values
 
 

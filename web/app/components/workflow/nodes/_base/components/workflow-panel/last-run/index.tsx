@@ -8,6 +8,8 @@ import NoData from './no-data'
 import { useLastRun } from '@/service/use-workflow'
 import { RiLoader2Line } from '@remixicon/react'
 import type { NodeTracing } from '@/types/workflow'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { FlowType } from '@/types/common'
 
 type Props = {
   appId: string
@@ -35,6 +37,7 @@ const LastRun: FC<Props> = ({
   isPaused,
   ...otherResultPanelProps
 }) => {
+  const configsMap = useHooksStore(s => s.configsMap)
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
   // hide page and return to page would lost the oneStepRunRunningStatus
@@ -44,7 +47,7 @@ const LastRun: FC<Props> = ({
 
   const hidePageOneStepRunFinished = [NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(hidePageOneStepFinishedStatus!)
   const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed || isOneStepRunFailed || (pageHasHide && hidePageOneStepRunFinished)
-  const { data: lastRunResult, isFetching, error } = useLastRun(appId, nodeId, canRunLastRun)
+  const { data: lastRunResult, isFetching, error } = useLastRun(configsMap?.flowType || FlowType.appFlow, configsMap?.flowId || '', nodeId, canRunLastRun)
   const isRunning = useMemo(() => {
     if(isPaused)
       return false

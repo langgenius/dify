@@ -5,7 +5,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -30,12 +30,14 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from core.workflow.entities.workflow_execution import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
+
+if TYPE_CHECKING:
+    from core.workflow.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
 
@@ -410,7 +412,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: Optional[str] = None,
-        workflow_execution: Optional[WorkflowExecution] = None,
+        workflow_execution: Optional["WorkflowExecution"] = None,
         conversation_id: Optional[str] = None,
         user_id: Optional[str] = None,
         timer: Optional[Any] = None,

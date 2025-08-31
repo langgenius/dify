@@ -49,6 +49,23 @@ conversation_variable_fields = {
     "description": fields.String,
 }
 
+pipeline_variable_fields = {
+    "label": fields.String,
+    "variable": fields.String,
+    "type": fields.String,
+    "belong_to_node_id": fields.String,
+    "max_length": fields.Integer,
+    "required": fields.Boolean,
+    "unit": fields.String,
+    "default_value": fields.Raw,
+    "options": fields.List(fields.String),
+    "placeholder": fields.String,
+    "tooltips": fields.String,
+    "allowed_file_types": fields.List(fields.String),
+    "allow_file_extension": fields.List(fields.String),
+    "allow_file_upload_methods": fields.List(fields.String),
+}
+
 workflow_fields = {
     "id": fields.String,
     "graph": fields.Raw(attribute="graph_dict"),
@@ -64,6 +81,7 @@ workflow_fields = {
     "tool_published": fields.Boolean,
     "environment_variables": fields.List(EnvironmentVariableField()),
     "conversation_variables": fields.List(fields.Nested(conversation_variable_fields)),
+    "rag_pipeline_variables": fields.List(fields.Nested(pipeline_variable_fields)),
 }
 
 workflow_partial_fields = {

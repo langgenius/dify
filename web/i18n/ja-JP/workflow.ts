@@ -93,7 +93,6 @@ const translation = {
     importWarning: '注意事項',
     importWarningDetails: 'DSL バージョンの違いにより機能に影響が出る可能性があります',
     importSuccess: 'インポート成功',
-    parallelRun: '並列実行',
     parallelTip: {
       click: {
         title: 'クリック',

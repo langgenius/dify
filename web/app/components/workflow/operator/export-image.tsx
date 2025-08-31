@@ -18,6 +18,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { useStore } from '@/app/components/workflow/store'
 
 const ExportImage: FC = () => {
   const { t } = useTranslation()
@@ -28,9 +29,10 @@ const ExportImage: FC = () => {
   const [open, setOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
   const [previewTitle, setPreviewTitle] = useState('')
+  const knowledgeName = useStore(s => s.knowledgeName)
 
   const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
-    if (!appDetail)
+    if (!appDetail && !knowledgeName)
       return
 
     if (getNodesReadOnly())
@@ -122,7 +124,7 @@ const ExportImage: FC = () => {
           reactFlow.setViewport(currentViewport)
         }, 500)
       }
- else {
+      else {
         // Current viewport export (existing functionality)
         switch (type) {
           case 'png':
@@ -152,11 +154,11 @@ const ExportImage: FC = () => {
         link.click()
         document.body.removeChild(link)
       }
- else {
+      else {
         // For current view, just download
         const link = document.createElement('a')
         link.href = dataUrl
-        link.download = `${filename}.${type}`
+        link.download = `${appDetail ? filename : knowledgeName}.${type}`
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -165,7 +167,7 @@ const ExportImage: FC = () => {
     catch (error) {
       console.error('Export image failed:', error)
     }
-  }, [getNodesReadOnly, appDetail, reactFlow])
+  }, [getNodesReadOnly, appDetail, reactFlow, knowledgeName])
 
   const handleTrigger = useCallback(() => {
     if (getNodesReadOnly())

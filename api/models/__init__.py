@@ -26,7 +26,6 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
-from .engine import db
 from .enums import CreatorUserRole, UserFrom, WorkflowRunTriggeredFrom
 from .model import (
     ApiRequest,
@@ -57,6 +56,7 @@ from .model import (
     TraceAppConfig,
     UploadFile,
 )
+from .oauth import DatasourceOauthParamConfig, DatasourceProvider
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -124,6 +124,8 @@ __all__ = [
     "DatasetProcessRule",
     "DatasetQuery",
     "DatasetRetrieverResource",
+    "DatasourceOauthParamConfig",
+    "DatasourceProvider",
     "DifySetup",
     "Document",
     "DocumentSegment",
@@ -179,5 +181,4 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
-    "db",
 ]

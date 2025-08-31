@@ -31,6 +31,8 @@ type Props = {
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 
 const FormInputItem: FC<Props> = ({
@@ -42,6 +44,8 @@ const FormInputItem: FC<Props> = ({
   inPanel,
   currentTool,
   currentProvider,
+  showManageInputField,
+  onManageInputField,
 }) => {
   const language = useLanguage()
 
@@ -192,6 +196,8 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
+          showManageInputField={showManageInputField}
+          onManageInputField={onManageInputField}
         />
       )}
       {isNumber && isConstant && (

@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
-import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
+import type { PluginPayload } from '../types'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,
@@ -87,9 +87,9 @@ export const usePluginAuthAction = (
   }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
-      credential_id: string
-      name: string
-    }) => {
+    credential_id: string
+    name: string
+  }) => {
     if (doingActionRef.current)
       return
     try {

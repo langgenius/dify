@@ -25,6 +25,11 @@ import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
 import { ContentType, base, baseOptions, getAccessToken } from './fetch'
 import { asyncRunSafe } from '@/utils'
+import type {
+  DataSourceNodeCompletedResponse,
+  DataSourceNodeErrorResponse,
+  DataSourceNodeProcessingResponse,
+} from '@/types/pipeline'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -63,6 +68,10 @@ export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
 export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
+export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
+export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
+export type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
+
 export type IOtherOptions = {
   isPublicAPI?: boolean
   isMarketplaceAPI?: boolean
@@ -97,6 +106,11 @@ export type IOtherOptions = {
   onLoopNext?: IOnLoopNext
   onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
+
+  // Pipeline data source node run
+  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
+  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted
+  onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
 function unicodeToChar(text: string) {
@@ -152,6 +166,9 @@ const handleStream = (
   onTTSEnd?: IOnTTSEnd,
   onTextReplace?: IOnTextReplace,
   onAgentLog?: IOnAgentLog,
+  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
+  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
+  onDataSourceNodeError?: IOnDataSourceNodeError,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -270,6 +287,18 @@ const handleStream = (
             else if (bufferObj.event === 'tts_message_end') {
               onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
             }
+            else if (bufferObj.event === 'datasource_processing') {
+              onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
+            }
+            else if (bufferObj.event === 'datasource_completed') {
+              onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
+            }
+            else if (bufferObj.event === 'datasource_error') {
+              onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
+            }
+            else {
+              console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -363,6 +392,9 @@ export const ssePost = async (
     onLoopStart,
     onLoopNext,
     onLoopFinish,
+    onDataSourceNodeProcessing,
+    onDataSourceNodeCompleted,
+    onDataSourceNodeError,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -465,6 +497,9 @@ export const ssePost = async (
         onTTSEnd,
         onTextReplace,
         onAgentLog,
+        onDataSourceNodeProcessing,
+        onDataSourceNodeCompleted,
+        onDataSourceNodeError,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))

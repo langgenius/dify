@@ -24,6 +24,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
+from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
@@ -413,7 +414,12 @@ class WorkflowTaskStopApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}
 

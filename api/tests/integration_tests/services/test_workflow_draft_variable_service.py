@@ -11,10 +11,10 @@ from core.variables.types import SegmentType
 from core.variables.variables import StringVariable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes import NodeType
+from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.variable_factory import build_segment
 from libs import datetime_utils
-from models import db
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel
@@ -657,6 +657,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             created_by=str(uuid.uuid4()),
             environment_variables=[],
             conversation_variables=conversation_vars,
+            rag_pipeline_variables=[],
         )
         return workflow
 

@@ -8,49 +8,11 @@ and don't contain implementation details like tenant_id, app_id, etc.
 
 from collections.abc import Mapping
 from datetime import datetime
-from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, PrivateAttr
 
-from core.workflow.nodes.enums import NodeType
-
-
-class WorkflowNodeExecutionMetadataKey(StrEnum):
-    """
-    Node Run Metadata Key.
-    """
-
-    TOTAL_TOKENS = "total_tokens"
-    TOTAL_PRICE = "total_price"
-    CURRENCY = "currency"
-    TOOL_INFO = "tool_info"
-    AGENT_LOG = "agent_log"
-    ITERATION_ID = "iteration_id"
-    ITERATION_INDEX = "iteration_index"
-    LOOP_ID = "loop_id"
-    LOOP_INDEX = "loop_index"
-    PARALLEL_ID = "parallel_id"
-    PARALLEL_START_NODE_ID = "parallel_start_node_id"
-    PARENT_PARALLEL_ID = "parent_parallel_id"
-    PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
-    PARALLEL_MODE_RUN_ID = "parallel_mode_run_id"
-    ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
-    LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
-    ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
-    LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
-
-
-class WorkflowNodeExecutionStatus(StrEnum):
-    """
-    Node Execution Status Enum.
-    """
-
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    EXCEPTION = "exception"
-    RETRY = "retry"
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class WorkflowNodeExecution(BaseModel):

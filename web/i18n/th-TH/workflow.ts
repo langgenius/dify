@@ -80,7 +80,6 @@ const translation = {
     importWarning: 'ความระมัดระวัง',
     importWarningDetails: 'ความแตกต่างของเวอร์ชัน DSL อาจส่งผลต่อคุณสมบัติบางอย่าง',
     importSuccess: 'นําเข้าสําเร็จ',
-    parallelRun: 'วิ่งแบบขนาน',
     parallelTip: {
       click: {
         title: 'คลิก',

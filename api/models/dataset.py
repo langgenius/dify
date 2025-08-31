@@ -61,12 +61,34 @@ class Dataset(Base):
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model = mapped_column(String(255), nullable=True)
-    embedding_model_provider = mapped_column(String(255), nullable=True)
+    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    embedding_model = mapped_column(db.String(255), nullable=True)
+    embedding_model_provider = mapped_column(db.String(255), nullable=True)
+    keyword_number = db.Column(db.Integer, nullable=True, server_default=db.text("10"))
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
-    built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    built_in_field_enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    icon_info = db.Column(JSONB, nullable=True)
+    runtime_mode = db.Column(db.String(255), nullable=True, server_default=db.text("'general'::character varying"))
+    pipeline_id = db.Column(StringUUID, nullable=True)
+    chunk_structure = db.Column(db.String(255), nullable=True)
+
+    @property
+    def total_documents(self):
+        return db.session.query(func.count(Document.id)).filter(Document.dataset_id == self.id).scalar()
+
+    @property
+    def total_available_documents(self):
+        return (
+            db.session.query(func.count(Document.id))
+            .filter(
+                Document.dataset_id == self.id,
+                Document.indexing_status == "completed",
+                Document.enabled == True,
+                Document.archived == False,
+            )
+            .scalar()
+        )
 
     @property
     def dataset_keyword_table(self):
@@ -150,8 +172,10 @@ class Dataset(Base):
         )
 
     @property
-    def doc_form(self):
-        document = db.session.query(Document).where(Document.dataset_id == self.id).first()
+    def doc_form(self) -> Optional[str]:
+        if self.chunk_structure:
+            return self.chunk_structure
+        document = db.session.query(Document).filter(Document.dataset_id == self.id).first()
         if document:
             return document.doc_form
         return None
@@ -205,6 +229,14 @@ class Dataset(Base):
             "external_knowledge_api_name": external_knowledge_api.name,
             "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
         }
+
+    @property
+    def is_published(self):
+        if self.pipeline_id:
+            pipeline = db.session.query(Pipeline).filter(Pipeline.id == self.pipeline_id).first()
+            if pipeline:
+                return pipeline.is_published
+        return False
 
     @property
     def doc_metadata(self):
@@ -392,7 +424,7 @@ class Document(Base):
         return status
 
     @property
-    def data_source_info_dict(self):
+    def data_source_info_dict(self) -> dict[str, Any]:
         if self.data_source_info:
             try:
                 data_source_info_dict = json.loads(self.data_source_info)
@@ -400,7 +432,7 @@ class Document(Base):
                 data_source_info_dict = {}
 
             return data_source_info_dict
-        return None
+        return {}
 
     @property
     def data_source_detail_dict(self):
@@ -754,7 +786,7 @@ class DocumentSegment(Base):
         text = self.content
 
         # For data before v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/image-preview"
+        pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -766,11 +798,12 @@ class DocumentSegment(Base):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            signed_url = f"{match.group(0)}?{params}"
+            base_url = f"/files/{upload_file_id}/image-preview"
+            signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For data after v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/file-preview"
+        pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -782,7 +815,26 @@ class DocumentSegment(Base):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            signed_url = f"{match.group(0)}?{params}"
+            base_url = f"/files/{upload_file_id}/file-preview"
+            signed_url = f"{base_url}?{params}"
+            signed_urls.append((match.start(), match.end(), signed_url))
+
+        # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
+        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?.*?)?"
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            upload_file_id = match.group(1)
+            file_extension = match.group(2)
+            nonce = os.urandom(16).hex()
+            timestamp = str(int(time.time()))
+            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            base_url = f"/files/tools/{upload_file_id}.{file_extension}"
+            signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # Reconstruct the text with signed URLs
@@ -1158,3 +1210,100 @@ class DatasetMetadataBinding(Base):
     document_id = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     created_by = mapped_column(StringUUID, nullable=False)
+
+
+class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
+    __tablename__ = "pipeline_built_in_templates"
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    chunk_structure = db.Column(db.String(255), nullable=False)
+    icon = db.Column(db.JSON, nullable=False)
+    yaml_content = db.Column(db.Text, nullable=False)
+    copyright = db.Column(db.String(255), nullable=False)
+    privacy_policy = db.Column(db.String(255), nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    install_count = db.Column(db.Integer, nullable=False, default=0)
+    language = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by = db.Column(StringUUID, nullable=False)
+    updated_by = db.Column(StringUUID, nullable=True)
+
+    @property
+    def created_user_name(self):
+        account = db.session.query(Account).filter(Account.id == self.created_by).first()
+        if account:
+            return account.name
+        return ""
+
+
+class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
+    __tablename__ = "pipeline_customized_templates"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="pipeline_customized_template_pkey"),
+        db.Index("pipeline_customized_template_tenant_idx", "tenant_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    chunk_structure = db.Column(db.String(255), nullable=False)
+    icon = db.Column(db.JSON, nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    yaml_content = db.Column(db.Text, nullable=False)
+    install_count = db.Column(db.Integer, nullable=False, default=0)
+    language = db.Column(db.String(255), nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
+    updated_by = db.Column(StringUUID, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def created_user_name(self):
+        account = db.session.query(Account).filter(Account.id == self.created_by).first()
+        if account:
+            return account.name
+        return ""
+
+
+class Pipeline(Base):  # type: ignore[name-defined]
+    __tablename__ = "pipelines"
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
+    workflow_id = db.Column(StringUUID, nullable=True)
+    is_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_published = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_by = db.Column(StringUUID, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_by = db.Column(StringUUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def dataset(self):
+        return db.session.query(Dataset).filter(Dataset.pipeline_id == self.id).first()
+
+
+class DocumentPipelineExecutionLog(Base):
+    __tablename__ = "document_pipeline_execution_logs"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="document_pipeline_execution_log_pkey"),
+        db.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    pipeline_id = db.Column(StringUUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=False)
+    datasource_type = db.Column(db.String(255), nullable=False)
+    datasource_info = db.Column(db.Text, nullable=False)
+    datasource_node_id = db.Column(db.String(255), nullable=False)
+    input_data = db.Column(db.JSON, nullable=False)
+    created_by = db.Column(StringUUID, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

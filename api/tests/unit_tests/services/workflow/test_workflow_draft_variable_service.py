@@ -10,8 +10,7 @@ from sqlalchemy.orm import Session
 from core.variables.segments import StringSegment
 from core.variables.types import SegmentType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.nodes.enums import NodeType
-from libs.uuid_utils import uuidv7
+from core.workflow.enums import NodeType
 from models.account import Account
 from models.enums import DraftVariableType
 from models.workflow import (

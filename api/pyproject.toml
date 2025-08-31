@@ -163,6 +163,7 @@ dev = [
     "pandas-stubs~=2.2.3",
     "scipy-stubs>=1.15.3.0",
     "types-python-http-client>=3.3.7.20240910",
+    "import-linter>=2.3",
     "types-redis>=4.6.0.20241004",
     "celery-types>=0.23.0",
 ]

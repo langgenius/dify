@@ -10,7 +10,6 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
-from models.source import DataSourceOauthBinding
 
 logger = logging.getLogger(__name__)
 
@@ -46,20 +45,6 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
-            .where(
-                db.and_(
-                    DataSourceOauthBinding.tenant_id == document.tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.disabled == False,
-                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                )
-            )
-            .first()
-        )
-        if not data_source_binding:
-            raise ValueError("Data source binding not found.")
 
         loader = NotionExtractor(
             notion_workspace_id=workspace_id,
