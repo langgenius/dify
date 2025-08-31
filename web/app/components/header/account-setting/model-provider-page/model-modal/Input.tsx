@@ -41,6 +41,7 @@ const Input: FC<InputProps> = ({
     <div className='relative'>
       <input
         tabIndex={0}
+        // Always use the type prop and do not set autoComplete
         className={`
           block h-8 w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm
           text-components-input-text-filled caret-primary-600 outline-none
