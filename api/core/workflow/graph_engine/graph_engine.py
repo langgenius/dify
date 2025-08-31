@@ -35,7 +35,6 @@ from .event_management import EventCollector, EventEmitter, EventHandlerRegistry
 from .graph_traversal import BranchHandler, EdgeProcessor, NodeReadinessChecker, SkipPropagator
 from .layers.base import Layer
 from .orchestration import Dispatcher, ExecutionCoordinator
-from .output_registry import OutputRegistry
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
 from .state_management import UnifiedStateManager
@@ -122,8 +121,9 @@ class GraphEngine:
         self.state_manager = UnifiedStateManager(self.graph, self.ready_queue)
 
         # Response coordination
-        self.output_registry = OutputRegistry(self.graph_runtime_state.variable_pool)
-        self.response_coordinator = ResponseStreamCoordinator(registry=self.output_registry, graph=self.graph)
+        self.response_coordinator = ResponseStreamCoordinator(
+            variable_pool=self.graph_runtime_state.variable_pool, graph=self.graph
+        )
 
         # Event management
         self.event_collector = EventCollector()

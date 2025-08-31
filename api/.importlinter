@@ -37,7 +37,6 @@ type = layers
 layers =
     graph_engine
     response_coordinator
-    output_registry
 containers =
     core.workflow.graph_engine
 
