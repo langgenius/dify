@@ -13,7 +13,6 @@ from typing import final
 
 from flask import Flask, current_app
 
-from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
@@ -40,7 +39,7 @@ from .output_registry import OutputRegistry
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
 from .state_management import UnifiedStateManager
-from .worker_management import ActivityTracker, DynamicScaler, WorkerFactory, WorkerPool
+from .worker_management import SimpleWorkerPool
 
 logger = logging.getLogger(__name__)
 
@@ -215,31 +214,17 @@ class GraphEngine:
 
         context_vars = contextvars.copy_context()
 
-        # Create worker management components
-        self._activity_tracker = ActivityTracker()
-        self._dynamic_scaler = DynamicScaler(
-            min_workers=(self._min_workers if self._min_workers is not None else dify_config.GRAPH_ENGINE_MIN_WORKERS),
-            max_workers=(self._max_workers if self._max_workers is not None else dify_config.GRAPH_ENGINE_MAX_WORKERS),
-            scale_up_threshold=(
-                self._scale_up_threshold
-                if self._scale_up_threshold is not None
-                else dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD
-            ),
-            scale_down_idle_time=(
-                self._scale_down_idle_time
-                if self._scale_down_idle_time is not None
-                else dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME
-            ),
-        )
-        self._worker_factory = WorkerFactory(flask_app, context_vars)
-
-        self._worker_pool = WorkerPool(
+        # Create simple worker pool
+        self._worker_pool = SimpleWorkerPool(
             ready_queue=self.ready_queue,
             event_queue=self.event_queue,
             graph=self.graph,
-            worker_factory=self._worker_factory,
-            dynamic_scaler=self._dynamic_scaler,
-            activity_tracker=self._activity_tracker,
+            flask_app=flask_app,
+            context_vars=context_vars,
+            min_workers=self._min_workers,
+            max_workers=self._max_workers,
+            scale_up_threshold=self._scale_up_threshold,
+            scale_down_idle_time=self._scale_down_idle_time,
         )
 
     def _validate_graph_state_consistency(self) -> None:
@@ -316,11 +301,8 @@ class GraphEngine:
 
     def _start_execution(self) -> None:
         """Start execution subsystems."""
-        # Calculate initial worker count
-        initial_workers = self._dynamic_scaler.calculate_initial_workers(self.graph)
-
-        # Start worker pool
-        self._worker_pool.start(initial_workers)
+        # Start worker pool (it calculates initial workers internally)
+        self._worker_pool.start()
 
         # Register response nodes
         for node in self.graph.nodes.values():

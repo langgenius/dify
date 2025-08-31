@@ -8,7 +8,7 @@ from ..command_processing import CommandProcessor
 from ..domain import GraphExecution
 from ..event_management import EventCollector
 from ..state_management import UnifiedStateManager
-from ..worker_management import WorkerPool
+from ..worker_management import SimpleWorkerPool
 
 if TYPE_CHECKING:
     from ..event_management import EventHandlerRegistry
@@ -30,7 +30,7 @@ class ExecutionCoordinator:
         event_handler: "EventHandlerRegistry",
         event_collector: EventCollector,
         command_processor: CommandProcessor,
-        worker_pool: WorkerPool,
+        worker_pool: SimpleWorkerPool,
     ) -> None:
         """
         Initialize the execution coordinator.
@@ -56,9 +56,7 @@ class ExecutionCoordinator:
 
     def check_scaling(self) -> None:
         """Check and perform worker scaling if needed."""
-        queue_depth = self.state_manager.ready_queue.qsize()
-        executing_count = self.state_manager.get_executing_count()
-        self.worker_pool.check_scaling(queue_depth, executing_count)
+        self.worker_pool.check_and_scale()
 
     def is_execution_complete(self) -> bool:
         """

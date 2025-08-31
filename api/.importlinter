@@ -77,16 +77,15 @@ forbidden_modules =
     core.workflow.graph_engine.layers
     core.workflow.graph_engine.protocols
 
-[importlinter:contract:worker-management-layers]
-name = Worker Management Layers
-type = layers
-layers =
-    worker_pool
-    worker_factory
-    dynamic_scaler
-    activity_tracker
-containers =
+[importlinter:contract:worker-management]
+name = Worker Management
+type = forbidden
+source_modules =
     core.workflow.graph_engine.worker_management
+forbidden_modules =
+    core.workflow.graph_engine.orchestration
+    core.workflow.graph_engine.command_processing
+    core.workflow.graph_engine.event_management
 
 [importlinter:contract:error-handling-strategies]
 name = Error Handling Strategies

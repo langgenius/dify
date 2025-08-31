@@ -5,14 +5,8 @@ This package manages the worker pool, including creation,
 scaling, and activity tracking.
 """
 
-from .activity_tracker import ActivityTracker
-from .dynamic_scaler import DynamicScaler
-from .worker_factory import WorkerFactory
-from .worker_pool import WorkerPool
+from .simple_worker_pool import SimpleWorkerPool
 
 __all__ = [
-    "ActivityTracker",
-    "DynamicScaler",
-    "WorkerFactory",
-    "WorkerPool",
+    "SimpleWorkerPool",
 ]
