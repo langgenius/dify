@@ -1,8 +1,10 @@
 from base64 import b64encode
+from collections.abc import Callable
 from functools import wraps
 from hashlib import sha1
 from hmac import new as hmac_new
-from typing import Callable, ParamSpec, Concatenate, TypeVar
+from typing import ParamSpec, TypeVar
+
 P = ParamSpec("P")
 R = TypeVar("R")
 from flask import abort, request
