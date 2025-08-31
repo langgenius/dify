@@ -126,15 +126,6 @@ const translation = {
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
       features: {
-        3: 'Spazi di lavoro multipli e gestione aziendale',
-        2: 'Funzionalità esclusive per le aziende',
-        1: 'Autorizzazione Licenza Commerciale',
-        5: 'SLA negoziati dai partner Dify',
-        4: 'SSO',
-        6: 'Sicurezza e controlli avanzati',
-        8: 'Supporto tecnico professionale',
-        7: 'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
-        0: 'Soluzioni di distribuzione scalabili di livello aziendale',
       },
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
@@ -143,9 +134,6 @@ const translation = {
     },
     community: {
       features: {
-        1: 'Area di lavoro singola',
-        2: 'Conforme alla licenza Open Source Dify',
-        0: 'Tutte le funzionalità principali rilasciate nel repository pubblico',
       },
       name: 'Comunità',
       btnText: 'Inizia con la comunità',
@@ -156,10 +144,6 @@ const translation = {
     },
     premium: {
       features: {
-        3: 'Supporto prioritario via e-mail e chat',
-        1: 'Area di lavoro singola',
-        2: 'Personalizzazione del logo e del marchio WebApp',
-        0: 'Affidabilità autogestita da vari fornitori di servizi cloud',
       },
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
