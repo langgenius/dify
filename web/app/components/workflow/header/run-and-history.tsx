@@ -10,6 +10,7 @@ import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflowRun,
+  useWorkflowRunValidation,
   useWorkflowStartRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
@@ -31,6 +32,7 @@ const RunMode = memo(() => {
   const { t } = useTranslation()
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
+  const { validateBeforeRun } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
   const dynamicOptions = useDynamicTestRunOptions()
@@ -40,6 +42,10 @@ const RunMode = memo(() => {
   }
 
   const handleTriggerSelect = (option: TriggerOption) => {
+    // Validate checklist before running any workflow
+    if (!validateBeforeRun())
+      return
+
     if (option.type === 'user_input') {
       handleWorkflowStartRunInWorkflow()
     }
