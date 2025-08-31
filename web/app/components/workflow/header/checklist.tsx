@@ -136,8 +136,8 @@ const WorkflowChecklist = ({
                               node.unConnected && (
                                 <div className='px-3 py-1 first:pt-1.5 last:pb-1.5'>
                                   <div className='flex text-xs leading-4 text-text-tertiary'>
-                                    <Warning className='mr-2 mt-[2px] h-3 w-3 text-[#F79009]' />
-                                    {t('workflow.common.needConnectTip')}
+                                    <Warning className='mr-2 mt-[2px] h-3 w-3 shrink-0 text-[#F79009]' />
+                                    <span className='break-words'>{t('workflow.common.needConnectTip')}</span>
                                   </div>
                                 </div>
                               )
@@ -146,8 +146,8 @@ const WorkflowChecklist = ({
                               node.errorMessage && (
                                 <div className='px-3 py-1 first:pt-1.5 last:pb-1.5'>
                                   <div className='flex text-xs leading-4 text-text-tertiary'>
-                                    <Warning className='mr-2 mt-[2px] h-3 w-3 text-[#F79009]' />
-                                    {node.errorMessage}
+                                    <Warning className='mr-2 mt-[2px] h-3 w-3 shrink-0 text-[#F79009]' />
+                                    <span className='break-words'>{node.errorMessage}</span>
                                   </div>
                                 </div>
                               )

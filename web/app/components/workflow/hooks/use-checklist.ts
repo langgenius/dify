@@ -16,6 +16,7 @@ import { useStore } from '../store'
 import {
   getToolCheckParams,
   getValidTreeNodes,
+  validateWorkflowConnectivity,
 } from '../utils'
 import {
   CUSTOM_NODE,
@@ -189,6 +190,17 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       })
     }
 
+    // Check workflow connectivity - ensure only one connected graph
+    const connectivityResult = validateWorkflowConnectivity(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+    if (!connectivityResult.isValid && connectivityResult.connectedComponents > 1) {
+      list.push({
+        id: 'multiple-disconnected-graphs',
+        type: BlockEnum.Start,
+        title: t('workflow.common.workflowConnectivity'),
+        errorMessage: t('workflow.common.multipleDisconnectedGraphs'),
+      })
+    }
+
     return list
   }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData])
 
@@ -316,6 +328,13 @@ export const useChecklistBeforePublish = () => {
 
     if (!isChatMode && !nodes.find(node => node.data.type === BlockEnum.End)) {
       notify({ type: 'error', message: t('workflow.common.needEndNode') })
+      return false
+    }
+
+    // Check workflow connectivity - ensure only one connected graph
+    const connectivityResult = validateWorkflowConnectivity(nodes, edges)
+    if (!connectivityResult.isValid && connectivityResult.connectedComponents > 1) {
+      notify({ type: 'error', message: t('workflow.common.multipleDisconnectedGraphs') })
       return false
     }
 

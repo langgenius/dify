@@ -48,6 +48,8 @@ const translation = {
     needEndNode: 'The End node must be added',
     needStartNode: 'At least one start node must be added',
     needAnswerNode: 'The Answer node must be added',
+    workflowConnectivity: 'Workflow Connectivity',
+    multipleDisconnectedGraphs: 'Workflow must have only one connected graph. Multiple disconnected subgraphs are not allowed.',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
     previewPlaceholder: 'Enter content in the box below to start debugging the Chatbot',

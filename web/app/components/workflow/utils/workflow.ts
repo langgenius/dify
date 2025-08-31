@@ -352,3 +352,98 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
   return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.TriggerWebhook
 }
+
+/**
+ * Check if workflow has only one connected graph (no multiple disconnected subgraphs)
+ */
+export const validateWorkflowConnectivity = (nodes: Node[], edges: Edge[]) => {
+  // Find all start nodes (Start and Trigger nodes)
+  const startNodes = nodes.filter(node =>
+    node.data.type === BlockEnum.Start
+    || node.data.type === BlockEnum.TriggerSchedule
+    || node.data.type === BlockEnum.TriggerWebhook
+    || node.data.type === BlockEnum.TriggerPlugin,
+  )
+
+  if (startNodes.length === 0) {
+    return {
+      isValid: true, // No start nodes, no connectivity issue
+      connectedComponents: 0,
+      isolatedStartNodes: [],
+    }
+  }
+
+  if (startNodes.length === 1) {
+    return {
+      isValid: true, // Single start node, no connectivity issue
+      connectedComponents: 1,
+      isolatedStartNodes: [],
+    }
+  }
+
+  // Use DFS/BFS to find connected components
+  const visited = new Set<string>()
+  const connectedComponents: Node[][] = []
+  const isolatedStartNodes: Node[] = []
+
+  // Helper function to perform DFS and find all nodes in a connected component
+  const dfs = (nodeId: string, component: Node[]) => {
+    if (visited.has(nodeId)) return
+
+    visited.add(nodeId)
+    const node = nodes.find(n => n.id === nodeId)
+    if (node)
+      component.push(node)
+
+    // Find all connected edges (both incoming and outgoing)
+    const connectedEdges = edges.filter(edge =>
+      edge.source === nodeId || edge.target === nodeId,
+    )
+
+    connectedEdges.forEach((edge) => {
+      const nextNodeId = edge.source === nodeId ? edge.target : edge.source
+      if (!visited.has(nextNodeId))
+        dfs(nextNodeId, component)
+    })
+  }
+
+  // Find connected components starting from each start node
+  startNodes.forEach((startNode) => {
+    if (!visited.has(startNode.id)) {
+      const component: Node[] = []
+      dfs(startNode.id, component)
+
+      if (component.length > 0) {
+        connectedComponents.push(component)
+
+        // Check if this component has any start nodes that are not connected to others
+        const startNodesInComponent = component.filter(node =>
+          node.data.type === BlockEnum.Start
+          || node.data.type === BlockEnum.TriggerSchedule
+          || node.data.type === BlockEnum.TriggerWebhook
+          || node.data.type === BlockEnum.TriggerPlugin,
+        )
+
+        // If component has only one node and it's a start node, it's isolated
+        if (component.length === 1 && startNodesInComponent.length === 1)
+          isolatedStartNodes.push(startNodesInComponent[0])
+      }
+    }
+  })
+
+  // Check if there are multiple connected components with start nodes
+  const componentsWithStartNodes = connectedComponents.filter(component =>
+    component.some(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    ),
+  )
+
+  return {
+    isValid: componentsWithStartNodes.length <= 1,
+    connectedComponents: componentsWithStartNodes.length,
+    isolatedStartNodes,
+  }
+}
