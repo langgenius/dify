@@ -1,15 +1,14 @@
-from pydantic import BaseModel, Field, ValidationError, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 class MoreLikeThisConfig(BaseModel):
     enabled: bool = False
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class AppConfigModel(BaseModel):
     more_like_this: MoreLikeThisConfig = Field(default_factory=MoreLikeThisConfig)
-    model_config = ConfigDict(extra='allow')
-
+    model_config = ConfigDict(extra="allow")
 
 
 class MoreLikeThisConfigManager:
