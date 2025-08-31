@@ -16,7 +16,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode
       ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
+      : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes.filter(type => type !== BlockEnum.Start)
   },
   checkValid(payload: PluginTriggerNodeType, t: any) {
