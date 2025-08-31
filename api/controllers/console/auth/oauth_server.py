@@ -44,22 +44,19 @@ def oauth_server_access_token_required(view):
         if not oauth_provider_app or not isinstance(oauth_provider_app, OAuthProviderApp):
             raise BadRequest("Invalid oauth_provider_app")
 
-        if not request.headers.get("Authorization"):
-            raise BadRequest("Authorization is required")
-
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
             raise BadRequest("Authorization header is required")
 
-        parts = authorization_header.split(" ")
+        parts = authorization_header.strip().split(" ")
         if len(parts) != 2:
             raise BadRequest("Invalid Authorization header format")
 
-        token_type = parts[0]
-        if token_type != "Bearer":
+        token_type = parts[0].strip()
+        if token_type.lower() != "bearer":
             raise BadRequest("token_type is invalid")
 
-        access_token = parts[1]
+        access_token = parts[1].strip()
         if not access_token:
             raise BadRequest("access_token is required")
 
