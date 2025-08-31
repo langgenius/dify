@@ -332,6 +332,7 @@ class LoopNode(BaseNode):
                 if exists_variable:
                     input_conditions, group_result, check_break_result = condition_processor.process_conditions(
                         variable_pool=self.graph_runtime_state.variable_pool,
+                        selectors=loop_variable_selectors,
                         conditions=break_conditions,
                         operator=logical_operator,
                     )
@@ -399,10 +400,6 @@ class LoopNode(BaseNode):
             else:
                 yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
 
-        # Remove all nodes outputs from variable pool
-        for node_id in loop_graph.node_ids:
-            variable_pool.remove([node_id])
-
         _outputs: dict[str, Segment | int | None] = {}
         for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
             _loop_variable_segment = variable_pool.get(loop_variable_selector)
@@ -413,6 +410,10 @@ class LoopNode(BaseNode):
 
         _outputs["loop_round"] = current_index + 1
         self._node_data.outputs = _outputs
+
+        # Remove all nodes outputs from variable pool
+        for node_id in loop_graph.node_ids:
+            variable_pool.remove([node_id])
 
         if check_break_result:
             return {"check_break_result": True}
