@@ -441,9 +441,9 @@ def _process_sub_conditions(
         """
         if not variable_selector or not isinstance(variable_selector, (list, tuple)):
             return None
-        
+
         # Use more defensive approach - check length first, then extract
         if len(variable_selector) >= 1:
             return variable_selector[-1]  # Last element is typically the variable name
-        
+
         return None

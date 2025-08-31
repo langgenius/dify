@@ -553,7 +553,7 @@ class LoopNode(BaseNode):
         """
         if not break_conditions:
             return False
-            
+
         # Use all() with generator expression - different from the loop-based approach
         return all(
             self.graph_runtime_state.variable_pool.get(condition.variable_selector) is not None
