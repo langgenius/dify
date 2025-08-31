@@ -24,7 +24,7 @@ class NodeReadinessChecker:
         Args:
             graph: The workflow graph
         """
-        self.graph = graph
+        self._graph = graph
 
     def is_node_ready(self, node_id: str) -> bool:
         """
@@ -40,7 +40,7 @@ class NodeReadinessChecker:
         Returns:
             True if the node is ready for execution
         """
-        incoming_edges = self.graph.get_incoming_edges(node_id)
+        incoming_edges = self._graph.get_incoming_edges(node_id)
 
         # No dependencies means always ready
         if not incoming_edges:
@@ -75,7 +75,7 @@ class NodeReadinessChecker:
             List of node IDs that are now ready
         """
         ready_nodes: list[str] = []
-        outgoing_edges = self.graph.get_outgoing_edges(from_node_id)
+        outgoing_edges = self._graph.get_outgoing_edges(from_node_id)
 
         for edge in outgoing_edges:
             if edge.state == NodeState.TAKEN:

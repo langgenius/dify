@@ -46,8 +46,8 @@ class UnifiedStateManager:
             graph: The workflow graph
             ready_queue: Queue for nodes ready to execute
         """
-        self.graph = graph
-        self.ready_queue = ready_queue
+        self._graph = graph
+        self._ready_queue = ready_queue
         self._lock = threading.RLock()
 
         # Execution tracking state
@@ -66,8 +66,8 @@ class UnifiedStateManager:
             node_id: The ID of the node to enqueue
         """
         with self._lock:
-            self.graph.nodes[node_id].state = NodeState.TAKEN
-            self.ready_queue.put(node_id)
+            self._graph.nodes[node_id].state = NodeState.TAKEN
+            self._ready_queue.put(node_id)
 
     def mark_node_skipped(self, node_id: str) -> None:
         """
@@ -77,7 +77,7 @@ class UnifiedStateManager:
             node_id: The ID of the node to skip
         """
         with self._lock:
-            self.graph.nodes[node_id].state = NodeState.SKIPPED
+            self._graph.nodes[node_id].state = NodeState.SKIPPED
 
     def is_node_ready(self, node_id: str) -> bool:
         """
@@ -94,7 +94,7 @@ class UnifiedStateManager:
         """
         with self._lock:
             # Get all incoming edges to this node
-            incoming_edges = self.graph.get_incoming_edges(node_id)
+            incoming_edges = self._graph.get_incoming_edges(node_id)
 
             # If no incoming edges, node is always ready
             if not incoming_edges:
@@ -118,7 +118,7 @@ class UnifiedStateManager:
             The current node state
         """
         with self._lock:
-            return self.graph.nodes[node_id].state
+            return self._graph.nodes[node_id].state
 
     # ============= Edge State Operations =============
 
@@ -130,7 +130,7 @@ class UnifiedStateManager:
             edge_id: The ID of the edge to mark
         """
         with self._lock:
-            self.graph.edges[edge_id].state = NodeState.TAKEN
+            self._graph.edges[edge_id].state = NodeState.TAKEN
 
     def mark_edge_skipped(self, edge_id: str) -> None:
         """
@@ -140,7 +140,7 @@ class UnifiedStateManager:
             edge_id: The ID of the edge to mark
         """
         with self._lock:
-            self.graph.edges[edge_id].state = NodeState.SKIPPED
+            self._graph.edges[edge_id].state = NodeState.SKIPPED
 
     def analyze_edge_states(self, edges: list[Edge]) -> EdgeStateAnalysis:
         """
@@ -172,7 +172,7 @@ class UnifiedStateManager:
             The current edge state
         """
         with self._lock:
-            return self.graph.edges[edge_id].state
+            return self._graph.edges[edge_id].state
 
     def categorize_branch_edges(self, node_id: str, selected_handle: str) -> tuple[Sequence[Edge], Sequence[Edge]]:
         """
@@ -186,7 +186,7 @@ class UnifiedStateManager:
             A tuple of (selected_edges, unselected_edges)
         """
         with self._lock:
-            outgoing_edges = self.graph.get_outgoing_edges(node_id)
+            outgoing_edges = self._graph.get_outgoing_edges(node_id)
             selected_edges: list[Edge] = []
             unselected_edges: list[Edge] = []
 
@@ -272,7 +272,7 @@ class UnifiedStateManager:
             True if execution is complete
         """
         with self._lock:
-            return self.ready_queue.empty() and len(self._executing_nodes) == 0
+            return self._ready_queue.empty() and len(self._executing_nodes) == 0
 
     def get_queue_depth(self) -> int:
         """
@@ -281,7 +281,7 @@ class UnifiedStateManager:
         Returns:
             Number of nodes in the ready queue
         """
-        return self.ready_queue.qsize()
+        return self._ready_queue.qsize()
 
     def get_execution_stats(self) -> dict[str, int]:
         """
@@ -291,12 +291,12 @@ class UnifiedStateManager:
             Dictionary with execution statistics
         """
         with self._lock:
-            taken_nodes = sum(1 for node in self.graph.nodes.values() if node.state == NodeState.TAKEN)
-            skipped_nodes = sum(1 for node in self.graph.nodes.values() if node.state == NodeState.SKIPPED)
-            unknown_nodes = sum(1 for node in self.graph.nodes.values() if node.state == NodeState.UNKNOWN)
+            taken_nodes = sum(1 for node in self._graph.nodes.values() if node.state == NodeState.TAKEN)
+            skipped_nodes = sum(1 for node in self._graph.nodes.values() if node.state == NodeState.SKIPPED)
+            unknown_nodes = sum(1 for node in self._graph.nodes.values() if node.state == NodeState.UNKNOWN)
 
             return {
-                "queue_depth": self.ready_queue.qsize(),
+                "queue_depth": self._ready_queue.qsize(),
                 "executing": len(self._executing_nodes),
                 "taken_nodes": taken_nodes,
                 "skipped_nodes": skipped_nodes,

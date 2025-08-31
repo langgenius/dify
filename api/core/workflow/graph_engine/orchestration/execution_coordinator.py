@@ -43,20 +43,20 @@ class ExecutionCoordinator:
             command_processor: Processor for commands
             worker_pool: Pool of workers
         """
-        self.graph_execution = graph_execution
-        self.state_manager = state_manager
-        self.event_handler = event_handler
-        self.event_collector = event_collector
-        self.command_processor = command_processor
-        self.worker_pool = worker_pool
+        self._graph_execution = graph_execution
+        self._state_manager = state_manager
+        self._event_handler = event_handler
+        self._event_collector = event_collector
+        self._command_processor = command_processor
+        self._worker_pool = worker_pool
 
     def check_commands(self) -> None:
         """Process any pending commands."""
-        self.command_processor.process_commands()
+        self._command_processor.process_commands()
 
     def check_scaling(self) -> None:
         """Check and perform worker scaling if needed."""
-        self.worker_pool.check_and_scale()
+        self._worker_pool.check_and_scale()
 
     def is_execution_complete(self) -> bool:
         """
@@ -66,16 +66,16 @@ class ExecutionCoordinator:
             True if execution is complete
         """
         # Check if aborted or failed
-        if self.graph_execution.aborted or self.graph_execution.has_error:
+        if self._graph_execution.aborted or self._graph_execution.has_error:
             return True
 
         # Complete if no work remains
-        return self.state_manager.is_execution_complete()
+        return self._state_manager.is_execution_complete()
 
     def mark_complete(self) -> None:
         """Mark execution as complete."""
-        if not self.graph_execution.completed:
-            self.graph_execution.complete()
+        if not self._graph_execution.completed:
+            self._graph_execution.complete()
 
     def mark_failed(self, error: Exception) -> None:
         """
@@ -84,4 +84,4 @@ class ExecutionCoordinator:
         Args:
             error: The error that caused failure
         """
-        self.graph_execution.fail(error)
+        self._graph_execution.fail(error)

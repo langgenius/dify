@@ -23,7 +23,7 @@ class ReadWriteLock:
 
     def acquire_read(self) -> None:
         """Acquire a read lock."""
-        self._read_ready.acquire()
+        _ = self._read_ready.acquire()
         try:
             self._readers += 1
         finally:
@@ -31,7 +31,7 @@ class ReadWriteLock:
 
     def release_read(self) -> None:
         """Release a read lock."""
-        self._read_ready.acquire()
+        _ = self._read_ready.acquire()
         try:
             self._readers -= 1
             if self._readers == 0:
@@ -41,9 +41,9 @@ class ReadWriteLock:
 
     def acquire_write(self) -> None:
         """Acquire a write lock."""
-        self._read_ready.acquire()
+        _ = self._read_ready.acquire()
         while self._readers > 0:
-            self._read_ready.wait()
+            _ = self._read_ready.wait()
 
     def release_write(self) -> None:
         """Release a write lock."""

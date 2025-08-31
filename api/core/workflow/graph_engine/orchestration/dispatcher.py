@@ -48,12 +48,12 @@ class Dispatcher:
             max_execution_time: Maximum execution time in seconds
             event_emitter: Optional event emitter to signal completion
         """
-        self.event_queue = event_queue
-        self.event_handler = event_handler
-        self.event_collector = event_collector
-        self.execution_coordinator = execution_coordinator
-        self.max_execution_time = max_execution_time
-        self.event_emitter = event_emitter
+        self._event_queue = event_queue
+        self._event_handler = event_handler
+        self._event_collector = event_collector
+        self._execution_coordinator = execution_coordinator
+        self._max_execution_time = max_execution_time
+        self._event_emitter = event_emitter
 
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -80,28 +80,28 @@ class Dispatcher:
         try:
             while not self._stop_event.is_set():
                 # Check for commands
-                self.execution_coordinator.check_commands()
+                self._execution_coordinator.check_commands()
 
                 # Check for scaling
-                self.execution_coordinator.check_scaling()
+                self._execution_coordinator.check_scaling()
 
                 # Process events
                 try:
-                    event = self.event_queue.get(timeout=0.1)
+                    event = self._event_queue.get(timeout=0.1)
                     # Route to the event handler
-                    self.event_handler.handle_event(event)
-                    self.event_queue.task_done()
+                    self._event_handler.handle_event(event)
+                    self._event_queue.task_done()
                 except queue.Empty:
                     # Check if execution is complete
-                    if self.execution_coordinator.is_execution_complete():
+                    if self._execution_coordinator.is_execution_complete():
                         break
 
         except Exception as e:
             logger.exception("Dispatcher error")
-            self.execution_coordinator.mark_failed(e)
+            self._execution_coordinator.mark_failed(e)
 
         finally:
-            self.execution_coordinator.mark_complete()
+            self._execution_coordinator.mark_complete()
             # Signal the event emitter that execution is complete
-            if self.event_emitter:
-                self.event_emitter.mark_complete()
+            if self._event_emitter:
+                self._event_emitter.mark_complete()

@@ -44,11 +44,11 @@ class ResponseStreamCoordinator:
             variable_pool: VariablePool instance for accessing node variables
             graph: Graph instance for looking up node information
         """
-        self.variable_pool = variable_pool
-        self.graph = graph
-        self.active_session: ResponseSession | None = None
-        self.waiting_sessions: deque[ResponseSession] = deque()
-        self.lock = RLock()
+        self._variable_pool = variable_pool
+        self._graph = graph
+        self._active_session: ResponseSession | None = None
+        self._waiting_sessions: deque[ResponseSession] = deque()
+        self._lock = RLock()
 
         # Internal stream management (replacing OutputRegistry)
         self._stream_buffers: dict[tuple[str, ...], list[NodeRunStreamChunkEvent]] = {}
@@ -68,7 +68,7 @@ class ResponseStreamCoordinator:
         self._response_sessions: dict[NodeID, ResponseSession] = {}  # node_id -> session
 
     def register(self, response_node_id: NodeID) -> None:
-        with self.lock:
+        with self._lock:
             self._response_nodes.add(response_node_id)
 
             # Build and save paths map for this response node
@@ -76,7 +76,7 @@ class ResponseStreamCoordinator:
             self._paths_maps[response_node_id] = paths_map
 
             # Create and store response session for this node
-            response_node = self.graph.nodes[response_node_id]
+            response_node = self._graph.nodes[response_node_id]
             session = ResponseSession.from_node(response_node)
             self._response_sessions[response_node_id] = session
 
@@ -87,7 +87,7 @@ class ResponseStreamCoordinator:
             node_id: The ID of the node
             execution_id: The execution ID from NodeRunStartedEvent
         """
-        with self.lock:
+        with self._lock:
             self._node_execution_ids[node_id] = execution_id
 
     def _get_or_create_execution_id(self, node_id: NodeID) -> str:
@@ -99,7 +99,7 @@ class ResponseStreamCoordinator:
         Returns:
             The execution ID for the node
         """
-        with self.lock:
+        with self._lock:
             if node_id not in self._node_execution_ids:
                 self._node_execution_ids[node_id] = str(uuid4())
             return self._node_execution_ids[node_id]
@@ -116,14 +116,14 @@ class ResponseStreamCoordinator:
             List of Path objects, where each path contains branch edge IDs
         """
         # Get root node ID
-        root_node_id = self.graph.root_node.id
+        root_node_id = self._graph.root_node.id
 
         # If root is the response node, return empty path
         if root_node_id == response_node_id:
             return [Path()]
 
         # Extract variable selectors from the response node's template
-        response_node = self.graph.nodes[response_node_id]
+        response_node = self._graph.nodes[response_node_id]
         response_session = ResponseSession.from_node(response_node)
         template = response_session.template
 
@@ -149,7 +149,7 @@ class ResponseStreamCoordinator:
             visited.add(current_node_id)
 
             # Explore outgoing edges
-            outgoing_edges = self.graph.get_outgoing_edges(current_node_id)
+            outgoing_edges = self._graph.get_outgoing_edges(current_node_id)
             for edge in outgoing_edges:
                 edge_id = edge.id
                 next_node_id = edge.head
@@ -168,8 +168,8 @@ class ResponseStreamCoordinator:
         for path in all_complete_paths:
             blocking_edges: list[str] = []
             for edge_id in path:
-                edge = self.graph.edges[edge_id]
-                source_node = self.graph.nodes[edge.tail]
+                edge = self._graph.edges[edge_id]
+                source_node = self._graph.nodes[edge.tail]
 
                 # Check if node is a branch/container (original behavior)
                 if source_node.execution_type in {
@@ -199,7 +199,7 @@ class ResponseStreamCoordinator:
         """
         events: list[NodeRunStreamChunkEvent] = []
 
-        with self.lock:
+        with self._lock:
             # Check each response node in order
             for response_node_id in self._response_nodes:
                 if response_node_id not in self._paths_maps:
@@ -245,21 +245,21 @@ class ResponseStreamCoordinator:
         # Remove from map to ensure it won't be activated again
         del self._response_sessions[node_id]
 
-        if self.active_session is None:
-            self.active_session = session
+        if self._active_session is None:
+            self._active_session = session
 
             # Try to flush immediately
             events.extend(self.try_flush())
         else:
             # Queue the session if another is active
-            self.waiting_sessions.append(session)
+            self._waiting_sessions.append(session)
 
         return events
 
     def intercept_event(
         self, event: NodeRunStreamChunkEvent | NodeRunSucceededEvent
     ) -> Sequence[NodeRunStreamChunkEvent]:
-        with self.lock:
+        with self._lock:
             if isinstance(event, NodeRunStreamChunkEvent):
                 self._append_stream_chunk(event.selector, event)
                 if event.is_final:
@@ -269,9 +269,8 @@ class ResponseStreamCoordinator:
                 # Skip cause we share the same variable pool.
                 #
                 # for variable_name, variable_value in event.node_run_result.outputs.items():
-                #     self.variable_pool.add((event.node_id, variable_name), variable_value)
+                #     self._variable_pool.add((event.node_id, variable_name), variable_value)
                 return self.try_flush()
-        return []
 
     def _create_stream_chunk_event(
         self,
@@ -287,9 +286,9 @@ class ResponseStreamCoordinator:
         active response node's information since these are not actual node IDs.
         """
         # Check if this is a special selector that doesn't correspond to a node
-        if selector and selector[0] not in self.graph.nodes and self.active_session:
+        if selector and selector[0] not in self._graph.nodes and self._active_session:
             # Use the active response node for special selectors
-            response_node = self.graph.nodes[self.active_session.node_id]
+            response_node = self._graph.nodes[self._active_session.node_id]
             return NodeRunStreamChunkEvent(
                 id=execution_id,
                 node_id=response_node.id,
@@ -300,7 +299,7 @@ class ResponseStreamCoordinator:
             )
 
         # Standard case: selector refers to an actual node
-        node = self.graph.nodes[node_id]
+        node = self._graph.nodes[node_id]
         return NodeRunStreamChunkEvent(
             id=execution_id,
             node_id=node.id,
@@ -323,9 +322,9 @@ class ResponseStreamCoordinator:
         # Determine which node to attribute the output to
         # For special selectors (sys, env, conversation), use the active response node
         # For regular selectors, use the source node
-        if self.active_session and source_selector_prefix not in self.graph.nodes:
+        if self._active_session and source_selector_prefix not in self._graph.nodes:
             # Special selector - use active response node
-            output_node_id = self.active_session.node_id
+            output_node_id = self._active_session.node_id
         else:
             # Regular node selector
             output_node_id = source_selector_prefix
@@ -336,8 +335,8 @@ class ResponseStreamCoordinator:
             if event := self._pop_stream_chunk(segment.selector):
                 # For special selectors, we need to update the event to use
                 # the active response node's information
-                if self.active_session and source_selector_prefix not in self.graph.nodes:
-                    response_node = self.graph.nodes[self.active_session.node_id]
+                if self._active_session and source_selector_prefix not in self._graph.nodes:
+                    response_node = self._graph.nodes[self._active_session.node_id]
                     # Create a new event with the response node's information
                     # but keep the original selector
                     updated_event = NodeRunStreamChunkEvent(
@@ -359,10 +358,10 @@ class ResponseStreamCoordinator:
         if stream_closed:
             is_complete = True
 
-        elif value := self.variable_pool.get(segment.selector):
+        elif value := self._variable_pool.get(segment.selector):
             # Process scalar value
             is_last_segment = bool(
-                self.active_session and self.active_session.index == len(self.active_session.template.segments) - 1
+                self._active_session and self._active_session.index == len(self._active_session.template.segments) - 1
             )
             events.append(
                 self._create_stream_chunk_event(
@@ -379,13 +378,13 @@ class ResponseStreamCoordinator:
 
     def _process_text_segment(self, segment: TextSegment) -> Sequence[NodeRunStreamChunkEvent]:
         """Process a text segment. Returns (events, is_complete)."""
-        assert self.active_session is not None
-        current_response_node = self.graph.nodes[self.active_session.node_id]
+        assert self._active_session is not None
+        current_response_node = self._graph.nodes[self._active_session.node_id]
 
         # Use get_or_create_execution_id to ensure we have a consistent ID
         execution_id = self._get_or_create_execution_id(current_response_node.id)
 
-        is_last_segment = self.active_session.index == len(self.active_session.template.segments) - 1
+        is_last_segment = self._active_session.index == len(self._active_session.template.segments) - 1
         event = self._create_stream_chunk_event(
             node_id=current_response_node.id,
             execution_id=execution_id,
@@ -396,29 +395,29 @@ class ResponseStreamCoordinator:
         return [event]
 
     def try_flush(self) -> list[NodeRunStreamChunkEvent]:
-        with self.lock:
-            if not self.active_session:
+        with self._lock:
+            if not self._active_session:
                 return []
 
-            template = self.active_session.template
-            response_node_id = self.active_session.node_id
+            template = self._active_session.template
+            response_node_id = self._active_session.node_id
 
             events: list[NodeRunStreamChunkEvent] = []
 
             # Process segments sequentially from current index
-            while self.active_session.index < len(template.segments):
-                segment = template.segments[self.active_session.index]
+            while self._active_session.index < len(template.segments):
+                segment = template.segments[self._active_session.index]
 
                 if isinstance(segment, VariableSegment):
                     # Check if the source node for this variable is skipped
                     # Only check for actual nodes, not special selectors (sys, env, conversation)
                     source_selector_prefix = segment.selector[0] if segment.selector else ""
-                    if source_selector_prefix in self.graph.nodes:
-                        source_node = self.graph.nodes[source_selector_prefix]
+                    if source_selector_prefix in self._graph.nodes:
+                        source_node = self._graph.nodes[source_selector_prefix]
 
                         if source_node.state == NodeState.SKIPPED:
                             # Skip this variable segment if the source node is skipped
-                            self.active_session.index += 1
+                            self._active_session.index += 1
                             continue
 
                     segment_events, is_complete = self._process_variable_segment(segment)
@@ -426,7 +425,7 @@ class ResponseStreamCoordinator:
 
                     # Only advance index if this variable segment is complete
                     if is_complete:
-                        self.active_session.index += 1
+                        self._active_session.index += 1
                     else:
                         # Wait for more data
                         break
@@ -434,9 +433,9 @@ class ResponseStreamCoordinator:
                 else:
                     segment_events = self._process_text_segment(segment)
                     events.extend(segment_events)
-                    self.active_session.index += 1
+                    self._active_session.index += 1
 
-            if self.active_session.is_complete():
+            if self._active_session.is_complete():
                 # End current session and get events from starting next session
                 next_session_events = self.end_session(response_node_id)
                 events.extend(next_session_events)
@@ -454,16 +453,16 @@ class ResponseStreamCoordinator:
         Returns:
             List of events from starting the next session
         """
-        with self.lock:
+        with self._lock:
             events: list[NodeRunStreamChunkEvent] = []
 
-            if self.active_session and self.active_session.node_id == node_id:
-                self.active_session = None
+            if self._active_session and self._active_session.node_id == node_id:
+                self._active_session = None
 
                 # Try to start next waiting session
-                if self.waiting_sessions:
-                    next_session = self.waiting_sessions.popleft()
-                    self.active_session = next_session
+                if self._waiting_sessions:
+                    next_session = self._waiting_sessions.popleft()
+                    self._active_session = next_session
 
                     # Immediately try to flush any available segments
                     events = self.try_flush()

@@ -32,6 +32,8 @@ class AbortStrategy:
         Returns:
             None - signals abortion
         """
+        _ = graph
+        _ = retry_count
         logger.error("Node %s failed with ABORT strategy: %s", event.node_id, event.error)
 
         # Return None to signal that execution should stop

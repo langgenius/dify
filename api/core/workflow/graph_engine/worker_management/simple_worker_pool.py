@@ -56,20 +56,20 @@ class SimpleWorkerPool:
             scale_up_threshold: Queue depth to trigger scale up
             scale_down_idle_time: Seconds before scaling down idle workers
         """
-        self.ready_queue = ready_queue
-        self.event_queue = event_queue
-        self.graph = graph
-        self.flask_app = flask_app
-        self.context_vars = context_vars
+        self._ready_queue = ready_queue
+        self._event_queue = event_queue
+        self._graph = graph
+        self._flask_app = flask_app
+        self._context_vars = context_vars
 
         # Scaling parameters with defaults
-        self.min_workers = min_workers or dify_config.GRAPH_ENGINE_MIN_WORKERS
-        self.max_workers = max_workers or dify_config.GRAPH_ENGINE_MAX_WORKERS
-        self.scale_up_threshold = scale_up_threshold or dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD
-        self.scale_down_idle_time = scale_down_idle_time or dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME
+        self._min_workers = min_workers or dify_config.GRAPH_ENGINE_MIN_WORKERS
+        self._max_workers = max_workers or dify_config.GRAPH_ENGINE_MAX_WORKERS
+        self._scale_up_threshold = scale_up_threshold or dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD
+        self._scale_down_idle_time = scale_down_idle_time or dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME
 
         # Worker management
-        self.workers: list[Worker] = []
+        self._workers: list[Worker] = []
         self._worker_counter = 0
         self._lock = threading.RLock()
         self._running = False
@@ -89,13 +89,13 @@ class SimpleWorkerPool:
 
             # Calculate initial worker count
             if initial_count is None:
-                node_count = len(self.graph.nodes)
+                node_count = len(self._graph.nodes)
                 if node_count < 10:
-                    initial_count = self.min_workers
+                    initial_count = self._min_workers
                 elif node_count < 50:
-                    initial_count = min(self.min_workers + 1, self.max_workers)
+                    initial_count = min(self._min_workers + 1, self._max_workers)
                 else:
-                    initial_count = min(self.min_workers + 2, self.max_workers)
+                    initial_count = min(self._min_workers + 2, self._max_workers)
 
             # Create initial workers
             for _ in range(initial_count):
@@ -107,15 +107,15 @@ class SimpleWorkerPool:
             self._running = False
 
             # Stop all workers
-            for worker in self.workers:
+            for worker in self._workers:
                 worker.stop()
 
             # Wait for workers to finish
-            for worker in self.workers:
+            for worker in self._workers:
                 if worker.is_alive():
                     worker.join(timeout=10.0)
 
-            self.workers.clear()
+            self._workers.clear()
 
     def _create_worker(self) -> None:
         """Create and start a new worker."""
@@ -123,16 +123,16 @@ class SimpleWorkerPool:
         self._worker_counter += 1
 
         worker = Worker(
-            ready_queue=self.ready_queue,
-            event_queue=self.event_queue,
-            graph=self.graph,
+            ready_queue=self._ready_queue,
+            event_queue=self._event_queue,
+            graph=self._graph,
             worker_id=worker_id,
-            flask_app=self.flask_app,
-            context_vars=self.context_vars,
+            flask_app=self._flask_app,
+            context_vars=self._context_vars,
         )
 
         worker.start()
-        self.workers.append(worker)
+        self._workers.append(worker)
 
     def check_and_scale(self) -> None:
         """Check and perform scaling if needed."""
@@ -140,17 +140,17 @@ class SimpleWorkerPool:
             if not self._running:
                 return
 
-            current_count = len(self.workers)
-            queue_depth = self.ready_queue.qsize()
+            current_count = len(self._workers)
+            queue_depth = self._ready_queue.qsize()
 
             # Simple scaling logic
-            if queue_depth > self.scale_up_threshold and current_count < self.max_workers:
+            if queue_depth > self._scale_up_threshold and current_count < self._max_workers:
                 self._create_worker()
 
     def get_worker_count(self) -> int:
         """Get current number of workers."""
         with self._lock:
-            return len(self.workers)
+            return len(self._workers)
 
     def get_status(self) -> dict[str, int]:
         """
@@ -161,8 +161,8 @@ class SimpleWorkerPool:
         """
         with self._lock:
             return {
-                "total_workers": len(self.workers),
-                "queue_depth": self.ready_queue.qsize(),
-                "min_workers": self.min_workers,
-                "max_workers": self.max_workers,
+                "total_workers": len(self._workers),
+                "queue_depth": self._ready_queue.qsize(),
+                "min_workers": self._min_workers,
+                "max_workers": self._max_workers,
             }

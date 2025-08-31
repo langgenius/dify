@@ -28,7 +28,7 @@ class EventEmitter:
         Args:
             event_collector: The collector to emit events from
         """
-        self.event_collector = event_collector
+        self._event_collector = event_collector
         self._execution_complete = threading.Event()
 
     def mark_complete(self) -> None:
@@ -44,9 +44,9 @@ class EventEmitter:
         """
         yielded_count = 0
 
-        while not self._execution_complete.is_set() or yielded_count < self.event_collector.event_count():
+        while not self._execution_complete.is_set() or yielded_count < self._event_collector.event_count():
             # Get new events since last yield
-            new_events = self.event_collector.get_new_events(yielded_count)
+            new_events = self._event_collector.get_new_events(yielded_count)
 
             # Yield any new events
             for event in new_events:

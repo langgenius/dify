@@ -36,9 +36,9 @@ class EdgeProcessor:
             state_manager: Unified state manager
             response_coordinator: Response stream coordinator
         """
-        self.graph = graph
-        self.state_manager = state_manager
-        self.response_coordinator = response_coordinator
+        self._graph = graph
+        self._state_manager = state_manager
+        self._response_coordinator = response_coordinator
 
     def process_node_success(
         self, node_id: str, selected_handle: str | None = None
@@ -53,7 +53,7 @@ class EdgeProcessor:
         Returns:
             Tuple of (list of downstream node IDs that are now ready, list of streaming events)
         """
-        node = self.graph.nodes[node_id]
+        node = self._graph.nodes[node_id]
 
         if node.execution_type == NodeExecutionType.BRANCH:
             return self._process_branch_node_edges(node_id, selected_handle)
@@ -72,7 +72,7 @@ class EdgeProcessor:
         """
         ready_nodes: list[str] = []
         all_streaming_events: list[NodeRunStreamChunkEvent] = []
-        outgoing_edges = self.graph.get_outgoing_edges(node_id)
+        outgoing_edges = self._graph.get_outgoing_edges(node_id)
 
         for edge in outgoing_edges:
             nodes, events = self._process_taken_edge(edge)
@@ -104,7 +104,7 @@ class EdgeProcessor:
         all_streaming_events: list[NodeRunStreamChunkEvent] = []
 
         # Categorize edges
-        selected_edges, unselected_edges = self.state_manager.categorize_branch_edges(node_id, selected_handle)
+        selected_edges, unselected_edges = self._state_manager.categorize_branch_edges(node_id, selected_handle)
 
         # Process unselected edges first (mark as skipped)
         for edge in unselected_edges:
@@ -129,14 +129,14 @@ class EdgeProcessor:
             Tuple of (list containing downstream node ID if it's ready, list of streaming events)
         """
         # Mark edge as taken
-        self.state_manager.mark_edge_taken(edge.id)
+        self._state_manager.mark_edge_taken(edge.id)
 
         # Notify response coordinator and get streaming events
-        streaming_events = self.response_coordinator.on_edge_taken(edge.id)
+        streaming_events = self._response_coordinator.on_edge_taken(edge.id)
 
         # Check if downstream node is ready
         ready_nodes: list[str] = []
-        if self.state_manager.is_node_ready(edge.head):
+        if self._state_manager.is_node_ready(edge.head):
             ready_nodes.append(edge.head)
 
         return ready_nodes, streaming_events
@@ -148,4 +148,4 @@ class EdgeProcessor:
         Args:
             edge: The edge to skip
         """
-        self.state_manager.mark_edge_skipped(edge.id)
+        self._state_manager.mark_edge_skipped(edge.id)

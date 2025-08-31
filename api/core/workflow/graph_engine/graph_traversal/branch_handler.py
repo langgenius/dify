@@ -38,10 +38,10 @@ class BranchHandler:
             skip_propagator: Propagator for skip states
             state_manager: Unified state manager
         """
-        self.graph = graph
-        self.edge_processor = edge_processor
-        self.skip_propagator = skip_propagator
-        self.state_manager = state_manager
+        self._graph = graph
+        self._edge_processor = edge_processor
+        self._skip_propagator = skip_propagator
+        self._state_manager = state_manager
 
     def handle_branch_completion(
         self, node_id: str, selected_handle: str | None
@@ -63,13 +63,13 @@ class BranchHandler:
             raise ValueError(f"Branch node {node_id} completed without selecting a branch")
 
         # Categorize edges into selected and unselected
-        _, unselected_edges = self.state_manager.categorize_branch_edges(node_id, selected_handle)
+        _, unselected_edges = self._state_manager.categorize_branch_edges(node_id, selected_handle)
 
         # Skip all unselected paths
-        self.skip_propagator.skip_branch_paths(unselected_edges)
+        self._skip_propagator.skip_branch_paths(unselected_edges)
 
         # Process selected edges and get ready nodes and streaming events
-        return self.edge_processor.process_node_success(node_id, selected_handle)
+        return self._edge_processor.process_node_success(node_id, selected_handle)
 
     def validate_branch_selection(self, node_id: str, selected_handle: str) -> bool:
         """
@@ -82,6 +82,6 @@ class BranchHandler:
         Returns:
             True if the selection is valid
         """
-        outgoing_edges = self.graph.get_outgoing_edges(node_id)
+        outgoing_edges = self._graph.get_outgoing_edges(node_id)
         valid_handles = {edge.source_handle for edge in outgoing_edges}
         return selected_handle in valid_handles
