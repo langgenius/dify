@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import type {
   Credential,
   CustomModelCredential,
-  ModelLoadBalancingConfig,
   ModelProvider,
 } from '../../declarations'
 import {
@@ -18,7 +17,6 @@ export const useModelFormSchemas = (
   credentials?: Record<string, any>,
   credential?: Credential,
   model?: CustomModelCredential,
-  draftConfig?: ModelLoadBalancingConfig,
 ) => {
   const { t } = useTranslation()
   const {
@@ -27,26 +25,15 @@ export const useModelFormSchemas = (
     model_credential_schema,
   } = provider
   const formSchemas = useMemo(() => {
-    const modelTypeSchema = genModelTypeFormSchema(supported_model_types)
-    const modelNameSchema = genModelNameFormSchema(model_credential_schema?.model)
-    if (!!model) {
-      modelTypeSchema.disabled = true
-      modelNameSchema.disabled = true
-    }
     return providerFormSchemaPredefined
       ? provider_credential_schema.credential_form_schemas
-      : [
-        modelTypeSchema,
-        modelNameSchema,
-        ...(draftConfig?.enabled ? [] : model_credential_schema.credential_form_schemas),
-      ]
+      : model_credential_schema.credential_form_schemas
   }, [
     providerFormSchemaPredefined,
     provider_credential_schema?.credential_form_schemas,
     supported_model_types,
     model_credential_schema?.credential_form_schemas,
     model_credential_schema?.model,
-    draftConfig?.enabled,
     model,
   ])
 
@@ -76,8 +63,33 @@ export const useModelFormSchemas = (
     return result
   }, [credentials, credential, model])
 
+  const modelNameAndTypeFormSchemas = useMemo(() => {
+    if (providerFormSchemaPredefined)
+      return []
+
+    const modelNameSchema = genModelNameFormSchema(model_credential_schema?.model)
+    const modelTypeSchema = genModelTypeFormSchema(supported_model_types)
+    return [
+      modelNameSchema,
+      modelTypeSchema,
+    ]
+  }, [supported_model_types, model_credential_schema?.model, providerFormSchemaPredefined])
+
+  const modelNameAndTypeFormValues = useMemo(() => {
+    let result = {}
+    if (providerFormSchemaPredefined)
+      return result
+
+    if (model)
+      result = { ...result, __model_name: model?.model, __model_type: model?.model_type }
+
+    return result
+  }, [model, providerFormSchemaPredefined])
+
   return {
     formSchemas: formSchemasWithAuthorizationName,
     formValues,
+    modelNameAndTypeFormSchemas,
+    modelNameAndTypeFormValues,
   }
 }
