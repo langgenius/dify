@@ -41,7 +41,7 @@ services:
     ports:
       - "${EXPOSE_REDIS_PORT:-6379}:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ 'CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD:-difyai123456} ping | grep -q PONG' ]
 
   # The DifySandbox
   sandbox:

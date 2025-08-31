@@ -467,7 +467,7 @@ export const ssePost = async (
         onAgentLog,
       )
     }).catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
+      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
       onError?.(e)
     })
