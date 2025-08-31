@@ -4,7 +4,7 @@ import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 
-export type ParameterType = 'string' | 'number' | 'boolean' | 'array' | 'object'
+export type ParameterType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'file'
 
 export type WebhookParameter = {
   name: string
