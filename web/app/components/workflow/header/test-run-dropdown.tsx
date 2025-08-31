@@ -1,5 +1,4 @@
-import type { FC } from 'react'
-import { useState } from 'react'
+import { forwardRef, useImperativeHandle, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -29,13 +28,21 @@ type TestRunDropdownProps = {
   children: React.ReactNode
 }
 
-const TestRunDropdown: FC<TestRunDropdownProps> = ({
+export type TestRunDropdownRef = {
+  toggle: () => void
+}
+
+const TestRunDropdown = forwardRef<TestRunDropdownRef, TestRunDropdownProps>(({
   options,
   onSelect,
   children,
-}) => {
+}, ref) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    toggle: () => setOpen(prev => !prev),
+  }))
 
   const handleSelect = (option: TriggerOption) => {
     onSelect(option)
@@ -98,6 +105,8 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
-}
+})
+
+TestRunDropdown.displayName = 'TestRunDropdown'
 
 export default TestRunDropdown

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiLoader2Line,
@@ -16,7 +16,7 @@ import {
 import { WorkflowRunningStatus } from '../types'
 import ViewHistory from './view-history'
 import Checklist from './checklist'
-import TestRunDropdown from './test-run-dropdown'
+import TestRunDropdown, { type TestRunDropdownRef } from './test-run-dropdown'
 import type { TriggerOption } from './test-run-dropdown'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import cn from '@/utils/classnames'
@@ -36,6 +36,18 @@ const RunMode = memo(() => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
   const dynamicOptions = useDynamicTestRunOptions()
+  const testRunDropdownRef = useRef<TestRunDropdownRef>(null)
+
+  useEffect(() => {
+    // @ts-expect-error - Dynamic property for backward compatibility with keyboard shortcuts
+    window._toggleTestRunDropdown = () => {
+      testRunDropdownRef.current?.toggle()
+    }
+    return () => {
+      // @ts-expect-error - Dynamic property cleanup
+      delete window._toggleTestRunDropdown
+    }
+  }, [])
 
   const handleStop = () => {
     handleStopRun(workflowRunningData?.task_id || '')
@@ -50,7 +62,7 @@ const RunMode = memo(() => {
       handleWorkflowStartRunInWorkflow()
     }
  else {
-      // TODO: Implement trigger-specific execution logic for schedule, webhook, plugin types
+      // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
       console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
     }
   }
@@ -77,7 +89,11 @@ const RunMode = memo(() => {
             </div>
           )
           : (
-            <TestRunDropdown options={dynamicOptions} onSelect={handleTriggerSelect}>
+            <TestRunDropdown
+              ref={testRunDropdownRef}
+              options={dynamicOptions}
+              onSelect={handleTriggerSelect}
+            >
               <div
                 className={cn(
                   'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
