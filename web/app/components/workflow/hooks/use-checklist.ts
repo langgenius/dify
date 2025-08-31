@@ -16,6 +16,7 @@ import { useStore } from '../store'
 import {
   getToolCheckParams,
   getValidTreeNodes,
+  validateEndNodeConvergence,
 } from '../utils'
 import {
   CUSTOM_NODE,
@@ -187,6 +188,19 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         title: t('workflow.blocks.end'),
         errorMessage: t('workflow.common.needEndNode'),
       })
+    }
+
+    // Check END node convergence - multiple entry nodes in same connected graph cannot point to different END nodes
+    if (!isChatMode) {
+      const convergenceResult = validateEndNodeConvergence(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+      if (!convergenceResult.isValid) {
+        list.push({
+          id: 'end-node-convergence',
+          type: BlockEnum.End,
+          title: t('workflow.common.endNodeConvergence'),
+          errorMessage: t('workflow.common.multipleEntryNodesConflict'),
+        })
+      }
     }
 
     return list

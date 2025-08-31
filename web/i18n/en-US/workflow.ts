@@ -48,6 +48,8 @@ const translation = {
     needEndNode: 'The End node must be added',
     needStartNode: 'At least one start node must be added',
     needAnswerNode: 'The Answer node must be added',
+    endNodeConvergence: 'END Node Convergence',
+    multipleEntryNodesConflict: 'Multiple entry nodes in the same connected graph cannot point to different END nodes',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
     previewPlaceholder: 'Enter content in the box below to start debugging the Chatbot',
