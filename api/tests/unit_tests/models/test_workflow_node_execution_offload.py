@@ -10,13 +10,6 @@ from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 
-class TestWorkflowNodeExecutionOffload:
-    """Test WorkflowNodeExecutionOffload model with process_data fields."""
-
-    def test_get_exe(self):
-        WorkflowNodeExecutionOffload
-
-
 class TestWorkflowNodeExecutionModel:
     """Test WorkflowNodeExecutionModel with process_data truncation features."""
 
@@ -53,39 +46,48 @@ class TestWorkflowNodeExecutionModel:
     def test_process_data_truncated_property_false_when_no_offload_data(self):
         """Test process_data_truncated returns False when no offload_data."""
         execution = WorkflowNodeExecutionModel()
-        execution.offload_data = None
+        execution.offload_data = []
 
         assert execution.process_data_truncated is False
 
     def test_process_data_truncated_property_false_when_no_process_data_file(self):
         """Test process_data_truncated returns False when no process_data file."""
+        from models.enums import ExecutionOffLoadType
+
         execution = WorkflowNodeExecutionModel()
 
-        # Create real offload instance
-        offload_data = WorkflowNodeExecutionOffload()
-        offload_data.inputs_file_id = "inputs-file"
-        offload_data.outputs_file_id = "outputs-file"
-        offload_data.process_data_file_id = None  # No process_data file
-        execution.offload_data = offload_data
+        # Create real offload instances for inputs and outputs but not process_data
+        inputs_offload = WorkflowNodeExecutionOffload()
+        inputs_offload.type_ = ExecutionOffLoadType.INPUTS
+        inputs_offload.file_id = "inputs-file"
+
+        outputs_offload = WorkflowNodeExecutionOffload()
+        outputs_offload.type_ = ExecutionOffLoadType.OUTPUTS
+        outputs_offload.file_id = "outputs-file"
+
+        execution.offload_data = [inputs_offload, outputs_offload]
 
         assert execution.process_data_truncated is False
 
     def test_process_data_truncated_property_true_when_process_data_file_exists(self):
         """Test process_data_truncated returns True when process_data file exists."""
+        from models.enums import ExecutionOffLoadType
+
         execution = WorkflowNodeExecutionModel()
 
-        # Create a real offload instance rather than mock
-        offload_data = WorkflowNodeExecutionOffload()
-        offload_data.process_data_file_id = "process-data-file-id"
-        execution.offload_data = offload_data
+        # Create a real offload instance for process_data
+        process_data_offload = WorkflowNodeExecutionOffload()
+        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
+        process_data_offload.file_id = "process-data-file-id"
+        execution.offload_data = [process_data_offload]
 
         assert execution.process_data_truncated is True
 
     def test_load_full_process_data_with_no_offload_data(self):
         """Test load_full_process_data when no offload data exists."""
         execution = WorkflowNodeExecutionModel()
-        execution.offload_data = None
-        execution.process_data_dict = {"test": "data"}
+        execution.offload_data = []
+        execution.process_data = '{"test": "data"}'
 
         # Mock session and storage
         mock_session = Mock()
@@ -97,9 +99,17 @@ class TestWorkflowNodeExecutionModel:
 
     def test_load_full_process_data_with_no_file(self):
         """Test load_full_process_data when no process_data file exists."""
+        from models.enums import ExecutionOffLoadType
+
         execution = WorkflowNodeExecutionModel()
-        execution.offload_data = self.create_mock_offload_data(process_data_file_id=None)
-        execution.process_data_dict = {"test": "data"}
+
+        # Create offload data for inputs only, not process_data
+        inputs_offload = WorkflowNodeExecutionOffload()
+        inputs_offload.type_ = ExecutionOffLoadType.INPUTS
+        inputs_offload.file_id = "inputs-file"
+
+        execution.offload_data = [inputs_offload]
+        execution.process_data = '{"test": "data"}'
 
         # Mock session and storage
         mock_session = Mock()
@@ -111,10 +121,17 @@ class TestWorkflowNodeExecutionModel:
 
     def test_load_full_process_data_with_file(self):
         """Test load_full_process_data when process_data file exists."""
+        from models.enums import ExecutionOffLoadType
+
         execution = WorkflowNodeExecutionModel()
-        offload_data = self.create_mock_offload_data(process_data_file_id="file-id")
-        execution.offload_data = offload_data
-        execution.process_data_dict = {"truncated": "data"}
+
+        # Create process_data offload
+        process_data_offload = WorkflowNodeExecutionOffload()
+        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
+        process_data_offload.file_id = "file-id"
+
+        execution.offload_data = [process_data_offload]
+        execution.process_data = '{"truncated": "data"}'
 
         # Mock session and storage
         mock_session = Mock()
@@ -139,28 +156,42 @@ class TestWorkflowNodeExecutionModel:
 
     def test_consistency_with_inputs_outputs_truncation(self):
         """Test that process_data truncation behaves consistently with inputs/outputs."""
+        from models.enums import ExecutionOffLoadType
+
         execution = WorkflowNodeExecutionModel()
 
-        # Test all three truncation properties together
-        offload_data = self.create_mock_offload_data(
-            inputs_file_id="inputs-file", outputs_file_id="outputs-file", process_data_file_id="process-data-file"
-        )
-        execution.offload_data = offload_data
+        # Create offload data for all three types
+        inputs_offload = WorkflowNodeExecutionOffload()
+        inputs_offload.type_ = ExecutionOffLoadType.INPUTS
+        inputs_offload.file_id = "inputs-file"
 
-        # All should be truncated
+        outputs_offload = WorkflowNodeExecutionOffload()
+        outputs_offload.type_ = ExecutionOffLoadType.OUTPUTS
+        outputs_offload.file_id = "outputs-file"
+
+        process_data_offload = WorkflowNodeExecutionOffload()
+        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
+        process_data_offload.file_id = "process-data-file"
+
+        execution.offload_data = [inputs_offload, outputs_offload, process_data_offload]
+
+        # All three should be truncated
         assert execution.inputs_truncated is True
         assert execution.outputs_truncated is True
         assert execution.process_data_truncated is True
 
     def test_mixed_truncation_states(self):
         """Test mixed states of truncation."""
+        from models.enums import ExecutionOffLoadType
+
         execution = WorkflowNodeExecutionModel()
 
         # Only process_data is truncated
-        offload_data = self.create_mock_offload_data(
-            inputs_file_id=None, outputs_file_id=None, process_data_file_id="process-data-file"
-        )
-        execution.offload_data = offload_data
+        process_data_offload = WorkflowNodeExecutionOffload()
+        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
+        process_data_offload.file_id = "process-data-file"
+
+        execution.offload_data = [process_data_offload]
 
         assert execution.inputs_truncated is False
         assert execution.outputs_truncated is False

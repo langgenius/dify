@@ -259,7 +259,6 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     vector.create(all_child_documents)
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
-
         parent_childs = ParentChildStructureChunk(**chunks)
         preview = []
         for parent_child in parent_childs.parent_child_chunks:

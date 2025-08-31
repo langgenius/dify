@@ -21,6 +21,7 @@ from core.variables.segments import (
     FileSegment,
 )
 from core.variables.types import SegmentType
+from core.variables.utils import dumps_with_segments
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
@@ -932,7 +933,7 @@ class DraftVariableSaver:
             filename = f"{self._generate_filename(name)}.txt"
         else:
             # For other types, store as JSON
-            original_content_serialized = json.dumps(value_seg.value, ensure_ascii=False, separators=(",", ":"))
+            original_content_serialized = dumps_with_segments(value_seg.value, ensure_ascii=False)
             content_type = "application/json"
             filename = f"{self._generate_filename(name)}.json"
 

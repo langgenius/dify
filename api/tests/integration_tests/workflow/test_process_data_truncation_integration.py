@@ -24,6 +24,7 @@ from models.workflow import WorkflowNodeExecutionTriggeredFrom
 @dataclass
 class TruncationTestData:
     """Test data for truncation scenarios."""
+
     name: str
     process_data: dict[str, any]
     should_truncate: bool
@@ -32,16 +33,17 @@ class TruncationTestData:
 
 class TestProcessDataTruncationIntegration:
     """Integration tests for process_data truncation functionality."""
-    
+
     @pytest.fixture
     def in_memory_db_engine(self):
         """Create an in-memory SQLite database for testing."""
         engine = create_engine("sqlite:///:memory:")
-        
+
         # Create minimal table structure for testing
         with engine.connect() as conn:
             # Create workflow_node_executions table
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 CREATE TABLE workflow_node_executions (
                     id TEXT PRIMARY KEY,
                     tenant_id TEXT NOT NULL,
@@ -67,10 +69,12 @@ class TestProcessDataTruncationIntegration:
                     created_by TEXT NOT NULL,
                     finished_at DATETIME
                 )
-            """))
-            
+            """)
+            )
+
             # Create workflow_node_execution_offload table
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 CREATE TABLE workflow_node_execution_offload (
                     id TEXT PRIMARY KEY,
                     created_at DATETIME NOT NULL,
@@ -81,10 +85,12 @@ class TestProcessDataTruncationIntegration:
                     outputs_file_id TEXT,
                     process_data_file_id TEXT
                 )
-            """))
-            
+            """)
+            )
+
             # Create upload_files table (simplified)
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 CREATE TABLE upload_files (
                     id TEXT PRIMARY KEY,
                     tenant_id TEXT NOT NULL,
@@ -93,10 +99,11 @@ class TestProcessDataTruncationIntegration:
                     size INTEGER NOT NULL,
                     created_at DATETIME NOT NULL
                 )
-            """))
-            
+            """)
+            )
+
             conn.commit()
-        
+
         return engine
 
     @pytest.fixture
@@ -111,7 +118,7 @@ class TestProcessDataTruncationIntegration:
     def repository(self, in_memory_db_engine, mock_account):
         """Create a repository instance for testing."""
         session_factory = sessionmaker(bind=in_memory_db_engine)
-        
+
         return SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
             user=mock_account,
@@ -120,9 +127,7 @@ class TestProcessDataTruncationIntegration:
         )
 
     def create_test_execution(
-        self, 
-        process_data: dict[str, any] | None = None,
-        execution_id: str = "test-execution-id"
+        self, process_data: dict[str, any] | None = None, execution_id: str = "test-execution-id"
     ) -> WorkflowNodeExecution:
         """Create a test execution with process_data."""
         return WorkflowNodeExecution(
@@ -160,104 +165,96 @@ class TestProcessDataTruncationIntegration:
                     "logs": ["log entry"] * 500,  # Large array
                     "config": {"setting": "value"},
                     "status": "processing",
-                    "details": {"description": "y" * 5000}  # Large string
+                    "details": {"description": "y" * 5000},  # Large string
                 },
                 should_truncate=True,
                 expected_storage_interaction=True,
             ),
         ]
 
-    @patch('core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config')
-    @patch('services.file_service.FileService.upload_file')
-    @patch('extensions.ext_storage.storage')
-    def test_end_to_end_process_data_truncation(
-        self, 
-        mock_storage, 
-        mock_upload_file,
-        mock_config,
-        repository
-    ):
+    @patch("core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config")
+    @patch("services.file_service.FileService.upload_file")
+    @patch("extensions.ext_storage.storage")
+    def test_end_to_end_process_data_truncation(self, mock_storage, mock_upload_file, mock_config, repository):
         """Test end-to-end process_data truncation functionality."""
         # Configure truncation limits
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE = 1000
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH = 100
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH = 500
-        
+
         # Create large process_data that should be truncated
         large_process_data = {
             "large_field": "x" * 10000,  # Exceeds string length limit
-            "metadata": {"type": "processing", "timestamp": 1234567890}
+            "metadata": {"type": "processing", "timestamp": 1234567890},
         }
-        
+
         # Mock file upload
         mock_file = Mock()
         mock_file.id = "mock-process-data-file-id"
         mock_upload_file.return_value = mock_file
-        
+
         # Create and save execution
         execution = self.create_test_execution(process_data=large_process_data)
         repository.save(execution)
-        
+
         # Verify truncation occurred
         assert execution.process_data_truncated is True
         truncated_data = execution.get_truncated_process_data()
         assert truncated_data is not None
         assert truncated_data != large_process_data  # Should be different due to truncation
-        
+
         # Verify file upload was called for process_data
         assert mock_upload_file.called
         upload_args = mock_upload_file.call_args
         assert "_process_data" in upload_args[1]["filename"]
 
-    @patch('core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config')
+    @patch("core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config")
     def test_small_process_data_no_truncation(self, mock_config, repository):
         """Test that small process_data is not truncated."""
         # Configure truncation limits
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE = 1000
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH = 100
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH = 500
-        
+
         # Create small process_data
         small_process_data = {"small": "data", "count": 5}
-        
+
         execution = self.create_test_execution(process_data=small_process_data)
         repository.save(execution)
-        
+
         # Verify no truncation occurred
         assert execution.process_data_truncated is False
         assert execution.get_truncated_process_data() is None
         assert execution.get_response_process_data() == small_process_data
 
-    @pytest.mark.parametrize("test_data", [
-        data for data in get_truncation_test_data(None)
-    ], ids=[data.name for data in get_truncation_test_data(None)])
-    @patch('core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config')
-    @patch('services.file_service.FileService.upload_file')
+    @pytest.mark.parametrize(
+        "test_data",
+        get_truncation_test_data(None),
+        ids=[data.name for data in get_truncation_test_data(None)],
+    )
+    @patch("core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config")
+    @patch("services.file_service.FileService.upload_file")
     def test_various_truncation_scenarios(
-        self, 
-        mock_upload_file,
-        mock_config,
-        test_data: TruncationTestData,
-        repository
+        self, mock_upload_file, mock_config, test_data: TruncationTestData, repository
     ):
         """Test various process_data truncation scenarios."""
         # Configure truncation limits
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE = 1000
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH = 100
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH = 500
-        
+
         if test_data.expected_storage_interaction:
             # Mock file upload for truncation scenarios
             mock_file = Mock()
             mock_file.id = f"file-{test_data.name}"
             mock_upload_file.return_value = mock_file
-        
+
         execution = self.create_test_execution(process_data=test_data.process_data)
         repository.save(execution)
-        
+
         # Verify truncation behavior matches expectations
         assert execution.process_data_truncated == test_data.should_truncate
-        
+
         if test_data.should_truncate:
             assert execution.get_truncated_process_data() is not None
             assert execution.get_truncated_process_data() != test_data.process_data
@@ -266,40 +263,32 @@ class TestProcessDataTruncationIntegration:
             assert execution.get_truncated_process_data() is None
             assert execution.get_response_process_data() == test_data.process_data
 
-    @patch('core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config')
-    @patch('services.file_service.FileService.upload_file')
-    @patch('extensions.ext_storage.storage')
+    @patch("core.repositories.sqlalchemy_workflow_node_execution_repository.dify_config")
+    @patch("services.file_service.FileService.upload_file")
+    @patch("extensions.ext_storage.storage")
     def test_load_truncated_execution_from_database(
-        self, 
-        mock_storage, 
-        mock_upload_file,
-        mock_config,
-        repository,
-        in_memory_db_engine
+        self, mock_storage, mock_upload_file, mock_config, repository, in_memory_db_engine
     ):
         """Test loading an execution with truncated process_data from database."""
         # Configure truncation
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE = 1000
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH = 100
         mock_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH = 500
-        
+
         # Create and save execution with large process_data
-        large_process_data = {
-            "large_field": "x" * 10000,
-            "metadata": "info"
-        }
-        
+        large_process_data = {"large_field": "x" * 10000, "metadata": "info"}
+
         # Mock file upload
         mock_file = Mock()
         mock_file.id = "process-data-file-id"
         mock_upload_file.return_value = mock_file
-        
+
         execution = self.create_test_execution(process_data=large_process_data)
         repository.save(execution)
-        
+
         # Mock storage load for reconstruction
         mock_storage.load.return_value = json.dumps(large_process_data).encode()
-        
+
         # Create a new repository instance to simulate fresh load
         session_factory = sessionmaker(bind=in_memory_db_engine)
         new_repository = SQLAlchemyWorkflowNodeExecutionRepository(
@@ -308,17 +297,17 @@ class TestProcessDataTruncationIntegration:
             app_id="test-app-id",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-        
+
         # Load executions from database
         executions = new_repository.get_by_workflow_run("test-run-id")
-        
+
         assert len(executions) == 1
         loaded_execution = executions[0]
-        
+
         # Verify that full data is loaded
         assert loaded_execution.process_data == large_process_data
         assert loaded_execution.process_data_truncated is True
-        
+
         # Verify truncated data for responses
         response_data = loaded_execution.get_response_process_data()
         assert response_data != large_process_data  # Should be truncated version
@@ -327,7 +316,7 @@ class TestProcessDataTruncationIntegration:
         """Test handling of None process_data."""
         execution = self.create_test_execution(process_data=None)
         repository.save(execution)
-        
+
         # Should handle None gracefully
         assert execution.process_data is None
         assert execution.process_data_truncated is False
@@ -337,7 +326,7 @@ class TestProcessDataTruncationIntegration:
         """Test handling of empty process_data."""
         execution = self.create_test_execution(process_data={})
         repository.save(execution)
-        
+
         # Should handle empty dict gracefully
         assert execution.process_data == {}
         assert execution.process_data_truncated is False
@@ -346,13 +335,13 @@ class TestProcessDataTruncationIntegration:
 
 class TestProcessDataTruncationApiIntegration:
     """Integration tests for API responses with process_data truncation."""
-    
+
     def test_api_response_includes_truncated_flag(self):
         """Test that API responses include the process_data_truncated flag."""
         from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
         from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
         from core.app.entities.queue_entities import QueueNodeSucceededEvent
-        
+
         # Create execution with truncated process_data
         execution = WorkflowNodeExecution(
             id="test-execution-id",
@@ -367,18 +356,15 @@ class TestProcessDataTruncationApiIntegration:
             created_at=datetime.now(),
             finished_at=datetime.now(),
         )
-        
+
         # Set truncated data
         execution.set_truncated_process_data({"large": "[TRUNCATED]"})
-        
+
         # Create converter and event
         converter = WorkflowResponseConverter(
-            application_generate_entity=Mock(
-                spec=WorkflowAppGenerateEntity,
-                app_config=Mock(tenant_id="test-tenant")
-            )
+            application_generate_entity=Mock(spec=WorkflowAppGenerateEntity, app_config=Mock(tenant_id="test-tenant"))
         )
-        
+
         event = QueueNodeSucceededEvent(
             node_id="test-node-id",
             node_type=NodeType.LLM,
@@ -390,19 +376,19 @@ class TestProcessDataTruncationApiIntegration:
             in_iteration_id=None,
             in_loop_id=None,
         )
-        
+
         # Generate response
         response = converter.workflow_node_finish_to_stream_response(
             event=event,
             task_id="test-task-id",
             workflow_node_execution=execution,
         )
-        
+
         # Verify response includes truncated flag and data
         assert response is not None
         assert response.data.process_data_truncated is True
         assert response.data.process_data == {"large": "[TRUNCATED]"}
-        
+
         # Verify response can be serialized
         response_dict = response.to_dict()
         assert "process_data_truncated" in response_dict["data"]
@@ -411,11 +397,12 @@ class TestProcessDataTruncationApiIntegration:
     def test_workflow_run_fields_include_truncated_flag(self):
         """Test that workflow run fields include process_data_truncated."""
         from fields.workflow_run_fields import workflow_run_node_execution_fields
-        
+
         # Verify the field is included in the definition
         assert "process_data_truncated" in workflow_run_node_execution_fields
-        
+
         # The field should be a Boolean field
         field = workflow_run_node_execution_fields["process_data_truncated"]
         from flask_restful import fields
+
         assert isinstance(field, fields.Boolean)

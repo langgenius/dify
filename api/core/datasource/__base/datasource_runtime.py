@@ -1,10 +1,12 @@
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from openai import BaseModel
 from pydantic import Field
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceInvokeFrom
+
+if TYPE_CHECKING:
+    from core.app.entities.app_invoke_entities import InvokeFrom
 
 
 class DatasourceRuntime(BaseModel):
@@ -14,7 +16,7 @@ class DatasourceRuntime(BaseModel):
 
     tenant_id: str
     datasource_id: Optional[str] = None
-    invoke_from: Optional[InvokeFrom] = None
+    invoke_from: Optional["InvokeFrom"] = None
     datasource_invoke_from: Optional[DatasourceInvokeFrom] = None
     credentials: dict[str, Any] = Field(default_factory=dict)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
@@ -26,6 +28,9 @@ class FakeDatasourceRuntime(DatasourceRuntime):
     """
 
     def __init__(self):
+        # Import InvokeFrom locally to avoid circular import
+        from core.app.entities.app_invoke_entities import InvokeFrom
+
         super().__init__(
             tenant_id="fake_tenant_id",
             datasource_id="fake_datasource_id",

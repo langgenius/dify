@@ -13,11 +13,10 @@ import pytest
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueNodeRetryEvent, QueueNodeSucceededEvent
-from core.helper.code_executor.code_executor import CodeLanguage
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
-from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from libs.datetime_utils import naive_utc_now
+from models import Account
 
 
 @dataclass
@@ -44,8 +43,14 @@ class TestWorkflowResponseConverterCenarios:
 
     def create_workflow_response_converter(self) -> WorkflowResponseConverter:
         """Create a WorkflowResponseConverter for testing."""
+
         mock_entity = self.create_mock_generate_entity()
-        return WorkflowResponseConverter(application_generate_entity=mock_entity)
+        mock_user = Mock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.name = "Test User"
+        mock_user.email = "test@example.com"
+
+        return WorkflowResponseConverter(application_generate_entity=mock_entity, user=mock_user)
 
     def create_workflow_node_execution(
         self,
@@ -78,13 +83,6 @@ class TestWorkflowResponseConverterCenarios:
         return QueueNodeSucceededEvent(
             node_id="test-node-id",
             node_type=NodeType.CODE,
-            node_data=CodeNodeData(
-                title="test code",
-                variables=[],
-                code_language=CodeLanguage.PYTHON3,
-                code="",
-                outputs={},
-            ),
             node_execution_id=str(uuid.uuid4()),
             start_at=naive_utc_now(),
             parallel_id=None,
@@ -104,13 +102,9 @@ class TestWorkflowResponseConverterCenarios:
             retry_index=1,
             node_id="test-node-id",
             node_type=NodeType.CODE,
-            node_data=CodeNodeData(
-                title="test code",
-                variables=[],
-                code_language=CodeLanguage.PYTHON3,
-                code="",
-                outputs={},
-            ),
+            node_title="test code",
+            provider_type="built-in",
+            provider_id="code",
             node_execution_id=str(uuid.uuid4()),
             start_at=naive_utc_now(),
             parallel_id=None,
@@ -332,13 +326,20 @@ class TestWorkflowResponseConverterCenarios:
 
     @pytest.mark.parametrize(
         "scenario",
-        [scenario for scenario in get_process_data_response_scenarios()],
+        get_process_data_response_scenarios(),
         ids=[scenario.name for scenario in get_process_data_response_scenarios()],
     )
     def test_node_finish_response_scenarios(self, scenario: ProcessDataResponseScenario):
         """Test various scenarios for node finish responses."""
+
+        mock_user = Mock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.name = "Test User"
+        mock_user.email = "test@example.com"
+
         converter = WorkflowResponseConverter(
-            application_generate_entity=Mock(spec=WorkflowAppGenerateEntity, app_config=Mock(tenant_id="test-tenant"))
+            application_generate_entity=Mock(spec=WorkflowAppGenerateEntity, app_config=Mock(tenant_id="test-tenant")),
+            user=mock_user,
         )
 
         execution = WorkflowNodeExecution(
@@ -361,13 +362,6 @@ class TestWorkflowResponseConverterCenarios:
         event = QueueNodeSucceededEvent(
             node_id="test-node-id",
             node_type=NodeType.CODE,
-            node_data=CodeNodeData(
-                title="test code",
-                variables=[],
-                code_language=CodeLanguage.PYTHON3,
-                code="",
-                outputs={},
-            ),
             node_execution_id=str(uuid.uuid4()),
             start_at=naive_utc_now(),
             parallel_id=None,
@@ -390,13 +384,20 @@ class TestWorkflowResponseConverterCenarios:
 
     @pytest.mark.parametrize(
         "scenario",
-        [scenario for scenario in get_process_data_response_scenarios()],
+        get_process_data_response_scenarios(),
         ids=[scenario.name for scenario in get_process_data_response_scenarios()],
     )
     def test_node_retry_response_scenarios(self, scenario: ProcessDataResponseScenario):
         """Test various scenarios for node retry responses."""
+
+        mock_user = Mock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.name = "Test User"
+        mock_user.email = "test@example.com"
+
         converter = WorkflowResponseConverter(
-            application_generate_entity=Mock(spec=WorkflowAppGenerateEntity, app_config=Mock(tenant_id="test-tenant"))
+            application_generate_entity=Mock(spec=WorkflowAppGenerateEntity, app_config=Mock(tenant_id="test-tenant")),
+            user=mock_user,
         )
 
         execution = WorkflowNodeExecution(

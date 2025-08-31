@@ -11,6 +11,7 @@ from core.variables.segments import StringSegment
 from core.variables.types import SegmentType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import NodeType
+from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.enums import DraftVariableType
 from models.workflow import (
@@ -198,6 +199,7 @@ class TestWorkflowDraftVariableService:
             created_by="test_user_id",
             environment_variables=[],
             conversation_variables=[],
+            rag_pipeline_variables=[],
         )
 
     def test_reset_conversation_variable(self, mock_session):

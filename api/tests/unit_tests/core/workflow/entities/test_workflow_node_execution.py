@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 
 
 class TestWorkflowNodeExecutionProcessDataTruncation:
@@ -202,7 +202,7 @@ class TestWorkflowNodeExecutionProcessDataScenarios:
 
     @pytest.mark.parametrize(
         "scenario",
-        [scenario for scenario in get_process_data_scenarios(None)],
+        get_process_data_scenarios(None),
         ids=[scenario.name for scenario in get_process_data_scenarios(None)],
     )
     def test_process_data_scenarios(self, scenario: ProcessDataScenario):

@@ -1,4 +1,5 @@
 """Simplified unit tests for DraftVarLoader focusing on core functionality."""
+
 import json
 from unittest.mock import Mock, patch
 
@@ -23,10 +24,7 @@ class TestDraftVarLoaderSimple:
     def draft_var_loader(self, mock_engine):
         """Create DraftVarLoader instance for testing."""
         return DraftVarLoader(
-            engine=mock_engine,
-            app_id="test-app-id",
-            tenant_id="test-tenant-id",
-            fallback_variables=[]
+            engine=mock_engine, app_id="test-app-id", tenant_id="test-tenant-id", fallback_variables=[]
         )
 
     def test_load_offloaded_variable_string_type_unit(self, draft_var_loader):
@@ -68,7 +66,7 @@ class TestDraftVarLoaderSimple:
                 assert variable.name == "test_variable"
                 assert variable.description == "test description"
                 assert variable.value == test_content
-                
+
                 # Verify storage was called correctly
                 mock_storage.load.assert_called_once_with("storage/key/test.txt")
 
@@ -116,7 +114,7 @@ class TestDraftVarLoaderSimple:
                     assert variable.name == "test_object"
                     assert variable.description == "test description"
                     assert variable.value == test_object
-                    
+
                     # Verify method calls
                     mock_storage.load.assert_called_once_with("storage/key/test.json")
                     mock_build_segment.assert_called_once_with(SegmentType.OBJECT, test_object)
@@ -177,6 +175,7 @@ class TestDraftVarLoaderSimple:
 
             with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
                 from core.variables.segments import FloatSegment
+
                 mock_segment = FloatSegment(value=test_number)
                 mock_build_segment.return_value = mock_segment
 
@@ -195,7 +194,7 @@ class TestDraftVarLoaderSimple:
                     assert variable.id == "draft-var-id"
                     assert variable.name == "test_number"
                     assert variable.description == "test number description"
-                    
+
                     # Verify method calls
                     mock_storage.load.assert_called_once_with("storage/key/test_number.json")
                     mock_build_segment.assert_called_once_with(SegmentType.NUMBER, test_number)
@@ -212,7 +211,7 @@ class TestDraftVarLoaderSimple:
 
         draft_var = Mock(spec=WorkflowDraftVariable)
         draft_var.id = "draft-var-id"
-        draft_var.node_id = "test-node-id"  
+        draft_var.node_id = "test-node-id"
         draft_var.name = "test_array"
         draft_var.description = "test array description"
         draft_var.get_selector.return_value = ["test-node-id", "test_array"]
@@ -226,6 +225,7 @@ class TestDraftVarLoaderSimple:
 
             with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
                 from core.variables.segments import ArrayAnySegment
+
                 mock_segment = ArrayAnySegment(value=test_array)
                 mock_build_segment.return_value = mock_segment
 
@@ -244,23 +244,20 @@ class TestDraftVarLoaderSimple:
                     assert variable.id == "draft-var-id"
                     assert variable.name == "test_array"
                     assert variable.description == "test array description"
-                    
+
                     # Verify method calls
                     mock_storage.load.assert_called_once_with("storage/key/test_array.json")
                     mock_build_segment.assert_called_once_with(SegmentType.ARRAY_ANY, test_array)
 
     def test_load_variables_with_offloaded_variables_unit(self, draft_var_loader):
         """Test load_variables method with mix of regular and offloaded variables."""
-        selectors = [
-            ["node1", "regular_var"],
-            ["node2", "offloaded_var"]
-        ]
+        selectors = [["node1", "regular_var"], ["node2", "offloaded_var"]]
 
         # Mock regular variable
         regular_draft_var = Mock(spec=WorkflowDraftVariable)
         regular_draft_var.is_truncated.return_value = False
         regular_draft_var.node_id = "node1"
-        regular_draft_var.name = "regular_var" 
+        regular_draft_var.name = "regular_var"
         regular_draft_var.get_value.return_value = StringSegment(value="regular_value")
         regular_draft_var.get_selector.return_value = ["node1", "regular_var"]
         regular_draft_var.id = "regular-var-id"
@@ -269,7 +266,7 @@ class TestDraftVarLoaderSimple:
         # Mock offloaded variable
         upload_file = Mock(spec=UploadFile)
         upload_file.key = "storage/key/offloaded.txt"
-        
+
         variable_file = Mock(spec=WorkflowDraftVariableFile)
         variable_file.value_type = SegmentType.STRING
         variable_file.upload_file = upload_file
@@ -288,29 +285,31 @@ class TestDraftVarLoaderSimple:
         with patch("services.workflow_draft_variable_service.Session") as mock_session_cls:
             mock_session = Mock()
             mock_session_cls.return_value.__enter__.return_value = mock_session
-            
+
             mock_service = Mock()
             mock_service.get_draft_variables_by_selectors.return_value = draft_vars
-            
-            with patch("services.workflow_draft_variable_service.WorkflowDraftVariableService", return_value=mock_service):
+
+            with patch(
+                "services.workflow_draft_variable_service.WorkflowDraftVariableService", return_value=mock_service
+            ):
                 with patch("services.workflow_draft_variable_service.StorageKeyLoader"):
                     with patch("factories.variable_factory.segment_to_variable") as mock_segment_to_variable:
                         # Mock regular variable creation
                         regular_variable = Mock()
                         regular_variable.selector = ["node1", "regular_var"]
-                        
+
                         # Mock offloaded variable creation
                         offloaded_variable = Mock()
                         offloaded_variable.selector = ["node2", "offloaded_var"]
-                        
+
                         mock_segment_to_variable.return_value = regular_variable
-                        
+
                         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
                             mock_storage.load.return_value = b"offloaded_content"
-                            
+
                             with patch.object(draft_var_loader, "_load_offloaded_variable") as mock_load_offloaded:
                                 mock_load_offloaded.return_value = (("node2", "offloaded_var"), offloaded_variable)
-                                
+
                                 with patch("concurrent.futures.ThreadPoolExecutor") as mock_executor_cls:
                                     mock_executor = Mock()
                                     mock_executor_cls.return_value.__enter__.return_value = mock_executor
@@ -321,21 +320,18 @@ class TestDraftVarLoaderSimple:
 
                                     # Verify results
                                     assert len(result) == 2
-                                    
+
                                     # Verify service method was called
                                     mock_service.get_draft_variables_by_selectors.assert_called_once_with(
                                         draft_var_loader._app_id, selectors
                                     )
-                                    
+
                                     # Verify offloaded variable loading was called
                                     mock_load_offloaded.assert_called_once_with(offloaded_draft_var)
 
     def test_load_variables_all_offloaded_variables_unit(self, draft_var_loader):
         """Test load_variables method with only offloaded variables."""
-        selectors = [
-            ["node1", "offloaded_var1"],
-            ["node2", "offloaded_var2"]
-        ]
+        selectors = [["node1", "offloaded_var1"], ["node2", "offloaded_var2"]]
 
         # Mock first offloaded variable
         offloaded_var1 = Mock(spec=WorkflowDraftVariable)
@@ -354,18 +350,20 @@ class TestDraftVarLoaderSimple:
         with patch("services.workflow_draft_variable_service.Session") as mock_session_cls:
             mock_session = Mock()
             mock_session_cls.return_value.__enter__.return_value = mock_session
-            
+
             mock_service = Mock()
             mock_service.get_draft_variables_by_selectors.return_value = draft_vars
-            
-            with patch("services.workflow_draft_variable_service.WorkflowDraftVariableService", return_value=mock_service):
+
+            with patch(
+                "services.workflow_draft_variable_service.WorkflowDraftVariableService", return_value=mock_service
+            ):
                 with patch("services.workflow_draft_variable_service.StorageKeyLoader"):
                     with patch("services.workflow_draft_variable_service.ThreadPoolExecutor") as mock_executor_cls:
                         mock_executor = Mock()
                         mock_executor_cls.return_value.__enter__.return_value = mock_executor
                         mock_executor.map.return_value = [
                             (("node1", "offloaded_var1"), Mock()),
-                            (("node2", "offloaded_var2"), Mock())
+                            (("node2", "offloaded_var2"), Mock()),
                         ]
 
                         # Execute the method
@@ -373,7 +371,7 @@ class TestDraftVarLoaderSimple:
 
                         # Verify results - since we have only offloaded variables, should have 2 results
                         assert len(result) == 2
-                        
+
                         # Verify ThreadPoolExecutor was used
                         mock_executor_cls.assert_called_once_with(max_workers=10)
                         mock_executor.map.assert_called_once()

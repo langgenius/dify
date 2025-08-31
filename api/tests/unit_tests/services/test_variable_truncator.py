@@ -30,9 +30,6 @@ from core.variables.segments import (
     StringSegment,
 )
 from services.variable_truncator import (
-    ARRAY_CHAR_LIMIT,
-    LARGE_VARIABLE_THRESHOLD,
-    OBJECT_CHAR_LIMIT,
     MaxDepthExceededError,
     TruncationResult,
     UnknownTypeError,
@@ -75,9 +72,7 @@ class TestCalculateJsonSize:
         assert VariableTruncator.calculate_json_size("") == 2  # Just quotes
 
         # Unicode string
-        unicode_text = "你好"
-        expected_size = len(unicode_text.encode("utf-8")) + 2
-        assert VariableTruncator.calculate_json_size(unicode_text) == expected_size
+        assert VariableTruncator.calculate_json_size("你好") == 4
 
     def test_number_size_calculation(self, truncator):
         """Test JSON size calculation for numbers."""
@@ -142,7 +137,7 @@ class TestCalculateJsonSize:
         # Create deeply nested structure
         nested: dict[str, Any] = {"level": 0}
         current = nested
-        for i in range(25):  # Create deep nesting
+        for i in range(105):  # Create deep nesting
             current["next"] = {"level": i + 1}
             current = current["next"]
 
@@ -161,6 +156,7 @@ class TestCalculateJsonSize:
 
 
 class TestStringTruncation:
+    LENGTH_LIMIT = 10
     """Test string truncation functionality."""
 
     @pytest.fixture
@@ -170,25 +166,27 @@ class TestStringTruncation:
     def test_short_string_no_truncation(self, small_truncator):
         """Test that short strings are not truncated."""
         short_str = "hello"
-        result, was_truncated = small_truncator._truncate_string(short_str)
-        assert result == short_str
-        assert was_truncated is False
+        result = small_truncator._truncate_string(short_str, self.LENGTH_LIMIT)
+        assert result.value == short_str
+        assert result.truncated is False
+        assert result.value_size == VariableTruncator.calculate_json_size(short_str)
 
     def test_long_string_truncation(self, small_truncator: VariableTruncator):
         """Test that long strings are truncated with ellipsis."""
         long_str = "this is a very long string that exceeds the limit"
-        result, was_truncated = small_truncator._truncate_string(long_str)
+        result = small_truncator._truncate_string(long_str, self.LENGTH_LIMIT)
 
-        assert was_truncated is True
-        assert result == long_str[:7] + "..."
-        assert len(result) == 10  # 10 chars + "..."
+        assert result.truncated is True
+        assert result.value == long_str[:5] + "..."
+        assert result.value_size == 10  # 10 chars + "..."
 
-    def test_exact_limit_string(self, small_truncator):
+    def test_exact_limit_string(self, small_truncator: VariableTruncator):
         """Test string exactly at limit."""
         exact_str = "1234567890"  # Exactly 10 chars
-        result, was_truncated = small_truncator._truncate_string(exact_str)
-        assert result == exact_str
-        assert was_truncated is False
+        result = small_truncator._truncate_string(exact_str, self.LENGTH_LIMIT)
+        assert result.value == "12345..."
+        assert result.truncated is True
+        assert result.value_size == 10
 
 
 class TestArrayTruncation:
@@ -198,34 +196,32 @@ class TestArrayTruncation:
     def small_truncator(self):
         return VariableTruncator(array_element_limit=3, max_size_bytes=100)
 
-    def test_small_array_no_truncation(self, small_truncator):
+    def test_small_array_no_truncation(self, small_truncator: VariableTruncator):
         """Test that small arrays are not truncated."""
         small_array = [1, 2]
-        result, was_truncated = small_truncator._truncate_array(small_array, 1000)
-        assert result == small_array
-        assert was_truncated is False
+        result = small_truncator._truncate_array(small_array, 1000)
+        assert result.value == small_array
+        assert result.truncated is False
 
-    def test_array_element_limit_truncation(self, small_truncator):
+    def test_array_element_limit_truncation(self, small_truncator: VariableTruncator):
         """Test that arrays over element limit are truncated."""
         large_array = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
-        result, was_truncated = small_truncator._truncate_array(large_array, 1000)
+        result = small_truncator._truncate_array(large_array, 1000)
 
-        assert was_truncated is True
-        assert len(result) == 3
-        assert result == [1, 2, 3]
+        assert result.truncated is True
+        assert result.value == [1, 2, 3]
 
-    def test_array_size_budget_truncation(self, small_truncator):
+    def test_array_size_budget_truncation(self, small_truncator: VariableTruncator):
         """Test array truncation due to size budget constraints."""
         # Create array with strings that will exceed size budget
         large_strings = ["very long string " * 5, "another long string " * 5]
-        result, was_truncated = small_truncator._truncate_array(large_strings, 50)
+        result = small_truncator._truncate_array(large_strings, 50)
 
-        assert was_truncated is True
+        assert result.truncated is True
         # Should have truncated the strings within the array
-        for item in result:
+        for item in result.value:
             assert isinstance(item, str)
-        print(result)
-        assert len(_compact_json_dumps(result).encode()) <= 50
+        assert VariableTruncator.calculate_json_size(result.value) <= 50
 
     def test_array_with_nested_objects(self, small_truncator):
         """Test array truncation with nested objects."""
@@ -234,11 +230,12 @@ class TestArrayTruncation:
             {"name": "item2", "data": "more data"},
             {"name": "item3", "data": "even more data"},
         ]
-        result, was_truncated = small_truncator._truncate_array(nested_array, 80)
+        result = small_truncator._truncate_array(nested_array, 30)
 
-        assert isinstance(result, list)
-        assert len(result) <= 3
-        # Should have processed nested objects appropriately
+        assert isinstance(result.value, list)
+        assert len(result.value) <= 3
+        for item in result.value:
+            assert isinstance(item, dict)
 
 
 class TestObjectTruncation:
@@ -251,16 +248,16 @@ class TestObjectTruncation:
     def test_small_object_no_truncation(self, small_truncator):
         """Test that small objects are not truncated."""
         small_obj = {"a": 1, "b": 2}
-        result, was_truncated = small_truncator._truncate_object(small_obj, 1000)
-        assert result == small_obj
-        assert was_truncated is False
+        result = small_truncator._truncate_object(small_obj, 1000)
+        assert result.value == small_obj
+        assert result.truncated is False
 
     def test_empty_object_no_truncation(self, small_truncator):
         """Test that empty objects are not truncated."""
         empty_obj = {}
-        result, was_truncated = small_truncator._truncate_object(empty_obj, 100)
-        assert result == empty_obj
-        assert was_truncated is False
+        result = small_truncator._truncate_object(empty_obj, 100)
+        assert result.value == empty_obj
+        assert result.truncated is False
 
     def test_object_value_truncation(self, small_truncator):
         """Test object truncation where values are truncated to fit budget."""
@@ -269,17 +266,15 @@ class TestObjectTruncation:
             "key2": "another long string " * 10,
             "key3": "third long string " * 10,
         }
-        result, was_truncated = small_truncator._truncate_object(obj_with_long_values, 80)
+        result = small_truncator._truncate_object(obj_with_long_values, 80)
 
-        assert was_truncated is True
-        assert isinstance(result, dict)
+        assert result.truncated is True
+        assert isinstance(result.value, dict)
 
-        # Keys should be preserved (deterministic order due to sorting)
-        if result:  # Only check if result is not empty
-            assert list(result.keys()) == sorted(result.keys())
+        assert set(result.value.keys()).issubset(obj_with_long_values.keys())
 
         # Values should be truncated if they exist
-        for key, value in result.items():
+        for key, value in result.value.items():
             if isinstance(value, str):
                 original_value = obj_with_long_values[key]
                 # Value should be same or smaller
@@ -288,22 +283,21 @@ class TestObjectTruncation:
     def test_object_key_dropping(self, small_truncator):
         """Test object truncation where keys are dropped due to size constraints."""
         large_obj = {f"key{i:02d}": f"value{i}" for i in range(20)}
-        result, was_truncated = small_truncator._truncate_object(large_obj, 50)
+        result = small_truncator._truncate_object(large_obj, 50)
 
-        assert was_truncated is True
-        assert len(result) < len(large_obj)
+        assert result.truncated is True
+        assert len(result.value) < len(large_obj)
 
         # Should maintain sorted key order
-        result_keys = list(result.keys())
+        result_keys = list(result.value.keys())
         assert result_keys == sorted(result_keys)
 
     def test_object_with_nested_structures(self, small_truncator):
         """Test object truncation with nested arrays and objects."""
         nested_obj = {"simple": "value", "array": [1, 2, 3, 4, 5], "nested": {"inner": "data", "more": ["a", "b", "c"]}}
-        result, was_truncated = small_truncator._truncate_object(nested_obj, 60)
+        result = small_truncator._truncate_object(nested_obj, 60)
 
-        assert isinstance(result, dict)
-        # Should handle nested structures appropriately
+        assert isinstance(result.value, dict)
 
 
 class TestSegmentBasedTruncation:
@@ -470,78 +464,6 @@ class TestSegmentBasedTruncation:
         assert len(result.result.value) <= 1000  # Much smaller than original
 
 
-class TestTruncationHelperMethods:
-    """Test helper methods used in truncation."""
-
-    @pytest.fixture
-    def truncator(self):
-        return VariableTruncator()
-
-    def test_truncate_item_to_budget_string(self, truncator):
-        """Test _truncate_item_to_budget with string input."""
-        item = "this is a long string"
-        budget = 15
-        result, was_truncated = truncator._truncate_item_to_budget(item, budget)
-
-        assert isinstance(result, str)
-        # Should be truncated to fit budget
-        if was_truncated:
-            assert len(result) <= budget
-            assert result.endswith("...")
-
-    def test_truncate_item_to_budget_dict(self, truncator):
-        """Test _truncate_item_to_budget with dict input."""
-        item = {"key": "value", "longer": "longer value"}
-        budget = 30
-        result, was_truncated = truncator._truncate_item_to_budget(item, budget)
-
-        assert isinstance(result, dict)
-        # Should apply object truncation logic
-
-    def test_truncate_item_to_budget_list(self, truncator):
-        """Test _truncate_item_to_budget with list input."""
-        item = [1, 2, 3, 4, 5]
-        budget = 15
-        result, was_truncated = truncator._truncate_item_to_budget(item, budget)
-
-        assert isinstance(result, list)
-        # Should apply array truncation logic
-
-    def test_truncate_item_to_budget_other_types(self, truncator):
-        """Test _truncate_item_to_budget with other types."""
-        # Small number that fits
-        result, was_truncated = truncator._truncate_item_to_budget(123, 10)
-        assert result == 123
-        assert was_truncated is False
-
-        # Large number that might not fit - should convert to string if needed
-        large_num = 123456789012345
-        result, was_truncated = truncator._truncate_item_to_budget(large_num, 5)
-        if was_truncated:
-            assert isinstance(result, str)
-
-    def test_truncate_value_to_budget_string(self, truncator):
-        """Test _truncate_value_to_budget with string input."""
-        value = "x" * 100
-        budget = 20
-        result, was_truncated = truncator._truncate_value_to_budget(value, budget)
-
-        assert isinstance(result, str)
-        if was_truncated:
-            assert len(result) <= 20  # Should respect budget
-            assert result.endswith("...")
-
-    def test_truncate_value_to_budget_respects_object_char_limit(self, truncator):
-        """Test that _truncate_value_to_budget respects OBJECT_CHAR_LIMIT."""
-        # Even with large budget, should respect OBJECT_CHAR_LIMIT
-        large_string = "x" * 10000
-        large_budget = 20000
-        result, was_truncated = truncator._truncate_value_to_budget(large_string, large_budget)
-
-        if was_truncated:
-            assert len(result) <= OBJECT_CHAR_LIMIT + 3  # +3 for "..."
-
-
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 
@@ -666,44 +588,3 @@ class TestIntegrationScenarios:
             if isinstance(result.result, ObjectSegment):
                 result_size = truncator.calculate_json_size(result.result.value)
                 assert result_size <= original_size
-
-
-class TestConstantsAndConfiguration:
-    """Test behavior with different configuration constants."""
-
-    def test_large_variable_threshold_constant(self):
-        """Test that LARGE_VARIABLE_THRESHOLD constant is properly used."""
-        truncator = VariableTruncator()
-        assert truncator._max_size_bytes == LARGE_VARIABLE_THRESHOLD
-        assert LARGE_VARIABLE_THRESHOLD == 10 * 1024  # 10KB
-
-    def test_string_truncation_limit_constant(self):
-        """Test that STRING_TRUNCATION_LIMIT constant is properly used."""
-        truncator = VariableTruncator()
-        assert truncator._string_length_limit == 5000
-
-    def test_array_char_limit_constant(self):
-        """Test that ARRAY_CHAR_LIMIT is used in array item truncation."""
-        truncator = VariableTruncator()
-
-        # Test that ARRAY_CHAR_LIMIT is respected in array item truncation
-        long_string = "x" * 2000
-        budget = 5000  # Large budget
-
-        result, was_truncated = truncator._truncate_item_to_budget(long_string, budget)
-        if was_truncated:
-            # Should not exceed ARRAY_CHAR_LIMIT even with large budget
-            assert len(result) <= ARRAY_CHAR_LIMIT + 3  # +3 for "..."
-
-    def test_object_char_limit_constant(self):
-        """Test that OBJECT_CHAR_LIMIT is used in object value truncation."""
-        truncator = VariableTruncator()
-
-        # Test that OBJECT_CHAR_LIMIT is respected in object value truncation
-        long_string = "x" * 8000
-        large_budget = 20000
-
-        result, was_truncated = truncator._truncate_value_to_budget(long_string, large_budget)
-        if was_truncated:
-            # Should not exceed OBJECT_CHAR_LIMIT even with large budget
-            assert len(result) <= OBJECT_CHAR_LIMIT + 3  # +3 for "..."

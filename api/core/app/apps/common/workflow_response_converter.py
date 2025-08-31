@@ -40,8 +40,7 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.nodes import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import (

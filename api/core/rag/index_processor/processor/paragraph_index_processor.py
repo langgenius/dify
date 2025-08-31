@@ -163,9 +163,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             preview = []
             for content in chunks:
                 preview.append({"content": content})
-            return {"chunk_structure": IndexType.PARAGRAPH_INDEX, 
-                    "preview": preview, 
-                    "total_segments": len(chunks)
-                    }
+            return {"chunk_structure": IndexType.PARAGRAPH_INDEX, "preview": preview, "total_segments": len(chunks)}
         else:
             raise ValueError("Chunks is not a list")

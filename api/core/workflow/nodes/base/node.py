@@ -121,7 +121,10 @@ class Node:
         from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 
         if isinstance(self, DatasourceNode):
-            start_event.provider_id = f"{getattr(self.get_base_node_data(), 'plugin_id', '')}/{getattr(self.get_base_node_data(), 'provider_name', '')}"
+            plugin_id = getattr(self.get_base_node_data(), "plugin_id", "")
+            provider_name = getattr(self.get_base_node_data(), "provider_name", "")
+
+            start_event.provider_id = f"{plugin_id}/{provider_name}"
             start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
 
         from typing import cast

@@ -1262,13 +1262,10 @@ def _count_orphaned_draft_variables() -> dict[str, Any]:
         result = conn.execute(sa.text(variables_query))
         orphaned_by_app = {}
         total_files = 0
-        
+
         for row in result:
             app_id, variable_count, file_count = row
-            orphaned_by_app[app_id] = {
-                "variables": variable_count,
-                "files": file_count
-            }
+            orphaned_by_app[app_id] = {"variables": variable_count, "files": file_count}
             total_files += file_count
 
         total_orphaned = sum(app_data["variables"] for app_data in orphaned_by_app.values())

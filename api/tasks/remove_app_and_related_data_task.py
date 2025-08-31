@@ -458,7 +458,7 @@ def _delete_draft_variable_offload_data(conn, file_ids: list[str]) -> int:
                 upload_file_ids.append(upload_file_id)
                 files_deleted += 1
             except Exception as e:
-                logging.warning(f"Failed to delete storage object {storage_key}: {e}")
+                logging.exception("Failed to delete storage object %s", storage_key)
                 # Continue with database cleanup even if storage deletion fails
                 upload_file_ids.append(upload_file_id)
 
@@ -477,8 +477,8 @@ def _delete_draft_variable_offload_data(conn, file_ids: list[str]) -> int:
         """
         conn.execute(sa.text(delete_variable_files_sql), {"file_ids": tuple(file_ids)})
 
-    except Exception as e:
-        logging.exception(f"Error deleting draft variable offload data: {e}")
+    except Exception:
+        logging.exception("Error deleting draft variable offload data:")
         # Don't raise, as we want to continue with the main deletion process
 
     return files_deleted

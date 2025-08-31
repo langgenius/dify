@@ -1,8 +1,11 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
+if TYPE_CHECKING:
+    from core.ops.ops_trace_manager import TraceQueueManager
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -114,8 +117,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    # Using Any to avoid circular import with TraceQueueManager
-    trace_manager: Optional[Any] = None
+    trace_manager: Optional["TraceQueueManager"] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -276,3 +278,18 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
         inputs: dict
 
     single_loop_run: Optional[SingleLoopRunEntity] = None
+
+
+# Import TraceQueueManager at runtime to resolve forward references
+from core.ops.ops_trace_manager import TraceQueueManager
+
+# Rebuild models that use forward references
+AppGenerateEntity.model_rebuild()
+EasyUIBasedAppGenerateEntity.model_rebuild()
+ConversationAppGenerateEntity.model_rebuild()
+ChatAppGenerateEntity.model_rebuild()
+CompletionAppGenerateEntity.model_rebuild()
+AgentChatAppGenerateEntity.model_rebuild()
+AdvancedChatAppGenerateEntity.model_rebuild()
+WorkflowAppGenerateEntity.model_rebuild()
+RagPipelineGenerateEntity.model_rebuild()

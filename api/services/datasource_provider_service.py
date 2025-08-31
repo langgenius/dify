@@ -809,7 +809,9 @@ class DatasourceProviderService:
                 credentials = self.list_datasource_credentials(
                     tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
                 )
-                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
+                redirect_uri = "{}/console/api/oauth/plugin/{}/datasource/callback".format(
+                    dify_config.CONSOLE_API_URL, datasource_provider_id
+                )
                 datasource_credentials.append(
                     {
                         "provider": datasource.provider,

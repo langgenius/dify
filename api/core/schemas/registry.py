@@ -119,7 +119,7 @@ class SchemaRegistry:
         """Returns all schemas for a version in the API format"""
         version_schemas = self.versions.get(version, {})
 
-        result = []
+        result: list[Mapping[str, Any]] = []
         for schema_name, schema in version_schemas.items():
             result.append({"name": schema_name, "label": schema.get("title", schema_name), "schema": schema})
 
