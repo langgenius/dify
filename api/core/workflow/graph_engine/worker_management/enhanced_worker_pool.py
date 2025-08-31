@@ -330,31 +330,3 @@ class EnhancedWorkerPool:
                 "min_workers": self.min_workers,
                 "max_workers": self.max_workers,
             }
-
-    # ============= Backward Compatibility =============
-
-    def scale_up(self) -> None:
-        """Compatibility method for manual scale up."""
-        with self._lock:
-            if self._running and len(self.workers) < self.max_workers:
-                self._add_worker()
-
-    def scale_down(self, worker_ids: list[int]) -> None:
-        """Compatibility method for manual scale down."""
-        with self._lock:
-            if not self._running:
-                return
-
-            for worker_id in worker_ids:
-                if len(self.workers) > self.min_workers:
-                    self._remove_worker(worker_id)
-
-    def check_scaling(self, queue_depth: int, executing_count: int) -> None:
-        """
-        Compatibility method for checking scaling.
-
-        Args:
-            queue_depth: Current queue depth (ignored, we check directly)
-            executing_count: Number of executing nodes (ignored)
-        """
-        self.check_and_scale()

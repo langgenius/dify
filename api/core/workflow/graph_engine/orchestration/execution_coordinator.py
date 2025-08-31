@@ -26,8 +26,7 @@ class ExecutionCoordinator:
     def __init__(
         self,
         graph_execution: GraphExecution,
-        node_state_manager: UnifiedStateManager,
-        execution_tracker: UnifiedStateManager,
+        state_manager: UnifiedStateManager,
         event_handler: "EventHandlerRegistry",
         event_collector: EventCollector,
         command_processor: CommandProcessor,
@@ -38,16 +37,14 @@ class ExecutionCoordinator:
 
         Args:
             graph_execution: Graph execution aggregate
-            node_state_manager: Manager for node states
-            execution_tracker: Tracker for executing nodes
+            state_manager: Unified state manager
             event_handler: Event handler registry for processing events
             event_collector: Event collector for collecting events
             command_processor: Processor for commands
             worker_pool: Pool of workers
         """
         self.graph_execution = graph_execution
-        self.node_state_manager = node_state_manager
-        self.execution_tracker = execution_tracker
+        self.state_manager = state_manager
         self.event_handler = event_handler
         self.event_collector = event_collector
         self.command_processor = command_processor
@@ -59,8 +56,8 @@ class ExecutionCoordinator:
 
     def check_scaling(self) -> None:
         """Check and perform worker scaling if needed."""
-        queue_depth = self.node_state_manager.ready_queue.qsize()
-        executing_count = self.execution_tracker.count()
+        queue_depth = self.state_manager.ready_queue.qsize()
+        executing_count = self.state_manager.get_executing_count()
         self.worker_pool.check_scaling(queue_depth, executing_count)
 
     def is_execution_complete(self) -> bool:
@@ -75,7 +72,7 @@ class ExecutionCoordinator:
             return True
 
         # Complete if no work remains
-        return self.node_state_manager.ready_queue.empty() and self.execution_tracker.is_empty()
+        return self.state_manager.is_execution_complete()
 
     def mark_complete(self) -> None:
         """Mark execution as complete."""

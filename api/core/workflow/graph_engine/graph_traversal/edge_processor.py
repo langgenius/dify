@@ -25,8 +25,7 @@ class EdgeProcessor:
     def __init__(
         self,
         graph: Graph,
-        edge_state_manager: UnifiedStateManager,
-        node_state_manager: UnifiedStateManager,
+        state_manager: UnifiedStateManager,
         response_coordinator: ResponseStreamCoordinator,
     ) -> None:
         """
@@ -34,13 +33,11 @@ class EdgeProcessor:
 
         Args:
             graph: The workflow graph
-            edge_state_manager: Manager for edge states
-            node_state_manager: Manager for node states
+            state_manager: Unified state manager
             response_coordinator: Response stream coordinator
         """
         self.graph = graph
-        self.edge_state_manager = edge_state_manager
-        self.node_state_manager = node_state_manager
+        self.state_manager = state_manager
         self.response_coordinator = response_coordinator
 
     def process_node_success(
@@ -107,7 +104,7 @@ class EdgeProcessor:
         all_streaming_events: list[NodeRunStreamChunkEvent] = []
 
         # Categorize edges
-        selected_edges, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
+        selected_edges, unselected_edges = self.state_manager.categorize_branch_edges(node_id, selected_handle)
 
         # Process unselected edges first (mark as skipped)
         for edge in unselected_edges:
@@ -132,14 +129,14 @@ class EdgeProcessor:
             Tuple of (list containing downstream node ID if it's ready, list of streaming events)
         """
         # Mark edge as taken
-        self.edge_state_manager.mark_edge_taken(edge.id)
+        self.state_manager.mark_edge_taken(edge.id)
 
         # Notify response coordinator and get streaming events
         streaming_events = self.response_coordinator.on_edge_taken(edge.id)
 
         # Check if downstream node is ready
         ready_nodes: list[str] = []
-        if self.node_state_manager.is_node_ready(edge.head):
+        if self.state_manager.is_node_ready(edge.head):
             ready_nodes.append(edge.head)
 
         return ready_nodes, streaming_events
@@ -151,4 +148,4 @@ class EdgeProcessor:
         Args:
             edge: The edge to skip
         """
-        self.edge_state_manager.mark_edge_skipped(edge.id)
+        self.state_manager.mark_edge_skipped(edge.id)

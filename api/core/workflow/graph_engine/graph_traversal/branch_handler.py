@@ -27,7 +27,7 @@ class BranchHandler:
         graph: Graph,
         edge_processor: EdgeProcessor,
         skip_propagator: SkipPropagator,
-        edge_state_manager: UnifiedStateManager,
+        state_manager: UnifiedStateManager,
     ) -> None:
         """
         Initialize the branch handler.
@@ -36,12 +36,12 @@ class BranchHandler:
             graph: The workflow graph
             edge_processor: Processor for edges
             skip_propagator: Propagator for skip states
-            edge_state_manager: Manager for edge states
+            state_manager: Unified state manager
         """
         self.graph = graph
         self.edge_processor = edge_processor
         self.skip_propagator = skip_propagator
-        self.edge_state_manager = edge_state_manager
+        self.state_manager = state_manager
 
     def handle_branch_completion(
         self, node_id: str, selected_handle: str | None
@@ -63,7 +63,7 @@ class BranchHandler:
             raise ValueError(f"Branch node {node_id} completed without selecting a branch")
 
         # Categorize edges into selected and unselected
-        _, unselected_edges = self.edge_state_manager.categorize_branch_edges(node_id, selected_handle)
+        _, unselected_edges = self.state_manager.categorize_branch_edges(node_id, selected_handle)
 
         # Skip all unselected paths
         self.skip_propagator.skip_branch_paths(unselected_edges)

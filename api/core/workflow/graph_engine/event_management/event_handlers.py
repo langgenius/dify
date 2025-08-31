@@ -56,8 +56,7 @@ class EventHandlerRegistry:
         event_collector: "EventCollector",
         branch_handler: "BranchHandler",
         edge_processor: "EdgeProcessor",
-        node_state_manager: "UnifiedStateManager",
-        execution_tracker: "UnifiedStateManager",
+        state_manager: "UnifiedStateManager",
         error_handler: "ErrorHandler",
     ) -> None:
         """
@@ -71,8 +70,7 @@ class EventHandlerRegistry:
             event_collector: Event collector for collecting events
             branch_handler: Branch handler for branch node processing
             edge_processor: Edge processor for edge traversal
-            node_state_manager: Node state manager
-            execution_tracker: Execution tracker
+            state_manager: Unified state manager
             error_handler: Error handler
         """
         self._graph = graph
@@ -82,8 +80,7 @@ class EventHandlerRegistry:
         self._event_collector = event_collector
         self._branch_handler = branch_handler
         self._edge_processor = edge_processor
-        self._node_state_manager = node_state_manager
-        self._execution_tracker = execution_tracker
+        self._state_manager = state_manager
         self._error_handler = error_handler
 
     def handle_event(self, event: GraphNodeEventBase) -> None:
@@ -199,11 +196,11 @@ class EventHandlerRegistry:
 
         # Enqueue ready nodes
         for node_id in ready_nodes:
-            self._node_state_manager.enqueue_node(node_id)
-            self._execution_tracker.add(node_id)
+            self._state_manager.enqueue_node(node_id)
+            self._state_manager.start_execution(node_id)
 
         # Update execution tracking
-        self._execution_tracker.remove(event.node_id)
+        self._state_manager.finish_execution(event.node_id)
 
         # Handle response node outputs
         if node.execution_type == NodeExecutionType.RESPONSE:
@@ -232,7 +229,7 @@ class EventHandlerRegistry:
             # Abort execution
             self._graph_execution.fail(RuntimeError(event.error))
             self._event_collector.collect(event)
-            self._execution_tracker.remove(event.node_id)
+            self._state_manager.finish_execution(event.node_id)
 
     def _handle_node_exception(self, event: NodeRunExceptionEvent) -> None:
         """
