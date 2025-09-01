@@ -40,7 +40,7 @@ export const useDSL = () => {
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
       a.href = URL.createObjectURL(file)
-      a.download = `${knowledgeName}.yml`
+      a.download = `${knowledgeName}.pipeline`
       a.click()
     }
     catch {

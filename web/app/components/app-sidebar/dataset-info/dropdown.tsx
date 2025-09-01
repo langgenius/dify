@@ -66,7 +66,7 @@ const DropDown = ({
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
       a.href = URL.createObjectURL(file)
-      a.download = `${name}.yml`
+      a.download = `${name}.pipeline`
       a.click()
     }
     catch {

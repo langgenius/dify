@@ -15,6 +15,7 @@ export const usePipelineTemplate = () => {
       ...knowledgeBaseDefault.defaultValue as KnowledgeBaseNodeType,
       type: knowledgeBaseDefault.metaData.type,
       title: t(`workflow.blocks.${knowledgeBaseDefault.metaData.type}`),
+      selected: true,
     },
     position: {
       x: START_INITIAL_POSITION.x + 500,

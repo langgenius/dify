@@ -233,6 +233,8 @@ const UpdateDSLModal = ({
               file={currentFile}
               updateFile={handleFile}
               className='!mt-0 w-full'
+              accept='.pipeline'
+              displayName='PIPELINE'
             />
           </div>
         </div>

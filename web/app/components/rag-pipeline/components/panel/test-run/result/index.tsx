@@ -29,7 +29,6 @@ const Result = () => {
             isRunning={!workflowRunningData?.result || workflowRunningData?.result.status === WorkflowRunningStatus.Running}
             outputs={workflowRunningData?.result?.outputs}
             error={workflowRunningData?.result?.error}
-            tracing={workflowRunningData?.tracing}
             onSwitchToDetail={() => switchTab('DETAIL')}
           />
         )}

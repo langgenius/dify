@@ -1,18 +1,17 @@
 import { RAG_PIPELINE_PREVIEW_CHUNK_NUM } from '@/config'
-import { type ChunkInfo, ChunkType } from '../../../../chunk-card-list'
+import type { ChunkInfo, GeneralChunks, ParentChildChunks, QAChunks } from '../../../../chunk-card-list/types'
+import type { ParentMode } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
 
 type GeneralChunkPreview = {
   content: string
 }
 
 const formatGeneralChunks = (outputs: any) => {
-  if (!outputs) return undefined
-  const chunkInfo: ChunkInfo = {
-    general_chunks: [],
-  }
+  const chunkInfo: GeneralChunks = []
   const chunks = outputs.preview as GeneralChunkPreview[]
   chunks.slice(0, RAG_PIPELINE_PREVIEW_CHUNK_NUM).forEach((chunk) => {
-    chunkInfo.general_chunks?.push(chunk.content)
+    chunkInfo.push(chunk.content)
   })
 
   return chunkInfo
@@ -23,29 +22,27 @@ type ParentChildChunkPreview = {
   child_chunks: string[]
 }
 
-const formatParentChildChunks = (outputs: any, chunkType: ChunkType) => {
-  if (!outputs) return undefined
-  const chunkInfo: ChunkInfo = {
+const formatParentChildChunks = (outputs: any, parentMode: ParentMode) => {
+  const chunkInfo: ParentChildChunks = {
     parent_child_chunks: [],
-    parent_mode: chunkType,
+    parent_mode: parentMode,
   }
   const chunks = outputs.preview as ParentChildChunkPreview[]
-  if (chunkType === ChunkType.Paragraph) {
+  if (parentMode === 'paragraph') {
     chunks.slice(0, RAG_PIPELINE_PREVIEW_CHUNK_NUM).forEach((chunk) => {
       chunkInfo.parent_child_chunks?.push({
         parent_content: chunk.content,
         child_contents: chunk.child_chunks,
-        parent_mode: chunkType,
+        parent_mode: parentMode,
       })
     })
-    return chunkInfo
   }
-  else {
+  if (parentMode === 'full-doc') {
     chunks.forEach((chunk) => {
       chunkInfo.parent_child_chunks?.push({
         parent_content: chunk.content,
         child_contents: chunk.child_chunks.slice(0, RAG_PIPELINE_PREVIEW_CHUNK_NUM),
-        parent_mode: chunkType,
+        parent_mode: parentMode,
       })
     })
   }
@@ -59,8 +56,7 @@ type QAChunkPreview = {
 }
 
 const formatQAChunks = (outputs: any) => {
-  if (!outputs) return undefined
-  const chunkInfo: ChunkInfo = {
+  const chunkInfo: QAChunks = {
     qa_chunks: [],
   }
   const chunks = outputs.qa_preview as QAChunkPreview[]
@@ -73,26 +69,19 @@ const formatQAChunks = (outputs: any) => {
   return chunkInfo
 }
 
-export const formatPreviewChunks = (chunkInfo: ChunkInfo, outputs: any): ChunkInfo | undefined => {
-  if (!chunkInfo) return undefined
+export const formatPreviewChunks = (outputs: any): ChunkInfo | undefined => {
+  if (!outputs) return undefined
 
-  let chunkType = ChunkType.General
-  if (chunkInfo?.general_chunks)
-    chunkType = ChunkType.General
+  const chunkingMode = outputs.chunk_structure
+  const parentMode = outputs.parent_mode
 
-  if (chunkInfo?.parent_child_chunks)
-    chunkType = chunkInfo.parent_mode as ChunkType
-
-  if (chunkInfo?.qa_chunks)
-    chunkType = ChunkType.QA
-
-  if (chunkType === ChunkType.General)
+  if (chunkingMode === ChunkingMode.text)
     return formatGeneralChunks(outputs)
 
-  if (chunkType === ChunkType.Paragraph || chunkType === ChunkType.FullDoc)
-    return formatParentChildChunks(outputs, chunkType)
+  if (chunkingMode === ChunkingMode.parentChild)
+    return formatParentChildChunks(outputs, parentMode)
 
-  if (chunkType === ChunkType.QA)
+  if (chunkingMode === ChunkingMode.qa)
     return formatQAChunks(outputs)
 
   return undefined
