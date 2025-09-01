@@ -3,8 +3,6 @@ import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
-from sqlalchemy import select
-
 from configs import dify_config
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
