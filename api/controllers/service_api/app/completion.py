@@ -247,12 +247,13 @@ class ChatApi(Resource):
         """
         if args.get("workflow_alias"):
             workflow_alias_service = WorkflowAliasService()
-            workflow = workflow_alias_service.get_workflow_by_alias(
-                session=db.session,
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                alias_name=args["workflow_alias"],
-            )
+            with Session(db.engine) as session, session.begin():
+                workflow = workflow_alias_service.get_workflow_by_alias(
+                    session=session,
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    alias_name=args["workflow_alias"],
+                )
 
             if not workflow:
                 raise WorkflowNotFoundError(f"Workflow with alias '{args['workflow_alias']}' not found")
