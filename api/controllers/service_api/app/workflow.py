@@ -1,6 +1,5 @@
 import logging
 import uuid
-from typing import Optional
 
 from dateutil.parser import isoparse
 from flask import request
