@@ -24,7 +24,6 @@ import {
   useUpdateMCPServer,
 } from '@/service/use-tools'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
 import cn from '@/utils/classnames'
 import { fetchAppDetail } from '@/service/apps'
 
@@ -75,11 +74,11 @@ function MCPServiceCard({
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp` : '***********'
-  const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
-  const missingEntryNode = isWorkflowApp && !hasEntryNode
+  const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
+  const missingStartNode = isWorkflowApp && !hasStartNode
   const hasInsufficientPermissions = !isCurrentWorkspaceEditor
-  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode
-  const isMinimalState = appUnpublished || missingEntryNode
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode
+  const isMinimalState = appUnpublished || missingStartNode
 
   const [activated, setActivated] = useState(serverActivated)
 
