@@ -48,16 +48,13 @@ jobs:
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
         run: pnpm exec playwright install --with-deps
 
       - name: Copy production env
-        working-directory: ./web
         run: cp .env.example .env.local
 
       - name: Modify env values
@@ -69,6 +66,5 @@ jobs:
 
       - name: Run Playwright tests
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
         run: pnpm e2e-test:ci
 
