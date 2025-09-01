@@ -376,10 +376,7 @@ class DatasourceNode(Node):
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
 
                 url = message.message.text
-                if message.meta:
-                    transfer_method = message.meta.get("transfer_method", FileTransferMethod.DATASOURCE_FILE)
-                else:
-                    transfer_method = FileTransferMethod.DATASOURCE_FILE
+                transfer_method = FileTransferMethod.TOOL_FILE
 
                 datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
@@ -390,7 +387,7 @@ class DatasourceNode(Node):
                         raise ToolFileError(f"Tool file {datasource_file_id} does not exist")
 
                 mapping = {
-                    "datasource_file_id": datasource_file_id,
+                    "id": datasource_file_id,
                     "type": file_factory.get_file_type_by_mime_type(datasource_file.mime_type),
                     "transfer_method": transfer_method,
                     "url": url,
@@ -413,8 +410,8 @@ class DatasourceNode(Node):
                         raise ToolFileError(f"datasource file {datasource_file_id} not exists")
 
                 mapping = {
-                    "datasource_file_id": datasource_file_id,
-                    "transfer_method": FileTransferMethod.DATASOURCE_FILE,
+                    "id": datasource_file_id,
+                    "transfer_method": FileTransferMethod.TOOL_FILE,
                 }
 
                 files.append(
@@ -516,10 +513,7 @@ class DatasourceNode(Node):
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
 
                 url = message.message.text
-                if message.meta:
-                    transfer_method = message.meta.get("transfer_method", FileTransferMethod.DATASOURCE_FILE)
-                else:
-                    transfer_method = FileTransferMethod.DATASOURCE_FILE
+                transfer_method = FileTransferMethod.TOOL_FILE
 
                 datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
@@ -530,7 +524,7 @@ class DatasourceNode(Node):
                         raise ToolFileError(f"Tool file {datasource_file_id} does not exist")
 
                 mapping = {
-                    "datasource_file_id": datasource_file_id,
+                    "id": datasource_file_id,
                     "type": file_factory.get_file_type_by_mime_type(datasource_file.mime_type),
                     "transfer_method": transfer_method,
                     "url": url,
