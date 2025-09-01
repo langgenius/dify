@@ -36,6 +36,21 @@ Run tests from a specific YAML file:
 uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --test-file test_cases_extended.yaml
 ```
 
+### Development Mode Testing
+
+**WARNING: Development mode DISABLES all SSRF protections! Only use in development environments!**
+
+Test the development mode configuration (used by docker-compose.middleware.yaml):
+```bash
+uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --dev-mode
+```
+
+Development mode:
+- Mounts `conf.d.dev/` configuration that allows ALL requests
+- Uses `test_cases_dev_mode.yaml` by default (all tests expect ALLOW)
+- Verifies that private networks, cloud metadata, and non-standard ports are accessible
+- Should NEVER be used in production environments
+
 ### Command Line Options
 
 - `--host HOST`: Proxy host (default: localhost)
@@ -44,6 +59,7 @@ uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --test-file 
 - `--save-results`: Save test results to JSON file
 - `--test-file FILE`: Path to YAML file containing test cases
 - `--list-tests`: List all test cases without running them
+- `--dev-mode`: Run in development mode (DISABLES all SSRF protections - DO NOT use in production!)
 
 ## YAML Test Case Format
 
@@ -63,10 +79,11 @@ test_categories:
 
 ## Available Test Files
 
-1. **test_cases.yaml** - Standard test suite with essential test cases
+1. **test_cases.yaml** - Standard test suite with essential test cases (default)
 2. **test_cases_extended.yaml** - Extended test suite with additional edge cases and scenarios
+3. **test_cases_dev_mode.yaml** - Development mode test suite (all requests should be allowed)
 
-Both files are located in `api/tests/integration_tests/ssrf_proxy/`
+All files are located in `api/tests/integration_tests/ssrf_proxy/`
 
 ## Categories
 
@@ -107,6 +124,35 @@ The tests validate the SSRF proxy configuration files in `docker/ssrf_proxy/`:
 - `squid.conf.template` - Squid proxy configuration
 - `docker-entrypoint.sh` - Container initialization script
 - `conf.d/` - Additional configuration files (if present)
+- `conf.d.dev/` - Development mode configuration (when using --dev-mode)
+
+## Development Mode Configuration
+
+Development mode provides a zero-configuration environment for local development:
+- Mounts `conf.d.dev/` instead of `conf.d/`
+- Allows ALL requests including private networks and cloud metadata
+- Enables access to any port
+- Disables all SSRF protections
+
+### Using Development Mode with Docker Compose
+
+From the main Dify repository root:
+```bash
+# Use the development overlay
+docker-compose -f docker-compose.middleware.yaml -f docker/ssrf_proxy/docker-compose.dev.yaml up ssrf_proxy
+```
+
+Or manually mount the development configuration:
+```bash
+docker run -d \
+  --name ssrf-proxy-dev \
+  -p 3128:3128 \
+  -v ./docker/ssrf_proxy/conf.d.dev:/etc/squid/conf.d:ro \
+  # ... other volumes
+  ubuntu/squid:latest
+```
+
+**CRITICAL**: Never use this configuration in production!
 
 ## Benefits
 

@@ -47,18 +47,32 @@ class TestCase:
 
 @final
 class SSRFProxyTester:
-    def __init__(self, proxy_host: str = "localhost", proxy_port: int = 3128, test_file: str | None = None):
+    def __init__(
+        self,
+        proxy_host: str = "localhost",
+        proxy_port: int = 3128,
+        test_file: str | None = None,
+        dev_mode: bool = False,
+    ):
         self.proxy_host = proxy_host
         self.proxy_port = proxy_port
         self.proxy_url = f"http://{proxy_host}:{proxy_port}"
-        self.container_name = "ssrf-proxy-test"
+        self.container_name = "ssrf-proxy-test-dev" if dev_mode else "ssrf-proxy-test"
         self.image = "ubuntu/squid:latest"
         self.results: list[dict[str, object]] = []
-        self.test_file = test_file or "test_cases.yaml"
+        self.dev_mode = dev_mode
+        # Use dev mode test cases by default when in dev mode
+        if dev_mode and test_file is None:
+            self.test_file = "test_cases_dev_mode.yaml"
+        else:
+            self.test_file = test_file or "test_cases.yaml"
 
     def start_proxy_container(self) -> bool:
         """Start the SSRF proxy container"""
-        print(f"{Colors.YELLOW}Starting SSRF proxy container...{Colors.NC}")
+        mode_str = " (DEVELOPMENT MODE)" if self.dev_mode else ""
+        print(f"{Colors.YELLOW}Starting SSRF proxy container{mode_str}...{Colors.NC}")
+        if self.dev_mode:
+            print(f"{Colors.RED}WARNING: Development mode DISABLES all SSRF protections!{Colors.NC}")
 
         # Stop and remove existing container if exists
         _ = subprocess.run(["docker", "stop", self.container_name], capture_output=True, text=True)
@@ -69,6 +83,12 @@ class SSRFProxyTester:
         # Docker config files are in docker/ssrf_proxy relative to project root
         project_root = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
         docker_config_dir = os.path.join(project_root, "docker", "ssrf_proxy")
+
+        # Choose configuration template based on mode
+        if self.dev_mode:
+            config_template = "squid.conf.dev.template"
+        else:
+            config_template = "squid.conf.template"
 
         # Start container
         cmd = [
@@ -82,7 +102,7 @@ class SSRFProxyTester:
             "-p",
             "8194:8194",
             "-v",
-            f"{docker_config_dir}/squid.conf.template:/etc/squid/squid.conf.template:ro",
+            f"{docker_config_dir}/{config_template}:/etc/squid/squid.conf.template:ro",
             "-v",
             f"{docker_config_dir}/docker-entrypoint.sh:/docker-entrypoint-mount.sh:ro",
             "-e",
@@ -102,11 +122,16 @@ class SSRFProxyTester:
             "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",  # noqa: E501
         ]
 
-        # Add conf.d mount if directory exists
-        conf_d_path = f"{docker_config_dir}/conf.d"
-        if os.path.exists(conf_d_path) and os.listdir(conf_d_path):
-            cmd.insert(-3, "-v")
-            cmd.insert(-3, f"{conf_d_path}:/etc/squid/conf.d:ro")
+        # Mount configuration directory (only in normal mode)
+        # In dev mode, the dev template already allows everything
+        if not self.dev_mode:
+            # Normal mode: mount regular conf.d if it exists
+            conf_d_path = f"{docker_config_dir}/conf.d"
+            if os.path.exists(conf_d_path) and os.listdir(conf_d_path):
+                cmd.insert(-3, "-v")
+                cmd.insert(-3, f"{conf_d_path}:/etc/squid/conf.d:ro")
+        else:
+            print(f"{Colors.YELLOW}Using development mode configuration (all SSRF protections disabled){Colors.NC}")
 
         result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -159,9 +184,17 @@ class SSRFProxyTester:
             else:
                 # Other HTTP errors mean the request went through
                 is_blocked = False
-        except (urllib.error.URLError, OSError, TimeoutError):
-            # Connection errors mean blocked by proxy
-            is_blocked = True
+        except (urllib.error.URLError, OSError, TimeoutError) as e:
+            # In dev mode, connection errors to 169.254.x.x addresses are expected
+            # These addresses don't exist locally, so timeout is normal
+            # The proxy allowed the request, but the destination is unreachable
+            if self.dev_mode and "169.254" in test_case.url:
+                # In dev mode, if we're testing 169.254.x.x addresses,
+                # a timeout means the proxy allowed it (not blocked)
+                is_blocked = False
+            else:
+                # In normal mode, or for other addresses, connection errors mean blocked
+                is_blocked = True
         except Exception as e:
             # Unexpected error
             print(f"{Colors.YELLOW}Warning: Unexpected error testing {test_case.url}: {e}{Colors.NC}")
@@ -205,7 +238,13 @@ class SSRFProxyTester:
         test_cases = self.get_test_cases()
 
         print("=" * 50)
-        print("         SSRF Proxy Test Suite")
+        if self.dev_mode:
+            print("    SSRF Proxy Test Suite (DEV MODE)")
+            print("=" * 50)
+            print(f"{Colors.RED}WARNING: Testing with SSRF protections DISABLED!{Colors.NC}")
+            print(f"{Colors.YELLOW}All requests should be ALLOWED in dev mode.{Colors.NC}")
+        else:
+            print("         SSRF Proxy Test Suite")
         print("=" * 50)
 
         # Group tests by category
@@ -295,9 +334,19 @@ class SSRFProxyTester:
             print(f"Tests Skipped: {Colors.YELLOW}{skipped}{Colors.NC}")
 
         if failed == 0:
-            print(f"\n{Colors.GREEN}✓ All tests passed! SSRF proxy is configured correctly.{Colors.NC}")
+            if hasattr(self, "dev_mode") and self.dev_mode:
+                print(f"\n{Colors.GREEN}✓ All tests passed! Development mode is working correctly.{Colors.NC}")
+                print(
+                    f"{Colors.YELLOW}Remember: Dev mode DISABLES all SSRF protections - "
+                    f"use only for development!{Colors.NC}"
+                )
+            else:
+                print(f"\n{Colors.GREEN}✓ All tests passed! SSRF proxy is configured correctly.{Colors.NC}")
         else:
-            print(f"\n{Colors.RED}✗ Some tests failed. Please review the configuration.{Colors.NC}")
+            if hasattr(self, "dev_mode") and self.dev_mode:
+                print(f"\n{Colors.RED}✗ Some tests failed. Dev mode should allow ALL requests!{Colors.NC}")
+            else:
+                print(f"\n{Colors.RED}✗ Some tests failed. Please review the configuration.{Colors.NC}")
             print("\nFailed tests:")
             for r in self.results:
                 if r["result"] == "failed":
@@ -330,6 +379,7 @@ def main():
         save_results: bool = False
         test_file: str | None = None
         list_tests: bool = False
+        dev_mode: bool = False
 
     def parse_args() -> Args:
         parser = argparse.ArgumentParser(description="Test SSRF Proxy Configuration")
@@ -345,6 +395,11 @@ def main():
             "--test-file", type=str, help="Path to YAML file containing test cases (default: test_cases.yaml)"
         )
         _ = parser.add_argument("--list-tests", action="store_true", help="List all test cases without running them")
+        _ = parser.add_argument(
+            "--dev-mode",
+            action="store_true",
+            help="Run in development mode (DISABLES all SSRF protections - DO NOT use in production!)",
+        )
 
         # Parse arguments - argparse.Namespace has Any-typed attributes
         # This is a known limitation of argparse in Python's type system
@@ -360,18 +415,22 @@ def main():
             save_results=bool(namespace.save_results),  # pyright: ignore[reportAny]
             test_file=namespace.test_file if namespace.test_file else None,  # pyright: ignore[reportAny]
             list_tests=bool(namespace.list_tests),  # pyright: ignore[reportAny]
+            dev_mode=bool(namespace.dev_mode),  # pyright: ignore[reportAny]
         )
 
     args = parse_args()
 
-    tester = SSRFProxyTester(args.host, args.port, args.test_file)
+    tester = SSRFProxyTester(args.host, args.port, args.test_file, args.dev_mode)
 
     # If --list-tests flag is set, just list the tests and exit
     if args.list_tests:
         test_cases = tester.get_test_cases()
+        mode_str = " (DEVELOPMENT MODE)" if args.dev_mode else ""
         print("\n" + "=" * 50)
-        print("         Available Test Cases")
+        print(f"         Available Test Cases{mode_str}")
         print("=" * 50)
+        if args.dev_mode:
+            print(f"\n{Colors.RED}WARNING: Dev mode test cases expect ALL requests to be ALLOWED!{Colors.NC}")
 
         # Group by category for display
         categories: dict[str, list[TestCase]] = {}

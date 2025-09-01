@@ -1,0 +1,67 @@
+################################## DEVELOPMENT MODE CONFIGURATION ##################################
+# WARNING: This configuration DISABLES all SSRF protections!
+# Only use this in development environments. NEVER use in production!
+#
+# This is a special configuration for development that allows ALL requests
+# including private networks, cloud metadata endpoints, and any ports.
+
+################################## Allow Everything ##################################
+# In development mode, we allow all connections without restrictions
+
+# Define ACLs but don't use them for blocking
+acl private_networks dst 0.0.0.0/8
+acl private_networks dst 10.0.0.0/8
+acl private_networks dst 127.0.0.0/8
+acl private_networks dst 169.254.0.0/16
+acl private_networks dst 172.16.0.0/12
+acl private_networks dst 192.168.0.0/16
+acl localhost src 127.0.0.1/32 ::1
+acl SSL_ports port 443
+acl Safe_ports port 1-65535  # Allow ALL ports in dev mode
+acl CONNECT method CONNECT
+
+################################## Access Control Rules ##################################
+# DEVELOPMENT MODE: Allow everything!
+
+# Special rule for reverse proxy port (sandbox access)
+acl reverse_proxy_port myport ${REVERSE_PROXY_PORT}
+http_access allow reverse_proxy_port
+
+# Explicitly allow link-local addresses (169.254.0.0/16)
+acl link_local dst 169.254.0.0/16
+http_access allow link_local
+
+# Explicitly allow localhost and loopback
+http_access allow localhost
+
+# Explicitly allow all private networks
+http_access allow private_networks
+
+# ALLOW ALL REQUESTS - Development mode bypasses all security
+http_access allow all
+
+# Note: No deny rules in development mode
+
+################################## Proxy Server Configuration ##################################
+http_port ${HTTP_PORT}
+coredump_dir ${COREDUMP_DIR}
+
+# Refresh patterns
+refresh_pattern ^ftp:		1440	20%	10080
+refresh_pattern ^gopher:	1440	0%	1440
+refresh_pattern -i (/cgi-bin/|\?) 0	0%	0
+refresh_pattern \/(Packages|Sources)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern \/Release(|\.gpg)$ 0 0% 0 refresh-ims
+refresh_pattern \/InRelease$ 0 0% 0 refresh-ims
+refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern .		0	20%	4320
+
+################################## Reverse Proxy To Sandbox ##################################
+http_port ${REVERSE_PROXY_PORT} accel vhost
+cache_peer ${SANDBOX_HOST} parent ${SANDBOX_PORT} 0 no-query originserver
+
+# Buffer size for file uploads
+client_request_buffer_max_size 100 MB
+
+# Debug logging for development
+debug_options ALL,1

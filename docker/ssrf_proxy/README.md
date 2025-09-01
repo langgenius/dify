@@ -92,6 +92,39 @@ The following networks are blocked by default to prevent SSRF:
 - `fe80::/10` - IPv6 link-local
 - `::1/128` - IPv6 loopback
 
+## Development Mode
+
+⚠️ **WARNING: Development mode DISABLES all SSRF protections! Only use in development environments!**
+
+Development mode provides a zero-configuration environment that:
+- Allows access to ALL private networks and localhost
+- Allows access to cloud metadata endpoints
+- Allows connections to any port
+- Disables all SSRF protections for easier development
+
+### Using Development Mode
+
+#### Option 1: Docker Compose Override (Recommended)
+From the main Dify repository root:
+```bash
+# Use the development overlay with your existing docker-compose
+docker-compose -f docker-compose.middleware.yaml -f docker/ssrf_proxy/docker-compose.dev.yaml up ssrf_proxy
+```
+
+#### Option 2: Manual Configuration
+Mount the development configuration manually:
+```bash
+docker run -d \
+  --name ssrf-proxy-dev \
+  -p 3128:3128 \
+  -v ./docker/ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template:ro \
+  -v ./docker/ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro \
+  -v ./docker/ssrf_proxy/conf.d.dev:/etc/squid/conf.d:ro \
+  ubuntu/squid:latest
+```
+
+The development mode configuration is in `conf.d.dev/00-development-mode.conf`.
+
 ## Testing
 
 Comprehensive integration tests are available to validate the SSRF proxy configuration:
@@ -106,6 +139,9 @@ uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --list-tests
 
 # Use extended test suite
 uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --test-file test_cases_extended.yaml
+
+# Test development mode (all requests should be allowed)
+uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --dev-mode
 ```
 
 The test suite validates:
@@ -137,5 +173,8 @@ docker/ssrf_proxy/
 │   ├── 20-allow-external-domains.conf.example
 │   ├── 30-allow-additional-ports.conf.example
 │   └── 40-restrict-to-allowlist.conf.example
+├── conf.d.dev/               # Development mode configuration
+│   └── 00-development-mode.conf  # Disables all SSRF protections
+├── docker-compose.dev.yaml   # Docker Compose overlay for dev mode
 └── README.md                 # This file
 ```
