@@ -68,7 +68,7 @@ const getKey = (
 
 const List = () => {
   const { t } = useTranslation()
-    const { systemFeatures } = useGlobalPublicStore()
+  const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)

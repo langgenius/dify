@@ -60,9 +60,9 @@ const AddCredentialInLoadBalancing = ({
           asChild
           popupContent={t('plugin.auth.credentialUnavailable')}
         >
-            {Item}
-          </Tooltip>
-        )
+          {Item}
+        </Tooltip>
+      )
     }
     return Item
   }, [notAllowCustomCredential, t, customModel])

@@ -79,11 +79,11 @@ const LastRun: FC<Props> = ({
   }, [nodeId])
 
   const handlePageVisibilityChange = useCallback(() => {
-      if (document.visibilityState === 'hidden')
-        setPageHasHide(true)
-      else
-        setPageShowed(true)
-    }, [])
+    if (document.visibilityState === 'hidden')
+      setPageHasHide(true)
+    else
+      setPageShowed(true)
+  }, [])
   useEffect(() => {
     document.addEventListener('visibilitychange', handlePageVisibilityChange)
 

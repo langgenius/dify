@@ -250,7 +250,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   if(logParams.showSpecialResultPanel) {
     return (
-    <div className={cn(
+      <div className={cn(
         'relative mr-1  h-full',
       )}>
         <div
@@ -356,7 +356,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     >
                       {
                         isSingleRunning ? <Stop className='h-4 w-4 text-text-tertiary' />
-                        : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
+                          : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
                       }
                     </div>
                   </Tooltip>
