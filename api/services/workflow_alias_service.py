@@ -95,7 +95,7 @@ class WorkflowAliasService:
             .offset(offset)
         )
 
-        return list(session.execute(stmt).scalars().all())
+        return list(session.scalars(stmt))
 
     def get_workflow_by_alias(
         self,
