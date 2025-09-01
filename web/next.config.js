@@ -102,7 +102,7 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath,
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   turbopack: {
     rules: patchedCodeInspectorPlugin({
       bundler: 'turbopack'
