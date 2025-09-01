@@ -97,6 +97,7 @@ The following networks are blocked by default to prevent SSRF:
 ⚠️ **WARNING: Development mode DISABLES all SSRF protections! Only use in development environments!**
 
 Development mode provides a zero-configuration environment that:
+
 - Allows access to ALL private networks and localhost
 - Allows access to cloud metadata endpoints
 - Allows connections to any port
@@ -105,14 +106,18 @@ Development mode provides a zero-configuration environment that:
 ### Using Development Mode
 
 #### Option 1: Docker Compose Override (Recommended)
+
 From the main Dify repository root:
+
 ```bash
 # Use the development overlay with your existing docker-compose
 docker-compose -f docker-compose.middleware.yaml -f docker/ssrf_proxy/docker-compose.dev.yaml up ssrf_proxy
 ```
 
 #### Option 2: Manual Configuration
+
 Mount the development configuration manually:
+
 ```bash
 docker run -d \
   --name ssrf-proxy-dev \
@@ -145,6 +150,7 @@ uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --dev-mode
 ```
 
 The test suite validates:
+
 - Blocking of private networks and loopback addresses
 - Blocking of cloud metadata endpoints
 - Allowing of public internet resources

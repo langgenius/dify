@@ -13,11 +13,13 @@ These tests are located in `api/tests/integration_tests/ssrf_proxy/` because the
 ### Basic Testing
 
 From the `api/` directory:
+
 ```bash
 uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py
 ```
 
 Or from the repository root:
+
 ```bash
 cd api && uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py
 ```
@@ -25,6 +27,7 @@ cd api && uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py
 ### List Available Tests
 
 View all test cases without running them:
+
 ```bash
 uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --list-tests
 ```
@@ -32,6 +35,7 @@ uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --list-tests
 ### Use Custom Test File
 
 Run tests from a specific YAML file:
+
 ```bash
 uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --test-file test_cases_extended.yaml
 ```
@@ -41,11 +45,13 @@ uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --test-file 
 **WARNING: Development mode DISABLES all SSRF protections! Only use in development environments!**
 
 Test the development mode configuration (used by docker-compose.middleware.yaml):
+
 ```bash
 uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --dev-mode
 ```
 
 Development mode:
+
 - Mounts `conf.d.dev/` configuration that allows ALL requests
 - Uses `test_cases_dev_mode.yaml` by default (all tests expect ALLOW)
 - Verifies that private networks, cloud metadata, and non-standard ports are accessible
@@ -80,8 +86,8 @@ test_categories:
 ## Available Test Files
 
 1. **test_cases.yaml** - Standard test suite with essential test cases (default)
-2. **test_cases_extended.yaml** - Extended test suite with additional edge cases and scenarios
-3. **test_cases_dev_mode.yaml** - Development mode test suite (all requests should be allowed)
+1. **test_cases_extended.yaml** - Extended test suite with additional edge cases and scenarios
+1. **test_cases_dev_mode.yaml** - Development mode test suite (all requests should be allowed)
 
 All files are located in `api/tests/integration_tests/ssrf_proxy/`
 
@@ -102,10 +108,11 @@ All files are located in `api/tests/integration_tests/ssrf_proxy/`
 ## Adding New Test Cases
 
 1. Edit the YAML file (or create a new one)
-2. Add test cases under appropriate categories
-3. Run with `--test-file` option if using a custom file
+1. Add test cases under appropriate categories
+1. Run with `--test-file` option if using a custom file
 
 Example:
+
 ```yaml
 test_categories:
   custom_tests:
@@ -121,6 +128,7 @@ test_categories:
 ## What Gets Tested
 
 The tests validate the SSRF proxy configuration files in `docker/ssrf_proxy/`:
+
 - `squid.conf.template` - Squid proxy configuration
 - `docker-entrypoint.sh` - Container initialization script
 - `conf.d/` - Additional configuration files (if present)
@@ -129,6 +137,7 @@ The tests validate the SSRF proxy configuration files in `docker/ssrf_proxy/`:
 ## Development Mode Configuration
 
 Development mode provides a zero-configuration environment for local development:
+
 - Mounts `conf.d.dev/` instead of `conf.d/`
 - Allows ALL requests including private networks and cloud metadata
 - Enables access to any port
@@ -137,12 +146,14 @@ Development mode provides a zero-configuration environment for local development
 ### Using Development Mode with Docker Compose
 
 From the main Dify repository root:
+
 ```bash
 # Use the development overlay
 docker-compose -f docker-compose.middleware.yaml -f docker/ssrf_proxy/docker-compose.dev.yaml up ssrf_proxy
 ```
 
 Or manually mount the development configuration:
+
 ```bash
 docker run -d \
   --name ssrf-proxy-dev \
