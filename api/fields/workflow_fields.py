@@ -1,6 +1,5 @@
 from flask_restx import fields
 
-from core.helper import encrypter
 from core.variables import SecretVariable, SegmentType, Variable
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
