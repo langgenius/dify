@@ -1307,3 +1307,15 @@ class DocumentPipelineExecutionLog(Base):
     input_data = db.Column(db.JSON, nullable=False)
     created_by = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+class PipelineRecommendedPlugin(Base):
+    __tablename__ = "pipeline_recommended_plugins"
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    plugin_id = db.Column(db.Text, nullable=False)
+    provider_name = db.Column(db.Text, nullable=False)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

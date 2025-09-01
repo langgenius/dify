@@ -27,6 +27,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
+from core.helper import marketplace
 from core.rag.entities.event import (
     DatasourceCompletedEvent,
     DatasourceErrorEvent,
@@ -52,7 +53,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import Document, Pipeline, PipelineCustomizedTemplate  # type: ignore
+from models.dataset import Document, Pipeline, PipelineCustomizedTemplate, PipelineRecommendedPlugin  # type: ignore
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
@@ -70,6 +71,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.app import WorkflowHashNotEqualError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
 
 logger = logging.getLogger(__name__)
@@ -1226,3 +1228,37 @@ class RagPipelineService:
             )
             session.commit()
         return workflow_node_execution_db_model
+
+    def get_recommended_plugins(self) -> list[dict]:
+        # Query active recommended plugins
+        pipeline_recommended_plugins = (
+            db.session.query(PipelineRecommendedPlugin)
+            .filter(PipelineRecommendedPlugin.active == True)
+            .order_by(PipelineRecommendedPlugin.position.asc())
+            .all()
+        )
+        
+        if not pipeline_recommended_plugins:
+            return []
+        
+        # Batch fetch plugin manifests
+        plugin_ids = [plugin.plugin_id for plugin in pipeline_recommended_plugins]
+        plugin_manifests = marketplace.batch_fetch_plugin_manifests(plugin_ids)
+        
+        builtin_tools = BuiltinToolManageService.list_builtin_tools(
+            user_id=current_user.id,
+            tenant_id=current_user.current_tenant_id,
+        )
+        installed_plugin_ids = {tool.plugin_id for tool in builtin_tools}
+        
+        # Build recommended plugins list
+        return [
+            {
+                "plugin_id": manifest.plugin_id,
+                "name": manifest.name,
+                "icon": manifest.icon,
+                "plugin_unique_identifier": manifest.latest_package_identifier,
+                "installed": manifest.plugin_id in installed_plugin_ids,
+            }
+            for manifest in plugin_manifests
+        ]

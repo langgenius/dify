@@ -981,6 +981,14 @@ class RagPipelineDatasourceVariableApi(Resource):
         )
         return workflow_node_execution
 
+class RagPipelineRecommendedPluginApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        rag_pipeline_service = RagPipelineService()
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins()
+        return recommended_plugins
 
 api.add_resource(
     DraftRagPipelineApi,
