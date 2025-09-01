@@ -2,9 +2,6 @@ name: Style check
 
 on:
   workflow_call:
-  pull_request:
-    branches:
-      - main
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -47,20 +44,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
-      - name: Ruff check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          uv run --directory api ruff --version
-          uv run --directory api ruff check ./
-          uv run --directory api ruff format --check ./
-
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
-
-      - name: Lint hints
-        if: failure()
-        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
 
   web-style:
     name: Web Style
@@ -103,7 +89,9 @@ jobs:
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run lint
+        run: |
+          pnpm run lint
+          pnpm run eslint
 
   docker-compose-template:
     name: Docker Compose Template

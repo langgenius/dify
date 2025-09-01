@@ -2,15 +2,6 @@ name: Run VDB Tests
 
 on:
   workflow_call:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - api/core/rag/datasource/**
-      - docker/**
-      - .github/workflows/vdb-tests.yml
-      - api/uv.lock
-      - api/pyproject.toml
 
 concurrency:
   group: vdb-tests-${{ github.head_ref || github.run_id }}

@@ -122,7 +122,7 @@ const ExportImage: FC = () => {
           reactFlow.setViewport(currentViewport)
         }, 500)
       }
- else {
+      else {
         // Current viewport export (existing functionality)
         switch (type) {
           case 'png':
@@ -152,7 +152,7 @@ const ExportImage: FC = () => {
         link.click()
         document.body.removeChild(link)
       }
- else {
+      else {
         // For current view, just download
         const link = document.createElement('a')
         link.href = dataUrl
