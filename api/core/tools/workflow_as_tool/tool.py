@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
@@ -204,14 +204,14 @@ class WorkflowTool(Tool):
                         item = self._update_file_mapping(item)
                         file = build_from_mapping(
                             mapping=item,
-                            tenant_id=str(cast(ToolRuntime, self.runtime).tenant_id),
+                            tenant_id=str(self.runtime.tenant_id),
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 value = self._update_file_mapping(value)
                 file = build_from_mapping(
                     mapping=value,
-                    tenant_id=str(cast(ToolRuntime, self.runtime).tenant_id),
+                    tenant_id=str(self.runtime.tenant_id),
                 )
                 files.append(file)
 
