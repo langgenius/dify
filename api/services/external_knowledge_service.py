@@ -9,6 +9,7 @@ from sqlalchemy import select
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from core.rag.entities.metadata_entities import MetadataCondition
+from core.workflow.nodes.http_request.exc import InvalidHttpMethodError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import (
@@ -185,9 +186,19 @@ class ExternalDatasetService:
             "follow_redirects": True,
         }
 
-        response: httpx.Response = getattr(ssrf_proxy, settings.request_method)(
-            data=json.dumps(settings.params), files=files, **kwargs
-        )
+        _METHOD_MAP = {
+            "get": ssrf_proxy.get,
+            "head": ssrf_proxy.head,
+            "post": ssrf_proxy.post,
+            "put": ssrf_proxy.put,
+            "delete": ssrf_proxy.delete,
+            "patch": ssrf_proxy.patch,
+        }
+        method_lc = settings.request_method.lower()
+        if method_lc not in _METHOD_MAP:
+            raise InvalidHttpMethodError(f"Invalid http method {settings.request_method}")
+
+        response: httpx.Response = _METHOD_MAP[method_lc](data=json.dumps(settings.params), files=files, **kwargs)
         return response
 
     @staticmethod
