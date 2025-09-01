@@ -22,6 +22,7 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 
 import {
   AGENT_OUTPUT_STRUCT,
@@ -285,6 +286,36 @@ const formatItem = (
       res.vars.push({
         variable: 'sys.workflow_run_id',
         type: VarType.string,
+      })
+
+      break
+    }
+
+    case BlockEnum.TriggerWebhook: {
+      const {
+        variables = [],
+      } = data as WebhookTriggerNodeType
+      res.vars = variables.map((v) => {
+        const type = inputVarTypeToVarType(v.type)
+        const varRes: Var = {
+          variable: v.variable,
+          type,
+          isParagraph: v.type === InputVarType.paragraph,
+          isSelect: v.type === InputVarType.select,
+          options: v.options,
+          required: v.required,
+        }
+        try {
+          if(type === VarType.object && v.json_schema) {
+            varRes.children = {
+              schema: JSON.parse(v.json_schema),
+            }
+          }
+        }
+        catch (error) {
+          console.error('Error formatting TriggerWebhook variable:', error)
+        }
+        return varRes
       })
 
       break

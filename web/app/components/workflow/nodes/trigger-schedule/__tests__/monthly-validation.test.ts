@@ -22,7 +22,6 @@ describe('Monthly Validation', () => {
           monthly_days: [15],
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -39,7 +38,6 @@ describe('Monthly Validation', () => {
           monthly_days: ['last' as const],
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -58,7 +56,6 @@ describe('Monthly Validation', () => {
           monthly_days: [1, 15, 30],
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -75,7 +72,6 @@ describe('Monthly Validation', () => {
           monthly_days: [1, 15, 'last' as const],
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -92,7 +88,6 @@ describe('Monthly Validation', () => {
           monthly_days: [],
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -109,7 +104,6 @@ describe('Monthly Validation', () => {
           monthly_days: [1, 35, 15],
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -127,7 +121,6 @@ describe('Monthly Validation', () => {
           time: '10:30 AM',
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -144,7 +137,6 @@ describe('Monthly Validation', () => {
           monthly_days: [1, 15],
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)
@@ -161,7 +153,6 @@ describe('Monthly Validation', () => {
           monthly_days: Array.from({ length: 31 }, (_, i) => i + 1),
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const result = nodeDefault.checkValid(config, mockT)

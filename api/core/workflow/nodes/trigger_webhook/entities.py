@@ -48,7 +48,7 @@ class WebhookData(BaseNodeData):
         SYNC = "async"  # only support
 
     method: Method = Method.GET
-    content_type: ContentType = Field(alias="content-type", default=ContentType.JSON)
+    content_type: ContentType = Field(default=ContentType.JSON)
     headers: Sequence[WebhookParameter] = Field(default_factory=list)
     params: Sequence[WebhookParameter] = Field(default_factory=list)  # query parameters
     body: Sequence[WebhookBodyParameter] = Field(default_factory=list)

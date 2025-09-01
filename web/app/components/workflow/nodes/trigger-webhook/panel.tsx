@@ -135,7 +135,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           <div className="w-full">
             <SimpleSelect
               items={CONTENT_TYPES}
-              defaultValue={inputs['content-type']}
+              defaultValue={inputs.content_type}
               onSelect={item => handleContentTypeChange(item.value as string)}
               disabled={readOnly}
               className="h-8 text-sm"
