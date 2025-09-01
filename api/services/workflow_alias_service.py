@@ -105,7 +105,7 @@ class WorkflowAliasService:
         app_id: str,
         alias_name: str,
     ) -> Optional[Workflow]:
-        alias = session.execute(
+        alias = session.scalar(
             select(WorkflowAlias).where(
                 and_(
                     WorkflowAlias.tenant_id == tenant_id,
