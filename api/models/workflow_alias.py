@@ -37,7 +37,7 @@ class WorkflowNameAlias(Base):
         - updated_at (timestamp): Last update time
     """
 
-    __tablename__ = "workflow_aliases"
+    __tablename__ = "workflow_name_aliases"
     __allow_unmapped__ = True  # Allow non-mapped attributes
     __slots__ = ("_is_transferred", "_old_workflow_id")
     __table_args__ = (
