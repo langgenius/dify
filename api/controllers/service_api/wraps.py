@@ -1,7 +1,7 @@
 import time
 from collections.abc import Callable
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum, auto
 from functools import wraps
 from typing import Optional
 
@@ -23,14 +23,14 @@ from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
 
-class WhereisUserArg(Enum):
+class WhereisUserArg(StrEnum):
     """
     Enum for whereis_user_arg.
     """
 
-    QUERY = "query"
-    JSON = "json"
-    FORM = "form"
+    QUERY = auto()
+    JSON = auto()
+    FORM = auto()
 
 
 class FetchUserArg(BaseModel):

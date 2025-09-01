@@ -2,7 +2,7 @@ import contextlib
 import json
 from collections import defaultdict
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -154,8 +154,8 @@ class ProviderManager:
         for provider_entity in provider_entities:
             # handle include, exclude
             if is_filtered(
-                include_set=cast(set[str], dify_config.POSITION_PROVIDER_INCLUDES_SET),
-                exclude_set=cast(set[str], dify_config.POSITION_PROVIDER_EXCLUDES_SET),
+                include_set=dify_config.POSITION_PROVIDER_INCLUDES_SET,
+                exclude_set=dify_config.POSITION_PROVIDER_EXCLUDES_SET,
                 data=provider_entity,
                 name_func=lambda x: x.provider,
             ):

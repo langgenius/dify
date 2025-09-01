@@ -1,7 +1,7 @@
 const translation = {
   tips: {
-    notLoggedIn: 'quer acessar sua conta do Dify Cloud',
-    loggedIn: 'quer acessar as seguintes informações da sua conta Dify Cloud.',
+    notLoggedIn: 'Este aplicativo quer acessar sua conta do Dify Cloud',
+    loggedIn: 'Este aplicativo quer acessar as seguintes informações da sua conta Dify Cloud.',
     common: 'Respeitamos sua privacidade e usaremos essas informações apenas para melhorar sua experiência com nossas ferramentas de desenvolvedor.',
     needLogin: 'Por favor, faça login para autorizar',
   },

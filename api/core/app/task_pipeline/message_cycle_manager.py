@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 from flask import Flask, current_app
 from sqlalchemy import select
-
+from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -145,8 +145,8 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        stmt = select(MessageFile).where(MessageFile.id == event.message_file_id)
-        message_file = db.session.scalar(stmt)
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
 
         if message_file and message_file.url is not None:
             # get tool file id
@@ -186,7 +186,8 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
-        message_file = db.session.query(MessageFile).where(MessageFile.id == message_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == message_id))
         event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
 
         return MessageStreamResponse(

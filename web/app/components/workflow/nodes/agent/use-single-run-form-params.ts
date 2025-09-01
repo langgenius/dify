@@ -76,7 +76,7 @@ const useSingleRunFormParams = ({
     return formatTracing([runResult], t)[0]
   }, [runResult, t])
 
-    const getDependentVars = () => {
+  const getDependentVars = () => {
     return varInputs.map((item) => {
       // Guard against null/undefined variable to prevent app crash
       if (!item.variable || typeof item.variable !== 'string')

@@ -64,7 +64,6 @@ const Website: FC<Props> = ({
     checkSetApiKey().then(() => {
       setIsLoaded(true)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const handleOnConfig = useCallback(() => {
     setShowAccountSettingModal({
@@ -97,7 +96,7 @@ const Website: FC<Props> = ({
             <span className={cn(s.jinaLogo, 'mr-2')}/>
             <span>Jina Reader</span>
           </button>}
-         {ENABLE_WEBSITE_FIRECRAWL && <button
+          {ENABLE_WEBSITE_FIRECRAWL && <button
             className={cn('rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.fireCrawl
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'

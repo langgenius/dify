@@ -39,7 +39,7 @@ describe('Document List Sorting', () => {
         const result = aValue.localeCompare(bValue)
         return order === 'asc' ? result : -result
       }
- else {
+      else {
         const result = aValue - bValue
         return order === 'asc' ? result : -result
       }
