@@ -108,26 +108,26 @@ def register_external_error_handlers(api: Api) -> None:
                     # Default to 500 for unknown MCP error codes
                     status_code = 500
 
-                data = {
+                general_data = {
                     "code": "mcp_request_error",
                     "message": e.message,
                     "mcp_error_code": error_code,
                     "status": status_code,
                 }
-                return data, status_code
+                return general_data, status_code
 
         # If not MCPRequestError, continue to general exception handling
         got_request_exception.send(current_app, exception=e)
 
         status_code = 500
-        data: dict[str, Any] = getattr(e, "data", {"message": http_status_message(status_code)})
+        general_data: dict[str, Any] = getattr(e, "data", {"message": http_status_message(status_code)})
 
         # 🔒 Normalize non-mapping data (e.g., if someone set e.data = Response)
-        if not isinstance(data, Mapping):
-            data = {"message": str(e)}
+        if not isinstance(general_data, Mapping):
+            general_data = {"message": str(e)}
 
-        data.setdefault("code", "unknown")
-        data.setdefault("status", status_code)
+        general_data.setdefault("code", "unknown")
+        general_data.setdefault("status", status_code)
 
         # Log stack
         exc_info: Any = sys.exc_info()
@@ -135,7 +135,7 @@ def register_external_error_handlers(api: Api) -> None:
             exc_info = None
         current_app.log_exception(exc_info)
 
-        return data, status_code
+        return general_data, status_code
 
 
 class ExternalApi(Api):
