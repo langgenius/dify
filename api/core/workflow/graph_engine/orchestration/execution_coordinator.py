@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, final
 
 from ..command_processing import CommandProcessor
 from ..domain import GraphExecution
-from ..event_management import EventCollector
+from ..event_management import EventManager
 from ..state_management import UnifiedStateManager
 from ..worker_management import SimpleWorkerPool
 
 if TYPE_CHECKING:
-    from ..event_management import EventHandlerRegistry
+    from ..event_management import EventHandler
 
 
 @final
@@ -27,8 +27,8 @@ class ExecutionCoordinator:
         self,
         graph_execution: GraphExecution,
         state_manager: UnifiedStateManager,
-        event_handler: "EventHandlerRegistry",
-        event_collector: EventCollector,
+        event_handler: "EventHandler",
+        event_collector: EventManager,
         command_processor: CommandProcessor,
         worker_pool: SimpleWorkerPool,
     ) -> None:
@@ -39,7 +39,7 @@ class ExecutionCoordinator:
             graph_execution: Graph execution aggregate
             state_manager: Unified state manager
             event_handler: Event handler registry for processing events
-            event_collector: Event collector for collecting events
+            event_collector: Event manager for collecting events
             command_processor: Processor for commands
             worker_pool: Pool of workers
         """

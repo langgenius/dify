@@ -33,13 +33,13 @@ if TYPE_CHECKING:
     from ..error_handling import ErrorHandler
     from ..graph_traversal import EdgeProcessor
     from ..state_management import UnifiedStateManager
-    from .event_collector import EventCollector
+    from .event_manager import EventManager
 
 logger = logging.getLogger(__name__)
 
 
 @final
-class EventHandlerRegistry:
+class EventHandler:
     """
     Registry of event handlers for different event types.
 
@@ -53,7 +53,7 @@ class EventHandlerRegistry:
         graph_runtime_state: GraphRuntimeState,
         graph_execution: GraphExecution,
         response_coordinator: ResponseStreamCoordinator,
-        event_collector: "EventCollector",
+        event_collector: "EventManager",
         edge_processor: "EdgeProcessor",
         state_manager: "UnifiedStateManager",
         error_handler: "ErrorHandler",
@@ -66,7 +66,7 @@ class EventHandlerRegistry:
             graph_runtime_state: Runtime state with variable pool
             graph_execution: Graph execution aggregate
             response_coordinator: Response stream coordinator
-            event_collector: Event collector for collecting events
+            event_collector: Event manager for collecting events
             edge_processor: Edge processor for edge traversal
             state_manager: Unified state manager
             error_handler: Error handler

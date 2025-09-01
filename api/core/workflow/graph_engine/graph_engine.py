@@ -31,7 +31,7 @@ from .command_processing import AbortCommandHandler, CommandProcessor
 from .domain import ExecutionContext, GraphExecution
 from .entities.commands import AbortCommand
 from .error_handling import ErrorHandler
-from .event_management import EventCollector, EventEmitter, EventHandlerRegistry
+from .event_management import EventHandler, EventManager
 from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import Layer
 from .orchestration import Dispatcher, ExecutionCoordinator
@@ -122,10 +122,8 @@ class GraphEngine:
         )
 
         # === Event Management ===
-        # Event collector aggregates events from all subsystems
-        self._event_collector = EventCollector()
-        # Event emitter streams collected events to consumers
-        self._event_emitter = EventEmitter(self._event_collector)
+        # Event manager handles both collection and emission of events
+        self._event_manager = EventManager()
 
         # === Error Handling ===
         # Centralized error handler for graph execution errors
@@ -149,12 +147,12 @@ class GraphEngine:
 
         # === Event Handler Registry ===
         # Central registry for handling all node execution events
-        self._event_handler_registry = EventHandlerRegistry(
+        self._event_handler_registry = EventHandler(
             graph=self._graph,
             graph_runtime_state=self._graph_runtime_state,
             graph_execution=self._graph_execution,
             response_coordinator=self._response_coordinator,
-            event_collector=self._event_collector,
+            event_collector=self._event_manager,
             edge_processor=self._edge_processor,
             state_manager=self._state_manager,
             error_handler=self._error_handler,
@@ -206,7 +204,7 @@ class GraphEngine:
             graph_execution=self._graph_execution,
             state_manager=self._state_manager,
             event_handler=self._event_handler_registry,
-            event_collector=self._event_collector,
+            event_collector=self._event_manager,
             command_processor=self._command_processor,
             worker_pool=self._worker_pool,
         )
@@ -215,10 +213,10 @@ class GraphEngine:
         self._dispatcher = Dispatcher(
             event_queue=self._event_queue,
             event_handler=self._event_handler_registry,
-            event_collector=self._event_collector,
+            event_collector=self._event_manager,
             execution_coordinator=self._execution_coordinator,
             max_execution_time=self._execution_context.max_execution_time,
-            event_emitter=self._event_emitter,
+            event_emitter=self._event_manager,
         )
 
         # === Extensibility ===
@@ -261,7 +259,7 @@ class GraphEngine:
             self._start_execution()
 
             # Yield events as they occur
-            yield from self._event_emitter.emit_events()
+            yield from self._event_manager.emit_events()
 
             # Handle completion
             if self._graph_execution.aborted:
@@ -289,7 +287,7 @@ class GraphEngine:
 
     def _initialize_layers(self) -> None:
         """Initialize layers with context."""
-        self._event_collector.set_layers(self._layers)
+        self._event_manager.set_layers(self._layers)
         for layer in self._layers:
             try:
                 layer.initialize(self._graph_runtime_state, self._command_channel)
