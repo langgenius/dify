@@ -43,6 +43,9 @@ class ToolProviderApiEntity(BaseModel):
     server_url: Optional[str] = Field(default="", description="The server url of the tool")
     updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
     server_identifier: Optional[str] = Field(default="", description="The server identifier of the MCP tool")
+    timeout: Optional[float] = Field(default=30.0, description="The timeout of the MCP tool")
+    sse_read_timeout: Optional[float] = Field(default=300.0, description="The SSE read timeout of the MCP tool")
+    headers: Optional[dict[str, str]] = Field(default=None, description="The headers of the MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -65,6 +68,9 @@ class ToolProviderApiEntity(BaseModel):
         if self.type == ToolProviderType.MCP:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
             optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
+            optional_fields.update(self.optional_field("timeout", self.timeout))
+            optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
+            optional_fields.update(self.optional_field("headers", self.headers))
         return {
             "id": self.id,
             "author": self.author,

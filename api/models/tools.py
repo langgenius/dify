@@ -280,6 +280,8 @@ class MCPToolProvider(Base):
     )
     timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"))
     sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("300"))
+    # Custom headers for MCP server requests
+    headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()
@@ -309,6 +311,16 @@ class MCPToolProvider(Base):
     @property
     def decrypted_server_url(self) -> str:
         return encrypter.decrypt_token(self.tenant_id, self.server_url)
+
+    @property
+    def decrypted_headers(self) -> dict:
+        """Get decrypted headers for MCP server requests."""
+        try:
+            if not self.headers:
+                return {}
+            return cast(dict, json.loads(self.headers))
+        except Exception:
+            return {}
 
     @property
     def masked_server_url(self) -> str:
