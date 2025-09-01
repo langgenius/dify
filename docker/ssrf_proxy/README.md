@@ -129,6 +129,7 @@ services:
 **Important Note about Docker Networking:**
 
 When accessing services on your host machine from within Docker containers:
+
 - Do NOT use `127.0.0.1` or `localhost` (these refer to the container itself)
 - Instead use:
   - `host.docker.internal:port` (recommended, works on Mac/Windows/Linux with Docker 20.10+)
@@ -136,6 +137,7 @@ When accessing services on your host machine from within Docker containers:
   - On Linux: the Docker bridge gateway (usually `172.17.0.1`)
 
 Example:
+
 ```bash
 # Wrong (won't work from inside container):
 http://127.0.0.1:1234
