@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   test:
+    timeout-minutes: 60
     name: Playwright Tests
     runs-on: ubuntu-latest
     defaults:
@@ -52,10 +53,11 @@ jobs:
 
       - name: Install Playwright Browsers
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm e2e-test
+        run: pnpm e2e-test:ci
 

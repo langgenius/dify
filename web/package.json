@@ -41,7 +41,8 @@
     "preinstall": "npx only-allow pnpm",
     "analyze": "ANALYZE=true pnpm build",
     "e2e-test": "pnpm exec playwright test",
-    "e2e-test:ui": "pnpm exec playwright test --ui"
+    "e2e-test:ui": "pnpm exec playwright test --ui",
+    "e2e-test:ci": "pnpm run build && pnpm exec playwright test"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
