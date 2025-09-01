@@ -462,7 +462,8 @@ class ToolNode(Node):
                 for selector in selectors:
                     result[selector.variable] = selector.value_selector
             elif input.type == "variable":
-                result[parameter_name] = input.value
+                selector_key = ".".join(input.value)
+                result[f"#{selector_key}#"] = input.value
             elif input.type == "constant":
                 pass
 
