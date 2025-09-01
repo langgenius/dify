@@ -1,11 +1,11 @@
-import type { FC } from 'react'
-import { useState } from 'react'
+import { forwardRef, useImperativeHandle, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import ShortcutsName from '../shortcuts-name'
 
 export type TriggerOption = {
   id: string
@@ -28,20 +28,28 @@ type TestRunDropdownProps = {
   children: React.ReactNode
 }
 
-const TestRunDropdown: FC<TestRunDropdownProps> = ({
+export type TestRunDropdownRef = {
+  toggle: () => void
+}
+
+const TestRunDropdown = forwardRef<TestRunDropdownRef, TestRunDropdownProps>(({
   options,
   onSelect,
   children,
-}) => {
+}, ref) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    toggle: () => setOpen(prev => !prev),
+  }))
 
   const handleSelect = (option: TriggerOption) => {
     onSelect(option)
     setOpen(false)
   }
 
-  const renderOption = (option: TriggerOption, numberDisplay: string) => (
+  const renderOption = (option: TriggerOption, shortcutKey: string) => (
     <div
       key={option.id}
       className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
@@ -53,9 +61,7 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
         </div>
         <span className='ml-2 truncate'>{option.name}</span>
       </div>
-      <div className='ml-2 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-state-base-hover-alt text-xs font-medium text-text-tertiary'>
-        {numberDisplay}
-      </div>
+      <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
     </div>
   )
 
@@ -99,6 +105,8 @@ const TestRunDropdown: FC<TestRunDropdownProps> = ({
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
-}
+})
+
+TestRunDropdown.displayName = 'TestRunDropdown'
 
 export default TestRunDropdown
