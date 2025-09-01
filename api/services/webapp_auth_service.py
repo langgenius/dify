@@ -63,7 +63,7 @@ class WebAppAuthService:
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+        cls, account: Optional[Account] = None, email: Optional[str] = None, language: str = "en-US"
     ):
         email = account.email if account else email
         if email is None:
@@ -113,7 +113,7 @@ class WebAppAuthService:
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account) -> str:
-        exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
+        exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
         exp = int(exp_dt.timestamp())
 
         payload = {

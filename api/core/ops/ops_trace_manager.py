@@ -37,6 +37,8 @@ from models.model import App, AppModelConfig, Conversation, Message, MessageFile
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
+logger = logging.getLogger(__name__)
+
 
 class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
@@ -287,7 +289,7 @@ class OpsTraceManager:
             # create new tracing_instance and update the cache if it absent
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
-            logging.info("new tracing_instance for app_id: %s", app_id)
+            logger.info("new tracing_instance for app_id: %s", app_id)
         return tracing_instance
 
     @classmethod
@@ -849,7 +851,7 @@ class TraceQueueManager:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception as e:
-            logging.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
+            logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
         finally:
             self.start_timer()
 
@@ -868,7 +870,7 @@ class TraceQueueManager:
             if tasks:
                 self.send_to_celery(tasks)
         except Exception as e:
-            logging.exception("Error processing trace tasks")
+            logger.exception("Error processing trace tasks")
 
     def start_timer(self):
         global trace_manager_timer

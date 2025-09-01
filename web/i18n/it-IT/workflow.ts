@@ -868,6 +868,7 @@ const translation = {
           upload_file_id: 'Carica l\'ID del file',
         },
         text: 'Contenuto generato dall\'agente',
+        usage: 'Informazioni sull\'utilizzo del modello',
         json: 'JSON generato dall\'agente',
       },
       checkList: {
@@ -1021,6 +1022,7 @@ const translation = {
     noMatchingInputsFound: 'Nessun input corrispondente trovato dall\'ultimo funzionamento.',
     copyLastRunError: 'Impossibile copiare gli input dell\'ultima esecuzione',
     noLastRunFound: 'Nessuna esecuzione precedente trovata',
+    lastOutput: 'Ultimo output',
   },
 }
 

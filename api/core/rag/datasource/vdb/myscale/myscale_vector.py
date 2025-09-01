@@ -15,6 +15,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+logger = logging.getLogger(__name__)
+
 
 class MyScaleConfig(BaseModel):
     host: str
@@ -53,7 +55,7 @@ class MyScaleVector(BaseVector):
         return self.add_texts(documents=texts, embeddings=embeddings, **kwargs)
 
     def _create_collection(self, dimension: int):
-        logging.info("create MyScale collection %s with dimension %s", self._collection_name, dimension)
+        logger.info("create MyScale collection %s with dimension %s", self._collection_name, dimension)
         self._client.command(f"CREATE DATABASE IF NOT EXISTS {self._config.database}")
         fts_params = f"('{self._config.fts_params}')" if self._config.fts_params else ""
         sql = f"""
@@ -151,7 +153,7 @@ class MyScaleVector(BaseVector):
                 for r in self._client.query(sql).named_results()
             ]
         except Exception as e:
-            logging.exception("\033[91m\033[1m%s\033[0m \033[95m%s\033[0m", type(e), str(e))  # noqa:TRY401
+            logger.exception("\033[91m\033[1m%s\033[0m \033[95m%s\033[0m", type(e), str(e))  # noqa:TRY401
             return []
 
     def delete(self) -> None:

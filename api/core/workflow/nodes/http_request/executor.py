@@ -12,6 +12,7 @@ from json_repair import repair_json
 
 from configs import dify_config
 from core.file import file_manager
+from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.entities.variable_pool import VariablePool
@@ -228,7 +229,9 @@ class Executor:
                     files: dict[str, list[tuple[str | None, bytes, str]]] = {}
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
-                            if file.related_id is not None:
+                            if file.related_id is not None or (
+                                file.transfer_method == FileTransferMethod.REMOTE_URL and file.remote_url is not None
+                            ):
                                 file_tuple = (
                                     file.filename,
                                     file_manager.download(file),
@@ -276,17 +279,26 @@ class Executor:
                     encoded_credentials = credentials
                 headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
-                headers[authorization.config.header] = authorization.config.api_key or ""
+                if authorization.config.header and authorization.config.api_key:
+                    headers[authorization.config.header] = authorization.config.api_key
 
         # Handle Content-Type for multipart/form-data requests
-        # Fix for issue #22880: Missing boundary when using multipart/form-data
+        # Fix for issue #23829: Missing boundary when using multipart/form-data
         body = self.node_data.body
         if body and body.type == "form-data":
-            # For multipart/form-data with files, let httpx handle the boundary automatically
-            # by not setting Content-Type header when files are present
-            if not self.files or all(f[0] == "__multipart_placeholder__" for f in self.files):
-                # Only set Content-Type when there are no actual files
-                # This ensures httpx generates the correct boundary
+            # For multipart/form-data with files (including placeholder files),
+            # remove any manually set Content-Type header to let httpx handle
+            # For multipart/form-data, if any files are present (including placeholder files),
+            # we must remove any manually set Content-Type header. This is because httpx needs to
+            # automatically set the Content-Type and boundary for multipart encoding whenever files
+            # are included, even if they are placeholders, to avoid boundary issues and ensure correct
+            # file upload behaviour. Manually setting Content-Type can cause httpx to fail to set the
+            # boundary, resulting in invalid requests.
+            if self.files:
+                # Remove Content-Type if it was manually set to avoid boundary issues
+                headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
+            else:
+                # No files at all, set Content-Type manually
                 if "content-type" not in (k.lower() for k in headers):
                     headers["Content-Type"] = "multipart/form-data"
         elif body and body.type in BODY_TYPE_TO_CONTENT_TYPE:
@@ -317,22 +329,16 @@ class Executor:
         """
         do http request depending on api bundle
         """
-        if self.method not in {
-            "get",
-            "head",
-            "post",
-            "put",
-            "delete",
-            "patch",
-            "options",
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "HEAD",
-            "OPTIONS",
-        }:
+        _METHOD_MAP = {
+            "get": ssrf_proxy.get,
+            "head": ssrf_proxy.head,
+            "post": ssrf_proxy.post,
+            "put": ssrf_proxy.put,
+            "delete": ssrf_proxy.delete,
+            "patch": ssrf_proxy.patch,
+        }
+        method_lc = self.method.lower()
+        if method_lc not in _METHOD_MAP:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
@@ -350,11 +356,11 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response = getattr(ssrf_proxy, self.method.lower())(**request_args)
+            response: httpx.Response = _METHOD_MAP[method_lc](**request_args)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
-        return response  # type: ignore
+        return response
 
     def invoke(self) -> Response:
         # assemble headers

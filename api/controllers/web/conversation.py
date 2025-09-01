@@ -1,5 +1,5 @@
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import marshal_with, reqparse
+from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 

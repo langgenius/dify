@@ -7,7 +7,7 @@
 import json
 import logging
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
@@ -185,7 +185,6 @@ class FileLifecycleManager:
                 versions.append(current_metadata)
 
             # 获取历史版本
-            version_pattern = f"{self._version_prefix}{filename}.v*"
             try:
                 version_files = self._storage.scan(self._dataset_id or "", files=True)
                 for file_path in version_files:
@@ -331,7 +330,6 @@ class FileLifecycleManager:
         """
         try:
             cleaned_count = 0
-            cutoff_date = datetime.now() - timedelta(days=max_age_days)
 
             # 获取所有版本文件
             try:

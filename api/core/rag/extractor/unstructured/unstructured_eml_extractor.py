@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import logging
 from typing import Optional
 
@@ -33,7 +34,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
             elements = partition_email(filename=self._file_path)
 
         # noinspection PyBroadException
-        try:
+        with contextlib.suppress(Exception):
             for element in elements:
                 element_text = element.text.strip()
 
@@ -43,8 +44,6 @@ class UnstructuredEmailExtractor(BaseExtractor):
                 element_decode = base64.b64decode(element_text)
                 soup = BeautifulSoup(element_decode.decode("utf-8"), "html.parser")
                 element.text = soup.get_text()
-        except Exception:
-            pass
 
         from unstructured.chunking.title import chunk_by_title
 

@@ -34,9 +34,8 @@ class ExcelExtractor(BaseExtractor):
             for sheet_name in wb.sheetnames:
                 sheet = wb[sheet_name]
                 data = sheet.values
-                try:
-                    cols = next(data)
-                except StopIteration:
+                cols = next(data, None)
+                if cols is None:
                     continue
                 df = pd.DataFrame(data, columns=cols)
 

@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import (
     AliasChoices,
@@ -552,12 +552,18 @@ class RepositoryConfig(BaseSettings):
     """
 
     CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowExecution. Specify as a module path",
+        description="Repository implementation for WorkflowExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
     )
 
     CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowNodeExecution. Specify as a module path",
+        description="Repository implementation for WorkflowNodeExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_node_execution_repository."
+        "SQLAlchemyWorkflowNodeExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_node_execution_repository."
+        "CeleryWorkflowNodeExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
     )
 
@@ -962,6 +968,26 @@ class AccountConfig(BaseSettings):
     )
 
 
+class WorkflowLogConfig(BaseSettings):
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
+    WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
+        default=100, description="Batch size for workflow run log cleanup operations"
+    )
+
+
+class SwaggerUIConfig(BaseSettings):
+    SWAGGER_UI_ENABLED: bool = Field(
+        description="Whether to enable Swagger UI in api module",
+        default=True,
+    )
+
+    SWAGGER_UI_PATH: str = Field(
+        description="Swagger UI page path in api module",
+        default="/swagger-ui.html",
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -993,9 +1019,11 @@ class FeatureConfig(
     WorkspaceConfig,
     LoginConfig,
     AccountConfig,
+    SwaggerUIConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,
     CeleryScheduleTasksConfig,
+    WorkflowLogConfig,
 ):
     pass

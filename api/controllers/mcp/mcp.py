@@ -1,8 +1,10 @@
-from flask_restful import Resource, reqparse
+from typing import Optional, Union
+
+from flask_restx import Resource, reqparse
 from pydantic import ValidationError
 
 from controllers.console.app.mcp_server import AppMCPServerStatus
-from controllers.mcp import api
+from controllers.mcp import mcp_ns
 from core.app.app_config.entities import VariableEntity
 from core.mcp import types
 from core.mcp.server.streamable_http import MCPServerStreamableHTTPRequestHandler
@@ -13,22 +15,58 @@ from libs import helper
 from models.model import App, AppMCPServer, AppMode
 
 
+def int_or_str(value):
+    """Validate that a value is either an integer or string."""
+    if isinstance(value, (int, str)):
+        return value
+    else:
+        return None
+
+
+# Define parser for both documentation and validation
+mcp_request_parser = reqparse.RequestParser()
+mcp_request_parser.add_argument(
+    "jsonrpc", type=str, required=True, location="json", help="JSON-RPC version (should be '2.0')"
+)
+mcp_request_parser.add_argument("method", type=str, required=True, location="json", help="The method to invoke")
+mcp_request_parser.add_argument("params", type=dict, required=False, location="json", help="Parameters for the method")
+mcp_request_parser.add_argument(
+    "id", type=int_or_str, required=False, location="json", help="Request ID for tracking responses"
+)
+
+
+@mcp_ns.route("/server/<string:server_code>/mcp")
 class MCPAppApi(Resource):
-    def post(self, server_code):
-        def int_or_str(value):
-            if isinstance(value, (int, str)):
-                return value
-            else:
-                return None
+    @mcp_ns.expect(mcp_request_parser)
+    @mcp_ns.doc("handle_mcp_request")
+    @mcp_ns.doc(description="Handle Model Context Protocol (MCP) requests for a specific server")
+    @mcp_ns.doc(params={"server_code": "Unique identifier for the MCP server"})
+    @mcp_ns.doc(
+        responses={
+            200: "MCP response successfully processed",
+            400: "Invalid MCP request or parameters",
+            404: "Server or app not found",
+        }
+    )
+    def post(self, server_code: str):
+        """Handle MCP requests for a specific server.
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("jsonrpc", type=str, required=True, location="json")
-        parser.add_argument("method", type=str, required=True, location="json")
-        parser.add_argument("params", type=dict, required=False, location="json")
-        parser.add_argument("id", type=int_or_str, required=False, location="json")
-        args = parser.parse_args()
+        Processes JSON-RPC formatted requests according to the Model Context Protocol specification.
+        Validates the server status and associated app before processing the request.
 
-        request_id = args.get("id")
+        Args:
+            server_code: Unique identifier for the MCP server
+
+        Returns:
+            dict: JSON-RPC response from the MCP handler
+
+        Raises:
+            ValidationError: Invalid request format or parameters
+        """
+        # Parse and validate all arguments
+        args = mcp_request_parser.parse_args()
+
+        request_id: Optional[Union[int, str]] = args.get("id")
 
         server = db.session.query(AppMCPServer).where(AppMCPServer.server_code == server_code).first()
         if not server:
@@ -99,6 +137,3 @@ class MCPAppApi(Resource):
         mcp_server_handler = MCPServerStreamableHTTPRequestHandler(app, request, converted_user_input_form)
         response = mcp_server_handler.handle()
         return helper.compact_generate_response(response)
-
-
-api.add_resource(MCPAppApi, "/server/<string:server_code>/mcp")

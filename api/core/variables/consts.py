@@ -4,4 +4,4 @@
 #
 # If the selector length is more than 2, the remaining parts are the keys / indexes paths used
 # to extract part of the variable value.
-MIN_SELECTORS_LENGTH = 2
+SELECTORS_LENGTH = 2

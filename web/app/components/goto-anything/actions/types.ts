@@ -5,7 +5,7 @@ import type { Plugin } from '../../plugins/types'
 import type { DataSet } from '@/models/datasets'
 import type { CommonNodeType } from '../../workflow/types'
 
-export type SearchResultType = 'app' | 'knowledge' | 'plugin' | 'workflow-node'
+export type SearchResultType = 'app' | 'knowledge' | 'plugin' | 'workflow-node' | 'command'
 
 export type BaseSearchResult<T = any> = {
   id: string
@@ -37,10 +37,14 @@ export type WorkflowNodeSearchResult = {
   }
 } & BaseSearchResult<CommonNodeType>
 
-export type SearchResult = AppSearchResult | PluginSearchResult | KnowledgeSearchResult | WorkflowNodeSearchResult
+export type CommandSearchResult = {
+  type: 'command'
+} & BaseSearchResult<{ command: string; args?: Record<string, any> }>
+
+export type SearchResult = AppSearchResult | PluginSearchResult | KnowledgeSearchResult | WorkflowNodeSearchResult | CommandSearchResult
 
 export type ActionItem = {
-  key: '@app' | '@knowledge' | '@plugin' | '@node'
+  key: '@app' | '@knowledge' | '@plugin' | '@node' | '/'
   shortcut: string
   title: string | TypeWithI18N
   description: string

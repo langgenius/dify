@@ -1,5 +1,7 @@
+import logging
+
 from flask import request
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common import fields
@@ -13,6 +15,8 @@ from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
+
+logger = logging.getLogger(__name__)
 
 
 class AppParameterApi(WebApiResource):
@@ -87,8 +91,11 @@ class AppWebAuthPermission(Resource):
 
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
-        except Exception as e:
-            pass
+        except Unauthorized:
+            raise
+        except Exception:
+            logger.exception("Unexpected error during auth verification")
+            raise
 
         features = FeatureService.get_system_features()
         if not features.webapp_auth.enabled:

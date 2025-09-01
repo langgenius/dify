@@ -1,8 +1,9 @@
 import logging
 
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx.inputs import int_range
+from sqlalchemy import exists, select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
@@ -27,11 +28,13 @@ from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models.model import AppMode, Conversation, Message, MessageAnnotation
+from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class ChatMessageListApi(Resource):
@@ -92,21 +95,18 @@ class ChatMessageListApi(Resource):
                 .all()
             )
 
-        has_more = False
         if len(history_messages) == args["limit"]:
             current_page_first_message = history_messages[-1]
-            rest_count = (
-                db.session.query(Message)
-                .where(
+
+        has_more = db.session.scalar(
+            select(
+                exists().where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < current_page_first_message.created_at,
                     Message.id != current_page_first_message.id,
                 )
-                .count()
             )
-
-            if rest_count > 0:
-                has_more = True
+        )
 
         history_messages = list(reversed(history_messages))
 
@@ -124,16 +124,33 @@ class MessageFeedbackApi(Resource):
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         args = parser.parse_args()
 
-        try:
-            MessageService.create_feedback(
-                app_model=app_model,
-                message_id=str(args["message_id"]),
-                user=current_user,
-                rating=args.get("rating"),
-                content=None,
-            )
-        except MessageNotExistsError:
+        message_id = str(args["message_id"])
+
+        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+
+        if not message:
             raise NotFound("Message Not Exists.")
+
+        feedback = message.admin_feedback
+
+        if not args["rating"] and feedback:
+            db.session.delete(feedback)
+        elif args["rating"] and feedback:
+            feedback.rating = args["rating"]
+        elif not args["rating"] and not feedback:
+            raise ValueError("rating cannot be None when feedback not exists")
+        else:
+            feedback = MessageFeedback(
+                app_id=app_model.id,
+                conversation_id=message.conversation_id,
+                message_id=message.id,
+                rating=args["rating"],
+                from_source="admin",
+                from_account_id=current_user.id,
+            )
+            db.session.add(feedback)
+
+        db.session.commit()
 
         return {"result": "success"}
 
@@ -198,7 +215,7 @@ class MessageSuggestedQuestionApi(Resource):
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}

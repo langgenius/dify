@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.helper.encrypter import decrypt_token
@@ -11,7 +11,7 @@ from models.api_based_extension import APIBasedExtension
 
 class ModerationInputParams(BaseModel):
     app_id: str = ""
-    inputs: dict = {}
+    inputs: dict = Field(default_factory=dict)
     query: str = ""
 
 

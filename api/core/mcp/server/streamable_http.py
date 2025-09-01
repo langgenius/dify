@@ -16,13 +16,14 @@ from extensions.ext_database import db
 from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 
-"""
-Apply to MCP HTTP streamable server with stateless http
-"""
 logger = logging.getLogger(__name__)
 
 
 class MCPServerStreamableHTTPRequestHandler:
+    """
+    Apply to MCP HTTP streamable server with stateless http
+    """
+
     def __init__(
         self, app: App, request: types.ClientRequest | types.ClientNotification, user_input_form: list[VariableEntity]
     ):

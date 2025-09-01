@@ -142,7 +142,7 @@ class MessageEndStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
-    metadata: dict = {}
+    metadata: dict = Field(default_factory=dict)
     files: Optional[Sequence[Mapping[str, Any]]] = None
 
 
@@ -261,7 +261,7 @@ class NodeStartStreamResponse(StreamResponse):
         predecessor_node_id: Optional[str] = None
         inputs: Optional[Mapping[str, Any]] = None
         created_at: int
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parent_parallel_id: Optional[str] = None
@@ -503,7 +503,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         parallel_id: Optional[str] = None
@@ -531,7 +531,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         index: int
         created_at: int
         pre_iteration_output: Optional[Any] = None
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parallel_mode_run_id: Optional[str] = None
@@ -590,7 +590,7 @@ class LoopNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         parallel_id: Optional[str] = None
@@ -618,7 +618,7 @@ class LoopNodeNextStreamResponse(StreamResponse):
         index: int
         created_at: int
         pre_loop_output: Optional[Any] = None
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parallel_mode_run_id: Optional[str] = None
@@ -764,7 +764,7 @@ class ChatbotAppBlockingResponse(AppBlockingResponse):
         conversation_id: str
         message_id: str
         answer: str
-        metadata: dict = {}
+        metadata: dict = Field(default_factory=dict)
         created_at: int
 
     data: Data
@@ -784,7 +784,7 @@ class CompletionAppBlockingResponse(AppBlockingResponse):
         mode: str
         message_id: str
         answer: str
-        metadata: dict = {}
+        metadata: dict = Field(default_factory=dict)
         created_at: int
 
     data: Data

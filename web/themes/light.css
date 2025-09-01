@@ -417,6 +417,7 @@ html[data-theme="light"] {
   --color-background-overlay-destructive: rgb(240 68 56 / 0.3);
   --color-background-overlay-backdrop: rgb(242 244 247 / 0.95);
   --color-background-body-transparent: rgb(242 244 247 / 0);
+  --color-background-section-burn-inverted: #f2f4f7;
 
   --color-shadow-shadow-1: rgb(9 9 11 / 0.03);
   --color-shadow-shadow-3: rgb(9 9 11 / 0.05);
@@ -439,8 +440,8 @@ html[data-theme="light"] {
 
   --color-workflow-canvas-workflow-dot-color: rgb(133 133 173 / 0.15);
   --color-workflow-canvas-workflow-bg: #f2f4f7;
-  --color-workflow-canvas-workflow-top-bar-1: #f2f4f7;
-  --color-workflow-canvas-workflow-top-bar-2: rgb(242 244 247 / 0.24);
+  --color-workflow-canvas-workflow-top-bar-1: rgb(242 244 247 / 0.9);
+  --color-workflow-canvas-workflow-top-bar-2: rgb(242 244 247 / 0.05);
   --color-workflow-canvas-canvas-overlay: rgb(242 244 247 / 0.8);
 
   --color-workflow-link-line-active: #296dff;
@@ -507,6 +508,7 @@ html[data-theme="light"] {
   --color-divider-intense: rgb(16 24 40 / 0.3);
   --color-divider-solid: #d0d5dc;
   --color-divider-solid-alt: #98a2b2;
+  --color-divider-accent: #e5eaff;
 
   --color-state-base-hover: rgb(200 206 218 / 0.2);
   --color-state-base-active: rgb(200 206 218 / 0.4);
@@ -746,8 +748,16 @@ html[data-theme="light"] {
   --color-third-party-aws: #141f2e;
   --color-third-party-aws-alt: #0f1824;
 
-  --color-saas-background: #fcfcfd;
+  --color-saas-background: #ffffff;
   --color-saas-pricing-grid-bg: rgb(200 206 218 / 0.5);
+  --color-saas-dify-blue-static: #0033ff;
+  --color-saas-dify-blue-static-hover: #002cd6;
+  --color-saas-dify-blue-accessible: #0033ff;
+  --color-saas-dify-blue-inverted: #0033ff;
+  --color-saas-dify-blue-inverted-dimmed: #0033ff;
+
+  --color-saas-background-inverted: #0b0b0e;
+  --color-saas-background-inverted-hover: #222225;
 
   --color-dify-logo-dify-logo-blue: #0033ff;
   --color-dify-logo-dify-logo-black: #000000;

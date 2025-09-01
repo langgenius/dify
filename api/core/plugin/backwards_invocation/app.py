@@ -154,7 +154,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         workflow = app.workflow
         if not workflow:
-            raise ValueError("")
+            raise ValueError("unexpected app type")
 
         return WorkflowAppGenerator().generate(
             app_model=app,

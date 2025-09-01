@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 from json import JSONDecodeError
@@ -17,7 +16,8 @@ from core.model_runtime.entities.provider_entities import (
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
-from models.provider import LoadBalancingModelConfig
+from libs.datetime_utils import naive_utc_now
+from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +185,7 @@ class ModelLoadBalancingService:
                     "id": load_balancing_config.id,
                     "name": load_balancing_config.name,
                     "credentials": credentials,
+                    "credential_id": load_balancing_config.credential_id,
                     "enabled": load_balancing_config.enabled,
                     "in_cooldown": in_cooldown,
                     "ttl": ttl,
@@ -280,7 +281,7 @@ class ModelLoadBalancingService:
         return inherit_config
 
     def update_load_balancing_configs(
-        self, tenant_id: str, provider: str, model: str, model_type: str, configs: list[dict]
+        self, tenant_id: str, provider: str, model: str, model_type: str, configs: list[dict], config_from: str
     ) -> None:
         """
         Update load balancing configurations.
@@ -289,6 +290,7 @@ class ModelLoadBalancingService:
         :param model: model name
         :param model_type: model type
         :param configs: load balancing configs
+        :param config_from: predefined-model or custom-model
         :return:
         """
         # Get all provider configurations of the current workspace
@@ -327,7 +329,36 @@ class ModelLoadBalancingService:
             config_id = config.get("id")
             name = config.get("name")
             credentials = config.get("credentials")
+            credential_id = config.get("credential_id")
             enabled = config.get("enabled")
+
+            if credential_id:
+                credential_record: ProviderCredential | ProviderModelCredential | None = None
+                if config_from == "predefined-model":
+                    credential_record = (
+                        db.session.query(ProviderCredential)
+                        .filter_by(
+                            id=credential_id,
+                            tenant_id=tenant_id,
+                            provider_name=provider_configuration.provider.provider,
+                        )
+                        .first()
+                    )
+                else:
+                    credential_record = (
+                        db.session.query(ProviderModelCredential)
+                        .filter_by(
+                            id=credential_id,
+                            tenant_id=tenant_id,
+                            provider_name=provider_configuration.provider.provider,
+                            model_name=model,
+                            model_type=model_type_enum.to_origin_model_type(),
+                        )
+                        .first()
+                    )
+                if not credential_record:
+                    raise ValueError(f"Provider credential with id {credential_id} not found")
+                name = credential_record.credential_name
 
             if not name:
                 raise ValueError("Invalid load balancing config name")
@@ -345,11 +376,6 @@ class ModelLoadBalancingService:
                 updated_config_ids.add(config_id)
 
                 load_balancing_config = current_load_balancing_configs_dict[config_id]
-
-                # check duplicate name
-                for current_load_balancing_config in current_load_balancing_configs:
-                    if current_load_balancing_config.id != config_id and current_load_balancing_config.name == name:
-                        raise ValueError(f"Load balancing config name {name} already exists")
 
                 if credentials:
                     if not isinstance(credentials, dict):
@@ -371,45 +397,54 @@ class ModelLoadBalancingService:
 
                 load_balancing_config.name = name
                 load_balancing_config.enabled = enabled
-                load_balancing_config.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                load_balancing_config.updated_at = naive_utc_now()
                 db.session.commit()
 
                 self._clear_credentials_cache(tenant_id, config_id)
             else:
                 # create load balancing config
-                if name == "__inherit__":
+                if name in {"__inherit__", "__delete__"}:
                     raise ValueError("Invalid load balancing config name")
 
-                # check duplicate name
-                for current_load_balancing_config in current_load_balancing_configs:
-                    if current_load_balancing_config.name == name:
-                        raise ValueError(f"Load balancing config name {name} already exists")
+                if credential_id:
+                    credential_source = "provider" if config_from == "predefined-model" else "custom_model"
+                    assert credential_record is not None
+                    load_balancing_model_config = LoadBalancingModelConfig(
+                        tenant_id=tenant_id,
+                        provider_name=provider_configuration.provider.provider,
+                        model_type=model_type_enum.to_origin_model_type(),
+                        model_name=model,
+                        name=credential_record.credential_name,
+                        encrypted_config=credential_record.encrypted_config,
+                        credential_id=credential_id,
+                        credential_source_type=credential_source,
+                    )
+                else:
+                    if not credentials:
+                        raise ValueError("Invalid load balancing config credentials")
 
-                if not credentials:
-                    raise ValueError("Invalid load balancing config credentials")
+                    if not isinstance(credentials, dict):
+                        raise ValueError("Invalid load balancing config credentials")
 
-                if not isinstance(credentials, dict):
-                    raise ValueError("Invalid load balancing config credentials")
+                    # validate custom provider config
+                    credentials = self._custom_credentials_validate(
+                        tenant_id=tenant_id,
+                        provider_configuration=provider_configuration,
+                        model_type=model_type_enum,
+                        model=model,
+                        credentials=credentials,
+                        validate=False,
+                    )
 
-                # validate custom provider config
-                credentials = self._custom_credentials_validate(
-                    tenant_id=tenant_id,
-                    provider_configuration=provider_configuration,
-                    model_type=model_type_enum,
-                    model=model,
-                    credentials=credentials,
-                    validate=False,
-                )
-
-                # create load balancing config
-                load_balancing_model_config = LoadBalancingModelConfig(
-                    tenant_id=tenant_id,
-                    provider_name=provider_configuration.provider.provider,
-                    model_type=model_type_enum.to_origin_model_type(),
-                    model_name=model,
-                    name=name,
-                    encrypted_config=json.dumps(credentials),
-                )
+                    # create load balancing config
+                    load_balancing_model_config = LoadBalancingModelConfig(
+                        tenant_id=tenant_id,
+                        provider_name=provider_configuration.provider.provider,
+                        model_type=model_type_enum.to_origin_model_type(),
+                        model_name=model,
+                        name=name,
+                        encrypted_config=json.dumps(credentials),
+                    )
 
                 db.session.add(load_balancing_model_config)
                 db.session.commit()

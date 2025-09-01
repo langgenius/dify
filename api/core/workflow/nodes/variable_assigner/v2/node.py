@@ -4,7 +4,7 @@ from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
-from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.entities.node_entities import NodeRunResult
@@ -46,7 +46,7 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
     selector = item.value
     if not isinstance(selector, list):
         raise InvalidDataError(f"selector is not a list, {node_id=}, {item=}")
-    if len(selector) < MIN_SELECTORS_LENGTH:
+    if len(selector) < SELECTORS_LENGTH:
         raise InvalidDataError(f"selector too short, {node_id=}, {item=}")
     selector_str = ".".join(selector)
     key = f"{node_id}.#{selector_str}#"

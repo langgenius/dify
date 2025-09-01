@@ -1012,7 +1012,7 @@ class DatasetRetrieval:
     def _process_metadata_filter_func(
         self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
     ):
-        if value is None:
+        if value is None and condition not in ("empty", "not empty"):
             return
 
         key = f"{metadata_name}_{sequence}"

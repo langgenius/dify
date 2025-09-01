@@ -83,14 +83,14 @@ class TiDBVector(BaseVector):
         self._dimension = 1536
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        logger.info("create collection and add texts, collection_name: " + self._collection_name)
+        logger.info("create collection and add texts, collection_name: %s", self._collection_name)
         self._create_collection(len(embeddings[0]))
         self.add_texts(texts, embeddings)
         self._dimension = len(embeddings[0])
         pass
 
     def _create_collection(self, dimension: int):
-        logger.info("_create_collection, collection_name " + self._collection_name)
+        logger.info("_create_collection, collection_name %s", self._collection_name)
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"

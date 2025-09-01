@@ -90,6 +90,7 @@ def test_flask_configs(monkeypatch):
         "pool_recycle": 3600,
         "pool_size": 30,
         "pool_use_lifo": False,
+        "pool_reset_on_return": None,
     }
 
     assert config["CONSOLE_WEB_URL"] == "https://example.com"

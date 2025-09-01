@@ -711,7 +711,7 @@ class WorkflowAppGenerateTaskPipeline:
         # Initialize graph runtime state
         graph_runtime_state = None
 
-        for queue_message in self._base_task_pipeline._queue_manager.listen():
+        for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
 
             match event:

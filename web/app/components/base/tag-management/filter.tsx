@@ -79,7 +79,7 @@ const TagFilter: FC<TagFilterProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex h-8 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2',
+            'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2',
             !open && !!value.length && 'shadow-xs',
             open && !!value.length && 'shadow-xs',
           )}>
@@ -123,7 +123,7 @@ const TagFilter: FC<TagFilterProps> = ({
               {filteredTagList.map(tag => (
                 <div
                   key={tag.id}
-                  className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover'
+                  className='flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover'
                   onClick={() => selectTag(tag)}
                 >
                   <div title={tag.name} className='grow truncate text-sm leading-5 text-text-tertiary'>{tag.name}</div>
@@ -139,7 +139,7 @@ const TagFilter: FC<TagFilterProps> = ({
             </div>
             <div className='border-t-[0.5px] border-divider-regular' />
             <div className='p-1'>
-              <div className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
+              <div className='flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
                 setShowTagManagementModal(true)
                 setOpen(false)
               }}>
