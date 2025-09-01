@@ -369,7 +369,7 @@ class QdrantVector(BaseVector):
                 continue
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
                     page_content=result.payload.get(Field.CONTENT_KEY.value, ""),

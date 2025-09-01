@@ -192,7 +192,7 @@ class VikingDBVector(BaseVector):
             metadata = result.fields.get(vdb_Field.METADATA_KEY.value)
             if metadata is not None:
                 metadata = json.loads(metadata)
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(page_content=result.fields.get(vdb_Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)

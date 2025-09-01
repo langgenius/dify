@@ -211,7 +211,7 @@ class OpenSearchVector(BaseVector):
 
             metadata["score"] = hit["_score"]
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if hit["_score"] > score_threshold:
+            if hit["_score"] >= score_threshold:
                 doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)
 

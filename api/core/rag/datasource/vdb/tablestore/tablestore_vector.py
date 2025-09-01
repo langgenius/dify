@@ -300,7 +300,7 @@ class TableStoreVector(BaseVector):
         )
         documents = []
         for search_hit in search_response.search_hits:
-            if search_hit.score > score_threshold:
+            if search_hit.score >= score_threshold:
                 ots_column_map = {}
                 for col in search_hit.row[1]:
                     ots_column_map[col[0]] = col[1]

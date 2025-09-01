@@ -202,7 +202,7 @@ class PGVectoRS(BaseVector):
             score = 1 - dis
             metadata["score"] = score
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if score > score_threshold:
+            if score >= score_threshold:
                 doc = Document(page_content=record.text, metadata=metadata)
                 docs.append(doc)
         return docs
