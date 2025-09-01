@@ -8,6 +8,7 @@ from typing import Optional
 from flask import Request
 
 from core.plugin.entities.plugin import TriggerProviderID
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeResponse
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
@@ -17,7 +18,6 @@ from core.trigger.entities.entities import (
     Unsubscription,
 )
 from core.trigger.provider import PluginTriggerProviderController
-from core.plugin.entities.plugin_daemon import CredentialType
 
 logger = logging.getLogger(__name__)
 

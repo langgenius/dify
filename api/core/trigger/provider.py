@@ -3,7 +3,7 @@ Trigger Provider Controller for managing trigger providers
 """
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 from flask import Request
 

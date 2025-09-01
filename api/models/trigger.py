@@ -8,7 +8,7 @@ from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import SubscriptionValidation, TriggerProviderSubscriptionApiEntity
+from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription
 from models.base import Base
 from models.types import StringUUID
