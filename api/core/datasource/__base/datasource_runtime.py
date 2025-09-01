@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Any, Optional
 from openai import BaseModel
 from pydantic import Field
 
+# Import InvokeFrom locally to avoid circular import
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceInvokeFrom
 
 if TYPE_CHECKING:
@@ -28,8 +30,7 @@ class FakeDatasourceRuntime(DatasourceRuntime):
     """
 
     def __init__(self):
-        # Import InvokeFrom locally to avoid circular import
-        from core.app.entities.app_invoke_entities import InvokeFrom
+
 
         super().__init__(
             tenant_id="fake_tenant_id",
