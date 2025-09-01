@@ -1015,6 +1015,10 @@ const translation = {
       envNode: '环境变量',
       chatNode: '会话变量',
       systemNode: '系统变量',
+      exportToolTip: '导出变量为文件',
+      largeData: '大数据 - 仅部分只读预览。请导出查看完整数据。',
+      largeDataNoExport: '大数据 - 仅部分预览',
+      export: '导出',
     },
     lastOutput: '上次输出',
     relations: {

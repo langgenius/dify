@@ -24,6 +24,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import LargeDataAlert from './large-data-alert'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import { useStore } from '@/app/components/workflow/store'
 import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
@@ -114,11 +115,13 @@ const DisplayContent = (props: DisplayContentProps) => {
 type Props = {
   currentVar: VarInInspect
   handleValueChange: (varId: string, value: any) => void
+  isTruncated: boolean
 }
 
 const ValueContent = ({
   currentVar,
   handleValueChange,
+  isTruncated,
 }: Props) => {
   const contentContainerRef = useRef<HTMLDivElement>(null)
   const errorMessageRef = useRef<HTMLDivElement>(null)
@@ -173,6 +176,8 @@ const ValueContent = ({
   }, [currentVar.id, currentVar.value])
 
   const handleTextChange = (value: string) => {
+    if (isTruncated)
+      return
     if (currentVar.value_type === 'string')
       setValue(value)
 
@@ -222,6 +227,8 @@ const ValueContent = ({
   }
 
   const handleEditorChange = (value: string) => {
+    if (isTruncated)
+      return
     setJson(value)
     if (jsonValueValidate(value, currentVar.value_type)) {
       const parsed = JSON.parse(value)
@@ -265,22 +272,25 @@ const ValueContent = ({
       ref={contentContainerRef}
       className='flex h-full flex-col'
     >
-      <div className={cn('grow')} style={{ height: `${editorHeight}px` }}>
+      <div className={cn('relative grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
-          currentVar.value_type === 'string' ? (
+          <>
+            {isTruncated && <LargeDataAlert className='absolute left-3 right-3 top-1' />}
+            currentVar.value_type === 'string' ? (
             <DisplayContent
               type={ContentType.Markdown}
               mdString={value as any}
               readonly={textEditorDisabled}
               handleTextChange={handleTextChange}
             />
-          ) : <Textarea
-            readOnly={textEditorDisabled}
-            disabled={textEditorDisabled}
-            className='h-full'
-            value={value as any}
-            onChange={e => handleTextChange(e.target.value)}
-          />
+            ) : <Textarea
+              readOnly={textEditorDisabled}
+              disabled={textEditorDisabled || isTruncated}
+              className={cn('h-full', isTruncated && 'pt-[48px]')}
+              value={value as any}
+              onChange={e => handleTextChange(e.target.value)}
+            />
+          </>
         )}
         {showBoolEditor && (
           <div className='w-[295px]'>
@@ -320,11 +330,12 @@ const ValueContent = ({
               handleEditorChange={handleEditorChange}
             />
             : <SchemaEditor
-              readonly={JSONEditorDisabled}
+              readonly={JSONEditorDisabled || isTruncated}
               className='overflow-y-auto'
               hideTopMenu
               schema={json}
               onUpdate={handleEditorChange}
+              isTruncated={isTruncated}
             />
         )}
         {showFileEditor && (
@@ -362,7 +373,7 @@ const ValueContent = ({
         {parseError && <ErrorMessage className='mt-1' message={parseError.message} />}
         {validationError && <ErrorMessage className='mt-1' message={validationError} />}
       </div>
-    </div>
+    </div >
   )
 }
 

@@ -149,7 +149,10 @@ const RunPanel: FC<RunProps> = ({
         {!loading && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
             inputs={runDetail.inputs}
+            inputs_truncated={runDetail.inputs_truncated}
             outputs={runDetail.outputs}
+            outputs_truncated={runDetail.outputs_truncated}
+            outputs_full_content={runDetail.outputs_full_content}
             status={runDetail.status}
             error={runDetail.error}
             elapsed_time={runDetail.elapsed_time}

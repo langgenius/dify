@@ -17,6 +17,7 @@ type CodeEditorProps = {
   hideTopMenu?: boolean
   onFocus?: () => void
   onBlur?: () => void
+  topContent?: React.ReactNode
 } & React.HTMLAttributes<HTMLDivElement>
 
 const CodeEditor: FC<CodeEditorProps> = ({
@@ -26,6 +27,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   editorWrapperClassName,
   readOnly = false,
   hideTopMenu = false,
+  topContent,
   className,
   onFocus,
   onBlur,
@@ -139,6 +141,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </div>
         </div>
       )}
+      {topContent}
       <div className={classNames('relative overflow-hidden', editorWrapperClassName)}>
         <Editor
           defaultLanguage='json'
