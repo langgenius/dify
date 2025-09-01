@@ -263,7 +263,7 @@ class WorkflowRunByIdentifierApi(Resource):
                 f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
             )
 
-    def _get_workflow_by_alias(self, app_model: App, alias_name: str) -> Optional[Workflow]:
+    def _get_workflow_by_alias(self, session: Session, app_model: App, alias_name: str) -> Workflow | None:
         """Get workflow by alias name"""
         workflow_alias_service = WorkflowAliasService()
         return workflow_alias_service.get_workflow_by_alias(
