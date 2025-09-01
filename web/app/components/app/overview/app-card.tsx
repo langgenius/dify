@@ -41,7 +41,7 @@ import AccessControl from '../app-access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 
 export type IAppCardProps = {
@@ -107,12 +107,12 @@ function AppCard({
     : t('appOverview.overview.apiInfo.title')
   const isWorkflowApp = appInfo.mode === 'workflow'
   const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
-  const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
-  const missingEntryNode = isWorkflowApp && !hasEntryNode
+  const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
+  const missingStartNode = isWorkflowApp && !hasStartNode
   const hasInsufficientPermissions = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
-  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode
-  const runningStatus = (appUnpublished || missingEntryNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
-  const isMinimalState = appUnpublished || missingEntryNode
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode
+  const runningStatus = (appUnpublished || missingStartNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
+  const isMinimalState = appUnpublished || missingStartNode
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
   const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
@@ -211,34 +211,30 @@ function AppCard({
                   : t('appOverview.overview.status.disable')}
               </div>
             </div>
-            {isApp ? (
-              <Tooltip
-                popupContent={
-                  toggleDisabled && (appUnpublished || missingEntryNode) ? (
-                    <>
-                      <div className="mb-1 text-xs font-normal text-text-secondary">
-                        {t('appOverview.overview.appInfo.enableTooltip.description')}
-                      </div>
-                      <div
-                        className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                        onClick={() => window.open(docLink('/guides/workflow/node/start'), '_blank')}
-                      >
-                        {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
-                      </div>
-                    </>
-                  ) : ''
-                }
-                position="right"
-                popupClassName="w-58 max-w-60 rounded-xl border-[0.5px] p-3.5 shadow-lg backdrop-blur-[10px]"
-                offset={24}
-              >
-                <div>
-                  <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
-                </div>
-              </Tooltip>
-            ) : (
-              <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
-            )}
+            <Tooltip
+              popupContent={
+                toggleDisabled && (appUnpublished || missingStartNode) ? (
+                  <>
+                    <div className="mb-1 text-xs font-normal text-text-secondary">
+                      {t('appOverview.overview.appInfo.enableTooltip.description')}
+                    </div>
+                    <div
+                      className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
+                      onClick={() => window.open(docLink('/guides/workflow/node/start'), '_blank')}
+                    >
+                      {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+                    </div>
+                  </>
+                ) : ''
+              }
+              position="right"
+              popupClassName="w-58 max-w-60 rounded-xl border-[0.5px] p-3.5 shadow-lg backdrop-blur-[10px]"
+              offset={24}
+            >
+              <div>
+                <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
+              </div>
+            </Tooltip>
           </div>
           {!isMinimalState && (
             <div className='flex flex-col items-start justify-center self-stretch'>
