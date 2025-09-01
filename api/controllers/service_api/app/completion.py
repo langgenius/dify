@@ -240,7 +240,7 @@ class ChatApi(Resource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-    def _resolve_workflow_alias(self, app_model: App, args: dict) -> None:
+    def _fetch_workflow_id_by_alias(self, *, app: App, workflow_alias: str = "") -> str:
         """
         Resolve workflow_alias to workflow_id
         Priority: workflow_alias > workflow_id > latest published workflow
