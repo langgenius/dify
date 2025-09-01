@@ -1098,3 +1098,8 @@ api.add_resource(
     RagPipelineDatasourceVariableApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect",
 )
+
+api.add_resource(
+    RagPipelineRecommendedPluginApi,
+    "/rag/pipelines/recommended-plugins",
+)
