@@ -132,7 +132,6 @@ class WorkflowAliasService:
             raise ValueError("Alias not found")
 
         session.delete(alias)
-        session.flush()
         return True
 
     def _validate_alias_name(self, alias_name: str) -> None:
