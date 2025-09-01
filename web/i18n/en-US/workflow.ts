@@ -1073,7 +1073,7 @@ const translation = {
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
       copyIdSuccess: 'ID copied to clipboard',
-      },
+    },
   },
   debug: {
     settingsTab: 'Settings',

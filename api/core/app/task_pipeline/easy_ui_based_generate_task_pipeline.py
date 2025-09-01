@@ -472,9 +472,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :param event: agent thought event
         :return:
         """
-        agent_thought: Optional[MessageAgentThought] = (
-            db.session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
-        )
+        with Session(db.engine, expire_on_commit=False) as session:
+            agent_thought: Optional[MessageAgentThought] = (
+                session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
+            )
 
         if agent_thought:
             return AgentThoughtStreamResponse(

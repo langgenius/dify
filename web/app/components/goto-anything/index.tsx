@@ -166,7 +166,7 @@ const GotoAnything: FC<Props> = ({
     acc[result.type].push(result)
     return acc
   }, {} as { [key: string]: SearchResult[] }),
-    [searchResults])
+  [searchResults])
 
   const emptyResult = useMemo(() => {
     if (searchResults.length || !searchQuery.trim() || isLoading || isCommandsMode)
@@ -226,6 +226,7 @@ const GotoAnything: FC<Props> = ({
         <div className='mt-3 space-y-1 text-xs text-text-quaternary'>
           <div>{t('app.gotoAnything.searchHint')}</div>
           <div>{t('app.gotoAnything.commandHint')}</div>
+          <div>{t('app.gotoAnything.slashHint')}</div>
         </div>
       </div>
     </div>)
@@ -321,6 +322,7 @@ const GotoAnything: FC<Props> = ({
                       searchFilter={searchQuery.trim().substring(1)}
                       commandValue={cmdVal}
                       onCommandValueChange={setCmdVal}
+                      originalQuery={searchQuery.trim()}
                     />
                   ) : (
                     Object.entries(groupedResults).map(([type, results], groupIndex) => (

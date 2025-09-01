@@ -13,6 +13,7 @@ const normalizeParamType = (type: string): ParameterType => {
     case 'boolean':
     case 'array':
     case 'object':
+    case 'file':
       return type
     default:
       return 'string'
@@ -27,6 +28,7 @@ type ParameterTableProps = {
   placeholder?: string
   showType?: boolean
   isRequestBody?: boolean // Special handling for request body parameters
+  contentType?: string
 }
 
 const ParameterTable: FC<ParameterTableProps> = ({
@@ -37,17 +39,63 @@ const ParameterTable: FC<ParameterTableProps> = ({
   placeholder,
   showType = true,
   isRequestBody = false,
+  contentType,
 }) => {
   const { t } = useTranslation()
 
-  // Type options for request body parameters
-  const typeOptions = [
-    { name: 'String', value: 'string' },
-    { name: 'Number', value: 'number' },
-    { name: 'Boolean', value: 'boolean' },
-    { name: 'Array', value: 'array' },
-    { name: 'Object', value: 'object' },
-  ]
+  const resolveTypeOptions = (): { name: string; value: ParameterType }[] => {
+    if (!isRequestBody) {
+      return [
+        { name: 'String', value: 'string' },
+      ]
+    }
+
+    const ct = (contentType || '').toLowerCase()
+    // application/json -> all JSON-friendly types
+    if (ct === 'application/json') {
+      return [
+        { name: 'String', value: 'string' },
+        { name: 'Number', value: 'number' },
+        { name: 'Boolean', value: 'boolean' },
+        { name: 'Array', value: 'array' },
+        { name: 'Object', value: 'object' },
+      ]
+    }
+    // text/plain -> plain text only
+    if (ct === 'text/plain') {
+      return [
+        { name: 'String', value: 'string' },
+      ]
+    }
+    // x-www-form-urlencoded and forms -> simple key-value pairs
+    if (ct === 'application/x-www-form-urlencoded' || ct === 'forms') {
+      return [
+        { name: 'String', value: 'string' },
+        { name: 'Number', value: 'number' },
+        { name: 'Boolean', value: 'boolean' },
+      ]
+    }
+    // multipart/form-data -> allow file additionally
+    if (ct === 'multipart/form-data') {
+      return [
+        { name: 'String', value: 'string' },
+        { name: 'Number', value: 'number' },
+        { name: 'Boolean', value: 'boolean' },
+        { name: 'File', value: 'file' },
+      ]
+    }
+
+    // Fallback: all json-like types
+    return [
+      { name: 'String', value: 'string' },
+      { name: 'Number', value: 'number' },
+      { name: 'Boolean', value: 'boolean' },
+      { name: 'Array', value: 'array' },
+      { name: 'Object', value: 'object' },
+    ]
+  }
+
+  const typeOptions = resolveTypeOptions()
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [
@@ -76,10 +124,16 @@ const ParameterTable: FC<ParameterTableProps> = ({
     },
   ]
 
+  // Choose sensible default type for new rows according to content type
+  const defaultTypeValue = ((): ParameterType => {
+    const first = typeOptions[0]?.value
+    return first || 'string'
+  })()
+
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
     key: '',
-    type: isRequestBody ? 'string' : '',
+    type: isRequestBody ? defaultTypeValue : '',
     required: false,
   }
 
@@ -90,13 +144,21 @@ const ParameterTable: FC<ParameterTableProps> = ({
   }))
 
   const handleDataChange = (data: GenericTableRow[]) => {
-    const newParams: WebhookParameter[] = data
+    // For text/plain, enforce single text body semantics: keep only first non-empty row and force string type
+    const isTextPlain = isRequestBody && (contentType || '').toLowerCase() === 'text/plain'
+
+    const normalized = data
       .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
       .map(row => ({
         name: String(row.key),
-        type: normalizeParamType((row.type as string) || 'string'),
+        type: isTextPlain ? 'string' : normalizeParamType((row.type as string) || 'string'),
         required: Boolean(row.required),
       }))
+
+    const newParams: WebhookParameter[] = isTextPlain
+      ? normalized.slice(0, 1)
+      : normalized
+
     onChange(newParams)
   }
 

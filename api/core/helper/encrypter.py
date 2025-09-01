@@ -3,7 +3,7 @@ import base64
 from libs import rsa
 
 
-def obfuscated_token(token: str):
+def obfuscated_token(token: str) -> str:
     if not token:
         return token
     if len(token) <= 8:

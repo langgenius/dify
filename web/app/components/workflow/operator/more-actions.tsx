@@ -114,6 +114,7 @@ const MoreActions: FC = () => {
         }, 500)
       }
       else {
+        // Current viewport export (existing functionality)
         switch (type) {
           case 'png':
             dataUrl = await toPng(flowElement, { filter })
@@ -141,6 +142,7 @@ const MoreActions: FC = () => {
         document.body.removeChild(link)
       }
       else {
+        // For current view, just download
         const link = document.createElement('a')
         link.href = dataUrl
         link.download = `${filename}.${type}`

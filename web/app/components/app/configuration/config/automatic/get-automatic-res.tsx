@@ -18,7 +18,7 @@ import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
-import { generateBasicAppFistTimeRule, generateRule } from '@/service/debug'
+import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import type { CompletionParams, Model } from '@/types/app'
 import type { AppType } from '@/types/app'
 import Loading from '@/app/components/base/loading'
@@ -226,7 +226,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       let apiRes: GenRes
       let hasError = false
       if (isBasicMode || !currentPrompt) {
-        const { error, ...res } = await generateBasicAppFistTimeRule({
+        const { error, ...res } = await generateBasicAppFirstTimeRule({
           instruction,
           model_config: model,
           no_variable: false,

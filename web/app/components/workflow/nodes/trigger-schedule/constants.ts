@@ -4,7 +4,6 @@ import type { ScheduleTriggerNodeType } from './types'
 export const getDefaultScheduleConfig = (): Partial<ScheduleTriggerNodeType> => ({
   mode: 'visual',
   frequency: 'weekly',
-  enabled: true,
   visual_config: {
     time: '11:30 AM',
     weekdays: ['sun'],

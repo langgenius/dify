@@ -68,8 +68,8 @@ const VarList: FC<Props> = ({
         draft[index].value = '' // Clear value when operation changes
         if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
           || item.value === WriteMode.multiply || item.value === WriteMode.divide) {
-          if(varType === VarType.boolean)
-              draft[index].value = false
+          if (varType === VarType.boolean)
+            draft[index].value = false
           draft[index].input_type = AssignerNodeInputType.constant
         }
         else {

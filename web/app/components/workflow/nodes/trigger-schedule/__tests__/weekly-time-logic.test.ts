@@ -15,7 +15,6 @@ const createWeeklyConfig = (
     weekdays,
   },
   timezone,
-  enabled: true,
 })
 
 describe('Weekly Schedule Time Logic Tests', () => {
@@ -364,7 +363,6 @@ describe('Weekly Schedule Time Logic Tests', () => {
           time: '2:00 PM',
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const weeklyTimes = getNextExecutionTimes(weeklyConfig, 1)
@@ -389,7 +387,6 @@ describe('Weekly Schedule Time Logic Tests', () => {
           time: '2:00 PM',
         },
         timezone: 'UTC',
-        enabled: true,
       }
 
       const weeklyTimes = getNextExecutionTimes(weeklyConfig, 1)
