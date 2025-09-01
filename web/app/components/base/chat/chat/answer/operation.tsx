@@ -225,7 +225,7 @@ const Operation: FC<OperationProps> = ({
               </label>
               <Textarea
                 value={feedbackContent}
-                onChange={(e) => setFeedbackContent(e.target.value)}
+                onChange={e => setFeedbackContent(e.target.value)}
                 placeholder={t('common.feedback.placeholder') || 'Please describe what went wrong or how we can improve...'}
                 rows={4}
                 className='w-full'
