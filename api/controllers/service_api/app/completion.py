@@ -258,7 +258,7 @@ class ChatApi(Resource):
             if not workflow:
                 raise WorkflowNotFoundError(f"Workflow with alias '{args['workflow_alias']}' not found")
 
-            args["workflow_id"] = workflow.id
+            return workflow.id
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
