@@ -82,7 +82,7 @@ class WorkflowAliasService:
         workflow_ids: Optional[list[str]] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[WorkflowAlias]:
+    ) -> Sequence[WorkflowAlias]:
         conditions = [WorkflowAlias.tenant_id == tenant_id, WorkflowAlias.app_id == app_id]
 
         if workflow_ids:
