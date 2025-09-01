@@ -498,6 +498,9 @@ class RagPipelineDraftNodeRunApi(Resource):
             pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
         )
 
+        if workflow_node_execution is None:
+            raise ValueError("Workflow node execution not found")
+
         return workflow_node_execution
 
 
