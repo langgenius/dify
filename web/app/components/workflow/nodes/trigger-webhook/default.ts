@@ -6,16 +6,16 @@ import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/com
 
 const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
   defaultValue: {
-    'webhook_url': '',
-    'method': 'POST',
-    'content-type': 'application/json',
-    'headers': [],
-    'params': [],
-    'body': [],
-    'async_mode': true,
-    'status_code': 200,
-    'response_body': '',
-    'default_value': [] as DefaultValueForm[],
+    webhook_url: '',
+    method: 'POST',
+    content_type: 'application/json',
+    headers: [],
+    params: [],
+    body: [],
+    async_mode: true,
+    status_code: 200,
+    response_body: '',
+    default_value: [] as DefaultValueForm[],
   },
   getAvailablePrevNodes(_isChatMode: boolean) {
     return []
