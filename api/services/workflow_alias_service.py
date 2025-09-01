@@ -113,7 +113,7 @@ class WorkflowAliasService:
                     WorkflowAlias.alias_name == alias_name,
                 )
             )
-        ).scalar_one_or_none()
+        )
 
         if not alias:
             return None
