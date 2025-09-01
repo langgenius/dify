@@ -11,7 +11,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web-changed: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: web/**
+
   test:
+    needs: check-changes
+    if: needs.check-changes.outputs.web-changed == 'true'
     timeout-minutes: 60
     name: Playwright Tests
     runs-on: ubuntu-latest
@@ -25,14 +43,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          files: web/**
-
       - name: Install pnpm
-        if: steps.changed-files.outputs.any_changed == 'true'
         uses: pnpm/action-setup@v4
         with:
           package_json_file: web/package.json
@@ -40,18 +51,15 @@ jobs:
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
-        if: steps.changed-files.outputs.any_changed == 'true'
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: ./web/package.json
 
       - name: Install dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: pnpm exec playwright install --with-deps
 
       - name: Copy production env
@@ -65,6 +73,5 @@ jobs:
           sed -i 's|NEXT_PUBLIC_PUBLIC_API_PREFIX=.*|NEXT_PUBLIC_PUBLIC_API_PREFIX=https://udify.app/api|' .env.local
 
       - name: Run Playwright tests
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: pnpm e2e-test:ci
 
