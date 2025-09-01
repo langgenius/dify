@@ -32,6 +32,7 @@ export type BaseFormProps = {
   ref?: FormRef
   disabled?: boolean
   formFromProps?: AnyFormApi
+  onChange?: (field: string, value: any) => void
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -45,6 +46,7 @@ const BaseForm = ({
   ref,
   disabled,
   formFromProps,
+  onChange,
 }: BaseFormProps) => {
   const initialDefaultValues = useMemo(() => {
     if (defaultValues)
@@ -87,12 +89,13 @@ const BaseForm = ({
           inputContainerClassName={inputContainerClassName}
           inputClassName={inputClassName}
           disabled={disabled}
+          onChange={onChange}
         />
       )
     }
 
     return null
-  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled])
+  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled, onChange])
 
   const renderFieldWrapper = useCallback((formSchema: FormSchema) => {
     const validators = getValidators(formSchema)

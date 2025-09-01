@@ -262,6 +262,19 @@ const ModelModal: FC<ModelModalProps> = ({
     return t('common.operation.save')
   }, [mode, t])
 
+  const handleDeleteCredential = useCallback(() => {
+    handleConfirmDelete()
+    onCancel()
+  }, [handleConfirmDelete])
+
+  const handleModelNameAndTypeChange = useCallback((field: string, value: any) => {
+    const {
+      getForm,
+    } = formRef2.current as FormRefObject || {}
+    if (getForm())
+      getForm()?.setFieldValue(field, value)
+  }, [])
+
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='z-[60] h-full w-full'>
@@ -291,6 +304,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     defaultValues={modelNameAndTypeFormValues}
                     inputClassName='justify-start'
                     ref={formRef1}
+                    onChange={handleModelNameAndTypeChange}
                   />
                 )
               }
@@ -405,7 +419,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 title={t('common.modelProvider.confirmDelete')}
                 isDisabled={doingAction}
                 onCancel={closeConfirmDelete}
-                onConfirm={handleConfirmDelete}
+                onConfirm={handleDeleteCredential}
               />
             )
           }

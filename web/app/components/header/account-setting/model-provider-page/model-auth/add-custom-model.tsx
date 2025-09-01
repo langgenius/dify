@@ -72,7 +72,7 @@ const AddCustomModel = ({
       placement='bottom-end'
       offset={{
         mainAxis: 4,
-        crossAxis: -4,
+        crossAxis: 0,
       }}
     >
       <PortalToFollowElemTrigger onClick={() => {
