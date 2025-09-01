@@ -532,13 +532,7 @@ class ProviderConfiguration(BaseModel):
                         cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
                     )
                     lb_credentials_cache.delete()
-
-                    lb_config.credential_id = None
-                    lb_config.encrypted_config = None
-                    lb_config.enabled = False
-                    lb_config.name = "__delete__"
-                    lb_config.updated_at = naive_utc_now()
-                    session.add(lb_config)
+                    session.delete(lb_config)
 
                 # Check if this is the currently active credential
                 provider_record = self._get_provider_record(session)
@@ -982,12 +976,7 @@ class ProviderConfiguration(BaseModel):
                         cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
                     )
                     lb_credentials_cache.delete()
-                    lb_config.credential_id = None
-                    lb_config.encrypted_config = None
-                    lb_config.enabled = False
-                    lb_config.name = "__delete__"
-                    lb_config.updated_at = naive_utc_now()
-                    session.add(lb_config)
+                    session.delete(lb_config)
 
                 # Check if this is the currently active credential
                 provider_model_record = self._get_custom_model_record(model_type, model, session=session)
@@ -1606,11 +1595,9 @@ class ProviderConfiguration(BaseModel):
                         if config.credential_source_type != "custom_model"
                     ]
 
-                    if len(provider_model_lb_configs) > 1:
-                        load_balancing_enabled = True
-
-                    if any(config.name == "__delete__" for config in provider_model_lb_configs):
-                        has_invalid_load_balancing_configs = True
+                    load_balancing_enabled = model_setting.load_balancing_enabled
+                    # when the user enable load_balancing but available configs are less than 2 display warning
+                    has_invalid_load_balancing_configs = load_balancing_enabled and len(provider_model_lb_configs) < 2
 
                 provider_models.append(
                     ModelWithProviderEntity(
@@ -1664,11 +1651,9 @@ class ProviderConfiguration(BaseModel):
                     if config.credential_source_type != "provider"
                 ]
 
-                if len(custom_model_lb_configs) > 1:
-                    load_balancing_enabled = True
-
-                if any(config.name == "__delete__" for config in custom_model_lb_configs):
-                    has_invalid_load_balancing_configs = True
+                load_balancing_enabled = model_setting.load_balancing_enabled
+                # when the user enable load_balancing but available configs are less than 2 display warning
+                has_invalid_load_balancing_configs = load_balancing_enabled and len(custom_model_lb_configs) < 2
 
             if len(model_configuration.available_model_credentials) > 0 and not model_configuration.credentials:
                 status = ModelStatus.CREDENTIAL_REMOVED

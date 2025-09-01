@@ -219,7 +219,11 @@ class ModelProviderModelCredentialApi(Resource):
 
         model_load_balancing_service = ModelLoadBalancingService()
         is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args["model"],
+            model_type=args["model_type"],
+            config_from=args.get("config_from", ""),
         )
 
         if args.get("config_from", "") == "predefined-model":

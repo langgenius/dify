@@ -986,18 +986,6 @@ class ProviderManager:
                         load_balancing_model_config.model_name == provider_model_setting.model_name
                         and load_balancing_model_config.model_type == provider_model_setting.model_type
                     ):
-                        if load_balancing_model_config.name == "__delete__":
-                            # to calculate current model whether has invalidate lb configs
-                            load_balancing_configs.append(
-                                ModelLoadBalancingConfiguration(
-                                    id=load_balancing_model_config.id,
-                                    name=load_balancing_model_config.name,
-                                    credentials={},
-                                    credential_source_type=load_balancing_model_config.credential_source_type,
-                                )
-                            )
-                            continue
-
                         if not load_balancing_model_config.enabled:
                             continue
 
@@ -1063,6 +1051,7 @@ class ProviderManager:
                     model=provider_model_setting.model_name,
                     model_type=ModelType.value_of(provider_model_setting.model_type),
                     enabled=provider_model_setting.enabled,
+                    load_balancing_enabled=provider_model_setting.load_balancing_enabled,
                     load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else [],
                 )
             )

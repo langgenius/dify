@@ -154,6 +154,7 @@ class ModelSettings(BaseModel):
     model: str
     model_type: ModelType
     enabled: bool = True
+    load_balancing_enabled: bool = False
     load_balancing_configs: list[ModelLoadBalancingConfiguration] = []
 
     # pydantic configs
