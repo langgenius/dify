@@ -62,7 +62,7 @@ jobs:
           sed -i 's|NEXT_PUBLIC_EDITION=.*|NEXT_PUBLIC_EDITION=CLOUD|' .env.local
           sed -i 's|NEXT_PUBLIC_DEPLOY_ENV=.*|NEXT_PUBLIC_DEPLOY_ENV=PRODUCTION|' .env.local
           sed -i 's|NEXT_PUBLIC_API_PREFIX=.*|NEXT_PUBLIC_API_PREFIX=https://cloud.dify.ai/console/api|' .env.local
-          sed -i 's|NEXT_PUBLIC_PUBLIC_API_PREFIX=.*|NEXT_PUBLIC_PUBLIC_API_PREFIX=https://dev.udify.app/api|' .env.local
+          sed -i 's|NEXT_PUBLIC_PUBLIC_API_PREFIX=.*|NEXT_PUBLIC_PUBLIC_API_PREFIX=https://udify.app/api|' .env.local
 
       - name: Run Playwright tests
         if: steps.changed-files.outputs.any_changed == 'true'
