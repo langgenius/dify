@@ -32,7 +32,6 @@ const translation = {
       sync: '同步',
       pause: '暂停',
       resume: '恢复',
-      download: '下载文件',
     },
     index: {
       enable: '启用中',

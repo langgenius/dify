@@ -67,7 +67,4 @@ class WorkflowNameAlias(Base):
         return db.session.get(Account, self.created_by)
 
     def __repr__(self):
-        return (
-            f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', "
-            f"name='{self.name}')>"
-        )
+        return f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"

@@ -85,6 +85,11 @@ class MessageListApi(WebApiResource):
 
 
 class MessageFeedbackApi(WebApiResource):
+    feedback_response_fields = {
+        "result": fields.String,
+    }
+
+    @marshal_with(feedback_response_fields)
     def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
@@ -152,6 +157,11 @@ class MessageMoreLikeThisApi(WebApiResource):
 
 
 class MessageSuggestedQuestionApi(WebApiResource):
+    suggested_questions_response_fields = {
+        "data": fields.List(fields.String),
+    }
+
+    @marshal_with(suggested_questions_response_fields)
     def get(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

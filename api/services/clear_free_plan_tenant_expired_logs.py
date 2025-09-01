@@ -62,7 +62,7 @@ class ClearFreePlanTenantExpiredLogs:
             # Query records related to expired messages
             records = (
                 session.query(model)
-                .filter(
+                .where(
                     model.message_id.in_(batch_message_ids),  # type: ignore
                 )
                 .all()
@@ -101,7 +101,7 @@ class ClearFreePlanTenantExpiredLogs:
             except Exception:
                 logger.exception("Failed to save %s records", table_name)
 
-            session.query(model).filter(
+            session.query(model).where(
                 model.id.in_(record_ids),  # type: ignore
             ).delete(synchronize_session=False)
 
@@ -295,7 +295,7 @@ class ClearFreePlanTenantExpiredLogs:
                 with Session(db.engine).no_autoflush as session:
                     workflow_app_logs = (
                         session.query(WorkflowAppLog)
-                        .filter(
+                        .where(
                             WorkflowAppLog.tenant_id == tenant_id,
                             WorkflowAppLog.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
@@ -321,9 +321,9 @@ class ClearFreePlanTenantExpiredLogs:
                     workflow_app_log_ids = [workflow_app_log.id for workflow_app_log in workflow_app_logs]
 
                     # delete workflow app logs
-                    session.query(WorkflowAppLog).filter(
-                        WorkflowAppLog.id.in_(workflow_app_log_ids),
-                    ).delete(synchronize_session=False)
+                    session.query(WorkflowAppLog).where(WorkflowAppLog.id.in_(workflow_app_log_ids)).delete(
+                        synchronize_session=False
+                    )
                     session.commit()
 
                     click.echo(

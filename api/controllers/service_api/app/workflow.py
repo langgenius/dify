@@ -266,9 +266,7 @@ class WorkflowRunByIdentifierApi(Resource):
     def _get_workflow_by_alias(self, session: Session, app_model: App, alias_name: str) -> Workflow | None:
         """Get workflow by alias name"""
         workflow_alias_service = WorkflowAliasService()
-        return workflow_alias_service.get_workflow_by_alias(
-            session=session, app_id=app_model.id, name=alias_name
-        )
+        return workflow_alias_service.get_workflow_by_alias(session=session, app_id=app_model.id, name=alias_name)
 
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")

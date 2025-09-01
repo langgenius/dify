@@ -67,7 +67,7 @@ dependencies = [
     "pydantic~=2.11.4",
     "pydantic-extra-types~=2.10.3",
     "pydantic-settings~=2.9.1",
-    "pyjwt~=2.8.0",
+    "pyjwt~=2.10.1",
     "pypdfium2==4.30.0",
     "python-docx~=1.1.0",
     "python-dotenv==1.0.1",
@@ -179,7 +179,7 @@ storage = [
     "google-cloud-storage==2.16.0",
     "opendal~=0.45.16",
     "oss2==2.18.5",
-    "supabase~=2.8.1",
+    "supabase~=2.18.1",
     "tos~=2.7.1",
 ]
 

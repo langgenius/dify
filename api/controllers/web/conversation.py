@@ -1,4 +1,4 @@
-from flask_restx import marshal_with, reqparse
+from flask_restx import fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -58,6 +58,11 @@ class ConversationListApi(WebApiResource):
 
 
 class ConversationApi(WebApiResource):
+    delete_response_fields = {
+        "result": fields.String,
+    }
+
+    @marshal_with(delete_response_fields)
     def delete(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -94,6 +99,11 @@ class ConversationRenameApi(WebApiResource):
 
 
 class ConversationPinApi(WebApiResource):
+    pin_response_fields = {
+        "result": fields.String,
+    }
+
+    @marshal_with(pin_response_fields)
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -110,6 +120,11 @@ class ConversationPinApi(WebApiResource):
 
 
 class ConversationUnPinApi(WebApiResource):
+    unpin_response_fields = {
+        "result": fields.String,
+    }
+
+    @marshal_with(unpin_response_fields)
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

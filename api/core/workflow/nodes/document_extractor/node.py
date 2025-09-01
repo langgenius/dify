@@ -515,14 +515,14 @@ def _extract_text_from_excel(file_content: bytes) -> str:
                 df.dropna(how="all", inplace=True)
 
                 # Combine multi-line text in each cell into a single line
-                df = df.applymap(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)  # type: ignore
+                df = df.map(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)
 
                 # Combine multi-line text in column names into a single line
                 df.columns = pd.Index([" ".join(str(col).splitlines()) for col in df.columns])
 
                 # Manually construct the Markdown table
                 markdown_table += _construct_markdown_table(df) + "\n\n"
-            except Exception as e:
+            except Exception:
                 continue
         return markdown_table
     except Exception as e:
