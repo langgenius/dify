@@ -105,12 +105,12 @@ class WorkflowAliasApi(Resource):
                 created_by=current_user.id,
             )
 
-            alias = workflow_alias_service.create_or_update_alias(
-                session=db.session,
-                request=request,
-            )
-            db.session.commit()
-            return alias
+            with Session(db.engine) as session, session.begin():
+                alias = workflow_alias_service.create_or_update_alias(
+                    session=session,
+                    request=request,
+                )
+                return alias
         except ValueError as e:
             raise BadRequest(str(e))
 
