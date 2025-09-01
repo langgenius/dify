@@ -87,6 +87,7 @@ class MultiModalPromptMessageContent(PromptMessageContent):
     base64_data: str = Field(default="", description="the base64 data of multi-modal file")
     url: str = Field(default="", description="the url of multi-modal file")
     mime_type: str = Field(default=..., description="the mime type of multi-modal file")
+    filename: str = Field(default="", description="the filename of multi-modal file")
 
     @property
     def data(self):

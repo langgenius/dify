@@ -2346,7 +2346,7 @@ class SegmentService:
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
         segments = (
             db.session.query(DocumentSegment.index_node_id, DocumentSegment.word_count)
-            .filter(
+            .where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,

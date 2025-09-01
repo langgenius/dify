@@ -282,7 +282,7 @@ class AppAnnotationService:
         annotations_to_delete = (
             db.session.query(MessageAnnotation, AppAnnotationSetting)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .where(MessageAnnotation.id.in_(annotation_ids))
             .all()
         )
 
@@ -493,7 +493,7 @@ class AppAnnotationService:
     def clear_all_annotations(cls, app_id: str) -> dict:
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
