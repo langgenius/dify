@@ -1,6 +1,7 @@
 ################################## SSRF Protection Configuration ##################################
-# This is a strict default configuration to prevent SSRF attacks
-# To allow additional domains or relax restrictions, create config files in /etc/squid/conf.d/
+# This configuration prevents SSRF attacks by blocking access to private/internal networks
+# while allowing normal access to public internet resources.
+# To add additional restrictions or allowances, create config files in /etc/squid/conf.d/
 
 ################################## Security ACLs ##################################
 # Define private/local networks that should be BLOCKED by default
@@ -19,6 +20,14 @@ acl private_networks dst fe80::/10          # IPv6 link-local addresses
 acl private_networks dst ::1/128            # IPv6 loopback
 acl private_networks dst ff00::/8           # IPv6 multicast
 
+# Define localhost source
+acl localhost src 127.0.0.1/32 ::1
+
+# Define localnet ACL for compatibility with debian.conf (if present in ubuntu/squid image)
+acl localnet src 10.0.0.0/8
+acl localnet src 172.16.0.0/12
+acl localnet src 192.168.0.0/16
+
 # Define ports
 acl SSL_ports port 443
 acl Safe_ports port 80          # http
@@ -33,10 +42,6 @@ acl CONNECT method CONNECT
 acl reverse_proxy_port myport ${REVERSE_PROXY_PORT}
 http_access allow reverse_proxy_port
 
-# Allow access to Dify marketplace (always allowed by default)
-acl allowed_marketplace dstdomain .marketplace.dify.ai
-http_access allow allowed_marketplace
-
 # DENY access to all private/local networks - prevents SSRF attacks
 http_access deny private_networks
 
@@ -50,15 +55,18 @@ http_access deny CONNECT !SSL_ports
 http_access allow localhost manager
 http_access deny manager
 
-# Allow localhost to access services (needed for integration tests)
-acl localhost src 127.0.0.1/32 ::1
-http_access allow localhost
+# Note: We don't have a blanket "allow localhost" rule to prevent bypassing SSRF protection
+# Localhost connections will still be subject to the same restrictions as other clients
 
 # User overrides in /etc/squid/conf.d/*.conf should be placed here
+# These can be used to add additional restrictions or allowances
+# Note: debian.conf may be present by default in the ubuntu/squid image
 include /etc/squid/conf.d/*.conf
 
-# Final deny all
-http_access deny all
+# Allow all other requests (public internet resources)
+# This makes the proxy work as a blacklist (blocking private networks)
+# rather than a whitelist (blocking everything except allowed)
+http_access allow all
 
 ################################## Proxy Server Configuration ##################################
 http_port ${HTTP_PORT}

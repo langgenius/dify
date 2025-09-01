@@ -4,12 +4,12 @@ This directory contains the Squid proxy configuration used to prevent Server-Sid
 
 ## Security by Default
 
-The default configuration (`squid.conf.template`) is **strict by default** to prevent SSRF attacks:
+The default configuration (`squid.conf.template`) prevents SSRF attacks while allowing normal internet access:
 
 - **Blocks all private/internal networks** (RFC 1918, loopback, link-local, etc.)
 - **Only allows HTTP (80) and HTTPS (443) ports**
-- **Allows access to Dify marketplace** (marketplace.dify.ai) by default
-- **Denies all other requests by default** unless explicitly allowed
+- **Allows all public internet resources** (operates as a blacklist for private networks)
+- **Additional restrictions can be added** via custom configurations in `/etc/squid/conf.d/`
 
 ## Customizing the Configuration
 
@@ -66,6 +66,7 @@ The `conf.d.example/` directory contains example configurations:
 - **10-allow-internal-services.conf.example**: Allow internal services (use with caution!)
 - **20-allow-external-domains.conf.example**: Allow specific external domains
 - **30-allow-additional-ports.conf.example**: Allow additional ports
+- **40-restrict-to-allowlist.conf.example**: Convert to whitelist mode (block all except allowed)
 
 ## Security Considerations
 
@@ -91,6 +92,30 @@ The following networks are blocked by default to prevent SSRF:
 - `fe80::/10` - IPv6 link-local
 - `::1/128` - IPv6 loopback
 
+## Testing
+
+Comprehensive integration tests are available to validate the SSRF proxy configuration:
+
+```bash
+# Run from the api/ directory
+cd ../../api
+uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py
+
+# List available test cases
+uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --list-tests
+
+# Use extended test suite
+uv run python tests/integration_tests/ssrf_proxy/test_ssrf_proxy.py --test-file test_cases_extended.yaml
+```
+
+The test suite validates:
+- Blocking of private networks and loopback addresses
+- Blocking of cloud metadata endpoints
+- Allowing of public internet resources
+- Port restriction enforcement
+
+See `api/tests/integration_tests/ssrf_proxy/TEST_CASES_README.md` for detailed testing documentation.
+
 ## Troubleshooting
 
 If your application needs to access a service that's being blocked:
@@ -104,12 +129,13 @@ If your application needs to access a service that's being blocked:
 
 ```
 docker/ssrf_proxy/
-├── squid.conf.template       # Strict default configuration
+├── squid.conf.template       # SSRF protection configuration  
 ├── docker-entrypoint.sh      # Container entrypoint script
 ├── conf.d.example/           # Example override configurations
 │   ├── 00-testing-environment.conf.example
 │   ├── 10-allow-internal-services.conf.example
 │   ├── 20-allow-external-domains.conf.example
-│   └── 30-allow-additional-ports.conf.example
+│   ├── 30-allow-additional-ports.conf.example
+│   └── 40-restrict-to-allowlist.conf.example
 └── README.md                 # This file
 ```
