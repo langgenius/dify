@@ -31,7 +31,7 @@ from ..response_coordinator import ResponseStreamCoordinator
 
 if TYPE_CHECKING:
     from ..error_handling import ErrorHandler
-    from ..graph_traversal import BranchHandler, EdgeProcessor
+    from ..graph_traversal import EdgeProcessor
     from ..state_management import UnifiedStateManager
     from .event_collector import EventCollector
 
@@ -54,7 +54,6 @@ class EventHandlerRegistry:
         graph_execution: GraphExecution,
         response_coordinator: ResponseStreamCoordinator,
         event_collector: "EventCollector",
-        branch_handler: "BranchHandler",
         edge_processor: "EdgeProcessor",
         state_manager: "UnifiedStateManager",
         error_handler: "ErrorHandler",
@@ -68,7 +67,6 @@ class EventHandlerRegistry:
             graph_execution: Graph execution aggregate
             response_coordinator: Response stream coordinator
             event_collector: Event collector for collecting events
-            branch_handler: Branch handler for branch node processing
             edge_processor: Edge processor for edge traversal
             state_manager: Unified state manager
             error_handler: Error handler
@@ -78,7 +76,6 @@ class EventHandlerRegistry:
         self._graph_execution = graph_execution
         self._response_coordinator = response_coordinator
         self._event_collector = event_collector
-        self._branch_handler = branch_handler
         self._edge_processor = edge_processor
         self._state_manager = state_manager
         self._error_handler = error_handler
@@ -184,7 +181,7 @@ class EventHandlerRegistry:
         # Process edges and get ready nodes
         node = self._graph.nodes[event.node_id]
         if node.execution_type == NodeExecutionType.BRANCH:
-            ready_nodes, edge_streaming_events = self._branch_handler.handle_branch_completion(
+            ready_nodes, edge_streaming_events = self._edge_processor.handle_branch_completion(
                 event.node_id, event.node_run_result.edge_source_handle
             )
         else:

@@ -32,7 +32,7 @@ from .domain import ExecutionContext, GraphExecution
 from .entities.commands import AbortCommand
 from .error_handling import ErrorHandler
 from .event_management import EventCollector, EventEmitter, EventHandlerRegistry
-from .graph_traversal import BranchHandler, EdgeProcessor, NodeReadinessChecker, SkipPropagator
+from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import Layer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
@@ -132,28 +132,19 @@ class GraphEngine:
         self._error_handler = ErrorHandler(self._graph, self._graph_execution)
 
         # === Graph Traversal Components ===
-        # Checks if nodes are ready to execute based on their dependencies
-        self._node_readiness_checker = NodeReadinessChecker(self._graph)
-
-        # Processes edges to determine next nodes after execution
-        self._edge_processor = EdgeProcessor(
-            graph=self._graph,
-            state_manager=self._state_manager,
-            response_coordinator=self._response_coordinator,
-        )
-
         # Propagates skip status through the graph when conditions aren't met
         self._skip_propagator = SkipPropagator(
             graph=self._graph,
             state_manager=self._state_manager,
         )
 
-        # Handles conditional branching and route selection
-        self._branch_handler = BranchHandler(
+        # Processes edges to determine next nodes after execution
+        # Also handles conditional branching and route selection
+        self._edge_processor = EdgeProcessor(
             graph=self._graph,
-            edge_processor=self._edge_processor,
-            skip_propagator=self._skip_propagator,
             state_manager=self._state_manager,
+            response_coordinator=self._response_coordinator,
+            skip_propagator=self._skip_propagator,
         )
 
         # === Event Handler Registry ===
@@ -164,7 +155,6 @@ class GraphEngine:
             graph_execution=self._graph_execution,
             response_coordinator=self._response_coordinator,
             event_collector=self._event_collector,
-            branch_handler=self._branch_handler,
             edge_processor=self._edge_processor,
             state_manager=self._state_manager,
             error_handler=self._error_handler,

@@ -3,7 +3,7 @@ Edge processing logic for graph traversal.
 """
 
 from collections.abc import Sequence
-from typing import final
+from typing import TYPE_CHECKING, final
 
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Edge, Graph
@@ -12,6 +12,9 @@ from core.workflow.graph_events import NodeRunStreamChunkEvent
 from ..response_coordinator import ResponseStreamCoordinator
 from ..state_management import UnifiedStateManager
 
+if TYPE_CHECKING:
+    from .skip_propagator import SkipPropagator
+
 
 @final
 class EdgeProcessor:
@@ -19,7 +22,8 @@ class EdgeProcessor:
     Processes edges during graph execution.
 
     This handles marking edges as taken or skipped, notifying
-    the response coordinator, and triggering downstream node execution.
+    the response coordinator, triggering downstream node execution,
+    and managing branch node logic.
     """
 
     def __init__(
@@ -27,6 +31,7 @@ class EdgeProcessor:
         graph: Graph,
         state_manager: UnifiedStateManager,
         response_coordinator: ResponseStreamCoordinator,
+        skip_propagator: "SkipPropagator",
     ) -> None:
         """
         Initialize the edge processor.
@@ -35,10 +40,12 @@ class EdgeProcessor:
             graph: The workflow graph
             state_manager: Unified state manager
             response_coordinator: Response stream coordinator
+            skip_propagator: Propagator for skip states
         """
         self._graph = graph
         self._state_manager = state_manager
         self._response_coordinator = response_coordinator
+        self._skip_propagator = skip_propagator
 
     def process_node_success(
         self, node_id: str, selected_handle: str | None = None
@@ -149,3 +156,46 @@ class EdgeProcessor:
             edge: The edge to skip
         """
         self._state_manager.mark_edge_skipped(edge.id)
+
+    def handle_branch_completion(
+        self, node_id: str, selected_handle: str | None
+    ) -> tuple[Sequence[str], Sequence[NodeRunStreamChunkEvent]]:
+        """
+        Handle completion of a branch node.
+
+        Args:
+            node_id: The ID of the branch node
+            selected_handle: The handle of the selected branch
+
+        Returns:
+            Tuple of (list of downstream nodes ready for execution, list of streaming events)
+
+        Raises:
+            ValueError: If no branch was selected
+        """
+        if not selected_handle:
+            raise ValueError(f"Branch node {node_id} completed without selecting a branch")
+
+        # Categorize edges into selected and unselected
+        _, unselected_edges = self._state_manager.categorize_branch_edges(node_id, selected_handle)
+
+        # Skip all unselected paths
+        self._skip_propagator.skip_branch_paths(unselected_edges)
+
+        # Process selected edges and get ready nodes and streaming events
+        return self.process_node_success(node_id, selected_handle)
+
+    def validate_branch_selection(self, node_id: str, selected_handle: str) -> bool:
+        """
+        Validate that a branch selection is valid.
+
+        Args:
+            node_id: The ID of the branch node
+            selected_handle: The handle to validate
+
+        Returns:
+            True if the selection is valid
+        """
+        outgoing_edges = self._graph.get_outgoing_edges(node_id)
+        valid_handles = {edge.source_handle for edge in outgoing_edges}
+        return selected_handle in valid_handles

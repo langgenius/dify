@@ -97,10 +97,12 @@ modules =
 
 [importlinter:contract:graph-traversal-components]
 name = Graph Traversal Components
-type = independence
-modules =
-    core.workflow.graph_engine.graph_traversal.node_readiness
-    core.workflow.graph_engine.graph_traversal.skip_propagator
+type = layers
+layers =
+    edge_processor
+    skip_propagator
+containers =
+    core.workflow.graph_engine.graph_traversal
 
 [importlinter:contract:command-channels]
 name = Command Channels Independence
