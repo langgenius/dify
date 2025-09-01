@@ -1,9 +1,9 @@
 const translation = {
   tips: {
     needLogin: 'Veuillez vous connecter pour autoriser',
-    notLoggedIn: 'veut accéder à votre compte Dify Cloud',
+    notLoggedIn: 'Cette application veut accéder à votre compte Dify Cloud',
     common: 'Nous respectons votre vie privée et n\'utiliserons ces informations que pour améliorer votre expérience avec nos outils de développement.',
-    loggedIn: 'veut accéder aux informations suivantes de votre compte Dify Cloud.',
+    loggedIn: 'Cette application veut accéder aux informations suivantes de votre compte Dify Cloud.',
   },
   scopes: {
     email: 'E-mail',

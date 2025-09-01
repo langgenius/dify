@@ -1,8 +1,8 @@
 const translation = {
   tips: {
-    notLoggedIn: 'Dify Cloud hesabınıza erişmek istiyor',
+    notLoggedIn: 'Bu uygulama Dify Cloud hesabınıza erişmek istiyor',
     common: 'Gizliliğinize saygı gösteriyoruz ve bu bilgiyi yalnızca geliştirici araçlarımızla deneyiminizi geliştirmek için kullanacağız.',
-    loggedIn: 'Dify Cloud hesabınızdaki aşağıdaki bilgilere erişmek istiyor.',
+    loggedIn: 'Bu uygulama Dify Cloud hesabınızdaki aşağıdaki bilgilere erişmek istiyor.',
     needLogin: 'Lütfen yetkilendirmek için giriş yapın',
   },
   scopes: {
