@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 
 import sqlalchemy as sa
-from sqlalchemy import String, func
+from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .account import Account
@@ -67,7 +67,6 @@ class WorkflowNameAlias(Base):
         from .engine import db
 
         return db.session.get(Account, self.created_by)
-
 
     def __repr__(self):
         return (

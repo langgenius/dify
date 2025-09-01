@@ -1,7 +1,6 @@
 import logging
 import re
 from typing import TYPE_CHECKING, Optional, Union
-from uuid import uuid4
 
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select
