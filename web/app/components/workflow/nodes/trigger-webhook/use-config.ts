@@ -27,7 +27,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
   const handleContentTypeChange = useCallback((contentType: string) => {
     setInputs(produce(inputs, (draft) => {
-      draft['content-type'] = contentType
+      draft.content_type = contentType
     }))
   }, [inputs, setInputs])
 

@@ -8,6 +8,11 @@ import { SimpleSelect } from '@/app/components/base/select'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import cn from '@/utils/classnames'
 
+// Tiny utility to judge whether a cell value is effectively present
+const isPresent = (v: unknown): boolean => {
+  if (typeof v === 'string') return v.trim() !== ''
+  return !(v === '' || v === null || v === undefined || v === false)
+}
 // Column configuration types for table components
 export type ColumnType = 'input' | 'select' | 'switch' | 'custom'
 
@@ -120,6 +125,11 @@ const GenericTable: FC<GenericTableProps> = ({
     onChange(next)
   }, [data, emptyRowData, onChange, readonly])
 
+  // Determine the primary identifier column just once
+  const primaryKey = useMemo(() => (
+    columns.find(col => col.key === 'key' || col.key === 'name')?.key ?? 'key'
+  ), [columns])
+
   const renderCell = (column: ColumnConfig, row: GenericTableRow, dataIndex: number | null) => {
     const value = row[column.key]
     const handleChange = (newValue: unknown) => updateRow(dataIndex, column.key, newValue)
@@ -218,8 +228,8 @@ const GenericTable: FC<GenericTableProps> = ({
             const rowKey = `row-${renderIndex}`
 
             // Check if primary identifier column has content
-            const primaryColumn = columns.find(col => col.key === 'key' || col.key === 'name')?.key || 'key'
-            const hasContent = row[primaryColumn] && String(row[primaryColumn]).trim() !== ''
+            const primaryValue = row[primaryKey]
+            const hasContent = isPresent(primaryValue)
 
             return (
               <div

@@ -21,7 +21,7 @@ describe('Webhook Trigger Node Default', () => {
       // Core webhook configuration
       expect(defaultValue.webhook_url).toBe('')
       expect(defaultValue.method).toBe('POST')
-      expect(defaultValue['content-type']).toBe('application/json')
+      expect(defaultValue.content_type).toBe('application/json')
 
       // Response configuration fields
       expect(defaultValue.async_mode).toBe(true)

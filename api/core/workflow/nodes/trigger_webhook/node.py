@@ -42,7 +42,7 @@ class TriggerWebhookNode(BaseNode):
             "type": "webhook",
             "config": {
                 "method": "get",
-                "content-type": "application/json",
+                "content_type": "application/json",
                 "headers": [],
                 "params": [],
                 "body": [],
