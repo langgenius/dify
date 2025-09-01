@@ -538,15 +538,13 @@ class ProviderManager:
         ]
 
     @staticmethod
-    def can_added_model_list(
-        tenant_id: str, provider_name: str, existing_model_set: set[tuple[str, str]]
-    ) -> set[tuple[str, str]]:
+    def get_credentials_from_provider_model(tenant_id: str, provider_name: str) -> list[ProviderModelCredential]:
         """
-        Get the list of custom models from enterprise version not added to the provider's model list.
+        Get all the credentials records from ProviderModelCredential by provider_name
 
         :param tenant_id: workspace id
         :param provider_name: provider name
-        :return: list of model names
+
         """
         with Session(db.engine, expire_on_commit=False) as session:
             stmt = select(ProviderModelCredential).where(
@@ -554,8 +552,7 @@ class ProviderManager:
             )
 
             all_credentials = session.scalars(stmt).all()
-            all_model_set = {(credential.model_name, credential.model_type) for credential in all_credentials}
-            return all_model_set - existing_model_set
+            return all_credentials
 
     @staticmethod
     def _init_trial_provider_records(
@@ -717,9 +714,28 @@ class ProviderManager:
         )
 
         existing_model_set = {(record.model_name, record.model_type) for record in provider_model_records}
-        not_added_custom_models = self.can_added_model_list(tenant_id, provider_entity.provider, existing_model_set)
+        all_model_credentials = self.get_credentials_from_provider_model(tenant_id, provider_entity.provider)
+        # Get the list of custom models from enterprise version not added to the provider's model list
+        not_added_custom_models_credentials = [
+            credential
+            for credential in all_model_credentials
+            if (credential.model_name, credential.model_type) not in existing_model_set
+        ]
+
+        # Group credentials by model
+        model_to_credentials = defaultdict(list)
+        for credential in not_added_custom_models_credentials:
+            model_to_credentials[(credential.model_name, credential.model_type)].append(credential)
         can_added_models = [
-            {"model": item[0], "model_type": ModelType.value_of(item[1])} for item in list(not_added_custom_models)
+            {
+                "model": model_key[0],
+                "model_type": ModelType.value_of(model_key[1]),
+                "available_model_credentials": [
+                    CredentialConfiguration(credential_id=cred.id, credential_name=cred.credential_name)
+                    for cred in creds
+                ],
+            }
+            for model_key, creds in model_to_credentials.items()
         ]
 
         # Get custom provider model credentials
@@ -771,6 +787,18 @@ class ProviderManager:
                     current_credential_id=provider_model_record.credential_id,
                     current_credential_name=provider_model_record.credential_name,
                     available_model_credentials=available_model_credentials,
+                )
+            )
+
+        for model in can_added_models:
+            custom_model_configurations.append(
+                CustomModelConfiguration(
+                    model=model["model"],
+                    model_type=model["model_type"],
+                    credentials=None,
+                    current_credential_id=None,
+                    current_credential_name=None,
+                    available_model_credentials=model["available_model_credentials"],
                 )
             )
 
