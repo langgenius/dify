@@ -1,4 +1,4 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType, InputVar } from '@/app/components/workflow/types'
 import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
@@ -31,4 +31,5 @@ export type WebhookTriggerNodeType = CommonNodeType & {
   'http_methods'?: HttpMethod[]
   'error_strategy'?: ErrorHandleTypeEnum
   'default_value'?: DefaultValueForm[]
+  'variables': InputVar[]
 }
