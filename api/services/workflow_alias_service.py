@@ -71,7 +71,6 @@ class WorkflowAliasService:
         )
 
         session.add(alias)
-        session.flush()
         return alias
 
     def get_aliases_by_app(
