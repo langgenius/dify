@@ -105,30 +105,46 @@ Development mode provides a zero-configuration environment that:
 
 ### Using Development Mode
 
-#### Option 1: Docker Compose Override (Recommended)
+#### Option 1: Environment Variable (Recommended)
 
-From the main Dify repository root:
-
-```bash
-# Use the development overlay with your existing docker-compose
-docker-compose -f docker-compose.middleware.yaml -f docker/ssrf_proxy/docker-compose.dev.yaml up ssrf_proxy
-```
-
-#### Option 2: Manual Configuration
-
-Mount the development configuration manually:
+Simply set the `SSRF_PROXY_DEV_MODE` environment variable to `true`:
 
 ```bash
-docker run -d \
-  --name ssrf-proxy-dev \
-  -p 3128:3128 \
-  -v ./docker/ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template:ro \
-  -v ./docker/ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro \
-  -v ./docker/ssrf_proxy/conf.d.dev:/etc/squid/conf.d:ro \
-  ubuntu/squid:latest
+# In your .env or middleware.env file
+SSRF_PROXY_DEV_MODE=true
+
+# Then start normally
+docker-compose -f docker-compose.middleware.yaml up ssrf_proxy
 ```
 
-The development mode configuration is in `conf.d.dev/00-development-mode.conf`.
+Or set it directly in docker-compose:
+
+```yaml
+services:
+  ssrf_proxy:
+    environment:
+      SSRF_PROXY_DEV_MODE: true
+```
+
+**Important Note about Docker Networking:**
+
+When accessing services on your host machine from within Docker containers:
+- Do NOT use `127.0.0.1` or `localhost` (these refer to the container itself)
+- Instead use:
+  - `host.docker.internal:port` (recommended, works on Mac/Windows/Linux with Docker 20.10+)
+  - Your host machine's actual IP address
+  - On Linux: the Docker bridge gateway (usually `172.17.0.1`)
+
+Example:
+```bash
+# Wrong (won't work from inside container):
+http://127.0.0.1:1234
+
+# Correct (will work):
+http://host.docker.internal:1234
+```
+
+The development mode uses `squid.conf.dev.template` which allows all connections.
 
 ## Testing
 

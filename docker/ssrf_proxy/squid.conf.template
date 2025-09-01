@@ -61,6 +61,7 @@ http_access deny manager
 # User overrides in /etc/squid/conf.d/*.conf should be placed here
 # These can be used to add additional restrictions or allowances
 # Note: debian.conf may be present by default in the ubuntu/squid image
+# The include directive uses a script to handle optional includes
 include /etc/squid/conf.d/*.conf
 
 # Allow all other requests (public internet resources)

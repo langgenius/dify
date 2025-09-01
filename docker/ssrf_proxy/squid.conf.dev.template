@@ -1,46 +1,9 @@
 ################################## DEVELOPMENT MODE CONFIGURATION ##################################
 # WARNING: This configuration DISABLES all SSRF protections!
 # Only use this in development environments. NEVER use in production!
-#
-# This is a special configuration for development that allows ALL requests
-# including private networks, cloud metadata endpoints, and any ports.
 
-################################## Allow Everything ##################################
-# In development mode, we allow all connections without restrictions
-
-# Define ACLs but don't use them for blocking
-acl private_networks dst 0.0.0.0/8
-acl private_networks dst 10.0.0.0/8
-acl private_networks dst 127.0.0.0/8
-acl private_networks dst 169.254.0.0/16
-acl private_networks dst 172.16.0.0/12
-acl private_networks dst 192.168.0.0/16
-acl localhost src 127.0.0.1/32 ::1
-acl SSL_ports port 443
-acl Safe_ports port 1-65535  # Allow ALL ports in dev mode
-acl CONNECT method CONNECT
-
-################################## Access Control Rules ##################################
-# DEVELOPMENT MODE: Allow everything!
-
-# Special rule for reverse proxy port (sandbox access)
-acl reverse_proxy_port myport ${REVERSE_PROXY_PORT}
-http_access allow reverse_proxy_port
-
-# Explicitly allow link-local addresses (169.254.0.0/16)
-acl link_local dst 169.254.0.0/16
-http_access allow link_local
-
-# Explicitly allow localhost and loopback
-http_access allow localhost
-
-# Explicitly allow all private networks
-http_access allow private_networks
-
-# ALLOW ALL REQUESTS - Development mode bypasses all security
+# Allow all requests - put this FIRST before any other rules
 http_access allow all
-
-# Note: No deny rules in development mode
 
 ################################## Proxy Server Configuration ##################################
 http_port ${HTTP_PORT}
