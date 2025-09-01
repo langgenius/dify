@@ -70,15 +70,6 @@ class WorkflowAlias(Base):
 
         return db.session.get(Account, self.created_by)
 
-    @property
-    def is_system_alias(self) -> bool:
-        """Check if this is a system alias"""
-        return self.alias_type == AliasType.SYSTEM
-
-    @property
-    def is_custom_alias(self) -> bool:
-        """Check if this is a custom alias"""
-        return self.alias_type == AliasType.CUSTOM
 
     def __repr__(self):
         return (
