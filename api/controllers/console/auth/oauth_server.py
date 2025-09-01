@@ -122,7 +122,10 @@ class OAuthServerUserTokenApi(Resource):
         parser.add_argument("refresh_token", type=str, required=False, location="json")
         parsed_args = parser.parse_args()
 
-        grant_type = OAuthGrantType(parsed_args["grant_type"])
+        try:
+            grant_type = OAuthGrantType(parsed_args["grant_type"])
+        except ValueError:
+            raise BadRequest("invalid grant_type")
 
         if grant_type == OAuthGrantType.AUTHORIZATION_CODE:
             if not parsed_args["code"]:
@@ -160,8 +163,6 @@ class OAuthServerUserTokenApi(Resource):
                     "refresh_token": refresh_token,
                 }
             )
-        else:
-            raise BadRequest("invalid grant_type")
 
 
 class OAuthServerUserAccountApi(Resource):
