@@ -98,7 +98,7 @@ const Uploader: FC<Props> = ({
         style={{ display: 'none' }}
         type='file'
         id='fileUploader'
-        accept='.yaml,.yml'
+        accept='.pipeline'
         onChange={fileChangeHandle}
       />
       <div ref={dropRef}>
