@@ -355,7 +355,7 @@ def _build_from_datasource_file(
         tenant_id=tenant_id,
         filename=datasource_file.name,
         type=file_type,
-        transfer_method=transfer_method,
+        transfer_method=FileTransferMethod.TOOL_FILE,
         remote_url=datasource_file.source_url,
         related_id=datasource_file.id,
         extension=extension,
