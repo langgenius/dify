@@ -9,7 +9,6 @@ const createMonthlyConfig = (monthly_days: (number | 'last')[], time = '10:30 AM
     monthly_days,
   },
   timezone,
-  enabled: true,
 })
 
 describe('Monthly Edge Cases', () => {

@@ -16,7 +16,6 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       mode: payload.mode || 'visual',
       frequency: payload.frequency || 'weekly',
       timezone: userProfile.timezone || 'UTC',
-      enabled: payload.enabled !== undefined ? payload.enabled : true,
       visual_config: {
         ...getDefaultVisualConfig(),
         ...payload.visual_config,

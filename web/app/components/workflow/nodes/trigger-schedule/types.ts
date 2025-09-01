@@ -17,5 +17,4 @@ export type ScheduleTriggerNodeType = CommonNodeType & {
   cron_expression?: string // Cron expression when mode is 'cron'
   visual_config?: VisualConfig // User-friendly configuration when mode is 'visual'
   timezone: string // User profile timezone (e.g., 'Asia/Shanghai', 'America/New_York')
-  enabled: boolean // Whether the trigger is active
 }

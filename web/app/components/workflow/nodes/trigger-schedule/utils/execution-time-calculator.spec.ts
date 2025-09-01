@@ -14,7 +14,6 @@ const createMockData = (overrides: Partial<ScheduleTriggerNodeType> = {}): Sched
     time: '2:30 PM',
   },
   timezone: 'UTC',
-  enabled: true,
   ...overrides,
 })
 
