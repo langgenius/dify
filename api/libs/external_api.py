@@ -88,8 +88,8 @@ def register_external_error_handlers(api: Api) -> None:
         # Check if this is an MCPRequestError
         if hasattr(e, "error_code") and hasattr(e, "message"):
             # Import here to avoid circular import
-            from api.controllers.mcp.mcp import MCPRequestError
-            from api.core.mcp import types as mcp_types
+            from controllers.mcp.mcp import MCPRequestError
+            from core.mcp import types as mcp_types
 
             if isinstance(e, MCPRequestError):
                 got_request_exception.send(current_app, exception=e)
