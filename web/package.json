@@ -39,7 +39,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "preinstall": "npx only-allow pnpm",
-    "analyze": "ANALYZE=true pnpm build"
+    "analyze": "ANALYZE=true pnpm build",
+    "e2e-test": "pnpm exec playwright test",
+    "e2e-test:ui": "pnpm exec playwright test --ui"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
@@ -163,6 +165,7 @@
     "@next/bundle-analyzer": "15.5.0",
     "@next/eslint-plugin-next": "15.5.0",
     "@next/mdx": "15.5.0",
+    "@playwright/test": "^1.55.0",
     "@rgrove/parse-xml": "^4.1.0",
     "@storybook/addon-essentials": "8.5.0",
     "@storybook/addon-interactions": "8.5.0",
