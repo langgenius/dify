@@ -45,7 +45,7 @@ class WorkflowNameAlias(Base):
         sa.UniqueConstraint("app_id", "alias_name", name="unique_workflow_alias_app_name"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuidv7()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str]
