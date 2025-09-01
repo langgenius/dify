@@ -6,6 +6,7 @@
  */
 
 import nodeDefault from '../default'
+import type { WebhookTriggerNodeType } from '../types'
 
 // Simple mock translation function
 const mockT = (key: string, params?: any) => {
@@ -32,13 +33,11 @@ describe('Webhook Trigger Node Default', () => {
       expect(Array.isArray(defaultValue.headers)).toBe(true)
       expect(Array.isArray(defaultValue.params)).toBe(true)
       expect(Array.isArray(defaultValue.body)).toBe(true)
-      expect(Array.isArray(defaultValue.default_value)).toBe(true)
 
       // Initial arrays should be empty
       expect(defaultValue.headers).toHaveLength(0)
       expect(defaultValue.params).toHaveLength(0)
       expect(defaultValue.body).toHaveLength(0)
-      expect(defaultValue.default_value).toHaveLength(0)
     })
 
     it('should have empty prev nodes', () => {
@@ -55,7 +54,7 @@ describe('Webhook Trigger Node Default', () => {
 
   describe('Validation - checkValid', () => {
     it('should validate successfully with default configuration', () => {
-      const payload = nodeDefault.defaultValue
+      const payload = nodeDefault.defaultValue as WebhookTriggerNodeType
 
       const result = nodeDefault.checkValid(payload, mockT)
       expect(result.isValid).toBe(true)
@@ -67,7 +66,7 @@ describe('Webhook Trigger Node Default', () => {
         ...nodeDefault.defaultValue,
         status_code: 404,
         response_body: '{"error": "Not found"}',
-      }
+      } as WebhookTriggerNodeType
 
       const result = nodeDefault.checkValid(payload, mockT)
       expect(result.isValid).toBe(true)
@@ -77,7 +76,7 @@ describe('Webhook Trigger Node Default', () => {
       const payload = {
         ...nodeDefault.defaultValue,
         async_mode: false,
-      }
+      } as WebhookTriggerNodeType
 
       const result = nodeDefault.checkValid(payload, mockT)
       expect(result.isValid).toBe(true)

@@ -224,7 +224,7 @@ const GenericTable: FC<GenericTableProps> = ({
           </div>
         )}
         <div className="divide-y divide-divider-subtle">
-          {displayRows.map(({ row, dataIndex, isVirtual }, renderIndex) => {
+          {displayRows.map(({ row, dataIndex, isVirtual: _isVirtual }, renderIndex) => {
             const rowKey = `row-${renderIndex}`
 
             // Check if primary identifier column has content
