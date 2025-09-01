@@ -267,7 +267,7 @@ class WorkflowRunByIdentifierApi(Resource):
         """Get workflow by alias name"""
         workflow_alias_service = WorkflowAliasService()
         return workflow_alias_service.get_workflow_by_alias(
-            session=session, tenant_id=app_model.tenant_id, app_id=app_model.id, alias_name=alias_name
+            session=session, app_id=app_model.id, name=alias_name
         )
 
 

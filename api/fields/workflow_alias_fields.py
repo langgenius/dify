@@ -5,11 +5,9 @@ from libs.helper import TimestampField
 
 workflow_alias_fields = {
     "id": fields.String,
-    "tenant_id": fields.String,
     "app_id": fields.String,
     "workflow_id": fields.String,
-    "alias_name": fields.String,
-    "alias_type": fields.String,
+    "name": fields.String,
     "created_by": fields.Nested(simple_account_fields, attribute="created_by_account"),
     "created_at": TimestampField,
     "updated_at": TimestampField,
@@ -25,10 +23,9 @@ workflow_alias_list_fields = {
 }
 
 workflow_alias_create_fields = {
-    "alias_name": fields.String,
-    "alias_type": fields.String,
+    "name": fields.String,
 }
 
 workflow_alias_update_fields = {
-    "alias_name": fields.String,
+    "name": fields.String,
 }

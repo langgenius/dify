@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union, Sequence
 
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select
@@ -9,20 +9,13 @@ from sqlalchemy.orm import Session
 if TYPE_CHECKING:
     from sqlalchemy.orm import scoped_session
 
-from models import Workflow, WorkflowAlias
-from models.workflow_alias import AliasType
+from models import Workflow, WorkflowNameAlias
 
 
 class CreateOrUpdateAliasRequest(BaseModel):
-    """
-    Pydantic model for create or update alias request parameters.
-    """
-
-    tenant_id: str = Field(..., description="Tenant ID")
     app_id: str = Field(..., description="App ID")
     workflow_id: str = Field(..., description="Workflow ID")
-    alias_name: str = Field(..., description="Alias name", max_length=255)
-    alias_type: str = Field(default=AliasType.CUSTOM, description="Alias type")
+    name: str = Field(..., description="Alias name", max_length=255)
     created_by: Optional[str] = Field(default=None, description="User ID who created the alias")
 
 
@@ -34,8 +27,8 @@ class WorkflowAliasService:
         self,
         session: Union[Session, "scoped_session"],
         request: CreateOrUpdateAliasRequest,
-    ) -> WorkflowAlias:
-        self._validate_alias_name(request.alias_name)
+    ) -> WorkflowNameAlias:
+        self._validate_alias_name(request.name)
 
         workflow = session.get(Workflow, request.workflow_id)
         if not workflow:
@@ -45,8 +38,8 @@ class WorkflowAliasService:
             raise ValueError("Cannot create or transfer aliases for draft workflows")
 
         existing_alias = session.execute(
-            select(WorkflowAlias).where(
-                and_(WorkflowAlias.app_id == request.app_id, WorkflowAlias.alias_name == request.alias_name)
+            select(WorkflowNameAlias).where(
+                and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
             )
         ).scalar_one_or_none()
 
@@ -59,13 +52,11 @@ class WorkflowAliasService:
             existing_alias._old_workflow_id = old_workflow_id
             return existing_alias
 
-        alias = WorkflowAlias(
+        alias = WorkflowNameAlias(
             id=str(uuidv7()),
-            tenant_id=request.tenant_id,
             app_id=request.app_id,
             workflow_id=request.workflow_id,
-            alias_name=request.alias_name,
-            alias_type=request.alias_type,
+            name=request.name,
             created_by=request.created_by,
         )
 
@@ -75,21 +66,20 @@ class WorkflowAliasService:
     def get_aliases_by_app(
         self,
         session: Union[Session, "scoped_session"],
-        tenant_id: str,
         app_id: str,
         workflow_ids: Optional[list[str]] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> Sequence[WorkflowAlias]:
-        conditions = [WorkflowAlias.tenant_id == tenant_id, WorkflowAlias.app_id == app_id]
+    ) -> Sequence[WorkflowNameAlias]:
+        conditions = [WorkflowNameAlias.app_id == app_id]
 
         if workflow_ids:
-            conditions.append(WorkflowAlias.workflow_id.in_(workflow_ids))
+            conditions.append(WorkflowNameAlias.workflow_id.in_(workflow_ids))
 
         stmt = (
-            select(WorkflowAlias)
+            select(WorkflowNameAlias)
             .where(and_(*conditions))
-            .order_by(WorkflowAlias.created_at.desc())
+            .order_by(WorkflowNameAlias.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
@@ -99,15 +89,13 @@ class WorkflowAliasService:
     def get_workflow_by_alias(
         self,
         session: Union[Session, "scoped_session"],
-        tenant_id: str,
         app_id: str,
-        alias_name: str,
+        name: str,
     ) -> Optional[Workflow]:
         alias = session.scalar(
-            select(WorkflowAlias).where(
-                WorkflowAlias.tenant_id == tenant_id,
-                WorkflowAlias.app_id == app_id,
-                WorkflowAlias.alias_name == alias_name,
+            select(WorkflowNameAlias).where(
+                WorkflowNameAlias.app_id == app_id,
+                WorkflowNameAlias.name == name,
             )
         )
 
@@ -120,25 +108,24 @@ class WorkflowAliasService:
         self,
         session: Union[Session, "scoped_session"],
         alias_id: str,
-        tenant_id: str,
         app_id: str,
     ) -> bool:
-        alias = session.get(WorkflowAlias, alias_id)
-        if not alias or alias.tenant_id != tenant_id or alias.app_id != app_id:
+        alias = session.get(WorkflowNameAlias, alias_id)
+        if not alias or alias.app_id != app_id:
             raise ValueError("Alias not found")
 
         session.delete(alias)
         return True
 
-    def _validate_alias_name(self, alias_name: str) -> None:
-        if not alias_name:
+    def _validate_alias_name(self, name: str) -> None:
+        if not name:
             raise ValueError("Alias name cannot be empty")
 
-        if len(alias_name) > 100:
+        if len(name) > 100:
             raise ValueError("Alias name cannot exceed 100 characters")
 
-        if len(alias_name) < 1:
+        if len(name) < 1:
             raise ValueError("Alias name must be at least 1 character long")
 
-        if not re.match(r"^[a-zA-Z0-9_.-]+$", alias_name):
+        if not re.match(r"^[a-zA-Z0-9_.-]+$", name):
             raise ValueError("Alias name can only contain letters, numbers, hyphens, underscores, and dots")

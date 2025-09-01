@@ -26,11 +26,9 @@ class WorkflowNameAlias(Base):
 
     Attributes:
         - id (uuid): Alias ID, primary key
-        - tenant_id (uuid): Workspace ID
         - app_id (uuid): App ID
         - workflow_id (uuid): Workflow version ID
-        - alias_name (string): Alias name (e.g., 'production', 'staging', 'v1.0')
-        - alias_type (string): Type of alias ('system' or 'custom')
+        - name (string): Alias name (e.g., 'production', 'staging', 'v1.0')
 
         - created_by (uuid): Creator ID
         - created_at (timestamp): Creation time
@@ -42,13 +40,13 @@ class WorkflowNameAlias(Base):
     __slots__ = ("_is_transferred", "_old_workflow_id")
     __table_args__ = (
         # Ensure alias name is unique within an app
-        sa.UniqueConstraint("app_id", "alias_name", name="unique_workflow_alias_app_name"),
+        sa.UniqueConstraint("app_id", "name", name="unique_workflow_alias_app_name"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuidv7()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    name: Mapped[str]
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -70,6 +68,6 @@ class WorkflowNameAlias(Base):
 
     def __repr__(self):
         return (
-            f"<WorkflowAlias(id='{self.id}', app_id='{self.app_id}', "
-            f"alias_name='{self.alias_name}', type='{self.alias_type}')>"
+            f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', "
+            f"name='{self.name}')>"
         )

@@ -52,7 +52,6 @@ class WorkflowAliasApi(Resource):
 
         aliases = workflow_alias_service.get_aliases_by_app(
             session=db.session,
-            tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             workflow_ids=workflow_ids,
             limit=limit,
@@ -81,27 +80,23 @@ class WorkflowAliasApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("workflow_id", type=str, required=True, location="json")
-        parser.add_argument("alias_name", type=str, required=True, location="json")
-        parser.add_argument("alias_type", type=str, required=False, default="custom", location="json")
+        parser.add_argument("name", type=str, required=True, location="json")
 
         args = parser.parse_args()
 
         workflow_id = args.get("workflow_id")
-        alias_name = args.get("alias_name")
-        alias_type = args.get("alias_type", "custom")
+        name = args.get("name")
 
-        if not alias_name or len(alias_name) > 255:
+        if not name or len(name) > 255:
             raise BadRequest("Invalid alias name")
 
         workflow_alias_service = WorkflowAliasService()
 
         try:
             request = CreateOrUpdateAliasRequest(
-                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 workflow_id=workflow_id,
-                alias_name=alias_name,
-                alias_type=alias_type,
+                name=name,
                 created_by=current_user.id,
             )
 
@@ -135,7 +130,6 @@ class WorkflowAliasApi(Resource):
             workflow_alias_service.delete_alias(
                 session=db.session,
                 alias_id=alias_id,
-                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
             )
             db.session.commit()
