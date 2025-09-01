@@ -17,7 +17,7 @@ class AliasType(StrEnum):
     CUSTOM = "custom"  # User-defined custom aliases
 
 
-class WorkflowAlias(Base):
+class WorkflowNameAlias(Base):
     """
     Workflow Alias for managing version aliases across different environments.
 
