@@ -53,7 +53,9 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
         except Exception as e:
             for document_id in document_ids:
                 document = (
-                    db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+                    db.session.query(Document)
+                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                    .first()
                 )
                 if document:
                     document.indexing_status = "error"
