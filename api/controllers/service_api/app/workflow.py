@@ -254,9 +254,10 @@ class WorkflowRunByIdentifierApi(Resource):
             uuid.UUID(identifier)
             return identifier
         except (ValueError, TypeError):
-            workflow = self._get_workflow_by_alias(app_model, identifier)
-            if workflow:
-                return workflow.id
+            with Session(db.engine) as session, session.begin():
+                workflow = self._get_workflow_by_alias(session, app_model, identifier)
+                if workflow:
+                    return workflow.id
 
             raise WorkflowIdFormatError(
                 f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
