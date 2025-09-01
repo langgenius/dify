@@ -407,9 +407,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
-    handleNewConversationInputsChange(await getRawInputsFromUrlParams())
+    const conversationInputs: Record<string, any> = {}
+    inputsForms.forEach((item: any) => {
+      conversationInputs[item.variable] = item.default || null
+    })
+    handleNewConversationInputsChange(conversationInputs)
     setClearChatList(true)
-  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList, inputsForms])
   const handleUpdateConversationList = useCallback(() => {
     mutateAppConversationData()
     mutateAppPinnedConversationData()

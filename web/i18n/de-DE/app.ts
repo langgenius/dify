@@ -279,6 +279,10 @@ const translation = {
       runDesc: 'Führen Sie schnelle Befehle aus (Thema, Sprache, ...)',
       themeCategoryTitle: 'Thema',
       slashDesc: 'Führen Sie Befehle wie /theme, /lang aus',
+      accountDesc: 'Gehe zur Kontoseite',
+      feedbackDesc: 'Offene Diskussionen zum Feedback der Gemeinschaft',
+      communityDesc: 'Offene Discord-Community',
+      docDesc: 'Öffnen Sie die Hilfedokumentation',
     },
     emptyState: {
       noPluginsFound: 'Keine Plugins gefunden',
@@ -313,6 +317,7 @@ const translation = {
     inScope: 'in {{scope}}s',
     noMatchingCommands: 'Keine übereinstimmenden Befehle gefunden',
     tryDifferentSearch: 'Versuchen Sie es mit einem anderen Suchbegriff',
+    slashHint: 'Geben Sie / ein, um alle verfügbaren Befehle anzuzeigen.',
   },
 }
 

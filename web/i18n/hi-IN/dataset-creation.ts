@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'ज्ञान बनाएं',
-      update: 'डेटा जोड़ें',
       fallbackRoute: 'ज्ञान',
     },
     one: 'डेटा स्रोत चुनें',

@@ -149,9 +149,6 @@ class AnswerStreamProcessor(StreamProcessor):
             return []
 
         stream_output_value_selector = event.from_variable_selector
-        if not stream_output_value_selector:
-            return []
-
         stream_out_answer_node_ids = []
         for answer_node_id, route_position in self.route_position.items():
             if answer_node_id not in self.rest_node_ids:

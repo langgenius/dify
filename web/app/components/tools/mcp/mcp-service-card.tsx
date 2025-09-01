@@ -174,54 +174,54 @@ function MCPServiceCard({
             </div>
             {!isMinimalState && (
               <div className='flex flex-col items-start justify-center self-stretch'>
-              <div className="system-xs-medium pb-1 text-text-tertiary">
-                {t('tools.mcp.server.url')}
-              </div>
-              <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
-                <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-                  <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
-                    {serverURL}
-                  </div>
+                <div className="system-xs-medium pb-1 text-text-tertiary">
+                  {t('tools.mcp.server.url')}
                 </div>
-                {serverPublished && (
-                  <>
-                    <CopyFeedback
-                      content={serverURL}
-                      className={'!size-6'}
-                    />
-                    <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
-                    {isCurrentWorkspaceManager && (
-                      <Tooltip
-                        popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
-                      >
-                        <div
-                          className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
-                          onClick={() => setShowConfirmDelete(true)}
+                <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
+                  <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
+                      {serverURL}
+                    </div>
+                  </div>
+                  {serverPublished && (
+                    <>
+                      <CopyFeedback
+                        content={serverURL}
+                        className={'!size-6'}
+                      />
+                      <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
+                      {isCurrentWorkspaceManager && (
+                        <Tooltip
+                          popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                         >
-                          <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')}/>
-                        </div>
-                      </Tooltip>
-                    )}
-                  </>
-                )}
-              </div>
+                          <div
+                            className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+                            onClick={() => setShowConfirmDelete(true)}
+                          >
+                            <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')}/>
+                          </div>
+                        </Tooltip>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
           {!isMinimalState && (
             <div className='flex items-center gap-1 self-stretch p-3'>
-            <Button
-              disabled={toggleDisabled}
-              size='small'
-              variant='ghost'
-              onClick={() => setShowMCPServerModal(true)}
-            >
+              <Button
+                disabled={toggleDisabled}
+                size='small'
+                variant='ghost'
+                onClick={() => setShowMCPServerModal(true)}
+              >
 
-              <div className="flex items-center justify-center gap-[1px]">
-                    <RiEditLine className="h-3.5 w-3.5" />
-                    <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
-                  </div>
-            </Button>
+                <div className="flex items-center justify-center gap-[1px]">
+                  <RiEditLine className="h-3.5 w-3.5" />
+                  <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
+                </div>
+              </Button>
             </div>
           )}
         </div>

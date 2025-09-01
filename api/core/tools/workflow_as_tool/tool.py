@@ -1,9 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional, cast
-
-from flask_login import current_user
+from typing import Any, Optional
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
@@ -17,8 +15,8 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
-from models.account import Account
-from models.model import App, EndUser
+from libs.login import current_user
+from models.model import App
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -81,11 +79,11 @@ class WorkflowTool(Tool):
         generator = WorkflowAppGenerator()
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
-
+        assert current_user is not None
         result = generator.generate(
             app_model=app,
             workflow=workflow,
-            user=cast("Account | EndUser", current_user),
+            user=current_user,
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
             streaming=False,
@@ -206,14 +204,14 @@ class WorkflowTool(Tool):
                         item = self._update_file_mapping(item)
                         file = build_from_mapping(
                             mapping=item,
-                            tenant_id=str(cast(ToolRuntime, self.runtime).tenant_id),
+                            tenant_id=str(self.runtime.tenant_id),
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 value = self._update_file_mapping(value)
                 file = build_from_mapping(
                     mapping=value,
-                    tenant_id=str(cast(ToolRuntime, self.runtime).tenant_id),
+                    tenant_id=str(self.runtime.tenant_id),
                 )
                 files.append(file)
 

@@ -178,7 +178,7 @@ function AppCard({
       setAppDetail(res)
       setShowAccessControl(false)
     }
- catch (error) {
+    catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
   }, [appDetail, setAppDetail])
@@ -242,54 +242,54 @@ function AppCard({
           </div>
           {!isMinimalState && (
             <div className='flex flex-col items-start justify-center self-stretch'>
-            <div className="system-xs-medium pb-1 text-text-tertiary">
-              {isApp
-                ? t('appOverview.overview.appInfo.accessibleAddress')
-                : t('appOverview.overview.apiInfo.accessibleAddress')}
-            </div>
-            <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
-              <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-                <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
-                  {isApp ? appUrl : apiUrl}
-                </div>
+              <div className="system-xs-medium pb-1 text-text-tertiary">
+                {isApp
+                  ? t('appOverview.overview.appInfo.accessibleAddress')
+                  : t('appOverview.overview.apiInfo.accessibleAddress')}
               </div>
-              <CopyFeedback
-                content={isApp ? appUrl : apiUrl}
-                className={'!size-6'}
-              />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
-              {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
-              {/* button copy link/ button regenerate */}
-              {showConfirmDelete && (
-                <Confirm
-                  type='warning'
-                  title={t('appOverview.overview.appInfo.regenerate')}
-                  content={t('appOverview.overview.appInfo.regenerateNotice')}
-                  isShow={showConfirmDelete}
-                  onConfirm={() => {
-                    onGenCode()
-                    setShowConfirmDelete(false)
-                  }}
-                  onCancel={() => setShowConfirmDelete(false)}
+              <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
+                <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
+                  <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
+                    {isApp ? appUrl : apiUrl}
+                  </div>
+                </div>
+                <CopyFeedback
+                  content={isApp ? appUrl : apiUrl}
+                  className={'!size-6'}
                 />
-              )}
-              {isApp && isCurrentWorkspaceManager && (
-                <Tooltip
-                  popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
-                >
-                  <div
-                    className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
-                    onClick={() => setShowConfirmDelete(true)}
+                {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
+                {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
+                {/* button copy link/ button regenerate */}
+                {showConfirmDelete && (
+                  <Confirm
+                    type='warning'
+                    title={t('appOverview.overview.appInfo.regenerate')}
+                    content={t('appOverview.overview.appInfo.regenerateNotice')}
+                    isShow={showConfirmDelete}
+                    onConfirm={() => {
+                      onGenCode()
+                      setShowConfirmDelete(false)
+                    }}
+                    onCancel={() => setShowConfirmDelete(false)}
+                  />
+                )}
+                {isApp && isCurrentWorkspaceManager && (
+                  <Tooltip
+                    popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                   >
                     <div
-                      className={
-                        `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
-                    ></div>
-                  </div>
-                </Tooltip>
-              )}
+                      className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
+                      onClick={() => setShowConfirmDelete(true)}
+                    >
+                      <div
+                        className={
+                          `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
+                      ></div>
+                    </div>
+                  </Tooltip>
+                )}
+              </div>
             </div>
-          </div>
           )}
           {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
             <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
@@ -331,33 +331,33 @@ function AppCard({
           <div className={'flex items-center gap-1 self-stretch p-3'}>
             {!isApp && <SecretKeyButton appId={appInfo.id} />}
             {OPERATIONS_MAP[cardType].map((op) => {
-            const disabled
+              const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
                 ? false
                 : !runningStatus
-            return (
-              <Button
-                className="mr-1 min-w-[88px]"
-                size="small"
-                variant={'ghost'}
-                key={op.opName}
-                onClick={genClickFuncByName(op.opName)}
-                disabled={disabled}
-              >
-                <Tooltip
-                  popupContent={
-                    t('appOverview.overview.appInfo.preUseReminder') ?? ''
-                  }
-                  popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
+              return (
+                <Button
+                  className="mr-1 min-w-[88px]"
+                  size="small"
+                  variant={'ghost'}
+                  key={op.opName}
+                  onClick={genClickFuncByName(op.opName)}
+                  disabled={disabled}
                 >
-                  <div className="flex items-center justify-center gap-[1px]">
-                    <op.opIcon className="h-3.5 w-3.5" />
-                    <div className={`${runningStatus ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
-                  </div>
-                </Tooltip>
-              </Button>
-            )
-          })}
+                  <Tooltip
+                    popupContent={
+                      t('appOverview.overview.appInfo.preUseReminder') ?? ''
+                    }
+                    popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
+                  >
+                    <div className="flex items-center justify-center gap-[1px]">
+                      <op.opIcon className="h-3.5 w-3.5" />
+                      <div className={`${(runningStatus || !disabled) ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
+                    </div>
+                  </Tooltip>
+                </Button>
+              )
+            })}
           </div>
         )}
       </div>
