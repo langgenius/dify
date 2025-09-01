@@ -72,9 +72,10 @@ class GraphEngine:
         scale_up_threshold: int | None = None,
         scale_down_idle_time: float | None = None,
     ) -> None:
-        """Initialize the graph engine with separated concerns."""
+        """Initialize the graph engine with all subsystems and dependencies."""
 
-        # Create domain models
+        # === Domain Models ===
+        # Execution context encapsulates workflow execution metadata
         self._execution_context = ExecutionContext(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -87,62 +88,67 @@ class GraphEngine:
             max_execution_time=max_execution_time,
         )
 
+        # Graph execution tracks the overall execution state
         self._graph_execution = GraphExecution(workflow_id=workflow_id)
 
-        # Store core dependencies
+        # === Core Dependencies ===
+        # Graph structure and configuration
         self._graph = graph
         self._graph_config = graph_config
         self._graph_runtime_state = graph_runtime_state
         self._command_channel = command_channel
 
-        # Store worker management parameters
+        # === Worker Management Parameters ===
+        # Parameters for dynamic worker pool scaling
         self._min_workers = min_workers
         self._max_workers = max_workers
         self._scale_up_threshold = scale_up_threshold
         self._scale_down_idle_time = scale_down_idle_time
 
-        # Initialize queues
+        # === Execution Queues ===
+        # Queue for nodes ready to execute
         self._ready_queue: queue.Queue[str] = queue.Queue()
+        # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
 
-        # Initialize subsystems
-        self._initialize_subsystems()
-
-        # Layers for extensibility
-        self._layers: list[Layer] = []
-
-        # Validate graph state consistency
-        self._validate_graph_state_consistency()
-
-    def _initialize_subsystems(self) -> None:
-        """Initialize all subsystems with proper dependency injection."""
-
-        # Unified state management - single instance handles all state operations
+        # === State Management ===
+        # Unified state manager handles all node state transitions and queue operations
         self._state_manager = UnifiedStateManager(self._graph, self._ready_queue)
 
-        # Response coordination
+        # === Response Coordination ===
+        # Coordinates response streaming from response nodes
         self._response_coordinator = ResponseStreamCoordinator(
             variable_pool=self._graph_runtime_state.variable_pool, graph=self._graph
         )
 
-        # Event management
+        # === Event Management ===
+        # Event collector aggregates events from all subsystems
         self._event_collector = EventCollector()
+        # Event emitter streams collected events to consumers
         self._event_emitter = EventEmitter(self._event_collector)
 
-        # Error handling
+        # === Error Handling ===
+        # Centralized error handler for graph execution errors
         self._error_handler = ErrorHandler(self._graph, self._graph_execution)
 
-        # Graph traversal
+        # === Graph Traversal Components ===
+        # Checks if nodes are ready to execute based on their dependencies
         self._node_readiness_checker = NodeReadinessChecker(self._graph)
+
+        # Processes edges to determine next nodes after execution
         self._edge_processor = EdgeProcessor(
             graph=self._graph,
             state_manager=self._state_manager,
             response_coordinator=self._response_coordinator,
         )
+
+        # Propagates skip status through the graph when conditions aren't met
         self._skip_propagator = SkipPropagator(
             graph=self._graph,
             state_manager=self._state_manager,
         )
+
+        # Handles conditional branching and route selection
         self._branch_handler = BranchHandler(
             graph=self._graph,
             edge_processor=self._edge_processor,
@@ -150,7 +156,8 @@ class GraphEngine:
             state_manager=self._state_manager,
         )
 
-        # Event handler registry with all dependencies
+        # === Event Handler Registry ===
+        # Central registry for handling all node execution events
         self._event_handler_registry = EventHandlerRegistry(
             graph=self._graph,
             graph_runtime_state=self._graph_runtime_state,
@@ -163,47 +170,22 @@ class GraphEngine:
             error_handler=self._error_handler,
         )
 
-        # Command processing
+        # === Command Processing ===
+        # Processes external commands (e.g., abort requests)
         self._command_processor = CommandProcessor(
             command_channel=self._command_channel,
             graph_execution=self._graph_execution,
         )
-        self._setup_command_handlers()
 
-        # Worker management
-        self._setup_worker_management()
-
-        # Orchestration
-        self._execution_coordinator = ExecutionCoordinator(
-            graph_execution=self._graph_execution,
-            state_manager=self._state_manager,
-            event_handler=self._event_handler_registry,
-            event_collector=self._event_collector,
-            command_processor=self._command_processor,
-            worker_pool=self._worker_pool,
-        )
-
-        self._dispatcher = Dispatcher(
-            event_queue=self._event_queue,
-            event_handler=self._event_handler_registry,
-            event_collector=self._event_collector,
-            execution_coordinator=self._execution_coordinator,
-            max_execution_time=self._execution_context.max_execution_time,
-            event_emitter=self._event_emitter,
-        )
-
-    def _setup_command_handlers(self) -> None:
-        """Configure command handlers."""
-        # Create handler instance that follows the protocol
+        # Register abort command handler
         abort_handler = AbortCommandHandler()
         self._command_processor.register_handler(
             AbortCommand,
             abort_handler,
         )
 
-    def _setup_worker_management(self) -> None:
-        """Initialize worker management subsystem."""
-        # Capture context for workers
+        # === Worker Pool Setup ===
+        # Capture Flask app context for worker threads
         flask_app: Flask | None = None
         try:
             app = current_app._get_current_object()  # type: ignore
@@ -212,9 +194,10 @@ class GraphEngine:
         except RuntimeError:
             pass
 
+        # Capture context variables for worker threads
         context_vars = contextvars.copy_context()
 
-        # Create simple worker pool
+        # Create worker pool for parallel node execution
         self._worker_pool = SimpleWorkerPool(
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
@@ -226,6 +209,35 @@ class GraphEngine:
             scale_up_threshold=self._scale_up_threshold,
             scale_down_idle_time=self._scale_down_idle_time,
         )
+
+        # === Orchestration ===
+        # Coordinates the overall execution lifecycle
+        self._execution_coordinator = ExecutionCoordinator(
+            graph_execution=self._graph_execution,
+            state_manager=self._state_manager,
+            event_handler=self._event_handler_registry,
+            event_collector=self._event_collector,
+            command_processor=self._command_processor,
+            worker_pool=self._worker_pool,
+        )
+
+        # Dispatches events and manages execution flow
+        self._dispatcher = Dispatcher(
+            event_queue=self._event_queue,
+            event_handler=self._event_handler_registry,
+            event_collector=self._event_collector,
+            execution_coordinator=self._execution_coordinator,
+            max_execution_time=self._execution_context.max_execution_time,
+            event_emitter=self._event_emitter,
+        )
+
+        # === Extensibility ===
+        # Layers allow plugins to extend engine functionality
+        self._layers: list[Layer] = []
+
+        # === Validation ===
+        # Ensure all nodes share the same GraphRuntimeState instance
+        self._validate_graph_state_consistency()
 
     def _validate_graph_state_consistency(self) -> None:
         """Validate that all nodes share the same GraphRuntimeState."""
@@ -337,8 +349,3 @@ class GraphEngine:
     def graph_runtime_state(self) -> GraphRuntimeState:
         """Get the graph runtime state."""
         return self._graph_runtime_state
-
-    @property
-    def graph(self) -> Graph:
-        """Get the graph."""
-        return self._graph
