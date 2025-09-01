@@ -61,7 +61,7 @@ class WorkflowAliasService:
             return existing_alias
 
         alias = WorkflowAlias(
-            id=str(uuid4()),
+            id=str(uuidv7()),
             tenant_id=request.tenant_id,
             app_id=request.app_id,
             workflow_id=request.workflow_id,
