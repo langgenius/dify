@@ -32,6 +32,7 @@ export enum FormTypeEnum {
   multiToolSelector = 'array[tools]',
   appSelector = 'app-selector',
   dynamicSelect = 'dynamic-select',
+  boolean = 'boolean',
 }
 
 export type FormOption = {
