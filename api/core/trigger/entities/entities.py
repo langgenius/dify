@@ -143,12 +143,19 @@ class Subscription(BaseModel):
     Contains all information needed to manage the subscription lifecycle.
     """
 
-    expire_at: int = Field(
+    expires_at: int = Field(
         ..., description="The timestamp when the subscription will expire, this for refresh the subscription"
     )
 
-    metadata: dict[str, Any] = Field(
-        ..., description="Metadata about the subscription in the external service, defined in subscription_schema"
+    endpoint: str = Field(..., description="The webhook endpoint URL allocated by Dify for receiving events")
+
+    parameters: dict[str, Any] | None = Field(
+        default=None,
+        description="""The parameters of the subscription, this is the creation parameters.
+        Only available when creating a new subscription by credentials(auto subscription), not manual subscription""",
+    )
+    properties: dict[str, Any] = Field(
+        ..., description="Subscription data containing all properties and provider-specific information"
     )
 
 

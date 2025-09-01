@@ -5,7 +5,10 @@ Trigger Manager for loading and managing trigger providers and triggers
 import logging
 from typing import Optional
 
+from flask import Request
+
 from core.plugin.entities.plugin import TriggerProviderID
+from core.plugin.entities.request import TriggerInvokeResponse
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
     ProviderConfig,
@@ -14,6 +17,7 @@ from core.trigger.entities.entities import (
     Unsubscription,
 )
 from core.trigger.provider import PluginTriggerProviderController
+from core.plugin.entities.plugin_daemon import CredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -123,75 +127,90 @@ class TriggerManager:
         :return: Tuple of (is_valid, error_message)
         """
         try:
-            cls.get_trigger_provider(tenant_id, provider_id).validate_credentials(credentials)
-            return True, ""
+            provider = cls.get_trigger_provider(tenant_id, provider_id)
+            validation_result = provider.validate_credentials(credentials)
+            return validation_result.valid, validation_result.message if not validation_result.valid else ""
         except Exception as e:
             return False, str(e)
 
     @classmethod
-    def execute_trigger(
-        cls, tenant_id: str, provider_id: TriggerProviderID, trigger_name: str, parameters: dict, credentials: dict
-    ) -> dict:
+    def invoke_trigger(
+        cls,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        trigger_name: str,
+        parameters: dict,
+        credentials: dict,
+        credential_type: CredentialType,
+        request: Request,
+    ) -> TriggerInvokeResponse:
         """
         Execute a trigger
 
         :param tenant_id: Tenant ID
+        :param user_id: User ID
         :param provider_id: Provider ID
         :param trigger_name: Trigger name
         :param parameters: Trigger parameters
         :param credentials: Provider credentials
+        :param credential_type: Credential type
+        :param request: Request
         :return: Trigger execution result
         """
-        trigger = cls.get_trigger_provider(tenant_id, provider_id).get_trigger(trigger_name)
+        provider = cls.get_trigger_provider(tenant_id, provider_id)
+        trigger = provider.get_trigger(trigger_name)
         if not trigger:
             raise ValueError(f"Trigger {trigger_name} not found in provider {provider_id}")
-        return cls.get_trigger_provider(tenant_id, provider_id).execute_trigger(trigger_name, parameters, credentials)
+        return provider.invoke_trigger(user_id, trigger_name, parameters, credentials, credential_type, request)
 
     @classmethod
     def subscribe_trigger(
         cls,
         tenant_id: str,
+        user_id: str,
         provider_id: TriggerProviderID,
-        trigger_name: str,
-        subscription_params: dict,
+        endpoint: str,
+        parameters: dict,
         credentials: dict,
     ) -> Subscription:
         """
         Subscribe to a trigger (e.g., register webhook)
 
         :param tenant_id: Tenant ID
+        :param user_id: User ID
         :param provider_id: Provider ID
-        :param trigger_name: Trigger name
-        :param subscription_params: Subscription parameters
+        :param endpoint: Subscription endpoint
+        :param parameters: Subscription parameters
         :param credentials: Provider credentials
         :return: Subscription result
         """
-        return cls.get_trigger_provider(tenant_id, provider_id).subscribe_trigger(
-            trigger_name, subscription_params, credentials
+        provider = cls.get_trigger_provider(tenant_id, provider_id)
+        return provider.subscribe_trigger(
+            user_id=user_id, endpoint=endpoint, parameters=parameters, credentials=credentials
         )
 
     @classmethod
     def unsubscribe_trigger(
         cls,
         tenant_id: str,
+        user_id: str,
         provider_id: TriggerProviderID,
-        trigger_name: str,
-        subscription_metadata: dict,
+        subscription: Subscription,
         credentials: dict,
     ) -> Unsubscription:
         """
         Unsubscribe from a trigger
 
         :param tenant_id: Tenant ID
+        :param user_id: User ID
         :param provider_id: Provider ID
-        :param trigger_name: Trigger name
-        :param subscription_metadata: Subscription metadata from subscribe operation
+        :param subscription: Subscription metadata from subscribe operation
         :param credentials: Provider credentials
         :return: Unsubscription result
         """
-        return cls.get_trigger_provider(tenant_id, provider_id).unsubscribe_trigger(
-            trigger_name, subscription_metadata, credentials
-        )
+        provider = cls.get_trigger_provider(tenant_id, provider_id)
+        return provider.unsubscribe_trigger(user_id=user_id, subscription=subscription, credentials=credentials)
 
     @classmethod
     def get_provider_subscription_schema(cls, tenant_id: str, provider_id: TriggerProviderID) -> list[ProviderConfig]:
@@ -203,6 +222,27 @@ class TriggerManager:
         :return: List of subscription config schemas
         """
         return cls.get_trigger_provider(tenant_id, provider_id).get_subscription_schema()
+
+    @classmethod
+    def refresh_trigger(
+        cls,
+        tenant_id: str,
+        provider_id: TriggerProviderID,
+        trigger_name: str,
+        subscription: Subscription,
+        credentials: dict,
+    ) -> Subscription:
+        """
+        Refresh a trigger subscription
+
+        :param tenant_id: Tenant ID
+        :param provider_id: Provider ID
+        :param trigger_name: Trigger name
+        :param subscription: Subscription metadata from subscribe operation
+        :param credentials: Provider credentials
+        :return: Refreshed subscription result
+        """
+        return cls.get_trigger_provider(tenant_id, provider_id).refresh_trigger(trigger_name, subscription, credentials)
 
 
 # Export

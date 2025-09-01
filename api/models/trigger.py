@@ -8,7 +8,8 @@ from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
+from core.trigger.entities.api_entities import SubscriptionValidation, TriggerProviderSubscriptionApiEntity
+from core.trigger.entities.entities import Subscription
 from models.base import Base
 from models.types import StringUUID
 
@@ -24,6 +25,7 @@ class TriggerSubscription(Base):
         sa.PrimaryKeyConstraint("id", name="trigger_subscription_pkey"),
         Index("idx_trigger_subscriptions_tenant_provider", "tenant_id", "provider_id"),
         UniqueConstraint("tenant_id", "provider_id", "name", name="unique_trigger_subscription"),
+        UniqueConstraint("endpoint", name="unique_trigger_subscription_endpoint"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
@@ -33,8 +35,9 @@ class TriggerSubscription(Base):
     provider_id: Mapped[str] = mapped_column(
         String(255), nullable=False, comment="Provider identifier (e.g., plugin_id/provider_name)"
     )
+    endpoint: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription endpoint")
     parameters: Mapped[dict] = mapped_column(sa.JSON, nullable=False, comment="Subscription parameters JSON")
-    configuration: Mapped[dict] = mapped_column(sa.JSON, nullable=False, comment="Subscription configuration JSON")
+    properties: Mapped[dict] = mapped_column(sa.JSON, nullable=False, comment="Subscription properties JSON")
 
     credentials: Mapped[dict] = mapped_column(sa.JSON, nullable=False, comment="Subscription credentials JSON")
     credential_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="oauth or api_key")
@@ -57,6 +60,14 @@ class TriggerSubscription(Base):
         # Check if token expires in next 3 minutes
         return (self.credential_expires_at - 180) < int(time.time())
 
+    def to_entity(self) -> Subscription:
+        return Subscription(
+            expires_at=self.expires_at,
+            endpoint=self.endpoint,
+            parameters=self.parameters,
+            properties=self.properties,
+        )
+
     def to_api_entity(self) -> TriggerProviderSubscriptionApiEntity:
         return TriggerProviderSubscriptionApiEntity(
             id=self.id,
@@ -65,7 +76,6 @@ class TriggerSubscription(Base):
             credential_type=CredentialType(self.credential_type),
             credentials=self.credentials,
         )
-
 
 # system level trigger oauth client params
 class TriggerOAuthSystemClient(Base):

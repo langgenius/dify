@@ -4,6 +4,7 @@ import re
 from collections.abc import Mapping
 from typing import Any, Optional
 
+from flask import Request, Response
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
@@ -15,7 +16,11 @@ from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
-from core.trigger.entities.api_entities import TriggerProviderApiEntity, TriggerProviderSubscriptionApiEntity
+from core.trigger.entities.api_entities import (
+    SubscriptionValidation,
+    TriggerProviderApiEntity,
+    TriggerProviderSubscriptionApiEntity,
+)
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import (
     create_trigger_provider_encrypter_for_subscription,
@@ -32,7 +37,7 @@ logger = logging.getLogger(__name__)
 class TriggerProviderService:
     """Service for managing trigger providers and credentials"""
 
-    __MAX_TRIGGER_PROVIDER_COUNT__ = 100
+    __MAX_TRIGGER_PROVIDER_COUNT__ = 10
 
     @classmethod
     def list_trigger_providers(cls, tenant_id: str) -> list[TriggerProviderApiEntity]:
@@ -553,3 +558,24 @@ class TriggerProviderService:
         except Exception as e:
             logger.warning("Error generating provider name")
             return f"{credential_type.get_name()} 1"
+
+    @classmethod
+    def get_subscription_by_endpoint(cls, endpoint_id: str) -> TriggerSubscription | None:
+        """
+        Get a trigger subscription by the endpoint ID.
+        """
+        with Session(db.engine, autoflush=False) as session:
+            subscription = session.query(TriggerSubscription).filter_by(endpoint=endpoint_id).first()
+            return subscription
+
+    @classmethod
+    def get_subscription_validation(cls, endpoint_id: str) -> SubscriptionValidation | None:
+        """
+        Get a trigger subscription by the endpoint ID.
+        """
+        cache_key = f"trigger:subscription:validation:endpoint:{endpoint_id}"
+        subscription_cache = redis_client.get(cache_key)
+        if subscription_cache:
+            return SubscriptionValidation.model_validate(json.loads(subscription_cache))
+
+        return None

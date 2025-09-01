@@ -3,12 +3,19 @@ Trigger Provider Controller for managing trigger providers
 """
 
 import logging
-import time
-from typing import Optional
+from typing import Any, Optional
+
+from flask import Request
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.request import (
+    TriggerDispatchResponse,
+    TriggerInvokeResponse,
+    TriggerValidateProviderCredentialsResponse,
+)
+from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.api_entities import TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     ProviderConfig,
@@ -90,18 +97,36 @@ class PluginTriggerProviderController:
 
         :return: List of subscription config schemas
         """
-        return self.entity.subscription_schema
+        # Return the parameters schema from the subscription schema
+        if self.entity.subscription_schema and self.entity.subscription_schema.parameters_schema:
+            return self.entity.subscription_schema.parameters_schema
+        return []
 
-    def validate_credentials(self, credentials: dict) -> None:
+    def validate_credentials(self, credentials: dict) -> TriggerValidateProviderCredentialsResponse:
         """
         Validate credentials against schema
 
         :param credentials: Credentials to validate
-        :raises ValueError: If credentials are invalid
+        :return: Validation response
         """
+        # First validate against schema
         for config in self.entity.credentials_schema:
             if config.required and config.name not in credentials:
-                raise ValueError(f"Missing required credential field: {config.name}")
+                return TriggerValidateProviderCredentialsResponse(
+                    valid=False,
+                    message=f"Missing required credential field: {config.name}",
+                    error=f"Missing required credential field: {config.name}",
+                )
+
+        # Then validate with the plugin daemon
+        manager = PluginTriggerManager()
+        provider_id = self.get_provider_id()
+        return manager.validate_provider_credentials(
+            tenant_id=self.tenant_id,
+            user_id="system",  # System validation
+            provider=str(provider_id),
+            credentials=credentials,
+        )
 
     def get_supported_credential_types(self) -> list[CredentialType]:
         """
@@ -143,58 +168,127 @@ class PluginTriggerProviderController:
         """
         return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
 
-    @property
-    def need_credentials(self) -> bool:
-        """Check if this provider needs credentials"""
-        return len(self.get_supported_credential_types()) > 0
+    def dispatch(self,user_id: str, request: Request, subscription: Subscription) -> TriggerDispatchResponse:
+        """
+        Dispatch a trigger through plugin runtime
 
-    def execute_trigger(self, trigger_name: str, parameters: dict, credentials: dict) -> dict:
+        :param user_id: User ID
+        :param request: Flask request object
+        :param subscription: Subscription
+        :return: Dispatch response with triggers and raw HTTP response
+        """
+        manager = PluginTriggerManager()
+        provider_id = self.get_provider_id()
+
+        response = manager.dispatch_event(
+            tenant_id=self.tenant_id,
+            user_id=user_id,
+            provider=str(provider_id),
+            subscription=subscription.model_dump(),
+            request=request,
+        )
+        return response
+
+    def invoke_trigger(
+        self,
+        user_id: str,
+        trigger_name: str,
+        parameters: dict,
+        credentials: dict,
+        credential_type: CredentialType,
+        request: Request,
+    ) -> TriggerInvokeResponse:
         """
         Execute a trigger through plugin runtime
 
+        :param user_id: User ID
         :param trigger_name: Trigger name
         :param parameters: Trigger parameters
         :param credentials: Provider credentials
-        :return: Execution result
+        :param credential_type: Credential type
+        :param request: Request
+        :return: Trigger execution result
         """
-        logger.info("Executing trigger %s for plugin %s", trigger_name, self.plugin_id)
-        return {
-            "success": True,
-            "trigger": trigger_name,
-            "plugin": self.plugin_id,
-            "result": "Trigger executed successfully",
-        }
+        manager = PluginTriggerManager()
+        provider_id = self.get_provider_id()
 
-    def subscribe_trigger(self, trigger_name: str, subscription_params: dict, credentials: dict) -> Subscription:
+        return manager.invoke_trigger(
+            tenant_id=self.tenant_id,
+            user_id=user_id,
+            provider=str(provider_id),
+            trigger=trigger_name,
+            credentials=credentials,
+            credential_type=credential_type,
+            request=request,
+            parameters=parameters,
+        )
+
+    def subscribe_trigger(self, user_id: str, endpoint: str, parameters: dict, credentials: dict) -> Subscription:
         """
         Subscribe to a trigger through plugin runtime
 
-        :param trigger_name: Trigger name
+        :param user_id: User ID
+        :param endpoint: Subscription endpoint
         :param subscription_params: Subscription parameters
         :param credentials: Provider credentials
         :return: Subscription result
         """
-        logger.info("Subscribing to trigger %s for plugin %s", trigger_name, self.plugin_id)
-        return Subscription(
-            expire_at=int(time.time()) + 86400,  # 24 hours from now
-            metadata={
-                "subscription_id": f"{self.plugin_id}_{trigger_name}_{time.time()}",
-                "webhook_url": f"/triggers/webhook/{self.plugin_id}/{trigger_name}",
-                **subscription_params,
-            },
+        manager = PluginTriggerManager()
+        provider_id = self.get_provider_id()
+
+        response = manager.subscribe(
+            tenant_id=self.tenant_id,
+            user_id=user_id,
+            provider=str(provider_id),
+            credentials=credentials,
+            endpoint=endpoint,
+            parameters=parameters,
         )
 
-    def unsubscribe_trigger(self, trigger_name: str, subscription_metadata: dict, credentials: dict) -> Unsubscription:
+        return Subscription.model_validate(response.subscription)
+
+    def unsubscribe_trigger(self, user_id: str, subscription: Subscription, credentials: dict) -> Unsubscription:
         """
         Unsubscribe from a trigger through plugin runtime
 
-        :param trigger_name: Trigger name
-        :param subscription_metadata: Subscription metadata
+        :param user_id: User ID
+        :param subscription: Subscription metadata
         :param credentials: Provider credentials
         :return: Unsubscription result
         """
-        logger.info("Unsubscribing from trigger %s for plugin %s", trigger_name, self.plugin_id)
-        return Unsubscription(success=True, message=f"Successfully unsubscribed from trigger {trigger_name}")
+        manager = PluginTriggerManager()
+        provider_id = self.get_provider_id()
+
+        response = manager.unsubscribe(
+            tenant_id=self.tenant_id,
+            user_id=user_id,
+            provider=str(provider_id),
+            subscription=subscription,
+            credentials=credentials,
+        )
+
+        return Unsubscription.model_validate(response.subscription)
+
+    def refresh_trigger(self, subscription: Subscription, credentials: dict) -> Subscription:
+        """
+        Refresh a trigger subscription through plugin runtime
+
+        :param subscription: Subscription metadata
+        :param credentials: Provider credentials
+        :return: Refreshed subscription result
+        """
+        manager = PluginTriggerManager()
+        provider_id = self.get_provider_id()
+
+        response = manager.refresh(
+            tenant_id=self.tenant_id,
+            user_id="system",  # System refresh
+            provider=str(provider_id),
+            subscription=subscription,
+            credentials=credentials,
+        )
+
+        return Subscription.model_validate(response.subscription)
 
 
 __all__ = ["PluginTriggerProviderController"]

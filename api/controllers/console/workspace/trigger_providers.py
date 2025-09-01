@@ -31,7 +31,7 @@ class TriggerProviderListApi(Resource):
         return jsonable_encoder(TriggerProviderService.list_trigger_providers(user.current_tenant_id))
 
 
-class TriggerProviderSubscriptionListApi(Resource):
+class TriggerSubscriptionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -54,7 +54,7 @@ class TriggerProviderSubscriptionListApi(Resource):
             raise
 
 
-class TriggerProviderSubscriptionsAddApi(Resource):
+class TriggerSubscriptionsAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -99,7 +99,7 @@ class TriggerProviderSubscriptionsAddApi(Resource):
             raise
 
 
-class TriggerProviderSubscriptionsDeleteApi(Resource):
+class TriggerSubscriptionsDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -125,7 +125,7 @@ class TriggerProviderSubscriptionsDeleteApi(Resource):
             raise
 
 
-class TriggerProviderOAuthAuthorizeApi(Resource):
+class TriggerOAuthAuthorizeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -189,7 +189,7 @@ class TriggerProviderOAuthAuthorizeApi(Resource):
             raise
 
 
-class TriggerProviderOAuthCallbackApi(Resource):
+class TriggerOAuthCallbackApi(Resource):
     @setup_required
     def get(self, provider):
         """Handle OAuth callback for trigger provider"""
@@ -252,7 +252,7 @@ class TriggerProviderOAuthCallbackApi(Resource):
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
-class TriggerProviderOAuthRefreshTokenApi(Resource):
+class TriggerOAuthRefreshTokenApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -278,7 +278,7 @@ class TriggerProviderOAuthRefreshTokenApi(Resource):
             raise
 
 
-class TriggerProviderOAuthClientManageApi(Resource):
+class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -381,25 +381,25 @@ class TriggerProviderOAuthClientManageApi(Resource):
 # Trigger provider endpoints
 api.add_resource(TriggerProviderListApi, "/workspaces/current/trigger-providers")
 api.add_resource(
-    TriggerProviderSubscriptionListApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/list"
+    TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/list"
 )
 api.add_resource(
-    TriggerProviderSubscriptionsAddApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/add"
+    TriggerSubscriptionsAddApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/add"
 )
 api.add_resource(
-    TriggerProviderSubscriptionsDeleteApi,
+    TriggerSubscriptionsDeleteApi,
     "/workspaces/current/trigger-provider/subscriptions/<path:subscription_id>/delete",
 )
 
 # OAuth
 api.add_resource(
-    TriggerProviderOAuthAuthorizeApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/authorize"
+    TriggerOAuthAuthorizeApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/authorize"
 )
-api.add_resource(TriggerProviderOAuthCallbackApi, "/oauth/plugin/<path:provider>/trigger/callback")
+api.add_resource(TriggerOAuthCallbackApi, "/oauth/plugin/<path:provider>/trigger/callback")
 api.add_resource(
-    TriggerProviderOAuthRefreshTokenApi,
+    TriggerOAuthRefreshTokenApi,
     "/workspaces/current/trigger-provider/subscriptions/<path:subscription_id>/oauth/refresh",
 )
 api.add_resource(
-    TriggerProviderOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client"
+    TriggerOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client"
 )
