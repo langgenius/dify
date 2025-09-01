@@ -89,7 +89,7 @@ class TestWebhookService:
                     "data": {
                         "title": "Test Webhook",
                         "method": "post",
-                        "content-type": "application/json",
+                        "content_type": "application/json",
                         "headers": [
                             {"name": "Authorization", "required": True},
                             {"name": "Content-Type", "required": False},

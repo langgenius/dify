@@ -1,7 +1,7 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { ScheduleTriggerNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
 import { getDefaultScheduleConfig } from './constants'
@@ -114,7 +114,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
+      ? []
       : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes.filter(type => type !== BlockEnum.Start)
   },

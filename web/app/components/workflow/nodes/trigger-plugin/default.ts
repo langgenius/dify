@@ -1,7 +1,7 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { PluginTriggerNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
 const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   defaultValue: {
@@ -15,7 +15,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
+      ? []
       : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes.filter(type => type !== BlockEnum.Start)
   },
