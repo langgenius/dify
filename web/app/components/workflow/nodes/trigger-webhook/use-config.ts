@@ -5,8 +5,6 @@ import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeTyp
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { fetchWebhookUrl } from '@/service/apps'
 import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -124,18 +122,6 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     }))
   }, [inputs, setInputs])
 
-  const handleErrorStrategyChange = useCallback((errorStrategy: ErrorHandleTypeEnum) => {
-    setInputs(produce(inputs, (draft) => {
-      draft.error_strategy = errorStrategy
-    }))
-  }, [inputs, setInputs])
-
-  const handleDefaultValueChange = useCallback((defaultValue: DefaultValueForm[]) => {
-    setInputs(produce(inputs, (draft) => {
-      draft.default_value = defaultValue
-    }))
-  }, [inputs, setInputs])
-
   const generateWebhookUrl = useCallback(async () => {
     // Idempotency: if we already have a URL, just return it.
     if (inputs.webhook_url && inputs.webhook_url.length > 0)
@@ -177,8 +163,6 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     handleAsyncModeChange,
     handleStatusCodeChange,
     handleResponseBodyChange,
-    handleErrorStrategyChange,
-    handleDefaultValueChange,
     generateWebhookUrl,
   }
 }

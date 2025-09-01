@@ -350,5 +350,5 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
 }
 
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
-  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.TriggerWebhook
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
 }
