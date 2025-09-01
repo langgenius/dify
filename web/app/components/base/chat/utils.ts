@@ -50,12 +50,16 @@ async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string
   if (redirectUrl) {
     // Decode the value of 'redirect_url'
     const decodedRedirectUrl = decodeURIComponent(redirectUrl);
-    // Create a new URLSearchParams object to parse the decoded 'redirect_url'
-    const redirectParams = new URLSearchParams(decodedRedirectUrl.split('?')[1]);
-    // Add the parameters from the decoded 'redirect_url' to the original URLSearchParams object
-    Array.from(redirectParams.entries()).forEach(([key, value]) => {
-      urlParams.append(key, value);
-    });
+    // Extract the query string portion from the decoded 'redirect_url'
+    const queryString = decodedRedirectUrl.split('?')[1];
+    if (queryString) {
+      // Create a new URLSearchParams object to parse the query string if it exists
+      const redirectParams = new URLSearchParams(queryString);
+      // Add the parameters from the decoded 'redirect_url' to the original URLSearchParams object
+      Array.from(redirectParams.entries()).forEach(([key, value]) => {
+        urlParams.append(key, value);
+      });
+    }
   }
 
   const entriesArray = Array.from(urlParams.entries());
