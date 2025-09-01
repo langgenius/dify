@@ -47,7 +47,6 @@ def clean_messages():
         if not messages:
             break
         for message in messages:
-            plan_sandbox_clean_message_day = message.created_at
             app = db.session.query(App).filter_by(id=message.app_id).first()
             if not app:
                 logger.warning(

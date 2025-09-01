@@ -56,11 +56,18 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       会話ID、以前のチャット記録に基づいて会話を続けるには、前のメッセージのconversation_idを渡す必要があります。
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          ファイルリスト、テキストの理解と質問への回答を組み合わせたファイル（画像）の入力に適しており、モデルがビジョン機能をサポートしている場合にのみ利用可能です。
-          - `type` (string) サポートされているタイプ：`image`（現在は画像タイプのみサポート）
-          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
-          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
-          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
+          ファイルリスト、モデルが Vision/Video 機能をサポートしている場合に限り、ファイルをテキスト理解および質問応答に組み合わせて入力するのに適しています。
+          - `type` (string) サポートされるタイプ：
+            - `document` サポートされるタイプには以下が含まれます：'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` サポートされるタイプには以下が含まれます：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` サポートされるタイプには以下が含まれます：'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` サポートされるタイプには以下が含まれます：'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` サポートされるタイプには以下が含まれます：その他のファイルタイプ
+          - `transfer_method` (string) 転送方法:
+            - `remote_url`: ファイルのURL。
+            - `local_file`: ファイルをアップロード。
+          - `url` ファイルのURL。（転送方法が `remote_url` の場合のみ）。
+          - `upload_file_id` アップロードされたファイルID。（転送方法が `local_file` の場合のみ）。
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
       タイトルを自動生成します。デフォルトは`true`です。

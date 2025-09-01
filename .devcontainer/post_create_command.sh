@@ -1,6 +1,6 @@
 #!/bin/bash
 
-npm add -g pnpm@10.15.0
+corepack enable
 cd web && pnpm install
 pipx install uv
 

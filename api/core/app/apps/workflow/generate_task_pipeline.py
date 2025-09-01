@@ -131,6 +131,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         self._workflow_response_converter = WorkflowResponseConverter(
             application_generate_entity=application_generate_entity,
+            user=user,
         )
 
         self._application_generate_entity = application_generate_entity
