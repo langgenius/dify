@@ -90,13 +90,11 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
-  webpack: (config, { dev, isServer }) => {
-    if (dev) {
-      config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
-    }
-
-    return config
+  basePath,
+  turbopack: {
+    rules: codeInspectorPlugin({
+      bundler: 'turbopack',
+    }),
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
