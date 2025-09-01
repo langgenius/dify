@@ -107,11 +107,9 @@ class WorkflowAliasService:
     ) -> Optional[Workflow]:
         alias = session.scalar(
             select(WorkflowAlias).where(
-                and_(
-                    WorkflowAlias.tenant_id == tenant_id,
-                    WorkflowAlias.app_id == app_id,
-                    WorkflowAlias.alias_name == alias_name,
-                )
+                WorkflowAlias.tenant_id == tenant_id,
+                WorkflowAlias.app_id == app_id,
+                WorkflowAlias.alias_name == alias_name,
             )
         )
 
