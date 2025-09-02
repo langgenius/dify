@@ -10,6 +10,7 @@ from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphNodeEventBase,
+    NodeRunAgentLogEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunIterationFailedEvent,
@@ -116,6 +117,7 @@ class EventHandler:
                 NodeRunLoopNextEvent,
                 NodeRunLoopSucceededEvent,
                 NodeRunLoopFailedEvent,
+                NodeRunAgentLogEvent,
             ),
         ):
             # Iteration and loop events are collected directly
