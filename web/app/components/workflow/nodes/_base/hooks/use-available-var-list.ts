@@ -25,9 +25,9 @@ const useAvailableVarList = (nodeId: string, {
   hideChatVar,
   passedInAvailableNodes,
 }: Params = {
-  onlyLeafNodeVar: false,
-  filterVar: () => true,
-}) => {
+    onlyLeafNodeVar: false,
+    filterVar: () => true,
+  }) => {
   const { getTreeLeafNodes, getNodeById, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
@@ -40,7 +40,7 @@ const useAvailableVarList = (nodeId: string, {
   const ragPipelineVariables = useWorkflowStore(s => s.ragPipelineVariables)
   const isDataSourceNode = currNode?.data?.type === BlockEnum.DataSource
   const dataSourceRagVars: NodeOutPutVar[] = []
-  if(isDataSourceNode) {
+  if (isDataSourceNode) {
     const ragVariablesInDataSource = ragPipelineVariables?.filter(ragVariable => ragVariable.belong_to_node_id === nodeId)
     const filterVars = ragVariablesInDataSource?.filter(v => filterVar({
       variable: v.variable,
@@ -48,18 +48,18 @@ const useAvailableVarList = (nodeId: string, {
       nodeId,
       isRagVariable: true,
     }, ['rag', nodeId, v.variable]))
-    if(filterVars?.length) {
+    if (filterVars?.length) {
       dataSourceRagVars.push({
-          nodeId,
-          title: currNode.data?.title,
-          vars: filterVars.map((v) => {
-            return {
-              variable: `rag.${nodeId}.${v.variable}`,
-              type: inputVarTypeToVarType(v.type),
-              description: v.label,
-              isRagVariable: true,
+        nodeId,
+        title: currNode.data?.title,
+        vars: filterVars.map((v) => {
+          return {
+            variable: `rag.${nodeId}.${v.variable}`,
+            type: inputVarTypeToVarType(v.type),
+            description: v.label,
+            isRagVariable: true,
           } as Var
-          }),
+        }),
       })
     }
   }

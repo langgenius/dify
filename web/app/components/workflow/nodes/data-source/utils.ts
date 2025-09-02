@@ -6,5 +6,6 @@ export const inputVarTypeToVarType = (type: PipelineInputVarType): VarType => {
     [PipelineInputVarType.number]: VarType.number,
     [PipelineInputVarType.singleFile]: VarType.file,
     [PipelineInputVarType.multiFiles]: VarType.arrayFile,
+    [PipelineInputVarType.checkbox]: VarType.boolean,
   } as any)[type] || VarType.string
 }
