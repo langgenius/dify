@@ -742,6 +742,12 @@ const translation = {
     supportedFormats: '支持 PNG、JPG、JPEG、WEBP 和 GIF 格式',
   },
   you: '你',
+  feedback: {
+    content: '反馈内容',
+    subtitle: '请告诉我们这次回应出错的原因。',
+    title: '提供反馈',
+    placeholder: '请描述发生了什么问题或我们可以如何改进...',
+  },
 }
 
 export default translation

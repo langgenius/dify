@@ -293,7 +293,7 @@ class TencentVector(BaseVector):
                 score = 1 - result.get("score", 0.0)
             else:
                 score = result.get("score", 0.0)
-            if score > score_threshold:
+            if score >= score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=result.get(self.field_text), metadata=meta)
                 docs.append(doc)

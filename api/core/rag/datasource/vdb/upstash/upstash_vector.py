@@ -110,7 +110,7 @@ class UpstashVector(BaseVector):
             score = record.score
             if metadata is not None and text is not None:
                 metadata["score"] = score
-                if score > score_threshold:
+                if score >= score_threshold:
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 

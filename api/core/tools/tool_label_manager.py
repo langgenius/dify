@@ -56,13 +56,11 @@ class ToolLabelManager:
             return controller.tool_labels
         else:
             raise ValueError("Unsupported tool type")
-
-        labels = db.session.scalars(
-            select(ToolLabelBinding.label_name).where(
-                ToolLabelBinding.tool_id == provider_id,
-                ToolLabelBinding.tool_type == controller.provider_type.value,
-            )
-        ).all()
+        stmt = select(ToolLabelBinding.label_name).where(
+            ToolLabelBinding.tool_id == provider_id,
+            ToolLabelBinding.tool_type == controller.provider_type.value,
+        )
+        labels = db.session.scalars(stmt).all()
 
         return list(labels)
 
