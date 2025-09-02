@@ -1,8 +1,6 @@
-from typing import TypeVar
-from typing import ParamSpec, Concatenate
-from typing import Callable
+from collections.abc import Callable
 from functools import wraps
-from typing import cast
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 import flask_login
 from flask import request
