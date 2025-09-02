@@ -110,19 +110,14 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         {!isDraft && aliases && aliases.length > 0 && (
           <div className='mt-0.5 flex flex-wrap items-center gap-0.5'>
             {aliases
-              .sort((a: WorkflowAlias, b: WorkflowAlias) => {
-                if (a.alias_type === 'system' && b.alias_type !== 'system') return -1
-                if (a.alias_type !== 'system' && b.alias_type === 'system') return 1
-                return 0
-              })
               .slice(0, 2)
               .map((alias: WorkflowAlias) => (
                 <Tag
                   key={alias.id}
-                  color={alias.alias_type === 'system' ? 'red' : 'green'}
+                  color="green"
                   className="px-1.5 py-0.5 text-xs"
                 >
-                  {alias.alias_name}
+                  {alias.name}
                 </Tag>
               ))}
             {aliases.length > 2 && (

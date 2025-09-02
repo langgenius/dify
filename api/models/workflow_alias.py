@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import StrEnum
 
 import sqlalchemy as sa
 from sqlalchemy import func
@@ -7,14 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from .account import Account
 from .base import Base
+from .engine import db
 from .types import StringUUID
-
-
-class AliasType(StrEnum):
-    """Alias type enumeration"""
-
-    SYSTEM = "system"  # System aliases like 'production', 'staging'
-    CUSTOM = "custom"  # User-defined custom aliases
 
 
 class WorkflowNameAlias(Base):
@@ -54,17 +47,16 @@ class WorkflowNameAlias(Base):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
+    @property
+    def created_by_account(self):
+        return db.session.query(Account).where(Account.id == self.created_by).first()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._is_transferred = False
         self._old_workflow_id = None
 
-    @property
-    def created_by_account(self):
-        """Get the account that created this alias"""
-        from .engine import db
 
-        return db.session.get(Account, self.created_by)
 
     def __repr__(self):
         return f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"

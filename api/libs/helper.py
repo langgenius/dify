@@ -121,6 +121,18 @@ def alphanumeric(value: str):
     raise ValueError(f"{value} is not a valid alphanumeric value")
 
 
+def alias_name(value: str):
+    """Validate alias name according to business rules."""
+    if not value or not value.strip():
+        raise ValueError("Alias name is required")
+
+    value = value.strip()
+    if len(value) > 255:
+        raise ValueError("Alias name cannot exceed 255 characters")
+
+    return value
+
+
 def timestamp_value(timestamp):
     try:
         int_timestamp = int(timestamp)

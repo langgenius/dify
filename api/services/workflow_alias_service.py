@@ -7,13 +7,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
+from libs.uuid_utils import uuidv7
+
 if TYPE_CHECKING:
     from sqlalchemy.orm import scoped_session
 
 from models import Workflow, WorkflowNameAlias
 
 
-class CreateOrUpdateAliasRequest(BaseModel):
+class WorkflowAliasArgs(BaseModel):
     app_id: str = Field(..., description="App ID")
     workflow_id: str = Field(..., description="Workflow ID")
     name: str = Field(..., description="Alias name", max_length=255)
@@ -27,7 +29,7 @@ class WorkflowAliasService:
     def create_or_update_alias(
         self,
         session: Union[Session, "scoped_session"],
-        request: CreateOrUpdateAliasRequest,
+        request: WorkflowAliasArgs,
     ) -> WorkflowNameAlias:
         self._validate_alias_name(request.name)
 
@@ -38,11 +40,11 @@ class WorkflowAliasService:
         if workflow.version == Workflow.VERSION_DRAFT:
             raise ValueError("Cannot create or transfer aliases for draft workflows")
 
-        existing_alias = session.execute(
+        existing_alias = session.scalar(
             select(WorkflowNameAlias).where(
                 and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
             )
-        ).scalar_one_or_none()
+        )
 
         if existing_alias:
             old_workflow_id = existing_alias.workflow_id

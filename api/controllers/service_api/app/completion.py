@@ -2,6 +2,7 @@ import logging
 
 from flask import request
 from flask_restx import Resource, reqparse
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -74,7 +75,12 @@ chat_parser.add_argument(
 )
 chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
 chat_parser.add_argument(
-    "workflow_alias", type=str, required=False, location="json", help="Workflow alias for advanced chat"
+    "workflow_alias",
+    type=str,
+    required=False,
+    default="",
+    location="json",
+    help="Workflow alias for advanced chat",
 )
 
 
@@ -193,11 +199,8 @@ class ChatApi(Resource):
             raise NotChatAppError()
 
         args = chat_parser.parse_args()
-        # Add workflow_alias support
-        if "workflow_alias" not in args:
-            args["workflow_alias"] = None
 
-        self._resolve_workflow_alias(app_model, args)
+        self._fetch_workflow_id_by_alias(app_model=app_model, workflow_alias=args["workflow_alias"])
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -240,22 +243,22 @@ class ChatApi(Resource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-    def _fetch_workflow_id_by_alias(self, *, app: App, workflow_alias: str = "") -> str:
+    def _fetch_workflow_id_by_alias(self, *, app_model: App, workflow_alias: str = "") -> str:
         """
         Resolve workflow_alias to workflow_id
         Priority: workflow_alias > workflow_id > latest published workflow
         """
-        if args.get("workflow_alias"):
+        if workflow_alias:
             workflow_alias_service = WorkflowAliasService()
             with Session(db.engine) as session, session.begin():
                 workflow = workflow_alias_service.get_workflow_by_alias(
                     session=session,
                     app_id=app_model.id,
-                    name=args["workflow_alias"],
+                    name=workflow_alias,
                 )
 
             if not workflow:
-                raise WorkflowNotFoundError(f"Workflow with alias '{args['workflow_alias']}' not found")
+                raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
 
             return workflow.id
 

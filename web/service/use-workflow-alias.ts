@@ -25,7 +25,7 @@ export const useWorkflowAliasList = ({
       params.append('offset', offset.toString())
 
       const queryString = params.toString()
-      const url = `/apps/${appId}/workflow-aliases${queryString ? `?${queryString}` : ''}`
+      const url = queryString ? `/apps/${appId}/workflow-aliases?${queryString}` : `/apps/${appId}/workflow-aliases`
 
       return get<WorkflowAliasList>(url)
     },
@@ -75,11 +75,13 @@ export const useCreateWorkflowAlias = (appId: string) => {
   return useMutation({
     mutationFn: async (data: {
       workflow_id: string
-      alias_name: string
-      alias_type: 'system' | 'custom'
+      name: string
     }) => {
       return post<WorkflowAlias>(`/apps/${appId}/workflow-aliases`, {
-        body: data,
+        body: {
+          workflow_id: data.workflow_id,
+          name: data.name,
+        },
       })
     },
     onSuccess: (data) => {
@@ -98,7 +100,7 @@ export const useCreateWorkflowAlias = (appId: string) => {
           const existingAliases = oldData.items || []
 
           // Check if this alias name already exists (for transfer case)
-          const existingIndex = existingAliases.findIndex(alias => alias.alias_name === newAlias.alias_name)
+          const existingIndex = existingAliases.findIndex(alias => alias.name === newAlias.name)
           if (existingIndex >= 0) {
             // Update existing alias (transfer case)
             existingAliases[existingIndex] = newAlias

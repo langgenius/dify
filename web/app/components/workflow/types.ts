@@ -465,8 +465,7 @@ export type WorkflowAlias = {
   tenant_id: string
   app_id: string
   workflow_id: string
-  alias_name: string
-  alias_type: 'system' | 'custom'
+  name: string
   created_by: {
     id: string
     name: string

@@ -7,8 +7,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
-
-import Select from '@/app/components/base/select'
 import { useCreateWorkflowAlias, useDeleteWorkflowAlias } from '@/service/use-workflow-alias'
 import { workflowAliasTranslation } from '@/i18n/zh-Hans/workflow-alias'
 
@@ -30,14 +28,8 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
   const aliasT = workflowAliasTranslation
   const appDetail = useAppStore.getState().appDetail
 
-  const [newAliasName, setNewAliasName] = useState('production')
-  const [newAliasType, setNewAliasType] = useState<'system' | 'custom'>('system')
+  const [newAliasName, setNewAliasName] = useState('')
   const [isAddingNew, setIsAddingNew] = useState(false)
-
-  const systemAliases = [
-    { value: 'production', name: aliasT.production },
-    { value: 'staging', name: aliasT.staging },
-  ]
 
   const [isCreating, setIsCreating] = useState(false)
 
@@ -45,8 +37,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
   const { mutateAsync: deleteAlias } = useDeleteWorkflowAlias(appDetail!.id)
 
   const resetForm = useCallback(() => {
-    setNewAliasName('production')
-    setNewAliasType('system')
+    setNewAliasName('')
   }, [])
 
   const handleCreateAlias = useCallback(async () => {
@@ -62,8 +53,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
     try {
       const result = await createAlias({
         workflow_id: versionHistory.id,
-        alias_name: newAliasName.trim(),
-        alias_type: newAliasType,
+        name: newAliasName.trim(),
       })
 
       let message
@@ -94,17 +84,9 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
  finally {
       setIsCreating(false)
     }
-  }, [newAliasName, newAliasType, versionHistory.id, createAlias, resetForm, onAliasChange])
+  }, [newAliasName, versionHistory.id, createAlias, resetForm, onAliasChange])
 
   const handleDeleteAlias = useCallback(async (alias: WorkflowAlias) => {
-    if (alias.alias_type === 'system') {
-      Toast.notify({
-        type: 'error',
-        message: aliasT.systemAliasDeleteError,
-      })
-      return
-    }
-
     try {
       await deleteAlias(alias.id)
       Toast.notify({
@@ -142,18 +124,9 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                 <div key={alias.id} className="group flex items-center justify-between rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100">
                   <div className="flex flex-1 items-center justify-between">
                     <div className="flex items-center space-x-2">
+                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
                       <span className="text-sm font-medium text-gray-900">
-                        {alias.alias_name}
-                      </span>
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        alias.alias_type === 'system'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {alias.alias_type === 'system'
-                          ? aliasT.systemType
-                          : aliasT.customType
-                        }
+                        {alias.name}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2 text-xs text-gray-500">
@@ -166,13 +139,8 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteAlias(alias)}
-                      disabled={alias.alias_type === 'system'}
-                      className={`rounded-md p-1.5 text-gray-400 opacity-0 transition-all duration-200 group-hover:opacity-100 ${
-                        alias.alias_type === 'system'
-                          ? 'cursor-not-allowed'
-                          : 'hover:bg-red-50 hover:text-red-600'
-                      }`}
-                      title={alias.alias_type === 'system' ? aliasT.systemAliasCannotDelete : aliasT.deleteAlias}
+                      className="rounded-md p-1.5 text-gray-400 opacity-0 transition-all duration-200 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                      title={aliasT.deleteAlias}
                     >
                       <RiDeleteBinLine className="h-3.5 w-3.5" />
                     </button>
@@ -190,48 +158,14 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
         </div>
             {isAddingNew ? (
               <div className="relative z-10 flex items-center space-x-3 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 p-3">
-                <div className="relative shrink-0">
-                  <Select
-                    defaultValue={newAliasType}
-                    onSelect={(item) => {
-                      setNewAliasType(item.value as 'system' | 'custom')
-                      if (item.value === 'system')
-                        setNewAliasName('production')
-                       else
-                        setNewAliasName('')
-                    }}
-                    items={[
-                      { value: 'system', name: aliasT.systemType },
-                      { value: 'custom', name: aliasT.customType },
-                    ]}
-                    className="w-32"
-                    overlayClassName="z-[9999] !absolute !top-full"
-                    allowSearch={false}
-                  />
-                </div>
-
                 <div className="flex-1">
-                  {newAliasType === 'system' ? (
-                    <div className="relative w-full">
-                      <Select
-                        defaultValue={newAliasName}
-                        onSelect={item => setNewAliasName(String(item.value))}
-                        items={systemAliases}
-                        placeholder={aliasT.selectSystemAlias}
-                        className="w-full"
-                        overlayClassName="z-[9999] !absolute !top-full"
-                        allowSearch={false}
-                      />
-                    </div>
-                  ) : (
-                    <Input
-                      value={newAliasName}
-                      onChange={e => setNewAliasName(e.target.value)}
-                      placeholder={aliasT.inputCustomAlias}
-                      maxLength={255}
-                      className="w-full"
-                    />
-                  )}
+                  <Input
+                    value={newAliasName}
+                    onChange={e => setNewAliasName(e.target.value)}
+                    placeholder={aliasT.inputAlias}
+                    maxLength={255}
+                    className="w-full"
+                  />
                 </div>
 
                 <div className="flex items-center space-x-2">
