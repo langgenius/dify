@@ -103,12 +103,6 @@ const BaseField = ({
     })
   }, [values, show_on])
 
-  const booleanRadioValue = useMemo(() => {
-    if (value === null || value === undefined)
-      return undefined
-    return value ? 1 : 0
-  }, [value])
-
   if (!show)
     return null
 
@@ -215,11 +209,11 @@ const BaseField = ({
           formSchema.type === FormTypeEnum.boolean && (
             <Radio.Group
               className='flex w-fit items-center'
-              value={booleanRadioValue}
-              onChange={val => field.handleChange(val === 1)}
+              value={value}
+              onChange={v => field.handleChange(v)}
             >
-              <Radio value={1} className='!mr-1'>True</Radio>
-              <Radio value={0}>False</Radio>
+              <Radio value={true} className='!mr-1'>True</Radio>
+              <Radio value={false}>False</Radio>
             </Radio.Group>
           )
         }
