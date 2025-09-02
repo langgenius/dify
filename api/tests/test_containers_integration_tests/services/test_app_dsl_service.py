@@ -443,7 +443,7 @@ class TestAppDslService:
 
         # Verify workflow service was called
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
-            app
+            app, None
         )
 
     def test_export_dsl_with_workflow_id_success(self, db_session_with_containers, mock_external_service_dependencies):
