@@ -835,6 +835,7 @@ class WorkflowAppLog(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
         sa.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
+        sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
