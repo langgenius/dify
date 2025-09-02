@@ -534,7 +534,6 @@ class DatasetRetrieval:
                                     synchronize_session=False,
                                 )
                             )
-                            db.session.commit()
                     else:
                         query = db.session.query(DocumentSegment).where(
                             DocumentSegment.index_node_id == document.metadata["doc_id"]
@@ -596,7 +595,7 @@ class DatasetRetrieval:
         with flask_app.app_context():
             with Session(db.engine) as session:
                 dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-                dataset = db.session.scalar(dataset_stmt)
+                dataset = session.scalar(dataset_stmt)
 
             if not dataset:
                 return []
