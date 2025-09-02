@@ -489,6 +489,7 @@ const translation = {
       configLoadBalancing: '配置負載均衡',
       unAuthorized: '未經授權',
       authorizationError: '授權錯誤',
+      providerManagedTip: '當前的配置由提供者主辦。',
     },
   },
   dataSource: {
@@ -740,6 +741,12 @@ const translation = {
   avatar: {
     deleteTitle: '移除頭像',
     deleteDescription: '您確定要刪除您的個人資料照片嗎？您的帳戶將使用默認的初始頭像。',
+  },
+  feedback: {
+    title: '提供反饋',
+    content: '反饋內容',
+    placeholder: '請描述發生了什麼問題或我們可以如何改進...',
+    subtitle: '請告訴我們這個回應出了什麼問題',
   },
 }
 

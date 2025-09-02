@@ -742,6 +742,12 @@ const translation = {
     deleteTitle: 'Avatarı kaldır',
     deleteDescription: 'Profil resminizi kaldırmak istediğinize emin misiniz? Hesabınız varsayılan başlangıç avatarını kullanacaktır.',
   },
+  feedback: {
+    content: 'Geri Bildirim İçeriği',
+    subtitle: 'Lütfen bu yanıtla ilgili neyin yanlış gittiğini bize bildirin',
+    title: 'Geri Bildirim Sağla',
+    placeholder: 'Lütfen neyin yanlış gittiğini veya nasıl iyileşebileceğimizı açıklayın...',
+  },
 }
 
 export default translation
