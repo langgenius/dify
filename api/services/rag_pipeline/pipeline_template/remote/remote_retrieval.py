@@ -16,12 +16,12 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from dify official
     """
 
-    def get_pipeline_template_detail(self, pipeline_id: str):
+    def get_pipeline_template_detail(self, template_id: str):
         try:
-            result = self.fetch_pipeline_template_detail_from_dify_official(pipeline_id)
+            result = self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to built-in.", e)
-            result = BuildInRecommendAppRetrieval.fetch_recommended_app_detail_from_builtin(pipeline_id)
+            result = BuildInRecommendAppRetrieval.fetch_recommended_app_detail_from_builtin(template_id)
         return result
 
     def get_pipeline_templates(self, language: str) -> dict:
@@ -36,14 +36,14 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.REMOTE
 
     @classmethod
-    def fetch_pipeline_template_detail_from_dify_official(cls, pipeline_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> Optional[dict]:
         """
         Fetch pipeline template detail from dify official.
-        :param pipeline_id: Pipeline ID
+        :param template_id: Pipeline ID
         :return:
         """
         domain = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN
-        url = f"{domain}/pipelines/{pipeline_id}"
+        url = f"{domain}/pipeline-templates/{template_id}"
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
             return None
@@ -58,7 +58,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :return:
         """
         domain = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN
-        url = f"{domain}/pipelines?language={language}"
+        url = f"{domain}/pipeline-templates?language={language}"
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
             raise ValueError(f"fetch pipeline templates failed, status code: {response.status_code}")

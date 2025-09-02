@@ -17,8 +17,8 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         result = self.fetch_pipeline_templates_from_db(language)
         return result
 
-    def get_pipeline_template_detail(self, pipeline_id: str):
-        result = self.fetch_pipeline_template_detail_from_db(pipeline_id)
+    def get_pipeline_template_detail(self, template_id: str):
+        result = self.fetch_pipeline_template_detail_from_db(template_id)
         return result
 
     def get_type(self) -> str:
@@ -53,7 +53,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, pipeline_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> Optional[dict]:
         """
         Fetch pipeline template detail from db.
         :param pipeline_id: Pipeline ID
@@ -61,7 +61,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         """
         # is in public recommended list
         pipeline_template = (
-            db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.id == pipeline_id).first()
+            db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.id == template_id).first()
         )
 
         if not pipeline_template:
