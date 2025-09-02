@@ -18,7 +18,6 @@ const translation = {
     choose: 'Choose',
     details: 'Details',
     editInfo: 'Edit info',
-    exportDSL: 'Export DSL',
     useTemplate: 'Use this Knowledge Pipeline',
     backToDataSource: 'Back to Data Source',
     process: 'Process',

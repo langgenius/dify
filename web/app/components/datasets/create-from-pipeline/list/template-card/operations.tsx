@@ -49,7 +49,7 @@ const Operations = ({
           onClick={onClickExport}
         >
           <span className='system-md-regular px-1 text-text-secondary'>
-            {t('datasetPipeline.operations.exportDSL')}
+            {t('datasetPipeline.operations.exportPipeline')}
           </span>
         </div>
       </div>

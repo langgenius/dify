@@ -18,7 +18,6 @@ const translation = {
     choose: '选择',
     details: '详情',
     editInfo: '编辑信息',
-    exportDSL: '导出 DSL',
     useTemplate: '使用此知识流水线',
     backToDataSource: '返回数据源',
     process: '处理',

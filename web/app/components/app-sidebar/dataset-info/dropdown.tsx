@@ -112,6 +112,7 @@ const DropDown = ({
       } : {
         mainAxis: 4,
       }}
+      customContainer={document.body}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md')}>

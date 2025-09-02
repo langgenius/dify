@@ -31,6 +31,7 @@ export type PortalToFollowElemOptions = {
   offset?: number | OffsetOptions
   onOpenChange?: (open: boolean) => void
   triggerPopupSameWidth?: boolean
+  customContainer?: HTMLElement | null
 }
 
 export function usePortalToFollowElem({
@@ -39,8 +40,9 @@ export function usePortalToFollowElem({
   offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
   triggerPopupSameWidth,
+  customContainer = null,
 }: PortalToFollowElemOptions = {}) {
-  const container = document.getElementById('workflow-container') || document.body
+  const container = customContainer || document.getElementById('workflow-container') || document.body
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
   const handleOpenChange = useCallback((newOpen: boolean) => {
