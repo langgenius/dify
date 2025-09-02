@@ -21,6 +21,7 @@ const translation = {
       user: 'END-USER',
       triggerBy: 'TRIGGER BY',
       version: 'VERSION',
+      triggered_from: 'TRIGGER BY',
     },
     pagination: {
       previous: 'Prev',
