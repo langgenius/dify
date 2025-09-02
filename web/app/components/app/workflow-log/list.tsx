@@ -30,6 +30,8 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()
 
+  const isWorkflow = appDetail?.mode === 'workflow'
+
   const statusTdRender = (status: string) => {
     if (status === 'succeeded') {
       return (
@@ -92,7 +94,8 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.runtime')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.tokens')}</td>
-            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.user')}</td>
+            <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow ? 'rounded-r-lg' : '')}>{t('appLog.table.header.user')}</td>
+            {isWorkflow && <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.triggered_from')}</td>}
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -125,6 +128,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   {endUser}
                 </div>
               </td>
+              {isWorkflow && <td className='p-3 pr-2'>{log.workflow_run.triggered_from}</td>}
             </tr>
           })}
         </tbody>
