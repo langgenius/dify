@@ -125,7 +125,17 @@ class ConversationService:
         else:
             conversation.name = name
             conversation.updated_at = naive_utc_now()
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                # Handle case where conversation was deleted after we retrieved it
+                from sqlalchemy.orm.exc import StaleDataError
+                db.session.rollback()
+                if isinstance(e, StaleDataError):
+                    # Conversation was likely deleted, raise ConversationNotExistsError
+                    raise ConversationNotExistsError()
+                else:
+                    raise
 
         return conversation
 
@@ -151,7 +161,17 @@ class ConversationService:
         except:
             pass
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            # Handle case where conversation was deleted after we retrieved it
+            from sqlalchemy.orm.exc import StaleDataError
+            db.session.rollback()
+            if isinstance(e, StaleDataError):
+                # Conversation was likely deleted, raise ConversationNotExistsError
+                raise ConversationNotExistsError()
+            else:
+                raise
 
         return conversation
 

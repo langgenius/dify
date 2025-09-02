@@ -23,8 +23,10 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
 from libs.login import login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
-from models.model import AppMode
-from services.conversation_service import ConversationService
+from models.model import AppMode, MessageAgentThought, MessageChain, MessageFeedback, MessageFile, UploadFile
+from models.tools import ToolConversationVariables, ToolFile
+from models.web import PinnedConversation
+from models.workflow import ConversationVariable
 
 
 class CompletionConversationApi(Resource):
@@ -102,7 +104,7 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, app_model):
-        """Clear completion conversations and related data using service layer and Celery tasks"""
+        """Clear completion conversations and related data including files"""
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -110,24 +112,119 @@ class CompletionConversationApi(Resource):
         parser.add_argument('conversation_ids', type=str, action='append', location='json')
         args = parser.parse_args()
 
-        conversation_ids = None
+        # If specific conversation IDs provided, delete only those; otherwise delete all
         if args['conversation_ids']:
             conversation_ids = [str(id) for id in args['conversation_ids']]
+            conversations = db.session.query(Conversation).filter(
+                Conversation.app_id == app_model.id,
+                Conversation.mode == "completion",
+                Conversation.id.in_(conversation_ids)
+            ).all()
+        else:
+            # Get all conversations for this app
+            conversations = db.session.query(Conversation).filter(
+                Conversation.app_id == app_model.id,
+                Conversation.mode == "completion"
+            ).all()
 
-        # Use service layer to queue the cleanup task
-        result = ConversationService.clear_conversations(
-            app_model=app_model,
-            user=current_user,
-            conversation_ids=conversation_ids
-        )
+        # Collect all message IDs and upload file IDs first
+        all_message_ids = []
+        upload_file_ids = []
+        
+        for conversation in conversations:
+            message_ids = db.session.query(Message.id).filter(Message.conversation_id == conversation.id).all()
+            all_message_ids.extend([msg_id[0] for msg_id in message_ids])
+
+        # Collect upload file IDs for async deletion
+        if all_message_ids:
+            message_files = db.session.query(MessageFile).filter(MessageFile.message_id.in_(all_message_ids)).all()
+            upload_file_ids = [mf.upload_file_id for mf in message_files if mf.upload_file_id]
+
+        # Delete all database records first (in transaction)
+        try:
+            # Delete message-related database records
+            if all_message_ids:
+                try:
+                    db.session.query(MessageFeedback).filter(MessageFeedback.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(MessageFile).filter(MessageFile.message_id.in_(all_message_ids)).delete(synchronize_session=False)  
+                except Exception:
+                    pass
+                try:
+                    db.session.query(MessageChain).filter(MessageChain.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                except Exception:
+                    pass
+                try:
+                    db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                except Exception:
+                    pass
+
+            # Delete messages, annotations, and conversation variables
+            for conversation in conversations:
+                db.session.query(Message).filter(Message.conversation_id == conversation.id).delete()
+                db.session.query(MessageAnnotation).filter(
+                    MessageAnnotation.conversation_id == conversation.id
+                ).delete()
+                try:
+                    db.session.query(ConversationVariable).filter(
+                        ConversationVariable.conversation_id == conversation.id
+                    ).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(ToolConversationVariables).filter(
+                        ToolConversationVariables.conversation_id == conversation.id
+                    ).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(ToolFile).filter(ToolFile.conversation_id == conversation.id).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(PinnedConversation).filter(
+                        PinnedConversation.conversation_id == conversation.id
+                    ).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+
+            # Delete upload file records
+            if upload_file_ids:
+                db.session.query(UploadFile).filter(UploadFile.id.in_(upload_file_ids)).delete(synchronize_session=False)
+
+            # Delete conversations
+            if args['conversation_ids']:
+                conversation_ids = [str(id) for id in args['conversation_ids']]
+                db.session.query(Conversation).filter(
+                    Conversation.app_id == app_model.id,
+                    Conversation.mode == "completion",
+                    Conversation.id.in_(conversation_ids)
+                ).delete(synchronize_session=False)
+            else:
+                db.session.query(Conversation).filter(
+                    Conversation.app_id == app_model.id,
+                    Conversation.mode == "completion"
+                ).delete()
+
+            # Commit all database changes first
+            db.session.commit()
+
+            # Schedule async file cleanup after successful database deletion
+            if upload_file_ids:
+                from tasks.clean_uploaded_files_task import clean_uploaded_files_task
+                clean_uploaded_files_task.delay(upload_file_ids)
+
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
         return {
             "result": "success",
-            "task_id": result['task_id'],
-            "status": result['status'],
-            "estimated_conversations": result['estimated_conversations'],
-            "mode": result['mode'],
-            "message": "Conversation cleanup task queued successfully. Large datasets will be processed asynchronously."
+            "conversations_deleted": len(conversations),
+            "messages_deleted": len(all_message_ids),
+            "files_deleted": len(upload_file_ids)
         }
 
 
@@ -300,7 +397,7 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def delete(self, app_model):
-        """Clear chat conversations and related data using service layer and Celery tasks"""
+        """Clear chat conversations and related data including files"""
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -308,24 +405,119 @@ class ChatConversationApi(Resource):
         parser.add_argument('conversation_ids', type=str, action='append', location='json')
         args = parser.parse_args()
 
-        conversation_ids = None
+        # If specific conversation IDs provided, delete only those; otherwise delete all
         if args['conversation_ids']:
             conversation_ids = [str(id) for id in args['conversation_ids']]
+            conversations = db.session.query(Conversation).filter(
+                Conversation.app_id == app_model.id,
+                Conversation.mode.in_(["chat", "agent-chat", "advanced-chat"]),
+                Conversation.id.in_(conversation_ids)
+            ).all()
+        else:
+            # Get all conversations for this app
+            conversations = db.session.query(Conversation).filter(
+                Conversation.app_id == app_model.id,
+                Conversation.mode.in_(["chat", "agent-chat", "advanced-chat"])
+            ).all()
 
-        # Use service layer to queue the cleanup task
-        result = ConversationService.clear_conversations(
-            app_model=app_model,
-            user=current_user,
-            conversation_ids=conversation_ids
-        )
+        # Collect all message IDs and upload file IDs first
+        all_message_ids = []
+        upload_file_ids = []
+        
+        for conversation in conversations:
+            message_ids = db.session.query(Message.id).filter(Message.conversation_id == conversation.id).all()
+            all_message_ids.extend([msg_id[0] for msg_id in message_ids])
+
+        # Collect upload file IDs for async deletion
+        if all_message_ids:
+            message_files = db.session.query(MessageFile).filter(MessageFile.message_id.in_(all_message_ids)).all()
+            upload_file_ids = [mf.upload_file_id for mf in message_files if mf.upload_file_id]
+
+        # Delete all database records first (in transaction)
+        try:
+            # Delete message-related database records
+            if all_message_ids:
+                try:
+                    db.session.query(MessageFeedback).filter(MessageFeedback.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(MessageFile).filter(MessageFile.message_id.in_(all_message_ids)).delete(synchronize_session=False)  
+                except Exception:
+                    pass
+                try:
+                    db.session.query(MessageChain).filter(MessageChain.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                except Exception:
+                    pass
+                try:
+                    db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                except Exception:
+                    pass
+
+            # Delete messages, annotations, and conversation variables
+            for conversation in conversations:
+                db.session.query(Message).filter(Message.conversation_id == conversation.id).delete()
+                db.session.query(MessageAnnotation).filter(
+                    MessageAnnotation.conversation_id == conversation.id
+                ).delete()
+                try:
+                    db.session.query(ConversationVariable).filter(
+                        ConversationVariable.conversation_id == conversation.id
+                    ).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(ToolConversationVariables).filter(
+                        ToolConversationVariables.conversation_id == conversation.id
+                    ).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(ToolFile).filter(ToolFile.conversation_id == conversation.id).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+                try:
+                    db.session.query(PinnedConversation).filter(
+                        PinnedConversation.conversation_id == conversation.id
+                    ).delete()
+                except Exception:
+                    pass  # Table might not exist in this version
+
+            # Delete upload file records
+            if upload_file_ids:
+                db.session.query(UploadFile).filter(UploadFile.id.in_(upload_file_ids)).delete(synchronize_session=False)
+
+            # Delete conversations
+            if args['conversation_ids']:
+                conversation_ids = [str(id) for id in args['conversation_ids']]
+                db.session.query(Conversation).filter(
+                    Conversation.app_id == app_model.id,
+                    Conversation.mode.in_(["chat", "agent-chat", "advanced-chat"]),
+                    Conversation.id.in_(conversation_ids)
+                ).delete(synchronize_session=False)
+            else:
+                db.session.query(Conversation).filter(
+                    Conversation.app_id == app_model.id,
+                    Conversation.mode.in_(["chat", "agent-chat", "advanced-chat"])
+                ).delete()
+
+            # Commit all database changes first
+            db.session.commit()
+
+            # Schedule async file cleanup after successful database deletion
+            if upload_file_ids:
+                from tasks.clean_uploaded_files_task import clean_uploaded_files_task
+                clean_uploaded_files_task.delay(upload_file_ids)
+
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
         return {
             "result": "success",
-            "task_id": result['task_id'],
-            "status": result['status'],
-            "estimated_conversations": result['estimated_conversations'],
-            "mode": result['mode'],
-            "message": "Conversation cleanup task queued successfully. Large datasets will be processed asynchronously."
+            "conversations_deleted": len(conversations),
+            "messages_deleted": len(all_message_ids),
+            "files_deleted": len(upload_file_ids)
         }
 
 

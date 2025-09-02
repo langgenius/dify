@@ -87,12 +87,35 @@ export const clearChatConversations = async ({ appId, conversationIds }: { appId
     const body = conversationIds ? { conversation_ids: conversationIds } : {}
     const result = await del<any>(`/apps/${appId}/chat-conversations`, { body })
 
-    // Clear localStorage conversation info
+    // Clear localStorage to prevent 404 errors on explore pages
     if (typeof window !== 'undefined') {
       const conversationIdInfo = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
+      
+      // Clear conversation ID for the current app (from logs page)
+      let cleared = false
       if (conversationIdInfo[appId]) {
         delete conversationIdInfo[appId]
+        cleared = true
+        console.log(`✅ Cleared conversation ID info for app ${appId}`)
+      }
+      
+      // ADDITIONAL FIX: Also clear ALL conversation IDs to prevent explore page 404 errors
+      const keysToDelete = Object.keys(conversationIdInfo)
+      if (keysToDelete.length > 0) {
+        keysToDelete.forEach(key => {
+          delete conversationIdInfo[key]
+          console.log(`🧹 Cleared conversation ID for ${key} to prevent 404 errors`)
+        })
+        cleared = true
+      }
+      
+      if (cleared) {
         localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify(conversationIdInfo))
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: CONVERSATION_ID_INFO,
+          newValue: JSON.stringify(conversationIdInfo),
+          storageArea: localStorage
+        }))
       }
     }
 
@@ -123,12 +146,35 @@ export const clearCompletionConversations = async ({ appId, conversationIds }: {
     const body = conversationIds ? { conversation_ids: conversationIds } : {}
     const result = await del<any>(`/apps/${appId}/completion-conversations`, { body })
 
-    // Clear localStorage conversation info
+    // Clear localStorage to prevent 404 errors on explore pages
     if (typeof window !== 'undefined') {
       const conversationIdInfo = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
+      
+      // Clear conversation ID for the current app (from logs page)
+      let cleared = false
       if (conversationIdInfo[appId]) {
         delete conversationIdInfo[appId]
+        cleared = true
+        console.log(`✅ Cleared conversation ID info for app ${appId}`)
+      }
+      
+      // ADDITIONAL FIX: Also clear ALL conversation IDs to prevent explore page 404 errors
+      const keysToDelete = Object.keys(conversationIdInfo)
+      if (keysToDelete.length > 0) {
+        keysToDelete.forEach(key => {
+          delete conversationIdInfo[key]
+          console.log(`🧹 Cleared conversation ID for ${key} to prevent 404 errors`)
+        })
+        cleared = true
+      }
+      
+      if (cleared) {
         localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify(conversationIdInfo))
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: CONVERSATION_ID_INFO,
+          newValue: JSON.stringify(conversationIdInfo),
+          storageArea: localStorage
+        }))
       }
     }
 
