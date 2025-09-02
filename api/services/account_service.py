@@ -118,37 +118,37 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        # NOTE: make sure account is accessible outside of an db session
-        with Session(db.engine, expire_on_commit=False) as session:
-            account = session.query(Account).filter_by(id=user_id).first()
-            if not account:
+        account = db.session.query(Account).filter_by(id=user_id).first()
+        if not account:
+            return None
+
+        if account.status == AccountStatus.BANNED.value:
+            raise Unauthorized("Account is banned.")
+
+        current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
+        if current_tenant:
+            account.set_tenant_id(current_tenant.tenant_id)
+        else:
+            available_ta = (
+                db.session.query(TenantAccountJoin)
+                .filter_by(account_id=account.id)
+                .order_by(TenantAccountJoin.id.asc())
+                .first()
+            )
+            if not available_ta:
                 return None
 
-            if account.status == AccountStatus.BANNED.value:
-                raise Unauthorized("Account is banned.")
+            account.set_tenant_id(available_ta.tenant_id)
+            available_ta.current = True
+            db.session.commit()
 
-            current_tenant = session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
-            if current_tenant:
-                account.set_tenant_id(current_tenant.tenant_id)
-            else:
-                available_ta = (
-                    session.query(TenantAccountJoin)
-                    .filter_by(account_id=account.id)
-                    .order_by(TenantAccountJoin.id.asc())
-                    .first()
-                )
-                if not available_ta:
-                    return None
-
-                account.set_tenant_id(available_ta.tenant_id)
-                available_ta.current = True
-                session.commit()
-
-            if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
-                account.last_active_at = naive_utc_now()
-                session.commit()
-
-            return account
+        if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
+            account.last_active_at = naive_utc_now()
+            db.session.commit()
+        # NOTE: make sure account is accessible outside of an db session
+        db.session.refresh(account)
+        db.session.close()
+        return account
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
