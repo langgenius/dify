@@ -42,36 +42,31 @@ async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
 }
 
 async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
-  const urlParams = new URLSearchParams(window.location.search);
-  const systemVariables: Record<string, any> = {};
+  const urlParams = new URLSearchParams(window.location.search)
+  const systemVariables: Record<string, any> = {}
 
-  // Check if there is a 'redirect_url' parameter in the URL search string
-  const redirectUrl = urlParams.get('redirect_url');
+  const redirectUrl = urlParams.get('redirect_url')
   if (redirectUrl) {
-    // Decode the value of 'redirect_url'
-    const decodedRedirectUrl = decodeURIComponent(redirectUrl);
-    // Extract the query string portion from the decoded 'redirect_url'
-    const queryString = decodedRedirectUrl.split('?')[1];
+    const decodedRedirectUrl = decodeURIComponent(redirectUrl)
+    const queryString = decodedRedirectUrl.split('?')[1]
     if (queryString) {
-      // Create a new URLSearchParams object to parse the query string if it exists
-      const redirectParams = new URLSearchParams(queryString);
-      // Add the parameters from the decoded 'redirect_url' to the original URLSearchParams object
+      const redirectParams = new URLSearchParams(queryString)
       Array.from(redirectParams.entries()).forEach(([key, value]) => {
-        urlParams.append(key, value);
-      });
+        urlParams.append(key, value)
+      })
     }
   }
 
-  const entriesArray = Array.from(urlParams.entries());
+  const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
     entriesArray.map(async ([key, value]) => {
       if (key.startsWith('sys.')) {
-        systemVariables[key.slice(4)] = await decodeBase64AndDecompress(decodeURIComponent(value));
+        systemVariables[key.slice(4)] = await decodeBase64AndDecompress(decodeURIComponent(value))
       }
-    }),
-  );
+    })
+  )
 
-  return systemVariables;
+  return systemVariables
 }
 
 async function getProcessedUserVariablesFromUrlParams(): Promise<Record<string, any>> {
