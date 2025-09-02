@@ -1307,4 +1307,3 @@ class RagPipelineService:
             "installed_recommended_plugins": installed_plugin_list,
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
-
