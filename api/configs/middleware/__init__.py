@@ -179,7 +179,7 @@ class DatabaseConfig(BaseSettings):
 
     SQLALCHEMY_POOL_PRE_PING: bool = Field(
         description="If True, enables connection pool pre-ping feature to check connections.",
-        default=False,
+        default=True,
     )
 
     SQLALCHEMY_ECHO: bool | str = Field(
