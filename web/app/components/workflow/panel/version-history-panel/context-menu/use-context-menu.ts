@@ -29,10 +29,10 @@ const useContextMenu = (props: ContextMenuProps) => {
           key: VersionHistoryContextMenuOptions.edit,
           name: t('workflow.versionHistory.nameThisVersion'),
         },
-        {
-          key: VersionHistoryContextMenuOptions.exportDSL,
-          name: t('workflow.versionHistory.exportDSL'),
-        },
+      {
+        key: VersionHistoryContextMenuOptions.exportDSL,
+        name: t('workflow.versionHistory.exportDSL'),
+      },
       {
         key: VersionHistoryContextMenuOptions.copyId,
         name: t('workflow.versionHistory.copyId'),
