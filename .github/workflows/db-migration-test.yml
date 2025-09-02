@@ -30,9 +30,9 @@ jobs:
       - name: Ensure Offline migration are supported
         run: |
           # upgrade
-          uv run --directory api flask db upgrade 'base:heads' --sql
+          uv run --directory api flask db upgrade 'base:head' --sql
           # downgrade
-          uv run --directory api flask db downgrade 'heads:base' --sql
+          uv run --directory api flask db downgrade 'head:base' --sql
 
       - name: Prepare middleware env
         run: |

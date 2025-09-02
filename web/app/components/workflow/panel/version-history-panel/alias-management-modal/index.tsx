@@ -60,10 +60,10 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
       if (result.is_transferred) {
         if (result.old_workflow_id === versionHistory.id)
           message = aliasT.aliasExists
-         else
+        else
           message = aliasT.transferSuccess
       }
- else {
+      else {
         message = aliasT.createSuccess
       }
 
@@ -75,13 +75,13 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
       setIsAddingNew(false)
       onAliasChange()
     }
- catch (error: any) {
+    catch (error: any) {
       Toast.notify({
         type: 'error',
         message: error.message || aliasT.createFailure,
       })
     }
- finally {
+    finally {
       setIsCreating(false)
     }
   }, [newAliasName, versionHistory.id, createAlias, resetForm, onAliasChange])
@@ -95,7 +95,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
       })
       onAliasChange()
     }
- catch (error: any) {
+    catch (error: any) {
       Toast.notify({
         type: 'error',
         message: error.message || aliasT.deleteFailure,
@@ -156,62 +156,62 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
             </div>
           )}
         </div>
-            {isAddingNew ? (
-              <div className="relative z-10 flex items-center space-x-3 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 p-3">
-                <div className="flex-1">
-                  <Input
-                    value={newAliasName}
-                    onChange={e => setNewAliasName(e.target.value)}
-                    placeholder={aliasT.inputAlias}
-                    maxLength={255}
-                    className="w-full"
-                  />
-                </div>
+        {isAddingNew ? (
+          <div className="relative z-10 flex items-center space-x-3 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 p-3">
+            <div className="flex-1">
+              <Input
+                value={newAliasName}
+                onChange={e => setNewAliasName(e.target.value)}
+                placeholder={aliasT.inputAlias}
+                maxLength={255}
+                className="w-full"
+              />
+            </div>
 
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={handleCreateAlias}
-                    disabled={!newAliasName.trim() || isCreating}
-                    className="rounded-md p-2 text-green-600 transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    title={aliasT.confirmAdd}
-                  >
-                    {isCreating ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
-                    ) : (
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAddingNew(false)
-                      resetForm()
-                    }}
-                    className="rounded-md p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                    title={aliasT.cancel}
-                  >
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="pt-2">
-                <div
-                  className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:border-gray-400 hover:bg-gray-50"
-                  onClick={() => setIsAddingNew(true)}
-                >
-                  <RiAddLine className="mr-2 h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-500">
-                    {aliasT.add}
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleCreateAlias}
+                disabled={!newAliasName.trim() || isCreating}
+                className="rounded-md p-2 text-green-600 transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+                title={aliasT.confirmAdd}
+              >
+                {isCreating ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+                ) : (
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingNew(false)
+                  resetForm()
+                }}
+                className="rounded-md p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                title={aliasT.cancel}
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="pt-2">
+            <div
+              className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:border-gray-400 hover:bg-gray-50"
+              onClick={() => setIsAddingNew(true)}
+            >
+              <RiAddLine className="mr-2 h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-500">
+                {aliasT.add}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   )

@@ -106,7 +106,7 @@ export const useCreateWorkflowAlias = (appId: string) => {
             // Update existing alias (transfer case)
             existingAliases[existingIndex] = newAlias
           }
- else {
+          else {
             // Add new alias
             existingAliases.push(newAlias)
           }

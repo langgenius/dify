@@ -26,7 +26,7 @@ from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
+api: ExternalApi = ExternalApi(bp)
 
 # File
 api.add_resource(FileApi, "/files/upload")
