@@ -11,10 +11,11 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import ErrorStrategy, NodeType, SystemVariableKey
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, SystemVariableKey
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.base.template import Template
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
@@ -37,6 +38,7 @@ default_retrieval_model = {
 class KnowledgeIndexNode(Node):
     _node_data: KnowledgeIndexNodeData
     node_type = NodeType.KNOWLEDGE_INDEX
+    execution_type = NodeExecutionType.RESPONSE
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
         self._node_data = KnowledgeIndexNodeData.model_validate(data)
@@ -181,3 +183,13 @@ class KnowledgeIndexNode(Node):
     @classmethod
     def version(cls) -> str:
         return "1"
+
+
+    def get_streaming_template(self) -> Template:
+        """
+        Get the template for streaming.
+
+        Returns:
+            Template instance for this knowledge index node
+        """
+        return Template(segments=[])
