@@ -5,20 +5,7 @@ import { useTranslation } from 'react-i18next'
 import GenericTable from './generic-table'
 import type { ColumnConfig, GenericTableRow } from './generic-table'
 import type { ParameterType, WebhookParameter } from '../types'
-
-const normalizeParamType = (type: string): ParameterType => {
-  switch (type) {
-    case 'string':
-    case 'number':
-    case 'boolean':
-    case 'array':
-    case 'object':
-    case 'file':
-      return type
-    default:
-      return 'string'
-  }
-}
+import { createParameterTypeOptions, normalizeParameterType } from '../utils/parameter-type-utils'
 
 type ParameterTableProps = {
   title: string
@@ -43,59 +30,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const resolveTypeOptions = (): { name: string; value: ParameterType }[] => {
-    if (!isRequestBody) {
-      return [
-        { name: 'String', value: 'string' },
-      ]
-    }
-
-    const ct = (contentType || '').toLowerCase()
-    // application/json -> all JSON-friendly types
-    if (ct === 'application/json') {
-      return [
-        { name: 'String', value: 'string' },
-        { name: 'Number', value: 'number' },
-        { name: 'Boolean', value: 'boolean' },
-        { name: 'Array', value: 'array' },
-        { name: 'Object', value: 'object' },
-      ]
-    }
-    // text/plain -> plain text only
-    if (ct === 'text/plain') {
-      return [
-        { name: 'String', value: 'string' },
-      ]
-    }
-    // x-www-form-urlencoded and forms -> simple key-value pairs
-    if (ct === 'application/x-www-form-urlencoded' || ct === 'forms') {
-      return [
-        { name: 'String', value: 'string' },
-        { name: 'Number', value: 'number' },
-        { name: 'Boolean', value: 'boolean' },
-      ]
-    }
-    // multipart/form-data -> allow file additionally
-    if (ct === 'multipart/form-data') {
-      return [
-        { name: 'String', value: 'string' },
-        { name: 'Number', value: 'number' },
-        { name: 'Boolean', value: 'boolean' },
-        { name: 'File', value: 'file' },
-      ]
-    }
-
-    // Fallback: all json-like types
-    return [
-      { name: 'String', value: 'string' },
-      { name: 'Number', value: 'number' },
-      { name: 'Boolean', value: 'boolean' },
-      { name: 'Array', value: 'array' },
-      { name: 'Object', value: 'object' },
-    ]
-  }
-
-  const typeOptions = resolveTypeOptions()
+  const typeOptions = createParameterTypeOptions(contentType, isRequestBody)
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [
@@ -125,10 +60,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   ]
 
   // Choose sensible default type for new rows according to content type
-  const defaultTypeValue = ((): ParameterType => {
-    const first = typeOptions[0]?.value
-    return first || 'string'
-  })()
+  const defaultTypeValue: ParameterType = typeOptions[0]?.value || 'string'
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
@@ -151,7 +83,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
       .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
       .map(row => ({
         name: String(row.key),
-        type: isTextPlain ? 'string' : normalizeParamType((row.type as string) || 'string'),
+        type: isTextPlain ? 'string' : normalizeParameterType((row.type as string) || 'string'),
         required: Boolean(row.required),
       }))
 

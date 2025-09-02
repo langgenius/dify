@@ -363,7 +363,7 @@ describe('Weekly Schedule Time Logic Tests', () => {
           time: '2:00 PM',
         },
         timezone: 'UTC',
-            }
+      }
 
       const weeklyTimes = getNextExecutionTimes(weeklyConfig, 1)
       const dailyTimes = getNextExecutionTimes(dailyConfig, 1)
@@ -387,7 +387,7 @@ describe('Weekly Schedule Time Logic Tests', () => {
           time: '2:00 PM',
         },
         timezone: 'UTC',
-            }
+      }
 
       const weeklyTimes = getNextExecutionTimes(weeklyConfig, 1)
       const dailyTimes = getNextExecutionTimes(dailyConfig, 1)

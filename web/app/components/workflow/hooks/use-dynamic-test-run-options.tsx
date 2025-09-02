@@ -102,7 +102,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
             />
           )
         }
- else if (toolIcon && typeof toolIcon === 'object' && 'content' in toolIcon) {
+        else if (toolIcon && typeof toolIcon === 'object' && 'content' in toolIcon) {
           icon = (
             <AppIcon
               className="!h-6 !w-6 rounded-lg border-[0.5px] border-white/2 shadow-md"
@@ -112,7 +112,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
             />
           )
         }
- else {
+        else {
           icon = (
             <div className="bg-util-colors-white-white-500 flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 text-white shadow-md">
               <span className="text-xs font-medium text-text-tertiary">P</span>

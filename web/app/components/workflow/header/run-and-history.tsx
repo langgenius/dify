@@ -61,7 +61,7 @@ const RunMode = memo(() => {
     if (option.type === 'user_input') {
       handleWorkflowStartRunInWorkflow()
     }
- else {
+    else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
       console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
     }

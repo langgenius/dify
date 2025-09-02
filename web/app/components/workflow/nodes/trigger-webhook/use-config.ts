@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
+import { getArrayElementType, isArrayType } from './types'
+
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -31,12 +33,30 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
   // Helper function to convert ParameterType to InputVarType
   const toInputVarType = useCallback((type: string): InputVarType => {
+    // Handle specific array types
+    if (isArrayType(type as any)) {
+      const elementType = getArrayElementType(type as any)
+      switch (elementType) {
+        case 'string':
+          return InputVarType.textInput
+        case 'number':
+          return InputVarType.number
+        case 'boolean':
+          return InputVarType.checkbox
+        case 'object':
+          return InputVarType.jsonObject
+        default:
+          return InputVarType.textInput
+      }
+    }
+
+    // Handle non-array types
     const typeMap: Record<string, InputVarType> = {
       string: InputVarType.textInput,
       number: InputVarType.number,
       boolean: InputVarType.checkbox,
-      array: InputVarType.textInput, // Arrays as text for now
       object: InputVarType.jsonObject,
+      file: InputVarType.singleFile,
     }
     return typeMap[type] || InputVarType.textInput
   }, [])
@@ -49,12 +69,12 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       draft.variables = []
 
     if(hasDuplicateStr(newData.map(item => item.name))) {
-          Toast.notify({
-            type: 'error',
-            message: t('appDebug.varKeyError.keyAlreadyExists', {
-              key: t('appDebug.variableConfig.varName'),
-            }),
-          })
+      Toast.notify({
+        type: 'error',
+        message: t('appDebug.varKeyError.keyAlreadyExists', {
+          key: t('appDebug.variableConfig.varName'),
+        }),
+      })
       return false
     }
 
@@ -76,7 +96,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
       if (existingVarIndex >= 0)
         draft.variables[existingVarIndex] = newVar
-       else
+      else
         draft.variables.push(newVar)
     })
 

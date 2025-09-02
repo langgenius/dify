@@ -28,7 +28,7 @@ const getTriggerIcon = (trigger: AppTrigger) => {
         <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-black/15 bg-green-500" />
       )
     }
- else {
+    else {
       return (
         <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
       )
@@ -96,7 +96,7 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
       })
       invalidateAppTriggers(appId)
     }
- catch (error) {
+    catch (error) {
       console.error('Failed to update trigger status:', error)
     }
   }
