@@ -4,7 +4,7 @@ import type {
   MCPServerDetail,
   Tool,
 } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { RAGRecommendedPlugin, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { useInvalid } from './use-base'
 import {
@@ -309,5 +309,13 @@ export const useRemoveProviderCredentials = ({
       })
     },
     onSuccess,
+  })
+}
+
+export const useRAGRecommendedPlugins = (enabled: boolean) => {
+  return useQuery<RAGRecommendedPlugin[]>({
+    queryKey: [NAME_SPACE, 'rag-recommended-plugins'],
+    queryFn: () => get<RAGRecommendedPlugin[]>('/rag/pipelines/recommended-plugins'),
+    enabled,
   })
 }
