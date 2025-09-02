@@ -5,7 +5,7 @@ from flask import jsonify, request
 from werkzeug.exceptions import NotFound
 
 from controllers.trigger import bp
-from services.trigger.trigger_subscription_validation_service import TriggerSubscriptionValidationService
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger_service import TriggerService
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def trigger_endpoint(endpoint_id: str):
         raise NotFound("Invalid endpoint ID")
     handling_chain = [
         TriggerService.process_endpoint,
-        TriggerSubscriptionValidationService.process_validating_endpoint,
+        TriggerSubscriptionBuilderService.process_builder_validation_endpoint,
     ]
     try:
         for handler in handling_chain:

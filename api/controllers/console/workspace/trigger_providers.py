@@ -15,6 +15,7 @@ from libs.login import current_user, login_required
 from models.account import Account
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class TriggerProviderListApi(Resource):
         return jsonable_encoder(TriggerProviderService.list_trigger_providers(user.current_tenant_id))
 
 
-class TriggerSubscriptionListApi(Resource):
+class TriggerProviderSubscriptionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -54,7 +55,7 @@ class TriggerSubscriptionListApi(Resource):
             raise
 
 
-class TriggerSubscriptionsAddApi(Resource):
+class TriggerSubscriptionBuilderCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -67,35 +68,79 @@ class TriggerSubscriptionsAddApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("credential_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("expires_at", type=int, required=False, nullable=True, location="json", default=-1)
+        parser.add_argument("credentials", type=dict, required=False, nullable=False, location="json")
         args = parser.parse_args()
 
         try:
-            # Parse credential type
-            try:
-                credential_type = CredentialType(args["credential_type"])
-            except ValueError:
-                raise BadRequest(f"Invalid credential_type. Must be one of: {[t.value for t in CredentialType]}")
-
-            result = TriggerProviderService.add_trigger_provider(
+            credentials = args.get("credentials", {})
+            credential_type = CredentialType.API_KEY if credentials else CredentialType.UNAUTHORIZED
+            subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
                 tenant_id=user.current_tenant_id,
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
+                credentials=credentials,
                 credential_type=credential_type,
-                credentials=args["credentials"],
-                name=args.get("name"),
-                expires_at=args.get("expires_at", -1),
+                credential_expires_at=-1,
+                expires_at=-1,
             )
-
-            return result
-
+            return jsonable_encoder({"subscription_builder": subscription_builder})
         except ValueError as e:
             raise BadRequest(str(e))
         except Exception as e:
             logger.exception("Error adding provider credential", exc_info=e)
+            raise
+
+
+class TriggerSubscriptionBuilderVerifyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider, subscription_builder_id):
+        """Verify a subscription instance for a trigger provider"""
+        user = current_user
+        assert isinstance(user, Account)
+        assert user.current_tenant_id is not None
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        try:
+            TriggerSubscriptionBuilderService.verify_trigger_subscription_builder(
+                tenant_id=user.current_tenant_id,
+                user_id=user.id,
+                provider_id=TriggerProviderID(provider),
+                subscription_builder_id=subscription_builder_id,
+            )
+            return 200
+        except Exception as e:
+            logger.exception("Error verifying provider credential", exc_info=e)
+            raise
+
+
+class TriggerSubscriptionBuilderBuildApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider, subscription_builder_id):
+        """Build a subscription instance for a trigger provider"""
+        user = current_user
+        assert isinstance(user, Account)
+        assert user.current_tenant_id is not None
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        try:
+            TriggerSubscriptionBuilderService.build_trigger_subscription_builder(
+                tenant_id=user.current_tenant_id,
+                user_id=user.id,
+                provider_id=TriggerProviderID(provider),
+                subscription_builder_id=subscription_builder_id,
+            )
+            return 200
+        except ValueError as e:
+            raise BadRequest(str(e))
+        except Exception as e:
+            logger.exception("Error building provider credential", exc_info=e)
             raise
 
 
@@ -239,17 +284,17 @@ class TriggerOAuthCallbackApi(Resource):
             raise Exception("Failed to get OAuth credentials")
 
         # Save OAuth credentials to database
-        TriggerProviderService.add_trigger_provider(
+        subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=provider_id,
+            credentials=credentials,
             credential_type=CredentialType.OAUTH2,
-            credentials=dict(credentials),
+            credential_expires_at=expires_at,
             expires_at=expires_at,
         )
-
         # Redirect to OAuth callback page
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback?subscription_id={subscription_builder.id}")
 
 
 class TriggerOAuthRefreshTokenApi(Resource):
@@ -380,11 +425,18 @@ class TriggerOAuthClientManageApi(Resource):
 
 # Trigger provider endpoints
 api.add_resource(TriggerProviderListApi, "/workspaces/current/trigger-providers")
+api.add_resource(TriggerProviderSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/list")
 api.add_resource(
-    TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/list"
+    TriggerSubscriptionBuilderCreateApi,
+    "/workspaces/current/trigger-provider/subscriptions/<path:provider>/create-builder",
 )
 api.add_resource(
-    TriggerSubscriptionsAddApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/add"
+    TriggerSubscriptionBuilderVerifyApi,
+    "/workspaces/current/trigger-provider/subscriptions/<path:provider>/verify/<path:subscription_builder_id>",
+)
+api.add_resource(
+    TriggerSubscriptionBuilderBuildApi,
+    "/workspaces/current/trigger-provider/subscriptions/<path:provider>/build/<path:subscription_builder_id>",
 )
 api.add_resource(
     TriggerSubscriptionsDeleteApi,
@@ -393,13 +445,11 @@ api.add_resource(
 
 # OAuth
 api.add_resource(
-    TriggerOAuthAuthorizeApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/authorize"
+    TriggerOAuthAuthorizeApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/oauth/authorize"
 )
 api.add_resource(TriggerOAuthCallbackApi, "/oauth/plugin/<path:provider>/trigger/callback")
 api.add_resource(
     TriggerOAuthRefreshTokenApi,
     "/workspaces/current/trigger-provider/subscriptions/<path:subscription_id>/oauth/refresh",
 )
-api.add_resource(
-    TriggerOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client"
-)
+api.add_resource(TriggerOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client")

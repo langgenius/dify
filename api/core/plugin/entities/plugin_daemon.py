@@ -210,12 +210,15 @@ class PluginTriggerProviderEntity(BaseModel):
 class CredentialType(enum.StrEnum):
     API_KEY = "api-key"
     OAUTH2 = "oauth2"
+    UNAUTHORIZED = "unauthorized"
 
     def get_name(self):
         if self == CredentialType.API_KEY:
             return "API KEY"
         elif self == CredentialType.OAUTH2:
             return "AUTH"
+        elif self == CredentialType.UNAUTHORIZED:
+            return "UNAUTHORIZED"
         else:
             return self.value.replace("-", " ").upper()
 
@@ -236,5 +239,7 @@ class CredentialType(enum.StrEnum):
             return cls.API_KEY
         elif type_name == "oauth2":
             return cls.OAUTH2
+        elif type_name == "unauthorized":
+            return cls.UNAUTHORIZED
         else:
             raise ValueError(f"Invalid credential type: {credential_type}")

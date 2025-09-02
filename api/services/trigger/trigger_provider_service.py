@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from collections.abc import Mapping
 from typing import Any, Optional
 
@@ -16,7 +15,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from core.trigger.entities.api_entities import (
-    SubscriptionValidation,
     TriggerProviderApiEntity,
     TriggerProviderSubscriptionApiEntity,
 )
@@ -36,6 +34,9 @@ logger = logging.getLogger(__name__)
 class TriggerProviderService:
     """Service for managing trigger providers and credentials"""
 
+    ##########################
+    # Trigger provider
+    ##########################
     __MAX_TRIGGER_PROVIDER_COUNT__ = 10
 
     @classmethod
@@ -73,10 +74,14 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         user_id: str,
+        name: str,
         provider_id: TriggerProviderID,
+        endpoint_id: str,
         credential_type: CredentialType,
-        credentials: dict,
-        name: Optional[str] = None,
+        parameters: Mapping[str, Any],
+        properties: Mapping[str, Any],
+        credentials: Mapping[str, str],
+        credential_expires_at: int = -1,
         expires_at: int = -1,
     ) -> dict:
         """
@@ -93,7 +98,7 @@ class TriggerProviderService:
         """
         try:
             provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-            with Session(db.engine) as session:
+            with Session(db.engine, autoflush=False) as session:
                 # Use distributed lock to prevent race conditions
                 lock_key = f"trigger_provider_create_lock:{tenant_id}_{provider_id}"
                 with redis_client.lock(lock_key, timeout=20):
@@ -110,23 +115,14 @@ class TriggerProviderService:
                             f"reached for {provider_id}"
                         )
 
-                    # Generate name if not provided
-                    if not name:
-                        name = cls._generate_provider_name(
-                            session=session,
-                            tenant_id=tenant_id,
-                            provider_id=provider_id,
-                            credential_type=credential_type,
-                        )
-                    else:
-                        # Check if name already exists
-                        existing = (
-                            session.query(TriggerSubscription)
-                            .filter_by(tenant_id=tenant_id, provider_id=provider_id, name=name)
-                            .first()
-                        )
-                        if existing:
-                            raise ValueError(f"Credential name '{name}' already exists for this provider")
+                    # Check if name already exists
+                    existing = (
+                        session.query(TriggerSubscription)
+                        .filter_by(tenant_id=tenant_id, provider_id=provider_id, name=name)
+                        .first()
+                    )
+                    if existing:
+                        raise ValueError(f"Credential name '{name}' already exists for this provider")
 
                     encrypter, _ = create_provider_encrypter(
                         tenant_id=tenant_id,
@@ -138,10 +134,14 @@ class TriggerProviderService:
                     db_provider = TriggerSubscription(
                         tenant_id=tenant_id,
                         user_id=user_id,
-                        provider_id=provider_id,
-                        credential_type=credential_type.value,
-                        credentials=encrypter.encrypt(credentials),
                         name=name,
+                        endpoint_id=endpoint_id,
+                        provider_id=provider_id,
+                        parameters=parameters,
+                        properties=properties,
+                        credentials=encrypter.encrypt(dict(credentials)),
+                        credential_type=credential_type.value,
+                        credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
                     )
 
@@ -153,70 +153,6 @@ class TriggerProviderService:
         except Exception as e:
             logger.exception("Failed to add trigger provider")
             raise ValueError(str(e))
-
-    @classmethod
-    def update_trigger_provider(
-        cls,
-        tenant_id: str,
-        subscription_id: str,
-        credentials: Optional[dict] = None,
-        name: Optional[str] = None,
-    ) -> dict:
-        """
-        Update an existing trigger provider's credentials or name.
-
-        :param tenant_id: Tenant ID
-        :param subscription_id: Subscription instance ID
-        :param credentials: New credentials (optional)
-        :param name: New name (optional)
-        :return: Success response
-        """
-        with Session(db.engine) as session:
-            db_provider = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
-            if not db_provider:
-                raise ValueError(f"Trigger provider subscription {subscription_id} not found")
-
-            try:
-                provider_controller = TriggerManager.get_trigger_provider(
-                    tenant_id, TriggerProviderID(db_provider.provider_id)
-                )
-
-                if credentials:
-                    encrypter, cache = create_trigger_provider_encrypter_for_subscription(
-                        tenant_id=tenant_id,
-                        controller=provider_controller,
-                        subscription=db_provider,
-                    )
-                    # Handle hidden values
-                    original_credentials = encrypter.decrypt(db_provider.credentials)
-                    new_credentials = {
-                        key: value if value != HIDDEN_VALUE else original_credentials.get(key, UNKNOWN_VALUE)
-                        for key, value in credentials.items()
-                    }
-
-                    db_provider.credentials = encrypter.encrypt(new_credentials)
-                    cache.delete()
-
-                # Update name if provided
-                if name and name != db_provider.name:
-                    # Check if name already exists
-                    existing = (
-                        session.query(TriggerSubscription)
-                        .filter_by(tenant_id=tenant_id, provider_id=db_provider.provider_id, name=name)
-                        .filter(TriggerSubscription.id != subscription_id)
-                        .first()
-                    )
-                    if existing:
-                        raise ValueError(f"Credential name '{name}' already exists")
-
-                    db_provider.name = name
-
-                session.commit()
-                return {"result": "success"}
-
-            except Exception as e:
-                session.rollback()
-                raise ValueError(str(e))
 
     @classmethod
     def delete_trigger_provider(cls, tenant_id: str, subscription_id: str) -> dict:
@@ -506,59 +442,6 @@ class TriggerProviderService:
             return custom_client is not None
 
     @classmethod
-    def _generate_provider_name(
-        cls,
-        session: Session,
-        tenant_id: str,
-        provider_id: TriggerProviderID,
-        credential_type: CredentialType,
-    ) -> str:
-        """
-        Generate a unique name for a provider credential instance.
-
-        :param session: Database session
-        :param tenant_id: Tenant ID
-        :param provider: Provider identifier
-        :param credential_type: Credential type
-        :return: Generated name
-        """
-        try:
-            db_providers = (
-                session.query(TriggerSubscription)
-                .filter_by(
-                    tenant_id=tenant_id,
-                    provider_id=provider_id,
-                    credential_type=credential_type.value,
-                )
-                .order_by(desc(TriggerSubscription.created_at))
-                .all()
-            )
-
-            # Get base name
-            base_name = credential_type.get_name()
-
-            # Find existing numbered names
-            pattern = rf"^{re.escape(base_name)}\s+(\d+)$"
-            numbers = []
-
-            for db_provider in db_providers:
-                if db_provider.name:
-                    match = re.match(pattern, db_provider.name.strip())
-                    if match:
-                        numbers.append(int(match.group(1)))
-
-            # Generate next number
-            if not numbers:
-                return f"{base_name} 1"
-
-            max_number = max(numbers)
-            return f"{base_name} {max_number + 1}"
-
-        except Exception as e:
-            logger.warning("Error generating provider name")
-            return f"{credential_type.get_name()} 1"
-
-    @classmethod
     def get_subscription_by_endpoint(cls, endpoint_id: str) -> TriggerSubscription | None:
         """
         Get a trigger subscription by the endpoint ID.
@@ -566,15 +449,3 @@ class TriggerProviderService:
         with Session(db.engine, autoflush=False) as session:
             subscription = session.query(TriggerSubscription).filter_by(endpoint=endpoint_id).first()
             return subscription
-
-    @classmethod
-    def get_subscription_validation(cls, endpoint_id: str) -> SubscriptionValidation | None:
-        """
-        Get a trigger subscription by the endpoint ID.
-        """
-        cache_key = f"trigger:subscription:validation:endpoint:{endpoint_id}"
-        subscription_cache = redis_client.get(cache_key)
-        if subscription_cache:
-            return SubscriptionValidation.model_validate(json.loads(subscription_cache))
-
-        return None

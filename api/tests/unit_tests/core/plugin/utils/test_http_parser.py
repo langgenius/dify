@@ -420,7 +420,7 @@ class TestFileUploads:
 
         assert b"POST /api/upload HTTP/1.1\r\n" in raw_data
         assert f"Content-Type: multipart/form-data; boundary={boundary}".encode() in raw_data
-        assert b"Content-Disposition: form-data; name=\"file\"; filename=\"test.txt\"" in raw_data
+        assert b'Content-Disposition: form-data; name="file"; filename="test.txt"' in raw_data
         assert text_content.encode() in raw_data
 
     def test_deserialize_request_with_text_file_upload(self):
@@ -465,7 +465,7 @@ class TestFileUploads:
         boundary = "----BoundaryString123"
         # Simulate a small PNG file header
         binary_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10\x00\x00\x00\x10"
-        
+
         # Build multipart body
         body_parts = []
         body_parts.append(f"------{boundary}".encode())
@@ -478,7 +478,7 @@ class TestFileUploads:
         body_parts.append(b"")
         body_parts.append(b"Test image")
         body_parts.append(f"------{boundary}--".encode())
-        
+
         body = b"\r\n".join(body_parts)
 
         environ = {
@@ -499,16 +499,16 @@ class TestFileUploads:
 
         assert b"POST /api/images HTTP/1.1\r\n" in raw_data
         assert f"Content-Type: multipart/form-data; boundary={boundary}".encode() in raw_data
-        assert b"filename=\"test.png\"" in raw_data
+        assert b'filename="test.png"' in raw_data
         assert b"Content-Type: image/png" in raw_data
         assert binary_content in raw_data
 
     def test_deserialize_request_with_binary_file_upload(self):
         # Test deserializing multipart/form-data request with binary file
         boundary = "----BoundaryABC123"
-        # Simulate a small JPEG file header  
+        # Simulate a small JPEG file header
         binary_content = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
-        
+
         body_parts = []
         body_parts.append(f"------{boundary}".encode())
         body_parts.append(b'Content-Disposition: form-data; name="photo"; filename="photo.jpg"')
@@ -520,7 +520,7 @@ class TestFileUploads:
         body_parts.append(b"")
         body_parts.append(b"Vacation 2024")
         body_parts.append(f"------{boundary}--".encode())
-        
+
         body = b"\r\n".join(body_parts)
 
         raw_data = (
@@ -538,7 +538,7 @@ class TestFileUploads:
         assert request.path == "/api/photos"
         assert "multipart/form-data" in request.content_type
         assert request.headers.get("Accept") == "application/json"
-        
+
         # Verify the binary content is preserved
         request_body = request.get_data()
         assert b"photo.jpg" in request_body
@@ -553,7 +553,7 @@ class TestFileUploads:
         boundary = "----MultiFilesBoundary"
         text_file = b"Text file contents"
         binary_file = b"\x00\x01\x02\x03\x04\x05"
-        
+
         body_parts = []
         # First file (text)
         body_parts.append(f"------{boundary}".encode())
@@ -573,7 +573,7 @@ class TestFileUploads:
         body_parts.append(b"")
         body_parts.append(b"uploads/2024")
         body_parts.append(f"------{boundary}--".encode())
-        
+
         body = b"\r\n".join(body_parts)
 
         environ = {
@@ -606,7 +606,7 @@ class TestFileUploads:
 
         boundary = "----RoundTripBoundary"
         file_content = b"This is my file content with special chars: \xf0\x9f\x98\x80"
-        
+
         body_parts = []
         body_parts.append(f"------{boundary}".encode())
         body_parts.append(b'Content-Disposition: form-data; name="upload"; filename="emoji.txt"')
@@ -618,7 +618,7 @@ class TestFileUploads:
         body_parts.append(b"")
         body_parts.append(b'{"encoding": "utf-8", "size": 42}')
         body_parts.append(f"------{boundary}--".encode())
-        
+
         body = b"\r\n".join(body_parts)
 
         environ = {
@@ -647,7 +647,7 @@ class TestFileUploads:
         assert restored_request.query_string == b"version=2"
         assert "multipart/form-data" in restored_request.content_type
         assert boundary in restored_request.content_type
-        
+
         # Verify file content is preserved
         restored_body = restored_request.get_data()
         assert b"emoji.txt" in restored_body

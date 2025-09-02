@@ -3,7 +3,8 @@ Trigger Provider Controller for managing trigger providers
 """
 
 import logging
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from flask import Request
 
@@ -20,6 +21,7 @@ from core.trigger.entities.api_entities import TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     ProviderConfig,
     Subscription,
+    SubscriptionSchema,
     TriggerEntity,
     TriggerProviderEntity,
     TriggerProviderIdentity,
@@ -91,18 +93,17 @@ class PluginTriggerProviderController:
                 return trigger
         return None
 
-    def get_subscription_schema(self) -> list[ProviderConfig]:
+    def get_subscription_schema(self) -> SubscriptionSchema:
         """
         Get subscription schema for this provider
 
         :return: List of subscription config schemas
         """
-        # Return the parameters schema from the subscription schema
-        if self.entity.subscription_schema and self.entity.subscription_schema.parameters_schema:
-            return self.entity.subscription_schema.parameters_schema
-        return []
+        return self.entity.subscription_schema
 
-    def validate_credentials(self, credentials: dict) -> TriggerValidateProviderCredentialsResponse:
+    def validate_credentials(
+        self, user_id: str, credentials: Mapping[str, str]
+    ) -> TriggerValidateProviderCredentialsResponse:
         """
         Validate credentials against schema
 
@@ -123,7 +124,7 @@ class PluginTriggerProviderController:
         provider_id = self.get_provider_id()
         return manager.validate_provider_credentials(
             tenant_id=self.tenant_id,
-            user_id="system",  # System validation
+            user_id=user_id,
             provider=str(provider_id),
             credentials=credentials,
         )
@@ -153,6 +154,7 @@ class PluginTriggerProviderController:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
         if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+        raise ValueError(f"Invalid credential type: {credential_type}")
 
     def get_credential_schema_config(self, credential_type: CredentialType | str) -> list[BasicProviderConfig]:
         """
@@ -168,7 +170,7 @@ class PluginTriggerProviderController:
         """
         return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
 
-    def dispatch(self,user_id: str, request: Request, subscription: Subscription) -> TriggerDispatchResponse:
+    def dispatch(self, user_id: str, request: Request, subscription: Subscription) -> TriggerDispatchResponse:
         """
         Dispatch a trigger through plugin runtime
 
@@ -193,8 +195,8 @@ class PluginTriggerProviderController:
         self,
         user_id: str,
         trigger_name: str,
-        parameters: dict,
-        credentials: dict,
+        parameters: Mapping[str, Any],
+        credentials: Mapping[str, str],
         credential_type: CredentialType,
         request: Request,
     ) -> TriggerInvokeResponse:
@@ -223,7 +225,9 @@ class PluginTriggerProviderController:
             parameters=parameters,
         )
 
-    def subscribe_trigger(self, user_id: str, endpoint: str, parameters: dict, credentials: dict) -> Subscription:
+    def subscribe_trigger(
+        self, user_id: str, endpoint: str, parameters: Mapping[str, Any], credentials: Mapping[str, str]
+    ) -> Subscription:
         """
         Subscribe to a trigger through plugin runtime
 
@@ -247,7 +251,9 @@ class PluginTriggerProviderController:
 
         return Subscription.model_validate(response.subscription)
 
-    def unsubscribe_trigger(self, user_id: str, subscription: Subscription, credentials: dict) -> Unsubscription:
+    def unsubscribe_trigger(
+        self, user_id: str, subscription: Subscription, credentials: Mapping[str, str]
+    ) -> Unsubscription:
         """
         Unsubscribe from a trigger through plugin runtime
 
@@ -269,7 +275,7 @@ class PluginTriggerProviderController:
 
         return Unsubscription.model_validate(response.subscription)
 
-    def refresh_trigger(self, subscription: Subscription, credentials: dict) -> Subscription:
+    def refresh_trigger(self, subscription: Subscription, credentials: Mapping[str, str]) -> Subscription:
         """
         Refresh a trigger subscription through plugin runtime
 

@@ -1,4 +1,5 @@
 import binascii
+from collections.abc import Mapping
 from typing import Any
 
 from flask import Request
@@ -84,10 +85,10 @@ class PluginTriggerManager(BasePluginClient):
         user_id: str,
         provider: str,
         trigger: str,
-        credentials: dict[str, Any],
+        credentials: Mapping[str, str],
         credential_type: CredentialType,
         request: Request,
-        parameters: dict[str, Any],
+        parameters: Mapping[str, Any],
     ) -> TriggerInvokeResponse:
         """
         Invoke a trigger with the given parameters.
@@ -121,7 +122,7 @@ class PluginTriggerManager(BasePluginClient):
         raise ValueError("No response received from plugin daemon for invoke trigger")
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str, provider: str, credentials: dict[str, Any]
+        self, tenant_id: str, user_id: str, provider: str, credentials: Mapping[str, str]
     ) -> TriggerValidateProviderCredentialsResponse:
         """
         Validate the credentials of the trigger provider.
@@ -155,7 +156,7 @@ class PluginTriggerManager(BasePluginClient):
         tenant_id: str,
         user_id: str,
         provider: str,
-        subscription: dict[str, Any],
+        subscription: Mapping[str, Any],
         request: Request,
     ) -> TriggerDispatchResponse:
         """
@@ -194,9 +195,9 @@ class PluginTriggerManager(BasePluginClient):
         tenant_id: str,
         user_id: str,
         provider: str,
-        credentials: dict[str, Any],
+        credentials: Mapping[str, str],
         endpoint: str,
-        parameters: dict[str, Any],
+        parameters: Mapping[str, Any],
     ) -> TriggerSubscriptionResponse:
         """
         Subscribe to a trigger.
@@ -233,7 +234,7 @@ class PluginTriggerManager(BasePluginClient):
         user_id: str,
         provider: str,
         subscription: Subscription,
-        credentials: dict[str, Any],
+        credentials: Mapping[str, str],
     ) -> TriggerSubscriptionResponse:
         """
         Unsubscribe from a trigger.
@@ -269,7 +270,7 @@ class PluginTriggerManager(BasePluginClient):
         user_id: str,
         provider: str,
         subscription: Subscription,
-        credentials: dict[str, Any],
+        credentials: Mapping[str, str],
     ) -> TriggerSubscriptionResponse:
         """
         Refresh a trigger subscription.

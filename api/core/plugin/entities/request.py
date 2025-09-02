@@ -248,13 +248,16 @@ class PluginTriggerDispatchResponse(BaseModel):
     triggers: list[str]
     raw_http_response: str
 
+
 class TriggerSubscriptionResponse(BaseModel):
     subscription: dict[str, Any]
+
 
 class TriggerValidateProviderCredentialsResponse(BaseModel):
     valid: bool
     message: str
     error: str
+
 
 class TriggerDispatchResponse:
     triggers: list[str]

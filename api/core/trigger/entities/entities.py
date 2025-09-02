@@ -115,6 +115,18 @@ class SubscriptionSchema(BaseModel):
         description="The configuration schema stored in the subscription entity",
     )
 
+    def get_default_parameters(self) -> Mapping[str, Any]:
+        """Get the default parameters from the parameters schema"""
+        if not self.parameters_schema:
+            return {}
+        return {param.name: param.default for param in self.parameters_schema if param.default}
+
+    def get_default_properties(self) -> Mapping[str, Any]:
+        """Get the default properties from the properties schema"""
+        if not self.properties_schema:
+            return {}
+        return {prop.name: prop.default for prop in self.properties_schema if prop.default}
+
 
 class TriggerProviderEntity(BaseModel):
     """
@@ -148,13 +160,7 @@ class Subscription(BaseModel):
     )
 
     endpoint: str = Field(..., description="The webhook endpoint URL allocated by Dify for receiving events")
-
-    parameters: dict[str, Any] | None = Field(
-        default=None,
-        description="""The parameters of the subscription, this is the creation parameters.
-        Only available when creating a new subscription by credentials(auto subscription), not manual subscription""",
-    )
-    properties: dict[str, Any] = Field(
+    properties: Mapping[str, Any] = Field(
         ..., description="Subscription data containing all properties and provider-specific information"
     )
 
@@ -177,10 +183,43 @@ class Unsubscription(BaseModel):
     )
 
 
+class RequestLog(BaseModel):
+    id: str
+    endpoint: str
+    request: dict
+    response: dict
+    created_at: str
+
+
+class SubscriptionBuilder(BaseModel):
+    id: str
+    name: str | None = None
+    tenant_id: str
+    user_id: str
+    provider_id: str
+    endpoint_id: str
+    parameters: Mapping[str, Any]
+    properties: Mapping[str, Any]
+    credentials: Mapping[str, str]
+    credential_type: str | None = None
+    credential_expires_at: int | None = None
+    expires_at: int
+
+    def to_subscription(self) -> Subscription:
+        return Subscription(
+            expires_at=self.expires_at,
+            endpoint=self.endpoint_id,
+            parameters=self.parameters,
+            properties=self.properties,
+        )
+
+
 # Export all entities
 __all__ = [
     "OAuthSchema",
+    "RequestLog",
     "Subscription",
+    "SubscriptionBuilder",
     "TriggerDescription",
     "TriggerEntity",
     "TriggerIdentity",

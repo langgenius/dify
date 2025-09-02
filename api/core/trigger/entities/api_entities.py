@@ -7,7 +7,6 @@ from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import (
     OAuthSchema,
-    Subscription,
     SubscriptionSchema,
     TriggerDescription,
     TriggerEntity,
@@ -39,28 +38,5 @@ class TriggerApiEntity(BaseModel):
     description: TriggerDescription = Field(description="The description of the trigger")
     parameters: list[TriggerParameter] = Field(description="The parameters of the trigger")
     output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
-
-class SubscriptionValidation(BaseModel):
-    id: str
-    name: str
-    tenant_id: str
-    user_id: str
-    provider_id: str
-    endpoint: str
-    parameters: dict
-    properties: dict
-    credentials: dict
-    credential_type: str
-    credential_expires_at: int
-    expires_at: int
-
-    def to_subscription(self) -> Subscription:
-        return Subscription(
-            expires_at=self.expires_at,
-            endpoint=self.endpoint,
-            parameters=self.parameters,
-            properties=self.properties,
-        )
-
 
 __all__ = ["TriggerApiEntity", "TriggerProviderApiEntity", "TriggerProviderSubscriptionApiEntity"]

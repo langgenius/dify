@@ -3,7 +3,8 @@ Trigger Manager for loading and managing trigger providers and triggers
 """
 
 import logging
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from flask import Request
 
@@ -12,8 +13,8 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeResponse
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
-    ProviderConfig,
     Subscription,
+    SubscriptionSchema,
     TriggerEntity,
     Unsubscription,
 )
@@ -116,19 +117,20 @@ class TriggerManager:
 
     @classmethod
     def validate_trigger_credentials(
-        cls, tenant_id: str, provider_id: TriggerProviderID, credentials: dict
+        cls, tenant_id: str, provider_id: TriggerProviderID, user_id: str, credentials: Mapping[str, str]
     ) -> tuple[bool, str]:
         """
         Validate trigger provider credentials
 
         :param tenant_id: Tenant ID
         :param provider_id: Provider ID
+        :param user_id: User ID
         :param credentials: Credentials to validate
         :return: Tuple of (is_valid, error_message)
         """
         try:
             provider = cls.get_trigger_provider(tenant_id, provider_id)
-            validation_result = provider.validate_credentials(credentials)
+            validation_result = provider.validate_credentials(user_id, credentials)
             return validation_result.valid, validation_result.message if not validation_result.valid else ""
         except Exception as e:
             return False, str(e)
@@ -140,8 +142,8 @@ class TriggerManager:
         user_id: str,
         provider_id: TriggerProviderID,
         trigger_name: str,
-        parameters: dict,
-        credentials: dict,
+        parameters: Mapping[str, Any],
+        credentials: Mapping[str, str],
         credential_type: CredentialType,
         request: Request,
     ) -> TriggerInvokeResponse:
@@ -171,8 +173,8 @@ class TriggerManager:
         user_id: str,
         provider_id: TriggerProviderID,
         endpoint: str,
-        parameters: dict,
-        credentials: dict,
+        parameters: Mapping[str, Any],
+        credentials: Mapping[str, str],
     ) -> Subscription:
         """
         Subscribe to a trigger (e.g., register webhook)
@@ -197,7 +199,7 @@ class TriggerManager:
         user_id: str,
         provider_id: TriggerProviderID,
         subscription: Subscription,
-        credentials: dict,
+        credentials: Mapping[str, str],
     ) -> Unsubscription:
         """
         Unsubscribe from a trigger
@@ -213,7 +215,7 @@ class TriggerManager:
         return provider.unsubscribe_trigger(user_id=user_id, subscription=subscription, credentials=credentials)
 
     @classmethod
-    def get_provider_subscription_schema(cls, tenant_id: str, provider_id: TriggerProviderID) -> list[ProviderConfig]:
+    def get_provider_subscription_schema(cls, tenant_id: str, provider_id: TriggerProviderID) -> SubscriptionSchema:
         """
         Get provider subscription schema
 
@@ -228,9 +230,8 @@ class TriggerManager:
         cls,
         tenant_id: str,
         provider_id: TriggerProviderID,
-        trigger_name: str,
         subscription: Subscription,
-        credentials: dict,
+        credentials: Mapping[str, str],
     ) -> Subscription:
         """
         Refresh a trigger subscription
@@ -242,7 +243,7 @@ class TriggerManager:
         :param credentials: Provider credentials
         :return: Refreshed subscription result
         """
-        return cls.get_trigger_provider(tenant_id, provider_id).refresh_trigger(trigger_name, subscription, credentials)
+        return cls.get_trigger_provider(tenant_id, provider_id).refresh_trigger(subscription, credentials)
 
 
 # Export

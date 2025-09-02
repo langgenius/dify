@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription
+from core.trigger.utils.endpoint import parse_endpoint_id
 from models.base import Base
 from models.types import StringUUID
 
@@ -22,10 +23,13 @@ class TriggerSubscription(Base):
 
     __tablename__ = "trigger_subscriptions"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="trigger_subscription_pkey"),
-        Index("idx_trigger_subscriptions_tenant_provider", "tenant_id", "provider_id"),
-        UniqueConstraint("tenant_id", "provider_id", "name", name="unique_trigger_subscription"),
-        UniqueConstraint("endpoint", name="unique_trigger_subscription_endpoint"),
+        sa.PrimaryKeyConstraint("id", name="trigger_provider_pkey"),
+        Index("idx_trigger_providers_tenant_provider", "tenant_id", "provider_id"),
+        # Primary index for O(1) lookup by endpoint
+        Index("idx_trigger_providers_endpoint", "endpoint_id", unique=True),
+        # Composite index for tenant-specific queries (optional, kept for compatibility)
+        Index("idx_trigger_providers_tenant_endpoint", "tenant_id", "endpoint_id"),
+        UniqueConstraint("tenant_id", "provider_id", "name", name="unique_trigger_provider"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
@@ -35,7 +39,7 @@ class TriggerSubscription(Base):
     provider_id: Mapped[str] = mapped_column(
         String(255), nullable=False, comment="Provider identifier (e.g., plugin_id/provider_name)"
     )
-    endpoint: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription endpoint")
+    endpoint_id: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription endpoint")
     parameters: Mapped[dict] = mapped_column(sa.JSON, nullable=False, comment="Subscription parameters JSON")
     properties: Mapped[dict] = mapped_column(sa.JSON, nullable=False, comment="Subscription properties JSON")
 
@@ -63,8 +67,7 @@ class TriggerSubscription(Base):
     def to_entity(self) -> Subscription:
         return Subscription(
             expires_at=self.expires_at,
-            endpoint=self.endpoint,
-            parameters=self.parameters,
+            endpoint=parse_endpoint_id(self.endpoint_id),
             properties=self.properties,
         )
 
@@ -76,6 +79,7 @@ class TriggerSubscription(Base):
             credential_type=CredentialType(self.credential_type),
             credentials=self.credentials,
         )
+
 
 # system level trigger oauth client params
 class TriggerOAuthSystemClient(Base):
