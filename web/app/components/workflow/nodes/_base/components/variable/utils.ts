@@ -258,7 +258,7 @@ const formatItem = (
           required: v.required,
         }
         try {
-          if(type === VarType.object && v.json_schema) {
+          if (type === VarType.object && v.json_schema) {
             varRes.children = {
               schema: JSON.parse(v.json_schema),
             }

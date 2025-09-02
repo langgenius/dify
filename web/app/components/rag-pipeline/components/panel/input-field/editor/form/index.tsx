@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
+import type { MoreInfo } from '@/app/components/workflow/types'
 import { ChangeType } from '@/app/components/workflow/types'
 import { useFileUploadConfig } from '@/service/use-common'
 import type { FormData, InputFieldFormProps } from './types'
@@ -18,6 +19,7 @@ const InputFieldForm = ({
   supportFile = false,
   onCancel,
   onSubmit,
+  isEditMode = true,
 }: InputFieldFormProps) => {
   const { t } = useTranslation()
 
@@ -47,12 +49,13 @@ const InputFieldForm = ({
       },
     },
     onSubmit: ({ value }) => {
-      const moreInfo = value.variable === initialData?.variable
-        ? undefined
-        : {
+      let moreInfo: MoreInfo | undefined
+      if (isEditMode && value.variable !== initialData?.variable) {
+        moreInfo = {
           type: ChangeType.changeVarName,
           payload: { beforeKey: initialData?.variable || '', afterKey: value.variable },
         }
+      }
       onSubmit(value as FormData, moreInfo)
     },
   })

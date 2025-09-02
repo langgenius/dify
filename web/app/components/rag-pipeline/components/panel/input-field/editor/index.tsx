@@ -59,6 +59,7 @@ const InputFieldEditorPanel = ({
         supportFile
         onCancel={onClose}
         onSubmit={handleSubmit}
+        isEditMode={!!initialData}
       />
     </div>
   )

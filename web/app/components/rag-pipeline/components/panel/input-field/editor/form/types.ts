@@ -25,6 +25,7 @@ export type InputFieldFormProps = {
   supportFile?: boolean
   onCancel: () => void
   onSubmit: (value: FormData, moreInfo?: MoreInfo) => void
+  isEditMode?: boolean
 }
 
 export type SchemaOptions = {
