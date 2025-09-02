@@ -2,11 +2,14 @@ import unittest
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 from sqlalchemy.orm import Session
 
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate
 from events.event_handlers.sync_workflow_schedule_when_app_published import (
     sync_schedule_from_workflow,
 )
+from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.workflow import Workflow, WorkflowSchedulePlan
 from services.schedule_service import ScheduleService
@@ -22,7 +25,7 @@ class TestScheduleService(unittest.TestCase):
         timezone = "UTC"
         base_time = datetime(2025, 8, 29, 9, 0, 0, tzinfo=UTC)
 
-        next_run = ScheduleService.calculate_next_run_at(cron_expr, timezone, base_time)
+        next_run = calculate_next_run_at(cron_expr, timezone, base_time)
 
         assert next_run is not None
         assert next_run.hour == 10
@@ -35,7 +38,7 @@ class TestScheduleService(unittest.TestCase):
         timezone = "America/New_York"
         base_time = datetime(2025, 8, 29, 12, 0, 0, tzinfo=UTC)  # 8:00 AM EDT
 
-        next_run = ScheduleService.calculate_next_run_at(cron_expr, timezone, base_time)
+        next_run = calculate_next_run_at(cron_expr, timezone, base_time)
 
         assert next_run is not None
         # 9:00 AM EDT = 13:00 UTC (during EDT)
@@ -48,7 +51,7 @@ class TestScheduleService(unittest.TestCase):
         timezone = "UTC"
         base_time = datetime(2025, 2, 15, 9, 0, 0, tzinfo=UTC)
 
-        next_run = ScheduleService.calculate_next_run_at(cron_expr, timezone, base_time)
+        next_run = calculate_next_run_at(cron_expr, timezone, base_time)
 
         assert next_run is not None
         # February 2025 has 28 days
@@ -57,35 +60,41 @@ class TestScheduleService(unittest.TestCase):
 
     def test_calculate_next_run_at_invalid_cron(self):
         """Test calculating next run time with invalid cron expression."""
+        from croniter import CroniterBadCronError
+
         cron_expr = "invalid cron"
         timezone = "UTC"
 
-        next_run = ScheduleService.calculate_next_run_at(cron_expr, timezone)
-
-        assert next_run is None
+        with pytest.raises(CroniterBadCronError):
+            calculate_next_run_at(cron_expr, timezone)
 
     def test_calculate_next_run_at_invalid_timezone(self):
         """Test calculating next run time with invalid timezone."""
+        from pytz import UnknownTimeZoneError
+
         cron_expr = "30 10 * * *"
         timezone = "Invalid/Timezone"
 
-        next_run = ScheduleService.calculate_next_run_at(cron_expr, timezone)
+        with pytest.raises(UnknownTimeZoneError):
+            calculate_next_run_at(cron_expr, timezone)
 
-        assert next_run is None
-
-    @patch("services.schedule_service.ScheduleService.calculate_next_run_at")
+    @patch("libs.schedule_utils.calculate_next_run_at")
     def test_create_schedule(self, mock_calculate_next_run):
         """Test creating a new schedule."""
         mock_session = MagicMock(spec=Session)
         mock_calculate_next_run.return_value = datetime(2025, 8, 30, 10, 30, 0, tzinfo=UTC)
 
+        config = ScheduleConfig(
+            node_id="start",
+            cron_expression="30 10 * * *",
+            timezone="UTC",
+        )
+
         schedule = ScheduleService.create_schedule(
             session=mock_session,
             tenant_id="test-tenant",
             app_id="test-app",
-            node_id="start",
-            cron_expression="30 10 * * *",
-            timezone="UTC",
+            config=config,
         )
 
         assert schedule is not None
@@ -98,20 +107,20 @@ class TestScheduleService(unittest.TestCase):
         mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()
 
-    @patch("services.schedule_service.ScheduleService.calculate_next_run_at")
+    @patch("services.schedule_service.calculate_next_run_at")
     def test_update_schedule(self, mock_calculate_next_run):
         """Test updating an existing schedule."""
         mock_session = MagicMock(spec=Session)
         mock_schedule = Mock(spec=WorkflowSchedulePlan)
         mock_schedule.cron_expression = "0 12 * * *"
-        mock_schedule.timezone = "UTC"
+        mock_schedule.timezone = "America/New_York"
         mock_session.get.return_value = mock_schedule
         mock_calculate_next_run.return_value = datetime(2025, 8, 30, 12, 0, 0, tzinfo=UTC)
 
-        updates = {
-            "cron_expression": "0 12 * * *",
-            "timezone": "America/New_York",
-        }
+        updates = SchedulePlanUpdate(
+            cron_expression="0 12 * * *",
+            timezone="America/New_York",
+        )
 
         result = ScheduleService.update_schedule(
             session=mock_session,
@@ -126,17 +135,24 @@ class TestScheduleService(unittest.TestCase):
         mock_session.flush.assert_called_once()
 
     def test_update_schedule_not_found(self):
-        """Test updating a non-existent schedule."""
+        """Test updating a non-existent schedule raises exception."""
+        from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
+
         mock_session = MagicMock(spec=Session)
         mock_session.get.return_value = None
 
-        result = ScheduleService.update_schedule(
-            session=mock_session,
-            schedule_id="non-existent-id",
-            updates={"cron_expression": "0 12 * * *"},
+        updates = SchedulePlanUpdate(
+            cron_expression="0 12 * * *",
         )
 
-        assert result is None
+        with pytest.raises(ScheduleNotFoundError) as context:
+            ScheduleService.update_schedule(
+                session=mock_session,
+                schedule_id="non-existent-id",
+                updates=updates,
+            )
+
+        assert "Schedule not found: non-existent-id" in str(context.value)
         mock_session.flush.assert_not_called()
 
     def test_delete_schedule(self):
@@ -145,26 +161,30 @@ class TestScheduleService(unittest.TestCase):
         mock_schedule = Mock(spec=WorkflowSchedulePlan)
         mock_session.get.return_value = mock_schedule
 
-        result = ScheduleService.delete_schedule(
+        # Should not raise exception and complete successfully
+        ScheduleService.delete_schedule(
             session=mock_session,
             schedule_id="test-schedule-id",
         )
 
-        assert result
         mock_session.delete.assert_called_once_with(mock_schedule)
         mock_session.flush.assert_called_once()
 
     def test_delete_schedule_not_found(self):
-        """Test deleting a non-existent schedule."""
+        """Test deleting a non-existent schedule raises exception."""
+        from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
+
         mock_session = MagicMock(spec=Session)
         mock_session.get.return_value = None
 
-        result = ScheduleService.delete_schedule(
-            session=mock_session,
-            schedule_id="non-existent-id",
-        )
+        # Should raise ScheduleNotFoundError
+        with pytest.raises(ScheduleNotFoundError) as context:
+            ScheduleService.delete_schedule(
+                session=mock_session,
+                schedule_id="non-existent-id",
+            )
 
-        assert not result
+        assert "Schedule not found: non-existent-id" in str(context.value)
         mock_session.delete.assert_not_called()
 
     @patch("services.schedule_service.select")
@@ -211,7 +231,7 @@ class TestScheduleService(unittest.TestCase):
         assert result is not None
         assert result.id == "admin-account-id"
 
-    @patch("services.schedule_service.ScheduleService.calculate_next_run_at")
+    @patch("services.schedule_service.calculate_next_run_at")
     def test_update_next_run_at(self, mock_calculate_next_run):
         """Test updating next run time after schedule triggered."""
         mock_session = MagicMock(spec=Session)
@@ -311,43 +331,43 @@ class TestParseTime(unittest.TestCase):
 
     def test_parse_time_am(self):
         """Test parsing AM time."""
-        hour, minute = ScheduleService.parse_time("9:30 AM")
+        hour, minute = convert_12h_to_24h("9:30 AM")
         assert hour == 9
         assert minute == 30
 
     def test_parse_time_pm(self):
         """Test parsing PM time."""
-        hour, minute = ScheduleService.parse_time("2:45 PM")
+        hour, minute = convert_12h_to_24h("2:45 PM")
         assert hour == 14
         assert minute == 45
 
     def test_parse_time_noon(self):
         """Test parsing 12:00 PM (noon)."""
-        hour, minute = ScheduleService.parse_time("12:00 PM")
+        hour, minute = convert_12h_to_24h("12:00 PM")
         assert hour == 12
         assert minute == 0
 
     def test_parse_time_midnight(self):
         """Test parsing 12:00 AM (midnight)."""
-        hour, minute = ScheduleService.parse_time("12:00 AM")
+        hour, minute = convert_12h_to_24h("12:00 AM")
         assert hour == 0
         assert minute == 0
 
     def test_parse_time_invalid_format(self):
         """Test parsing invalid time format."""
-        hour, minute = ScheduleService.parse_time("25:00")
+        hour, minute = convert_12h_to_24h("25:00")
         assert hour is None
         assert minute is None
 
     def test_parse_time_invalid_hour(self):
         """Test parsing invalid hour."""
-        hour, minute = ScheduleService.parse_time("13:00 PM")
+        hour, minute = convert_12h_to_24h("13:00 PM")
         assert hour is None
         assert minute is None
 
     def test_parse_time_invalid_minute(self):
         """Test parsing invalid minute."""
-        hour, minute = ScheduleService.parse_time("10:60 AM")
+        hour, minute = convert_12h_to_24h("10:60 AM")
         assert hour is None
         assert minute is None
 
@@ -375,9 +395,9 @@ class TestExtractScheduleConfig(unittest.TestCase):
         config = ScheduleService.extract_schedule_config(workflow)
 
         assert config is not None
-        assert config["node_id"] == "schedule-node"
-        assert config["cron_expression"] == "0 10 * * *"
-        assert config["timezone"] == "America/New_York"
+        assert config.node_id == "schedule-node"
+        assert config.cron_expression == "0 10 * * *"
+        assert config.timezone == "America/New_York"
 
     def test_extract_schedule_config_with_visual_mode(self):
         """Test extracting schedule config in visual mode."""
@@ -400,9 +420,9 @@ class TestExtractScheduleConfig(unittest.TestCase):
         config = ScheduleService.extract_schedule_config(workflow)
 
         assert config is not None
-        assert config["node_id"] == "schedule-node"
-        assert config["cron_expression"] == "30 10 * * *"
-        assert config["timezone"] == "UTC"
+        assert config.node_id == "schedule-node"
+        assert config.cron_expression == "30 10 * * *"
+        assert config.timezone == "UTC"
 
     def test_extract_schedule_config_no_schedule_node(self):
         """Test extracting config when no schedule node exists."""
@@ -454,7 +474,7 @@ class TestScheduleWithTimezone(unittest.TestCase):
         # Base time: 2025-01-01 00:00:00 UTC (08:00:00 Shanghai)
         base_time = datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC)
 
-        next_run = ScheduleService.calculate_next_run_at(cron_expr, shanghai_tz, base_time)
+        next_run = calculate_next_run_at(cron_expr, shanghai_tz, base_time)
 
         assert next_run is not None
 
@@ -485,14 +505,14 @@ class TestScheduleWithTimezone(unittest.TestCase):
         base_time = datetime(2025, 1, 5, 12, 0, 0, tzinfo=UTC)
 
         # Test New York (UTC-5 in January)
-        ny_next = ScheduleService.calculate_next_run_at(cron_expr, "America/New_York", base_time)
+        ny_next = calculate_next_run_at(cron_expr, "America/New_York", base_time)
         assert ny_next is not None
         # Monday 9 AM EST = Monday 14:00 UTC
         assert ny_next.day == 6
         assert ny_next.hour == 14  # 9 AM EST = 2 PM UTC
 
         # Test Tokyo (UTC+9)
-        tokyo_next = ScheduleService.calculate_next_run_at(cron_expr, "Asia/Tokyo", base_time)
+        tokyo_next = calculate_next_run_at(cron_expr, "Asia/Tokyo", base_time)
         assert tokyo_next is not None
         # Monday 9 AM JST = Monday 00:00 UTC
         assert tokyo_next.day == 6
@@ -515,14 +535,14 @@ class TestScheduleWithTimezone(unittest.TestCase):
 
         # Test before DST (EST - UTC-5)
         winter_base = datetime(2025, 2, 1, 0, 0, 0, tzinfo=UTC)
-        winter_next = ScheduleService.calculate_next_run_at(cron_expr, "America/New_York", winter_base)
+        winter_next = calculate_next_run_at(cron_expr, "America/New_York", winter_base)
         assert winter_next is not None
         # 10 AM EST = 15:00 UTC
         assert winter_next.hour == 15
 
         # Test during DST (EDT - UTC-4)
         summer_base = datetime(2025, 6, 1, 0, 0, 0, tzinfo=UTC)
-        summer_next = ScheduleService.calculate_next_run_at(cron_expr, "America/New_York", summer_base)
+        summer_next = calculate_next_run_at(cron_expr, "America/New_York", summer_base)
         assert summer_next is not None
         # 10 AM EDT = 14:00 UTC
         assert summer_next.hour == 14
@@ -544,11 +564,12 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
         with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
             mock_session.scalar.return_value = None  # No existing plan
 
-            mock_service.extract_schedule_config.return_value = {
-                "node_id": "start",
-                "cron_expression": "30 10 * * *",
-                "timezone": "UTC",
-            }
+            # Mock extract_schedule_config to return a ScheduleConfig object
+            mock_config = Mock(spec=ScheduleConfig)
+            mock_config.node_id = "start"
+            mock_config.cron_expression = "30 10 * * *"
+            mock_config.timezone = "UTC"
+            mock_service.extract_schedule_config.return_value = mock_config
 
             mock_new_plan = Mock(spec=WorkflowSchedulePlan)
             mock_service.create_schedule.return_value = mock_new_plan
@@ -576,11 +597,12 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             mock_existing_plan.id = "existing-plan-id"
             mock_session.scalar.return_value = mock_existing_plan
 
-            mock_service.extract_schedule_config.return_value = {
-                "node_id": "start",
-                "cron_expression": "0 12 * * *",
-                "timezone": "America/New_York",
-            }
+            # Mock extract_schedule_config to return a ScheduleConfig object
+            mock_config = Mock(spec=ScheduleConfig)
+            mock_config.node_id = "start"
+            mock_config.cron_expression = "0 12 * * *"
+            mock_config.timezone = "America/New_York"
+            mock_service.extract_schedule_config.return_value = mock_config
 
             mock_updated_plan = Mock(spec=WorkflowSchedulePlan)
             mock_service.update_schedule.return_value = mock_updated_plan
@@ -589,15 +611,16 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
             assert result == mock_updated_plan
-            mock_service.update_schedule.assert_called_once_with(
-                session=mock_session,
-                schedule_id="existing-plan-id",
-                updates={
-                    "node_id": "start",
-                    "cron_expression": "0 12 * * *",
-                    "timezone": "America/New_York",
-                },
-            )
+            mock_service.update_schedule.assert_called_once()
+            # Verify the arguments passed to update_schedule
+            call_args = mock_service.update_schedule.call_args
+            assert call_args.kwargs["session"] == mock_session
+            assert call_args.kwargs["schedule_id"] == "existing-plan-id"
+            updates_obj = call_args.kwargs["updates"]
+            assert isinstance(updates_obj, SchedulePlanUpdate)
+            assert updates_obj.node_id == "start"
+            assert updates_obj.cron_expression == "0 12 * * *"
+            assert updates_obj.timezone == "America/New_York"
             mock_session.commit.assert_called_once()
 
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
@@ -613,6 +636,7 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
 
         with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
             mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
+            mock_existing_plan.id = "existing-plan-id"
             mock_session.scalar.return_value = mock_existing_plan
 
             mock_service.extract_schedule_config.return_value = None  # No schedule config
@@ -621,7 +645,8 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
             assert result is None
-            mock_session.delete.assert_called_once_with(mock_existing_plan)
+            # Now using ScheduleService.delete_schedule instead of session.delete
+            mock_service.delete_schedule.assert_called_once_with(session=mock_session, schedule_id="existing-plan-id")
             mock_session.commit.assert_called_once()
 
 
