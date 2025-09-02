@@ -303,6 +303,7 @@ export const usePipelineRun = () => {
     })
 
     workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+    workflowStore.getState().setRagPipelineVariables?.(publishedWorkflow.rag_pipeline_variables || [])
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
   return {
