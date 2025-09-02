@@ -58,7 +58,7 @@ def login_required(func: Callable[P, R]):
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif current_user is not None and not current_user.is_authenticated:
-            return current_app.login_manager.unauthorized()  # type: ignored
+            return current_app.login_manager.unauthorized()  # type: ignore
         return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view
