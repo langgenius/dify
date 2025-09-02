@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
-import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
+import type { HttpMethod, ParameterType, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
 import { getArrayElementType, isArrayType } from './types'
 
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
@@ -32,10 +32,10 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   }, [inputs, setInputs])
 
   // Helper function to convert ParameterType to InputVarType
-  const toInputVarType = useCallback((type: string): InputVarType => {
+  const toInputVarType = useCallback((type: ParameterType): InputVarType => {
     // Handle specific array types
-    if (isArrayType(type as any)) {
-      const elementType = getArrayElementType(type as any)
+    if (isArrayType(type)) {
+      const elementType = getArrayElementType(type)
       switch (elementType) {
         case 'string':
           return InputVarType.textInput

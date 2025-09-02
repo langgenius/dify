@@ -105,7 +105,7 @@ export const normalizeParameterType = (input: string | undefined | null): Parame
  * Gets display name for parameter types in UI components
  */
 export const getParameterTypeDisplayName = (type: ParameterType): string => {
-  return TYPE_DISPLAY_NAMES[type] ?? 'String'
+  return TYPE_DISPLAY_NAMES[type]
 }
 
 // Type validation functions for better reusability
@@ -135,7 +135,7 @@ export const validateParameterValue = (value: unknown, type: ParameterType): boo
   // Handle basic types
   if (type in validators) {
     const validator = validators[type as keyof typeof validators]
-    return validator ? validator(value) : false
+    return validator(value)
   }
 
   // Handle array types
