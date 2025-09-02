@@ -32,6 +32,7 @@ export type MarkdownProps = {
   content: string
   className?: string
   customDisallowedElements?: string[]
+  rehypePlugins?: any// js: PluggableList[]
   customComponents?: Record<string, React.ComponentType<any>>
 }
 
@@ -71,6 +72,7 @@ export const Markdown = (props: MarkdownProps) => {
               tree.children.forEach(iterate)
             }
           },
+          ...(props.rehypePlugins || []),
         ]}
         urlTransform={customUrlTransform}
         disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}

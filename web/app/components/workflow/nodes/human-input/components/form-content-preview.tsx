@@ -10,6 +10,7 @@ import Badge from '@/app/components/base/badge'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { RiCloseLine } from '@remixicon/react'
+import { Variable, rehypeVariable } from './variable-in-markdown'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -38,7 +39,16 @@ const FormContentPreview: FC<Props> = ({
         <ActionButton onClick={onClose}><RiCloseLine className='w-5 text-text-tertiary' /></ActionButton>
       </div>
       <div className='max-h-[calc(100vh-167px)] overflow-y-auto px-4'>
-        <Markdown content={content} />
+        <Markdown
+          content={content}
+          customDisallowedElements={['variable']}
+          rehypePlugins={[rehypeVariable]}
+          customComponents={{
+            variable: ({ node, ...props }: any) => (
+              <Variable path={node.properties?.path as string} />
+            ),
+          }}
+        />
         <div className='mt-3 flex flex-wrap gap-1 py-1'>
           {userActions.map((action: any) => (
             <Button
