@@ -351,7 +351,7 @@ class TidbOnQdrantVector(BaseVector):
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
             score_threshold = kwargs.get("score_threshold") or 0.0
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
                     page_content=result.payload.get(Field.CONTENT_KEY.value, ""),
