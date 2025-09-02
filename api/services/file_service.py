@@ -3,7 +3,6 @@ import os
 import uuid
 from typing import Any, Literal, Union
 
-from libs.login import current_user
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -19,6 +18,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
+from libs.login import current_user
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile

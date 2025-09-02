@@ -8,10 +8,9 @@ import uuid
 from collections import Counter
 from typing import Any, Literal, Optional
 
-from libs.login import current_user
+import sqlalchemy as sa
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
-import sqlalchemy as sa
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -28,6 +27,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now
+from libs.login import current_user
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -2517,7 +2517,7 @@ class SegmentService:
         dataset: Dataset,
     ) -> list[ChildChunk]:
         assert isinstance(current_user, Account)
-        
+
         child_chunks = (
             db.session.query(ChildChunk)
             .where(

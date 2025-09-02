@@ -1,4 +1,3 @@
-from models.model import EndUser
 import os
 from typing import Literal, Optional
 
