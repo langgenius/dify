@@ -934,7 +934,6 @@ const translation = {
     },
     defaultName: '未命名',
     nameThisVersion: '命名',
-    exportDSL: '导出 DSL',
     editVersionInfo: '编辑信息',
     copyId: '复制 ID',
     editField: {

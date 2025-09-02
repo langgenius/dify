@@ -934,7 +934,6 @@ const translation = {
     },
     defaultName: 'Untitled Version',
     nameThisVersion: 'Name this version',
-    exportDSL: 'Export DSL',
     editVersionInfo: 'Edit version info',
     copyId: 'Copy ID',
     editField: {

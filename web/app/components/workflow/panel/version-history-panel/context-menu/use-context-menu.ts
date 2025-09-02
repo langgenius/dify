@@ -31,7 +31,7 @@ const useContextMenu = (props: ContextMenuProps) => {
         },
       {
         key: VersionHistoryContextMenuOptions.exportDSL,
-        name: t('workflow.versionHistory.exportDSL'),
+        name: t('app.export'),
       },
       {
         key: VersionHistoryContextMenuOptions.copyId,
