@@ -26,6 +26,7 @@ import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolSuggestions from './rag-tool-suggestions'
+import { useRAGRecommendedPlugins } from '@/service/use-tools'
 
 type AllToolsProps = {
   className?: string
@@ -117,6 +118,10 @@ const AllTools = ({
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !searchText
+  const { data: ragRecommendedPlugins = [] } = useRAGRecommendedPlugins(isShowRAGRecommendations)
+  const recommendedPlugins = useMemo(() => {
+    return ragRecommendedPlugins.filter(plugin => !plugin.installed)
+  }, [ragRecommendedPlugins])
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -147,9 +152,9 @@ const AllTools = ({
         className='max-h-[464px] overflow-y-auto'
         onScroll={pluginRef.current?.handleScroll}
       >
-        {isShowRAGRecommendations && (
+        {recommendedPlugins.length > 0 && (
           <RAGToolSuggestions
-            tools={[]}
+            tools={recommendedPlugins}
             viewType={isSupportGroupView ? activeView : ViewType.flat}
             onSelect={onSelect}
             onTagsChange={onTagsChange}

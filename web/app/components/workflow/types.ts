@@ -445,6 +445,10 @@ export type ToolWithProvider = Collection & {
   meta: PluginMeta
 }
 
+export type RAGRecommendedPlugin = ToolWithProvider & {
+  installed: boolean
+}
+
 export enum SupportUploadFileTypes {
   image = 'image',
   document = 'document',
