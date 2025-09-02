@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from json import JSONDecodeError
 from typing import Any, Optional
 
-from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
+from core.entities.provider_configuration import ProviderConfigurations
 from extensions.ext_redis import redis_client
 
 
@@ -86,6 +86,8 @@ class NoOpProviderCredentialCache:
 
 
 provider_configurations_cache = {}
+
+
 class ProviderConfigurationsCache:
     def __init__(self, tenant_id: str):
         self.cache_key = f"provider_configurations:tenant_id:{tenant_id}"
