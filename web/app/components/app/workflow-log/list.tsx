@@ -43,7 +43,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
           <Indicator color={'red'} />
-          <span className='text-util-colors-red-red-600'>Fail</span>
+          <span className='text-util-colors-red-red-600'>Failure</span>
         </div>
       )
     }
