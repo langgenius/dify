@@ -1,9 +1,6 @@
-from typing import Optional
-from typing import TypeVar
-from typing import ParamSpec
-from typing import Concatenate
-from typing import Callable
+from collections.abc import Callable
 from functools import wraps
+from typing import Concatenate, Optional, ParamSpec, TypeVar
 
 from flask_login import current_user
 from flask_restx import Resource
