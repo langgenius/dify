@@ -18,7 +18,7 @@ const translation = {
       status: 'STATUS',
       runtime: 'RUN TIME',
       tokens: 'TOKENS',
-      user: 'END-USER',
+      user: 'END USER OR ACCOUNT',
       triggerBy: 'TRIGGER BY',
       version: 'VERSION',
       triggered_from: 'TRIGGER BY',
