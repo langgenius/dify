@@ -7,6 +7,7 @@ import logging
 from collections.abc import Sequence
 from typing import Optional, Union
 
+import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -191,9 +192,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
     def _is_duplicate_key_error(self, exception: BaseException) -> bool:
         """Check if the exception is a duplicate key constraint violation."""
-        return isinstance(exception, IntegrityError) and "duplicate key value violates unique constraint" in str(
-            exception
-        )
+        return isinstance(exception, IntegrityError) and isinstance(exception.orig, psycopg2.errors.UniqueViolation)
 
     def _regenerate_id_on_duplicate(
         self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel

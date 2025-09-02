@@ -3,6 +3,7 @@
 from datetime import datetime
 from unittest.mock import MagicMock, Mock
 
+import psycopg2.errors
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -50,11 +51,12 @@ class TestWorkflowNodeExecutionConflictHandling:
         # Mock session.get to return None (no existing record)
         mock_session.get.return_value = None
 
-        # Create IntegrityError for duplicate key
+        # Create IntegrityError for duplicate key with proper psycopg2.errors.UniqueViolation
+        mock_unique_violation = Mock(spec=psycopg2.errors.UniqueViolation)
         duplicate_error = IntegrityError(
             "duplicate key value violates unique constraint",
             params=None,
-            orig=None,
+            orig=mock_unique_violation,
         )
 
         # First call to session.add raises IntegrityError, second succeeds
@@ -133,11 +135,12 @@ class TestWorkflowNodeExecutionConflictHandling:
         # Mock session.get to return None (no existing record)
         mock_session.get.return_value = None
 
-        # Create IntegrityError for duplicate key
+        # Create IntegrityError for duplicate key with proper psycopg2.errors.UniqueViolation
+        mock_unique_violation = Mock(spec=psycopg2.errors.UniqueViolation)
         duplicate_error = IntegrityError(
             "duplicate key value violates unique constraint",
             params=None,
-            orig=None,
+            orig=mock_unique_violation,
         )
 
         # All attempts fail with duplicate error
