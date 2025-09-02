@@ -32,7 +32,7 @@
       "value": "es-ES",
       "name": "Español (España)",
       "prompt_name": "Spanish",
-      "example": "Saluton, Dify!",
+      "example": "¡Hola, Dify!",
       "supported": true
     },
     {
@@ -83,13 +83,6 @@
       "prompt_name": "Thai",
       "example": "สวัสดี Dify!",
       "supported": true
-    },
-    {
-      "value": "id-ID",
-      "name": "Bahasa Indonesia",
-      "prompt_name": "Indonesian",
-      "example": "Saluto, Dify!",
-      "supported": false
     },
     {
       "value": "uk-UA",
@@ -145,6 +138,13 @@
       "name": "Slovensko (Slovenija)",
       "prompt_name": "Slovensko",
       "example": "Zdravo, Dify!",
+      "supported": true
+    },
+    {
+      "value": "id-ID",
+      "name": "Bahasa Indonesia",
+      "prompt_name": "Indonesian",
+      "example": "Halo, Dify!",
       "supported": true
     }
   ]
