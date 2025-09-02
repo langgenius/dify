@@ -276,20 +276,22 @@ const ValueContent = ({
         {showTextEditor && (
           <>
             {isTruncated && <LargeDataAlert className='absolute left-3 right-3 top-1' />}
-            currentVar.value_type === 'string' ? (
-            <DisplayContent
-              type={ContentType.Markdown}
-              mdString={value as any}
-              readonly={textEditorDisabled}
-              handleTextChange={handleTextChange}
-            />
-            ) : <Textarea
-              readOnly={textEditorDisabled}
-              disabled={textEditorDisabled || isTruncated}
-              className={cn('h-full', isTruncated && 'pt-[48px]')}
-              value={value as any}
-              onChange={e => handleTextChange(e.target.value)}
-            />
+            {
+              currentVar.value_type === 'string' ? (
+                <DisplayContent
+                  type={ContentType.Markdown}
+                  mdString={value as any}
+                  readonly={textEditorDisabled}
+                  handleTextChange={handleTextChange}
+                />
+              ) : <Textarea
+                readOnly={textEditorDisabled}
+                disabled={textEditorDisabled || isTruncated}
+                className={cn('h-full', isTruncated && 'pt-[48px]')}
+                value={value as any}
+                onChange={e => handleTextChange(e.target.value)}
+              />
+            }
           </>
         )}
         {showBoolEditor && (
