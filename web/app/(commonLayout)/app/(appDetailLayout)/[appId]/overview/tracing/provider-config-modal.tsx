@@ -491,7 +491,7 @@ const ProviderConfigModal: FC<Props> = ({
                             value={(config as MLflowConfig).tracking_uri}
                             isRequired
                             onChange={handleConfigChange('tracking_uri')}
-                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.trackingUri`) })!}
+                            placeholder={'http://localhost:5000'}
                           />
                           <Field
                             label={t(`${I18N_PREFIX}.experimentId`)!}
@@ -502,17 +502,15 @@ const ProviderConfigModal: FC<Props> = ({
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.experimentId`) })!}
                           />
                           <Field
-                            label='Username'
+                            label={t(`${I18N_PREFIX}.username`)!}
                             labelClassName='!text-sm'
-                            isRequired
                             value={(config as MLflowConfig).username}
                             onChange={handleConfigChange('username')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.username`) })!}
                           />
                           <Field
-                            label='Password'
+                            label={t(`${I18N_PREFIX}.password`)!}
                             labelClassName='!text-sm'
-                            isRequired
                             value={(config as MLflowConfig).password}
                             onChange={handleConfigChange('password')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.password`) })!}

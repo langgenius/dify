@@ -13,7 +13,7 @@ import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, MLflowIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -71,7 +71,7 @@ const Panel: FC = () => {
     [TracingProvider.opik]: OpikIcon,
     [TracingProvider.weave]: WeaveIcon,
     [TracingProvider.aliyun]: AliyunIcon,
-    [TracingProvider.mlflow]: MLflowIcon,
+    [TracingProvider.mlflow]: MlflowIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
