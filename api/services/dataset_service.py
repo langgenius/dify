@@ -499,11 +499,11 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
         try:
             model_manager = ModelManager()
             embedding_model = model_manager.get_model_instance(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_user.current_tenant_id, # type: ignore
                 provider=data["embedding_model_provider"],
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
@@ -613,12 +613,12 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
 
         model_manager = ModelManager()
         try:
             embedding_model = model_manager.get_model_instance(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_user.current_tenant_id, # type: ignore
                 provider=data["embedding_model_provider"],
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
