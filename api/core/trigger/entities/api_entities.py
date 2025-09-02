@@ -21,6 +21,9 @@ class TriggerProviderSubscriptionApiEntity(BaseModel):
     provider: str = Field(description="The provider id of the subscription")
     credential_type: CredentialType = Field(description="The type of the credential")
     credentials: dict = Field(description="The credentials of the subscription")
+    endpoint: str = Field(description="The endpoint of the subscription")
+    parameters: dict = Field(description="The parameters of the subscription")
+    properties: dict = Field(description="The properties of the subscription")
 
 
 class TriggerProviderApiEntity(BaseModel):

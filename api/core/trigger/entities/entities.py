@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
 
@@ -39,7 +40,7 @@ class TriggerParameter(BaseModel):
     template: Optional[PluginParameterTemplate] = Field(default=None, description="The template of the parameter")
     scope: Optional[str] = None
     required: Optional[bool] = False
-    default: Union[int, float, str, None] = None
+    default: Union[int, float, str, list, None] = None
     min: Union[float, int, None] = None
     max: Union[float, int, None] = None
     precision: Optional[int] = None
@@ -105,7 +106,7 @@ class SubscriptionSchema(BaseModel):
     The subscription schema of the trigger provider
     """
 
-    parameters_schema: list[ProviderConfig] | None = Field(
+    parameters_schema: list[TriggerParameter] | None = Field(
         default_factory=list,
         description="The parameters schema required to create a subscription",
     )
@@ -184,32 +185,33 @@ class Unsubscription(BaseModel):
 
 
 class RequestLog(BaseModel):
-    id: str
-    endpoint: str
-    request: dict
-    response: dict
-    created_at: str
+    id: str = Field(..., description="The id of the request log")
+    endpoint: str = Field(..., description="The endpoint of the request log")
+    request: dict = Field(..., description="The request of the request log")
+    response: dict = Field(..., description="The response of the request log")
+    created_at: datetime = Field(..., description="The created at of the request log")
 
 
 class SubscriptionBuilder(BaseModel):
-    id: str
-    name: str | None = None
-    tenant_id: str
-    user_id: str
-    provider_id: str
-    endpoint_id: str
-    parameters: Mapping[str, Any]
-    properties: Mapping[str, Any]
-    credentials: Mapping[str, str]
-    credential_type: str | None = None
-    credential_expires_at: int | None = None
-    expires_at: int
+    id: str = Field(..., description="The id of the subscription builder")
+    name: str | None = Field(default=None, description="The name of the subscription builder")
+    tenant_id: str = Field(..., description="The tenant id of the subscription builder")
+    user_id: str = Field(..., description="The user id of the subscription builder")
+    provider_id: str = Field(..., description="The provider id of the subscription builder")
+    endpoint_id: str = Field(..., description="The endpoint id of the subscription builder")
+    parameters: Mapping[str, Any] = Field(..., description="The parameters of the subscription builder")
+    properties: Mapping[str, Any] = Field(..., description="The properties of the subscription builder")
+    credentials: Mapping[str, str] = Field(..., description="The credentials of the subscription builder")
+    credential_type: str | None = Field(default=None, description="The credential type of the subscription builder")
+    credential_expires_at: int | None = Field(
+        default=None, description="The credential expires at of the subscription builder"
+    )
+    expires_at: int = Field(..., description="The expires at of the subscription builder")
 
     def to_subscription(self) -> Subscription:
         return Subscription(
             expires_at=self.expires_at,
             endpoint=self.endpoint_id,
-            parameters=self.parameters,
             properties=self.properties,
         )
 

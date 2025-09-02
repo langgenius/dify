@@ -142,7 +142,6 @@ class TriggerService:
             user_id=subscription.user_id, request=request, subscription=subscription.to_entity()
         )
 
-        # TODO invoke triggers
         if dispatch_response.triggers:
             triggers = cls.select_triggers(controller, dispatch_response, provider_id, subscription)
             for trigger in triggers:

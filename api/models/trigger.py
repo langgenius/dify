@@ -52,9 +52,12 @@ class TriggerSubscription(Base):
         Integer, default=-1, comment="Subscription instance expiration timestamp, -1 for never"
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
     )
 
     def is_credential_expired(self) -> bool:
@@ -76,6 +79,9 @@ class TriggerSubscription(Base):
             id=self.id,
             name=self.name,
             provider=self.provider_id,
+            endpoint=parse_endpoint_id(self.endpoint_id),
+            parameters=self.parameters,
+            properties=self.properties,
             credential_type=CredentialType(self.credential_type),
             credentials=self.credentials,
         )
@@ -94,6 +100,13 @@ class TriggerOAuthSystemClient(Base):
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
 
 
 # tenant level trigger oauth client params (client_id, client_secret, etc.)
@@ -112,6 +125,13 @@ class TriggerOAuthTenantClient(Base):
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
 
     @property
     def oauth_params(self) -> dict:

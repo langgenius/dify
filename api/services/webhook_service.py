@@ -45,10 +45,10 @@ class WebhookService:
                 )
                 .first()
             )
-            
+
             if not app_trigger:
                 raise ValueError(f"App trigger not found for webhook {webhook_id}")
-            
+
             if app_trigger.status != AppTriggerStatus.ENABLED:
                 raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
