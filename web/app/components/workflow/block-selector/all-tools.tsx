@@ -117,10 +117,12 @@ const AllTools = ({
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
-  const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !searchText
-  const { data: ragRecommendedPlugins = [] } = useRAGRecommendedPlugins(isShowRAGRecommendations)
+  const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !searchText && tags.length === 0
+  const { data: ragRecommendedPlugins } = useRAGRecommendedPlugins(isShowRAGRecommendations)
   const recommendedPlugins = useMemo(() => {
-    return ragRecommendedPlugins.filter(plugin => !plugin.installed)
+    if (ragRecommendedPlugins)
+      return [...ragRecommendedPlugins.installed_recommended_plugins]
+    return []
   }, [ragRecommendedPlugins])
 
   return (

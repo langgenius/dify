@@ -448,8 +448,16 @@ export type ToolWithProvider = Collection & {
   meta: PluginMeta
 }
 
-export type RAGRecommendedPlugin = ToolWithProvider & {
-  installed: boolean
+export type UninstalledRecommendedPlugin = {
+  plugin_id: string
+  name: string
+  icon: string
+  plugin_unique_identifier: string
+}
+
+export type RAGRecommendedPlugins = {
+  installed_recommended_plugins: ToolWithProvider[]
+  uninstalled_recommended_plugins: UninstalledRecommendedPlugin[]
 }
 
 export enum SupportUploadFileTypes {
