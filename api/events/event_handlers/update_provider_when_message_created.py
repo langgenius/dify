@@ -35,23 +35,16 @@ def _get_provider_cache_key(tenant_id: str, provider_name: str) -> str:
 @redis_fallback(default_return=None)
 def _get_last_update_timestamp(cache_key: str) -> Optional[datetime]:
     """Get last update timestamp from Redis cache."""
-    try:
-        timestamp_str = redis_client.get(cache_key)
-        if timestamp_str:
-            return datetime.fromisoformat(timestamp_str.decode("utf-8"))
-        return None
-    except Exception as e:
-        logger.warning("Failed to get last update timestamp from Redis: %s", e)
-        return None
+    timestamp_str = redis_client.get(cache_key)
+    if timestamp_str:
+        return datetime.fromtimestamp(float(timestamp_str.decode("utf-8")))
+    return None
 
 
 @redis_fallback()
 def _set_last_update_timestamp(cache_key: str, timestamp: datetime) -> None:
     """Set last update timestamp in Redis cache with TTL."""
-    try:
-        redis_client.setex(cache_key, _CACHE_TTL_SECONDS, timestamp.isoformat())
-    except Exception as e:
-        logger.warning("Failed to set last update timestamp in Redis: %s", e)
+    redis_client.setex(cache_key, _CACHE_TTL_SECONDS, str(timestamp.timestamp()))
 
 
 class _ProviderUpdateFilters(BaseModel):
@@ -250,7 +243,13 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
             # Prepare values dict for SQLAlchemy update
             update_values = {}
 
-            # Time-window based update for last_used to avoid hot row contention
+            # NOTE: For frequently used providers under high load, this implementation may experience
+            # race conditions or update contention despite the time-window optimization:
+            # 1. Multiple concurrent requests might check the same cache key simultaneously
+            # 2. Redis cache operations are not atomic with database updates
+            # 3. Heavy providers could still face database lock contention during peak usage
+            # The current implementation is acceptable for most scenarios, but future optimization
+            # considerations could include: batched updates, or async processing.
             if values.last_used is not None:
                 cache_key = _get_provider_cache_key(filters.tenant_id, filters.provider_name)
                 now = datetime_utils.naive_utc_now()
