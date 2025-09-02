@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import DetailPanel from './detail'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
 import type { App } from '@/types/app'
@@ -29,6 +30,26 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [localLogs, setLocalLogs] = useState<WorkflowAppLogDetail[]>(logs?.data || [])
+
+  useEffect(() => {
+    if (!logs?.data) {
+      setLocalLogs([])
+      return
+    }
+
+    const sortedLogs = [...logs.data].sort((a, b) => {
+      const result = a.created_at - b.created_at
+      return sortOrder === 'asc' ? result : -result
+    })
+
+    setLocalLogs(sortedLogs)
+  }, [logs?.data, sortOrder])
+
+  const handleSort = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+  }
 
   const statusTdRender = (status: string) => {
     if (status === 'succeeded') {
@@ -88,15 +109,26 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
             <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.startTime')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>
+              <div className='flex cursor-pointer items-center hover:text-text-secondary' onClick={handleSort}>
+                {t('appLog.table.header.startTime')}
+                <ArrowDownIcon
+                  className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all',
+                    'text-text-tertiary',
+                    sortOrder === 'asc' ? 'rotate-180' : '',
+                  )}
+                />
+              </div>
+            </td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.runtime')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.tokens')}</td>
-            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.user')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.user')}</td>
+            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.triggerBy')}</td>
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
-          {logs.data.map((log: WorkflowAppLogDetail) => {
+          {localLogs.map((log: WorkflowAppLogDetail) => {
             const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
             return <tr
               key={log.id}
@@ -124,6 +156,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                 <div className={cn(endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary', 'overflow-hidden text-ellipsis whitespace-nowrap')}>
                   {endUser}
                 </div>
+              </td>
+              <td className='p-3 pr-2'>
+                {/* Trigger By column - placeholder for future implementation */}
               </td>
             </tr>
           })}
