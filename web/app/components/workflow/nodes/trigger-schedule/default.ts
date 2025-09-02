@@ -130,7 +130,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
       try {
         Intl.DateTimeFormat(undefined, { timeZone: payload.timezone })
       }
- catch {
+      catch {
         errorMessages = t('workflow.nodes.triggerSchedule.invalidTimezone')
       }
     }
@@ -138,13 +138,13 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
       if (payload.mode === 'cron') {
         if (!payload.cron_expression || payload.cron_expression.trim() === '')
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.cronExpression') })
-         else if (!isValidCronExpression(payload.cron_expression))
+        else if (!isValidCronExpression(payload.cron_expression))
           errorMessages = t('workflow.nodes.triggerSchedule.invalidCronExpression')
       }
- else if (payload.mode === 'visual') {
+      else if (payload.mode === 'visual') {
         if (!payload.frequency)
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.frequency') })
-         else
+        else
           errorMessages = validateVisualConfig(payload, t)
       }
     }
@@ -154,7 +154,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
         if (nextTimes.length === 0)
           errorMessages = t('workflow.nodes.triggerSchedule.noValidExecutionTime')
       }
- catch {
+      catch {
         errorMessages = t('workflow.nodes.triggerSchedule.executionTimeCalculationError')
       }
     }
