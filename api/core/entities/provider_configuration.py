@@ -415,7 +415,7 @@ class ProviderConfiguration(BaseModel):
             ):
                 raise ValueError(f"Credential with name '{credential_name}' already exists.")
             else:
-                credential_name = self._generate_credential_name(session)
+                credential_name = self._generate_provider_credential_name(session)
 
             credentials = self.validate_provider_credentials(credentials=credentials, session=session)
             provider_record = self._get_provider_record(session)
