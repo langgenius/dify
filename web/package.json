@@ -24,7 +24,7 @@
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
     "lint": "npx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint-only-show-error": "npm oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
+    "lint-only-show-error": "npx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
     "fix": "eslint --fix .",
     "eslint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "eslint-fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
