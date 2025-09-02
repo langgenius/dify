@@ -252,7 +252,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
       if (hasStyleChange)
         console.log('⚠️  Style changes detected - this causes visible flicker')
-       else
+      else
         console.log('✅ No style changes detected')
 
       expect(timingData.length).toBeGreaterThan(1)

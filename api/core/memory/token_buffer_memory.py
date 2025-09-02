@@ -110,9 +110,9 @@ class TokenBufferMemory:
         else:
             message_limit = 500
 
-        stmt = stmt.limit(message_limit)
+        msg_limit_stmt = stmt.limit(message_limit)
 
-        messages = db.session.scalars(stmt).all()
+        messages = db.session.scalars(msg_limit_stmt).all()
 
         # instead of all messages from the conversation, we only need to extract messages
         # that belong to the thread of last message

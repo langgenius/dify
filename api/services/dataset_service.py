@@ -1149,7 +1149,7 @@ class DocumentService:
                         "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-                        "top_k": 2,
+                        "top_k": 4,
                         "score_threshold_enabled": False,
                     }
 
@@ -1612,7 +1612,7 @@ class DocumentService:
                 search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
-                top_k=2,
+                top_k=4,
                 score_threshold_enabled=False,
             )
         # save dataset

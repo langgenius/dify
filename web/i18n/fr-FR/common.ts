@@ -743,6 +743,12 @@ const translation = {
     deleteTitle: 'Supprimer l\'avatar',
     deleteDescription: 'Êtes-vous sûr de vouloir supprimer votre photo de profil ? Votre compte utilisera l\'avatar par défaut.',
   },
+  feedback: {
+    content: 'Contenu des retours',
+    title: 'Fournir des retours',
+    placeholder: 'Veuillez décrire ce qui n\'a pas fonctionné ou comment nous pourrions nous améliorer...',
+    subtitle: 'Veuillez nous dire ce qui n\'a pas fonctionné avec cette réponse.',
+  },
 }
 
 export default translation

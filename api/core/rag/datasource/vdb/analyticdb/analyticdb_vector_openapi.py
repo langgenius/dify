@@ -256,7 +256,7 @@ class AnalyticdbVectorOpenAPI:
         response = self._client.query_collection_data(request)
         documents = []
         for match in response.body.matches.match:
-            if match.score > score_threshold:
+            if match.score >= score_threshold:
                 metadata = json.loads(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
@@ -293,7 +293,7 @@ class AnalyticdbVectorOpenAPI:
         response = self._client.query_collection_data(request)
         documents = []
         for match in response.body.matches.match:
-            if match.score > score_threshold:
+            if match.score >= score_threshold:
                 metadata = json.loads(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(

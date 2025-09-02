@@ -69,13 +69,13 @@ const ChunkDetailModal: FC<Props> = ({
             <div>
               <div className='flex gap-x-1'>
                 <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
-                <div className={cn('body-md-regular text-text-secondary line-clamp-20')}>
+                <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
                   {content}
                 </div>
               </div>
               <div className='flex gap-x-1'>
                 <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
-                <div className={cn('body-md-regular text-text-secondary line-clamp-20')}>
+                <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
                   {answer}
                 </div>
               </div>

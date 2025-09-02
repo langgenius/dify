@@ -1,9 +1,9 @@
 const translation = {
   tips: {
     needLogin: 'कृपया प्राधिकरण के लिए लॉग इन करें',
-    notLoggedIn: 'आप आपके Dify Cloud खाते तक पहुंचना चाहते हैं',
+    notLoggedIn: 'यह ऐप आपके Dify Cloud खाते तक पहुंचना चाहता है',
     common: 'हम आपकी गोपनीयता का सम्मान करते हैं और इस जानकारी का उपयोग केवल आपके हमारे विकास उपकरणों के साथ अनुभव को बेहतर बनाने के लिए करेंगे।',
-    loggedIn: 'आप आपके Dify Cloud खाते से निम्नलिखित जानकारी तक पहुंचना चाहते हैं।',
+    loggedIn: 'यह ऐप आपके Dify Cloud खाते से निम्नलिखित जानकारी तक पहुंचना चाहता है।',
   },
   scopes: {
     name: 'नाम',
@@ -13,7 +13,7 @@ const translation = {
     timezone: 'समय क्षेत्र',
   },
   error: {
-    authorizeFailed: 'अनु autorización विफल',
+    authorizeFailed: 'प्राधिकरण विफल',
     invalidParams: 'अमान्य पैरामीटर',
     authAppInfoFetchFailed: 'प्राधिकरण के लिए ऐप जानकारी प्राप्त करने में असफल हुआ',
   },

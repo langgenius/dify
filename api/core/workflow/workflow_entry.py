@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -318,7 +318,6 @@ class WorkflowEntry:
         # init graph
         graph = Graph.init(graph_config=graph_dict, node_factory=node_factory)
 
-        node_cls = cast(type[Node], node_cls)
         # init workflow run state
         node_config = {
             "id": node_id,

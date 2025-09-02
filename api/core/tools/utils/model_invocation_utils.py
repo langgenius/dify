@@ -129,17 +129,14 @@ class ModelInvocationUtils:
         db.session.commit()
 
         try:
-            response: LLMResult = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=prompt_messages,
-                    model_parameters=model_parameters,
-                    tools=[],
-                    stop=[],
-                    stream=False,
-                    user=user_id,
-                    callbacks=[],
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                tools=[],
+                stop=[],
+                stream=False,
+                user=user_id,
+                callbacks=[],
             )
         except InvokeRateLimitError as e:
             raise InvokeModelError(f"Invoke rate limit error: {e}")

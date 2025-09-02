@@ -354,9 +354,6 @@ class DatasetInitApi(Resource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
         knowledge_config = KnowledgeConfig(**args)
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
