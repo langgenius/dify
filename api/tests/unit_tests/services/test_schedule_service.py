@@ -355,21 +355,28 @@ class TestParseTime(unittest.TestCase):
 
     def test_parse_time_invalid_format(self):
         """Test parsing invalid time format."""
-        hour, minute = convert_12h_to_24h("25:00")
-        assert hour is None
-        assert minute is None
+        with pytest.raises(ValueError, match="Invalid time format"):
+            convert_12h_to_24h("25:00")
 
     def test_parse_time_invalid_hour(self):
         """Test parsing invalid hour."""
-        hour, minute = convert_12h_to_24h("13:00 PM")
-        assert hour is None
-        assert minute is None
+        with pytest.raises(ValueError, match="Invalid hour: 13"):
+            convert_12h_to_24h("13:00 PM")
 
     def test_parse_time_invalid_minute(self):
         """Test parsing invalid minute."""
-        hour, minute = convert_12h_to_24h("10:60 AM")
-        assert hour is None
-        assert minute is None
+        with pytest.raises(ValueError, match="Invalid minute: 60"):
+            convert_12h_to_24h("10:60 AM")
+
+    def test_parse_time_empty_string(self):
+        """Test parsing empty string."""
+        with pytest.raises(ValueError, match="Time string cannot be empty"):
+            convert_12h_to_24h("")
+
+    def test_parse_time_invalid_period(self):
+        """Test parsing invalid period."""
+        with pytest.raises(ValueError, match="Invalid period"):
+            convert_12h_to_24h("10:30 XM")
 
 
 class TestExtractScheduleConfig(unittest.TestCase):

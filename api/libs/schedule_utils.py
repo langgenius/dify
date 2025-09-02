@@ -40,7 +40,7 @@ def calculate_next_run_at(
     return next_run_utc
 
 
-def convert_12h_to_24h(time_str: str) -> tuple[Optional[int], Optional[int]]:
+def convert_12h_to_24h(time_str: str) -> tuple[int, int]:
     """
     Parse 12-hour time format to 24-hour format for cron compatibility.
 
@@ -48,7 +48,10 @@ def convert_12h_to_24h(time_str: str) -> tuple[Optional[int], Optional[int]]:
         time_str: Time string in format "HH:MM AM/PM" (e.g., "12:30 PM")
 
     Returns:
-        Tuple of (hour, minute) in 24-hour format, or (None, None) if parsing fails
+        Tuple of (hour, minute) in 24-hour format
+
+    Raises:
+        ValueError: If time string format is invalid or values are out of range
 
     Examples:
         - "12:00 AM" -> (0, 0)    # Midnight
@@ -56,34 +59,39 @@ def convert_12h_to_24h(time_str: str) -> tuple[Optional[int], Optional[int]]:
         - "1:30 PM"  -> (13, 30)
         - "11:59 PM" -> (23, 59)
     """
+    if not time_str or not time_str.strip():
+        raise ValueError("Time string cannot be empty")
+
+    parts = time_str.strip().split()
+    if len(parts) != 2:
+        raise ValueError(f"Invalid time format: '{time_str}'. Expected 'HH:MM AM/PM'")
+
+    time_part, period = parts
+    period = period.upper()
+
+    if period not in ["AM", "PM"]:
+        raise ValueError(f"Invalid period: '{period}'. Must be 'AM' or 'PM'")
+
+    time_parts = time_part.split(":")
+    if len(time_parts) != 2:
+        raise ValueError(f"Invalid time format: '{time_part}'. Expected 'HH:MM'")
+
     try:
-        parts = time_str.strip().split()
-        if len(parts) != 2:
-            return None, None
-
-        time_part, period = parts
-        period = period.upper()
-
-        if period not in ["AM", "PM"]:
-            return None, None
-
-        time_parts = time_part.split(":")
-        if len(time_parts) != 2:
-            return None, None
-
         hour = int(time_parts[0])
         minute = int(time_parts[1])
+    except ValueError as e:
+        raise ValueError(f"Invalid time values: {e}")
 
-        if hour < 1 or hour > 12 or minute < 0 or minute > 59:
-            return None, None
+    if hour < 1 or hour > 12:
+        raise ValueError(f"Invalid hour: {hour}. Must be between 1 and 12")
 
-        # Handle 12-hour to 24-hour edge cases
-        if period == "PM" and hour != 12:
-            hour += 12
-        elif period == "AM" and hour == 12:
-            hour = 0
+    if minute < 0 or minute > 59:
+        raise ValueError(f"Invalid minute: {minute}. Must be between 0 and 59")
 
-        return hour, minute
+    # Handle 12-hour to 24-hour edge cases
+    if period == "PM" and hour != 12:
+        hour += 12
+    elif period == "AM" and hour == 12:
+        hour = 0
 
-    except (ValueError, AttributeError):
-        return None, None
+    return hour, minute

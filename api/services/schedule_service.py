@@ -229,15 +229,11 @@ class ScheduleService:
             elif frequency == "daily":
                 time_str = visual_config.get("time", "12:00 PM")
                 hour, minute = convert_12h_to_24h(time_str)
-                if hour is None or minute is None:
-                    return None
                 return f"{minute} {hour} * * *"
 
             elif frequency == "weekly":
                 time_str = visual_config.get("time", "12:00 PM")
                 hour, minute = convert_12h_to_24h(time_str)
-                if hour is None or minute is None:
-                    return None
 
                 weekdays = visual_config.get("weekdays", [])
                 if not weekdays:
@@ -258,8 +254,6 @@ class ScheduleService:
             elif frequency == "monthly":
                 time_str = visual_config.get("time", "12:00 PM")
                 hour, minute = convert_12h_to_24h(time_str)
-                if hour is None or minute is None:
-                    return None
 
                 monthly_days = visual_config.get("monthly_days", [])
                 if not monthly_days:
