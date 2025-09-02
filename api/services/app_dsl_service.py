@@ -564,7 +564,9 @@ class AppDslService:
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
-    def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: Optional[str] = None) -> None:
+    def _append_workflow_export_data(
+        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: Optional[str] = None
+    ) -> None:
         """
         Append workflow export data
         :param export_data: export data

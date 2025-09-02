@@ -240,7 +240,11 @@ class AppExportApi(Resource):
         parser.add_argument("workflow_id", type=str, location="args")
         args = parser.parse_args()
 
-        return {"data": AppDslService.export_dsl(app_model=app_model, include_secret=args["include_secret"], workflow_id=args.get("workflow_id"))}
+        return {"data": AppDslService.export_dsl(
+            app_model=app_model, 
+            include_secret=args["include_secret"], 
+            workflow_id=args.get("workflow_id")
+        )}
 
 
 class AppNameApi(Resource):
