@@ -122,59 +122,59 @@ const LinearMemory = ({
 
   return (
     <>
-    <div className={cn('flex justify-between', className)}>
-      <div className='flex h-8 items-center space-x-2'>
-        <Switch
-          defaultValue={payload?.window?.enabled}
-          onChange={handleWindowEnabledChange}
-          size='md'
-          disabled={readonly}
-        />
-        <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.windowSize`)}</div>
-      </div>
-      <div className='flex h-8 items-center space-x-2'>
-        <Slider
-          className='w-[144px]'
-          value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-          min={WINDOW_SIZE_MIN}
-          max={WINDOW_SIZE_MAX}
-          step={1}
-          onChange={handleWindowSizeChange}
-          disabled={readonly || !payload.window?.enabled}
-        />
-        <Input
-          value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-          wrapperClassName='w-12'
-          className='appearance-none pr-0'
-          type='number'
-          min={WINDOW_SIZE_MIN}
-          max={WINDOW_SIZE_MAX}
-          step={1}
-          onChange={e => handleWindowSizeChange(e.target.value)}
-          onBlur={handleBlur}
-          disabled={readonly || !payload.window?.enabled}
-        />
-      </div>
-    </div>
-    {canSetRoleName && (
-      <div className='mt-4'>
-        <div className='text-xs font-medium uppercase leading-6 text-text-tertiary'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
-        <div className='mt-1 space-y-2'>
-          <RoleItem
-            readonly={!!readonly}
-            title={t(`${i18nPrefix}.user`)}
-            value={payload.role_prefix?.user || ''}
-            onChange={handleRolePrefixChange(MemoryRole.user)}
+      <div className={cn('flex justify-between', className)}>
+        <div className='flex h-8 items-center space-x-2'>
+          <Switch
+            defaultValue={payload?.window?.enabled}
+            onChange={handleWindowEnabledChange}
+            size='md'
+            disabled={readonly}
           />
-          <RoleItem
-            readonly={!!readonly}
-            title={t(`${i18nPrefix}.assistant`)}
-            value={payload.role_prefix?.assistant || ''}
-            onChange={handleRolePrefixChange(MemoryRole.assistant)}
+          <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.windowSize`)}</div>
+        </div>
+        <div className='flex h-8 items-center space-x-2'>
+          <Slider
+            className='w-[144px]'
+            value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
+            min={WINDOW_SIZE_MIN}
+            max={WINDOW_SIZE_MAX}
+            step={1}
+            onChange={handleWindowSizeChange}
+            disabled={readonly || !payload.window?.enabled}
+          />
+          <Input
+            value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
+            wrapperClassName='w-12'
+            className='appearance-none pr-0'
+            type='number'
+            min={WINDOW_SIZE_MIN}
+            max={WINDOW_SIZE_MAX}
+            step={1}
+            onChange={e => handleWindowSizeChange(e.target.value)}
+            onBlur={handleBlur}
+            disabled={readonly || !payload.window?.enabled}
           />
         </div>
       </div>
-    )}
+      {canSetRoleName && (
+        <div className='mt-4'>
+          <div className='text-xs font-medium uppercase leading-6 text-text-tertiary'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
+          <div className='mt-1 space-y-2'>
+            <RoleItem
+              readonly={!!readonly}
+              title={t(`${i18nPrefix}.user`)}
+              value={payload.role_prefix?.user || ''}
+              onChange={handleRolePrefixChange(MemoryRole.user)}
+            />
+            <RoleItem
+              readonly={!!readonly}
+              title={t(`${i18nPrefix}.assistant`)}
+              value={payload.role_prefix?.assistant || ''}
+              onChange={handleRolePrefixChange(MemoryRole.assistant)}
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }
