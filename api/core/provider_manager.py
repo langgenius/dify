@@ -1,8 +1,9 @@
 import contextlib
 import json
 from collections import defaultdict
+from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +23,7 @@ from core.entities.provider_entities import (
     QuotaConfiguration,
     QuotaUnit,
     SystemConfiguration,
+    UnaddedModelConfiguration,
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
@@ -538,7 +540,7 @@ class ProviderManager:
         ]
 
     @staticmethod
-    def get_credentials_from_provider_model(tenant_id: str, provider_name: str) -> list[ProviderModelCredential]:
+    def get_credentials_from_provider_model(tenant_id: str, provider_name: str) -> Sequence[ProviderModelCredential]:
         """
         Get all the credentials records from ProviderModelCredential by provider_name
 
@@ -649,12 +651,16 @@ class ProviderManager:
         all_model_credentials = self.get_credentials_from_provider_model(tenant_id, provider_entity.provider)
 
         # Get custom models which have not been added to the model list yet
-        can_added_models = self._get_can_added_models(provider_model_records, all_model_credentials)
+        unadded_models = self._get_can_added_models(provider_model_records, all_model_credentials)
 
         # Get custom model configurations
         custom_model_configurations = self._get_custom_model_configurations(
-            tenant_id, provider_entity, provider_model_records, can_added_models, all_model_credentials
+            tenant_id, provider_entity, provider_model_records, unadded_models, all_model_credentials
         )
+
+        can_added_models = [
+            UnaddedModelConfiguration(model=model["model"], model_type=model["model_type"]) for model in unadded_models
+        ]
 
         return CustomConfiguration(
             provider=custom_provider_configuration,
@@ -701,7 +707,7 @@ class ProviderManager:
         )
 
     def _get_can_added_models(
-        self, provider_model_records: list[ProviderModel], all_model_credentials: list[ProviderModelCredential]
+        self, provider_model_records: list[ProviderModel], all_model_credentials: Sequence[ProviderModelCredential]
     ) -> list[dict]:
         """Get the custom models and credentials from enterprise version which haven't add to the model list"""
         existing_model_set = {(record.model_name, record.model_type) for record in provider_model_records}
@@ -736,7 +742,7 @@ class ProviderManager:
         provider_entity: ProviderEntity,
         provider_model_records: list[ProviderModel],
         can_added_models: list[dict],
-        all_model_credentials: list[ProviderModelCredential],
+        all_model_credentials: Sequence[ProviderModelCredential],
     ) -> list[CustomModelConfiguration]:
         """Get custom model configurations."""
         # Get model credential secret variables
@@ -808,7 +814,7 @@ class ProviderManager:
         secret_variables: list[str],
         cache_type: ProviderCredentialsCacheType,
         is_provider: bool = False,
-    ) -> dict | None:
+    ) -> dict:
         """Get and decrypt credentials with caching."""
         credentials_cache = ProviderCredentialsCache(
             tenant_id=tenant_id,
@@ -829,7 +835,7 @@ class ProviderManager:
             return {"openai_api_key": encrypted_config}
 
         try:
-            credentials = json.loads(encrypted_config)
+            credentials = cast(dict, json.loads(encrypted_config))
         except JSONDecodeError:
             return {}
 
