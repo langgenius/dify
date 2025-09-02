@@ -12,7 +12,7 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
-import useMatchSchemaType from '../_base/components/variable/use-match-schema-type'
+import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -40,7 +40,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   const [collapsed, setCollapsed] = React.useState(false)
   const pipelineId = useStore(s => s.pipelineId)
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
-  const { getMatchedSchemaType } = useMatchSchemaType()
+  const { schemaTypeDefinitions } = useMatchSchemaType()
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -118,7 +118,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               isIndent={hasObjectOutput}
             />
             {outputSchema.map((outputItem) => {
-              const schemaType = getMatchedSchemaType(outputItem.value)
+              const schemaType = getMatchedSchemaType(outputItem.value, schemaTypeDefinitions)
               return (
                 <div key={outputItem.name}>
                   {outputItem.value?.type === 'object' ? (

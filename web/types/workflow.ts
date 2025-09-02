@@ -404,6 +404,7 @@ export type VarInInspect = {
   visible: boolean
   is_truncated: boolean
   full_content: FullContent
+  schemaType?: string
 }
 
 export type NodeWithVar = {

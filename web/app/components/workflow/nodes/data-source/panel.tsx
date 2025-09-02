@@ -23,7 +23,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolForm from '../tool/components/tool-form'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
-import useMatchSchemaType from '../_base/components/variable/use-match-schema-type'
+import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
@@ -50,8 +50,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
 
   const pipelineId = useStore(s => s.pipelineId)
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
-  const { getMatchedSchemaType } = useMatchSchemaType()
-
+  const { schemaTypeDefinitions } = useMatchSchemaType()
   return (
     <div >
       {
@@ -137,7 +136,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
         }
         {
           outputSchema.map((outputItem) => {
-              const schemaType = getMatchedSchemaType(outputItem.value)
+              const schemaType = getMatchedSchemaType(outputItem.value, schemaTypeDefinitions)
 
             return (
             <div key={outputItem.name}>

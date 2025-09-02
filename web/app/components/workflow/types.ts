@@ -21,6 +21,7 @@ import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import type { PluginMeta } from '../plugins/types'
 import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export enum BlockEnum {
   Start = 'start',
@@ -332,7 +333,9 @@ export type NodeDefault<T = {}> = {
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
-  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: { getMatchedSchemaType: (obj: any) => string }) => Var[]
+  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: {
+    schemaTypeDefinitions?: SchemaTypeDefinition[]
+  }) => Var[]
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void

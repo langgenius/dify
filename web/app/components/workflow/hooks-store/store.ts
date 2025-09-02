@@ -10,6 +10,7 @@ import { HooksStoreContext } from './provider'
 import type {
   BlockEnum,
   NodeDefault,
+  ToolWithProvider,
 } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VarInInspect } from '@/types/workflow'
@@ -19,6 +20,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { FileUpload } from '../../base/features/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]
@@ -47,7 +49,7 @@ export type CommonHooksFnMap = {
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
   handleExportDSL?: (include?: boolean) => Promise<void>
-  fetchInspectVars: () => Promise<void>
+  fetchInspectVars: (params: { passInVars?: boolean, vars?: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[] }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
   fetchInspectVarValue: (selector: ValueSelector) => Promise<void>

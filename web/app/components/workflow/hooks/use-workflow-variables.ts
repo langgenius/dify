@@ -17,7 +17,7 @@ import useMatchSchemaType from '../nodes/_base/components/variable/use-match-sch
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
-  const { getMatchedSchemaType } = useMatchSchemaType()
+  const { schemaTypeDefinitions } = useMatchSchemaType()
 
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
@@ -60,9 +60,9 @@ export const useWorkflowVariables = () => {
         mcpTools,
         dataSourceList: dataSourceList ?? [],
       },
-      getMatchedSchemaType,
+      schemaTypeDefinitions,
     })
-  }, [t, workflowStore, getMatchedSchemaType, buildInTools])
+  }, [t, workflowStore, schemaTypeDefinitions, buildInTools])
 
   const getCurrentVariableType = useCallback(({
     parentNode,
@@ -111,10 +111,10 @@ export const useWorkflowVariables = () => {
         mcpTools,
         dataSourceList: dataSourceList ?? [],
       },
-      getMatchedSchemaType,
+      schemaTypeDefinitions,
       preferSchemaType,
     })
-  }, [workflowStore, getVarType, getMatchedSchemaType])
+  }, [workflowStore, getVarType, schemaTypeDefinitions])
 
   return {
     getNodeAvailableVars,

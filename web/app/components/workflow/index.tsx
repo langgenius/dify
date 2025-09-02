@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import { setAutoFreeze } from 'immer'
 import {
@@ -85,9 +86,12 @@ import {
 import { WorkflowHistoryProvider } from './workflow-history-store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
-import { HooksStoreContextProvider } from './hooks-store'
+import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
 import dynamic from 'next/dynamic'
+import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
+import type { VarInInspect } from '@/types/workflow'
+import { fetchAllInspectVars } from '@/service/workflow'
 
 const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
@@ -293,10 +297,42 @@ export const Workflow: FC<WorkflowProps> = memo(({
     return setupScrollToNodeListener(nodes, reactflow)
   }, [nodes, reactflow])
 
+  const { schemaTypeDefinitions } = useMatchSchemaType()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+  const dataSourceList = useStore(s => s.dataSourceList)
+  // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
+  const configsMap = useHooksStore(s => s.configsMap)
+  const [isLoadedVars, setIsLoadedVars] = useState(false)
+  const [vars, setVars] = useState<VarInInspect[]>([])
   useEffect(() => {
-    fetchInspectVars()
-  }, [])
+    (async () => {
+      if(!configsMap?.flowType || !configsMap?.flowId)
+        return
+      const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
+      setVars(data)
+      setIsLoadedVars(true)
+    })()
+  }, [configsMap?.flowType, configsMap?.flowId])
+  useEffect(() => {
+    if(schemaTypeDefinitions && isLoadedVars) {
+      fetchInspectVars({
+        passInVars: true,
+        vars,
+        passedInAllPluginInfoList: {
+          buildInTools,
+          customTools,
+          workflowTools,
+          mcpTools,
+          dataSourceList: dataSourceList ?? [],
+        },
+        passedInSchemaTypeDefinitions: schemaTypeDefinitions,
+      })
+    }
+  }, [schemaTypeDefinitions, fetchInspectVars, isLoadedVars, vars, customTools, buildInTools, workflowTools, mcpTools, dataSourceList])
 
   const store = useStoreApi()
   if (process.env.NODE_ENV === 'development') {

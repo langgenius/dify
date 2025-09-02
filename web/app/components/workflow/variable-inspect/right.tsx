@@ -194,7 +194,7 @@ const Right = ({
               )}
               <div title={currentNodeVar.var.name} className='system-sm-semibold truncate text-text-secondary'>{currentNodeVar.var.name}</div>
               <div className='system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary'>
-                <span>{currentNodeVar.var.value_type}</span>
+                <span>{`${currentNodeVar.var.value_type}${currentNodeVar.var.schemaType ? (`(${currentNodeVar.var.schemaType})`) : ''}`}</span>
                 {isTruncated && (
                   <>
                     <span>·</span>

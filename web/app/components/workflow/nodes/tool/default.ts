@@ -6,7 +6,7 @@ import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/typ
 import { TOOL_OUTPUT_STRUCT } from '../../constants'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
-import type { AnyObj } from '../_base/components/variable/match-schema-type'
+import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -66,7 +66,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       errorMessage: errorMessages,
     }
   },
-  getOutputVars(payload: ToolNodeType, allPluginInfoList: Record<string, ToolWithProvider[]>, _ragVars: any, { getMatchedSchemaType } = { getMatchedSchemaType: (_obj: AnyObj) => '' }) {
+  getOutputVars(payload: ToolNodeType, allPluginInfoList: Record<string, ToolWithProvider[]>, _ragVars: any, { schemaTypeDefinitions } = { schemaTypeDefinitions: [] }) {
     const { provider_id, provider_type } = payload
     let currentTools: ToolWithProvider[] = []
     switch (provider_type) {
@@ -97,7 +97,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       Object.keys(output_schema.properties).forEach((outputKey) => {
         const output = output_schema.properties[outputKey]
         const dataType = output.type
-        const schemaType = getMatchedSchemaType?.(output)
+        const schemaType = getMatchedSchemaType(output, schemaTypeDefinitions)
         let type = dataType === 'array'
           ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
           : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`

@@ -61,7 +61,7 @@ export const useFilePreview = (fileID: string) => {
   })
 }
 
-type SchemaTypeDefinition = {
+export type SchemaTypeDefinition = {
   name: string
   schema: {
     properties: Record<string, any>

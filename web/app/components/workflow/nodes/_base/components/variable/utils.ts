@@ -41,6 +41,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
@@ -233,7 +234,7 @@ const formatItem = (
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
   allPluginInfoList: Record<string, ToolWithProvider[]>,
   ragVars?: Var[],
-  getMatchedSchemaType = (_obj: any) => '',
+  schemaTypeDefinitions: SchemaTypeDefinition[] = [],
 ): NodeOutPutVar => {
   const { id, data } = item
 
@@ -415,7 +416,7 @@ const formatItem = (
     }
 
     case BlockEnum.Tool: {
-      const toolOutputVars = ToolNodeDefault.getOutputVars?.(data as ToolNodeType, allPluginInfoList, [], { getMatchedSchemaType }) || []
+      const toolOutputVars = ToolNodeDefault.getOutputVars?.(data as ToolNodeType, allPluginInfoList, [], { schemaTypeDefinitions }) || []
       res.vars = toolOutputVars
       break
     }
@@ -511,7 +512,7 @@ const formatItem = (
 
     case BlockEnum.DataSource: {
       const payload = data as DataSourceNodeType
-      const dataSourceVars = DataSourceNodeDefault.getOutputVars?.(payload, allPluginInfoList, ragVars, { getMatchedSchemaType }) || []
+      const dataSourceVars = DataSourceNodeDefault.getOutputVars?.(payload, allPluginInfoList, ragVars, { schemaTypeDefinitions }) || []
       res.vars = dataSourceVars
       break
     }
@@ -641,7 +642,7 @@ export const toNodeOutputVars = (
   conversationVariables: ConversationVariable[] = [],
   ragVariables: RAGPipelineVariable[] = [],
   allPluginInfoList: Record<string, ToolWithProvider[]>,
-  getMatchedSchemaType = (_obj: any) => '',
+  schemaTypeDefinitions?: SchemaTypeDefinition[],
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
   const ENV_NODE = {
@@ -699,7 +700,7 @@ export const toNodeOutputVars = (
           description: ragVariable.label,
           isRagVariable: true,
         } as Var),
-      ), getMatchedSchemaType),
+      ), schemaTypeDefinitions),
       isStartNode: node.data.type === BlockEnum.Start,
     }
   }).filter(item => item.vars.length > 0)
@@ -824,7 +825,7 @@ export const getVarType = ({
   conversationVariables = [],
   ragVariables = [],
   allPluginInfoList,
-  getMatchedSchemaType,
+  schemaTypeDefinitions,
   preferSchemaType,
 }: {
   valueSelector: ValueSelector
@@ -838,7 +839,7 @@ export const getVarType = ({
   conversationVariables?: ConversationVariable[]
   ragVariables?: RAGPipelineVariable[]
   allPluginInfoList: Record<string, ToolWithProvider[]>
-  getMatchedSchemaType: (obj: any) => string
+  schemaTypeDefinitions?: SchemaTypeDefinition[]
   preferSchemaType?: boolean
 }): VarType => {
   if (isConstant)
@@ -852,7 +853,7 @@ export const getVarType = ({
     conversationVariables,
     ragVariables,
     allPluginInfoList,
-    getMatchedSchemaType,
+    schemaTypeDefinitions,
   )
 
   const isIterationInnerVar = parentNode?.data.type === BlockEnum.Iteration
@@ -979,7 +980,7 @@ export const toNodeAvailableVars = ({
   ragVariables,
   filterVar,
   allPluginInfoList,
-  getMatchedSchemaType,
+  schemaTypeDefinitions,
 }: {
   parentNode?: Node | null
   t?: any
@@ -994,7 +995,7 @@ export const toNodeAvailableVars = ({
   ragVariables?: RAGPipelineVariable[]
   filterVar: (payload: Var, selector: ValueSelector) => boolean
   allPluginInfoList: Record<string, ToolWithProvider[]>
-  getMatchedSchemaType: (obj: any) => string
+  schemaTypeDefinitions?: SchemaTypeDefinition[]
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
     beforeNodes,
@@ -1004,7 +1005,7 @@ export const toNodeAvailableVars = ({
     conversationVariables,
     ragVariables,
     allPluginInfoList,
-    getMatchedSchemaType,
+    schemaTypeDefinitions,
   )
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
@@ -1018,7 +1019,7 @@ export const toNodeAvailableVars = ({
       environmentVariables,
       conversationVariables,
       allPluginInfoList,
-      getMatchedSchemaType,
+      schemaTypeDefinitions,
     })
     const itemChildren = itemType === VarType.file
       ? {
