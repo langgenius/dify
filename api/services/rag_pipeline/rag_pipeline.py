@@ -1265,7 +1265,7 @@ class RagPipelineService:
                     user_id=current_user.id,
                     tenant_id=current_user.current_tenant_id,
                 )
-        providers_map = {provider.plugin_id: provider for provider in providers}
+        providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
 
         plugin_manifests = marketplace.batch_fetch_plugin_manifests(plugin_ids)
         plugin_manifests_map = {manifest.plugin_id: manifest for manifest in plugin_manifests}
