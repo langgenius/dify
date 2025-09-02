@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 from functools import wraps
 from typing import Union, cast
 
@@ -17,6 +17,7 @@ from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
 
 def login_required(func: Callable[P, R]):
     """

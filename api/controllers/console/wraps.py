@@ -1,9 +1,10 @@
-from typing import Callable
 import contextlib
 import json
 import os
 import time
+from collections.abc import Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from flask import abort, request
 from flask_login import current_user
@@ -19,10 +20,10 @@ from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
-from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
 
 def account_initialization_required(view: Callable[P, R]):
     @wraps(view)

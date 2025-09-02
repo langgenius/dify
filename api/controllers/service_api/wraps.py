@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Optional
+from typing import Optional, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -21,10 +21,10 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
-from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
 
 class WhereisUserArg(StrEnum):
     """

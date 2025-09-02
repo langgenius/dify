@@ -22,6 +22,7 @@ from typing import ParamSpec, TypeVar
 P = ParamSpec("P")
 R = TypeVar("R")
 
+
 class MatrixoneConfig(BaseModel):
     host: str = "localhost"
     port: int = 6001

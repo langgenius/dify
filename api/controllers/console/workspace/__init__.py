@@ -1,5 +1,6 @@
-from typing import Callable
+from collections.abc import Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from flask_login import current_user
 from sqlalchemy.orm import Session
@@ -7,10 +8,10 @@ from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
 from models.account import TenantPluginPermission
-from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
 
 def plugin_permission_required(
     install_required: bool = False,
