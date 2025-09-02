@@ -17,9 +17,11 @@ class TriggerService:
     __ENDPOINT_REQUEST_CACHE_EXPIRE_MS__ = 5 * 60 * 1000
 
     @classmethod
-    def process_triggered_workflows(cls, subscription: TriggerSubscription, trigger: TriggerEntity, request: Request) -> None:
+    def process_triggered_workflows(
+        cls, subscription: TriggerSubscription, trigger: TriggerEntity, request: Request
+    ) -> None:
         """Process triggered workflows."""
-        
+        pass
 
     @classmethod
     def select_triggers(cls, controller, dispatch_response, provider_id, subscription) -> list[TriggerEntity]:
