@@ -57,14 +57,14 @@ export const useWorkflowAliasListPaginated = ({
       const queryString = params.toString()
       const url = `/apps/${appId}/workflow-aliases?${queryString}`
 
-                       const response = await get<WorkflowAliasList>(url)
-                 return response
+      const response = await get<WorkflowAliasList>(url)
+      return response
     },
-                   getNextPageParam: (lastPage, allPages) => {
-                 if (lastPage.has_more)
-                   return allPages.length
-                 return undefined
-               },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.has_more)
+        return allPages.length
+      return undefined
+    },
     enabled: !!appId && (workflowIds === undefined || workflowIds.length > 0),
   })
 }
@@ -101,6 +101,7 @@ export const useCreateWorkflowAlias = (appId: string) => {
 
           // Check if this alias name already exists (for transfer case)
           const existingIndex = existingAliases.findIndex(alias => alias.name === newAlias.name)
+
           if (existingIndex >= 0) {
             // Update existing alias (transfer case)
             existingAliases[existingIndex] = newAlias

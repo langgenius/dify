@@ -200,7 +200,12 @@ class ChatApi(Resource):
 
         args = chat_parser.parse_args()
 
-        self._fetch_workflow_id_by_alias(app_model=app_model, workflow_alias=args["workflow_alias"])
+        if args.get("workflow_alias"):
+            workflow_id = self._fetch_workflow_id_by_alias(
+                app_model=app_model, 
+                workflow_alias=args.get("workflow_alias")
+            )
+            args["workflow_id"] = workflow_id
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -250,17 +255,21 @@ class ChatApi(Resource):
         """
         if workflow_alias:
             workflow_alias_service = WorkflowAliasService()
-            with Session(db.engine) as session, session.begin():
+            with Session(db.engine) as session:
                 workflow = workflow_alias_service.get_workflow_by_alias(
                     session=session,
                     app_id=app_model.id,
                     name=workflow_alias,
                 )
+                
+                if not workflow:
+                    raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
+                    
+                workflow_id = workflow.id
 
-            if not workflow:
-                raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
+            return workflow_id
 
-            return workflow.id
+        return ""
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
