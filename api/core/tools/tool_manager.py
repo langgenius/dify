@@ -303,16 +303,13 @@ class ToolManager:
                 tenant_id=tenant_id,
                 controller=api_provider,
             )
-            return cast(
-                ApiTool,
-                api_provider.get_tool(tool_name).fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials=encrypter.decrypt(credentials),
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return api_provider.get_tool(tool_name).fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials=encrypter.decrypt(credentials),
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.WORKFLOW:
             workflow_provider_stmt = select(WorkflowToolProvider).where(

@@ -18,7 +18,6 @@
   "reportImplicitOverride": "none",
   "reportCallInDefaultInitializer": "none",
   "reportUnnecessaryIsInstance": "none",
-  "reportUnnecessaryCast": "none",
   "reportUnnecessaryComparison": "none",
   "reportUnusedCallResult": "none",
   "reportUnusedVariable": "none",

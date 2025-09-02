@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from flask import current_app
 from sqlalchemy import select
@@ -397,7 +397,6 @@ class IndexingRunner:
         )
 
         # replace doc id to document model id
-        text_docs = cast(list[Document], text_docs)
         for text_doc in text_docs:
             if text_doc.metadata is not None:
                 text_doc.metadata["document_id"] = dataset_document.id
