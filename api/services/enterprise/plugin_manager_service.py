@@ -39,10 +39,13 @@ class PluginManagerService:
             )
             if not isinstance(ret, dict):
                 raise
-            if not ret.get("result", False):
-                raise CredentialPolicyViolationError("credential policy violation")
         except Exception as e:
-            raise CredentialPolicyViolationError(f"credential policy violation: {e}") from e
+            raise CredentialPolicyViolationError(
+                f"error occurred while checking credential policy compliance: {e}"
+            ) from e
+
+        if not ret.get("result", False):
+            raise CredentialPolicyViolationError("Credentials not available: Please use ENTERPRISE global credentials")
 
         logging.debug(
             f"Credential policy compliance checked for {body.provider} with credential {body.dify_credential_id}, result: {ret.get('result', False)}"
