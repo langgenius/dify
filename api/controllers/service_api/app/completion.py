@@ -202,8 +202,7 @@ class ChatApi(Resource):
 
         if args.get("workflow_alias"):
             workflow_id = self._fetch_workflow_id_by_alias(
-                app_model=app_model, 
-                workflow_alias=args.get("workflow_alias")
+                app_model=app_model, workflow_alias=args.get("workflow_alias")
             )
             args["workflow_id"] = workflow_id
 
@@ -261,10 +260,10 @@ class ChatApi(Resource):
                     app_id=app_model.id,
                     name=workflow_alias,
                 )
-                
+
                 if not workflow:
                     raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
-                    
+
                 workflow_id = workflow.id
 
             return workflow_id

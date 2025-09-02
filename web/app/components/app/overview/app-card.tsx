@@ -167,7 +167,7 @@ function AppCard({
       setAppDetail(res)
       setShowAccessControl(false)
     }
- catch (error) {
+    catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
   }, [appDetail, setAppDetail])

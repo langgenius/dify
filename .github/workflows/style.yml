@@ -89,7 +89,9 @@ jobs:
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run lint
+        run: |
+          pnpm run lint
+          pnpm run eslint
 
   docker-compose-template:
     name: Docker Compose Template

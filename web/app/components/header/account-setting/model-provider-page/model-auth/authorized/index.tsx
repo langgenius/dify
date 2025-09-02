@@ -176,11 +176,11 @@ const Authorized = ({
                   onClick={() => handleEdit(
                     undefined,
                     currentCustomConfigurationModelFixedFields
-                    ? {
-                      model: currentCustomConfigurationModelFixedFields.__model_name,
-                      model_type: currentCustomConfigurationModelFixedFields.__model_type,
-                    }
-                    : undefined,
+                      ? {
+                        model: currentCustomConfigurationModelFixedFields.__model_name,
+                        model_type: currentCustomConfigurationModelFixedFields.__model_type,
+                      }
+                      : undefined,
                   )}
                   className='system-xs-medium flex h-[30px] cursor-pointer items-center px-3 text-text-accent-light-mode-only'
                 >

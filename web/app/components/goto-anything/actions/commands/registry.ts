@@ -132,7 +132,7 @@ export class SlashCommandRegistry {
       try {
         return await handler.search(args, locale)
       }
- catch (error) {
+      catch (error) {
         console.warn(`Command search failed for ${commandName}:`, error)
         return []
       }
@@ -144,7 +144,7 @@ export class SlashCommandRegistry {
       try {
         return await handler.search(args, locale)
       }
- catch (error) {
+      catch (error) {
         console.warn(`Command search failed for ${handler.name}:`, error)
         return []
       }

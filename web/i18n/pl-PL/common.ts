@@ -760,6 +760,12 @@ const translation = {
     deleteTitle: 'Usuń awatar',
     deleteDescription: 'Czy na pewno chcesz usunąć swoje zdjęcie profilowe? Twoje konto będzie używać domyślnego, początkowego awatara.',
   },
+  feedback: {
+    title: 'Przekaż opinie',
+    content: 'Treść opinii',
+    subtitle: 'Proszę powiedz nam, co poszło nie tak z tą odpowiedzią.',
+    placeholder: 'Proszę opisać, co poszło nie tak lub jak możemy poprawić...',
+  },
 }
 
 export default translation
