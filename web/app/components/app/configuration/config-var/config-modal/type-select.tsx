@@ -52,13 +52,13 @@ const TypeSelector: FC<Props> = ({
         >
           <div className='flex items-center'>
             <InputVarTypeIcon type={selectedItem?.value as InputVarType} className='size-4 shrink-0 text-text-secondary' />
-          <span
-            className={`
+            <span
+              className={`
               ml-1.5 ${!selectedItem?.name && 'text-components-input-text-placeholder'}
             `}
-          >
-            {selectedItem?.name}
-          </span>
+            >
+              {selectedItem?.name}
+            </span>
           </div>
           <div className='flex items-center space-x-1'>
             <Badge uppercase={false}>{inputVarTypeToVarType(selectedItem?.value as InputVarType)}</Badge>

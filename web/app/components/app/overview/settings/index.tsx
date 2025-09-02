@@ -240,7 +240,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <Link href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README', {
               'zh-Hans': '/guides/application-publishing/launch-your-webapp-quickly/readme',
             })}
-              target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
+            target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
           </div>
         </div>
         {/* form body */}

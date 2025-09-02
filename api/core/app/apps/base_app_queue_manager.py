@@ -1,7 +1,7 @@
 import queue
 import time
 from abc import abstractmethod
-from enum import Enum
+from enum import IntEnum, auto
 from typing import Any, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
@@ -19,9 +19,9 @@ from core.app.entities.queue_entities import (
 from extensions.ext_redis import redis_client
 
 
-class PublishFrom(Enum):
-    APPLICATION_MANAGER = 1
-    TASK_PIPELINE = 2
+class PublishFrom(IntEnum):
+    APPLICATION_MANAGER = auto()
+    TASK_PIPELINE = auto()
 
 
 class AppQueueManager:

@@ -229,7 +229,7 @@ class AnalyticdbVectorBySql:
             documents = []
             for record in cur:
                 id, vector, score, page_content, metadata = record
-                if score > score_threshold:
+                if score >= score_threshold:
                     metadata["score"] = score
                     doc = Document(
                         page_content=page_content,

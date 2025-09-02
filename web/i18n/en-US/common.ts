@@ -319,6 +319,12 @@ const translation = {
       transfer: 'Transfer workspace ownership',
     },
   },
+  feedback: {
+    title: 'Provide Feedback',
+    subtitle: 'Please tell us what went wrong with this response',
+    content: 'Feedback Content',
+    placeholder: 'Please describe what went wrong or how we can improve...',
+  },
   integrations: {
     connected: 'Connected',
     google: 'Google',
