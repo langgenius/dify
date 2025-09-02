@@ -89,7 +89,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
-                response_chunk.update(sub_stream_response.to_ignore_detail_dict())
+                response_chunk.update(sub_stream_response.to_ignore_detail_dict())  # ty: ignore [unresolved-attribute]
             else:
                 response_chunk.update(sub_stream_response.to_dict())
             yield response_chunk

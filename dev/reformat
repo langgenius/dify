@@ -17,5 +17,8 @@ uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 # run import-linter
 uv run --directory api --dev lint-imports
 
+# run ty check
+dev/ty-check
+
 # run mypy check
 dev/mypy-check
