@@ -3,7 +3,7 @@ import os
 import uuid
 from typing import Any, Literal, Union
 
-from flask_login import current_user
+from libs.login import current_user
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -111,6 +111,8 @@ class FileService:
 
     @staticmethod
     def upload_text(text: str, text_name: str) -> UploadFile:
+        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+
         if len(text_name) > 200:
             text_name = text_name[:200]
         # user uuid as file name

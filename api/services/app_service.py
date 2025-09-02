@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Optional, TypedDict, cast
 
-from flask_login import current_user
+from libs.login import current_user
 from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config
@@ -168,6 +168,7 @@ class AppService:
         """
         Get App
         """
+        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
         # get original app model config
         if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
             model_config = app.app_model_config
@@ -239,6 +240,7 @@ class AppService:
         :param args: request args
         :return: App instance
         """
+        assert current_user is not None
         app.name = args["name"]
         app.description = args["description"]
         app.icon_type = args["icon_type"]
@@ -259,6 +261,7 @@ class AppService:
         :param name: new name
         :return: App instance
         """
+        assert current_user is not None
         app.name = name
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
@@ -274,6 +277,7 @@ class AppService:
         :param icon_background: new icon_background
         :return: App instance
         """
+        assert current_user is not None
         app.icon = icon
         app.icon_background = icon_background
         app.updated_by = current_user.id
@@ -291,7 +295,7 @@ class AppService:
         """
         if enable_site == app.enable_site:
             return app
-
+        assert current_user is not None
         app.enable_site = enable_site
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
@@ -308,6 +312,7 @@ class AppService:
         """
         if enable_api == app.enable_api:
             return app
+        assert current_user is not None
 
         app.enable_api = enable_api
         app.updated_by = current_user.id
