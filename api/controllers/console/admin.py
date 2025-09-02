@@ -135,10 +135,10 @@ class InsertExploreAppApi(Resource):
                     InstalledApp.app_id == recommended_app.app_id,
                     InstalledApp.tenant_id != InstalledApp.app_owner_tenant_id,
                 )
-            ).all()
+            ).scalars().all()
 
-        for installed_app in installed_apps:
-            db.session.delete(installed_app)
+            for installed_app in installed_apps:
+                session.delete(installed_app)
 
         db.session.delete(recommended_app)
         db.session.commit()
