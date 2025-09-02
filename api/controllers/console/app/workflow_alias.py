@@ -52,8 +52,8 @@ workflow_alias_create_update_model = api.model(
     },
 )
 
-class WorkflowAliasApi(Resource):
 
+class WorkflowAliasApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required

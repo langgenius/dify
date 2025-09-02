@@ -56,7 +56,5 @@ class WorkflowNameAlias(Base):
         self._is_transferred = False
         self._old_workflow_id = None
 
-
-
     def __repr__(self):
         return f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"
