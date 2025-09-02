@@ -1,4 +1,3 @@
-from models.base import TypeBase
 import json
 from datetime import datetime
 from typing import Any, cast
@@ -15,7 +14,7 @@ from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from models.base import Base
+from models.base import Base, TypeBase
 
 from .engine import db
 from .model import Account, App, Tenant
