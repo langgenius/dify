@@ -74,6 +74,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         with Session(db.engine, expire_on_commit=False) as session:
             app_record = session.scalar(select(App).where(App.id == app_config.app_id))
+
         if not app_record:
             raise ValueError("App not found")
 

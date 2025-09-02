@@ -86,7 +86,8 @@ class MessageCycleManager:
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
             # get conversation and message
-            conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+            stmt = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = db.session.scalar(stmt)
 
             if not conversation:
                 return
