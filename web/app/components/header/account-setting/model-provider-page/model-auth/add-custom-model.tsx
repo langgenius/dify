@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +26,7 @@ import {
 import ModelIcon from '../model-icon'
 import { useCanAddedModels } from './hooks/use-custom-models'
 import { useAuth } from './hooks/use-auth'
+import Tooltip from '@/app/components/base/tooltip'
 
 type AddCustomModelProps = {
   provider: ModelProvider,
@@ -64,6 +66,32 @@ const AddCustomModel = ({
       mode: ModelModalModeEnum.addCustomModelToModelList,
     },
   )
+  const notAllowCustomCredential = provider.allow_custom_token === false
+
+  const renderTrigger = useCallback((open?: boolean) => {
+    const Item = (
+      <Button
+        variant='ghost'
+        size='small'
+        className={cn(
+          'text-text-tertiary',
+          open && 'bg-components-button-ghost-bg-hover',
+          notAllowCustomCredential && !!noModels && 'cursor-not-allowed opacity-50',
+        )}
+      >
+        <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
+        {t('common.modelProvider.addModel')}
+      </Button>
+    )
+    if (notAllowCustomCredential && !!noModels) {
+      return (
+        <Tooltip asChild popupContent={t('plugin.auth.credentialUnavailable')}>
+          {Item}
+        </Tooltip>
+      )
+    }
+    return Item
+  }, [t, notAllowCustomCredential, noModels])
 
   return (
     <PortalToFollowElem
@@ -77,23 +105,15 @@ const AddCustomModel = ({
     >
       <PortalToFollowElemTrigger onClick={() => {
         if (noModels) {
+          if (notAllowCustomCredential)
+            return
           handleOpenModalForAddNewCustomModel()
           return
         }
 
         setOpen(prev => !prev)
       }}>
-        <Button
-          variant='ghost'
-          size='small'
-          className={cn(
-            'text-text-tertiary',
-            open && 'bg-components-button-ghost-bg-hover',
-          )}
-        >
-          <RiAddCircleFill className='mr-1 h-3.5 w-3.5' />
-          {t('common.modelProvider.addModel')}
-        </Button>
+        {renderTrigger(open)}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[100]'>
         <div className='w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
@@ -124,16 +144,20 @@ const AddCustomModel = ({
               ))
             }
           </div>
-          <div
-            className='system-xs-medium flex cursor-pointer items-center border-t border-t-divider-subtle p-3 text-text-accent-light-mode-only'
-            onClick={() => {
-              handleOpenModalForAddNewCustomModel()
-              setOpen(false)
-            }}
-          >
-            <RiAddLine className='mr-1 h-4 w-4' />
-            {t('common.modelProvider.auth.addNewModel')}
-          </div>
+          {
+            !notAllowCustomCredential && (
+              <div
+                className='system-xs-medium flex cursor-pointer items-center border-t border-t-divider-subtle p-3 text-text-accent-light-mode-only'
+                onClick={() => {
+                  handleOpenModalForAddNewCustomModel()
+                  setOpen(false)
+                }}
+              >
+                <RiAddLine className='mr-1 h-4 w-4' />
+                {t('common.modelProvider.auth.addNewModel')}
+              </div>
+            )
+          }
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

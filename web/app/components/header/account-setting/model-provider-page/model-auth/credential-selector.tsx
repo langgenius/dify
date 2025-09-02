@@ -23,12 +23,14 @@ type CredentialSelectorProps = {
   credentials: Credential[]
   onSelect: (credential: Credential & { addNewCredential?: boolean }) => void
   disabled?: boolean
+  notAllowAddNewCredential?: boolean
 }
 const CredentialSelector = ({
   selectedCredential,
   credentials,
   onSelect,
   disabled,
+  notAllowAddNewCredential,
 }: CredentialSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -93,13 +95,17 @@ const CredentialSelector = ({
               ))
             }
           </div>
-          <div
-            className='system-xs-medium flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 text-text-accent-light-mode-only'
-            onClick={handleAddNewCredential}
-          >
-            <RiAddLine className='mr-1 h-4 w-4' />
-            {t('common.modelProvider.auth.addNewModelCredential')}
-          </div>
+          {
+            !notAllowAddNewCredential && (
+              <div
+                className='system-xs-medium flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 text-text-accent-light-mode-only'
+                onClick={handleAddNewCredential}
+              >
+                <RiAddLine className='mr-1 h-4 w-4' />
+                {t('common.modelProvider.auth.addNewModelCredential')}
+              </div>
+            )
+          }
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

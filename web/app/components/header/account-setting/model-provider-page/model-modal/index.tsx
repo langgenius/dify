@@ -274,6 +274,7 @@ const ModelModal: FC<ModelModalProps> = ({
     if (getForm())
       getForm()?.setFieldValue(field, value)
   }, [])
+  const notAllowCustomCredential = provider.allow_custom_token === false
 
   return (
     <PortalToFollowElem open>
@@ -315,6 +316,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     onSelect={setSelectedCredential}
                     selectedCredential={selectedCredential}
                     disabled={isLoading}
+                    notAllowAddNewCredential={notAllowCustomCredential}
                   />
                 )
               }
