@@ -154,7 +154,7 @@ class ModelProviderService:
         provider_configuration.validate_provider_credentials(credentials)
 
     def create_provider_credential(
-        self, tenant_id: str, provider: str, credentials: dict, credential_name: str
+        self, tenant_id: str, provider: str, credentials: dict, credential_name: str | None
     ) -> None:
         """
         Create and save new provider credentials.
@@ -174,7 +174,7 @@ class ModelProviderService:
         provider: str,
         credentials: dict,
         credential_id: str,
-        credential_name: str,
+        credential_name: str | None,
     ) -> None:
         """
         update a saved provider credential (by credential_id).
@@ -251,7 +251,7 @@ class ModelProviderService:
         )
 
     def create_model_credential(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict, credential_name: str
+        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict, credential_name: str | None
     ) -> None:
         """
         create and save model credentials.
@@ -280,7 +280,7 @@ class ModelProviderService:
         model: str,
         credentials: dict,
         credential_id: str,
-        credential_name: str,
+        credential_name: str | None,
     ) -> None:
         """
         update model credentials.
