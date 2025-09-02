@@ -163,6 +163,10 @@ const translation = {
       title: 'Monitoramento em Nuvem',
       description: 'A plataforma de observabilidade totalmente gerenciada e sem manutenção fornecida pela Alibaba Cloud, permite monitoramento, rastreamento e avaliação prontos para uso de aplicações Dify.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Plataforma LLMOps de código aberto para rastreamento de experimentos, observabilidade e avaliação, para construir aplicações de IA/LLM com confiança.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do web app deve ser usado para substituir 🤖 no Explore',

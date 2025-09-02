@@ -192,6 +192,10 @@ const translation = {
       title: '云监控',
       description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: '开源LLMOps平台，提供实验跟踪、可观测性和评估功能，帮助您自信地构建AI/LLM应用。',
+    },
   },
   appSelector: {
     label: '应用',

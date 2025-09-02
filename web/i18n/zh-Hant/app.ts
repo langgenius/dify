@@ -162,6 +162,10 @@ const translation = {
       title: '雲端監控',
       description: '阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Dify 應用程序。',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: '開源LLMOps平台，提供實驗追蹤、可觀測性和評估功能，幫助您自信地構建AI/LLM應用。',
+    },
   },
   answerIcon: {
     descriptionInExplore: '是否使用 web app 圖示在 Explore 中取代 🤖',

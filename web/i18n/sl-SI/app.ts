@@ -176,6 +176,10 @@ const translation = {
       title: 'Oblačni nadzor',
       description: 'Popolnoma upravljana in brez vzdrževanja platforma za opazovanje, ki jo zagotavlja Alibaba Cloud, omogoča takojšnje spremljanje, sledenje in ocenjevanje aplikacij Dify.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Odprtokodna platforma LLMOps za sledenje eksperimentom, opazljivost in ocenjevanje, za gradnjo aplikacij AI/LLM z zaupanjem.',
+    },
   },
   mermaid: {
     handDrawn: 'Ročno narisano',

@@ -179,6 +179,10 @@ const translation = {
       title: 'クラウドモニター',
       description: 'Alibaba Cloud が提供する完全管理型でメンテナンスフリーの可観測性プラットフォームは、Dify アプリケーションの即時監視、トレース、評価を可能にします。',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'MLflowはLLMアプリケーションの実験管理・評価・監視を行うためのオープンソースプラットフォームです。Difyアプリの実行をトレースし、デバッグや改善に役立てることができます。',
+    },
   },
   answerIcon: {
     title: 'Web アプリアイコンを使用して🤖を置き換える',

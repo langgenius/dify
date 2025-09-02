@@ -185,7 +185,7 @@ const translation = {
     },
     mlflow: {
       title: 'MLflow',
-      description: 'Open-source LLMOps platform with end-to-end tracking, observability, and evaluations, for building AI/LLM applications with confidence.',
+      description: 'MLflow is an open-source platform for experiment management, evaluation, and monitoring of LLM applications.',
     },
     inUse: 'In use',
     configProvider: {
