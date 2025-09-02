@@ -19,6 +19,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
@@ -340,7 +341,7 @@ class IndexingRunner:
 
             if file_detail:
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file_detail, document_model=dataset_document.doc_form
+                    datasource_type=DatasourceType.FILE.value, upload_file=file_detail, document_model=dataset_document.doc_form
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         elif dataset_document.data_source_type == "notion_import":
@@ -351,7 +352,7 @@ class IndexingRunner:
             ):
                 raise ValueError("no notion import info found")
             extract_setting = ExtractSetting(
-                datasource_type="notion_import",
+                datasource_type=DatasourceType.NOTION.value,
                 notion_info={
                     "notion_workspace_id": data_source_info["notion_workspace_id"],
                     "notion_obj_id": data_source_info["notion_page_id"],
@@ -371,7 +372,7 @@ class IndexingRunner:
             ):
                 raise ValueError("no website import info found")
             extract_setting = ExtractSetting(
-                datasource_type="website_crawl",
+                datasource_type=DatasourceType.WEBSITE.value,
                 website_info={
                     "provider": data_source_info["provider"],
                     "job_id": data_source_info["job_id"],
