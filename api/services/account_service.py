@@ -146,7 +146,7 @@ class AccountService:
             account.last_active_at = naive_utc_now()
             db.session.commit()
 
-        return cast(Account, account)
+        return account
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
@@ -191,7 +191,7 @@ class AccountService:
 
         db.session.commit()
 
-        return cast(Account, account)
+        return account
 
     @staticmethod
     def update_account_password(account, password, new_password):
@@ -1127,7 +1127,7 @@ class TenantService:
     def get_custom_config(tenant_id: str) -> dict:
         tenant = db.get_or_404(Tenant, tenant_id)
 
-        return cast(dict, tenant.custom_config_dict)
+        return tenant.custom_config_dict
 
     @staticmethod
     def is_owner(account: Account, tenant: Tenant) -> bool:

@@ -138,7 +138,7 @@ class ElasticSearchVector(BaseVector):
             if not client.ping():
                 raise ConnectionError("Failed to connect to Elasticsearch")
 
-        except requests.exceptions.ConnectionError as e:
+        except requests.ConnectionError as e:
             raise ConnectionError(f"Vector database connection error: {str(e)}")
         except Exception as e:
             raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}")
@@ -216,7 +216,7 @@ class ElasticSearchVector(BaseVector):
         docs = []
         for doc, score in docs_and_scores:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if score > score_threshold:
+            if score >= score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
                     docs.append(doc)

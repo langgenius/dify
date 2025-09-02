@@ -318,10 +318,6 @@ class DatasetApi(DatasetApiResource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = marshal(dataset, dataset_detail_fields)
-        if data.get("permission") == "partial_members":
-            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-            data.update({"partial_member_list": part_users_list})
-
         # check embedding setting
         provider_manager = ProviderManager()
         assert isinstance(current_user, Account)

@@ -51,7 +51,7 @@ const AddCredentialInLoadBalancing = ({
         open && 'bg-state-base-hover',
       )}>
         <RiAddLine className='mr-2 h-4 w-4' />
-       {t('common.modelProvider.auth.addCredential')}
+        {t('common.modelProvider.auth.addCredential')}
       </div>
     )
 

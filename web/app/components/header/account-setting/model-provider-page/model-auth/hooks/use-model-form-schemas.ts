@@ -52,7 +52,10 @@ export const useModelFormSchemas = (
   }, [formSchemas, t])
 
   const formValues = useMemo(() => {
-    let result = {}
+    let result: any = {}
+    formSchemas.forEach((schema) => {
+      result[schema.variable] = schema.default
+    })
     if (credential) {
       result = { ...result, __authorization_name__: credential?.credential_name }
       if (credentials)
@@ -61,7 +64,7 @@ export const useModelFormSchemas = (
     if (model)
       result = { ...result, __model_name: model?.model, __model_type: model?.model_type }
     return result
-  }, [credentials, credential, model])
+  }, [credentials, credential, model, formSchemas])
 
   const modelNameAndTypeFormSchemas = useMemo(() => {
     if (providerFormSchemaPredefined)

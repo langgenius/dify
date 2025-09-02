@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
@@ -72,7 +73,6 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
-from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Conversation, EndUser, Message, MessageFile
@@ -143,6 +143,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         self._workflow_response_converter = WorkflowResponseConverter(
             application_generate_entity=application_generate_entity,
+            user=user,
         )
 
         self._task_state = WorkflowTaskState()
@@ -373,7 +374,7 @@ class AdvancedChatAppGenerateTaskPipeline:
     ) -> Generator[StreamResponse, None, None]:
         """Handle node succeeded events."""
         # Record files if it's an answer node or end node
-        if event.node_type in [NodeType.ANSWER, NodeType.END]:
+        if event.node_type in [NodeType.ANSWER, NodeType.END, NodeType.LLM]:
             self._recorded_files.extend(
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
@@ -896,7 +897,14 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
         message = self._get_message(session=session)
-        message.answer = self._task_state.answer
+
+        # If there are assistant files, remove markdown image links from answer
+        answer_text = self._task_state.answer
+        if self._recorded_files:
+            # Remove markdown image links since we're storing files separately
+            answer_text = re.sub(r"!\[.*?\]\(.*?\)", "", answer_text).strip()
+
+        message.answer = answer_text
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
         message.message_metadata = self._task_state.metadata.model_dump_json()
@@ -930,10 +938,6 @@ class AdvancedChatAppGenerateTaskPipeline:
             self._task_state.metadata.usage = usage
         else:
             self._task_state.metadata.usage = LLMUsage.empty_usage()
-        message_was_created.send(
-            message,
-            application_generate_entity=self._application_generate_entity,
-        )
 
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """

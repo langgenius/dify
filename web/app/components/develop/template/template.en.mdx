@@ -53,11 +53,18 @@ The text generation application offers non-session support and is ideal for tran
           The rules are defined by the developer and need to ensure that the user identifier is unique within the application. The Service API does not share conversations created by the WebApp.
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
-          - `type` (string) Supported type: `image` (currently only supports image type)
-          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
-          - `url` (string) Image URL (when the transfer method is `remote_url`)
-          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision/Video capability.
+          - `type` (string) Supported type:
+            - `document` Supported types include: 'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` Supported types include: 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` Supported types include: 'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` Supported types include: 'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` Supported types include: other file types
+          - `transfer_method` (string) Transfer method:
+            - `remote_url`: File URL.
+            - `local_file`: Upload file.
+          - `url` File URL. (Only when transfer method is `remote_url`).
+          - `upload_file_id` Upload file ID. (Only when transfer method is `local_file`).
       </Property>
     </Properties>
 

@@ -742,6 +742,12 @@ const translation = {
     deleteTitle: 'アバターを削除する',
     deleteDescription: '本当にプロフィール写真を削除してもよろしいですか？あなたのアカウントはデフォルトの初期アバターを使用します。',
   },
+  feedback: {
+    content: 'フィードバックコンテンツ',
+    title: 'フィードバックを提供する',
+    subtitle: 'この回答で何が間違っていたのか教えてください。',
+    placeholder: '何が間違っていたか、またはどのように改善できるかを教えてください...',
+  },
 }
 
 export default translation

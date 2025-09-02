@@ -268,6 +268,7 @@ const translation = {
     selectSearchType: '选择搜索内容',
     searchHint: '开始输入即可立即搜索所有内容',
     commandHint: '输入 @ 按类别浏览',
+    slashHint: '输入 / 查看所有可用命令',
     actions: {
       searchApplications: '搜索应用程序',
       searchApplicationsDesc: '搜索并导航到您的应用程序',
@@ -291,7 +292,11 @@ const translation = {
       languageCategoryTitle: '语言',
       languageCategoryDesc: '切换界面语言',
       languageChangeDesc: '更改界面语言',
-      slashDesc: '执行诸如 /theme、/lang 等命令',
+      slashDesc: '执行命令（输入 / 查看所有可用命令）',
+      accountDesc: '导航到账户页面',
+      communityDesc: '打开 Discord 社区',
+      docDesc: '打开帮助文档',
+      feedbackDesc: '打开社区反馈讨论',
     },
     emptyState: {
       noAppsFound: '未找到应用',

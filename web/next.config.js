@@ -1,4 +1,3 @@
-const { basePath, assetPrefix } = require('./utils/var-basePath')
 const { codeInspectorPlugin } = require('code-inspector-plugin')
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
@@ -24,8 +23,7 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath,
-  assetPrefix,
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   webpack: (config, { dev, isServer }) => {
     if (dev) {
       config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))

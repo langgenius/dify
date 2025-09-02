@@ -27,7 +27,7 @@ class NacosHttpClient:
             response = requests.request(method, url="http://" + self.server + url, headers=headers, params=params)
             response.raise_for_status()
             return response.text
-        except requests.exceptions.RequestException as e:
+        except requests.RequestException as e:
             return f"Request to Nacos failed: {e}"
 
     def _inject_auth_info(self, headers, params, module="config"):

@@ -133,7 +133,11 @@ class DatasetService:
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("knowledge", tenant_id, tag_ids)
+            target_ids = TagService.get_target_ids_by_tag_ids(
+                "knowledge",
+                tenant_id,  # ty: ignore [invalid-argument-type]
+                tag_ids,
+            )
             if target_ids and len(target_ids) > 0:
                 query = query.where(Dataset.id.in_(target_ids))
             else:
@@ -1149,7 +1153,7 @@ class DocumentService:
                         "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-                        "top_k": 2,
+                        "top_k": 4,
                         "score_threshold_enabled": False,
                     }
 
@@ -1612,7 +1616,7 @@ class DocumentService:
                 search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
-                top_k=2,
+                top_k=4,
                 score_threshold_enabled=False,
             )
         # save dataset
@@ -2346,7 +2350,7 @@ class SegmentService:
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
         segments = (
             db.session.query(DocumentSegment.index_node_id, DocumentSegment.word_count)
-            .filter(
+            .where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
@@ -2361,7 +2365,9 @@ class SegmentService:
         index_node_ids = [seg.index_node_id for seg in segments]
         total_words = sum(seg.word_count for seg in segments)
 
-        document.word_count -= total_words
+        document.word_count = (
+            document.word_count - total_words if document.word_count and document.word_count > total_words else 0
+        )
         db.session.add(document)
 
         delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
