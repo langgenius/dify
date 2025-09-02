@@ -12,7 +12,7 @@ const matchesField = (value: number, pattern: string, min: number, max: number):
     if (range === '*') {
       return value % stepValue === min % stepValue
     }
- else {
+    else {
       const rangeStart = Number.parseInt(range, 10)
       if (Number.isNaN(rangeStart)) return false
       return value >= rangeStart && (value - rangeStart) % stepValue === 0
@@ -96,15 +96,15 @@ const matchesCron = (
     return matchesField(currentDay, dayOfMonth, 1, 31)
            || matchesField(currentDayOfWeek, dayOfWeek, 0, 6)
   }
- else if (dayOfMonthSpecified) {
+  else if (dayOfMonthSpecified) {
     // Only day of month specified
     return matchesField(currentDay, dayOfMonth, 1, 31)
   }
- else if (dayOfWeekSpecified) {
+  else if (dayOfWeekSpecified) {
     // Only day of week specified
     return matchesField(currentDayOfWeek, dayOfWeek, 0, 6)
   }
- else {
+  else {
     // Both are *, matches any day
     return true
   }

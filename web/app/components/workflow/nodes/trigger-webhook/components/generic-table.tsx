@@ -177,7 +177,7 @@ const GenericTable: FC<GenericTableProps> = ({
               'h-6 rounded-none bg-transparent px-0 text-text-secondary',
               'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
             )}
-            optionWrapClassName="w-26 min-w-26 z-[5] -ml-3"
+            optionWrapClassName="w-26 min-w-26 z-[60] -ml-3"
             notClearable
           />
         )

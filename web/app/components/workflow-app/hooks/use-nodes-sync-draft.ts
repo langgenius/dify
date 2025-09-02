@@ -37,7 +37,15 @@ export const useNodesSyncDraft = () => {
 
     if (appId) {
       const nodes = getNodes()
-      // Allow empty workflows - sync restrictions removed to support empty workflow editing
+
+      // Prevent syncing empty workflow if React Flow isn't properly initialized
+      // Check multiple indicators of uninitialized state:
+      // 1. Empty nodes with default viewport (x=0, y=0, zoom=1)
+      // 2. Empty edges array along with empty nodes
+      if (nodes.length === 0 && edges.length === 0 && x === 0 && y === 0 && zoom === 1) {
+        // This appears to be an uninitialized React Flow state, skip sync to prevent data loss
+        return null
+      }
 
       const features = featuresStore!.getState().features
       const producedNodes = produce(nodes, (draft) => {

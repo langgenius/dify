@@ -114,7 +114,7 @@ export const useNodesInteractions = () => {
     try {
       return checkNestedParallelLimit(nodes, edges, parentNodeId)
     }
- catch (error: any) {
+    catch (error: any) {
       if (handleStartNodeMissingError(error, operationKey))
         return false // Operation blocked but gracefully handled
 

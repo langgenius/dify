@@ -173,7 +173,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           placeholder={t(`${i18nPrefix}.noBodyParameters`)}
           showType={true}
           isRequestBody={true}
-          contentType={inputs['content-type']}
+          contentType={inputs.content_type}
         />
 
         <Split />
