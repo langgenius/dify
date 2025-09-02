@@ -2,7 +2,6 @@ const translation = {
   title: 'Geri Alım Testi',
   desc: 'Verilen sorgu metnine göre Bilginin isabet etkisini test edin.',
   dateTimeFormat: 'GG/AA/YYYY ss:dd ÖÖ/ÖS',
-  recents: 'Sonuçlar',
   table: {
     header: {
       source: 'Kaynak',

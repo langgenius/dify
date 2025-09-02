@@ -18,7 +18,7 @@ default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-    "top_k": 2,
+    "top_k": 4,
     "score_threshold_enabled": False,
 }
 
@@ -66,7 +66,7 @@ class HitTestingService:
             retrieval_method=retrieval_model.get("search_method", "semantic_search"),
             dataset_id=dataset.id,
             query=query,
-            top_k=retrieval_model.get("top_k", 2),
+            top_k=retrieval_model.get("top_k", 4),
             score_threshold=retrieval_model.get("score_threshold", 0.0)
             if retrieval_model["score_threshold_enabled"]
             else 0.0,

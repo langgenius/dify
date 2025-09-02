@@ -30,7 +30,6 @@ const translation = {
       sync: '동기화',
       resume: '재개',
       pause: '일시 중지',
-      download: '파일 다운로드',
     },
     index: {
       enable: '활성화',

@@ -12,6 +12,7 @@ import PureSelect from '@/app/components/base/select/pure'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
 
 export type BaseFieldProps = {
@@ -142,6 +143,7 @@ const BaseField = ({
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
+              autoComplete={'new-password'}
             />
           )
         }
@@ -202,6 +204,18 @@ const BaseField = ({
                 ))
               }
             </div>
+          )
+        }
+        {
+          formSchema.type === FormTypeEnum.boolean && (
+            <Radio.Group
+              className='flex w-fit items-center'
+              value={value}
+              onChange={v => field.handleChange(v)}
+            >
+              <Radio value={true} className='!mr-1'>True</Radio>
+              <Radio value={false}>False</Radio>
+            </Radio.Group>
           )
         }
         {

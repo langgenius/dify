@@ -304,9 +304,9 @@ class CouchbaseVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        top_k = kwargs.get("top_k", 2)
+        top_k = kwargs.get("top_k", 4)
         try:
-            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))
+            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # ty: ignore [too-many-positional-arguments]
             search_iter = self._scope.search(
                 self._collection_name + "_search", CBrequest, SearchOptions(limit=top_k, fields=["*"])
             )

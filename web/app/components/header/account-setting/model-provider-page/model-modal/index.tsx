@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
 } from 'react'
@@ -187,6 +188,20 @@ const ModelModal: FC<ModelModalProps> = ({
 
     return null
   }, [model, provider])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        onCancel()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [onCancel])
 
   return (
     <PortalToFollowElem open>

@@ -580,6 +580,32 @@ class InstalledApp(Base):
         return tenant
 
 
+class OAuthProviderApp(Base):
+    """
+    Globally shared OAuth provider app information.
+    Only for Dify Cloud.
+    """
+
+    __tablename__ = "oauth_provider_apps"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="oauth_provider_app_pkey"),
+        sa.Index("oauth_provider_app_client_id_idx", "client_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    app_icon = mapped_column(String(255), nullable=False)
+    app_label = mapped_column(sa.JSON, nullable=False, server_default="{}")
+    client_id = mapped_column(String(255), nullable=False)
+    client_secret = mapped_column(String(255), nullable=False)
+    redirect_uris = mapped_column(sa.JSON, nullable=False, server_default="[]")
+    scope = mapped_column(
+        String(255),
+        nullable=False,
+        server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
+    )
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
