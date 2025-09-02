@@ -147,17 +147,25 @@ class ProviderConfiguration(BaseModel):
                 credentials = self.custom_configuration.provider.credentials
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
-            # Check credential policy compliance for model providers
-            if FeatureService.get_system_features().plugin_manager.enabled and current_credential_id:
-                PluginManagerService.check_credential_policy_compliance(
-                    CheckCredentialPolicyComplianceRequest(
-                        dify_credential_id=current_credential_id,
-                        provider=self.provider.provider,
-                        credential_type=PluginCredentialType.MODEL,
-                    )
-                )
+            if current_credential_id:
+                self._check_credential_policy_compliance(current_credential_id)
 
             return credentials
+
+    def _check_credential_policy_compliance(self, credential_id: str) -> None:
+        """
+        Check credential policy compliance for the given credential ID.
+
+        :param credential_id: The credential ID to check
+        """
+        if FeatureService.get_system_features().plugin_manager.enabled and credential_id:
+            PluginManagerService.check_credential_policy_compliance(
+                CheckCredentialPolicyComplianceRequest(
+                    dify_credential_id=credential_id,
+                    provider=self.provider.provider,
+                    credential_type=PluginCredentialType.MODEL,
+                )
+            )
 
     def get_system_configuration_status(self) -> Optional[SystemConfigurationStatus]:
         """
@@ -256,15 +264,7 @@ class ProviderConfiguration(BaseModel):
                 except Exception:
                     pass
 
-        # Check credential policy compliance for specific provider credentials
-        if FeatureService.get_system_features().plugin_manager.enabled and credential_id:
-            PluginManagerService.check_credential_policy_compliance(
-                CheckCredentialPolicyComplianceRequest(
-                    dify_credential_id=credential_id,
-                    provider=self.provider.provider,
-                    credential_type=PluginCredentialType.MODEL,
-                )
-            )
+        self._check_credential_policy_compliance(credential_id)
 
         return self.obfuscated_credentials(
             credentials=credentials,
@@ -297,13 +297,7 @@ class ProviderConfiguration(BaseModel):
         """
         if FeatureService.get_system_features().plugin_manager.enabled:
             if self.custom_configuration.provider and self.custom_configuration.provider.current_credential_id:
-                PluginManagerService.check_credential_policy_compliance(
-                    CheckCredentialPolicyComplianceRequest(
-                        dify_credential_id=self.custom_configuration.provider.current_credential_id,
-                        provider=self.provider.provider,
-                        credential_type=PluginCredentialType.MODEL,
-                    )
-                )
+                self._check_credential_policy_compliance(self.custom_configuration.provider.current_credential_id)
 
         if credential_id:
             return self._get_specific_provider_credential(credential_id)
@@ -724,15 +718,7 @@ class ProviderConfiguration(BaseModel):
         current_credential_id = credential_record.id
         current_credential_name = credential_record.credential_name
 
-        # Check credential policy compliance for specific model credentials
-        if FeatureService.get_system_features().plugin_manager.enabled and current_credential_id:
-            PluginManagerService.check_credential_policy_compliance(
-                CheckCredentialPolicyComplianceRequest(
-                    dify_credential_id=current_credential_id,
-                    provider=self.provider.provider,
-                    credential_type=PluginCredentialType.MODEL,
-                )
-            )
+        self._check_credential_policy_compliance(current_credential_id)
 
         credentials = self.obfuscated_credentials(
             credentials=credentials,
@@ -788,16 +774,8 @@ class ProviderConfiguration(BaseModel):
             ):
                 current_credential_id = model_configuration.current_credential_id
                 current_credential_name = model_configuration.current_credential_name
-
-                # Check credential policy compliance for model credentials
-                if FeatureService.get_system_features().plugin_manager.enabled and current_credential_id:
-                    PluginManagerService.check_credential_policy_compliance(
-                        CheckCredentialPolicyComplianceRequest(
-                            dify_credential_id=current_credential_id,
-                            provider=self.provider.provider,
-                            credential_type=PluginCredentialType.MODEL,
-                        )
-                    )
+                if current_credential_id:
+                    self._check_credential_policy_compliance(current_credential_id)
 
                 credentials = self.obfuscated_credentials(
                     credentials=model_configuration.credentials,

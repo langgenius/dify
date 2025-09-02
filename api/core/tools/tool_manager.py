@@ -242,14 +242,7 @@ class ToolManager:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
             # check if the credential is allowed to be used
-            if FeatureService.get_system_features().plugin_manager.enabled:
-                PluginManagerService.check_credential_policy_compliance(
-                    CheckCredentialPolicyComplianceRequest(
-                        dify_credential_id=builtin_provider.id,
-                        provider=provider_id,
-                        credential_type=PluginCredentialType.TOOL,
-                    )
-                )
+            cls._check_credential_policy_compliance(builtin_provider.id, provider_id)
 
             encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
@@ -1033,6 +1026,23 @@ class ToolManager:
                     value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
                     runtime_parameters[parameter.name] = value
         return runtime_parameters
+
+    @classmethod
+    def _check_credential_policy_compliance(cls, credential_id: str, provider: str) -> None:
+        """
+        Check credential policy compliance for the given credential ID.
+
+        :param credential_id: The credential ID to check
+        :param provider: The provider name
+        """
+        if FeatureService.get_system_features().plugin_manager.enabled:
+            PluginManagerService.check_credential_policy_compliance(
+                CheckCredentialPolicyComplianceRequest(
+                    dify_credential_id=credential_id,
+                    provider=provider,
+                    credential_type=PluginCredentialType.TOOL,
+                )
+            )
 
 
 ToolManager.load_hardcoded_providers_cache()
