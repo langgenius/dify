@@ -85,33 +85,18 @@ class NoOpProviderCredentialCache:
         pass
 
 
+provider_configurations_cache = {}
 class ProviderConfigurationsCache:
     def __init__(self, tenant_id: str):
         self.cache_key = f"provider_configurations:tenant_id:{tenant_id}"
 
-    def get(self) -> Optional[ProviderConfigurations]:
+    def get(self):
         """
         Get cached provider configurations.
 
         :return:
         """
-        cached_provider_configurations = redis_client.get(self.cache_key)
-        if cached_provider_configurations:
-            try:
-                cached_provider_configurations = cached_provider_configurations.decode("utf-8")
-                cached_provider_configurations = json.loads(cached_provider_configurations)
-                providerConfigurations = ProviderConfigurations(tenant_id=cached_provider_configurations["tenant_id"])
-                providerConfigurations.configurations = {
-                    key: ProviderConfiguration(**value)
-                    for key, value in cached_provider_configurations["configurations"].items()
-                }
-
-            except Exception as e:
-                return None
-
-            return providerConfigurations
-        else:
-            return None
+        return provider_configurations_cache.get(self.cache_key)
 
     def set(self, configurations: ProviderConfigurations) -> None:
         """
@@ -120,10 +105,7 @@ class ProviderConfigurationsCache:
         :param configurations: provider configurations
         :return:
         """
-        try:
-            redis_client.setex(self.cache_key, 86400, configurations.model_dump_json())
-        except Exception as e:
-            print("JSONDecodeError", e)
+        provider_configurations_cache[self.cache_key] = configurations
 
     def delete(self) -> None:
         """
@@ -131,4 +113,4 @@ class ProviderConfigurationsCache:
 
         :return:
         """
-        redis_client.delete(self.cache_key)
+        provider_configurations_cache.pop(self.cache_key, None)

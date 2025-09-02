@@ -387,7 +387,7 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                    ModelTypeInstanceCache().delete()
+                    ModelTypeInstanceCache().clear()
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
 
@@ -447,7 +447,7 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                    ModelTypeInstanceCache().delete()
+                    ModelTypeInstanceCache().clear()
 
                 self._update_load_balancing_configs_with_credential(
                     credential_id=credential_id,
@@ -572,7 +572,7 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                    ModelTypeInstanceCache().delete()
+                    ModelTypeInstanceCache().clear()
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
                 elif provider_record and provider_record.credential_id == credential_id:
@@ -587,7 +587,7 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                    ModelTypeInstanceCache().delete()
+                    ModelTypeInstanceCache().clear()
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
 
@@ -630,7 +630,7 @@ class ProviderConfiguration(BaseModel):
                 provider_model_credentials_cache.delete()
 
                 ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                ModelTypeInstanceCache().delete()
+                ModelTypeInstanceCache().clear()
 
                 self.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
             except Exception:
@@ -897,7 +897,7 @@ class ProviderConfiguration(BaseModel):
                 provider_model_credentials_cache.delete()
 
                 ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                ModelTypeInstanceCache().delete()
+                ModelTypeInstanceCache().clear()
             except Exception:
                 session.rollback()
                 raise
@@ -961,7 +961,7 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                    ModelTypeInstanceCache().delete()
+                    ModelTypeInstanceCache().clear()
 
                 self._update_load_balancing_configs_with_credential(
                     credential_id=credential_id,
@@ -1043,7 +1043,7 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                    ModelTypeInstanceCache().delete()
+                    ModelTypeInstanceCache().clear()
 
                 session.commit()
 
@@ -1148,7 +1148,7 @@ class ProviderConfiguration(BaseModel):
                 provider_model_credentials_cache.delete()
 
                 ProviderConfigurationsCache(tenant_id=self.tenant_id).delete()
-                ModelTypeInstanceCache().delete()
+                ModelTypeInstanceCache().clear()
 
     def _get_provider_model_setting(
         self, model_type: ModelType, model: str, session: Session
