@@ -341,7 +341,9 @@ class IndexingRunner:
 
             if file_detail:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE.value, upload_file=file_detail, document_model=dataset_document.doc_form
+                    datasource_type=DatasourceType.FILE.value,
+                    upload_file=file_detail,
+                    document_model=dataset_document.doc_form,
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         elif dataset_document.data_source_type == "notion_import":

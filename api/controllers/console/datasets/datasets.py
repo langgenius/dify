@@ -423,7 +423,9 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE.value, upload_file=file_detail, document_model=args["doc_form"]
+                        datasource_type=DatasourceType.FILE.value,
+                        upload_file=file_detail,
+                        document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
         elif args["info_list"]["data_source_type"] == "notion_import":
