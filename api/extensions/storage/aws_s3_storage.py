@@ -1,9 +1,9 @@
 import logging
 from collections.abc import Generator
 
-import boto3  # type: ignore
-from botocore.client import Config  # type: ignore
-from botocore.exceptions import ClientError  # type: ignore
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage

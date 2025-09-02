@@ -334,7 +334,8 @@ class BaseAgentRunner(AppRunner):
         """
         Save agent thought
         """
-        agent_thought = db.session.query(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id).first()
+        stmt = select(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id)
+        agent_thought = db.session.scalar(stmt)
         if not agent_thought:
             raise ValueError("agent thought not found")
 
@@ -492,7 +493,8 @@ class BaseAgentRunner(AppRunner):
         return result
 
     def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        files = db.session.query(MessageFile).where(MessageFile.message_id == message.id).all()
+        stmt = select(MessageFile).where(MessageFile.message_id == message.id)
+        files = db.session.scalars(stmt).all()
         if not files:
             return UserPromptMessage(content=message.query)
         if message.app_model_config:
@@ -512,7 +514,6 @@ class BaseAgentRunner(AppRunner):
         if not file_objs:
             return UserPromptMessage(content=message.query)
         prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
         for file in file_objs:
             prompt_message_contents.append(
                 file_manager.to_prompt_message_content(
@@ -520,4 +521,6 @@ class BaseAgentRunner(AppRunner):
                     image_detail_config=image_detail_config,
                 )
             )
+        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
+
         return UserPromptMessage(content=prompt_message_contents)

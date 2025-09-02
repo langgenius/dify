@@ -843,6 +843,7 @@ const translation = {
         },
         json: 'JSON do tác nhân tạo',
         text: 'Nội dung do tác nhân tạo',
+        usage: 'Thông tin sử dụng mô hình',
       },
       checkList: {
         strategyNotSelected: 'Chiến lược không được chọn',
@@ -995,6 +996,7 @@ const translation = {
     noMatchingInputsFound: 'Không tìm thấy đầu vào nào khớp từ lần chạy trước',
     copyLastRun: 'Sao chép lần chạy cuối',
     copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
+    lastOutput: 'Đầu ra cuối cùng',
   },
 }
 

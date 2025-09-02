@@ -1,5 +1,4 @@
 import dataclasses
-import datetime
 import logging
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
@@ -13,7 +12,7 @@ from sqlalchemy.sql.expression import and_, or_
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.variables import Segment, StringSegment, Variable
-from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -23,12 +22,13 @@ from core.workflow.nodes.variable_assigner.common.helpers import get_updated_var
 from core.workflow.variable_loader import VariableLoader
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
+from libs.datetime_utils import naive_utc_now
 from models import App, Conversation
 from models.enums import DraftVariableType
 from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -147,7 +147,7 @@ class WorkflowDraftVariableService:
     ) -> list[WorkflowDraftVariable]:
         ors = []
         for selector in selectors:
-            assert len(selector) >= MIN_SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
+            assert len(selector) >= SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
             node_id, name = selector[:2]
             ors.append(and_(WorkflowDraftVariable.node_id == node_id, WorkflowDraftVariable.name == name))
 
@@ -231,7 +231,7 @@ class WorkflowDraftVariableService:
             variable.set_name(name)
         if value is not None:
             variable.set_value(value)
-        variable.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        variable.last_edited_at = naive_utc_now()
         self._session.flush()
         return variable
 
@@ -242,7 +242,7 @@ class WorkflowDraftVariableService:
         if conv_var is None:
             self._session.delete(instance=variable)
             self._session.flush()
-            _logger.warning(
+            logger.warning(
                 "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
             )
             return None
@@ -263,12 +263,12 @@ class WorkflowDraftVariableService:
         if variable.node_execution_id is None:
             self._session.delete(instance=variable)
             self._session.flush()
-            _logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
+            logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
         node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
         if node_exec is None:
-            _logger.warning(
+            logger.warning(
                 "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
                 variable.id,
                 variable.name,
@@ -351,7 +351,7 @@ class WorkflowDraftVariableService:
             return None
         segment = draft_var.get_value()
         if not isinstance(segment, StringSegment):
-            _logger.warning(
+            logger.warning(
                 "sys.conversation_id variable is not a string: app_id=%s, id=%s",
                 app_id,
                 draft_var.id,
@@ -608,7 +608,7 @@ class DraftVariableSaver:
 
         for item in updated_variables:
             selector = item.selector
-            if len(selector) < MIN_SELECTORS_LENGTH:
+            if len(selector) < SELECTORS_LENGTH:
                 raise Exception("selector too short")
             # NOTE(QuantumGhost): only the following two kinds of variable could be updated by
             # VariableAssigner: ConversationVariable and iteration variable.
@@ -681,7 +681,7 @@ class DraftVariableSaver:
         draft_vars = []
         for name, value in output.items():
             if not self._should_variable_be_saved(name):
-                _logger.debug(
+                logger.debug(
                     "Skip saving variable as it has been excluded by its node_type, name=%s, node_type=%s",
                     name,
                     self._node_type,

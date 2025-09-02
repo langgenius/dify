@@ -93,6 +93,7 @@ const translation = {
     iteration: 'Yineleme',
     finalProcessing: 'Son İşleme',
   },
+  dateFormat: 'GG/AA/YYYY',
 }
 
 export default translation

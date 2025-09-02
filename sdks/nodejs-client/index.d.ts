@@ -14,6 +14,22 @@ interface HeaderParams {
 interface User {
 }
 
+interface DifyFileBase {
+  type: "image"
+}
+
+export interface DifyRemoteFile extends DifyFileBase {
+  transfer_method: "remote_url"
+  url: string
+}
+
+export interface DifyLocalFile extends DifyFileBase {
+  transfer_method: "local_file"
+  upload_file_id: string
+}
+
+export type DifyFile = DifyRemoteFile | DifyLocalFile;
+
 export declare class DifyClient {
   constructor(apiKey: string, baseUrl?: string);
 
@@ -44,7 +60,7 @@ export declare class CompletionClient extends DifyClient {
     inputs: any,
     user: User,
     stream?: boolean,
-    files?: File[] | null
+    files?: DifyFile[] | null
   ): Promise<any>;
 }
 
@@ -55,7 +71,7 @@ export declare class ChatClient extends DifyClient {
     user: User,
     stream?: boolean,
     conversation_id?: string | null,
-    files?: File[] | null
+    files?: DifyFile[] | null
   ): Promise<any>;
 
   getSuggested(message_id: string, user: User): Promise<any>;

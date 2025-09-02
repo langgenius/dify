@@ -1,7 +1,6 @@
 import time
 import uuid
 from os import getenv
-from typing import cast
 
 import pytest
 
@@ -13,7 +12,6 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
@@ -55,8 +53,8 @@ def init_code_node(code_config: dict):
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(["code", "123", "args1"], 1)
-    variable_pool.add(["code", "123", "args2"], 2)
+    variable_pool.add(["code", "args1"], 1)
+    variable_pool.add(["code", "args2"], 2)
 
     node = CodeNode(
         id=str(uuid.uuid4()),
@@ -96,9 +94,9 @@ def test_execute_code(setup_code_executor_mock):
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -107,8 +105,8 @@ def test_execute_code(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args2"], 2)
+    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
 
     # execute node
     result = node._run()
@@ -142,9 +140,9 @@ def test_execute_code_output_validator(setup_code_executor_mock):
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -153,8 +151,8 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args2"], 2)
+    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
 
     # execute node
     result = node._run()
@@ -217,9 +215,9 @@ def test_execute_code_output_validator_depth():
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -237,8 +235,6 @@ def test_execute_code_output_validator_depth():
         "string_array_validator": ["1", "2", "3"],
         "object_validator": {"result": 1, "depth": {"depth": {"depth": 1}}},
     }
-
-    node._node_data = cast(CodeNodeData, node._node_data)
 
     # validate
     node._transform_result(result, node._node_data.outputs)
@@ -307,9 +303,9 @@ def test_execute_code_output_object_list():
             "variables": [
                 {
                     "variable": "args1",
-                    "value_selector": ["1", "123", "args1"],
+                    "value_selector": ["1", "args1"],
                 },
-                {"variable": "args2", "value_selector": ["1", "123", "args2"]},
+                {"variable": "args2", "value_selector": ["1", "args2"]},
             ],
             "answer": "123",
             "code_language": "python3",
@@ -333,8 +329,6 @@ def test_execute_code_output_object_list():
             },
         ]
     }
-
-    node._node_data = cast(CodeNodeData, node._node_data)
 
     # validate
     node._transform_result(result, node._node_data.outputs)

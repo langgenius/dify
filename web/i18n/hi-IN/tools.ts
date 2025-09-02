@@ -86,7 +86,6 @@ const translation = {
         'Http हैडर कुंजी, यदि आपको कुछ पता नहीं है तो "Authorization" के साथ छोड़ सकते हैं या इसे कस्टम मूल्य पर सेट कर सकते हैं',
       types: {
         none: 'कोई नहीं',
-        api_key: 'API कुंजी',
         apiKeyPlaceholder: 'API कुंजी के लिए HTTP हैडर नाम',
         apiValuePlaceholder: 'API कुंजी दर्ज करें',
         api_key_query: 'अनुक्रमणिका पैरामीटर',
@@ -197,6 +196,8 @@ const translation = {
       cancel: 'रद्द करें',
       save: 'सहेजें',
       confirm: 'जोड़ें और अधिकृत करें',
+      timeout: 'टाइमआउट',
+      sseReadTimeout: 'एसएसई पढ़ने का टाइमआउट',
     },
     delete: 'MCP सर्वर हटाएँ',
     deleteConfirmTitle: '{mcp} हटाना चाहते हैं?',

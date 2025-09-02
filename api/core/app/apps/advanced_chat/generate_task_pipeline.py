@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
@@ -72,8 +73,8 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
-from events.message_event import message_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatorUserRole
@@ -142,6 +143,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         self._workflow_response_converter = WorkflowResponseConverter(
             application_generate_entity=application_generate_entity,
+            user=user,
         )
 
         self._task_state = WorkflowTaskState()
@@ -372,7 +374,7 @@ class AdvancedChatAppGenerateTaskPipeline:
     ) -> Generator[StreamResponse, None, None]:
         """Handle node succeeded events."""
         # Record files if it's an answer node or end node
-        if event.node_type in [NodeType.ANSWER, NodeType.END]:
+        if event.node_type in [NodeType.ANSWER, NodeType.END, NodeType.LLM]:
             self._recorded_files.extend(
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
@@ -568,7 +570,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             )
 
         yield workflow_finish_resp
-        self._base_task_pipeline._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_partial_success_event(
         self,
@@ -600,7 +602,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             )
 
         yield workflow_finish_resp
-        self._base_task_pipeline._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_failed_event(
         self,
@@ -845,7 +847,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         # Initialize graph runtime state
         graph_runtime_state: Optional[GraphRuntimeState] = None
 
-        for queue_message in self._base_task_pipeline._queue_manager.listen():
+        for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
 
             match event:
@@ -895,7 +897,15 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
         message = self._get_message(session=session)
-        message.answer = self._task_state.answer
+
+        # If there are assistant files, remove markdown image links from answer
+        answer_text = self._task_state.answer
+        if self._recorded_files:
+            # Remove markdown image links since we're storing files separately
+            answer_text = re.sub(r"!\[.*?\]\(.*?\)", "", answer_text).strip()
+
+        message.answer = answer_text
+        message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
         message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
@@ -928,10 +938,6 @@ class AdvancedChatAppGenerateTaskPipeline:
             self._task_state.metadata.usage = usage
         else:
             self._task_state.metadata.usage = LLMUsage.empty_usage()
-        message_was_created.send(
-            message,
-            application_generate_entity=self._application_generate_entity,
-        )
 
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """
@@ -959,11 +965,11 @@ class AdvancedChatAppGenerateTaskPipeline:
         if self._base_task_pipeline._output_moderation_handler:
             if self._base_task_pipeline._output_moderation_handler.should_direct_output():
                 self._task_state.answer = self._base_task_pipeline._output_moderation_handler.get_final_output()
-                self._base_task_pipeline._queue_manager.publish(
+                self._base_task_pipeline.queue_manager.publish(
                     QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
                 )
 
-                self._base_task_pipeline._queue_manager.publish(
+                self._base_task_pipeline.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
                 )
                 return True

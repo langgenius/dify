@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import queue
@@ -11,7 +12,7 @@ import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
 
 if TYPE_CHECKING:
-    from clickzetta import Connection
+    from clickzetta.connector.v0.connection import Connection  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -214,10 +215,8 @@ class ClickzettaConnectionPool:
                     return connection
                 else:
                     # Connection expired or invalid, close it
-                    try:
+                    with contextlib.suppress(Exception):
                         connection.close()
-                    except Exception:
-                        pass
 
             # No valid connection found, create new one
             return self._create_connection(config)
@@ -228,10 +227,8 @@ class ClickzettaConnectionPool:
 
         if config_key not in self._pool_locks:
             # Pool was cleaned up, just close the connection
-            try:
+            with contextlib.suppress(Exception):
                 connection.close()
-            except Exception:
-                pass
             return
 
         with self._pool_locks[config_key]:
@@ -243,10 +240,8 @@ class ClickzettaConnectionPool:
                 logger.debug("Returned ClickZetta connection to pool")
             else:
                 # Pool full or connection invalid, close it
-                try:
+                with contextlib.suppress(Exception):
                     connection.close()
-                except Exception:
-                    pass
 
     def _cleanup_expired_connections(self) -> None:
         """Clean up expired connections from all pools."""
@@ -265,10 +260,8 @@ class ClickzettaConnectionPool:
                         if current_time - last_used < self._connection_timeout:
                             valid_connections.append((connection, last_used))
                         else:
-                            try:
+                            with contextlib.suppress(Exception):
                                 connection.close()
-                            except Exception:
-                                pass
 
                     self._pools[config_key] = valid_connections
 
@@ -299,10 +292,8 @@ class ClickzettaConnectionPool:
                 with self._pool_locks[config_key]:
                     pool = self._pools[config_key]
                     for connection, _ in pool:
-                        try:
+                        with contextlib.suppress(Exception):
                             connection.close()
-                        except Exception:
-                            pass
                     pool.clear()
 
 

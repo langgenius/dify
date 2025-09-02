@@ -132,7 +132,6 @@ export const useGetAvailableVars = () => {
 
     if (!currentNode)
       return []
-
     const beforeNodes = getBeforeNodesInSameBranchIncludeParent(nodeId)
     availableNodes.push(...beforeNodes)
     const parentNode = nodes.find(node => node.id === currentNode.parentId)
@@ -143,7 +142,7 @@ export const useGetAvailableVars = () => {
         beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
         isChatMode,
         hideEnv,
-        hideChatVar: hideEnv,
+        hideChatVar: false,
         filterVar,
       })
         .map(node => ({

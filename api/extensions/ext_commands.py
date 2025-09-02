@@ -4,6 +4,7 @@ from dify_app import DifyApp
 def init_app(app: DifyApp):
     from commands import (
         add_qdrant_index,
+        cleanup_orphaned_draft_variables,
         clear_free_plan_tenant_expired_logs,
         clear_orphaned_file_records,
         convert_to_agent_apps,
@@ -42,6 +43,7 @@ def init_app(app: DifyApp):
         clear_orphaned_file_records,
         remove_orphaned_files_on_storage,
         setup_system_tool_oauth_client,
+        cleanup_orphaned_draft_variables,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

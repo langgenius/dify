@@ -191,6 +191,8 @@ const translation = {
       cancel: 'キャンセル',
       save: '保存',
       confirm: '追加して承認',
+      timeout: 'タイムアウト',
+      sseReadTimeout: 'SSE 読み取りタイムアウト',
     },
     delete: 'MCPサーバーを削除',
     deleteConfirmTitle: '{{mcp}} を削除しますか？',

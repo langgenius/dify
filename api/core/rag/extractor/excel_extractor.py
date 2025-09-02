@@ -4,7 +4,7 @@ import os
 from typing import Optional, cast
 
 import pandas as pd
-from openpyxl import load_workbook  # type: ignore
+from openpyxl import load_workbook
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -34,9 +34,8 @@ class ExcelExtractor(BaseExtractor):
             for sheet_name in wb.sheetnames:
                 sheet = wb[sheet_name]
                 data = sheet.values
-                try:
-                    cols = next(data)
-                except StopIteration:
+                cols = next(data, None)
+                if cols is None:
                     continue
                 df = pd.DataFrame(data, columns=cols)
 

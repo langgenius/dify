@@ -216,8 +216,8 @@ const DatasetCard = ({
               }
               btnClassName={open =>
                 cn(
-                  open ? '!bg-black/5 !shadow-none' : '!bg-transparent',
-                  'h-8 w-8 rounded-md border-none !p-2 hover:!bg-black/5',
+                  open ? '!bg-state-base-hover !shadow-none' : '!bg-transparent',
+                  'h-8 w-8 rounded-md border-none !p-2 hover:!bg-state-base-hover',
                 )
               }
               className={'!z-20 h-fit !w-[128px]'}

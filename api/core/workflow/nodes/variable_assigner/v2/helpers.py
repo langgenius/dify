@@ -16,28 +16,15 @@ def is_operation_supported(*, variable_type: SegmentType, operation: Operation):
                 SegmentType.NUMBER,
                 SegmentType.INTEGER,
                 SegmentType.FLOAT,
+                SegmentType.BOOLEAN,
             }
         case Operation.ADD | Operation.SUBTRACT | Operation.MULTIPLY | Operation.DIVIDE:
             # Only number variable can be added, subtracted, multiplied or divided
             return variable_type in {SegmentType.NUMBER, SegmentType.INTEGER, SegmentType.FLOAT}
-        case Operation.APPEND | Operation.EXTEND:
+        case Operation.APPEND | Operation.EXTEND | Operation.REMOVE_FIRST | Operation.REMOVE_LAST:
             # Only array variable can be appended or extended
-            return variable_type in {
-                SegmentType.ARRAY_ANY,
-                SegmentType.ARRAY_OBJECT,
-                SegmentType.ARRAY_STRING,
-                SegmentType.ARRAY_NUMBER,
-                SegmentType.ARRAY_FILE,
-            }
-        case Operation.REMOVE_FIRST | Operation.REMOVE_LAST:
             # Only array variable can have elements removed
-            return variable_type in {
-                SegmentType.ARRAY_ANY,
-                SegmentType.ARRAY_OBJECT,
-                SegmentType.ARRAY_STRING,
-                SegmentType.ARRAY_NUMBER,
-                SegmentType.ARRAY_FILE,
-            }
+            return variable_type.is_array_type()
         case _:
             return False
 
@@ -50,7 +37,7 @@ def is_variable_input_supported(*, operation: Operation):
 
 def is_constant_input_supported(*, variable_type: SegmentType, operation: Operation):
     match variable_type:
-        case SegmentType.STRING | SegmentType.OBJECT:
+        case SegmentType.STRING | SegmentType.OBJECT | SegmentType.BOOLEAN:
             return operation in {Operation.OVER_WRITE, Operation.SET}
         case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
             return operation in {
@@ -72,6 +59,9 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
         case SegmentType.STRING:
             return isinstance(value, str)
 
+        case SegmentType.BOOLEAN:
+            return isinstance(value, bool)
+
         case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
             if not isinstance(value, int | float):
                 return False
@@ -91,6 +81,8 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
             return isinstance(value, int | float)
         case SegmentType.ARRAY_OBJECT if operation == Operation.APPEND:
             return isinstance(value, dict)
+        case SegmentType.ARRAY_BOOLEAN if operation == Operation.APPEND:
+            return isinstance(value, bool)
 
         # Array & Extend / Overwrite
         case SegmentType.ARRAY_ANY if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
@@ -101,6 +93,8 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
             return isinstance(value, list) and all(isinstance(item, int | float) for item in value)
         case SegmentType.ARRAY_OBJECT if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+        case SegmentType.ARRAY_BOOLEAN if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
+            return isinstance(value, list) and all(isinstance(item, bool) for item in value)
 
         case _:
             return False

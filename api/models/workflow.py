@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 import sqlalchemy as sa
-from flask_login import current_user
-from sqlalchemy import DateTime, orm
+from sqlalchemy import DateTime, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -18,7 +17,6 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIAB
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_tenant_id
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
@@ -40,7 +38,7 @@ from .engine import db
 from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class WorkflowType(Enum):
@@ -338,12 +336,13 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return (
-            db.session.query(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
-            .count()
-            > 0
+        stmt = select(
+            exists().where(
+                WorkflowToolProvider.tenant_id == self.tenant_id,
+                WorkflowToolProvider.app_id == self.app_id,
+            )
         )
+        return db.session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
@@ -351,8 +350,8 @@ class Workflow(Base):
         if self._environment_variables is None:
             self._environment_variables = "{}"
 
-        # Get tenant_id from current_user (Account or EndUser)
-        tenant_id = extract_tenant_id(current_user)
+        # Use workflow.tenant_id to avoid relying on request user in background threads
+        tenant_id = self.tenant_id
 
         if not tenant_id:
             return []
@@ -382,8 +381,8 @@ class Workflow(Base):
             self._environment_variables = "{}"
             return
 
-        # Get tenant_id from current_user (Account or EndUser)
-        tenant_id = extract_tenant_id(current_user)
+        # Use workflow.tenant_id to avoid relying on request user in background threads
+        tenant_id = self.tenant_id
 
         if not tenant_id:
             self._environment_variables = "{}"
@@ -836,6 +835,7 @@ class WorkflowAppLog(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
         sa.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
+        sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
@@ -923,7 +923,7 @@ def _naive_utc_datetime():
 
 class WorkflowDraftVariable(Base):
     """`WorkflowDraftVariable` record variables and outputs generated during
-    debugging worfklow or chatflow.
+    debugging workflow or chatflow.
 
     IMPORTANT: This model maintains multiple invariant rules that must be preserved.
     Do not instantiate this class directly with the constructor.
@@ -1057,7 +1057,7 @@ class WorkflowDraftVariable(Base):
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
         if not isinstance(selector, list):
-            _logger.error(
+            logger.error(
                 "invalid selector loaded from database, type=%s, value=%s",
                 type(selector),
                 self.selector,
@@ -1153,7 +1153,7 @@ class WorkflowDraftVariable(Base):
             value: The Segment object to store as the variable's value.
         """
         self.__value = value
-        self.value = json.dumps(value, cls=variable_utils.SegmentJSONEncoder)
+        self.value = variable_utils.dumps_with_segments(value)
         self.value_type = value.value_type
 
     def get_node_id(self) -> str | None:

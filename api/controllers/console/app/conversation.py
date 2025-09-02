@@ -2,8 +2,8 @@ from datetime import datetime
 
 import pytz  # pip install pytz
 from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, marshal_with, reqparse
+from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
@@ -27,6 +27,8 @@ from models.model import AppMode, MessageAgentThought, MessageChain, MessageFeed
 from models.tools import ToolConversationVariables, ToolFile
 from models.web import PinnedConversation
 from models.workflow import ConversationVariable
+from services.conversation_service import ConversationService
+from services.errors.conversation import ConversationNotExistsError
 
 
 class CompletionConversationApi(Resource):
@@ -49,7 +51,9 @@ class CompletionConversationApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion")
+        query = db.select(Conversation).where(
+            Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
+        )
 
         if args["keyword"]:
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
@@ -250,17 +254,10 @@ class CompletionConversationDetailApi(Resource):
             raise Forbidden()
         conversation_id = str(conversation_id)
 
-        conversation = (
-            db.session.query(Conversation)
-            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-            .first()
-        )
-
-        if not conversation:
+        try:
+            ConversationService.delete(app_model, conversation_id, current_user)
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-        conversation.is_deleted = True
-        db.session.commit()
 
         return {"result": "success"}, 204
 
@@ -302,7 +299,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id)
+        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args["keyword"]:
             keyword_filter = f"%{args['keyword']}%"
@@ -543,17 +540,10 @@ class ChatConversationDetailApi(Resource):
             raise Forbidden()
         conversation_id = str(conversation_id)
 
-        conversation = (
-            db.session.query(Conversation)
-            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-            .first()
-        )
-
-        if not conversation:
+        try:
+            ConversationService.delete(app_model, conversation_id, current_user)
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-        conversation.is_deleted = True
-        db.session.commit()
 
         return {"result": "success"}, 204
 

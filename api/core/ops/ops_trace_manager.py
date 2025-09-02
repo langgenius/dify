@@ -37,6 +37,8 @@ from models.model import App, AppModelConfig, Conversation, Message, MessageFile
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
+logger = logging.getLogger(__name__)
+
 
 class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
@@ -224,9 +226,9 @@ class OpsTraceManager:
 
         if not trace_config_data:
             return None
-
         # decrypt_token
-        app = db.session.query(App).where(App.id == app_id).first()
+        stmt = select(App).where(App.id == app_id)
+        app = db.session.scalar(stmt)
         if not app:
             raise ValueError("App not found")
 
@@ -287,26 +289,25 @@ class OpsTraceManager:
             # create new tracing_instance and update the cache if it absent
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
-            logging.info("new tracing_instance for app_id: %s", app_id)
+            logger.info("new tracing_instance for app_id: %s", app_id)
         return tracing_instance
 
     @classmethod
     def get_app_config_through_message_id(cls, message_id: str):
         app_model_config = None
-        message_data = db.session.query(Message).where(Message.id == message_id).first()
+        message_stmt = select(Message).where(Message.id == message_id)
+        message_data = db.session.scalar(message_stmt)
         if not message_data:
             return None
         conversation_id = message_data.conversation_id
-        conversation_data = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+        conversation_stmt = select(Conversation).where(Conversation.id == conversation_id)
+        conversation_data = db.session.scalar(conversation_stmt)
         if not conversation_data:
             return None
 
         if conversation_data.app_model_config_id:
-            app_model_config = (
-                db.session.query(AppModelConfig)
-                .where(AppModelConfig.id == conversation_data.app_model_config_id)
-                .first()
-            )
+            config_stmt = select(AppModelConfig).where(AppModelConfig.id == conversation_data.app_model_config_id)
+            app_model_config = db.session.scalar(config_stmt)
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
             app_model_config = conversation_data.override_model_configs
 
@@ -328,7 +329,7 @@ class OpsTraceManager:
             except KeyError:
                 raise ValueError(f"Invalid tracing provider: {tracing_provider}")
         else:
-            if tracing_provider is not None:
+            if tracing_provider is None:
                 raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: Optional[App] = db.session.query(App).where(App.id == app_id).first()
@@ -849,7 +850,7 @@ class TraceQueueManager:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception as e:
-            logging.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
+            logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
         finally:
             self.start_timer()
 
@@ -868,7 +869,7 @@ class TraceQueueManager:
             if tasks:
                 self.send_to_celery(tasks)
         except Exception as e:
-            logging.exception("Error processing trace tasks")
+            logger.exception("Error processing trace tasks")
 
     def start_timer(self):
         global trace_manager_timer

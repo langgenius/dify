@@ -60,6 +60,7 @@ const translation = {
     format: 'Formato',
     deSelectAll: 'Desmarcar tudo',
     selectAll: 'Selecionar tudo',
+    config: 'Configuração',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -197,7 +198,6 @@ const translation = {
     showAppLength: 'Mostrar {{length}} apps',
     delete: 'Excluir conta',
     deleteTip: 'Excluir sua conta apagará permanentemente todos os seus dados e eles não poderão ser recuperados.',
-    deleteConfirmTip: 'Para confirmar, envie o seguinte do seu e-mail registrado para ',
     myAccount: 'Minha Conta',
     account: 'Conta',
     studio: 'Estúdio Dify',
@@ -469,6 +469,28 @@ const translation = {
     configureTip: 'Configure a chave de API ou adicione o modelo a ser usado',
     emptyProviderTitle: 'Provedor de modelo não configurado',
     toBeConfigured: 'A ser configurado',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Adicionar modelo',
+        title: 'Configuração de Autorização de Chave da API',
+        desc: 'Após configurar as credenciais, todos os membros dentro do espaço de trabalho podem usar este modelo ao orquestrar aplicações.',
+      },
+      addCredential: 'Adicionar credencial',
+      configModel: 'Configurar modelo',
+      apiKeys: 'Chaves de API',
+      unAuthorized: 'Não autorizado',
+      modelCredentials: 'Credenciais do modelo',
+      providerManaged: 'Provedor gerenciado',
+      addApiKey: 'Adicionar chave da API',
+      authorizationError: 'Erro de autorização',
+      addNewModel: 'Adicionar novo modelo',
+      specifyModelCredential: 'Especifique as credenciais do modelo',
+      providerManagedTip: 'A configuração atual é hospedada pelo provedor.',
+      authRemoved: 'Autorização removida',
+      addModelCredential: 'Adicionar credenciais do modelo',
+      configLoadBalancing: 'Configuração de Balanceamento de Carga',
+      specifyModelCredentialTip: 'Use uma credencial de modelo configurada.',
+    },
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',
@@ -716,6 +738,16 @@ const translation = {
     browse: 'navegar',
   },
   you: 'Você',
+  avatar: {
+    deleteTitle: 'Remover Avatar',
+    deleteDescription: 'Você tem certeza de que deseja remover sua foto de perfil? Sua conta usará o avatar padrão inicial.',
+  },
+  feedback: {
+    title: 'Fornecer feedback',
+    content: 'Conteúdo do feedback',
+    subtitle: 'Por favor, nos diga o que deu errado com esta resposta',
+    placeholder: 'Por favor, descreva o que deu errado ou como podemos melhorar...',
+  },
 }
 
 export default translation

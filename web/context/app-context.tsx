@@ -24,13 +24,13 @@ export type AppContextValue = {
 }
 
 const userProfilePlaceholder = {
-    id: '',
-    name: '',
-    email: '',
-    avatar: '',
-    avatar_url: '',
-    is_password_set: false,
-  }
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: false,
+}
 
 const initialLangGeniusVersionInfo = {
   current_env: '',
@@ -75,7 +75,7 @@ export type AppContextProviderProps = {
 }
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
-  const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
+  const { data: userProfileResponse, mutate: mutateUserProfile, error: userProfileError } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
   const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
   const [userProfile, setUserProfile] = useState<UserProfileResponse>(userProfilePlaceholder)
@@ -87,14 +87,24 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
   const updateUserProfileAndVersion = useCallback(async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
-      const result = await userProfileResponse.json()
-      setUserProfile(result)
-      const current_version = userProfileResponse.headers.get('x-version')
-      const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
-      const versionData = await fetchLangGeniusVersion({ url: '/version', params: { current_version } })
-      setLangGeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
+      try {
+        const result = await userProfileResponse.json()
+        setUserProfile(result)
+        const current_version = userProfileResponse.headers.get('x-version')
+        const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
+        const versionData = await fetchLangGeniusVersion({ url: '/version', params: { current_version } })
+        setLangGeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
+      }
+      catch (error) {
+        console.error('Failed to update user profile:', error)
+        if (userProfile.id === '')
+          setUserProfile(userProfilePlaceholder)
+      }
     }
-  }, [userProfileResponse])
+    else if (userProfileError && userProfile.id === '') {
+      setUserProfile(userProfilePlaceholder)
+    }
+  }, [userProfileResponse, userProfileError, userProfile.id])
 
   useEffect(() => {
     updateUserProfileAndVersion()

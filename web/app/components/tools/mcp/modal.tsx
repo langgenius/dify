@@ -27,6 +27,8 @@ export type DuplicateAppModalProps = {
     icon: string
     icon_background?: string | null
     server_identifier: string
+    timeout: number
+    sse_read_timeout: number
   }) => void
   onHide: () => void
 }
@@ -64,6 +66,8 @@ const MCPModal = ({
   const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
+  const [timeout, setMcpTimeout] = React.useState(30)
+  const [sseReadTimeout, setSseReadTimeout] = React.useState(300)
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
@@ -73,7 +77,7 @@ const MCPModal = ({
       const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(\:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
       return urlPattern.test(string)
     }
-    catch (e) {
+    catch {
       return false
     }
   }
@@ -123,6 +127,8 @@ const MCPModal = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       server_identifier: serverIdentifier.trim(),
+      timeout: timeout || 30,
+      sse_read_timeout: sseReadTimeout || 300,
     })
     if(isCreate)
       onHide()
@@ -200,6 +206,30 @@ const MCPModal = ({
                 <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.serverIdentifierWarning')}</span>
               </div>
             )}
+          </div>
+          <div>
+            <div className='mb-1 flex h-6 items-center'>
+              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
+            </div>
+            <Input
+              type='number'
+              value={timeout}
+              onChange={e => setMcpTimeout(Number(e.target.value))}
+              onBlur={e => handleBlur(e.target.value.trim())}
+              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+            />
+          </div>
+          <div>
+            <div className='mb-1 flex h-6 items-center'>
+              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
+            </div>
+            <Input
+              type='number'
+              value={sseReadTimeout}
+              onChange={e => setSseReadTimeout(Number(e.target.value))}
+              onBlur={e => handleBlur(e.target.value.trim())}
+              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+            />
           </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>
