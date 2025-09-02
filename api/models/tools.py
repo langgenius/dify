@@ -1,3 +1,4 @@
+from models.base import TypeBase
 import json
 from datetime import datetime
 from typing import Any, cast
@@ -160,7 +161,7 @@ class ApiToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
 
-class ToolLabelBinding(Base):
+class ToolLabelBinding(TypeBase):
     """
     The table stores the labels for tools.
     """
@@ -171,7 +172,7 @@ class ToolLabelBinding(Base):
         sa.UniqueConstraint("tool_id", "label_name", name="unique_tool_label_bind"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     # tool id
     tool_id: Mapped[str] = mapped_column(String(64), nullable=False)
     # tool type
