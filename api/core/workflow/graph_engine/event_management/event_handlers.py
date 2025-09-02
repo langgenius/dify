@@ -263,6 +263,8 @@ class EventHandler:
 
     def _update_response_outputs(self, event: NodeRunSucceededEvent) -> None:
         """Update response outputs for response nodes."""
+        # TODO: Design a mechanism for nodes to notify the engine about how to update outputs
+        # in runtime state, rather than allowing nodes to directly access runtime state.
         for key, value in event.node_run_result.outputs.items():
             if key == "answer":
                 existing = self._graph_runtime_state.outputs.get("answer", "")
