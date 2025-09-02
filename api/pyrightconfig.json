@@ -20,7 +20,6 @@
   "reportUnnecessaryIsInstance": "none",
   "reportUnnecessaryCast": "none",
   "reportUnnecessaryComparison": "none",
-  "reportUnnecessaryContains": "none",
   "reportUnusedCallResult": "none",
   "reportUnusedVariable": "none",
   "reportDuplicateImport": "none",
