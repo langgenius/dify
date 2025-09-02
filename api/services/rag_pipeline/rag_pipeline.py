@@ -1244,7 +1244,7 @@ class RagPipelineService:
             session.commit()
         return workflow_node_execution_db_model
 
-    def get_recommended_plugins(self) -> list[dict]:
+    def get_recommended_plugins(self) -> dict:
         # Query active recommended plugins
         pipeline_recommended_plugins = (
             db.session.query(PipelineRecommendedPlugin)
@@ -1254,26 +1254,40 @@ class RagPipelineService:
         )
         
         if not pipeline_recommended_plugins:
-            return []
+            return {
+                "installed_recommended_plugins": [],
+                "uninstalled_recommended_plugins": [],
+            }
         
         # Batch fetch plugin manifests
         plugin_ids = [plugin.plugin_id for plugin in pipeline_recommended_plugins]
+        providers = BuiltinToolManageService.list_builtin_tools(
+                    user_id=current_user.id,
+                    tenant_id=current_user.current_tenant_id,
+                )
+        providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
+
         plugin_manifests = marketplace.batch_fetch_plugin_manifests(plugin_ids)
-        
-        builtin_tools = BuiltinToolManageService.list_builtin_tools(
-            user_id=current_user.id,
-            tenant_id=current_user.current_tenant_id,
-        )
-        installed_plugin_ids = {tool.plugin_id for tool in builtin_tools}
+        plugin_manifests_map = {manifest.plugin_id: manifest for manifest in plugin_manifests}
+
+        installed_plugin_list = []
+        uninstalled_plugin_list = []
+        for plugin_id in plugin_ids:
+            if providers_map.get(plugin_id):
+                installed_plugin_list.append(providers_map.get(plugin_id))
+            else:
+                plugin_manifest = plugin_manifests_map.get(plugin_id)
+                if plugin_manifest:
+                    uninstalled_plugin_list.append({
+                        "plugin_id": plugin_id,
+                        "name": plugin_manifest.name,
+                        "icon": plugin_manifest.icon,
+                        "plugin_unique_identifier": plugin_manifest.latest_package_identifier,
+                    })
+
         
         # Build recommended plugins list
-        return [
-            {
-                "plugin_id": manifest.plugin_id,
-                "name": manifest.name,
-                "icon": manifest.icon,
-                "plugin_unique_identifier": manifest.latest_package_identifier,
-                "installed": manifest.plugin_id in installed_plugin_ids,
-            }
-            for manifest in plugin_manifests
-        ]
+        return {
+            "installed_recommended_plugins": installed_plugin_list,
+            "uninstalled_recommended_plugins": uninstalled_plugin_list,
+        }
