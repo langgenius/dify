@@ -23,6 +23,32 @@ import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 import ContentSwitch from '../content-switch'
 
+const VoteDisplay: FC<{ feedback?: { rating: 'like' | 'dislike' | null } }> = ({ feedback }) => {
+  const { t } = useTranslation()
+
+  if (!feedback?.rating) return null
+
+  return (
+    <div className='mt-2 flex items-center gap-1 text-xs text-text-secondary'>
+      <span className='mr-1'>{t('common.feedback.userVote')}</span>
+      {feedback.rating === 'like' && (
+        <div className='flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-green-700'>
+          <svg className='h-3 w-3' fill='currentColor' viewBox='0 0 20 20'>
+            <path d='M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z' />
+          </svg>
+        </div>
+      )}
+      {feedback.rating === 'dislike' && (
+        <div className='flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-red-700'>
+          <svg className='h-3 w-3' fill='currentColor' viewBox='0 0 20 20'>
+            <path d='M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.105-1.79l-.05-.025A4 4 0 0011.055 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z' />
+          </svg>
+        </div>
+      )}
+    </div>
+  )
+}
+
 type AnswerProps = {
   item: ChatItem
   question: string
@@ -199,6 +225,7 @@ const Answer: FC<AnswerProps> = ({
                 />
               )
             }
+            <VoteDisplay feedback={item.feedback} />
             <SuggestedQuestions item={item} />
             {
               !!citation?.length && !responding && (
