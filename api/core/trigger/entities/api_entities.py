@@ -39,4 +39,5 @@ class TriggerApiEntity(BaseModel):
     parameters: list[TriggerParameter] = Field(description="The parameters of the trigger")
     output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
 
+
 __all__ = ["TriggerApiEntity", "TriggerProviderApiEntity", "TriggerProviderSubscriptionApiEntity"]

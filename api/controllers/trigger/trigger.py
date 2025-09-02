@@ -17,9 +17,6 @@ UUID_MATCHER = re.compile(UUID_PATTERN)
 @bp.route(
     "/trigger/endpoint/<string:endpoint_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
 )
-@bp.route(
-    "/trigger/endpoint-debug/<string:endpoint_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
-)
 def trigger_endpoint(endpoint_id: str):
     """
     Handle endpoint trigger calls.

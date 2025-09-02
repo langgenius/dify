@@ -1482,3 +1482,46 @@ class AppTrigger(Base):
         default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
     )
+
+
+class WorkflowPluginTrigger(Base):
+    """
+    Workflow Plugin Trigger
+
+    Maps plugin triggers to workflow nodes, similar to WorkflowWebhookTrigger
+
+    Attributes:
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Node ID which node in the workflow
+    - tenant_id (uuid) Workspace ID
+    - provider_id (varchar) Plugin provider ID
+    - trigger_id (varchar) Unique trigger identifier (provider_id + trigger_name)
+    - triggered_by (varchar) Environment: debugger or production
+    - created_at (timestamp) Creation time
+    - updated_at (timestamp) Last update time
+    """
+
+    __tablename__ = "workflow_plugin_triggers"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_plugin_trigger_pkey"),
+        sa.Index("workflow_plugin_trigger_tenant_idx", "tenant_id"),
+        sa.Index("workflow_plugin_trigger_trigger_idx", "trigger_id"),
+        sa.UniqueConstraint("app_id", "node_id", "triggered_by", name="uniq_plugin_node"),
+        sa.UniqueConstraint("trigger_id", "node_id", name="uniq_trigger_node"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    trigger_id: Mapped[str] = mapped_column(String(510), nullable=False)  # provider_id + trigger_name
+    triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
