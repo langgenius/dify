@@ -139,7 +139,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <ConfigPrompt
             readOnly={readOnly}
             nodeId={id}
-            filterVar={filterInputVar}
+            filterVar={isShowVars ? filterJinja2InputVar : filterInputVar}
             isChatModel={isChatModel}
             isChatApp={isChatMode}
             isShowContext

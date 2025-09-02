@@ -742,6 +742,12 @@ const translation = {
     deleteTitle: 'Avatar entfernen',
     deleteDescription: 'Bist du sicher, dass du dein Profilbild entfernen möchtest? Dein Konto wird das standardmäßige Anfangs-Avatar verwenden.',
   },
+  feedback: {
+    content: 'Feedback-Inhalt',
+    title: 'Feedback geben',
+    subtitle: 'Bitte sagen Sie uns, was mit dieser Antwort falsch gelaufen ist.',
+    placeholder: 'Bitte beschreiben Sie, was schiefgelaufen ist oder wie wir uns verbessern können...',
+  },
 }
 
 export default translation

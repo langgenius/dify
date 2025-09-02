@@ -42,7 +42,7 @@ export const useEditInJSONSchema = () => {
     show_on: [
       {
         variable: 'value_type',
-        value: [ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber],
+        value: [ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber, ChatVarType.ArrayBoolean],
       },
     ],
     selfFormProps: getEditModeLabel,

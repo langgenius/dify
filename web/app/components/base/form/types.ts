@@ -24,7 +24,7 @@ export enum FormTypeEnum {
   secretInput = 'secret-input',
   select = 'select',
   radio = 'radio',
-  boolean = 'boolean',
+  checkbox = 'checkbox',
   files = 'files',
   file = 'file',
   modelSelector = 'model-selector',
@@ -39,6 +39,9 @@ export enum FormTypeEnum {
   jsonInput = 'json-input',
   collapse = 'collapse',
   editMode = 'edit-mode',
+  boolean = 'boolean',
+  booleanList = 'boolean-list',
+  switch = 'switch',
 }
 
 export type FormOption = {
@@ -81,10 +84,10 @@ export type GetValuesOptions = {
   needCheckValidatedValues?: boolean
 }
 export type FormRefObject = {
-    getForm: () => AnyFormApi
-    getFormValues: (obj: GetValuesOptions) => {
-      values: Record<string, any>
-      isCheckValidated: boolean
-    }
+  getForm: () => AnyFormApi
+  getFormValues: (obj: GetValuesOptions) => {
+    values: Record<string, any>
+    isCheckValidated: boolean
+  }
 }
 export type FormRef = ForwardedRef<FormRefObject>

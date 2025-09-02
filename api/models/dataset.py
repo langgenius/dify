@@ -29,6 +29,8 @@ from .engine import db
 from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
 
+logger = logging.getLogger(__name__)
+
 
 class DatasetPermissionEnum(enum.StrEnum):
     ONLY_ME = "only_me"
@@ -60,8 +62,8 @@ class Dataset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model = db.Column(String(255), nullable=True)  # TODO: mapped_column
-    embedding_model_provider = db.Column(String(255), nullable=True)  # TODO: mapped_column
+    embedding_model = mapped_column(String(255), nullable=True)
+    embedding_model_provider = mapped_column(String(255), nullable=True)
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
@@ -914,7 +916,7 @@ class DatasetKeywordTable(Base):
                     return json.loads(keyword_table_text.decode("utf-8"), cls=SetDecoder)
                 return None
             except Exception as e:
-                logging.exception("Failed to load keyword table from file: %s", file_key)
+                logger.exception("Failed to load keyword table from file: %s", file_key)
                 return None
 
 

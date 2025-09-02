@@ -259,8 +259,16 @@ class MilvusVector(BaseVector):
         """
         Search for documents by full-text search (if hybrid search is enabled).
         """
-        if not self._hybrid_search_enabled or not self.field_exists(Field.SPARSE_VECTOR.value):
-            logger.warning("Full-text search is not supported in current Milvus version (requires >= 2.5.0)")
+        if not self._hybrid_search_enabled:
+            logger.warning(
+                "Full-text search is disabled: set MILVUS_ENABLE_HYBRID_SEARCH=true (requires Milvus >= 2.5.0)."
+            )
+            return []
+        if not self.field_exists(Field.SPARSE_VECTOR.value):
+            logger.warning(
+                "Full-text search unavailable: collection missing 'sparse_vector' field; "
+                "recreate the collection after enabling MILVUS_ENABLE_HYBRID_SEARCH to add BM25 sparse index."
+            )
             return []
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = ""

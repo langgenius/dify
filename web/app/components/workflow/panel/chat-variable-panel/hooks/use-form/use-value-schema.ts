@@ -5,6 +5,7 @@ import type {
 } from '@tanstack/react-form'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import {
+  arrayBoolPlaceholder,
   arrayNumberPlaceholder,
   arrayObjectPlaceholder,
   arrayStringPlaceholder,
@@ -25,6 +26,9 @@ export const useValueSchema = () => {
     else if (value_type === ChatVarType.Number) {
       return 'number-input'
     }
+    else if (value_type === ChatVarType.Boolean) {
+      return 'boolean'
+    }
     else if (value_type === ChatVarType.Object) {
       if (editInJSON)
         return 'json-input'
@@ -36,6 +40,12 @@ export const useValueSchema = () => {
         return 'json-input'
       else
         return 'array-list'
+    }
+    else if (value_type === ChatVarType.ArrayBoolean) {
+      if (editInJSON)
+        return 'json-input'
+      else
+        return 'boolean-list'
     }
     else if (value_type === ChatVarType.ArrayObject) {
       return 'json-input'
@@ -57,6 +67,8 @@ export const useValueSchema = () => {
         placeholder = arrayNumberPlaceholder
       else if (value_type === ChatVarType.ArrayObject)
         placeholder = arrayObjectPlaceholder
+      else if (value_type === ChatVarType.ArrayBoolean)
+        placeholder = arrayBoolPlaceholder
       return {
         editorMinHeight: minHeight,
         placeholder,
@@ -79,7 +91,7 @@ export const useValueSchema = () => {
     show_on: [
       {
         variable: 'value_type',
-        value: [ChatVarType.String, ChatVarType.Number, ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber, ChatVarType.ArrayObject],
+        value: [ChatVarType.String, ChatVarType.Number, ChatVarType.Boolean, ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber, ChatVarType.ArrayBoolean, ChatVarType.ArrayObject],
       },
       {
         variable: 'editInJSON',

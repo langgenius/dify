@@ -3,6 +3,8 @@ from threading import Thread
 from typing import Optional, Union
 
 from flask import Flask, current_app
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
@@ -31,6 +33,8 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageCycleManager:
@@ -82,7 +86,8 @@ class MessageCycleManager:
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
             # get conversation and message
-            conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+            stmt = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = db.session.scalar(stmt)
 
             if not conversation:
                 return
@@ -98,7 +103,7 @@ class MessageCycleManager:
                     conversation.name = name
                 except Exception as e:
                     if dify_config.DEBUG:
-                        logging.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
                     pass
 
                 db.session.merge(conversation)
@@ -141,7 +146,8 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        message_file = db.session.query(MessageFile).where(MessageFile.id == event.message_file_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
 
         if message_file and message_file.url is not None:
             # get tool file id
@@ -181,7 +187,8 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
-        message_file = db.session.query(MessageFile).where(MessageFile.id == message_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == message_id))
         event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
 
         return MessageStreamResponse(

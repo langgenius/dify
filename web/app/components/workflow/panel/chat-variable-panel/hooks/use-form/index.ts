@@ -39,7 +39,7 @@ export const useForm = (chatVar?: ConversationVariable) => {
         show_on: [
           {
             variable: 'value_type',
-            value: [ChatVarType.String, ChatVarType.Number, ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber, ChatVarType.ArrayObject],
+            value: [ChatVarType.String, ChatVarType.Number, ChatVarType.Boolean, ChatVarType.Object, ChatVarType.ArrayString, ChatVarType.ArrayNumber, ChatVarType.ArrayBoolean, ChatVarType.ArrayObject],
           },
         ],
       },

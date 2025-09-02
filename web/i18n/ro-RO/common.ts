@@ -198,7 +198,6 @@ const translation = {
     showAppLength: 'Afișează {{length}} aplicații',
     delete: 'Șterge contul',
     deleteTip: 'Ștergerea contului vă va șterge definitiv toate datele și nu pot fi recuperate.',
-    deleteConfirmTip: 'Pentru a confirma, trimiteți următoarele din e-mailul înregistrat la ',
     account: 'Cont',
     studio: 'Dify Studio',
     myAccount: 'Contul meu',
@@ -742,6 +741,12 @@ const translation = {
   avatar: {
     deleteDescription: 'Ești sigur că vrei să îți ștergi fotografia de profil? Contul tău va folosi avatarul inițial implicit.',
     deleteTitle: 'Îndepărtează avatarul',
+  },
+  feedback: {
+    content: 'Conținut de feedback',
+    subtitle: 'Te rog să ne spui ce a mers prost cu acest răspuns',
+    placeholder: 'Vă rugăm să descrieți ce a mers prost sau cum putem îmbunătăți...',
+    title: 'Oferiți feedback',
   },
 }
 

@@ -404,11 +404,11 @@ class LoopNode(BaseNode):
         for node_id in loop_graph.node_ids:
             variable_pool.remove([node_id])
 
-        _outputs = {}
+        _outputs: dict[str, Segment | int | None] = {}
         for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
             _loop_variable_segment = variable_pool.get(loop_variable_selector)
             if _loop_variable_segment:
-                _outputs[loop_variable_key] = _loop_variable_segment.value
+                _outputs[loop_variable_key] = _loop_variable_segment
             else:
                 _outputs[loop_variable_key] = None
 
@@ -522,21 +522,33 @@ class LoopNode(BaseNode):
         return variable_mapping
 
     @staticmethod
-    def _get_segment_for_constant(var_type: SegmentType, value: Any) -> Segment:
+    def _get_segment_for_constant(var_type: SegmentType, original_value: Any) -> Segment:
         """Get the appropriate segment type for a constant value."""
-        if var_type in ["array[string]", "array[number]", "array[object]"]:
-            if value and isinstance(value, str):
-                value = json.loads(value)
+        # TODO: Refactor for maintainability:
+        # 1. Ensure type handling logic stays synchronized with _VALID_VAR_TYPE (entities.py)
+        # 2. Consider moving this method to LoopVariableData class for better encapsulation
+        if not var_type.is_array_type() or var_type == SegmentType.ARRAY_BOOLEAN:
+            value = original_value
+        elif var_type in [
+            SegmentType.ARRAY_NUMBER,
+            SegmentType.ARRAY_OBJECT,
+            SegmentType.ARRAY_STRING,
+        ]:
+            if original_value and isinstance(original_value, str):
+                value = json.loads(original_value)
             else:
+                logger.warning("unexpected value for LoopNode, value_type=%s, value=%s", original_value, var_type)
                 value = []
+        else:
+            raise AssertionError("this statement should be unreachable.")
         try:
-            return build_segment_with_type(var_type, value)
+            return build_segment_with_type(var_type, value=value)
         except TypeMismatchError as type_exc:
             # Attempt to parse the value as a JSON-encoded string, if applicable.
-            if not isinstance(value, str):
+            if not isinstance(original_value, str):
                 raise
             try:
-                value = json.loads(value)
+                value = json.loads(original_value)
             except ValueError:
                 raise type_exc
             return build_segment_with_type(var_type, value)

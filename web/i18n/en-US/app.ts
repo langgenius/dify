@@ -269,6 +269,7 @@ const translation = {
     selectSearchType: 'Choose what to search for',
     searchHint: 'Start typing to search everything instantly',
     commandHint: 'Type @ to browse by category',
+    slashHint: 'Type / to see all available commands',
     actions: {
       searchApplications: 'Search Applications',
       searchApplicationsDesc: 'Search and navigate to your applications',
@@ -292,7 +293,11 @@ const translation = {
       languageCategoryTitle: 'Language',
       languageCategoryDesc: 'Switch interface language',
       languageChangeDesc: 'Change UI language',
-      slashDesc: 'Execute commands like /theme, /lang',
+      slashDesc: 'Execute commands (type / to see all available commands)',
+      accountDesc: 'Navigate to account page',
+      communityDesc: 'Open Discord community',
+      docDesc: 'Open help documentation',
+      feedbackDesc: 'Open community feedback discussions',
     },
     emptyState: {
       noAppsFound: 'No apps found',

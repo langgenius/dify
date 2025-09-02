@@ -194,7 +194,7 @@ export const useMemorySchema = () => {
     {
       name: 'end_user_editable',
       label: 'Editable in web app',
-      type: FormTypeEnum.boolean,
+      type: FormTypeEnum.switch,
       fieldClassName: 'flex justify-between',
       show_on: [
         {
