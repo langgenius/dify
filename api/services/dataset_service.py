@@ -2373,6 +2373,7 @@ class SegmentService:
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
+        assert isinstance(current_user, Account)
         segments = (
             db.session.query(DocumentSegment.index_node_id, DocumentSegment.word_count)
             .where(

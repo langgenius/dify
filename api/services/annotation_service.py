@@ -64,6 +64,7 @@ class AppAnnotationService:
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
         annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+        assert current_user.current_tenant_id is not None
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
