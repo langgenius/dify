@@ -51,7 +51,7 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
                     raise ValueError(
                         "Your total number of documents plus the number of uploads have exceeded the limit of "
                         "your subscription."
-                        )
+                    )
         except Exception as e:
             for document_id in document_ids:
                 document = (
