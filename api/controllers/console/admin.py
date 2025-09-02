@@ -1,3 +1,4 @@
+from typing import Callable
 from functools import wraps
 
 from flask import request
@@ -5,7 +6,10 @@ from flask_restx import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
+from typing import ParamSpec, TypeVar
 
+P = ParamSpec("P")
+R = TypeVar("R")
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
@@ -14,9 +18,9 @@ from extensions.ext_database import db
 from models.model import App, InstalledApp, RecommendedApp
 
 
-def admin_required(view):
+def admin_required(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 

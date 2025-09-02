@@ -17,7 +17,10 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+from typing import ParamSpec, TypeVar
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
 class MatrixoneConfig(BaseModel):
     host: str = "localhost"

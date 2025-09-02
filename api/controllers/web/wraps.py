@@ -1,3 +1,4 @@
+from typing import Callable
 from datetime import UTC, datetime
 from functools import wraps
 
@@ -13,7 +14,10 @@ from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
+from typing import ParamSpec, TypeVar
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
 def validate_jwt_token(view=None):
     def decorator(view):

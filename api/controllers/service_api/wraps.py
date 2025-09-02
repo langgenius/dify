@@ -21,7 +21,10 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
+from typing import ParamSpec, TypeVar
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
 class WhereisUserArg(StrEnum):
     """
@@ -118,8 +121,8 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
 
 
 def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
-    def interceptor(view):
-        def decorated(*args, **kwargs):
+    def interceptor(view: Callable[P, R]):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
 
@@ -148,9 +151,9 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
 
 
 def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
-    def interceptor(view):
+    def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
@@ -170,9 +173,9 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
 
 
 def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
-    def interceptor(view):
+    def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
 
             if resource == "knowledge":
