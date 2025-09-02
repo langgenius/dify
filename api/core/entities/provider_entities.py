@@ -111,6 +111,7 @@ class CustomModelConfiguration(BaseModel):
     current_credential_id: Optional[str] = None
     current_credential_name: Optional[str] = None
     available_model_credentials: list[CredentialConfiguration] = []
+    unadded_to_model_list: Optional[bool] = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())

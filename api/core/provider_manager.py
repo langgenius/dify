@@ -794,6 +794,7 @@ class ProviderManager:
                     current_credential_id=None,
                     current_credential_name=None,
                     available_model_credentials=model["available_model_credentials"],
+                    unadded_to_model_list=True,
                 )
             )
 

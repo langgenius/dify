@@ -1619,6 +1619,8 @@ class ProviderConfiguration(BaseModel):
         for model_configuration in self.custom_configuration.models:
             if model_configuration.model_type not in model_types:
                 continue
+            if model_configuration.unadded_to_model_list:
+                continue
             if model and model != model_configuration.model:
                 continue
             try:
