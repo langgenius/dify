@@ -107,7 +107,7 @@ class DatasourceFileManager:
         tenant_id: str,
         file_url: str,
         conversation_id: Optional[str] = None,
-    ) -> UploadFile:
+    ) -> ToolFile:
         # try to download image
         try:
             response = ssrf_proxy.get(file_url)
@@ -127,26 +127,22 @@ class DatasourceFileManager:
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
 
-        upload_file = UploadFile(
+        tool_file = ToolFile(
             tenant_id=tenant_id,
-            storage_type=dify_config.STORAGE_TYPE,
-            key=filepath,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            file_key=filepath,
+            mimetype=mimetype,
+            original_url=file_url,
             name=filename,
             size=len(blob),
-            extension=extension,
-            mime_type=mimetype,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=user_id,
-            used=False,
-            hash=hashlib.sha3_256(blob).hexdigest(),
-            source_url=file_url,
-            created_at=datetime.now(),
+            key=filepath,
         )
 
-        db.session.add(upload_file)
+        db.session.add(tool_file)
         db.session.commit()
 
-        return upload_file
+        return tool_file
 
     @staticmethod
     def get_file_binary(id: str) -> Union[tuple[bytes, str], None]:

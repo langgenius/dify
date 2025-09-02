@@ -3,9 +3,9 @@ from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
 from typing import Optional
 
-from core.datasource.datasource_file_manager import DatasourceFileManager
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from core.file import File, FileTransferMethod, FileType
+from core.tools.tool_file_manager import ToolFileManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,15 @@ class DatasourceFileMessageTransformer:
                 # try to download image
                 try:
                     assert isinstance(message.message, DatasourceMessage.TextMessage)
-
-                    file = DatasourceFileManager.create_file_by_url(
+                    tool_file_manager = ToolFileManager()
+                    file = tool_file_manager.create_file_by_url(
                         user_id=user_id,
                         tenant_id=tenant_id,
                         file_url=message.message.text,
                         conversation_id=conversation_id,
                     )
 
-                    url = f"/files/datasources/{file.id}{guess_extension(file.mime_type) or '.png'}"
+                    url = f"/files/datasources/{file.id}{guess_extension(file.mimetype) or '.png'}"
 
                     yield DatasourceMessage(
                         type=DatasourceMessage.MessageType.IMAGE_LINK,
@@ -71,7 +71,8 @@ class DatasourceFileMessageTransformer:
 
                 # FIXME: should do a type check here.
                 assert isinstance(message.message.blob, bytes)
-                file = DatasourceFileManager.create_file_by_raw(
+                tool_file_manager = ToolFileManager()
+                file = tool_file_manager.create_file_by_raw(
                     user_id=user_id,
                     tenant_id=tenant_id,
                     conversation_id=conversation_id,
@@ -80,7 +81,7 @@ class DatasourceFileMessageTransformer:
                     filename=filename,
                 )
 
-                url = cls.get_datasource_file_url(datasource_file_id=file.id, extension=guess_extension(file.mime_type))
+                url = cls.get_datasource_file_url(datasource_file_id=file.id, extension=guess_extension(file.mimetype))
 
                 # check if file is image
                 if "image" in mimetype:

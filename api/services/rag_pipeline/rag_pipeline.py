@@ -1162,7 +1162,7 @@ class RagPipelineService:
         )
         return node_exec
 
-    def set_datasource_variables(self, pipeline: Pipeline, args: dict, current_user: Account | EndUser):
+    def set_datasource_variables(self, pipeline: Pipeline, args: dict, current_user: Account):
         """
         Set datasource variables
         """
@@ -1225,7 +1225,7 @@ class RagPipelineService:
         repository.save(workflow_node_execution)
 
         # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution_db_model = repository.to_db_model(workflow_node_execution)
+        workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
@@ -1235,6 +1235,7 @@ class RagPipelineService:
                 node_type=NodeType(workflow_node_execution_db_model.node_type),
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
+                user=current_user,
             )
             draft_var_saver.save(
                 process_data=workflow_node_execution.process_data,

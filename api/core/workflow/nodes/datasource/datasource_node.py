@@ -30,6 +30,7 @@ from core.workflow.nodes.tool.exc import ToolFileError
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import UploadFile
+from models.tools import ToolFile
 from services.datasource_provider_service import DatasourceProviderService
 
 from ...entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
@@ -376,19 +377,19 @@ class DatasourceNode(Node):
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
 
                 url = message.message.text
-                transfer_method = FileTransferMethod.DATASOURCE_FILE
+                transfer_method = FileTransferMethod.TOOL_FILE
 
                 datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
                 with Session(db.engine) as session:
-                    stmt = select(UploadFile).where(UploadFile.id == datasource_file_id)
+                    stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                     datasource_file = session.scalar(stmt)
                     if datasource_file is None:
                         raise ToolFileError(f"Tool file {datasource_file_id} does not exist")
 
                 mapping = {
-                    "datasource_file_id": datasource_file_id,
-                    "type": file_factory.get_file_type_by_mime_type(datasource_file.mime_type),
+                    "tool_file_id": datasource_file_id,
+                    "type": file_factory.get_file_type_by_mime_type(datasource_file.mimetype),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
@@ -404,14 +405,14 @@ class DatasourceNode(Node):
 
                 datasource_file_id = message.message.text.split("/")[-1].split(".")[0]
                 with Session(db.engine) as session:
-                    stmt = select(UploadFile).where(UploadFile.id == datasource_file_id)
+                    stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                     datasource_file = session.scalar(stmt)
                     if datasource_file is None:
                         raise ToolFileError(f"datasource file {datasource_file_id} not exists")
 
                 mapping = {
-                    "datasource_file_id": datasource_file_id,
-                    "transfer_method": FileTransferMethod.DATASOURCE_FILE,
+                    "tool_file_id": datasource_file_id,
+                    "transfer_method": FileTransferMethod.TOOL_FILE,
                 }
 
                 files.append(
@@ -513,19 +514,19 @@ class DatasourceNode(Node):
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
 
                 url = message.message.text
-                transfer_method = FileTransferMethod.DATASOURCE_FILE
+                transfer_method = FileTransferMethod.TOOL_FILE
 
                 datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
                 with Session(db.engine) as session:
-                    stmt = select(UploadFile).where(UploadFile.id == datasource_file_id)
+                    stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                     datasource_file = session.scalar(stmt)
                     if datasource_file is None:
                         raise ToolFileError(f"Tool file {datasource_file_id} does not exist")
 
                 mapping = {
-                    "datasource_file_id": datasource_file_id,
-                    "type": file_factory.get_file_type_by_mime_type(datasource_file.mime_type),
+                    "tool_file_id": datasource_file_id,
+                    "type": file_factory.get_file_type_by_mime_type(datasource_file.mimetype),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
