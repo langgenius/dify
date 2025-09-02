@@ -4,6 +4,7 @@ from typing import Optional, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models import AppMode, Workflow, WorkflowSchedulePlan
@@ -57,21 +58,16 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
         if not schedule_config:
             if existing_plan:
                 logger.info("No schedule node in workflow for app %s, removing schedule plan", app_id)
-                session.delete(existing_plan)
+                ScheduleService.delete_schedule(session=session, schedule_id=existing_plan.id)
                 session.commit()
             return None
 
-        node_id = schedule_config["node_id"]
-        cron_expression = schedule_config["cron_expression"]
-        timezone = schedule_config["timezone"]
-
         if existing_plan:
-            logger.info("Updating schedule plan for app %s", app_id)
-            updates = {
-                "node_id": node_id,
-                "cron_expression": cron_expression,
-                "timezone": timezone,
-            }
+            updates = SchedulePlanUpdate(
+                node_id=schedule_config.node_id,
+                cron_expression=schedule_config.cron_expression,
+                timezone=schedule_config.timezone,
+            )
             updated_plan = ScheduleService.update_schedule(
                 session=session,
                 schedule_id=existing_plan.id,
@@ -80,14 +76,11 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
             session.commit()
             return updated_plan
         else:
-            logger.info("Creating new schedule plan for app %s", app_id)
             new_plan = ScheduleService.create_schedule(
                 session=session,
                 tenant_id=tenant_id,
                 app_id=app_id,
-                node_id=node_id,
-                cron_expression=cron_expression,
-                timezone=timezone,
+                config=schedule_config,
             )
             session.commit()
             return new_plan
