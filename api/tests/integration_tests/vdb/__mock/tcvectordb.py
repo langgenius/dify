@@ -150,7 +150,7 @@ class MockTcvectordbClass:
         filter: Optional[Filter] = None,
         output_fields: Optional[list[str]] = None,
         timeout: Optional[float] = None,
-    ) -> list[dict]:
+    ):
         return [{"metadata": '{"doc_id":"foo1"}', "text": "text", "doc_id": "foo1", "score": 0.1}]
 
     def collection_delete(
