@@ -13,7 +13,6 @@ import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-// import MenuSearch from '@/app/components/base/icons/src/public/thought/MenuSearch'
 import { RiMenuSearchLine } from '@remixicon/react'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
