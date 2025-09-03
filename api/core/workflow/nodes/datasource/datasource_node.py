@@ -111,15 +111,7 @@ class DatasourceNode(Node):
                 )
             )
 
-        # get parameters
-        datasource_parameters = datasource_runtime.entity.parameters
-
-        parameters_for_log = self._generate_parameters(
-            datasource_parameters=datasource_parameters,
-            variable_pool=variable_pool,
-            node_data=self._node_data,
-            for_log=True,
-        )
+        parameters_for_log = datasource_info
 
         try:
             datasource_provider_service = DatasourceProviderService()
@@ -213,7 +205,7 @@ class DatasourceNode(Node):
                             inputs=parameters_for_log,
                             metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                             outputs={
-                                "file_info": datasource_info,
+                                "file": datasource_info,
                                 "datasource_type": datasource_type,
                             },
                         )
