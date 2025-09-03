@@ -6,4 +6,4 @@ SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/.."
 
 # run basedpyright checks
-uv --directory api run basedpyright
+uv run --directory api --dev basedpyright
