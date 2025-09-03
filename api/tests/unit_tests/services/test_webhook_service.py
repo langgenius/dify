@@ -202,7 +202,7 @@ class TestWebhookServiceUnit:
         result = WebhookService.validate_webhook_request(webhook_data, node_config)
 
         assert result["valid"] is False
-        assert "Required file parameter missing: upload" in result["error"]
+        assert "Required body parameter missing: upload" in result["error"]
 
     def test_validate_webhook_request_text_plain_with_required_body(self):
         """Test webhook validation for text/plain content type with required body content."""
@@ -465,14 +465,14 @@ class TestWebhookServiceUnit:
     def test_validate_json_parameter_type_bool(self):
         """Test JSON parameter type validation for boolean type."""
         # Valid boolean
-        result = WebhookService._validate_json_parameter_type("enabled", True, "bool")
+        result = WebhookService._validate_json_parameter_type("enabled", True, "boolean")
         assert result["valid"] is True
 
-        result = WebhookService._validate_json_parameter_type("enabled", False, "bool")
+        result = WebhookService._validate_json_parameter_type("enabled", False, "boolean")
         assert result["valid"] is True
 
         # Invalid boolean (string)
-        result = WebhookService._validate_json_parameter_type("enabled", "true", "bool")
+        result = WebhookService._validate_json_parameter_type("enabled", "true", "boolean")
         assert result["valid"] is False
         assert "must be a boolean, got str" in result["error"]
 
@@ -517,11 +517,11 @@ class TestWebhookServiceUnit:
     def test_validate_json_parameter_type_array_bool(self):
         """Test JSON parameter type validation for array[bool] type."""
         # Valid array of booleans
-        result = WebhookService._validate_json_parameter_type("flags", [True, False, True], "array[bool]")
+        result = WebhookService._validate_json_parameter_type("flags", [True, False, True], "array[boolean]")
         assert result["valid"] is True
 
         # Invalid - array with non-booleans
-        result = WebhookService._validate_json_parameter_type("flags", [True, "false", True], "array[bool]")
+        result = WebhookService._validate_json_parameter_type("flags", [True, "false", True], "array[boolean]")
         assert result["valid"] is False
         assert "must be an array of booleans" in result["error"]
 
