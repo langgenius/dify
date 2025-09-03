@@ -15,6 +15,7 @@ import { VarInInspectType } from '@/types/workflow'
 
 import cn from '@/utils/classnames'
 import type { NodeProps } from '../types'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
 export type currentVarType = {
   nodeId: string
@@ -133,13 +134,15 @@ const Panel: FC = () => {
     setCurrentVarId(node.var.id)
   }, [setCurrentFocusNodeId, setCurrentVarId])
 
+  const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
+
   useEffect(() => {
-    if (currentFocusNodeId && currentVarId) {
+    if (currentFocusNodeId && currentVarId && !isLoading) {
       const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
       if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([currentFocusNodeId])
+        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
     }
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue])
+  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
 
   if (isEmpty) {
     return (

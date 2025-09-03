@@ -16,8 +16,8 @@ import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import type { FlowType } from '@/types/common'
 import useFLow from '@/service/use-flow'
-import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 import { useStoreApi } from 'reactflow'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 
 type Params = {
   flowId: string
@@ -29,7 +29,6 @@ export const useInspectVarsCrudCommon = ({
 }: Params) => {
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const { schemaTypeDefinitions } = useMatchSchemaType()
   const {
     useInvalidateConversationVarValues,
     useInvalidateSysVarValues,
@@ -96,7 +95,7 @@ export const useInspectVarsCrudCommon = ({
     return !!getNodeInspectVars(nodeId)
   }, [getNodeInspectVars])
 
-  const fetchInspectVarValue = useCallback(async (selector: ValueSelector) => {
+  const fetchInspectVarValue = useCallback(async (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => {
     const {
       setNodeInspectVars,
       buildInTools,

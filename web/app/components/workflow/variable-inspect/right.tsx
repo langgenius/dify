@@ -56,6 +56,7 @@ const Right = ({
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const isTruncated = currentNodeVar?.var.is_truncated
   const fullContent = currentNodeVar?.var.full_content
+  console.log(currentNodeVar?.var)
   // const isTruncated = true
   // const fullContent = {
   //   size_bytes: 11289600,
