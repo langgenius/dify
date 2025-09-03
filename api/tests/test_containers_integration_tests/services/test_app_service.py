@@ -162,8 +162,13 @@ class TestAppService:
         app_service = AppService()
         created_app = app_service.create_app(tenant.id, app_args, account)
 
-        # Get app using the service
-        retrieved_app = app_service.get_app(created_app)
+        # Get app using the service - needs current_user mock
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
+            retrieved_app = app_service.get_app(created_app)
 
         # Verify retrieved app matches created app
         assert retrieved_app.id == created_app.id
