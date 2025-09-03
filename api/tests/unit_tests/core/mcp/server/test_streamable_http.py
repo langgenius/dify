@@ -1,7 +1,7 @@
 import json
-import jsonschema
 from unittest.mock import Mock, patch
 
+import jsonschema
 import pytest
 
 from core.app.app_config.entities import VariableEntity, VariableEntityType
