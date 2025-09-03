@@ -253,7 +253,7 @@ const translation = {
     'start': '始める',
   },
   blocks: {
-    'start': '開始',
+    'start': 'ユーザー入力',
     'originalStartNode': '元の開始ノード',
     'end': '終了',
     'answer': '回答',

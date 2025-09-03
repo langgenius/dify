@@ -253,7 +253,7 @@ const translation = {
     'start': '开始',
   },
   blocks: {
-    'start': '开始',
+    'start': '用户输入',
     'originalStartNode': '原始开始节点',
     'end': '结束',
     'answer': '直接回复',
