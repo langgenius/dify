@@ -22,15 +22,15 @@ from .types import StringUUID
 
 
 # system level tool oauth client params (client_id, client_secret, etc.)
-class ToolOAuthSystemClient(Base):
+class ToolOAuthSystemClient(TypeBase):
     __tablename__ = "tool_oauth_system_clients"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tool_oauth_system_client_pkey"),
         sa.UniqueConstraint("plugin_id", "provider", name="tool_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    plugin_id = mapped_column(String(512), nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
