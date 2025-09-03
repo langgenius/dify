@@ -35,7 +35,17 @@ class WebhookBodyParameter(BaseModel):
     """Body parameter with type information."""
 
     name: str
-    type: Literal["string", "number", "boolean", "object", "array", "file"] = "string"
+    type: Literal[
+        "string",
+        "number",
+        "boolean",
+        "object",
+        "array[string]",
+        "array[number]",
+        "array[boolean]",
+        "array[object]",
+        "file",
+    ] = "string"
     required: bool = False
 
 
