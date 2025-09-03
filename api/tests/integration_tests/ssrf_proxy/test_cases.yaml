@@ -1,0 +1,129 @@
+# SSRF Proxy Test Cases Configuration
+# This file defines all test cases for the SSRF proxy
+# Each test case validates whether the proxy correctly blocks or allows requests
+
+test_categories:
+  private_networks:
+    name: "Private Networks"
+    description: "Tests for blocking private IP ranges and loopback addresses"
+    test_cases:
+      - name: "Loopback (127.0.0.1)"
+        url: "http://127.0.0.1"
+        expected_blocked: true
+        description: "IPv4 loopback address"
+      
+      - name: "Localhost"
+        url: "http://localhost"
+        expected_blocked: true
+        description: "Localhost hostname"
+      
+      - name: "Private 10.x.x.x"
+        url: "http://10.0.0.1"
+        expected_blocked: true
+        description: "RFC 1918 private network"
+      
+      - name: "Private 172.16.x.x"
+        url: "http://172.16.0.1"
+        expected_blocked: true
+        description: "RFC 1918 private network"
+      
+      - name: "Private 192.168.x.x"
+        url: "http://192.168.1.1"
+        expected_blocked: true
+        description: "RFC 1918 private network"
+      
+      - name: "Link-local"
+        url: "http://169.254.1.1"
+        expected_blocked: true
+        description: "Link-local address"
+      
+      - name: "This network"
+        url: "http://0.0.0.0"
+        expected_blocked: true
+        description: "'This' network address"
+
+  cloud_metadata:
+    name: "Cloud Metadata"
+    description: "Tests for blocking cloud provider metadata endpoints"
+    test_cases:
+      - name: "AWS Metadata"
+        url: "http://169.254.169.254/latest/meta-data/"
+        expected_blocked: true
+        description: "AWS EC2 metadata endpoint"
+      
+      - name: "Azure Metadata"
+        url: "http://169.254.169.254/metadata/instance"
+        expected_blocked: true
+        description: "Azure metadata endpoint"
+      
+      # Note: metadata.google.internal is not included as it may resolve to public IPs
+
+  public_internet:
+    name: "Public Internet"
+    description: "Tests for allowing legitimate public internet access"
+    test_cases:
+      - name: "Example.com"
+        url: "http://example.com"
+        expected_blocked: false
+        description: "Public website"
+      
+      - name: "Google HTTPS"
+        url: "https://www.google.com"
+        expected_blocked: false
+        description: "HTTPS public website"
+      
+      - name: "HTTPBin API"
+        url: "http://httpbin.org/get"
+        expected_blocked: false
+        description: "Public API endpoint"
+      
+      - name: "GitHub API"
+        url: "https://api.github.com"
+        expected_blocked: false
+        description: "Public API over HTTPS"
+
+  port_restrictions:
+    name: "Port Restrictions"
+    description: "Tests for port-based access control"
+    test_cases:
+      - name: "HTTP Port 80"
+        url: "http://example.com:80"
+        expected_blocked: false
+        description: "Standard HTTP port"
+      
+      - name: "HTTPS Port 443"
+        url: "http://example.com:443"
+        expected_blocked: false
+        description: "Standard HTTPS port"
+      
+      - name: "Port 8080"
+        url: "http://example.com:8080"
+        expected_blocked: true
+        description: "Non-standard port"
+      
+      - name: "Port 3000"
+        url: "http://example.com:3000"
+        expected_blocked: true
+        description: "Development port"
+      
+      - name: "SSH Port 22"
+        url: "http://example.com:22"
+        expected_blocked: true
+        description: "SSH port"
+      
+      - name: "MySQL Port 3306"
+        url: "http://example.com:3306"
+        expected_blocked: true
+        description: "Database port"
+
+# Additional test configurations can be added here
+# For example:
+# 
+# ipv6_tests:
+#   name: "IPv6 Tests"
+#   description: "Tests for IPv6 address handling"
+#   test_cases:
+#     - name: "IPv6 Loopback"
+#       url: "http://[::1]"
+#       expected_blocked: true
+#       description: "IPv6 loopback address"

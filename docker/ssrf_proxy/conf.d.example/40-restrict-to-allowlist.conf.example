@@ -1,0 +1,22 @@
+# Example: Convert proxy to whitelist mode (strict mode)
+# Copy this file to /etc/squid/conf.d/40-restrict-to-allowlist.conf to enable
+# WARNING: This will block ALL internet access except explicitly allowed domains
+#
+# This changes the default behavior from blacklist (block private, allow public)
+# to whitelist (block everything, allow specific domains only)
+
+# First, insert specific allowed domains BEFORE the final "allow all" rule
+# The include statement is processed sequentially, so rules here take precedence
+
+# Example: Only allow specific services
+# acl allowed_services dstdomain .openai.com .anthropic.com .google.com
+# http_access allow allowed_services
+
+# Example: Allow Dify marketplace
+# acl allowed_marketplace dstdomain .marketplace.dify.ai
+# http_access allow allowed_marketplace
+
+# Then deny all other requests (converting to whitelist mode)
+# This rule will override the default "allow all" at the end
+# Uncomment the following line to enable strict whitelist mode:
+# http_access deny all
