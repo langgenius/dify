@@ -1073,7 +1073,7 @@ class WorkflowDraftVariable(Base):
         return self.build_segment_with_type(self.value_type, value)
 
     @staticmethod
-    def rebuild_file_types(value: Any) -> Any:
+    def rebuild_file_types(value: Any):
         # NOTE(QuantumGhost): Temporary workaround for structured data handling.
         # By this point, `output` has been converted to dict by
         # `WorkflowEntry.handle_special_values`, so we need to

@@ -251,7 +251,7 @@ class Jieba(BaseKeyword):
         self._save_dataset_keyword_table(keyword_table)
 
 
-def set_orjson_default(obj: Any) -> Any:
+def set_orjson_default(obj: Any):
     """Default function for orjson serialization of set types"""
     if isinstance(obj, set):
         return list(obj)

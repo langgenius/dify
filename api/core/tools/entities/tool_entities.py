@@ -150,7 +150,7 @@ class ToolInvokeMessage(BaseModel):
 
         @model_validator(mode="before")
         @classmethod
-        def transform_variable_value(cls, values) -> Any:
+        def transform_variable_value(cls, values):
             """
             Only basic types and lists are allowed.
             """

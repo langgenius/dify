@@ -320,7 +320,7 @@ class WorkflowEntry:
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
     @staticmethod
-    def _handle_special_values(value: Any) -> Any:
+    def _handle_special_values(value: Any):
         if value is None:
             return value
         if isinstance(value, dict):

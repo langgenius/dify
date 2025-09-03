@@ -342,7 +342,7 @@ class ModelInstance:
             ),
         )
 
-    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs) -> Any:
+    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
         """
         Round-robin invoke
         :param function: function to invoke

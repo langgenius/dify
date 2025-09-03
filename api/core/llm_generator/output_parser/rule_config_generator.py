@@ -17,7 +17,7 @@ class RuleConfigGeneratorOutputParser:
             RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,
         )
 
-    def parse(self, text: str) -> Any:
+    def parse(self, text: str):
         try:
             expected_keys = ["prompt", "variables", "opening_statement"]
             parsed = parse_and_check_json_markdown(text, expected_keys)

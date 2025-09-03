@@ -274,7 +274,7 @@ class WeaviateVector(BaseVector):
             ],
         }
 
-    def _json_serializable(self, value: Any) -> Any:
+    def _json_serializable(self, value: Any):
         if isinstance(value, datetime.datetime):
             return value.isoformat()
         return value

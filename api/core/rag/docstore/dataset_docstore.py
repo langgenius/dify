@@ -32,11 +32,11 @@ class DatasetDocumentStore:
         }
 
     @property
-    def dataset_id(self) -> Any:
+    def dataset_id(self):
         return self._dataset.id
 
     @property
-    def user_id(self) -> Any:
+    def user_id(self):
         return self._user_id
 
     @property

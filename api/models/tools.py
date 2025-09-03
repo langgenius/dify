@@ -408,7 +408,7 @@ class ToolConversationVariables(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def variables(self) -> Any:
+    def variables(self):
         return json.loads(self.variables_str)
 
 

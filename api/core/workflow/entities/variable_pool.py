@@ -161,11 +161,11 @@ class VariablePool(BaseModel):
         # Return result as Segment
         return result if isinstance(result, Segment) else variable_factory.build_segment(result)
 
-    def _extract_value(self, obj: Any) -> Any:
+    def _extract_value(self, obj: Any):
         """Extract the actual value from an ObjectSegment."""
         return obj.value if isinstance(obj, ObjectSegment) else obj
 
-    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str) -> Any:
+    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str):
         """Get a nested attribute from a dictionary-like object."""
         if not isinstance(obj, dict):
             return None
