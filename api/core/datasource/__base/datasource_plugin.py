@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from configs import dify_config
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
@@ -10,14 +11,17 @@ from core.datasource.entities.datasource_entities import (
 class DatasourcePlugin(ABC):
     entity: DatasourceEntity
     runtime: DatasourceRuntime
+    icon: str
 
     def __init__(
         self,
         entity: DatasourceEntity,
         runtime: DatasourceRuntime,
+        icon: str,
     ) -> None:
         self.entity = entity
         self.runtime = runtime
+        self.icon = icon
 
     @abstractmethod
     def datasource_provider_type(self) -> str:
@@ -30,4 +34,8 @@ class DatasourcePlugin(ABC):
         return self.__class__(
             entity=self.entity.model_copy(),
             runtime=runtime,
+            icon=self.icon,
         )
+
+    def get_icon_url(self, tenant_id: str) -> str:
+        return f"{dify_config.CONSOLE_API_URL}/console/api/workspaces/current/plugin/icon?tenant_id={tenant_id}&filename={self.icon}"  # noqa: E501

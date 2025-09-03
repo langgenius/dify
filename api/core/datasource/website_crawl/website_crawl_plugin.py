@@ -13,7 +13,6 @@ from core.plugin.impl.datasource import PluginDatasourceManager
 
 class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
     tenant_id: str
-    icon: str
     plugin_unique_identifier: str
     entity: DatasourceEntity
     runtime: DatasourceRuntime
@@ -26,9 +25,8 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
         icon: str,
         plugin_unique_identifier: str,
     ) -> None:
-        super().__init__(entity, runtime)
+        super().__init__(entity, runtime, icon)
         self.tenant_id = tenant_id
-        self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
 
     def get_website_crawl(
