@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -29,3 +29,23 @@ class SchedulePlanUpdate(BaseModel):
     node_id: Optional[str] = None
     cron_expression: Optional[str] = None
     timezone: Optional[str] = None
+
+
+class VisualConfig(BaseModel):
+    """Visual configuration for schedule trigger"""
+
+    # For hourly frequency
+    on_minute: Optional[int] = Field(default=0, ge=0, le=59, description="Minute of the hour (0-59)")
+
+    # For daily, weekly, monthly frequencies
+    time: Optional[str] = Field(default="12:00 PM", description="Time in 12-hour format (e.g., '2:30 PM')")
+
+    # For weekly frequency
+    weekdays: Optional[list[Literal["sun", "mon", "tue", "wed", "thu", "fri", "sat"]]] = Field(
+        default=None, description="List of weekdays to run on"
+    )
+
+    # For monthly frequency
+    monthly_days: Optional[list[Union[int, Literal["last"]]]] = Field(
+        default=None, description="Days of month to run on (1-31 or 'last')"
+    )
