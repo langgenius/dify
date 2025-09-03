@@ -38,6 +38,7 @@ class ToolLabelEnum(Enum):
     BUSINESS = "business"
     ENTERTAINMENT = "entertainment"
     UTILITIES = "utilities"
+    RAG = "rag"
     OTHER = "other"
 
 
