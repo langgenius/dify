@@ -1,6 +1,5 @@
 import type { ScheduleTriggerNodeType } from './types'
 
-// Unified default values for trigger schedule
 export const getDefaultScheduleConfig = (): Partial<ScheduleTriggerNodeType> => ({
   mode: 'visual',
   frequency: 'weekly',
