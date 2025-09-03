@@ -19,7 +19,6 @@
   "reportCallInDefaultInitializer": "none",
   "reportUnnecessaryIsInstance": "none",
   "reportUnnecessaryComparison": "none",
-  "reportUnusedVariable": "none",
   "reportUnknownParameterType": "none",
   "reportMissingParameterType": "none",
   "reportUnknownArgumentType": "none",

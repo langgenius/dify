@@ -77,7 +77,7 @@ class ReactMultiDatasetRouter:
                 user_id=user_id,
                 tenant_id=tenant_id,
             )
-        except Exception as e:
+        except Exception:
             return None
 
     def _react_invoke(
@@ -120,7 +120,7 @@ class ReactMultiDatasetRouter:
             memory=None,
             model_config=model_config,
         )
-        result_text, usage = self._invoke_llm(
+        result_text, _ = self._invoke_llm(
             completion_param=model_config.parameters,
             model_instance=model_instance,
             prompt_messages=prompt_messages,

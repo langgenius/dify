@@ -101,7 +101,7 @@ def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackSta
 
 def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
     """Check if the server supports OAuth 2.0 Resource Discovery."""
-    b_scheme, b_netloc, b_path, b_params, b_query, b_fragment = urlparse(server_url, "", True)
+    b_scheme, b_netloc, b_path, _, b_query, b_fragment = urlparse(server_url, "", True)
     url_for_resource_discovery = f"{b_scheme}://{b_netloc}/.well-known/oauth-protected-resource{b_path}"
     if b_query:
         url_for_resource_discovery += f"?{b_query}"
@@ -117,7 +117,7 @@ def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
             else:
                 return False, ""
         return False, ""
-    except httpx.RequestError as e:
+    except httpx.RequestError:
         # Not support resource discovery, fall back to well-known OAuth metadata
         return False, ""
 

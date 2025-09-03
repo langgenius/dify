@@ -145,7 +145,7 @@ class FileLifecycleManager:
             logger.info("File %s saved with lifecycle management, version %s", filename, new_version)
             return file_metadata
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to save file with lifecycle")
             raise
 
@@ -163,7 +163,7 @@ class FileLifecycleManager:
             if filename in metadata_dict:
                 return FileMetadata.from_dict(metadata_dict[filename])
             return None
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to get file metadata for %s", filename)
             return None
 
@@ -192,7 +192,7 @@ class FileLifecycleManager:
                         # Parse version number
                         version_str = file_path.split(".v")[-1].split(".")[0]
                         try:
-                            version_num = int(version_str)
+                            _ = int(version_str)
                             # Simplified processing here, should actually read metadata from version file
                             # Temporarily create basic metadata information
                         except ValueError:
@@ -203,7 +203,7 @@ class FileLifecycleManager:
 
             return sorted(versions, key=lambda x: x.version or 0, reverse=True)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to list file versions for %s", filename)
             return []
 
@@ -237,7 +237,7 @@ class FileLifecycleManager:
             self.save_with_lifecycle(filename, version_data, {"restored_from": str(version)})
             return True
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to restore %s to version %s", filename, version)
             return False
 
@@ -270,7 +270,7 @@ class FileLifecycleManager:
             logger.info("File %s archived successfully", filename)
             return True
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to archive file %s", filename)
             return False
 
@@ -314,7 +314,7 @@ class FileLifecycleManager:
             logger.info("File %s soft deleted successfully", filename)
             return True
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to soft delete file %s", filename)
             return False
 
@@ -372,7 +372,7 @@ class FileLifecycleManager:
 
             return cleaned_count
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to cleanup old versions")
             return 0
 
@@ -427,7 +427,7 @@ class FileLifecycleManager:
 
             return stats
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to get storage statistics")
             return {}
 
@@ -465,7 +465,7 @@ class FileLifecycleManager:
             metadata_content = json.dumps(metadata_dict, indent=2, ensure_ascii=False)
             self._storage.save(self._metadata_file, metadata_content.encode("utf-8"))
             logger.debug("Metadata saved successfully")
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to save metadata")
             raise
 
@@ -508,7 +508,7 @@ class FileLifecycleManager:
             result = self._permission_manager.validate_operation(mapped_operation, self._dataset_id)
             return bool(result)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Permission check failed for %s operation %s", filename, operation)
             # Safe default: deny access when permission check fails
             return False
