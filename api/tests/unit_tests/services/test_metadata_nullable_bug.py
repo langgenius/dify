@@ -28,9 +28,8 @@ class TestMetadataNullableBug:
         mock_user = create_autospec(Account, instance=True)
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
-        
-        with patch("services.metadata_service.current_user", mock_user):
 
+        with patch("services.metadata_service.current_user", mock_user):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
@@ -40,9 +39,8 @@ class TestMetadataNullableBug:
         mock_user = create_autospec(Account, instance=True)
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
-        
-        with patch("services.metadata_service.current_user", mock_user):
 
+        with patch("services.metadata_service.current_user", mock_user):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
@@ -89,9 +87,8 @@ class TestMetadataNullableBug:
         mock_user = create_autospec(Account, instance=True)
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
-        
-        with patch("services.metadata_service.current_user", mock_user):
 
+        with patch("services.metadata_service.current_user", mock_user):
             # Step 4: Service layer crashes on len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)

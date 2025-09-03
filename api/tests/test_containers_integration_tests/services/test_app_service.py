@@ -410,7 +410,7 @@ class TestAppService:
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
-        
+
         with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app(app, update_args)
 
@@ -464,7 +464,7 @@ class TestAppService:
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
-        
+
         with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_name(app, new_name)
 
@@ -516,7 +516,7 @@ class TestAppService:
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
-        
+
         with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_icon(app, new_icon, new_icon_background)
 
@@ -567,7 +567,7 @@ class TestAppService:
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
-        
+
         with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_site_status(app, False)
         assert updated_app.enable_site is False
@@ -622,7 +622,7 @@ class TestAppService:
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
-        
+
         with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_api_status(app, False)
         assert updated_app.enable_api is False

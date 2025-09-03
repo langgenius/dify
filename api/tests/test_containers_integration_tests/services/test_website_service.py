@@ -233,9 +233,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request
             api_request = WebsiteCrawlApiRequest(
                 provider="firecrawl",
@@ -289,9 +288,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request
             api_request = WebsiteCrawlApiRequest(
                 provider="watercrawl",
@@ -342,9 +340,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request for single page crawling
             api_request = WebsiteCrawlApiRequest(
                 provider="jinareader",
@@ -397,9 +394,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request with invalid provider
             api_request = WebsiteCrawlApiRequest(
                 provider="invalid_provider",
@@ -429,9 +425,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request
             api_request = WebsiteCrawlStatusApiRequest(provider="firecrawl", job_id="test_job_id_123")
 
@@ -475,9 +470,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request
             api_request = WebsiteCrawlStatusApiRequest(provider="watercrawl", job_id="watercrawl_job_123")
 
@@ -516,9 +510,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request
             api_request = WebsiteCrawlStatusApiRequest(provider="jinareader", job_id="jina_job_123")
 
@@ -560,9 +553,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request with invalid provider
             api_request = WebsiteCrawlStatusApiRequest(provider="invalid_provider", job_id="test_job_id_123")
 
@@ -587,9 +579,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Mock missing credentials
             mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.return_value = None
 
@@ -617,9 +608,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Mock missing API key in config
             mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.return_value = {
                 "config": {"base_url": "https://api.example.com"}
@@ -1017,9 +1007,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request for sub-page crawling
             api_request = WebsiteCrawlApiRequest(
                 provider="jinareader",
@@ -1078,9 +1067,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request
             api_request = WebsiteCrawlApiRequest(
                 provider="jinareader",
@@ -1122,9 +1110,8 @@ class TestWebsiteService:
         # Mock current_user for the test
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.current_tenant_id = account.current_tenant.id
-        
-        with patch("services.website_service.current_user", mock_current_user):
 
+        with patch("services.website_service.current_user", mock_current_user):
             # Create API request
             api_request = WebsiteCrawlStatusApiRequest(provider="firecrawl", job_id="active_job_123")
 

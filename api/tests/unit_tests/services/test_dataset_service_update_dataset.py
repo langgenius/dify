@@ -136,7 +136,9 @@ class TestDatasetServiceUpdateDataset:
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
             patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
-            patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
+            patch(
+                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
         ):
             mock_current_user.current_tenant_id = "tenant-123"
             yield {
