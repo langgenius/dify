@@ -121,7 +121,7 @@ class VolumePermissionManager:
 
         except Exception:
             logger.exception("User Volume permission check failed")
-            # For User Volume, if permission check fails, it might be a configuration issue, 
+            # For User Volume, if permission check fails, it might be a configuration issue,
             # provide friendlier error message
             logger.info("User Volume permission check failed, but permission checking is disabled in this version")
             return False
