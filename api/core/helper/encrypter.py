@@ -3,12 +3,16 @@ import base64
 from libs import rsa
 
 
-def obfuscated_token(token: str):
+def obfuscated_token(token: str) -> str:
     if not token:
         return token
     if len(token) <= 8:
         return "*" * 20
     return token[:6] + "*" * 12 + token[-2:]
+
+
+def full_mask_token(token_length=20):
+    return "*" * token_length
 
 
 def encrypt_token(tenant_id: str, token: str):

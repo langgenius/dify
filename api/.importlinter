@@ -34,17 +34,16 @@ ignore_imports =
 [importlinter:contract:rsc]
 name = RSC
 type = layers
-layers = 
+layers =
     graph_engine
     response_coordinator
-    output_registry
 containers =
     core.workflow.graph_engine
 
 [importlinter:contract:worker]
 name = Worker
 type = layers
-layers = 
+layers =
     graph_engine
     worker
 containers =
@@ -77,26 +76,15 @@ forbidden_modules =
     core.workflow.graph_engine.layers
     core.workflow.graph_engine.protocols
 
-[importlinter:contract:state-management-layers]
-name = State Management Layers
-type = layers
-layers =
-    execution_tracker
-    node_state_manager
-    edge_state_manager
-containers =
-    core.workflow.graph_engine.state_management
-
-[importlinter:contract:worker-management-layers]
-name = Worker Management Layers  
-type = layers
-layers =
-    worker_pool
-    worker_factory
-    dynamic_scaler
-    activity_tracker
-containers =
+[importlinter:contract:worker-management]
+name = Worker Management
+type = forbidden
+source_modules =
     core.workflow.graph_engine.worker_management
+forbidden_modules =
+    core.workflow.graph_engine.orchestration
+    core.workflow.graph_engine.command_processing
+    core.workflow.graph_engine.event_management
 
 [importlinter:contract:error-handling-strategies]
 name = Error Handling Strategies
@@ -109,10 +97,12 @@ modules =
 
 [importlinter:contract:graph-traversal-components]
 name = Graph Traversal Components
-type = independence
-modules =
-    core.workflow.graph_engine.graph_traversal.node_readiness
-    core.workflow.graph_engine.graph_traversal.skip_propagator
+type = layers
+layers =
+    edge_processor
+    skip_propagator
+containers =
+    core.workflow.graph_engine.graph_traversal
 
 [importlinter:contract:command-channels]
 name = Command Channels Independence

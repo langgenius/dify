@@ -15,6 +15,7 @@ from typing import final
 from uuid import uuid4
 
 from flask import Flask
+from typing_extensions import override
 
 from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
@@ -58,21 +59,22 @@ class Worker(threading.Thread):
             on_active_callback: Optional callback when worker becomes active
         """
         super().__init__(name=f"GraphWorker-{worker_id}", daemon=True)
-        self.ready_queue = ready_queue
-        self.event_queue = event_queue
-        self.graph = graph
-        self.worker_id = worker_id
-        self.flask_app = flask_app
-        self.context_vars = context_vars
+        self._ready_queue = ready_queue
+        self._event_queue = event_queue
+        self._graph = graph
+        self._worker_id = worker_id
+        self._flask_app = flask_app
+        self._context_vars = context_vars
         self._stop_event = threading.Event()
-        self.on_idle_callback = on_idle_callback
-        self.on_active_callback = on_active_callback
-        self.last_task_time = time.time()
+        self._on_idle_callback = on_idle_callback
+        self._on_active_callback = on_active_callback
+        self._last_task_time = time.time()
 
     def stop(self) -> None:
         """Signal the worker to stop processing."""
         self._stop_event.set()
 
+    @override
     def run(self) -> None:
         """
         Main worker loop.
@@ -83,22 +85,22 @@ class Worker(threading.Thread):
         while not self._stop_event.is_set():
             # Try to get a node ID from the ready queue (with timeout)
             try:
-                node_id = self.ready_queue.get(timeout=0.1)
+                node_id = self._ready_queue.get(timeout=0.1)
             except queue.Empty:
                 # Notify that worker is idle
-                if self.on_idle_callback:
-                    self.on_idle_callback(self.worker_id)
+                if self._on_idle_callback:
+                    self._on_idle_callback(self._worker_id)
                 continue
 
             # Notify that worker is active
-            if self.on_active_callback:
-                self.on_active_callback(self.worker_id)
+            if self._on_active_callback:
+                self._on_active_callback(self._worker_id)
 
-            self.last_task_time = time.time()
-            node = self.graph.nodes[node_id]
+            self._last_task_time = time.time()
+            node = self._graph.nodes[node_id]
             try:
                 self._execute_node(node)
-                self.ready_queue.task_done()
+                self._ready_queue.task_done()
             except Exception as e:
                 error_event = NodeRunFailedEvent(
                     id=str(uuid4()),
@@ -108,7 +110,7 @@ class Worker(threading.Thread):
                     error=str(e),
                     start_at=datetime.now(),
                 )
-                self.event_queue.put(error_event)
+                self._event_queue.put(error_event)
 
     def _execute_node(self, node: Node) -> None:
         """
@@ -118,19 +120,19 @@ class Worker(threading.Thread):
             node: The node instance to execute
         """
         # Execute the node with preserved context if Flask app is provided
-        if self.flask_app and self.context_vars:
+        if self._flask_app and self._context_vars:
             with preserve_flask_contexts(
-                flask_app=self.flask_app,
-                context_vars=self.context_vars,
+                flask_app=self._flask_app,
+                context_vars=self._context_vars,
             ):
                 # Execute the node
                 node_events = node.run()
                 for event in node_events:
                     # Forward event to dispatcher immediately for streaming
-                    self.event_queue.put(event)
+                    self._event_queue.put(event)
         else:
             # Execute without context preservation
             node_events = node.run()
             for event in node_events:
                 # Forward event to dispatcher immediately for streaming
-                self.event_queue.put(event)
+                self._event_queue.put(event)

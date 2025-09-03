@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -19,7 +19,6 @@ from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -159,15 +158,6 @@ class WorkflowEntry:
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-        # init node factory
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-        )
-
-        # init graph
-        graph = Graph.init(graph_config=workflow.graph_dict, node_factory=node_factory)
 
         # init workflow run state
         node = node_cls(
@@ -309,16 +299,6 @@ class WorkflowEntry:
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-        # init node factory
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-        )
-
-        # init graph
-        graph = Graph.init(graph_config=graph_dict, node_factory=node_factory)
-
-        node_cls = cast(type[Node], node_cls)
         # init workflow run state
         node_config = {
             "id": node_id,

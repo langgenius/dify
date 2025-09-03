@@ -7,7 +7,7 @@ Each instance uses a unique key for its command queue.
 """
 
 import json
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, Any, final
 
 from ..entities.commands import AbortCommand, CommandType, GraphEngineCommand
 
@@ -87,7 +87,7 @@ class RedisChannel:
             pipe.expire(self._key, self._command_ttl)
             pipe.execute()
 
-    def _deserialize_command(self, data: dict) -> GraphEngineCommand | None:
+    def _deserialize_command(self, data: dict[str, Any]) -> GraphEngineCommand | None:
         """
         Deserialize a command from dictionary data.
 

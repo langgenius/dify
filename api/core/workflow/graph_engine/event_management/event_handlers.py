@@ -10,6 +10,7 @@ from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphNodeEventBase,
+    NodeRunAgentLogEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunIterationFailedEvent,
@@ -31,15 +32,15 @@ from ..response_coordinator import ResponseStreamCoordinator
 
 if TYPE_CHECKING:
     from ..error_handling import ErrorHandler
-    from ..graph_traversal import BranchHandler, EdgeProcessor
-    from ..state_management import ExecutionTracker, NodeStateManager
-    from .event_collector import EventCollector
+    from ..graph_traversal import EdgeProcessor
+    from ..state_management import UnifiedStateManager
+    from .event_manager import EventManager
 
 logger = logging.getLogger(__name__)
 
 
 @final
-class EventHandlerRegistry:
+class EventHandler:
     """
     Registry of event handlers for different event types.
 
@@ -53,11 +54,9 @@ class EventHandlerRegistry:
         graph_runtime_state: GraphRuntimeState,
         graph_execution: GraphExecution,
         response_coordinator: ResponseStreamCoordinator,
-        event_collector: "EventCollector",
-        branch_handler: "BranchHandler",
+        event_collector: "EventManager",
         edge_processor: "EdgeProcessor",
-        node_state_manager: "NodeStateManager",
-        execution_tracker: "ExecutionTracker",
+        state_manager: "UnifiedStateManager",
         error_handler: "ErrorHandler",
     ) -> None:
         """
@@ -68,11 +67,9 @@ class EventHandlerRegistry:
             graph_runtime_state: Runtime state with variable pool
             graph_execution: Graph execution aggregate
             response_coordinator: Response stream coordinator
-            event_collector: Event collector for collecting events
-            branch_handler: Branch handler for branch node processing
+            event_collector: Event manager for collecting events
             edge_processor: Edge processor for edge traversal
-            node_state_manager: Node state manager
-            execution_tracker: Execution tracker
+            state_manager: Unified state manager
             error_handler: Error handler
         """
         self._graph = graph
@@ -80,10 +77,8 @@ class EventHandlerRegistry:
         self._graph_execution = graph_execution
         self._response_coordinator = response_coordinator
         self._event_collector = event_collector
-        self._branch_handler = branch_handler
         self._edge_processor = edge_processor
-        self._node_state_manager = node_state_manager
-        self._execution_tracker = execution_tracker
+        self._state_manager = state_manager
         self._error_handler = error_handler
 
     def handle_event(self, event: GraphNodeEventBase) -> None:
@@ -122,6 +117,7 @@ class EventHandlerRegistry:
                 NodeRunLoopNextEvent,
                 NodeRunLoopSucceededEvent,
                 NodeRunLoopFailedEvent,
+                NodeRunAgentLogEvent,
             ),
         ):
             # Iteration and loop events are collected directly
@@ -187,7 +183,7 @@ class EventHandlerRegistry:
         # Process edges and get ready nodes
         node = self._graph.nodes[event.node_id]
         if node.execution_type == NodeExecutionType.BRANCH:
-            ready_nodes, edge_streaming_events = self._branch_handler.handle_branch_completion(
+            ready_nodes, edge_streaming_events = self._edge_processor.handle_branch_completion(
                 event.node_id, event.node_run_result.edge_source_handle
             )
         else:
@@ -199,11 +195,11 @@ class EventHandlerRegistry:
 
         # Enqueue ready nodes
         for node_id in ready_nodes:
-            self._node_state_manager.enqueue_node(node_id)
-            self._execution_tracker.add(node_id)
+            self._state_manager.enqueue_node(node_id)
+            self._state_manager.start_execution(node_id)
 
         # Update execution tracking
-        self._execution_tracker.remove(event.node_id)
+        self._state_manager.finish_execution(event.node_id)
 
         # Handle response node outputs
         if node.execution_type == NodeExecutionType.RESPONSE:
@@ -232,7 +228,7 @@ class EventHandlerRegistry:
             # Abort execution
             self._graph_execution.fail(RuntimeError(event.error))
             self._event_collector.collect(event)
-            self._execution_tracker.remove(event.node_id)
+            self._state_manager.finish_execution(event.node_id)
 
     def _handle_node_exception(self, event: NodeRunExceptionEvent) -> None:
         """
@@ -267,6 +263,8 @@ class EventHandlerRegistry:
 
     def _update_response_outputs(self, event: NodeRunSucceededEvent) -> None:
         """Update response outputs for response nodes."""
+        # TODO: Design a mechanism for nodes to notify the engine about how to update outputs
+        # in runtime state, rather than allowing nodes to directly access runtime state.
         for key, value in event.node_run_result.outputs.items():
             if key == "answer":
                 existing = self._graph_runtime_state.outputs.get("answer", "")

@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
@@ -33,12 +32,7 @@ class TokenBufferMemory:
         self.model_instance = model_instance
 
     def _build_prompt_message_with_files(
-        self,
-        message_files: Sequence[MessageFile],
-        text_content: str,
-        message: Message,
-        app_record,
-        is_user_message: bool,
+        self, message_files: list[MessageFile], text_content: str, message: Message, app_record, is_user_message: bool
     ) -> PromptMessage:
         """
         Build prompt message with files.
@@ -104,74 +98,74 @@ class TokenBufferMemory:
         :param max_token_limit: max token limit
         :param message_limit: message limit
         """
-        with Session(db.engine) as session:
-            app_record = self.conversation.app
+        app_record = self.conversation.app
 
-            # fetch limited messages, and return reversed
-            stmt = (
-                select(Message)
-                .where(Message.conversation_id == self.conversation.id)
-                .order_by(Message.created_at.desc())
-            )
+        # fetch limited messages, and return reversed
+        stmt = (
+            select(Message).where(Message.conversation_id == self.conversation.id).order_by(Message.created_at.desc())
+        )
 
-            if message_limit and message_limit > 0:
-                message_limit = min(message_limit, 500)
-            else:
-                message_limit = 500
+        if message_limit and message_limit > 0:
+            message_limit = min(message_limit, 500)
+        else:
+            message_limit = 500
 
-            stmt = stmt.limit(message_limit)
+        msg_limit_stmt = stmt.limit(message_limit)
 
-            messages = session.scalars(stmt).all()
+        messages = db.session.scalars(msg_limit_stmt).all()
 
-            # instead of all messages from the conversation, we only need to extract messages
-            # that belong to the thread of last message
-            thread_messages = extract_thread_messages(messages)
+        # instead of all messages from the conversation, we only need to extract messages
+        # that belong to the thread of last message
+        thread_messages = extract_thread_messages(messages)
 
-            # for newly created message, its answer is temporarily empty, we don't need to add it to memory
-            if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
-                thread_messages.pop(0)
+        # for newly created message, its answer is temporarily empty, we don't need to add it to memory
+        if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
+            thread_messages.pop(0)
 
-            messages = list(reversed(thread_messages))
+        messages = list(reversed(thread_messages))
 
-            prompt_messages: list[PromptMessage] = []
-            for message in messages:
-                # Process user message with files
-                user_file_query = select(MessageFile).where(
+        prompt_messages: list[PromptMessage] = []
+        for message in messages:
+            # Process user message with files
+            user_files = (
+                db.session.query(MessageFile)
+                .where(
                     MessageFile.message_id == message.id,
                     (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
                 )
-                user_files = session.scalars(user_file_query).all()
+                .all()
+            )
 
-                if user_files:
-                    user_prompt_message = self._build_prompt_message_with_files(
-                        message_files=user_files,
-                        text_content=message.query,
-                        message=message,
-                        app_record=app_record,
-                        is_user_message=True,
-                    )
-                    prompt_messages.append(user_prompt_message)
-
-                else:
-                    prompt_messages.append(UserPromptMessage(content=message.query))
-
-                # Process assistant message with files
-                assistant_file_query = select(MessageFile).where(
-                    MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant"
+            if user_files:
+                user_prompt_message = self._build_prompt_message_with_files(
+                    message_files=user_files,
+                    text_content=message.query,
+                    message=message,
+                    app_record=app_record,
+                    is_user_message=True,
                 )
-                assistant_files = session.scalars(assistant_file_query).all()
+                prompt_messages.append(user_prompt_message)
+            else:
+                prompt_messages.append(UserPromptMessage(content=message.query))
 
-                if assistant_files:
-                    assistant_prompt_message = self._build_prompt_message_with_files(
-                        message_files=assistant_files,
-                        text_content=message.answer,
-                        message=message,
-                        app_record=app_record,
-                        is_user_message=False,
-                    )
-                    prompt_messages.append(assistant_prompt_message)
-                else:
-                    prompt_messages.append(AssistantPromptMessage(content=message.answer))
+            # Process assistant message with files
+            assistant_files = (
+                db.session.query(MessageFile)
+                .where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
+                .all()
+            )
+
+            if assistant_files:
+                assistant_prompt_message = self._build_prompt_message_with_files(
+                    message_files=assistant_files,
+                    text_content=message.answer,
+                    message=message,
+                    app_record=app_record,
+                    is_user_message=False,
+                )
+                prompt_messages.append(assistant_prompt_message)
+            else:
+                prompt_messages.append(AssistantPromptMessage(content=message.answer))
 
             if not prompt_messages:
                 return []

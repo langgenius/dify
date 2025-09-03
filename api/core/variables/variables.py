@@ -86,7 +86,7 @@ class SecretVariable(StringVariable):
 
     @property
     def log(self) -> str:
-        return cast(str, encrypter.obfuscated_token(self.value))
+        return encrypter.obfuscated_token(self.value)
 
 
 class NoneVariable(NoneSegment, Variable):

@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.app_config_manager import ChatAppConfig
@@ -42,8 +44,8 @@ class ChatAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(ChatAppConfig, app_config)
-
-        app_record = db.session.query(App).where(App.id == app_config.app_id).first()
+        stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.scalar(stmt)
         if not app_record:
             raise ValueError("App not found")
 

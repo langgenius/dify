@@ -56,15 +56,15 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
     popupClassName='rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg
     shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] p-1.5'
   >
-      <Button
-        className={cn(
-          'p-2',
-          theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
-        )}
-        onClick={handleViewVersionHistory}
-      >
-        <RiHistoryLine className='h-4 w-4 text-components-button-secondary-text' />
-      </Button>
+    <Button
+      className={cn(
+        'p-2',
+        theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+      )}
+      onClick={handleViewVersionHistory}
+    >
+      <RiHistoryLine className='h-4 w-4 text-components-button-secondary-text' />
+    </Button>
   </Tooltip>
 }
 

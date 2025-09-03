@@ -99,28 +99,28 @@ const useEducationReverifyNotice = ({
     if (isLoading || !timezone)
       return
     if (allowRefreshEducationVerify) {
-        const expired = isExpired(educationAccountExpireAt!, timezone)
-        const isExpireAtChanged = prevExpireAt !== educationAccountExpireAt
-        if (isExpireAtChanged) {
-          setPrevExpireAt(educationAccountExpireAt!)
-          setReverifyHasNoticed(false)
-          setExpiredHasNoticed(false)
-        }
-        const shouldNotice = (() => {
-          if (isExpireAtChanged)
-            return true
-          return expired ? !expiredHasNoticed : !reverifyHasNoticed
-        })()
-        if (shouldNotice) {
-          onNotice({
-            expireAt: educationAccountExpireAt!,
-            expired,
-          })
-          if (expired)
-            setExpiredHasNoticed(true)
-          else
-            setReverifyHasNoticed(true)
-        }
+      const expired = isExpired(educationAccountExpireAt!, timezone)
+      const isExpireAtChanged = prevExpireAt !== educationAccountExpireAt
+      if (isExpireAtChanged) {
+        setPrevExpireAt(educationAccountExpireAt!)
+        setReverifyHasNoticed(false)
+        setExpiredHasNoticed(false)
+      }
+      const shouldNotice = (() => {
+        if (isExpireAtChanged)
+          return true
+        return expired ? !expiredHasNoticed : !reverifyHasNoticed
+      })()
+      if (shouldNotice) {
+        onNotice({
+          expireAt: educationAccountExpireAt!,
+          expired,
+        })
+        if (expired)
+          setExpiredHasNoticed(true)
+        else
+          setReverifyHasNoticed(true)
+      }
     }
   }, [allowRefreshEducationVerify, timezone])
 

@@ -100,7 +100,7 @@ def test_streaming_output_with_blocking_equals_one():
     )
 
     # Check that NodeRunStreamChunkEvent contains 'query' should has same id with Start NodeRunStartedEvent
-    start_node_id = engine.graph.root_node.id
+    start_node_id = graph.root_node.id
     start_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_id == start_node_id]
     assert len(start_events) == 1, f"Expected 1 start event for node {start_node_id}, but got {len(start_events)}"
     start_event = start_events[0]
@@ -210,7 +210,7 @@ def test_streaming_output_with_blocking_not_equals_one():
         assert isinstance(chunk_event.chunk, str), f"Expected chunk to be string, but got {type(chunk_event.chunk)}"
 
     # Check that NodeRunStreamChunkEvent contains 'query' should has same id with Start NodeRunStartedEvent
-    start_node_id = engine.graph.root_node.id
+    start_node_id = graph.root_node.id
     start_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_id == start_node_id]
     assert len(start_events) == 1, f"Expected 1 start event for node {start_node_id}, but got {len(start_events)}"
     start_event = start_events[0]

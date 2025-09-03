@@ -7,7 +7,7 @@ from typing import final
 
 from core.workflow.graph import Edge, Graph
 
-from ..state_management import EdgeStateManager, NodeStateManager
+from ..state_management import UnifiedStateManager
 
 
 @final
@@ -22,20 +22,17 @@ class SkipPropagator:
     def __init__(
         self,
         graph: Graph,
-        edge_state_manager: EdgeStateManager,
-        node_state_manager: NodeStateManager,
+        state_manager: UnifiedStateManager,
     ) -> None:
         """
         Initialize the skip propagator.
 
         Args:
             graph: The workflow graph
-            edge_state_manager: Manager for edge states
-            node_state_manager: Manager for node states
+            state_manager: Unified state manager
         """
-        self.graph = graph
-        self.edge_state_manager = edge_state_manager
-        self.node_state_manager = node_state_manager
+        self._graph = graph
+        self._state_manager = state_manager
 
     def propagate_skip_from_edge(self, edge_id: str) -> None:
         """
@@ -49,11 +46,11 @@ class SkipPropagator:
         Args:
             edge_id: The ID of the skipped edge to start from
         """
-        downstream_node_id = self.graph.edges[edge_id].head
-        incoming_edges = self.graph.get_incoming_edges(downstream_node_id)
+        downstream_node_id = self._graph.edges[edge_id].head
+        incoming_edges = self._graph.get_incoming_edges(downstream_node_id)
 
         # Analyze edge states
-        edge_states = self.edge_state_manager.analyze_edge_states(incoming_edges)
+        edge_states = self._state_manager.analyze_edge_states(incoming_edges)
 
         # Stop if there are unknown edges (not yet processed)
         if edge_states["has_unknown"]:
@@ -62,7 +59,7 @@ class SkipPropagator:
         # If any edge is taken, node may still execute
         if edge_states["has_taken"]:
             # Enqueue node
-            self.node_state_manager.enqueue_node(downstream_node_id)
+            self._state_manager.enqueue_node(downstream_node_id)
             return
 
         # All edges are skipped, propagate skip to this node
@@ -77,12 +74,12 @@ class SkipPropagator:
             node_id: The ID of the node to skip
         """
         # Mark node as skipped
-        self.node_state_manager.mark_node_skipped(node_id)
+        self._state_manager.mark_node_skipped(node_id)
 
         # Mark all outgoing edges as skipped and propagate
-        outgoing_edges = self.graph.get_outgoing_edges(node_id)
+        outgoing_edges = self._graph.get_outgoing_edges(node_id)
         for edge in outgoing_edges:
-            self.edge_state_manager.mark_edge_skipped(edge.id)
+            self._state_manager.mark_edge_skipped(edge.id)
             # Recursively propagate skip
             self.propagate_skip_from_edge(edge.id)
 
@@ -94,5 +91,5 @@ class SkipPropagator:
             unselected_edges: List of edges not taken by the branch
         """
         for edge in unselected_edges:
-            self.edge_state_manager.mark_edge_skipped(edge.id)
+            self._state_manager.mark_edge_skipped(edge.id)
             self.propagate_skip_from_edge(edge.id)

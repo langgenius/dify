@@ -31,6 +31,8 @@ class FailBranchStrategy:
         Returns:
             NodeRunExceptionEvent to continue via fail branch
         """
+        _ = graph
+        _ = retry_count
         outputs = {
             "error_message": event.node_run_result.error,
             "error_type": event.node_run_result.error_type,

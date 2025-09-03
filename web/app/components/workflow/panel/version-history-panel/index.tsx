@@ -3,7 +3,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import { useNodesSyncDraft, useWorkflowRun } from '../../hooks'
+import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
 import { useStore, useWorkflowStore } from '../../store'
 import { VersionHistoryContextMenuOptions, WorkflowVersionFilterOptions } from '../../types'
 import VersionHistoryItem from './version-history-item'
@@ -44,6 +44,7 @@ export const VersionHistoryPanel = ({
   const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
+  const { handleExportDSL } = useDSL()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
@@ -118,8 +119,11 @@ export const VersionHistoryPanel = ({
           message: t('workflow.versionHistory.action.copyIdSuccess'),
         })
         break
+      case VersionHistoryContextMenuOptions.exportDSL:
+        handleExportDSL(false, item.id)
+        break
     }
-  }, [t])
+  }, [t, handleExportDSL])
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
     switch (operation) {

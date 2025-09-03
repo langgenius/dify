@@ -14,6 +14,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
@@ -248,7 +249,7 @@ class DataSourceNotionApi(Resource):
             credential_id = notion_info.get("credential_id")
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
-                    datasource_type="notion_import",
+                    datasource_type=DatasourceType.NOTION.value,
                     notion_info={
                         "credential_id": credential_id,
                         "notion_workspace_id": workspace_id,

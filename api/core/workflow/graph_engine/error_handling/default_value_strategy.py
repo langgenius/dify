@@ -31,6 +31,7 @@ class DefaultValueStrategy:
         Returns:
             NodeRunExceptionEvent with default values
         """
+        _ = retry_count
         node = graph.nodes[event.node_id]
 
         outputs = {

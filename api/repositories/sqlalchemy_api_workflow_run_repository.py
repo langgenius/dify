@@ -22,7 +22,7 @@ Implementation Notes:
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, cast
+from typing import Optional
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -117,7 +117,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.app_id == app_id,
                 WorkflowRun.id == run_id,
             )
-            return cast(Optional[WorkflowRun], session.scalar(stmt))
+            return session.scalar(stmt)
 
     def get_expired_runs_batch(
         self,
@@ -137,7 +137,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 )
                 .limit(batch_size)
             )
-            return cast(Sequence[WorkflowRun], session.scalars(stmt).all())
+            return session.scalars(stmt).all()
 
     def delete_runs_by_ids(
         self,
@@ -154,7 +154,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             result = session.execute(stmt)
             session.commit()
 
-            deleted_count = cast(int, result.rowcount)
+            deleted_count = result.rowcount
             logger.info("Deleted %s workflow runs by IDs", deleted_count)
             return deleted_count
 

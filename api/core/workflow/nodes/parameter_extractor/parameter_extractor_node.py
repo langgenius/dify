@@ -138,7 +138,7 @@ class ParameterExtractorNode(Node):
         """
         Run the node.
         """
-        node_data = cast(ParameterExtractorNodeData, self._node_data)
+        node_data = self._node_data
         variable = self.graph_runtime_state.variable_pool.get(node_data.query)
         query = variable.text if variable else ""
 

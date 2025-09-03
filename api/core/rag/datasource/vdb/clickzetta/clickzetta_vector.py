@@ -12,7 +12,7 @@ import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
 
 if TYPE_CHECKING:
-    from clickzetta import Connection
+    from clickzetta.connector.v0.connection import Connection  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -701,7 +701,7 @@ class ClickzettaVector(BaseVector):
                         len(data_rows),
                         vector_dimension,
                     )
-                except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+                except (RuntimeError, ValueError, TypeError, ConnectionError):
                     logger.exception("Parameterized SQL execution failed for %d documents", len(data_rows))
                     logger.exception("SQL template: %s", insert_sql)
                     logger.exception("Sample data row: %s", data_rows[0] if data_rows else "None")
@@ -787,7 +787,7 @@ class ClickzettaVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
 
         # Handle filter parameter from canvas (workflow)
-        filter_param = kwargs.get("filter", {})
+        _ = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
@@ -879,7 +879,7 @@ class ClickzettaVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
 
         # Handle filter parameter from canvas (workflow)
-        filter_param = kwargs.get("filter", {})
+        _ = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
@@ -938,7 +938,7 @@ class ClickzettaVector(BaseVector):
                                     metadata = {}
                             else:
                                 metadata = {}
-                        except (json.JSONDecodeError, TypeError) as e:
+                        except (json.JSONDecodeError, TypeError):
                             logger.exception("JSON parsing failed")
                             # Fallback: extract document_id with regex
 
@@ -956,7 +956,7 @@ class ClickzettaVector(BaseVector):
                         metadata["score"] = 1.0  # Clickzetta doesn't provide relevance scores
                         doc = Document(page_content=row[1], metadata=metadata)
                         documents.append(doc)
-                except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+                except (RuntimeError, ValueError, TypeError, ConnectionError):
                     logger.exception("Full-text search failed")
                     # Fallback to LIKE search if full-text search fails
                     return self._search_by_like(query, **kwargs)
@@ -978,7 +978,7 @@ class ClickzettaVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
 
         # Handle filter parameter from canvas (workflow)
-        filter_param = kwargs.get("filter", {})
+        _ = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []

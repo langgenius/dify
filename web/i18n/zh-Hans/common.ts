@@ -495,10 +495,13 @@ const translation = {
       authRemoved: '授权已移除',
       apiKeys: 'API 密钥',
       addApiKey: '添加 API 密钥',
+      addModel: '添加模型',
       addNewModel: '添加新模型',
       addCredential: '添加凭据',
       addModelCredential: '添加模型凭据',
+      editModelCredential: '编辑模型凭据',
       modelCredentials: '模型凭据',
+      modelCredential: '模型凭据',
       configModel: '配置模型',
       configLoadBalancing: '配置负载均衡',
       authorizationError: '授权错误',
@@ -511,6 +514,12 @@ const translation = {
         desc: '配置凭据后，工作空间中的所有成员都可以在编排应用时使用此模型。',
         addModel: '添加模型',
       },
+      manageCredentials: '管理凭据',
+      customModelCredentials: '自定义模型凭据',
+      addNewModelCredential: '添加模型新凭据',
+      removeModel: '移除模型',
+      selectModelCredential: '选择模型凭据',
+      customModelCredentialsDeleteTip: '模型凭据正在使用中，无法删除',
     },
   },
   dataSource: {
@@ -746,6 +755,12 @@ const translation = {
     supportedFormats: '支持 PNG、JPG、JPEG、WEBP 和 GIF 格式',
   },
   you: '你',
+  feedback: {
+    content: '反馈内容',
+    subtitle: '请告诉我们这次回应出错的原因。',
+    title: '提供反馈',
+    placeholder: '请描述发生了什么问题或我们可以如何改进...',
+  },
 }
 
 export default translation

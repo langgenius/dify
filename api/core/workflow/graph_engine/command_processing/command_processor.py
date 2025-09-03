@@ -39,8 +39,8 @@ class CommandProcessor:
             command_channel: Channel for receiving commands
             graph_execution: Graph execution aggregate
         """
-        self.command_channel = command_channel
-        self.graph_execution = graph_execution
+        self._command_channel = command_channel
+        self._graph_execution = graph_execution
         self._handlers: dict[type[GraphEngineCommand], CommandHandler] = {}
 
     def register_handler(self, command_type: type[GraphEngineCommand], handler: CommandHandler) -> None:
@@ -56,7 +56,7 @@ class CommandProcessor:
     def process_commands(self) -> None:
         """Check for and process any pending commands."""
         try:
-            commands = self.command_channel.fetch_commands()
+            commands = self._command_channel.fetch_commands()
             for command in commands:
                 self._handle_command(command)
         except Exception as e:
@@ -72,8 +72,8 @@ class CommandProcessor:
         handler = self._handlers.get(type(command))
         if handler:
             try:
-                handler.handle(command, self.graph_execution)
-            except Exception as e:
+                handler.handle(command, self._graph_execution)
+            except Exception:
                 logger.exception("Error handling command %s", command.__class__.__name__)
         else:
             logger.warning("No handler registered for command: %s", command.__class__.__name__)

@@ -27,7 +27,9 @@ class WorkflowAppLogApi(Resource):
         """
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
+        parser.add_argument(
+            "status", type=str, choices=["succeeded", "failed", "stopped", "partial-succeeded"], location="args"
+        )
         parser.add_argument(
             "created_at__before", type=str, location="args", help="Filter logs created before this timestamp"
         )

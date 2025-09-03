@@ -1,8 +1,11 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, final
+
+from typing_extensions import override
 
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType
 from core.workflow.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
+from libs.typing import is_str, is_str_dict
 
 from .node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 
@@ -10,6 +13,7 @@ if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams, GraphRuntimeState
 
 
+@final
 class DifyNodeFactory(NodeFactory):
     """
     Default implementation of NodeFactory that uses the traditional node mapping.
@@ -26,10 +30,8 @@ class DifyNodeFactory(NodeFactory):
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
 
-    def create_node(
-        self,
-        node_config: dict[str, Any],
-    ) -> Node:
+    @override
+    def create_node(self, node_config: dict[str, object]) -> Node:
         """
         Create a Node instance from node configuration data using the traditional mapping.
 
@@ -39,14 +41,17 @@ class DifyNodeFactory(NodeFactory):
         """
         # Get node_id from config
         node_id = node_config.get("id")
-        if not node_id:
+        if not is_str(node_id):
             raise ValueError("Node config missing id")
 
         # Get node type from config
         node_data = node_config.get("data", {})
+        if not is_str_dict(node_data):
+            raise ValueError(f"Node {node_id} missing data information")
+
         node_type_str = node_data.get("type")
-        if not node_type_str:
-            raise ValueError(f"Node {node_id} missing type information")
+        if not is_str(node_type_str):
+            raise ValueError(f"Node {node_id} missing or invalid type information")
 
         try:
             node_type = NodeType(node_type_str)
@@ -72,6 +77,8 @@ class DifyNodeFactory(NodeFactory):
 
         # Initialize node with provided data
         node_data = node_config.get("data", {})
+        if not is_str_dict(node_data):
+            raise ValueError(f"Node {node_id} missing data information")
         node_instance.init_node_data(node_data)
 
         # If node has fail branch, change execution type to branch

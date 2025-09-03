@@ -1,7 +1,6 @@
 import time
 import uuid
 from os import getenv
-from typing import cast
 
 import pytest
 
@@ -11,7 +10,6 @@ from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
@@ -242,8 +240,6 @@ def test_execute_code_output_validator_depth():
         "object_validator": {"result": 1, "depth": {"depth": {"depth": 1}}},
     }
 
-    node._node_data = cast(CodeNodeData, node._node_data)
-
     # validate
     node._transform_result(result, node._node_data.outputs)
 
@@ -337,8 +333,6 @@ def test_execute_code_output_object_list():
             },
         ]
     }
-
-    node._node_data = cast(CodeNodeData, node._node_data)
 
     # validate
     node._transform_result(result, node._node_data.outputs)
