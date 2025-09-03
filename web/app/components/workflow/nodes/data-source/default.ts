@@ -8,7 +8,7 @@ import {
   LOCAL_FILE_OUTPUT,
 } from './constants'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import type { AnyObj } from '../_base/components/variable/match-schema-type'
+import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -54,7 +54,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       errorMessage,
     }
   },
-  getOutputVars(payload, allPluginInfoList, ragVars = [], { getMatchedSchemaType } = { getMatchedSchemaType: (_obj: AnyObj) => '' }) {
+  getOutputVars(payload, allPluginInfoList, ragVars = [], { schemaTypeDefinitions } = { schemaTypeDefinitions: [] }) {
     const {
       plugin_id,
       datasource_name,
@@ -74,7 +74,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
         let type = dataType === 'array'
           ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
           : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`
-        const schemaType = getMatchedSchemaType?.(output)
+        const schemaType = getMatchedSchemaType?.(output, schemaTypeDefinitions)
 
         if (type === 'object' && schemaType === 'file')
           type = 'file'

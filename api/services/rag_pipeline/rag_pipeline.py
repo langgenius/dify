@@ -512,20 +512,28 @@ class RagPipelineService:
 
             datasource_parameters = datasource_node_data.get("datasource_parameters", {})
             for key, value in datasource_parameters.items():
-                if value.get("value") and isinstance(value.get("value"), str):
+                param_value = value.get("value")
+
+                if not param_value:
+                    variables_map[key] = param_value
+                elif isinstance(param_value, str):
+                    # handle string type parameter value, check if it contains variable reference pattern
                     pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
-                    match = re.match(pattern, value["value"])
+                    match = re.match(pattern, param_value)
                     if match:
+                        # extract variable path and try to get value from user inputs
                         full_path = match.group(1)
                         last_part = full_path.split(".")[-1]
-                        if last_part in user_inputs:
-                            variables_map[key] = user_inputs[last_part]
-                        else:
-                            variables_map[key] = value["value"]
+                        variables_map[key] = user_inputs.get(last_part, param_value)
                     else:
-                        variables_map[key] = value["value"]
+                        variables_map[key] = param_value
+                elif isinstance(param_value, list) and param_value:
+                    # handle list type parameter value, check if the last element is in user inputs
+                    last_part = param_value[-1]
+                    variables_map[key] = user_inputs.get(last_part, param_value)
                 else:
-                    variables_map[key] = value["value"]
+                    # other type directly use original value
+                    variables_map[key] = param_value
 
             from core.datasource.datasource_manager import DatasourceManager
 
@@ -931,6 +939,10 @@ class RagPipelineService:
                     full_path = match.group(1)
                     last_part = full_path.split(".")[-1]
                     user_input_variables.append(variables_map.get(last_part, {}))
+            elif value.get("value") and isinstance(value.get("value"), list):
+                last_part = value.get("value")[-1]
+                user_input_variables.append(variables_map.get(last_part, {}))
+
         return user_input_variables
 
     def get_second_step_parameters(self, pipeline: Pipeline, node_id: str, is_draft: bool = False) -> list[dict]:
@@ -968,6 +980,9 @@ class RagPipelineService:
                         full_path = match.group(1)
                         last_part = full_path.split(".")[-1]
                         variables_map.pop(last_part)
+                elif value.get("value") and isinstance(value.get("value"), list):
+                    last_part = value.get("value")[-1]
+                    variables_map.pop(last_part)
         all_second_step_variables = list(variables_map.values())
         datasource_provider_variables = [
             item
@@ -1147,18 +1162,15 @@ class RagPipelineService:
     def get_node_last_run(
         self, pipeline: Pipeline, workflow: Workflow, node_id: str
     ) -> WorkflowNodeExecutionModel | None:
-        # TODO(QuantumGhost): This query is not fully covered by index.
-        criteria = (
-            WorkflowNodeExecutionModel.tenant_id == pipeline.tenant_id,
-            WorkflowNodeExecutionModel.app_id == pipeline.id,
-            WorkflowNodeExecutionModel.workflow_id == workflow.id,
-            WorkflowNodeExecutionModel.node_id == node_id,
+        node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            sessionmaker(db.engine)
         )
-        node_exec = (
-            db.session.query(WorkflowNodeExecutionModel)
-            .filter(*criteria)
-            .order_by(WorkflowNodeExecutionModel.created_at.desc())
-            .first()
+
+        node_exec = node_execution_service_repo.get_node_last_execution(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            workflow_id=workflow.id,
+            node_id=node_id,
         )
         return node_exec
 

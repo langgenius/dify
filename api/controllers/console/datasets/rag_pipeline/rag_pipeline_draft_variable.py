@@ -10,6 +10,10 @@ from controllers.console import api
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
+from controllers.console.app.workflow_draft_variable import (
+    _WORKFLOW_DRAFT_VARIABLE_FIELDS,
+    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
+)
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -68,38 +72,6 @@ def _create_pagination_parser():
     )
     parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
     return parser
-
-
-_WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
-    "id": fields.String,
-    "type": fields.String(attribute=lambda model: model.get_variable_type()),
-    "name": fields.String,
-    "description": fields.String,
-    "selector": fields.List(fields.String, attribute=lambda model: model.get_selector()),
-    "value_type": fields.String,
-    "edited": fields.Boolean(attribute=lambda model: model.edited),
-    "visible": fields.Boolean,
-}
-
-_WORKFLOW_DRAFT_VARIABLE_FIELDS = dict(
-    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
-    value=fields.Raw(attribute=_serialize_var_value),
-)
-
-_WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
-    "id": fields.String,
-    "type": fields.String(attribute=lambda _: "env"),
-    "name": fields.String,
-    "description": fields.String,
-    "selector": fields.List(fields.String, attribute=lambda model: model.get_selector()),
-    "value_type": fields.String,
-    "edited": fields.Boolean(attribute=lambda model: model.edited),
-    "visible": fields.Boolean,
-}
-
-_WORKFLOW_DRAFT_ENV_VARIABLE_LIST_FIELDS = {
-    "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS)),
-}
 
 
 def _get_items(var_list: WorkflowDraftVariableList) -> list[WorkflowDraftVariable]:
