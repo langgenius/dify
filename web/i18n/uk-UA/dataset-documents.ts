@@ -30,7 +30,6 @@ const translation = {
       sync: 'Синхронізувати',
       pause: 'Пауза',
       resume: 'Продовжити',
-      download: 'Завантажити файл',
     },
     index: {
       enable: 'Активувати',
@@ -254,7 +253,6 @@ const translation = {
       cs: 'Чеська',
       th: 'Тайська',
       id: 'Індонезійська',
-      uk: 'Українська',
     },
     categoryMap: {
       book: {
@@ -343,7 +341,6 @@ const translation = {
     keywords: 'Ключові слова',
     addKeyWord: 'Додати ключове слово',
     keywordError: 'Максимальна довжина ключового слова – 20 символів',
-    characters: 'символів',
     hitCount: 'Кількість пошуку',
     vectorHash: 'Векторний хеш: ',
     questionPlaceholder: 'додайте запитання тут',

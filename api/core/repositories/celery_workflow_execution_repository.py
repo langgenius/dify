@@ -119,7 +119,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             logger.debug("Queued async save for workflow execution: %s", execution.id_)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to queue save operation for execution %s", execution.id_)
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception

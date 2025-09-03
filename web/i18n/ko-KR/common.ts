@@ -738,6 +738,12 @@ const translation = {
     deleteTitle: '아바타 제거하기',
     deleteDescription: '프로필 사진을 제거하시겠습니까? 귀하의 계정은 기본 초기 아바타를 사용하게 됩니다.',
   },
+  feedback: {
+    content: '피드백 내용',
+    title: '피드백 제공하기',
+    subtitle: '이 응답에서 무엇이 잘못되었는지 말씀해 주세요.',
+    placeholder: '문제가 무엇인지 또는 어떻게 개선할 수 있는지 설명해 주십시오...',
+  },
 }
 
 export default translation

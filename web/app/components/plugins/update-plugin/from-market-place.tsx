@@ -136,47 +136,47 @@ const UpdatePluginModal: FC<Props> = ({
           onExcludeAndDowngrade={handleExcludeAndDownload}
         />
       )}
-    {!doShowDowngradeWarningModal && (
-      <>
-        <div className='system-md-regular mb-2 mt-3 text-text-secondary'>
-          {t(`${i18nPrefix}.description`)}
-        </div>
-        <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
-          <Card
-            installed={uploadStep === UploadStep.installed}
-            payload={pluginManifestToCardPluginProps({
-              ...originalPackageInfo.payload,
-              icon: icon!,
-            })}
-            className='w-full'
-            titleLeft={
-              <>
-                <Badge className='mx-1' size="s" state={BadgeState.Warning}>
-                  {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
-                </Badge>
-              </>
-            }
-          />
-        </div>
-        <div className='flex items-center justify-end gap-2 self-stretch pt-5'>
-          {uploadStep === UploadStep.notStarted && (
+      {!doShowDowngradeWarningModal && (
+        <>
+          <div className='system-md-regular mb-2 mt-3 text-text-secondary'>
+            {t(`${i18nPrefix}.description`)}
+          </div>
+          <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
+            <Card
+              installed={uploadStep === UploadStep.installed}
+              payload={pluginManifestToCardPluginProps({
+                ...originalPackageInfo.payload,
+                icon: icon!,
+              })}
+              className='w-full'
+              titleLeft={
+                <>
+                  <Badge className='mx-1' size="s" state={BadgeState.Warning}>
+                    {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
+                  </Badge>
+                </>
+              }
+            />
+          </div>
+          <div className='flex items-center justify-end gap-2 self-stretch pt-5'>
+            {uploadStep === UploadStep.notStarted && (
+              <Button
+                onClick={handleCancel}
+              >
+                {t('common.operation.cancel')}
+              </Button>
+            )}
             <Button
-              onClick={handleCancel}
+              variant='primary'
+              loading={uploadStep === UploadStep.upgrading}
+              onClick={handleConfirm}
+              disabled={uploadStep === UploadStep.upgrading}
             >
-              {t('common.operation.cancel')}
+              {configBtnText}
             </Button>
-          )}
-          <Button
-            variant='primary'
-            loading={uploadStep === UploadStep.upgrading}
-            onClick={handleConfirm}
-            disabled={uploadStep === UploadStep.upgrading}
-          >
-            {configBtnText}
-          </Button>
-        </div>
-      </>
-    )}
+          </div>
+        </>
+      )}
 
     </Modal>
   )

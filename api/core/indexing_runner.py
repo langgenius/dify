@@ -5,9 +5,10 @@ import re
 import threading
 import time
 import uuid
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from flask import current_app
+from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -18,6 +19,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
@@ -56,13 +58,11 @@ class IndexingRunner:
 
                 if not dataset:
                     raise ValueError("no dataset found")
-
                 # get the process rule
-                processing_rule = (
-                    db.session.query(DatasetProcessRule)
-                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                    .first()
+                stmt = select(DatasetProcessRule).where(
+                    DatasetProcessRule.id == dataset_document.dataset_process_rule_id
                 )
+                processing_rule = db.session.scalar(stmt)
                 if not processing_rule:
                     raise ValueError("no process rule found")
                 index_type = dataset_document.doc_form
@@ -123,11 +123,8 @@ class IndexingRunner:
                     db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
             # get the process rule
-            processing_rule = (
-                db.session.query(DatasetProcessRule)
-                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                .first()
-            )
+            stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+            processing_rule = db.session.scalar(stmt)
             if not processing_rule:
                 raise ValueError("no process rule found")
 
@@ -208,7 +205,6 @@ class IndexingRunner:
                                     child_documents.append(child_document)
                                 document.children = child_documents
                         documents.append(document)
-
             # build index
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -310,7 +306,8 @@ class IndexingRunner:
                 # delete image files and related db records
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+                    stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+                    image_file = db.session.scalar(stmt)
                     if image_file is None:
                         continue
                     try:
@@ -339,14 +336,14 @@ class IndexingRunner:
         if dataset_document.data_source_type == "upload_file":
             if not data_source_info or "upload_file_id" not in data_source_info:
                 raise ValueError("no upload file found")
-
-            file_detail = (
-                db.session.query(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"]).one_or_none()
-            )
+            stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
+            file_detail = db.session.scalars(stmt).one_or_none()
 
             if file_detail:
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file_detail, document_model=dataset_document.doc_form
+                    datasource_type=DatasourceType.FILE.value,
+                    upload_file=file_detail,
+                    document_model=dataset_document.doc_form,
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         elif dataset_document.data_source_type == "notion_import":
@@ -357,7 +354,7 @@ class IndexingRunner:
             ):
                 raise ValueError("no notion import info found")
             extract_setting = ExtractSetting(
-                datasource_type="notion_import",
+                datasource_type=DatasourceType.NOTION.value,
                 notion_info={
                     "notion_workspace_id": data_source_info["notion_workspace_id"],
                     "notion_obj_id": data_source_info["notion_page_id"],
@@ -377,7 +374,7 @@ class IndexingRunner:
             ):
                 raise ValueError("no website import info found")
             extract_setting = ExtractSetting(
-                datasource_type="website_crawl",
+                datasource_type=DatasourceType.WEBSITE.value,
                 website_info={
                     "provider": data_source_info["provider"],
                     "job_id": data_source_info["job_id"],
@@ -400,7 +397,6 @@ class IndexingRunner:
         )
 
         # replace doc id to document model id
-        text_docs = cast(list[Document], text_docs)
         for text_doc in text_docs:
             if text_doc.metadata is not None:
                 text_doc.metadata["document_id"] = dataset_document.id

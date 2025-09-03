@@ -240,8 +240,6 @@ const translation = {
     apply: '应用',
     applyChanges: '应用更改',
     resTitle: '生成的代码',
-    newNoDataLine1: '在左侧描述您的用例，点击生成查看响应。',
-    newNoDataLine2: '了解提示词设计',
     overwriteConfirmTitle: '是否覆盖现有代码？',
     overwriteConfirmMessage: '此操作将覆盖现有代码。您确定要继续吗？',
   },

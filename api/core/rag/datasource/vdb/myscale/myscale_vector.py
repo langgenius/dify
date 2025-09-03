@@ -152,8 +152,8 @@ class MyScaleVector(BaseVector):
                 )
                 for r in self._client.query(sql).named_results()
             ]
-        except Exception as e:
-            logger.exception("\033[91m\033[1m%s\033[0m \033[95m%s\033[0m", type(e), str(e))  # noqa:TRY401
+        except Exception:
+            logger.exception("Vector search operation failed")
             return []
 
     def delete(self) -> None:

@@ -49,7 +49,7 @@ const TextAreaWithButton = ({
   const { t } = useTranslation()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({
-    top_k: 2,
+    top_k: 4,
     score_threshold: 0.5,
     score_threshold_enabled: false,
   })

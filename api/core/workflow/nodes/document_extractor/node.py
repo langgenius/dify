@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 import chardet
 import docx
@@ -302,12 +302,12 @@ def _extract_text_from_yaml(file_content: bytes) -> str:
             encoding = "utf-8"
 
         yaml_data = yaml.safe_load_all(file_content.decode(encoding, errors="ignore"))
-        return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
     except (UnicodeDecodeError, LookupError, yaml.YAMLError) as e:
         # If decoding fails, try with utf-8 as last resort
         try:
             yaml_data = yaml.safe_load_all(file_content.decode("utf-8", errors="ignore"))
-            return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+            return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
         except (UnicodeDecodeError, yaml.YAMLError):
             raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
@@ -428,9 +428,9 @@ def _download_file_content(file: File) -> bytes:
                 raise FileDownloadError("Missing URL for remote file")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
-            return cast(bytes, response.content)
+            return response.content
         else:
-            return cast(bytes, file_manager.download(file))
+            return file_manager.download(file)
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
