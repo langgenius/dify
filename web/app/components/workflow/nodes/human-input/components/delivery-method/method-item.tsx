@@ -5,8 +5,10 @@ import {
   RiEqualizer2Line,
   RiMailSendFill,
   RiRobot2Fill,
+  RiSendPlane2Line,
 } from '@remixicon/react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import Badge from '@/app/components/base/badge/index'
 import Button from '@/app/components/base/button'
 import Switch from '@/app/components/base/switch'
 import Indicator from '@/app/components/header/indicator'
@@ -71,13 +73,19 @@ const DeliveryMethodItem: React.FC<Props> = ({
             </div>
           )}
           <div className='system-xs-medium capitalize text-text-secondary'>{method.type}</div>
+          {method.type === DeliveryMethodType.Email && method.config?.debug && <Badge size='s'>DEBUG</Badge>}
         </div>
         <div className='flex items-center gap-1'>
           <div className='hidden items-end gap-1 group-hover:flex'>
             {method.type === DeliveryMethodType.Email && method.config && (
-              <ActionButton onClick={() => setShowEmailModal(true)}>
-                <RiEqualizer2Line className='h-4 w-4' />
-              </ActionButton>
+              <>
+                <ActionButton onClick={() => setShowEmailModal(true)}>
+                  <RiSendPlane2Line className='h-4 w-4' />
+                </ActionButton>
+                <ActionButton onClick={() => setShowEmailModal(true)}>
+                  <RiEqualizer2Line className='h-4 w-4' />
+                </ActionButton>
+              </>
             )}
             <div
               onMouseEnter={() => setIsHovering(true)}

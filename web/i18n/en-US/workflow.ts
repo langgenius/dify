@@ -959,6 +959,9 @@ const translation = {
             add: '+ Add',
             added: 'Added',
           },
+          debugMode: 'Debug Mode',
+          debugModeTip1: 'During debug mode, emails will only be sent to your account email <email>{{email}}</email>.',
+          debugModeTip2: 'The production environment is not affected.',
         },
       },
       formContent: {

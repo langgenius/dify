@@ -959,6 +959,9 @@ const translation = {
             add: '+ 添加',
             added: '已添加',
           },
+          debugMode: '调试模式',
+          debugModeTip1: '在调试模式下，电子邮件将仅发送到您的帐户电子邮件 <email>{{email}}</email>。',
+          debugModeTip2: '生产环境不受影响。',
         },
       },
       formContent: {

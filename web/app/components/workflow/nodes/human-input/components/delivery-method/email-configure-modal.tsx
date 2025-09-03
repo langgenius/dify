@@ -1,9 +1,12 @@
 import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import { Trans, useTranslation } from 'react-i18next'
+import { useAppContext } from '@/context/app-context'
+import { RiBugLine, RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import Switch from '@/app/components/base/switch'
 import Recipient from './recipient'
 import MailBodyInput from './mail-body-input'
 import Toast from '@/app/components/base/toast'
@@ -34,10 +37,11 @@ const EmailConfigureModal = ({
   availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
-
+  const { userProfile } = useAppContext()
   const [recipients, setRecipients] = useState(config?.recipients || { whole_workspace: false, items: [] })
   const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '')
+  const [debugMode, setDebugMode] = useState(config?.debug || false)
 
   const checkValidConfig = () => {
     if (!subject.trim()) {
@@ -77,6 +81,7 @@ const EmailConfigureModal = ({
       recipients,
       subject,
       body,
+      debug: debugMode,
     })
   }, [subject, body, onConfirm])
 
@@ -94,15 +99,6 @@ const EmailConfigureModal = ({
         <div className='system-xs-regular text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.description`)}</div>
       </div>
       <div className='space-y-5 px-6 py-3'>
-        <div>
-          <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>
-            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`)}
-          </div>
-          <Recipient
-            data={recipients}
-            onChange={setRecipients}
-          />
-        </div>
         <div>
           <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>
             {t(`${i18nPrefix}.deliveryMethod.emailConfigure.subject`)}
@@ -123,6 +119,36 @@ const EmailConfigureModal = ({
             onChange={setBody}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
+          />
+        </div>
+        <div>
+          <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>
+            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`)}
+          </div>
+          <Recipient
+            data={recipients}
+            onChange={setRecipients}
+          />
+        </div>
+        <Divider className='!my-0 !mt-5 !h-px' />
+        <div className='flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs'>
+          <div className='rounded-[4px] border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5'>
+            <RiBugLine className='h-3.5 w-3.5 text-text-primary-on-surface' />
+          </div>
+          <div className='space-y-1'>
+            <div className='system-sm-medium text-text-secondary'>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`)}</div>
+            <div className='body-xs-regular text-text-tertiary'>
+              <Trans
+                i18nKey={`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`}
+                components={{ email: <span className='body-md-medium text-text-primary'>{userProfile.email}</span> }}
+                values={{ email: userProfile.email }}
+              />
+              <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`)}</div>
+            </div>
+          </div>
+          <Switch
+            defaultValue={debugMode}
+            onChange={checked => setDebugMode(checked)}
           />
         </div>
       </div>

@@ -31,6 +31,7 @@ export type EmailConfig = {
   recipients: RecipientData
   subject: string
   body: string
+  debug: boolean
 }
 
 export type DeliveryMethod = {
