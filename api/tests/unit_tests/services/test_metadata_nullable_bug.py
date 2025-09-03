@@ -1,8 +1,9 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from flask_restx import reqparse
 
+from models.account import Account
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
 
@@ -24,9 +25,11 @@ class TestMetadataNullableBug:
         mock_metadata_args.name = None  # This will cause len() to crash
         mock_metadata_args.type = "string"
 
-        with patch("services.metadata_service.current_user") as mock_user:
-            mock_user.current_tenant_id = "tenant-123"
-            mock_user.id = "user-456"
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
+        
+        with patch("services.metadata_service.current_user", mock_user):
 
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
@@ -34,9 +37,11 @@ class TestMetadataNullableBug:
 
     def test_metadata_service_update_with_none_name_crashes(self):
         """Test that MetadataService.update_metadata_name crashes when name is None."""
-        with patch("services.metadata_service.current_user") as mock_user:
-            mock_user.current_tenant_id = "tenant-123"
-            mock_user.id = "user-456"
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
+        
+        with patch("services.metadata_service.current_user", mock_user):
 
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
@@ -81,9 +86,11 @@ class TestMetadataNullableBug:
         mock_metadata_args.name = None  # From args["name"]
         mock_metadata_args.type = None  # From args["type"]
 
-        with patch("services.metadata_service.current_user") as mock_user:
-            mock_user.current_tenant_id = "tenant-123"
-            mock_user.id = "user-456"
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
+        
+        with patch("services.metadata_service.current_user", mock_user):
 
             # Step 4: Service layer crashes on len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):

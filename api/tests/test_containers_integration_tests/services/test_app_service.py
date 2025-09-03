@@ -1,9 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
 
 from constants.model_template import default_app_templates
+from models.account import Account
 from models.model import App, Site
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
@@ -406,7 +407,11 @@ class TestAppService:
             "use_icon_as_answer_icon": True,
         }
 
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+        
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app(app, update_args)
 
         # Verify updated fields
@@ -456,7 +461,11 @@ class TestAppService:
 
         # Update app name
         new_name = "New App Name"
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+        
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_name(app, new_name)
 
         assert updated_app.name == new_name
@@ -504,7 +513,11 @@ class TestAppService:
         # Update app icon
         new_icon = "🌟"
         new_icon_background = "#FFD93D"
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+        
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_icon(app, new_icon, new_icon_background)
 
         assert updated_app.icon == new_icon
@@ -551,13 +564,17 @@ class TestAppService:
         original_site_status = app.enable_site
 
         # Update site status to disabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+        
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_site_status(app, False)
         assert updated_app.enable_site is False
         assert updated_app.updated_by == account.id
 
         # Update site status back to enabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_site_status(updated_app, True)
         assert updated_app.enable_site is True
         assert updated_app.updated_by == account.id
@@ -602,13 +619,17 @@ class TestAppService:
         original_api_status = app.enable_api
 
         # Update API status to disabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+        
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_api_status(app, False)
         assert updated_app.enable_api is False
         assert updated_app.updated_by == account.id
 
         # Update API status back to enabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_api_status(updated_app, True)
         assert updated_app.enable_api is True
         assert updated_app.updated_by == account.id

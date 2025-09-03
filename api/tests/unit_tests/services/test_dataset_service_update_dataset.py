@@ -2,11 +2,12 @@ import datetime
 from typing import Any, Optional
 
 # Mock redis_client before importing dataset_service
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 
 from core.model_runtime.entities.model_entities import ModelType
+from models.account import Account
 from models.dataset import Dataset, ExternalKnowledgeBindings
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
@@ -78,7 +79,7 @@ class DatasetUpdateTestDataFactory:
     @staticmethod
     def create_current_user_mock(tenant_id: str = "tenant-123") -> Mock:
         """Create a mock current user."""
-        current_user = Mock()
+        current_user = create_autospec(Account, instance=True)
         current_user.current_tenant_id = tenant_id
         return current_user
 
@@ -135,7 +136,7 @@ class TestDatasetServiceUpdateDataset:
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
             patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
-            patch("services.dataset_service.current_user") as mock_current_user,
+            patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
         ):
             mock_current_user.current_tenant_id = "tenant-123"
             yield {
