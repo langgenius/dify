@@ -87,7 +87,8 @@ class AppAnnotationService:
         enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         enable_annotation_reply_task.delay(
             str(job_id),
             app_id,
@@ -101,7 +102,8 @@ class AppAnnotationService:
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> dict:
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
@@ -118,7 +120,8 @@ class AppAnnotationService:
     @classmethod
     def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str):
         # get app info
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -151,7 +154,8 @@ class AppAnnotationService:
     @classmethod
     def export_annotation_list_by_app_id(cls, app_id: str):
         # get app info
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -171,7 +175,8 @@ class AppAnnotationService:
     @classmethod
     def insert_app_annotation_directly(cls, args: dict, app_id: str) -> MessageAnnotation:
         # get app info
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -201,7 +206,8 @@ class AppAnnotationService:
     @classmethod
     def update_app_annotation_directly(cls, args: dict, app_id: str, annotation_id: str):
         # get app info
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -239,7 +245,8 @@ class AppAnnotationService:
     @classmethod
     def delete_app_annotation(cls, app_id: str, annotation_id: str):
         # get app info
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -279,7 +286,8 @@ class AppAnnotationService:
     @classmethod
     def delete_app_annotations_in_batch(cls, app_id: str, annotation_ids: list[str]):
         # get app info
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -328,7 +336,8 @@ class AppAnnotationService:
     @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
         # get app info
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -367,7 +376,8 @@ class AppAnnotationService:
 
     @classmethod
     def get_annotation_hit_histories(cls, app_id: str, annotation_id: str, page, limit):
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # get app info
         app = (
             db.session.query(App)
@@ -438,7 +448,8 @@ class AppAnnotationService:
 
     @classmethod
     def get_app_annotation_setting_by_app_id(cls, app_id: str):
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # get app info
         app = (
             db.session.query(App)
@@ -465,7 +476,8 @@ class AppAnnotationService:
 
     @classmethod
     def update_app_annotation_setting(cls, app_id: str, annotation_setting_id: str, args: dict):
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # get app info
         app = (
             db.session.query(App)
@@ -506,7 +518,8 @@ class AppAnnotationService:
 
     @classmethod
     def clear_all_annotations(cls, app_id: str) -> dict:
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")

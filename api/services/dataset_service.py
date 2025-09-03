@@ -724,7 +724,8 @@ class DatasetService:
 
     @staticmethod
     def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
 
         features = FeatureService.get_features(current_user.current_tenant_id)
         if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
@@ -1108,7 +1109,8 @@ class DocumentService:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
 
         features = FeatureService.get_features(current_user.current_tenant_id)
 
@@ -1590,7 +1592,8 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
 
         features = FeatureService.get_features(current_user.current_tenant_id)
 
@@ -2031,7 +2034,8 @@ class SegmentService:
 
     @classmethod
     def create_segment(cls, args: dict, document: Document, dataset: Dataset):
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
 
         content = args["content"]
         doc_id = str(uuid.uuid4())
@@ -2095,7 +2099,8 @@ class SegmentService:
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
 
         lock_name = f"multi_add_segment_lock_document_id_{document.id}"
         increment_word_count = 0
@@ -2180,7 +2185,8 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
 
         indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)

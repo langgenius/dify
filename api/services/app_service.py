@@ -168,7 +168,8 @@ class AppService:
         """
         Get App
         """
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # get original app model config
         if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
             model_config = app.app_model_config

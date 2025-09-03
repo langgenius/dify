@@ -111,7 +111,8 @@ class FileService:
 
     @staticmethod
     def upload_text(text: str, text_name: str) -> UploadFile:
-        assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
 
         if len(text_name) > 200:
             text_name = text_name[:200]

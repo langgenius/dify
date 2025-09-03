@@ -61,7 +61,8 @@ class AgentService:
             executor = executor.name
         else:
             executor = "Unknown"
-        assert isinstance(current_user, Account) and current_user.timezone is not None
+        assert isinstance(current_user, Account)
+        assert current_user.timezone is not None
         timezone = pytz.timezone(current_user.timezone)
 
         app_model_config = app_model.app_model_config
