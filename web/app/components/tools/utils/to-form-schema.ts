@@ -8,8 +8,6 @@ export const toType = (type: string) => {
       return 'text-input'
     case 'number':
       return 'number-input'
-    case 'boolean':
-      return 'checkbox'
     default:
       return type
   }

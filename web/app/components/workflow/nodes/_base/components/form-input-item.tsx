@@ -64,7 +64,7 @@ const FormInputItem: FC<Props> = ({
   const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isBoolean || isObject || isArray
+  const showTypeSwitch = isNumber || isObject || isArray
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
 
@@ -183,7 +183,7 @@ const FormInputItem: FC<Props> = ({
   return (
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
-        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange}/>
+        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange} />
       )}
       {isString && (
         <MixedVariableTextInput
