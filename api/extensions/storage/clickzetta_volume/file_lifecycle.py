@@ -1,7 +1,8 @@
 """ClickZetta Volume file lifecycle management
 
-This module provides file lifecycle management features including version control, automatic cleanup, backup and restore.
-Supports complete lifecycle management for knowledge base files.
+This module provides file lifecycle management features including version control, 
+automatic cleanup, backup and restore. Supports complete lifecycle management for 
+knowledge base files.
 """
 
 import json
