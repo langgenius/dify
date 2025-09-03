@@ -51,8 +51,7 @@ async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string
     const queryString = decodedRedirectUrl.split('?')[1]
     if (queryString) {
       const redirectParams = new URLSearchParams(queryString)
-      Array.from(redirectParams.entries()).forEach(([key, value]) => {
-        urlParams.append(key, value)
+        urlParams.set(key, value)
       })
     }
   }
