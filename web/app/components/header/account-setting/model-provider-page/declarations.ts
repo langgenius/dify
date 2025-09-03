@@ -14,7 +14,7 @@ export enum FormTypeEnum {
   secretInput = 'secret-input',
   select = 'select',
   radio = 'radio',
-  boolean = 'boolean',
+  boolean = 'checkbox',
   files = 'files',
   file = 'file',
   modelSelector = 'model-selector',
