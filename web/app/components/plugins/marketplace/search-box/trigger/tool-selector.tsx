@@ -49,7 +49,10 @@ const ToolSelectorTrigger = ({
         !!selectedTagsLength && (
           <RiCloseCircleFill
             className='size-4 text-text-quaternary'
-            onClick={() => onTagsChange([])}
+            onClick={(e) => {
+              e.stopPropagation()
+              onTagsChange([])
+            }}
           />
         )
       }
