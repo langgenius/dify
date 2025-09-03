@@ -1162,18 +1162,15 @@ class RagPipelineService:
     def get_node_last_run(
         self, pipeline: Pipeline, workflow: Workflow, node_id: str
     ) -> WorkflowNodeExecutionModel | None:
-        # TODO(QuantumGhost): This query is not fully covered by index.
-        criteria = (
-            WorkflowNodeExecutionModel.tenant_id == pipeline.tenant_id,
-            WorkflowNodeExecutionModel.app_id == pipeline.id,
-            WorkflowNodeExecutionModel.workflow_id == workflow.id,
-            WorkflowNodeExecutionModel.node_id == node_id,
+        node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            sessionmaker(db.engine)
         )
-        node_exec = (
-            db.session.query(WorkflowNodeExecutionModel)
-            .filter(*criteria)
-            .order_by(WorkflowNodeExecutionModel.created_at.desc())
-            .first()
+
+        node_exec = node_execution_service_repo.get_node_last_execution(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            workflow_id=workflow.id,
+            node_id=node_id,
         )
         return node_exec
 
