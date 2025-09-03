@@ -59,6 +59,7 @@ pnpm test                         # Run Jest tests
 - Use type hints for all functions and class attributes
 - No `Any` types unless absolutely necessary
 - Implement special methods (`__repr__`, `__str__`) appropriately
+- **Logging**: Never use `str(e)` in `logger.exception()` calls. Use `logger.exception("message", exc_info=e)` instead
 
 ### TypeScript/JavaScript
 
