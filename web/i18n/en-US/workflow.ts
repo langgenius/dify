@@ -1028,6 +1028,10 @@ const translation = {
       responseBody: 'Response Body',
       responseBodyPlaceholder: 'Write your response body here',
       headers: 'Headers',
+      validation: {
+        webhookUrlRequired: 'Webhook URL is required',
+        invalidParameterType: 'Invalid parameter type "{{type}}" for parameter "{{name}}"',
+      },
     },
   },
   triggerStatus: {

@@ -1028,6 +1028,10 @@ const translation = {
       responseBody: '响应体',
       responseBodyPlaceholder: '在此输入您的响应体',
       headers: 'Headers',
+      validation: {
+        webhookUrlRequired: '需要提供Webhook URL',
+        invalidParameterType: '参数"{{name}}"的参数类型"{{type}}"无效',
+      },
     },
   },
   tracing: {

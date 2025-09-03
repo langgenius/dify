@@ -1028,6 +1028,10 @@ const translation = {
       responseBody: 'レスポンスボディ',
       responseBodyPlaceholder: 'ここにレスポンスボディを入力してください',
       headers: 'ヘッダー',
+      validation: {
+        webhookUrlRequired: 'Webhook URLが必要です',
+        invalidParameterType: 'パラメータ"{{name}}"の無効なパラメータタイプ"{{type}}"です',
+      },
     },
   },
   tracing: {
