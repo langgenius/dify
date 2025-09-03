@@ -411,9 +411,7 @@ class ProviderConfiguration(BaseModel):
         """
         with Session(db.engine) as session:
             if credential_name:
-                if self._check_provider_credential_name_exists(
-                    credential_name=credential_name, session=session
-                ):
+                if self._check_provider_credential_name_exists(credential_name=credential_name, session=session):
                     raise ValueError(f"Credential with name '{credential_name}' already exists.")
             else:
                 credential_name = self._generate_provider_credential_name(session)
