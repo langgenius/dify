@@ -1,6 +1,7 @@
 import {
   isValidElement,
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import { RiExternalLinkLine } from '@remixicon/react'
@@ -23,6 +24,7 @@ export type BaseFieldProps = {
   formSchema: FormSchema
   field: AnyFieldApi
   disabled?: boolean
+  onChange?: (field: string, value: any) => void
 }
 const BaseField = ({
   fieldClassName,
@@ -32,6 +34,7 @@ const BaseField = ({
   formSchema,
   field,
   disabled: propsDisabled,
+  onChange,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -40,7 +43,6 @@ const BaseField = ({
     placeholder,
     options,
     labelClassName: formLabelClassName,
-    show_on = [],
     disabled: formSchemaDisabled,
   } = formSchema
   const disabled = propsDisabled || formSchemaDisabled
@@ -90,21 +92,11 @@ const BaseField = ({
     }) || []
   }, [options, renderI18nObject, optionValues])
   const value = useStore(field.form.store, s => s.values[field.name])
-  const values = useStore(field.form.store, (s) => {
-    return show_on.reduce((acc, condition) => {
-      acc[condition.variable] = s.values[condition.variable]
-      return acc
-    }, {} as Record<string, any>)
-  })
-  const show = useMemo(() => {
-    return show_on.every((condition) => {
-      const conditionValue = values[condition.variable]
-      return conditionValue === condition.value
-    })
-  }, [values, show_on])
 
-  if (!show)
-    return null
+  const handleChange = useCallback((value: any) => {
+    field.handleChange(value)
+    onChange?.(field.name, value)
+  }, [field, onChange])
 
   return (
     <div className={cn(fieldClassName)}>
@@ -124,7 +116,9 @@ const BaseField = ({
               name={field.name}
               className={cn(inputClassName)}
               value={value || ''}
-              onChange={e => field.handleChange(e.target.value)}
+              onChange={(e) => {
+                handleChange(e.target.value)
+              }}
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
@@ -139,7 +133,7 @@ const BaseField = ({
               type='password'
               className={cn(inputClassName)}
               value={value || ''}
-              onChange={e => field.handleChange(e.target.value)}
+              onChange={e => handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
@@ -155,7 +149,7 @@ const BaseField = ({
               type='number'
               className={cn(inputClassName)}
               value={value || ''}
-              onChange={e => field.handleChange(e.target.value)}
+              onChange={e => handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
@@ -166,11 +160,14 @@ const BaseField = ({
           formSchema.type === FormTypeEnum.select && (
             <PureSelect
               value={value}
-              onChange={v => field.handleChange(v)}
+              onChange={v => handleChange(v)}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
               options={memorizedOptions}
               triggerPopupSameWidth
+              popupProps={{
+                className: 'max-h-[320px] overflow-y-auto',
+              }}
             />
           )
         }
@@ -189,7 +186,7 @@ const BaseField = ({
                       disabled && 'cursor-not-allowed opacity-50',
                       inputClassName,
                     )}
-                    onClick={() => !disabled && field.handleChange(option.value)}
+                    onClick={() => !disabled && handleChange(option.value)}
                   >
                     {
                       formSchema.showRadioUI && (
