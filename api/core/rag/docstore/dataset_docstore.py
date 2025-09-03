@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Any, Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -41,9 +41,8 @@ class DatasetDocumentStore:
 
     @property
     def docs(self) -> dict[str, Document]:
-        document_segments = (
-            db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id).all()
-        )
+        stmt = select(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id)
+        document_segments = db.session.scalars(stmt).all()
 
         output = {}
         for document_segment in document_segments:
@@ -228,10 +227,9 @@ class DatasetDocumentStore:
         return data
 
     def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
-        document_segment = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)
-            .first()
+        stmt = select(DocumentSegment).where(
+            DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id
         )
+        document_segment = db.session.scalar(stmt)
 
         return document_segment

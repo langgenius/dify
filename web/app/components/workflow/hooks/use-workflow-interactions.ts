@@ -349,7 +349,7 @@ export const useDSL = () => {
 
   const appDetail = useAppStore(s => s.appDetail)
 
-  const handleExportDSL = useCallback(async (include = false) => {
+  const handleExportDSL = useCallback(async (include = false, workflowId?: string) => {
     if (!appDetail)
       return
 
@@ -361,6 +361,7 @@ export const useDSL = () => {
       await doSyncWorkflowDraft()
       const { data } = await exportAppConfig({
         appID: appDetail.id,
+        workflowID: workflowId,
         include,
       })
       const a = document.createElement('a')

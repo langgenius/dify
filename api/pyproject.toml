@@ -110,7 +110,8 @@ dev = [
     "dotenv-linter~=0.5.0",
     "faker~=32.1.0",
     "lxml-stubs~=0.5.1",
-    "mypy~=1.17.1",
+    "ty~=0.0.1a19",
+    "basedpyright~=1.31.0",
     "ruff~=0.12.3",
     "pytest~=8.3.2",
     "pytest-benchmark~=4.0.0",
@@ -217,4 +218,3 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]
-

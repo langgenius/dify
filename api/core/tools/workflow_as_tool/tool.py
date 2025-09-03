@@ -3,6 +3,8 @@ import logging
 from collections.abc import Generator
 from typing import Any, Optional
 
+from sqlalchemy import select
+
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -136,7 +138,8 @@ class WorkflowTool(Tool):
                 .first()
             )
         else:
-            workflow = db.session.query(Workflow).where(Workflow.app_id == app_id, Workflow.version == version).first()
+            stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
+            workflow = db.session.scalar(stmt)
 
         if not workflow:
             raise ValueError("workflow not found or not published")
@@ -147,7 +150,8 @@ class WorkflowTool(Tool):
         """
         get the app by app id
         """
-        app = db.session.query(App).where(App.id == app_id).first()
+        stmt = select(App).where(App.id == app_id)
+        app = db.session.scalar(stmt)
         if not app:
             raise ValueError("app not found")
 

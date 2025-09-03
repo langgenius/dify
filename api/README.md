@@ -108,5 +108,5 @@ uv run celery -A app.celery beat
    ../dev/reformat               # Run all formatters and linters
    uv run ruff check --fix ./    # Fix linting issues
    uv run ruff format ./         # Format code
-   uv run mypy .                 # Type checking
+   uv run basedpyright .         # Type checking
    ```

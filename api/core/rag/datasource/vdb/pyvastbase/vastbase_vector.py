@@ -170,7 +170,7 @@ class VastbaseVector(BaseVector):
                 metadata, text, distance = record
                 score = 1 - distance
                 metadata["score"] = score
-                if score > score_threshold:
+                if score >= score_threshold:
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 

@@ -22,6 +22,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
@@ -422,7 +423,9 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
-                        datasource_type="upload_file", upload_file=file_detail, document_model=args["doc_form"]
+                        datasource_type=DatasourceType.FILE.value,
+                        upload_file=file_detail,
+                        document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
         elif args["info_list"]["data_source_type"] == "notion_import":
@@ -431,7 +434,7 @@ class DatasetIndexingEstimateApi(Resource):
                 workspace_id = notion_info["workspace_id"]
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
-                        datasource_type="notion_import",
+                        datasource_type=DatasourceType.NOTION.value,
                         notion_info={
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page["page_id"],
@@ -445,7 +448,7 @@ class DatasetIndexingEstimateApi(Resource):
             website_info_list = args["info_list"]["website_info_list"]
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
-                    datasource_type="website_crawl",
+                    datasource_type=DatasourceType.WEBSITE.value,
                     website_info={
                         "provider": website_info_list["provider"],
                         "job_id": website_info_list["job_id"],

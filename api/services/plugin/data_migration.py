@@ -175,7 +175,7 @@ limit 1000"""
                         # update jina to langgenius/jina_tool/jina etc.
                         updated_value = provider_cls(provider_name).to_string()
                         batch_updates.append((updated_value, record_id))
-                    except Exception as e:
+                    except Exception:
                         failed_ids.append(record_id)
                         click.echo(
                             click.style(

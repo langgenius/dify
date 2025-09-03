@@ -34,6 +34,19 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
   return (
     <div className='mb-2 flex flex-row flex-wrap gap-2'>
       <Chip
+        value={queryParams.status || 'all'}
+        onSelect={(item) => {
+          setQueryParams({ ...queryParams, status: item.value as string })
+        }}
+        onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
+        items={[{ value: 'all', name: 'All' },
+          { value: 'succeeded', name: 'Success' },
+          { value: 'failed', name: 'Fail' },
+          { value: 'stopped', name: 'Stop' },
+          { value: 'partial-succeeded', name: 'Partial Success' },
+        ]}
+      />
+      <Chip
         className='min-w-[150px]'
         panelClassName='w-[270px]'
         leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}

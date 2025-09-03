@@ -56,11 +56,8 @@ class LLMGenerator:
         prompts = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
         answer = cast(str, response.message.content)
         cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
@@ -69,7 +66,7 @@ class LLMGenerator:
         try:
             result_dict = json.loads(cleaned_answer)
             answer = result_dict["Your Output"]
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             logger.exception("Failed to generate name after answer, use query instead")
             answer = query
         name = answer.strip()
@@ -113,13 +110,10 @@ class LLMGenerator:
         prompt_messages = [UserPromptMessage(content=prompt)]
 
         try:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages),
-                    model_parameters={"max_tokens": 256, "temperature": 0},
-                    stream=False,
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompt_messages),
+                model_parameters={"max_tokens": 256, "temperature": 0},
+                stream=False,
             )
 
             text_content = response.message.get_text_content()
@@ -162,11 +156,8 @@ class LLMGenerator:
             )
 
             try:
-                response = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                    ),
+                response: LLMResult = model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                 )
 
                 rule_config["prompt"] = cast(str, response.message.content)
@@ -212,11 +203,8 @@ class LLMGenerator:
         try:
             try:
                 # the first step to generate the task prompt
-                prompt_content = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                    ),
+                prompt_content: LLMResult = model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                 )
             except InvokeError as e:
                 error = str(e)
@@ -248,11 +236,8 @@ class LLMGenerator:
             statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
 
             try:
-                parameter_content = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
-                    ),
+                parameter_content: LLMResult = model_instance.invoke_llm(
+                    prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
                 )
                 rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content))
             except InvokeError as e:
@@ -260,11 +245,8 @@ class LLMGenerator:
                 error_step = "generate variables"
 
             try:
-                statement_content = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
-                    ),
+                statement_content: LLMResult = model_instance.invoke_llm(
+                    prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
                 )
                 rule_config["opening_statement"] = cast(str, statement_content.message.content)
             except InvokeError as e:
@@ -307,11 +289,8 @@ class LLMGenerator:
         prompt_messages = [UserPromptMessage(content=prompt)]
         model_parameters = model_config.get("completion_params", {})
         try:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
             generated_code = cast(str, response.message.content)
@@ -338,13 +317,10 @@ class LLMGenerator:
 
         prompt_messages = [SystemPromptMessage(content=prompt), UserPromptMessage(content=query)]
 
-        response = cast(
-            LLMResult,
-            model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters={"temperature": 0.01, "max_tokens": 2000},
-                stream=False,
-            ),
+        response: LLMResult = model_instance.invoke_llm(
+            prompt_messages=prompt_messages,
+            model_parameters={"temperature": 0.01, "max_tokens": 2000},
+            stream=False,
         )
 
         answer = cast(str, response.message.content)
@@ -367,11 +343,8 @@ class LLMGenerator:
         model_parameters = model_config.get("model_parameters", {})
 
         try:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
             raw_content = response.message.content
@@ -555,11 +528,8 @@ class LLMGenerator:
         model_parameters = {"temperature": 0.4}
 
         try:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
             generated_raw = cast(str, response.message.content)
