@@ -7,7 +7,6 @@ https://github.com/django/django/blob/main/django/utils/module_loading.py
 
 import sys
 from importlib import import_module
-from typing import Any
 
 
 def cached_import(module_path: str, class_name: str):

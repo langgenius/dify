@@ -1,5 +1,5 @@
 import logging
-from typing import Any, NoReturn
+from typing import NoReturn
 
 from flask import Response
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse

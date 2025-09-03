@@ -1,5 +1,3 @@
-from typing import Any
-
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.prompts import (
     RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,
