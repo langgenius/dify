@@ -126,9 +126,7 @@ limit 1000"""
         )
 
     @classmethod
-    def migrate_db_records(
-        cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]
-    ):
+    def migrate_db_records(cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]):
         click.echo(click.style(f"Migrating [{table_name}] data for plugin", fg="white"))
 
         processed_count = 0

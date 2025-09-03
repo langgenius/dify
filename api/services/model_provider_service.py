@@ -151,9 +151,7 @@ class ModelProviderService:
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.validate_provider_credentials(credentials)
 
-    def create_provider_credential(
-        self, tenant_id: str, provider: str, credentials: dict, credential_name: str
-    ):
+    def create_provider_credential(self, tenant_id: str, provider: str, credentials: dict, credential_name: str):
         """
         Create and save new provider credentials.
 
@@ -230,9 +228,7 @@ class ModelProviderService:
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 
-    def validate_model_credentials(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict
-    ):
+    def validate_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict):
         """
         validate model credentials.
 
@@ -301,9 +297,7 @@ class ModelProviderService:
             credential_name=credential_name,
         )
 
-    def remove_model_credential(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
-    ):
+    def remove_model_credential(self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str):
         """
         remove model credentials.
 

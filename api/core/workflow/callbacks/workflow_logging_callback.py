@@ -173,9 +173,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         if event.in_loop_id:
             self.print_text(f"Loop ID: {event.in_loop_id}", color="blue")
 
-    def on_workflow_parallel_completed(
-        self, event: ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent
-    ):
+    def on_workflow_parallel_completed(self, event: ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent):
         """
         Publish parallel completed
         """

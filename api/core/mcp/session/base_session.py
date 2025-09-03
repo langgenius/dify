@@ -397,9 +397,7 @@ class BaseSession(
         to listen on the message stream.
         """
 
-    def send_progress_notification(
-        self, progress_token: str | int, progress: float, total: float | None = None
-    ):
+    def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
         """
         Sends a progress notification for a request that is currently being
         processed.

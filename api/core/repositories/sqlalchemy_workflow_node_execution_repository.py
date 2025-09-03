@@ -194,9 +194,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         """Check if the exception is a duplicate key constraint violation."""
         return isinstance(exception, IntegrityError) and isinstance(exception.orig, psycopg2.errors.UniqueViolation)
 
-    def _regenerate_id_on_duplicate(
-        self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel
-    ):
+    def _regenerate_id_on_duplicate(self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel):
         """Regenerate UUID v7 for both domain and database models when duplicate key detected."""
         new_id = str(uuidv7())
         logger.warning(

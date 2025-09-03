@@ -204,9 +204,7 @@ class Graph(BaseModel):
 
         return graph
 
-    def add_extra_edge(
-        self, source_node_id: str, target_node_id: str, run_condition: Optional[RunCondition] = None
-    ):
+    def add_extra_edge(self, source_node_id: str, target_node_id: str, run_condition: Optional[RunCondition] = None):
         """
         Add extra edge to the graph
 
@@ -246,9 +244,7 @@ class Graph(BaseModel):
         return leaf_node_ids
 
     @classmethod
-    def _recursively_add_node_ids(
-        cls, node_ids: list[str], edge_mapping: dict[str, list[GraphEdge]], node_id: str
-    ):
+    def _recursively_add_node_ids(cls, node_ids: list[str], edge_mapping: dict[str, list[GraphEdge]], node_id: str):
         """
         Recursively add node ids
 

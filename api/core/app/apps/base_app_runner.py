@@ -220,9 +220,7 @@ class AppRunner:
         else:
             raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
 
-    def _handle_invoke_result_direct(
-        self, invoke_result: LLMResult, queue_manager: AppQueueManager, agent: bool
-    ):
+    def _handle_invoke_result_direct(self, invoke_result: LLMResult, queue_manager: AppQueueManager, agent: bool):
         """
         Handle invoke result direct
         :param invoke_result: invoke result

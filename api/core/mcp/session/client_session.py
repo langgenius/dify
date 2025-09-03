@@ -155,9 +155,7 @@ class ClientSession(
             types.EmptyResult,
         )
 
-    def send_progress_notification(
-        self, progress_token: str | int, progress: float, total: float | None = None
-    ):
+    def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
         """Send a progress notification."""
         self.send_notification(
             types.ClientNotification(
