@@ -14,8 +14,5 @@ uv run --directory api --dev ruff format ./
 # run dotenv-linter linter
 uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 
-# run ty check
-dev/ty-check
-
 # run basedpyright check
 dev/basedpyright-check
