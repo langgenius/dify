@@ -24,10 +24,19 @@ export const usePipelineConfig = () => {
     handleUpdateWorkflowConfig,
   )
 
-  const handleUpdateNodesDefaultConfigs = useCallback((nodesDefaultConfigs: Record<string, any>) => {
+  const handleUpdateNodesDefaultConfigs = useCallback((nodesDefaultConfigs: Record<string, any> | Record<string, any>[]) => {
     const { setNodesDefaultConfigs } = workflowStore.getState()
+    let res: Record<string, any> = {}
+    if (Array.isArray(nodesDefaultConfigs)) {
+      nodesDefaultConfigs.forEach((item) => {
+        res[item.type] = item.config
+      })
+    }
+    else {
+      res = nodesDefaultConfigs as Record<string, any>
+    }
 
-    setNodesDefaultConfigs!(nodesDefaultConfigs)
+    setNodesDefaultConfigs!(res)
   }, [workflowStore])
   useWorkflowConfig(
     pipelineId ? `/rag/pipelines/${pipelineId}/workflows/default-workflow-block-configs` : '',
