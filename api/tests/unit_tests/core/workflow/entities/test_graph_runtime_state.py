@@ -14,11 +14,8 @@ class TestGraphRuntimeState:
 
         state = GraphRuntimeState(variable_pool=variable_pool, start_at=start_time)
 
-        # Test variable_pool property
+        # Test variable_pool property (read-only)
         assert state.variable_pool == variable_pool
-        new_pool = VariablePool()
-        state.variable_pool = new_pool
-        assert state.variable_pool == new_pool
 
         # Test start_at property
         assert state.start_at == start_time
