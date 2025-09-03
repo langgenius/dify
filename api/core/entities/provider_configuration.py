@@ -410,10 +410,11 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            if credential_name and self._check_provider_credential_name_exists(
-                credential_name=credential_name, session=session
-            ):
-                raise ValueError(f"Credential with name '{credential_name}' already exists.")
+            if credential_name:
+                if self._check_provider_credential_name_exists(
+                    credential_name=credential_name, session=session
+                ):
+                    raise ValueError(f"Credential with name '{credential_name}' already exists.")
             else:
                 credential_name = self._generate_provider_credential_name(session)
 
@@ -890,10 +891,11 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            if credential_name and self._check_custom_model_credential_name_exists(
-                model=model, model_type=model_type, credential_name=credential_name, session=session
-            ):
-                raise ValueError(f"Model credential with name '{credential_name}' already exists for {model}.")
+            if credential_name:
+                if self._check_custom_model_credential_name_exists(
+                    model=model, model_type=model_type, credential_name=credential_name, session=session
+                ):
+                    raise ValueError(f"Model credential with name '{credential_name}' already exists for {model}.")
             else:
                 credential_name = self._generate_custom_model_credential_name(
                     model=model, model_type=model_type, session=session
