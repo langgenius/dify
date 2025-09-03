@@ -56,11 +56,6 @@ class GraphRuntimeState(BaseModel):
         """Get the variable pool."""
         return self._variable_pool
 
-    @variable_pool.setter
-    def variable_pool(self, value: VariablePool) -> None:
-        """Set the variable pool."""
-        self._variable_pool = value
-
     @property
     def start_at(self) -> float:
         """Get the start time."""
