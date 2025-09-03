@@ -181,5 +181,6 @@ from .workspace import (
     models,
     plugin,
     tool_providers,
+    trigger_providers,
     workspace,
 )

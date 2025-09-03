@@ -150,9 +150,7 @@ def deserialize_response(raw_data: bytes) -> Response:
     if len(parts) < 2:
         raise ValueError(f"Invalid status line: {status_line}")
 
-    protocol = parts[0]
     status_code = int(parts[1])
-    status_text = parts[2] if len(parts) > 2 else "OK"
 
     # Parse headers
     headers: dict[str, Any] = {}

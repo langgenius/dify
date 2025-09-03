@@ -32,7 +32,7 @@ class TriggerProviderListApi(Resource):
         return jsonable_encoder(TriggerProviderService.list_trigger_providers(user.current_tenant_id))
 
 
-class TriggerProviderSubscriptionListApi(Resource):
+class TriggerSubscriptionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -144,7 +144,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
             raise
 
 
-class TriggerSubscriptionsDeleteApi(Resource):
+class TriggerSubscriptionDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -297,32 +297,6 @@ class TriggerOAuthCallbackApi(Resource):
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback?subscription_id={subscription_builder.id}")
 
 
-class TriggerOAuthRefreshTokenApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, subscription_id):
-        """Refresh OAuth token for a trigger provider subscription"""
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-        if not user.is_admin_or_owner:
-            raise Forbidden()
-
-        try:
-            result = TriggerProviderService.refresh_oauth_token(
-                tenant_id=user.current_tenant_id,
-                subscription_id=subscription_id,
-            )
-            return result
-
-        except ValueError as e:
-            raise BadRequest(str(e))
-        except Exception as e:
-            logger.exception("Error refreshing OAuth token", exc_info=e)
-            raise
-
-
 class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
@@ -423,33 +397,32 @@ class TriggerOAuthClientManageApi(Resource):
             raise
 
 
-# Trigger provider endpoints
+# Trigger Subscription
 api.add_resource(TriggerProviderListApi, "/workspaces/current/trigger-providers")
-api.add_resource(TriggerProviderSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/list")
+api.add_resource(TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")
+api.add_resource(
+    TriggerSubscriptionDeleteApi,
+    "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
+)
+
+# Trigger Subscription Builder
 api.add_resource(
     TriggerSubscriptionBuilderCreateApi,
-    "/workspaces/current/trigger-provider/subscriptions/<path:provider>/create-builder",
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/create",
 )
 api.add_resource(
     TriggerSubscriptionBuilderVerifyApi,
-    "/workspaces/current/trigger-provider/subscriptions/<path:provider>/verify/<path:subscription_builder_id>",
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/verify/<path:subscription_builder_id>",
 )
 api.add_resource(
     TriggerSubscriptionBuilderBuildApi,
-    "/workspaces/current/trigger-provider/subscriptions/<path:provider>/build/<path:subscription_builder_id>",
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/build/<path:subscription_builder_id>",
 )
-api.add_resource(
-    TriggerSubscriptionsDeleteApi,
-    "/workspaces/current/trigger-provider/subscriptions/<path:subscription_id>/delete",
-)
+
 
 # OAuth
 api.add_resource(
-    TriggerOAuthAuthorizeApi, "/workspaces/current/trigger-provider/subscriptions/<path:provider>/oauth/authorize"
+    TriggerOAuthAuthorizeApi, "/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize"
 )
 api.add_resource(TriggerOAuthCallbackApi, "/oauth/plugin/<path:provider>/trigger/callback")
-api.add_resource(
-    TriggerOAuthRefreshTokenApi,
-    "/workspaces/current/trigger-provider/subscriptions/<path:subscription_id>/oauth/refresh",
-)
 api.add_resource(TriggerOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client")
