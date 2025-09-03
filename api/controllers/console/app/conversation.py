@@ -117,7 +117,7 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, app_model, conversation_id):
         if not current_user.is_editor:
             raise Forbidden()
