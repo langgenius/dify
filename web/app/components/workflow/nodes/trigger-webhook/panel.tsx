@@ -51,6 +51,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleParamsChange,
     handleBodyChange,
     handleStatusCodeChange,
+    handleStatusCodeBlur,
     handleResponseBodyChange,
     generateWebhookUrl,
   } = useConfig(id, data)
@@ -189,6 +190,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 type="number"
                 value={inputs.status_code}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleStatusCodeChange(Number(e.target.value))}
+                onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleStatusCodeBlur(Number(e.target.value))}
                 disabled={readOnly}
                 wrapperClassName="w-[120px]"
                 className="h-8"
