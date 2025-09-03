@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
-import { RiBracesLine, RiEyeLine } from '@remixicon/react'
 import Textarea from '@/app/components/base/textarea'
-import { Markdown } from '@/app/components/base/markdown'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
@@ -16,7 +13,6 @@ import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { SegmentedControl } from '@/app/components/base/segmented-control'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -27,90 +23,9 @@ import cn from '@/utils/classnames'
 import LargeDataAlert from './large-data-alert'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import { useStore } from '@/app/components/workflow/store'
-import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
-import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import { PreviewMode } from '../../base/features/types'
-import { ChunkingMode } from '@/models/datasets'
-
-enum ViewMode {
-  Code = 'code',
-  Preview = 'preview',
-}
-
-enum ContentType {
-  Markdown = 'markdown',
-  Chunks = 'chunks',
-}
-
-type DisplayContentProps = {
-  type: ContentType
-  mdString?: string
-  jsonString?: string
-  readonly: boolean
-  handleTextChange?: (value: string) => void
-  handleEditorChange?: (value: string) => void
-}
-
-const DisplayContent = (props: DisplayContentProps) => {
-  const { type, mdString, jsonString, readonly, handleTextChange, handleEditorChange } = props
-  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Code)
-  const [isFocused, setIsFocused] = useState(false)
-  const { t } = useTranslation()
-
-  return (
-    <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline outline-1 outline-components-input-border-active')}>
-      <div className='flex shrink-0 items-center justify-between p-1'>
-        <div className='system-xs-semibold-uppercase flex items-center px-2 py-0.5 text-text-secondary'>
-          {type.toUpperCase()}
-        </div>
-        <SegmentedControl
-          options={[
-            { value: ViewMode.Code, text: t('workflow.nodes.templateTransform.code'), Icon: RiBracesLine },
-            { value: ViewMode.Preview, text: t('workflow.common.preview'), Icon: RiEyeLine },
-          ]}
-          value={viewMode}
-          onChange={setViewMode}
-          size='small'
-          padding='with'
-          activeClassName='!text-text-accent-light-mode-only'
-          btnClassName='!pl-1.5 !pr-0.5 gap-[3px]'
-        />
-      </div>
-      <div className='flex flex-1 overflow-auto rounded-b-[10px] pl-3 pr-1'>
-        {viewMode === ViewMode.Code && (
-          type === ContentType.Markdown
-            ? <Textarea
-              readOnly={readonly}
-              disabled={readonly}
-              className='h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none'
-              value={mdString as any}
-              onChange={e => handleTextChange?.(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-            />
-            : <SchemaEditor
-              readonly={readonly}
-              className='overflow-y-auto bg-transparent'
-              hideTopMenu
-              schema={jsonString!}
-              onUpdate={handleEditorChange!}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-            />
-        )}
-        {viewMode === ViewMode.Preview && (
-          type === ContentType.Markdown
-            ? <Markdown className='grow overflow-auto rounded-lg !bg-white px-4 py-3' content={(mdString ?? '') as string} />
-            : <ChunkCardList
-              chunkType={ChunkingMode.text} // todo: delete mock data
-              parentMode={'full-doc'} // todo: delete mock data
-              chunkInfo={JSON.parse(jsonString!) as ChunkInfo}
-            />
-        )}
-      </div>
-    </div>
-  )
-}
+import DisplayContent from './display-content'
+import { CHUNK_SCHEMA_TYPES, PreviewType } from './types'
 
 type Props = {
   currentVar: VarInInspect
@@ -137,11 +52,10 @@ const ValueContent = ({
   const fileUploadConfig = useStore(s => s.fileUploadConfig)
 
   const hasChunks = useMemo(() => {
-    return currentVar.value_type === 'object'
-      && currentVar.value
-      && typeof currentVar.value === 'object'
-      && ['parent_child_chunks', 'general_chunks', 'qa_chunks'].some(key => key in currentVar.value)
-  }, [currentVar.value_type, currentVar.value])
+    if (!currentVar.schemaType)
+      return false
+    return CHUNK_SCHEMA_TYPES.includes(currentVar.schemaType)
+  }, [currentVar.schemaType])
 
   const formatFileValue = (value: VarInInspect) => {
     if (value.value_type === 'file')
@@ -279,18 +193,21 @@ const ValueContent = ({
             {
               currentVar.value_type === 'string' ? (
                 <DisplayContent
-                  type={ContentType.Markdown}
+                  previewType={PreviewType.Markdown}
+                  varType={currentVar.value_type}
                   mdString={value as any}
                   readonly={textEditorDisabled}
                   handleTextChange={handleTextChange}
                 />
-              ) : <Textarea
-                readOnly={textEditorDisabled}
-                disabled={textEditorDisabled || isTruncated}
-                className={cn('h-full', isTruncated && 'pt-[48px]')}
-                value={value as any}
-                onChange={e => handleTextChange(e.target.value)}
-              />
+              ) : (
+                <Textarea
+                  readOnly={textEditorDisabled}
+                  disabled={textEditorDisabled || isTruncated}
+                  className={cn('h-full', isTruncated && 'pt-[48px]')}
+                  value={value as any}
+                  onChange={e => handleTextChange(e.target.value)}
+                />
+              )
             }
           </>
         )}
@@ -325,20 +242,26 @@ const ValueContent = ({
         }
         {showJSONEditor && (
           hasChunks
-            ? <DisplayContent
-              type={ContentType.Chunks}
-              jsonString={json ?? '{}'}
-              readonly={JSONEditorDisabled}
-              handleEditorChange={handleEditorChange}
-            />
-            : <SchemaEditor
-              readonly={JSONEditorDisabled || isTruncated}
-              className='overflow-y-auto'
-              hideTopMenu
-              schema={json}
-              onUpdate={handleEditorChange}
-              isTruncated={isTruncated}
-            />
+            ? (
+              <DisplayContent
+                previewType={PreviewType.Chunks}
+                varType={currentVar.value_type}
+                schemaType={currentVar.schemaType ?? ''}
+                jsonString={json ?? '{}'}
+                readonly={JSONEditorDisabled}
+                handleEditorChange={handleEditorChange}
+              />
+            )
+            : (
+              <SchemaEditor
+                readonly={JSONEditorDisabled || isTruncated}
+                className='overflow-y-auto'
+                hideTopMenu
+                schema={json}
+                onUpdate={handleEditorChange}
+                isTruncated={isTruncated}
+              />
+            )
         )}
         {showFileEditor && (
           <div className='max-w-[460px]'>

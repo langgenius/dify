@@ -161,6 +161,9 @@ const Right = ({
     } as any)
     handleHidePromptGenerator()
   }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
+
+  const displaySchemaType = currentNodeVar?.var.schemaType ? (`(${currentNodeVar.var.schemaType})`) : ''
+
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
@@ -181,21 +184,24 @@ const Right = ({
                   />
                 )
               }
-              {currentNodeVar.nodeType !== VarInInspectType.environment && currentNodeVar.nodeType !== VarInInspectType.conversation && currentNodeVar.nodeType !== VarInInspectType.system && (
-                <>
-                  <BlockIcon
-                    className='shrink-0'
-                    type={currentNodeVar.nodeType as BlockEnum}
-                    size='xs'
-                    toolIcon={toolIcon}
-                  />
-                  <div className='system-sm-regular shrink-0 text-text-secondary'>{currentNodeVar.title}</div>
-                  <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>
-                </>
-              )}
+              {currentNodeVar.nodeType !== VarInInspectType.environment
+                && currentNodeVar.nodeType !== VarInInspectType.conversation
+                && currentNodeVar.nodeType !== VarInInspectType.system
+                && (
+                  <>
+                    <BlockIcon
+                      className='shrink-0'
+                      type={currentNodeVar.nodeType as BlockEnum}
+                      size='xs'
+                      toolIcon={toolIcon}
+                    />
+                    <div className='system-sm-regular shrink-0 text-text-secondary'>{currentNodeVar.title}</div>
+                    <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>
+                  </>
+                )}
               <div title={currentNodeVar.var.name} className='system-sm-semibold truncate text-text-secondary'>{currentNodeVar.var.name}</div>
               <div className='system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary'>
-                <span>{`${currentNodeVar.var.value_type}${currentNodeVar.var.schemaType ? (`(${currentNodeVar.var.schemaType})`) : ''}`}</span>
+                <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
                     <span>·</span>
@@ -270,7 +276,13 @@ const Right = ({
             <Loading />
           </div>
         )}
-        {currentNodeVar && !isValueFetching && <ValueContent currentVar={currentNodeVar.var} handleValueChange={handleValueChange} isTruncated={!!isTruncated} />}
+        {currentNodeVar && !isValueFetching && (
+          <ValueContent
+            currentVar={currentNodeVar.var}
+            handleValueChange={handleValueChange}
+            isTruncated={!!isTruncated}
+          />
+        )}
       </div>
       {isShowPromptGenerator && (
         isCodeBlock
