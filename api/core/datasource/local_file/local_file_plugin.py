@@ -8,7 +8,6 @@ from core.datasource.entities.datasource_entities import (
 
 class LocalFileDatasourcePlugin(DatasourcePlugin):
     tenant_id: str
-    icon: str
     plugin_unique_identifier: str
 
     def __init__(
@@ -19,10 +18,12 @@ class LocalFileDatasourcePlugin(DatasourcePlugin):
         icon: str,
         plugin_unique_identifier: str,
     ) -> None:
-        super().__init__(entity, runtime)
+        super().__init__(entity, runtime, icon)
         self.tenant_id = tenant_id
-        self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
 
     def datasource_provider_type(self) -> str:
         return DatasourceProviderType.LOCAL_FILE
+
+    def get_icon_url(self, tenant_id: str) -> str:
+        return self.icon

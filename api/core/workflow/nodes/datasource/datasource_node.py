@@ -75,14 +75,17 @@ class DatasourceNode(Node):
 
         node_data = self._node_data
         variable_pool = self.graph_runtime_state.variable_pool
-        datasource_type = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
-        if not datasource_type:
+        datasource_type_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
+        if not datasource_type_segement:
             raise DatasourceNodeError("Datasource type is not set")
-        datasource_type = datasource_type.value
-        datasource_info = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO.value])
-        if not datasource_info:
+        datasource_type = str(datasource_type_segement.value) if datasource_type_segement.value else None
+        datasource_info_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO.value])
+        if not datasource_info_segement:
             raise DatasourceNodeError("Datasource info is not set")
-        datasource_info = datasource_info.value
+        datasource_info_value = datasource_info_segement.value
+        if not isinstance(datasource_info_value, dict):
+            raise DatasourceNodeError("Invalid datasource info format")
+        datasource_info: dict[str, Any] = datasource_info_value
         # get datasource runtime
         try:
             from core.datasource.datasource_manager import DatasourceManager
@@ -96,6 +99,7 @@ class DatasourceNode(Node):
                 tenant_id=self.tenant_id,
                 datasource_type=DatasourceProviderType.value_of(datasource_type),
             )
+            datasource_info["icon"] = datasource_runtime.get_icon_url(self.tenant_id)
         except DatasourceNodeError as e:
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
@@ -107,15 +111,7 @@ class DatasourceNode(Node):
                 )
             )
 
-        # get parameters
-        datasource_parameters = datasource_runtime.entity.parameters
-
-        parameters_for_log = self._generate_parameters(
-            datasource_parameters=datasource_parameters,
-            variable_pool=variable_pool,
-            node_data=self._node_data,
-            for_log=True,
-        )
+        parameters_for_log = datasource_info
 
         try:
             datasource_provider_service = DatasourceProviderService()
@@ -123,7 +119,7 @@ class DatasourceNode(Node):
                 tenant_id=self.tenant_id,
                 provider=node_data.provider_name,
                 plugin_id=node_data.plugin_id,
-                credential_id=datasource_info.get("credential_id"),
+                credential_id=datasource_info.get("credential_id", ""),
             )
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
@@ -134,9 +130,9 @@ class DatasourceNode(Node):
                         datasource_runtime.get_online_document_page_content(
                             user_id=self.user_id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
-                                workspace_id=datasource_info.get("workspace_id"),
-                                page_id=datasource_info.get("page").get("page_id"),
-                                type=datasource_info.get("page").get("type"),
+                                workspace_id=datasource_info.get("workspace_id", ""),
+                                page_id=datasource_info.get("page", {}).get("page_id", ""),
+                                type=datasource_info.get("page", {}).get("type", ""),
                             ),
                             provider_type=datasource_type,
                         )
@@ -154,7 +150,7 @@ class DatasourceNode(Node):
                         datasource_runtime.online_drive_download_file(
                             user_id=self.user_id,
                             request=OnlineDriveDownloadFileRequest(
-                                id=datasource_info.get("id"),
+                                id=datasource_info.get("id", ""),
                                 bucket=datasource_info.get("bucket"),
                             ),
                             provider_type=datasource_type,
@@ -209,7 +205,7 @@ class DatasourceNode(Node):
                             inputs=parameters_for_log,
                             metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                             outputs={
-                                "file_info": datasource_info,
+                                "file": datasource_info,
                                 "datasource_type": datasource_type,
                             },
                         )

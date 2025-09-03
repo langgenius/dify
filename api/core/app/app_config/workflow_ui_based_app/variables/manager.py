@@ -48,17 +48,17 @@ class WorkflowVariablesConfigManager:
         if datasource_node_data:
             datasource_parameters = datasource_node_data.get("datasource_parameters", {})
 
-            for key, value in datasource_parameters.items():
+            for _, value in datasource_parameters.items():
                 if value.get("value") and isinstance(value.get("value"), str):
                     pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                     match = re.match(pattern, value["value"])
                     if match:
                         full_path = match.group(1)
                         last_part = full_path.split(".")[-1]
-                        variables_map.pop(last_part)
+                        variables_map.pop(last_part, None)
                 if value.get("value") and isinstance(value.get("value"), list):
                     last_part = value.get("value")[-1]
-                    variables_map.pop(last_part)
+                    variables_map.pop(last_part, None)
 
         all_second_step_variables = list(variables_map.values())
 

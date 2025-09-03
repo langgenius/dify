@@ -7,7 +7,6 @@ from configs import dify_config
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
-from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
 
 logger = logging.getLogger(__name__)
 

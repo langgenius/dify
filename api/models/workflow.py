@@ -834,7 +834,9 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
                     provider_type=tool_info["provider_type"],
                     provider_id=tool_info["provider_id"],
                 )
-
+            elif self.node_type == NodeType.DATASOURCE.value and "datasource_info" in self.execution_metadata_dict:
+                datasource_info = self.execution_metadata_dict["datasource_info"]
+                extras["icon"] = datasource_info.get("icon")
         return extras
 
     def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> Optional["WorkflowNodeExecutionOffload"]:

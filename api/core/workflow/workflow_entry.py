@@ -184,13 +184,13 @@ class WorkflowEntry:
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
         )
-
-        cls.mapping_user_inputs_to_variable_pool(
-            variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
-            variable_pool=variable_pool,
-            tenant_id=workflow.tenant_id,
-        )
+        if node_type != NodeType.DATASOURCE:
+            cls.mapping_user_inputs_to_variable_pool(
+                variable_mapping=variable_mapping,
+                user_inputs=user_inputs,
+                variable_pool=variable_pool,
+                tenant_id=workflow.tenant_id,
+            )
 
         try:
             # run node

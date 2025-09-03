@@ -929,19 +929,23 @@ class RagPipelineService:
         else:
             return []
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
-
+        user_input_variables_keys = []
         user_input_variables = []
-        for key, value in datasource_parameters.items():
+
+        for _, value in datasource_parameters.items():
             if value.get("value") and isinstance(value.get("value"), str):
                 pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                 match = re.match(pattern, value["value"])
                 if match:
                     full_path = match.group(1)
                     last_part = full_path.split(".")[-1]
-                    user_input_variables.append(variables_map.get(last_part, {}))
+                    user_input_variables_keys.append(last_part)
             elif value.get("value") and isinstance(value.get("value"), list):
                 last_part = value.get("value")[-1]
-                user_input_variables.append(variables_map.get(last_part, {}))
+                user_input_variables_keys.append(last_part)
+        for key, value in variables_map.items():
+            if key in user_input_variables_keys:
+                user_input_variables.append(value)
 
         return user_input_variables
 
@@ -972,17 +976,17 @@ class RagPipelineService:
         if datasource_node_data:
             datasource_parameters = datasource_node_data.get("datasource_parameters", {})
 
-            for key, value in datasource_parameters.items():
+            for _, value in datasource_parameters.items():
                 if value.get("value") and isinstance(value.get("value"), str):
                     pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                     match = re.match(pattern, value["value"])
                     if match:
                         full_path = match.group(1)
                         last_part = full_path.split(".")[-1]
-                        variables_map.pop(last_part)
+                        variables_map.pop(last_part, None)
                 elif value.get("value") and isinstance(value.get("value"), list):
                     last_part = value.get("value")[-1]
-                    variables_map.pop(last_part)
+                    variables_map.pop(last_part, None)
         all_second_step_variables = list(variables_map.values())
         datasource_provider_variables = [
             item
