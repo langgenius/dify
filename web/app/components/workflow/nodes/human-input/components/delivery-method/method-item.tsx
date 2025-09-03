@@ -20,6 +20,7 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import TestEmailSender from './test-email-sender'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -41,6 +42,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = React.useState(false)
   const [showEmailModal, setShowEmailModal] = React.useState(false)
+  const [showTestEmailModal, setShowTestEmailModal] = React.useState(false)
 
   const handleEnableStatusChange = (enabled: boolean) => {
     onChange({
@@ -73,13 +75,13 @@ const DeliveryMethodItem: React.FC<Props> = ({
             </div>
           )}
           <div className='system-xs-medium capitalize text-text-secondary'>{method.type}</div>
-          {method.type === DeliveryMethodType.Email && method.config?.debug && <Badge size='s'>DEBUG</Badge>}
+          {method.type === DeliveryMethodType.Email && method.config?.debug && <Badge size='s' className='!px-1 !py-0.5'>DEBUG</Badge>}
         </div>
         <div className='flex items-center gap-1'>
           <div className='hidden items-end gap-1 group-hover:flex'>
             {method.type === DeliveryMethodType.Email && method.config && (
               <>
-                <ActionButton onClick={() => setShowEmailModal(true)}>
+                <ActionButton onClick={() => setShowTestEmailModal(true)}>
                   <RiSendPlane2Line className='h-4 w-4' />
                 </ActionButton>
                 <ActionButton onClick={() => setShowEmailModal(true)}>
@@ -127,6 +129,19 @@ const DeliveryMethodItem: React.FC<Props> = ({
           onConfirm={(data) => {
             handleConfigChange(data)
             setShowEmailModal(false)
+          }}
+        />
+      )}
+      {showTestEmailModal && (
+        <TestEmailSender
+          isShow={showTestEmailModal}
+          config={method.config}
+          nodesOutputVars={nodesOutputVars}
+          availableNodes={availableNodes}
+          onClose={() => setShowTestEmailModal(false)}
+          onConfirm={(data) => {
+            handleConfigChange(data)
+            setShowTestEmailModal(false)
           }}
         />
       )}

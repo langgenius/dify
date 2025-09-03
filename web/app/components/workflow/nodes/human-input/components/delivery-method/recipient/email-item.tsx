@@ -8,6 +8,7 @@ import Avatar from '@/app/components/base/avatar'
 type Props = {
   email: string
   data: Member
+  disabled?: boolean
   onDelete: (recipient: RecipientItem) => void
 
 }
@@ -16,6 +17,7 @@ const EmailItem = ({
   email,
   data,
   onDelete,
+  disabled = false,
 }: Props) => {
   const { t } = useTranslation()
 
@@ -29,10 +31,12 @@ const EmailItem = ({
         {email === data.email ? data.name : data.email}
         {email === data.email && <span className='system-xs-regular text-text-tertiary'>{t('common.members.you')}</span>}
       </div>
-      <RiCloseCircleFill
-        className='h-4 w-4 cursor-pointer text-text-quaternary hover:text-text-tertiary'
-        onClick={() => onDelete(data as unknown as RecipientItem)}
-      />
+      {!disabled && (
+        <RiCloseCircleFill
+          className='h-4 w-4 cursor-pointer text-text-quaternary hover:text-text-tertiary'
+          onClick={() => onDelete(data as unknown as RecipientItem)}
+        />
+      )}
     </div>
   )
 }

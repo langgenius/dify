@@ -83,7 +83,7 @@ const EmailConfigureModal = ({
       body,
       debug: debugMode,
     })
-  }, [subject, body, onConfirm])
+  }, [recipients, subject, body, debugMode, onConfirm])
 
   return (
     <Modal
