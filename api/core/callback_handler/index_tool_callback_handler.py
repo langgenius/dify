@@ -67,7 +67,7 @@ class DatasetIndexToolCallbackHandler:
                     )
                     child_chunk = db.session.scalar(child_chunk_stmt)
                     if child_chunk:
-                        segment = (
+                        _ = (
                             db.session.query(DocumentSegment)
                             .where(DocumentSegment.id == child_chunk.segment_id)
                             .update(

@@ -139,7 +139,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                 schema=self._config.schema_name,
             )
             logger.debug("ClickZetta connection established")
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to connect to ClickZetta")
             raise
 
@@ -150,7 +150,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                 self._connection, self._config.volume_type, self._config.volume_name
             )
             logger.debug("Permission manager initialized")
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to initialize permission manager")
             raise
 
@@ -213,7 +213,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                 if fetch:
                     return cursor.fetchall()
                 return None
-        except Exception as e:
+        except Exception:
             logger.exception("SQL execution failed: %s", sql)
             raise
 
@@ -349,7 +349,7 @@ class ClickZettaVolumeStorage(BaseStorage):
 
             # Find the downloaded file (may be in subdirectories)
             downloaded_file = None
-            for root, dirs, files in os.walk(temp_dir):
+            for root, _, files in os.walk(temp_dir):
                 for file in files:
                     if file == filename or file == os.path.basename(filename):
                         downloaded_file = Path(root) / file
@@ -524,6 +524,6 @@ class ClickZettaVolumeStorage(BaseStorage):
             logger.debug("Scanned %d items in path %s", len(result), path)
             return result
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error scanning path %s", path)
             return []

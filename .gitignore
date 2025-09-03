@@ -123,7 +123,7 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
+# type checking
 .mypy_cache/
 .dmypy.json
 dmypy.json
@@ -195,7 +195,6 @@ sdks/python-client/dify_client.egg-info
 .vscode/*
 !.vscode/launch.json.template
 !.vscode/README.md
-pyrightconfig.json
 api/.vscode
 # vscode Code History Extension
 .history

@@ -330,7 +330,7 @@ class AppAnnotationService:
             # Skip the first row
             df = pd.read_csv(file, dtype=str)
             result = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():
                 content = {"question": row.iloc[0], "answer": row.iloc[1]}
                 result.append(content)
             if len(result) == 0:
