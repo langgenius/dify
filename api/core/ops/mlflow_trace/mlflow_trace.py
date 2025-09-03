@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import cast
 
 import mlflow
-from mlflow.entities import Span, SpanEvent, SpanStatus, SpanStatusCode, SpanType
+from mlflow.entities import Document, Span, SpanEvent, SpanStatus, SpanStatusCode, SpanType
 from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
 from mlflow.tracing.fluent import start_span_no_context, update_current_trace
 from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
@@ -81,6 +81,10 @@ class MLflowDataTrace(BaseTraceInstance):
         raw_inputs = trace_info.workflow_run_inputs or {}
         workflow_inputs = {k: v for k, v in raw_inputs.items() if not k.startswith("sys.")}
 
+        # Special inputs propagated by system
+        if trace_info.query:
+            workflow_inputs["query"] = trace_info.query
+
         workflow_span = start_span_no_context(
             name=TraceTaskName.WORKFLOW_TRACE.value,
             span_type=SpanType.CHAIN,
@@ -100,7 +104,7 @@ class MLflowDataTrace(BaseTraceInstance):
         try:
             # Create child spans for workflow nodes
             for node in self._get_workflow_nodes(trace_info.workflow_run_id):
-                inputs = {}
+                inputs = None
                 attributes = {
                     "node_id": node.id,
                     "node_type": node.node_type,
@@ -111,7 +115,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 }
 
                 if node.node_type == NodeType.LLM:
-                    inputs, llm_attributes = self._parse_llm_inputs_and_attributes_from_node(node)
+                    inputs, llm_attributes = self._parse_llm_inputs_and_attributes(node)
                     attributes.update(llm_attributes)
 
                 if not inputs:
@@ -138,12 +142,12 @@ class MLflowDataTrace(BaseTraceInstance):
                         }
                     ))
 
-                # End node span with timing
+                # End node span
                 finished_at = node.created_at + timedelta(seconds=node.elapsed_time)
-                node_span.end(
-                    outputs=json.loads(node.outputs) if node.outputs else {},
-                    end_time_ns=datetime_to_nanoseconds(finished_at),
-                )
+                outputs = json.loads(node.outputs) if node.outputs else {}
+                if node.node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+                    outputs = self._parse_knowledge_retrieval_outputs(outputs)
+                node_span.end(outputs=outputs, end_time_ns=datetime_to_nanoseconds(finished_at))
 
             # Handle workflow-level errors
             if trace_info.error:
@@ -163,14 +167,14 @@ class MLflowDataTrace(BaseTraceInstance):
                 end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
             )
 
-    def _parse_llm_inputs_and_attributes_from_node(self, node: WorkflowNodeExecutionModel) -> tuple[dict, dict]:
+    def _parse_llm_inputs_and_attributes(self, node: WorkflowNodeExecutionModel) -> tuple[dict, dict]:
         """Parse LLM inputs and attributes from LLM workflow node"""
         try:
             data = json.loads(node.process_data)
         except Exception:
             return {}, {}
 
-        inputs = data.get("prompts")
+        inputs = self._parse_prompts(data.get("prompts"))
         attributes = {
             "model_name": data.get("model_name"),
             "model_provider": data.get("model_provider"),
@@ -192,6 +196,17 @@ class MLflowDataTrace(BaseTraceInstance):
 
         return inputs, attributes
 
+    def _parse_knowledge_retrieval_outputs(self, outputs: dict):
+        """Parse KR outputs and attributes from KR workflow node"""
+        retrieved = outputs.get("result", [])
+
+        if not retrieved or not isinstance(retrieved, list):
+            return outputs
+
+        documents = []
+        for item in retrieved:
+            documents.append(Document(page_content=item.get("content", ""), metadata=item.get("metadata", {})))
+        return documents
 
     def message_trace(self, trace_info: MessageTraceInfo):
         """Create span for CHATBOT message processing"""
@@ -206,7 +221,7 @@ class MLflowDataTrace(BaseTraceInstance):
         span = start_span_no_context(
             name=TraceTaskName.MESSAGE_TRACE.value,
             span_type=SpanType.LLM,
-            inputs=trace_info.inputs,
+            inputs=self._parse_prompts(trace_info.inputs),
             attributes={
                 "message_id": trace_info.message_id,
                 "model_provider": trace_info.message_data.model_provider,
@@ -268,7 +283,6 @@ class MLflowDataTrace(BaseTraceInstance):
         span = start_span_no_context(
             name=trace_info.tool_name,
             span_type=SpanType.TOOL,
-            parent_span=parent_span, # TODO: set parent span
             inputs=trace_info.tool_inputs,
             attributes={
                 "message_id": trace_info.message_id,
@@ -304,7 +318,6 @@ class MLflowDataTrace(BaseTraceInstance):
         span = start_span_no_context(
             name=TraceTaskName.MODERATION_TRACE.value,
             span_type=SpanType.TOOL,
-            parent_span=parent_span,
             inputs=trace_info.inputs or {},
             attributes={
                 "message_id": trace_info.message_id,
@@ -329,7 +342,6 @@ class MLflowDataTrace(BaseTraceInstance):
         span = start_span_no_context(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             span_type=SpanType.RETRIEVER,
-            parent_span=parent_span,
             inputs=trace_info.inputs,
             attributes={
                 "message_id": trace_info.message_id,
@@ -352,7 +364,6 @@ class MLflowDataTrace(BaseTraceInstance):
         span = start_span_no_context(
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             span_type=SpanType.TOOL,
-            parent_span=parent_span,
             inputs=trace_info.inputs,
             attributes={
                 "message_id": trace_info.message_id,
@@ -383,7 +394,6 @@ class MLflowDataTrace(BaseTraceInstance):
         span = start_span_no_context(
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
             span_type=SpanType.CHAIN,
-            parent_span=parent_span,
             inputs=trace_info.inputs,
             attributes={"message_id": trace_info.message_id},
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
@@ -433,6 +443,52 @@ class MLflowDataTrace(BaseTraceInstance):
             update_current_trace(metadata=metadata)
         finally:
             detach_span_from_context(token)
+
+    def _parse_prompts(self, prompts):
+        """Postprocess prompts format to be standard chat messages"""
+        if isinstance(prompts, str):
+            return prompts
+        elif isinstance(prompts, dict):
+            return self._parse_single_message(prompts)
+        elif isinstance(prompts, list):
+            messages = [self._parse_single_message(item) for item in prompts]
+            messages = self._resolve_tool_call_ids(messages)
+            return messages
+        return prompts  # Fallback to original format
+
+    def _parse_single_message(self, item: dict):
+        """Postprocess single message format to be standard chat message"""
+        role = item.get("role", "user")
+        msg = {"role": role, "content": item.get("text", "")}
+
+        if (
+            (tool_calls := item.get("tool_calls"))
+            # Tool message does not contain tool calls normally
+            and role != "tool"
+        ):
+            msg["tool_calls"] = tool_calls
+
+        if files := item.get("files"):
+            msg["files"] = files
+
+        return msg
+
+    def _resolve_tool_call_ids(self, messages: list[dict]):
+        """
+        The tool call message from Dify does not contain tool call ids, which is not
+        great for debugging. This method resolves the tool call ids by matching the
+        tool call name and parameters with the tool instruction messages.
+        """
+        tool_call_ids = []
+        for msg in messages:
+            if tool_calls := msg.get("tool_calls"):
+                tool_call_ids = [t["id"] for t in tool_calls]
+            if msg["role"] == "tool":
+                # Get the tool call id in the order of the tool call messages
+                # assuming Dify runs tools sequentially
+                if tool_call_ids:
+                    msg["tool_call_id"] = tool_call_ids.pop(0)
+        return messages
 
     def api_check(self):
         """Simple connection test"""
