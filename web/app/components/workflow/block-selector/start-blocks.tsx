@@ -87,7 +87,7 @@ const StartBlocks = ({
           type={block.type}
         />
         <div className='flex w-0 grow items-center justify-between text-sm text-text-secondary'>
-          <span className='truncate'>{t(`workflow.blockSelector.${block.type}`)}</span>
+          <span className='truncate'>{t(`workflow.blocks.${block.type}`)}</span>
           {block.type === BlockEnumValues.Start && (
             <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{t('workflow.blocks.originalStartNode')}</span>
           )}
