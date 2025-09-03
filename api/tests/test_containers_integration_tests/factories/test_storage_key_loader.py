@@ -85,7 +85,6 @@ class TestStorageKeyLoader(unittest.TestCase):
             tenant_id = self.tenant_id
 
         tool_file = ToolFile(
-            id=file_id,
             user_id=self.user_id,
             tenant_id=tenant_id,
             conversation_id=self.conversation_id,
@@ -95,6 +94,7 @@ class TestStorageKeyLoader(unittest.TestCase):
             name="test_tool_file.txt",
             size=2048,
         )
+        tool_file.id = file_id
 
         self.session.add(tool_file)
         self.session.flush()
