@@ -80,8 +80,6 @@ logger = logging.getLogger(__name__)
 
 
 class RagPipelineService:
-
-
     def __init__(self, session_maker: sessionmaker | None = None):
         """Initialize RagPipelineService with repository dependencies."""
         if session_maker is None:
@@ -447,7 +445,7 @@ class RagPipelineService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-           
+
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             user=account,
@@ -457,7 +455,9 @@ class RagPipelineService:
         repository.save(workflow_node_execution)
 
         # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(workflow_node_execution.id)
+        workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(
+            workflow_node_execution.id
+        )
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
@@ -1069,7 +1069,7 @@ class RagPipelineService:
         )
 
         # Use the repository to get the node executions with ordering
-        order_config = OrderConfig(order_by=["index"], order_direction="desc")
+        order_config = OrderConfig(order_by=["created_at"], order_direction="asc")
         node_executions = repository.get_db_models_by_workflow_run(
             workflow_run_id=run_id,
             order_config=order_config,
@@ -1252,19 +1252,19 @@ class RagPipelineService:
             .order_by(PipelineRecommendedPlugin.position.asc())
             .all()
         )
-        
+
         if not pipeline_recommended_plugins:
             return {
                 "installed_recommended_plugins": [],
                 "uninstalled_recommended_plugins": [],
             }
-        
+
         # Batch fetch plugin manifests
         plugin_ids = [plugin.plugin_id for plugin in pipeline_recommended_plugins]
         providers = BuiltinToolManageService.list_builtin_tools(
-                    user_id=current_user.id,
-                    tenant_id=current_user.current_tenant_id,
-                )
+            user_id=current_user.id,
+            tenant_id=current_user.current_tenant_id,
+        )
         providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
 
         plugin_manifests = marketplace.batch_fetch_plugin_manifests(plugin_ids)
@@ -1278,14 +1278,15 @@ class RagPipelineService:
             else:
                 plugin_manifest = plugin_manifests_map.get(plugin_id)
                 if plugin_manifest:
-                    uninstalled_plugin_list.append({
-                        "plugin_id": plugin_id,
-                        "name": plugin_manifest.name,
-                        "icon": plugin_manifest.icon,
-                        "plugin_unique_identifier": plugin_manifest.latest_package_identifier,
-                    })
+                    uninstalled_plugin_list.append(
+                        {
+                            "plugin_id": plugin_id,
+                            "name": plugin_manifest.name,
+                            "icon": plugin_manifest.icon,
+                            "plugin_unique_identifier": plugin_manifest.latest_package_identifier,
+                        }
+                    )
 
-        
         # Build recommended plugins list
         return {
             "installed_recommended_plugins": installed_plugin_list,
