@@ -9,12 +9,11 @@ import ProcessDocuments from './process-documents'
 import LeftHeader from './left-header'
 import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
 import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
-import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import { DatasourceType } from '@/models/pipeline'
 import { noop } from 'lodash-es'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useRouter } from 'next/navigation'
 import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { isFile } from '../../../create-from-pipeline/data-source/online-drive/utils'
 
 type PipelineSettingsProps = {
   datasetId: string
@@ -56,7 +55,7 @@ const PipelineSettings = ({
     if (lastRunData?.datasource_type === DatasourceType.websiteCrawl) {
       const { content, description, source_url, title } = lastRunData.datasource_info
       websitePages.push({
-        markdown: content,
+        content,
         description,
         source_url,
         title,
@@ -80,13 +79,12 @@ const PipelineSettings = ({
   const onlineDriveFiles = useMemo(() => {
     const onlineDriveFiles: OnlineDriveFile[] = []
     if (lastRunData?.datasource_type === DatasourceType.onlineDrive) {
-      const { key } = lastRunData.datasource_info
-      const isFileType = isFile(key)
-      const filePathList = key.split('/')
+      const { id, type, name, size } = lastRunData.datasource_info
       onlineDriveFiles.push({
-        key,
-        displayName: `${isFileType ? filePathList.pop() : filePathList[filePathList.length - 2]}${isFileType ? '' : '/'}`,
-        type: isFileType ? OnlineDriveFileType.file : OnlineDriveFileType.folder,
+        id,
+        name,
+        type,
+        size,
       })
     }
     return onlineDriveFiles

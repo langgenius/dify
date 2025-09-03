@@ -153,7 +153,7 @@ export type CrawlOptions = {
 
 export type CrawlResultItem = {
   title: string
-  markdown: string
+  content: string
   description: string
   source_url: string
 }
@@ -324,6 +324,7 @@ export type DataSourceInfo = {
   provider?: DataSourceProvider
   job_id: string
   url: string
+  credential_id?: string
 }
 
 export type InitialDocumentDetail = {

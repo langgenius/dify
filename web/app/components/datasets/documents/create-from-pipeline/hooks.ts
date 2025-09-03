@@ -196,7 +196,7 @@ export const useOnlineDrive = () => {
   const dataSourceStore = useDataSourceStore()
 
   const selectedOnlineDriveFileList = useMemo(() => {
-    return selectedFileIds.map(key => onlineDriveFileList.find(item => item.id === key)!)
+    return selectedFileIds.map(id => onlineDriveFileList.find(item => item.id === id)!)
   }, [onlineDriveFileList, selectedFileIds])
 
   const clearOnlineDriveData = useCallback(() => {

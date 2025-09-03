@@ -137,7 +137,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                   )}
                 </div>
               )
-          })}
+            })}
           </>
         </OutputVars>
       </div>

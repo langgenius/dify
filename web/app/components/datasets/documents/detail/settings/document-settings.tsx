@@ -70,7 +70,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
               {
                 title: documentDetail.name,
                 source_url: documentDetail.data_source_info?.url,
-                markdown: '',
+                content: '',
                 description: '',
               },
             ]}

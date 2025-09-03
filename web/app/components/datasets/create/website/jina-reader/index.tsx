@@ -150,14 +150,15 @@ const JinaReader: FC<Props> = ({
       }) as any
 
       if (res.data) {
+        const { title, content, description, url } = res.data
         const data = {
           current: 1,
           total: 1,
           data: [{
-            title: res.data.title,
-            markdown: res.data.content,
-            description: res.data.description,
-            source_url: res.data.url,
+            title,
+            content,
+            description,
+            source_url: url,
           }],
           time_consuming: (Date.now() - startTime) / 1000,
         }

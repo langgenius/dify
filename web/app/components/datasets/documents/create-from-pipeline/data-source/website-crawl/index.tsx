@@ -115,13 +115,7 @@ const WebsiteCrawl = ({
         onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => {
           const { data: crawlData, time_consuming } = data
           const crawlResultData = {
-            data: crawlData.map((item: any) => {
-              const { content, ...rest } = item
-              return {
-                markdown: content || '',
-                ...rest,
-              } as CrawlResultItem
-            }),
+            data: crawlData as CrawlResultItem[],
             time_consuming: time_consuming ?? 0,
           }
           setCrawlResult(crawlResultData)
