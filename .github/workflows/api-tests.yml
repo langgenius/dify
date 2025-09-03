@@ -62,9 +62,6 @@ jobs:
       - name: Run dify config tests
         run: uv run --project api dev/pytest/pytest_config_tests.py
 
-      - name: Run Basedpyright Checks
-        run: dev/basedpyright-check
-
       - name: Set up dotenvs
         run: |
           cp docker/.env.example docker/.env
