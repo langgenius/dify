@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 
 from celery import shared_task
 from sqlalchemy import and_, select
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.schedule_utils import calculate_next_run_at
 from models.workflow import AppTrigger, AppTriggerStatus, WorkflowSchedulePlan
 from services.workflow.queue_dispatcher import QueueDispatcherManager
@@ -41,7 +41,7 @@ def poll_workflow_schedules() -> None:
 
 def _fetch_due_schedules(session: Session) -> list[WorkflowSchedulePlan]:
     """Fetch all schedules that are due for execution."""
-    now = datetime.now(UTC)
+    now = naive_utc_now()
 
     due_schedules = session.scalars(
         (
