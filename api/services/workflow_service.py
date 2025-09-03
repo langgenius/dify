@@ -263,7 +263,7 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
-        # Validate credentials before publishing, for crendiental policy check
+        # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
 
         if FeatureService.get_system_features().plugin_manager.enabled:
