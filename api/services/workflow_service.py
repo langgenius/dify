@@ -36,22 +36,14 @@ from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from models.workflow import (
-    Workflow,
-    WorkflowNodeExecutionModel,
-    WorkflowNodeExecutionTriggeredFrom,
-    WorkflowType,
-)
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
+from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
-from .workflow_draft_variable_service import (
-    DraftVariableSaver,
-    DraftVarLoader,
-    WorkflowDraftVariableService,
-)
+from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 
 
 class WorkflowService:
@@ -271,6 +263,12 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
+        # Validate credentials before publishing, for crendiental policy check
+        from services.feature_service import FeatureService
+
+        if FeatureService.get_system_features().plugin_manager.enabled:
+            self._validate_workflow_credentials(draft_workflow)
+
         # create new workflow
         workflow = Workflow.new(
             tenant_id=app_model.tenant_id,
@@ -294,6 +292,171 @@ class WorkflowService:
 
         # return new workflow
         return workflow
+
+    def _validate_workflow_credentials(self, workflow: Workflow) -> None:
+        """
+        Validate all credentials in workflow nodes before publishing.
+
+        :param workflow: The workflow to validate
+        :raises ValueError: If any credentials violate policy compliance
+        """
+        graph_dict = workflow.graph_dict
+        nodes = graph_dict.get("nodes", [])
+
+        for node in nodes:
+            node_data = node.get("data", {})
+            node_type = node_data.get("type")
+            node_id = node.get("id", "unknown")
+
+            try:
+                # Extract and validate credentials based on node type
+                if node_type == "tool":
+                    credential_id = node_data.get("credential_id")
+                    provider = node_data.get("provider_id")  # Tool nodes store provider_id
+                    if provider:
+                        if credential_id:
+                            # Check specific credential
+                            self._check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
+                        else:
+                            # Check default workspace credential for this provider
+                            self._check_default_tool_credential(workflow.tenant_id, provider)
+
+                elif node_type == "agent":
+                    agent_params = node_data.get("agent_parameters", {})
+
+                    # Validate agent model (LLM model for the agent itself)
+                    model_config = agent_params.get("model", {}).get("value", {})
+                    if model_config.get("provider") and model_config.get("model"):
+                        self._validate_llm_model_config(
+                            workflow.tenant_id, model_config["provider"], model_config["model"]
+                        )
+
+                    # Validate agent tools
+                    tools = agent_params.get("tools", {}).get("value", [])
+                    for tool in tools:
+                        # Agent tools store provider in provider_name field
+                        provider = tool.get("provider_name")
+                        credential_id = tool.get("credential_id")
+                        if provider:
+                            if credential_id:
+                                self._check_credential_policy_compliance(
+                                    credential_id, provider, PluginCredentialType.TOOL
+                                )
+                            else:
+                                self._check_default_tool_credential(workflow.tenant_id, provider)
+
+                elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
+                    # These nodes use LLM models - validate the provider+model combination
+                    model_config = node_data.get("model", {})
+                    provider = model_config.get("provider")
+                    model_name = model_config.get("name")
+
+                    if provider and model_name:
+                        # Validate that the provider+model combination can fetch valid credentials
+                        self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
+                    else:
+                        raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
+
+            except Exception as e:
+                # Re-raise the error immediately with context
+                if isinstance(e, ValueError):
+                    raise e
+                else:
+                    raise ValueError(f"Node {node_id} ({node_type}): {str(e)}")
+
+    def _check_credential_policy_compliance(
+        self, credential_id: str, provider: str, credential_type: PluginCredentialType
+    ) -> None:
+        """
+        Check credential policy compliance for the given credential ID.
+
+        :param credential_id: The credential ID to check
+        :raises ValueError: If credential policy compliance check fails
+        """
+        try:
+            from services.enterprise.plugin_manager_service import (
+                CheckCredentialPolicyComplianceRequest,
+                PluginManagerService,
+            )
+            from services.feature_service import FeatureService
+
+            if FeatureService.get_system_features().plugin_manager.enabled and credential_id:
+                PluginManagerService.check_credential_policy_compliance(
+                    CheckCredentialPolicyComplianceRequest(
+                        dify_credential_id=credential_id,
+                        provider=provider,
+                        credential_type=credential_type,
+                    )
+                )
+        except Exception as e:
+            raise ValueError(f"Credential policy compliance check failed: {str(e)}")
+
+    def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
+        """
+        Validate that an LLM model configuration can fetch valid credentials.
+
+        This method attempts to get the model instance and validates that:
+        1. The provider exists and is configured
+        2. The model exists in the provider
+        3. Credentials can be fetched for the model
+        4. The credentials pass policy compliance checks
+
+        :param tenant_id: The tenant ID
+        :param provider: The provider name
+        :param model_name: The model name
+        :raises ValueError: If the model configuration is invalid or credentials fail policy checks
+        """
+        try:
+            from core.model_manager import ModelManager
+            from core.model_runtime.entities.model_entities import ModelType
+
+            # Get model instance to validate provider+model combination
+            model_manager = ModelManager()
+            model_manager.get_model_instance(
+                tenant_id=tenant_id, provider=provider, model_type=ModelType.LLM, model=model_name
+            )
+
+            # The ModelInstance constructor will automatically check credential policy compliance
+            # via ProviderConfiguration.get_current_credentials() -> _check_credential_policy_compliance()
+            # If it fails, an exception will be raised
+
+        except Exception as e:
+            raise ValueError(
+                f"Failed to validate LLM model configuration (provider: {provider}, model: {model_name}): {str(e)}"
+            )
+
+    def _check_default_tool_credential(self, tenant_id: str, provider: str) -> None:
+        """
+        Check credential policy compliance for the default workspace credential of a tool provider.
+
+        This method finds the default credential for the given provider and validates it.
+
+        :param tenant_id: The tenant ID
+        :param provider: The tool provider name
+        :raises ValueError: If no default credential exists or if it fails policy compliance
+        """
+        try:
+            from sqlalchemy import select
+
+            from models.tools import BuiltinToolProvider
+
+            # Find the default credential for this provider
+            default_provider_stmt = select(BuiltinToolProvider).where(
+                BuiltinToolProvider.tenant_id == tenant_id,
+                BuiltinToolProvider.provider == provider,
+                BuiltinToolProvider.is_default == True,
+            )
+
+            default_provider = db.session.scalar(default_provider_stmt)
+
+            if not default_provider:
+                raise ValueError("No default credential found")
+
+            # Check credential policy compliance using the default credential ID
+            self._check_credential_policy_compliance(default_provider.id, provider, PluginCredentialType.TOOL)
+
+        except Exception as e:
+            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
 
     def get_default_block_configs(self) -> list[dict]:
         """
