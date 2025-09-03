@@ -13,7 +13,8 @@ import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import Search from '@/app/components/base/icons/src/public/thought/Search'
+// import MenuSearch from '@/app/components/base/icons/src/public/thought/MenuSearch'
+import { RiMenuSearchLine } from '@remixicon/react'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
@@ -119,7 +120,7 @@ const Base: FC<Props> = ({
             {showVariableInspectButton && nodeId && (
               <Tooltip popupContent={t('workflow.debug.variableInspect.view')}>
                 <ActionButton className='ml-1' onClick={handleOpenVariableInspect}>
-                  <Search className='h-4 w-4' />
+                  <RiMenuSearchLine className='h-4 w-4' />
                 </ActionButton>
               </Tooltip>
             )}
