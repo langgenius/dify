@@ -16,6 +16,7 @@ from flask import Flask, current_app
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
+from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphEngineEvent,
@@ -288,9 +289,11 @@ class GraphEngine:
     def _initialize_layers(self) -> None:
         """Initialize layers with context."""
         self._event_manager.set_layers(self._layers)
+        # Create a read-only wrapper for the runtime state
+        read_only_state = ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state)
         for layer in self._layers:
             try:
-                layer.initialize(self._graph_runtime_state, self._command_channel)
+                layer.initialize(read_only_state, self._command_channel)
             except Exception as e:
                 logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
 

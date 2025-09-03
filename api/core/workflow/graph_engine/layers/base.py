@@ -7,7 +7,7 @@ intercept and respond to GraphEngine events.
 
 from abc import ABC, abstractmethod
 
-from core.workflow.entities import GraphRuntimeState
+from core.workflow.graph.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent
 
@@ -27,19 +27,19 @@ class GraphEngineLayer(ABC):
 
     def __init__(self) -> None:
         """Initialize the layer. Subclasses can override with custom parameters."""
-        self.graph_runtime_state: GraphRuntimeState | None = None
+        self.graph_runtime_state: ReadOnlyGraphRuntimeState | None = None
         self.command_channel: CommandChannel | None = None
 
-    def initialize(self, graph_runtime_state: GraphRuntimeState, command_channel: CommandChannel) -> None:
+    def initialize(self, graph_runtime_state: ReadOnlyGraphRuntimeState, command_channel: CommandChannel) -> None:
         """
         Initialize the layer with engine dependencies.
 
-        Called by GraphEngine before execution starts to inject the runtime state
-        and command channel. This allows layers to access engine context and send
-        commands.
+        Called by GraphEngine before execution starts to inject the read-only runtime state
+        and command channel. This allows layers to observe engine context and send
+        commands, but prevents direct state modification.
 
         Args:
-            graph_runtime_state: The runtime state of the graph execution
+            graph_runtime_state: Read-only view of the runtime state
             command_channel: Channel for sending commands to the engine
         """
         self.graph_runtime_state = graph_runtime_state
