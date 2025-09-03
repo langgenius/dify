@@ -56,6 +56,10 @@ class WorkflowVariablesConfigManager:
                         full_path = match.group(1)
                         last_part = full_path.split(".")[-1]
                         variables_map.pop(last_part)
+                if value.get("value") and isinstance(value.get("value"), list):
+                    last_part = value.get("value")[-1]
+                    variables_map.pop(last_part)
+
         all_second_step_variables = list(variables_map.values())
 
         for item in all_second_step_variables:
