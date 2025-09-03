@@ -849,7 +849,7 @@ class TraceQueueManager:
             if self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
-        except Exception as e:
+        except Exception:
             logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
         finally:
             self.start_timer()
@@ -868,7 +868,7 @@ class TraceQueueManager:
             tasks = self.collect_tasks()
             if tasks:
                 self.send_to_celery(tasks)
-        except Exception as e:
+        except Exception:
             logger.exception("Error processing trace tasks")
 
     def start_timer(self):

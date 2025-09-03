@@ -27,7 +27,7 @@ class NacosHttpClient:
             response = requests.request(method, url="http://" + self.server + url, headers=headers, params=params)
             response.raise_for_status()
             return response.text
-        except requests.exceptions.RequestException as e:
+        except requests.RequestException as e:
             return f"Request to Nacos failed: {e}"
 
     def _inject_auth_info(self, headers, params, module="config"):
@@ -77,6 +77,6 @@ class NacosHttpClient:
             self.token = response_data.get("accessToken")
             self.token_ttl = response_data.get("tokenTtl", 18000)
             self.token_expire_time = current_time + self.token_ttl - 10
-        except Exception as e:
+        except Exception:
             logger.exception("[get-access-token] exception occur")
             raise

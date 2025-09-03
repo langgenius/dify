@@ -300,16 +300,15 @@ class WorkflowAppGenerateTaskPipeline:
         """Handle node retry events."""
         self._ensure_workflow_initialized()
 
-        with self._database_session() as session:
-            workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
-                workflow_execution_id=self._workflow_run_id,
-                event=event,
-            )
-            response = self._workflow_response_converter.workflow_node_retry_to_stream_response(
-                event=event,
-                task_id=self._application_generate_entity.task_id,
-                workflow_node_execution=workflow_node_execution,
-            )
+        workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
+            workflow_execution_id=self._workflow_run_id,
+            event=event,
+        )
+        response = self._workflow_response_converter.workflow_node_retry_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+            workflow_node_execution=workflow_node_execution,
+        )
 
         if response:
             yield response

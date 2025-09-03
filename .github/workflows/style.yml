@@ -44,6 +44,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
+      - name: Run Basedpyright Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: dev/basedpyright-check
+
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example

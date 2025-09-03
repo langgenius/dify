@@ -89,7 +89,7 @@ class ExternalDatasetService:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
-        except Exception as e:
+        except Exception:
             raise ValueError(f"failed to connect to the endpoint: {endpoint}")
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
@@ -229,7 +229,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api_settings(settings: dict) -> ExternalKnowledgeApiSetting:
-        return ExternalKnowledgeApiSetting.parse_obj(settings)
+        return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
     def create_external_dataset(tenant_id: str, user_id: str, args: dict) -> Dataset:
