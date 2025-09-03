@@ -1,8 +1,7 @@
-from typing import TypeVar
 import os
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Any
+from typing import TypeVar
 
 from configs import dify_config
 from core.tools.utils.yaml_utils import load_yaml_file
@@ -71,7 +70,10 @@ def pin_position_map(original_position_map: dict[str, int], pin_list: list[str])
             start_idx += 1
 
     return position_map
+
+
 T = TypeVar("T")
+
 
 def is_filtered(
     include_set: set[str],
@@ -106,7 +108,7 @@ def sort_by_position_map(
     position_map: dict[str, int],
     data: list[T],
     name_func: Callable[[T], str],
-) :
+):
     """
     Sort the objects by the position map.
     If the name of the object is not in the position map, it will be put at the end.
