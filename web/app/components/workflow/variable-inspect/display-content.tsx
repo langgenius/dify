@@ -22,10 +22,11 @@ type DisplayContentProps = {
   readonly: boolean
   handleTextChange?: (value: string) => void
   handleEditorChange?: (value: string) => void
+  className?: string
 }
 
 const DisplayContent = (props: DisplayContentProps) => {
-  const { previewType, varType, schemaType, mdString, jsonString, readonly, handleTextChange, handleEditorChange } = props
+  const { previewType, varType, schemaType, mdString, jsonString, readonly, handleTextChange, handleEditorChange, className } = props
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Code)
   const [isFocused, setIsFocused] = useState(false)
   const { t } = useTranslation()
@@ -50,7 +51,7 @@ const DisplayContent = (props: DisplayContentProps) => {
   }, [previewType, schemaType, jsonString])
 
   return (
-    <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline outline-1 outline-components-input-border-active')}>
+    <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline outline-1 outline-components-input-border-active', className)}>
       <div className='flex shrink-0 items-center justify-end p-1'>
         {previewType === PreviewType.Markdown && (
           <div className='system-xs-semibold-uppercase flex grow items-center px-2 py-0.5 text-text-secondary'>
