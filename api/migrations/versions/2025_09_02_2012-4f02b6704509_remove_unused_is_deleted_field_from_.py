@@ -8,6 +8,7 @@ Create Date: 2025-09-02 20:12:37.311318
 from alembic import op
 import models as models
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -51,15 +52,12 @@ def downgrade():
     
     # Restore soft-deleted conversations from backup table if it exists
     
-    # Check if backup table exists
-    result = op.get_bind().execute(sa.text(f"""
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = '{backup_table_name}'
-        )
-    """))
+    # Check if backup table exists using inspector (works for all database types)
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    existing_tables = inspector.get_table_names()
     
-    if result.scalar():
+    if backup_table_name in existing_tables:
         # Restore the soft-deleted conversations
         op.execute(sa.text(f"""
             INSERT INTO conversations 
