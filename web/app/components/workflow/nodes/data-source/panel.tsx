@@ -134,11 +134,10 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             />
           ))
         }
-        {
-          outputSchema.map((outputItem) => {
-              const schemaType = getMatchedSchemaType(outputItem.value, schemaTypeDefinitions)
+        {outputSchema.map((outputItem) => {
+          const schemaType = getMatchedSchemaType(outputItem.value, schemaTypeDefinitions)
 
-            return (
+          return (
             <div key={outputItem.name}>
               {outputItem.value?.type === 'object' ? (
                 <StructureOutputItem
