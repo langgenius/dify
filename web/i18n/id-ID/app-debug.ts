@@ -324,7 +324,7 @@ const translation = {
   },
   variableTable: {
     action: 'Tindakan',
-    typeString: 'Tali',
+    typeString: 'String',
     optional: 'Fakultatif',
     typeSelect: 'Pilih',
     type: 'Jenis Masukan',
@@ -346,7 +346,7 @@ const translation = {
         name: 'Audio',
       },
       document: {
-        name: 'Surat',
+        name: 'Dokumen',
       },
       video: {
         name: 'Video',
@@ -421,7 +421,7 @@ const translation = {
       language: 'Bahasa',
       title: 'Pengaturan Suara',
       autoPlay: 'Putar Otomatis',
-      autoPlayDisabled: 'Off',
+      autoPlayDisabled: 'Dinonaktifkan',
       resolutionTooltip: 'Bahasa pendukung suara text-to-speech。',
     },
     settings: 'Pengaturan',
@@ -448,7 +448,7 @@ const translation = {
   },
   inputs: {
     queryPlaceholder: 'Silakan masukkan teks permintaan.',
-    run: 'LARI',
+    run: 'Jalankan',
     completionVarTip: 'Isi nilai variabel, yang akan secara otomatis diganti dengan kata-kata prompt setiap kali pertanyaan diajukan.',
     noVar: 'Isi nilai variabel, yang akan secara otomatis diganti dalam kata prompt setiap kali sesi baru dimulai.',
     noPrompt: 'Coba tulis beberapa prompt dalam input pra-prompt',

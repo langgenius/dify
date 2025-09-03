@@ -305,7 +305,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             err = self._base_task_pipeline._handle_error(event=event, session=session, message_id=self._message_id)
         yield self._base_task_pipeline._error_to_stream_response(err)
 
-    def _handle_workflow_started_event(self, **kwargs) -> Generator[StreamResponse, None, None]:
+    def _handle_workflow_started_event(self, *args, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle workflow started events."""
         with self._database_session() as session:
             workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start()

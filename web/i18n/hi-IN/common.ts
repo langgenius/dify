@@ -510,6 +510,7 @@ const translation = {
       specifyModelCredential: 'मॉडल की क्रेडेंशियल निर्दिष्ट करें',
       specifyModelCredentialTip: 'कॉन्फ़िगर की गई मॉडल क्रेडेंशियल का उपयोग करें।',
       providerManagedTip: 'वर्तमान कॉन्फ़िगरेशन प्रदाता द्वारा होस्ट किया गया है।',
+      selectModelCredential: 'एक मॉडल क्रेडेंशियल चुनें',
     },
   },
   dataSource: {

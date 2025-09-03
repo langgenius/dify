@@ -2,7 +2,7 @@ from functools import wraps
 from typing import cast
 
 import flask_login
-from flask import request
+from flask import jsonify, request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -46,23 +46,38 @@ def oauth_server_access_token_required(view):
 
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
-            raise BadRequest("Authorization header is required")
+            response = jsonify({"error": "Authorization header is required"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
-        parts = authorization_header.strip().split(" ")
+        parts = authorization_header.strip().split(None, 1)
         if len(parts) != 2:
-            raise BadRequest("Invalid Authorization header format")
+            response = jsonify({"error": "Invalid Authorization header format"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
         token_type = parts[0].strip()
         if token_type.lower() != "bearer":
-            raise BadRequest("token_type is invalid")
+            response = jsonify({"error": "token_type is invalid"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
         access_token = parts[1].strip()
         if not access_token:
-            raise BadRequest("access_token is required")
+            response = jsonify({"error": "access_token is required"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
         account = OAuthServerService.validate_oauth_access_token(oauth_provider_app.client_id, access_token)
         if not account:
-            raise BadRequest("access_token or client_id is invalid")
+            response = jsonify({"error": "access_token or client_id is invalid"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
         kwargs["account"] = account
 
