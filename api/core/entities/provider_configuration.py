@@ -279,9 +279,7 @@ class ProviderConfiguration(BaseModel):
             else [],
         )
 
-    def validate_provider_credentials(
-        self, credentials: dict, credential_id: str = "", session: Session | None = None
-    ):
+    def validate_provider_credentials(self, credentials: dict, credential_id: str = "", session: Session | None = None):
         """
         Validate custom credentials.
         :param credentials: provider credentials

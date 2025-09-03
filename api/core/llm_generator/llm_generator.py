@@ -262,9 +262,7 @@ class LLMGenerator:
         return rule_config
 
     @classmethod
-    def generate_code(
-        cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"
-    ):
+    def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):
         if code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
         else:

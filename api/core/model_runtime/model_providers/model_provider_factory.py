@@ -163,9 +163,7 @@ class ModelProviderFactory:
 
         return filtered_credentials
 
-    def model_credentials_validate(
-        self, *, provider: str, model_type: ModelType, model: str, credentials: dict
-    ):
+    def model_credentials_validate(self, *, provider: str, model_type: ModelType, model: str, credentials: dict):
         """
         Validate model credentials
 
