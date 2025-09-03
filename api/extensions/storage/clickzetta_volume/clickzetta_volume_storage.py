@@ -87,7 +87,7 @@ class ClickZettaVolumeConfig(BaseModel):
         values.setdefault("volume_name", os.getenv("CLICKZETTA_VOLUME_NAME"))
         values.setdefault("table_prefix", os.getenv("CLICKZETTA_VOLUME_TABLE_PREFIX", "dataset_"))
         values.setdefault("dify_prefix", os.getenv("CLICKZETTA_VOLUME_DIFY_PREFIX", "dify_km"))
-        # 暂时禁用权限检查功能，直接设置为false
+        # Temporarily disable permission check feature, set directly to false
         values.setdefault("permission_check", False)
 
         # Validate required fields
