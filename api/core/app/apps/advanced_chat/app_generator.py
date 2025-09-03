@@ -453,7 +453,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # release database connection, because the following new thread operations may take a long time
         db.session.refresh(workflow)
         db.session.refresh(message)
-        db.session.refresh(user)
+        # db.session.refresh(user)
         db.session.close()
 
         # return response or stream generator

@@ -96,10 +96,12 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App) -> Optional[Workflow]:
+    def get_draft_workflow(self, app_model: App, workflow_id: Optional[str] = None) -> Optional[Workflow]:
         """
         Get draft workflow
         """
+        if workflow_id:
+            return self.get_published_workflow_by_id(app_model, workflow_id)
         # fetch draft workflow by app_model
         workflow = (
             db.session.query(Workflow)
@@ -115,7 +117,9 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
-        # fetch published workflow by workflow_id
+        """
+        fetch published workflow by workflow_id
+        """
         workflow = (
             db.session.query(Workflow)
             .where(

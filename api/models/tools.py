@@ -14,7 +14,7 @@ from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from models.base import Base
+from models.base import Base, TypeBase
 
 from .engine import db
 from .model import Account, App, Tenant
@@ -160,7 +160,7 @@ class ApiToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
 
-class ToolLabelBinding(Base):
+class ToolLabelBinding(TypeBase):
     """
     The table stores the labels for tools.
     """
@@ -171,7 +171,7 @@ class ToolLabelBinding(Base):
         sa.UniqueConstraint("tool_id", "label_name", name="unique_tool_label_bind"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     # tool id
     tool_id: Mapped[str] = mapped_column(String(64), nullable=False)
     # tool type
