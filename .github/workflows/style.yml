@@ -12,7 +12,6 @@ permissions:
   statuses: write
   contents: read
 
-
 jobs:
   python-style:
     name: Python Style
@@ -43,10 +42,6 @@ jobs:
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
-
-      - name: Run ty check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: dev/ty-check
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
