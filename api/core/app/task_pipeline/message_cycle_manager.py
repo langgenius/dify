@@ -101,7 +101,7 @@ class MessageCycleManager:
                 try:
                     name = LLMGenerator.generate_conversation_name(app_model.tenant_id, query)
                     conversation.name = name
-                except Exception as e:
+                except Exception:
                     if dify_config.DEBUG:
                         logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
                     pass

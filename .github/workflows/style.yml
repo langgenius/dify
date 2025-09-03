@@ -44,9 +44,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
-      - name: Run ty check
+      - name: Run Basedpyright Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: dev/ty-check
+        run: dev/basedpyright-check
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'

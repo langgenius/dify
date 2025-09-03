@@ -5,8 +5,8 @@ const translation = {
       version: 'VERSI',
       time: 'Waktu yang dibuat',
       messageCount: 'Jumlah Pesan',
-      summary: 'Titel',
-      adminRate: 'Tingkat Op.',
+      summary: 'Ringkasan',
+      adminRate: 'Tingkat Admin',
       user: 'Pengguna Akhir atau Akun',
       startTime: 'WAKTU MULAI',
       updatedTime: 'Waktu yang diperbarui',
@@ -18,8 +18,8 @@ const translation = {
       runtime: 'WAKTU BERJALAN',
     },
     pagination: {
-      previous: 'Prev',
-      next: 'Depan',
+      previous: 'Sebelumnya',
+      next: 'Selanjutnya',
     },
     empty: {
       element: {
@@ -30,12 +30,12 @@ const translation = {
     },
   },
   detail: {
-    timeConsuming: '',
+    timeConsuming: 'Memakan waktu',
     operation: {
       dislike: 'tidak suka',
       like: 'suka',
-      addAnnotation: 'Tambahkan Peningkatan',
-      editAnnotation: 'Edit Peningkatan',
+      addAnnotation: 'Tambahkan Anotasi',
+      editAnnotation: 'Edit Anotasi',
       annotationPlaceholder: 'Masukkan jawaban yang diharapkan yang Anda inginkan untuk dibalas AI, yang dapat digunakan untuk penyempurnaan model dan peningkatan berkelanjutan kualitas pembuatan teks di masa mendatang.',
     },
     time: 'Waktu',
@@ -67,7 +67,7 @@ const translation = {
     },
     ascending: 'Naik',
     descending: 'Turun',
-    sortBy: 'Kota hitam:',
+    sortBy: 'Urutkan berdasarkan',
   },
   runDetail: {
     fileListDetail: 'Detail',

@@ -489,6 +489,7 @@ const translation = {
       authorizationError: 'ข้อผิดพลาดในการอนุญาต',
       specifyModelCredentialTip: 'ใช้ข้อมูลรับรองโมเดลที่กำหนดไว้',
       providerManagedTip: 'การกำหนดค่าปัจจุบันถูกโฮสต์โดยผู้ให้บริการ.',
+      customModelCredentialsDeleteTip: 'ข้อมูลรับรองกำลังถูกใช้งานและไม่สามารถลบได้',
     },
   },
   dataSource: {
