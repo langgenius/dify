@@ -16,8 +16,8 @@ from flask import Flask, current_app
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
-from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
 from core.workflow.graph import Graph
+from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphNodeEventBase,

@@ -10,7 +10,7 @@ __all__ = [
     "GraphTemplate",
     "NodeFactory",
     "ReadOnlyGraphRuntimeState",
-    "ReadOnlyVariablePool",
     "ReadOnlyGraphRuntimeStateWrapper",
+    "ReadOnlyVariablePool",
     "ReadOnlyVariablePoolWrapper",
 ]

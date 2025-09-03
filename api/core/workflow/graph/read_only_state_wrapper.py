@@ -31,7 +31,7 @@ class ReadOnlyVariablePoolWrapper:
 class ReadOnlyGraphRuntimeStateWrapper:
     """
     Wrapper that provides read-only access to GraphRuntimeState.
-    
+
     This wrapper ensures that layers can observe the state without
     modifying it. All returned values are defensive copies.
     """
