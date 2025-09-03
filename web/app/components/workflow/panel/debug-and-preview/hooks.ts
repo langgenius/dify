@@ -296,7 +296,7 @@ export const useChat = (
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
           handleResponding(false)
-          fetchInspectVars()
+          fetchInspectVars({})
           invalidAllLastRun()
 
           if (hasError) {

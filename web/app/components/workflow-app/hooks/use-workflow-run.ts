@@ -202,7 +202,7 @@ export const useWorkflowRun = () => {
           if (onWorkflowFinished)
             onWorkflowFinished(params)
           if (isInWorkflowDebug) {
-            fetchInspectVars()
+            fetchInspectVars({})
             invalidAllLastRun()
           }
         },

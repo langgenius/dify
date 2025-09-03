@@ -93,11 +93,11 @@ export const useSetWorkflowVarsWithValue = ({
   }
 
   const fetchInspectVars = useCallback(async (params: {
-      passInVars?: boolean,
-      vars?: VarInInspect[],
-      passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>,
-      passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
-    }) => {
+    passInVars?: boolean,
+    vars?: VarInInspect[],
+    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>,
+    passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+  }) => {
     const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
     invalidateConversationVarValues()
     invalidateSysVarValues()

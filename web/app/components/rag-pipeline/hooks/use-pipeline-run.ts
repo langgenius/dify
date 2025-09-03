@@ -165,7 +165,7 @@ export const usePipelineRun = () => {
         },
         onWorkflowFinished: (params) => {
           handleWorkflowFinished(params)
-          fetchInspectVars()
+          fetchInspectVars({})
           invalidAllLastRun()
 
           if (onWorkflowFinished)
