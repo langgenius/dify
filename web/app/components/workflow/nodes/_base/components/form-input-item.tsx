@@ -277,6 +277,7 @@ const FormInputItem: FC<Props> = ({
           valueTypePlaceHolder={targetVarType()}
           currentTool={currentTool}
           currentProvider={currentProvider}
+          isFilterFileVar={isBoolean}
         />
       )}
     </div>
