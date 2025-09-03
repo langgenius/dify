@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
@@ -60,7 +60,7 @@ class ScheduleService:
         session: Session,
         schedule_id: str,
         updates: SchedulePlanUpdate,
-    ) -> Optional[WorkflowSchedulePlan]:
+    ) -> WorkflowSchedulePlan:
         """
         Update an existing schedule with validated configuration.
 
@@ -69,25 +69,35 @@ class ScheduleService:
             schedule_id: Schedule ID to update
             updates: Validated update configuration
 
+        Raises:
+            ScheduleNotFoundError: If schedule not found
+
         Returns:
-            Updated WorkflowSchedulePlan instance or None if not found
+            Updated WorkflowSchedulePlan instance
         """
         schedule = session.get(WorkflowSchedulePlan, schedule_id)
         if not schedule:
             raise ScheduleNotFoundError(f"Schedule not found: {schedule_id}")
 
-        update_dict = updates.model_dump(exclude_none=True)
-        for field, value in update_dict.items():
-            if hasattr(schedule, field):
-                setattr(schedule, field, value)
+        # If time-related fields are updated, synchronously update the next_run_at.
+        time_fields_updated = False
 
-        # Ensure next_run_at stays accurate when schedule timing changes
-        if "cron_expression" in update_dict or "timezone" in update_dict:
-            next_run_at = calculate_next_run_at(
+        if updates.node_id is not None:
+            schedule.node_id = updates.node_id
+
+        if updates.cron_expression is not None:
+            schedule.cron_expression = updates.cron_expression
+            time_fields_updated = True
+
+        if updates.timezone is not None:
+            schedule.timezone = updates.timezone
+            time_fields_updated = True
+
+        if time_fields_updated:
+            schedule.next_run_at = calculate_next_run_at(
                 schedule.cron_expression,
                 schedule.timezone,
             )
-            schedule.next_run_at = next_run_at
 
         session.flush()
         return schedule
@@ -140,7 +150,7 @@ class ScheduleService:
     def update_next_run_at(
         session: Session,
         schedule_id: str,
-    ) -> Optional[datetime]:
+    ) -> datetime:
         """
         Advances the schedule to its next execution time after a successful trigger.
         Uses current time as base to prevent missing executions during delays.
@@ -171,7 +181,10 @@ class ScheduleService:
             workflow: The workflow containing the graph definition
 
         Returns:
-            ScheduleConfig if a valid schedule node is found, None otherwise
+            ScheduleConfig if a valid schedule node is found, None if no schedule node exists
+
+        Raises:
+            ScheduleConfigError: If graph parsing fails or schedule configuration is invalid
 
         Note:
             Currently only returns the first schedule node found.
@@ -179,12 +192,11 @@ class ScheduleService:
         """
         try:
             graph_data = workflow.graph_dict
-        except (json.JSONDecodeError, TypeError, AttributeError):
-            logger.exception("Failed to parse workflow graph")
-            return None
+        except (json.JSONDecodeError, TypeError, AttributeError) as e:
+            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}")
 
         if not graph_data:
-            return None
+            raise ScheduleConfigError("Workflow graph is empty")
 
         nodes = graph_data.get("nodes", [])
         for node in nodes:
@@ -200,90 +212,59 @@ class ScheduleService:
             cron_expression = None
             if mode == "cron":
                 cron_expression = node_data.get("cron_expression")
+                if not cron_expression:
+                    raise ScheduleConfigError("Cron expression is required for cron mode")
             elif mode == "visual":
-                cron_expression = ScheduleService.visual_to_cron(
-                    node_data.get("frequency"), node_data.get("visual_config", {})
-                )
-
-            if cron_expression:
-                return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
+                frequency = node_data.get("frequency")
+                visual_config_dict = node_data.get("visual_config", {})
+                visual_config = VisualConfig(**visual_config_dict)
+                cron_expression = ScheduleService.visual_to_cron(frequency, visual_config)
             else:
-                raise ScheduleConfigError(f"Invalid schedule configuration: {node_data}")
+                raise ScheduleConfigError(f"Invalid schedule mode: {mode}")
+
+            return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
 
         return None
 
     @staticmethod
-    def visual_to_cron(frequency: str, visual_config: dict) -> Optional[str]:
+    def visual_to_cron(frequency: str, visual_config: VisualConfig) -> str:
         """
         Converts user-friendly visual schedule settings to cron expression.
         Maintains consistency with frontend UI expectations while supporting croniter's extended syntax.
         """
-        if not frequency or not visual_config:
-            return None
+        if frequency == "hourly":
+            return f"{visual_config.on_minute} * * * *"
 
-        try:
-            if frequency == "hourly":
-                on_minute = visual_config.get("on_minute", 0)
-                return f"{on_minute} * * * *"
+        elif frequency == "daily":
+            hour, minute = convert_12h_to_24h(visual_config.time)
+            return f"{minute} {hour} * * *"
 
-            elif frequency == "daily":
-                time_str = visual_config.get("time", "12:00 PM")
-                hour, minute = convert_12h_to_24h(time_str)
-                return f"{minute} {hour} * * *"
+        elif frequency == "weekly":
+            hour, minute = convert_12h_to_24h(visual_config.time)
+            weekday_map = {"sun": "0", "mon": "1", "tue": "2", "wed": "3", "thu": "4", "fri": "5", "sat": "6"}
+            cron_weekdays = [weekday_map[day] for day in visual_config.weekdays]
+            return f"{minute} {hour} * * {','.join(sorted(cron_weekdays))}"
 
-            elif frequency == "weekly":
-                time_str = visual_config.get("time", "12:00 PM")
-                hour, minute = convert_12h_to_24h(time_str)
+        elif frequency == "monthly":
+            hour, minute = convert_12h_to_24h(visual_config.time)
 
-                weekdays = visual_config.get("weekdays", [])
-                if not weekdays:
-                    return None
+            cron_days = []
+            for day in visual_config.monthly_days:
+                if day == "last":
+                    cron_days.append("L")
+                else:
+                    cron_days.append(str(day))
 
-                # Map to cron's 0-6 format where 0=Sunday for standard cron compatibility
-                weekday_map = {"sun": "0", "mon": "1", "tue": "2", "wed": "3", "thu": "4", "fri": "5", "sat": "6"}
-                cron_weekdays = []
-                for day in weekdays:
-                    if day in weekday_map:
-                        cron_weekdays.append(weekday_map[day])
+            numeric_days = [d for d in cron_days if d != "L"]
+            has_last = "L" in cron_days
 
-                if not cron_weekdays:
-                    return None
+            sorted_days = []
+            if numeric_days:
+                sorted_days = sorted(set(numeric_days), key=int)
+            if has_last:
+                sorted_days.append("L")
 
-                return f"{minute} {hour} * * {','.join(sorted(cron_weekdays))}"
+            return f"{minute} {hour} {','.join(sorted_days)} * *"
 
-            elif frequency == "monthly":
-                time_str = visual_config.get("time", "12:00 PM")
-                hour, minute = convert_12h_to_24h(time_str)
-
-                monthly_days = visual_config.get("monthly_days", [])
-                if not monthly_days:
-                    return None
-
-                cron_days = []
-                for day in monthly_days:
-                    if day == "last":
-                        # croniter supports 'L' for last day of month, avoiding hardcoded day ranges
-                        cron_days.append("L")
-                    elif isinstance(day, int) and 1 <= day <= 31:
-                        cron_days.append(str(day))
-
-                if not cron_days:
-                    return None
-
-                # Keep 'L' at end for readability while sorting numeric days
-                numeric_days = [d for d in cron_days if d != "L"]
-                has_last = "L" in cron_days
-
-                sorted_days = []
-                if numeric_days:
-                    sorted_days = sorted(set(numeric_days), key=int)
-                if has_last:
-                    sorted_days.append("L")
-
-                return f"{minute} {hour} {','.join(sorted_days)} * *"
-
-            else:
-                return None
-
-        except Exception:
-            return None
+        else:
+            raise ScheduleConfigError(f"Unsupported frequency: {frequency}")
