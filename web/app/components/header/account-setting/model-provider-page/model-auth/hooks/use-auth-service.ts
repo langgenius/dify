@@ -17,7 +17,7 @@ import type {
 
 export const useGetCredential = (provider: string, isModelCredential?: boolean, credentialId?: string, model?: CustomModel, configFrom?: string) => {
   const providerData = useGetProviderCredential(!isModelCredential && !!credentialId, provider, credentialId)
-  const modelData = useGetModelCredential(!!isModelCredential && !!credentialId, provider, credentialId, model?.model, model?.model_type, configFrom)
+  const modelData = useGetModelCredential(!!isModelCredential && (!!credentialId || !!model), provider, credentialId, model?.model, model?.model_type, configFrom)
   return isModelCredential ? modelData : providerData
 }
 
