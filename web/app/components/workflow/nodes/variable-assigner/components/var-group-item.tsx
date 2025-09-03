@@ -104,7 +104,7 @@ const VarGroupItem: FC<Props> = ({
 
   return (
     <Field
-      className='group'
+      className='group/field'
       title={groupEnabled
         ? <div className='flex items-center'>
           <div className='flex items-center !normal-case'>
@@ -133,7 +133,7 @@ const VarGroupItem: FC<Props> = ({
           </div>
           {canRemove && (
             <div
-              className='ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block'
+              className='ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover/field:block'
               onClick={onRemove}
             >
               <RiDeleteBinLine
