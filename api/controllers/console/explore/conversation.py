@@ -61,8 +61,7 @@ class ConversationApi(InstalledAppResource):
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        WebConversationService.unpin(app_model, conversation_id, current_user)
-
+    
         return {"result": "success"}, 204
 
 
