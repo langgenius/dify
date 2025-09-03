@@ -91,7 +91,7 @@ class Extensible:
 
                 # Find extension class
                 extension_class = None
-                for name, obj in vars(mod).items():
+                for obj in vars(mod).values():
                     if isinstance(obj, type) and issubclass(obj, cls) and obj != cls:
                         extension_class = obj
                         break
@@ -123,7 +123,7 @@ class Extensible:
                     )
                 )
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error scanning extensions")
             raise
 

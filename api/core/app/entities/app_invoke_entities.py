@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -11,7 +11,7 @@ from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
 
 
-class InvokeFrom(Enum):
+class InvokeFrom(StrEnum):
     """
     Invoke From.
     """

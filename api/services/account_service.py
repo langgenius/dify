@@ -145,8 +145,11 @@ class AccountService:
         if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = naive_utc_now()
             db.session.commit()
-
-        return cast(Account, account)
+        # NOTE: make sure account is accessible outside of a db session
+        # This ensures that it will work correctly after upgrading to Flask version 3.1.2
+        db.session.refresh(account)
+        db.session.close()
+        return account
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
@@ -191,7 +194,7 @@ class AccountService:
 
         db.session.commit()
 
-        return cast(Account, account)
+        return account
 
     @staticmethod
     def update_account_password(account, password, new_password):
@@ -1127,7 +1130,7 @@ class TenantService:
     def get_custom_config(tenant_id: str) -> dict:
         tenant = db.get_or_404(Tenant, tenant_id)
 
-        return cast(dict, tenant.custom_config_dict)
+        return tenant.custom_config_dict
 
     @staticmethod
     def is_owner(account: Account, tenant: Tenant) -> bool:

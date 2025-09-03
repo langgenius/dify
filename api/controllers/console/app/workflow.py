@@ -526,7 +526,7 @@ class PublishedWorkflowApi(Resource):
             )
 
             app_model.workflow_id = workflow.id
-            db.session.commit()
+            db.session.commit()  # NOTE: this is necessary for update app_model.workflow_id
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 

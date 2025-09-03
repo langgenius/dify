@@ -101,7 +101,7 @@ def register_external_error_handlers(api: Api) -> None:
         exc_info: Any = sys.exc_info()
         if exc_info[1] is None:
             exc_info = None
-        current_app.log_exception(exc_info)
+        current_app.log_exception(exc_info)  # ty: ignore [invalid-argument-type]
 
         return data, status_code
 

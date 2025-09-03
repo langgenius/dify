@@ -112,7 +112,9 @@ class MessageService:
             base_query = base_query.where(Message.conversation_id == conversation.id)
 
         # Check if include_ids is not None and not empty to avoid WHERE false condition
-        if include_ids is not None and len(include_ids) > 0:
+        if include_ids is not None:
+            if len(include_ids) == 0:
+                return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
             base_query = base_query.where(Message.id.in_(include_ids))
 
         if last_id:

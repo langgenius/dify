@@ -219,7 +219,11 @@ class ModelProviderModelCredentialApi(Resource):
 
         model_load_balancing_service = ModelLoadBalancingService()
         is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args["model"],
+            model_type=args["model_type"],
+            config_from=args.get("config_from", ""),
         )
 
         if args.get("config_from", "") == "predefined-model":
@@ -263,7 +267,7 @@ class ModelProviderModelCredentialApi(Resource):
             choices=[mt.value for mt in ModelType],
             location="json",
         )
-        parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
@@ -309,7 +313,7 @@ class ModelProviderModelCredentialApi(Resource):
         )
         parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
