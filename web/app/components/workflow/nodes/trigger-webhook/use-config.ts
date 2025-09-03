@@ -136,6 +136,15 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     }))
   }, [inputs, setInputs])
 
+  const handleStatusCodeBlur = useCallback((statusCode: number) => {
+    // Only clamp when user finishes editing (on blur)
+    const clampedStatusCode = Math.min(Math.max(statusCode, 200), 399)
+
+    setInputs(produce(inputs, (draft) => {
+      draft.status_code = clampedStatusCode
+    }))
+  }, [inputs, setInputs])
+
   const handleResponseBodyChange = useCallback((responseBody: string) => {
     setInputs(produce(inputs, (draft) => {
       draft.response_body = responseBody
@@ -182,6 +191,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     handleBodyChange,
     handleAsyncModeChange,
     handleStatusCodeChange,
+    handleStatusCodeBlur,
     handleResponseBodyChange,
     generateWebhookUrl,
   }
