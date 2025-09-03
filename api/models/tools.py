@@ -1,3 +1,4 @@
+from typing import Optional
 import json
 from datetime import datetime
 from typing import Any, cast
@@ -423,19 +424,19 @@ class ToolFile(TypeBase):
         sa.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"),init=False)
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     # file key
     file_key: Mapped[str] = mapped_column(String(255), nullable=False)
     # mime type
     mimetype: Mapped[str] = mapped_column(String(255), nullable=False)
     # original url
-    original_url: Mapped[str] = mapped_column(String(2048), nullable=True)
+    original_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     # name
     name: Mapped[str] = mapped_column(default="")
     # size

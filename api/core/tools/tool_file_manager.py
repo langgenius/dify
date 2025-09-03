@@ -88,6 +88,7 @@ class ToolFileManager:
             present_filename = filename if has_extension else f"{filename}{extension}"
         filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
+        assert conversation_id is not None
 
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file = ToolFile(
@@ -98,6 +99,7 @@ class ToolFileManager:
                 mimetype=mimetype,
                 name=present_filename,
                 size=len(file_binary),
+                original_url=None
             )
 
             session.add(tool_file)
