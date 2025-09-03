@@ -1452,7 +1452,7 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
           Object.keys(payload.tool_parameters).forEach((key) => {
             const value = payload.tool_parameters[key]
             const { type } = value
-            if (type === ToolVarType.variable) {
+            if (type === ToolVarType.variable && value.value.join('.') === oldVarSelector.join('.')) {
               payload.tool_parameters[key] = {
                 ...value,
                 value: newVarSelector,
@@ -1476,7 +1476,7 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
           Object.keys(payload.datasource_parameters).forEach((key) => {
             const value = payload.datasource_parameters[key]
             const { type } = value
-            if (type === ToolVarType.variable) {
+            if (type === ToolVarType.variable && value.value.join('.') === oldVarSelector.join('.')) {
               payload.datasource_parameters[key] = {
                 ...value,
                 value: newVarSelector,
