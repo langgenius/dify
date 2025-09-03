@@ -70,21 +70,21 @@ const RagPipelineMain = ({
     ...configsMap,
   })
   const {
-      hasNodeInspectVars,
-      hasSetInspectVar,
-      fetchInspectVarValue,
-      editInspectVarValue,
-      renameInspectVarName,
-      appendNodeInspectVars,
-      deleteInspectVar,
-      deleteNodeInspectorVars,
-      deleteAllInspectorVars,
-      isInspectVarEdited,
-      resetToLastRunVar,
-      invalidateSysVarValues,
-      resetConversationVar,
-      invalidateConversationVarValues,
-    } = useInspectVarsCrud()
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud()
 
   const hooksStore = useMemo(() => {
     return {

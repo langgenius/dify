@@ -120,7 +120,7 @@ export const VersionHistoryPanel = ({
         })
         break
       case VersionHistoryContextMenuOptions.exportDSL:
-        handleExportDSL(false, item.id)
+        handleExportDSL?.(false, item.id)
         break
     }
   }, [t, handleExportDSL])
