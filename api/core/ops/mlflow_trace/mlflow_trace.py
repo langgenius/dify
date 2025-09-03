@@ -2,11 +2,13 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
+from typing import cast
 
 import mlflow
-from mlflow.entities import SpanEvent, SpanStatus, SpanStatusCode, SpanType
-from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey
-from mlflow.tracing.fluent import start_span_no_context
+from mlflow.entities import Span, SpanEvent, SpanStatus, SpanStatusCode, SpanType
+from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
+from mlflow.tracing.fluent import start_span_no_context, update_current_trace
+from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import MLflowConfig
@@ -21,7 +23,9 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
+from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel
 
 logger = logging.getLogger(__name__)
@@ -51,6 +55,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def trace(self, trace_info: BaseTraceInfo):
         """Simple dispatch to trace methods"""
+        logger.info("[MLflow] Trace info: %s", trace_info.__class__.__name__)
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
@@ -72,40 +77,52 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         """Create workflow span as root, with node spans as children"""
+        # fields with sys.xyz is added by Dify, they are duplicate to trace_info.metadata
+        raw_inputs = trace_info.workflow_run_inputs or {}
+        workflow_inputs = {k: v for k, v in raw_inputs.items() if not k.startswith("sys.")}
+
         workflow_span = start_span_no_context(
             name=TraceTaskName.WORKFLOW_TRACE.value,
             span_type=SpanType.CHAIN,
-            inputs=trace_info.workflow_run_inputs,
-            attributes={
-                # TODO: Replace this with reserved attribute
-                "conversation_id": trace_info.conversation_id,
-                "workflow_run_id": trace_info.workflow_run_id or "",
-                "message_id": trace_info.message_id or "",
-                "workflow_app_log_id": trace_info.workflow_app_log_id or "",
-                "total_tokens": trace_info.total_tokens or 0,
-            },
+            inputs=workflow_inputs,
+            attributes=trace_info.metadata,
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
 
-        # TODO: set session ID and user ID to trace metadata
+        # Set reserved fields in trace-level metadata
+        trace_metadata = {}
+        if user_id := trace_info.metadata.get("user_id"):
+            trace_metadata[TraceMetadataKey.TRACE_USER] = user_id
+        if session_id := trace_info.conversation_id:
+            trace_metadata[TraceMetadataKey.TRACE_SESSION] = session_id
+        self._set_trace_metadata(workflow_span, trace_metadata)
 
         try:
             # Create child spans for workflow nodes
             for node in self._get_workflow_nodes(trace_info.workflow_run_id):
+                inputs = {}
+                attributes = {
+                    "node_id": node.id,
+                    "node_type": node.node_type,
+                    "status": node.status,
+                    "tenant_id": node.tenant_id,
+                    "app_id": node.app_id,
+                    "app_name": node.title,
+                }
+
+                if node.node_type == NodeType.LLM:
+                    inputs, llm_attributes = self._parse_llm_inputs_and_attributes_from_node(node)
+                    attributes.update(llm_attributes)
+
+                if not inputs:
+                    inputs = json.loads(node.inputs) if node.inputs else {}
+
                 node_span = start_span_no_context(
-                    name=node.node_type,
+                    name=node.title,
                     span_type=self._get_node_span_type(node.node_type),
-                    parent_span=workflow_span,  # Use stored workflow span as parent
-                    inputs=node.inputs,
-                    attributes={
-                        "node_id": node.id,
-                        "node_type": node.node_type,
-                        "node_status": node.status,
-                        "tenant_id": node.tenant_id,
-                        "app_id": node.app_id,
-                        "app_name": node.title,
-                        "status": node.status,
-                    },
+                    parent_span=workflow_span,
+                    inputs=inputs,
+                    attributes=attributes,
                     start_time_ns=datetime_to_nanoseconds(node.created_at),
                 )
 
@@ -146,23 +163,65 @@ class MLflowDataTrace(BaseTraceInstance):
                 end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
             )
 
+    def _parse_llm_inputs_and_attributes_from_node(self, node: WorkflowNodeExecutionModel) -> tuple[dict, dict]:
+        """Parse LLM inputs and attributes from LLM workflow node"""
+        try:
+            data = json.loads(node.process_data)
+        except Exception:
+            return {}, {}
+
+        inputs = data.get("prompts")
+        attributes = {
+            "model_name": data.get("model_name"),
+            "model_provider": data.get("model_provider"),
+            "finish_reason": data.get("finish_reason")
+        }
+
+        if hasattr(SpanAttributeKey, "MESSAGE_FORMAT"):
+            attributes[SpanAttributeKey.MESSAGE_FORMAT] = "dify"
+
+        if usage := data.get("usage"):
+            # Set reserved token usage attributes
+            attributes[SpanAttributeKey.CHAT_USAGE] = {
+                TokenUsageKey.INPUT_TOKENS: usage.get("prompt_tokens", 0),
+                TokenUsageKey.OUTPUT_TOKENS: usage.get("completion_tokens", 0),
+                TokenUsageKey.TOTAL_TOKENS: usage.get("total_tokens", 0),
+            }
+            # Store raw usage data as well as it includes more data like price
+            attributes["usage"] = usage
+
+        return inputs, attributes
+
+
     def message_trace(self, trace_info: MessageTraceInfo):
-        """Create message span with parent lookup"""
+        """Create span for CHATBOT message processing"""
         if not trace_info.message_data:
             return
+
+        file_list = cast(list[str], trace_info.file_list) or []
+        if message_file_data := trace_info.message_file_data:
+            base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
+            file_list.append(f"{base_url}/{message_file_data.url}")
 
         span = start_span_no_context(
             name=TraceTaskName.MESSAGE_TRACE.value,
             span_type=SpanType.LLM,
-            parent_span=parent_span,  # Use found parent or None
             inputs=trace_info.inputs,
             attributes={
                 "message_id": trace_info.message_id,
                 "model_provider": trace_info.message_data.model_provider,
                 "model_id": trace_info.message_data.model_id,
+                "conversation_mode": trace_info.conversation_mode,
+                "file_list": file_list,
+                "total_price": trace_info.message_data.total_price,
+                **trace_info.metadata,
             },
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
+
+        if hasattr(SpanAttributeKey, "MESSAGE_FORMAT"):
+            span.set_attribute(SpanAttributeKey.MESSAGE_FORMAT, "dify")
+
         # Set token usage
         span.set_attribute(
             SpanAttributeKey.CHAT_USAGE, {
@@ -171,6 +230,14 @@ class MLflowDataTrace(BaseTraceInstance):
                 TokenUsageKey.TOTAL_TOKENS: trace_info.total_tokens or 0,
             }
         )
+
+        # Set reserved fields in trace-level metadata
+        trace_metadata = {}
+        if user_id := self._get_message_user_id(trace_info.metadata):
+            trace_metadata[TraceMetadataKey.TRACE_USER] = user_id
+        if session_id := trace_info.metadata.get("conversation_id"):
+            trace_metadata[TraceMetadataKey.TRACE_SESSION] = session_id
+        self._set_trace_metadata(span, trace_metadata)
 
         if trace_info.error:
             span.set_status(SpanStatus(SpanStatusCode.ERROR))
@@ -187,6 +254,15 @@ class MLflowDataTrace(BaseTraceInstance):
             outputs=trace_info.message_data.answer,
             end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
         )
+
+    def _get_message_user_id(self, metadata: dict) -> str:
+        if (
+            (end_user_id := metadata.get("from_end_user_id")) and
+            (end_user_data := db.session.query(EndUser).where(EndUser.id == end_user_id).first())
+        ):
+            return end_user_data.session_id
+
+        return metadata.get("from_account_id")
 
     def tool_trace(self, trace_info: ToolTraceInfo):
         span = start_span_no_context(
@@ -333,6 +409,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 WorkflowNodeExecutionModel.execution_metadata,
             )
             .filter(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+            .order_by(WorkflowNodeExecutionModel.created_at)
             .all()
         )
         return workflow_nodes
@@ -340,16 +417,22 @@ class MLflowDataTrace(BaseTraceInstance):
     def _get_node_span_type(self, node_type: str) -> str:
         """Map Dify node types to MLflow span types"""
         node_type_mapping = {
-            "llm": "LLM",
-            "dataset_retrieval": "RETRIEVER",
-            "tool": "TOOL",
-            "code": "CHAIN",
-            "if_else": "CHAIN",
-            "variable_assigner": "CHAIN",
-            "start": "CHAIN",
-            "end": "CHAIN",
+            NodeType.LLM: SpanType.LLM,
+            NodeType.KNOWLEDGE_RETRIEVAL: SpanType.RETRIEVER,
+            NodeType.TOOL: SpanType.TOOL,
+            NodeType.CODE: SpanType.TOOL,
+            NodeType.HTTP_REQUEST: SpanType.TOOL,
+            NodeType.AGENT: SpanType.AGENT,
         }
-        return node_type_mapping.get(node_type, "CHAIN")
+        return node_type_mapping.get(node_type, "CHAIN") # anything else is a chain
+
+    def _set_trace_metadata(self, span: Span, metadata: dict):
+        try:
+            # NB: Set span in context such that we can use update_current_trace() API
+            token = set_span_in_context(span)
+            update_current_trace(metadata=metadata)
+        finally:
+            detach_span_from_context(token)
 
     def api_check(self):
         """Simple connection test"""
