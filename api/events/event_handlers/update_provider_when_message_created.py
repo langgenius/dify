@@ -204,7 +204,7 @@ def _calculate_quota_usage(
         elif quota_unit == QuotaUnit.TIMES:
             return 1
         return None
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to calculate quota usage")
         return None
 

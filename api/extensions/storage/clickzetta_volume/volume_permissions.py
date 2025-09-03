@@ -84,7 +84,7 @@ class VolumePermissionManager:
                 logger.warning("Unknown volume type: %s", self._volume_type)
                 return False
 
-        except Exception as e:
+        except Exception:
             logger.exception("Permission check failed")
             return False
 
@@ -119,7 +119,7 @@ class VolumePermissionManager:
                     )
                     return False
 
-        except Exception as e:
+        except Exception:
             logger.exception("User Volume permission check failed")
             # For User Volume, if permission check fails, it might be a configuration issue,
             # provide friendlier error message
@@ -159,7 +159,7 @@ class VolumePermissionManager:
 
             return has_permission
 
-        except Exception as e:
+        except Exception:
             logger.exception("Table volume permission check failed for %s", table_name)
             return False
 
@@ -217,7 +217,7 @@ class VolumePermissionManager:
 
             return has_permission
 
-        except Exception as e:
+        except Exception:
             logger.exception("External volume permission check failed for %s", self._volume_name)
             logger.info("External Volume permission check failed, but permission checking is disabled in this version")
             return False
@@ -293,7 +293,7 @@ class VolumePermissionManager:
                 if result:
                     self._current_username = result[0]
                     return str(self._current_username)
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to get current username")
 
         return "unknown"
@@ -317,7 +317,7 @@ class VolumePermissionManager:
                 for grant in grants:
                     if len(grant) >= 3:  # Typical format: (privilege, object_type, object_name, ...)
                         privilege = grant[0].upper()
-                        object_type = grant[1].upper() if len(grant) > 1 else ""
+                        _ = grant[1].upper() if len(grant) > 1 else ""
 
                         # Collect all relevant permissions
                         if privilege in ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]:
@@ -522,7 +522,7 @@ class VolumePermissionManager:
                 logger.warning("Unknown volume type for permission inheritance: %s", self._volume_type)
                 return False
 
-        except Exception as e:
+        except Exception:
             logger.exception("Permission inheritance check failed")
             return False
 

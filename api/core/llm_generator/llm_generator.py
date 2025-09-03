@@ -67,7 +67,7 @@ class LLMGenerator:
         try:
             result_dict = json.loads(cleaned_answer)
             answer = result_dict["Your Output"]
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             logger.exception("Failed to generate name after answer, use query instead")
             answer = query
         name = answer.strip()

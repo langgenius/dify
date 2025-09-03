@@ -245,7 +245,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             if db_model.node_execution_id:
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to save workflow node execution after all retries")
             raise
 
