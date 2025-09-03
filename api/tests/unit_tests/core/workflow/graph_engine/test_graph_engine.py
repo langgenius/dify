@@ -498,10 +498,10 @@ def test_layer_system_basic():
 
 def test_layer_chaining():
     """Test chaining multiple layers."""
-    from core.workflow.graph_engine.layers import DebugLoggingLayer, Layer
+    from core.workflow.graph_engine.layers import DebugLoggingLayer, GraphEngineLayer
 
     # Create a custom test layer
-    class TestLayer(Layer):
+    class TestLayer(GraphEngineLayer):
         def __init__(self):
             super().__init__()
             self.events_received = []
@@ -560,10 +560,10 @@ def test_layer_chaining():
 
 def test_layer_error_handling():
     """Test that layer errors don't crash the engine."""
-    from core.workflow.graph_engine.layers import Layer
+    from core.workflow.graph_engine.layers import GraphEngineLayer
 
     # Create a layer that throws errors
-    class FaultyLayer(Layer):
+    class FaultyLayer(GraphEngineLayer):
         def on_graph_start(self):
             raise RuntimeError("Intentional error in on_graph_start")
 
