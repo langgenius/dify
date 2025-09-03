@@ -848,7 +848,7 @@ class DatasourceProviderService:
                         else None,
                     }
                 )
-            return datasource_credentials
+        return datasource_credentials
 
     def get_real_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> list[dict]:
         """

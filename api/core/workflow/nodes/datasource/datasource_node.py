@@ -73,7 +73,7 @@ class DatasourceNode(Node):
         Run the datasource node
         """
 
-        node_data = cast(DatasourceNodeData, self._node_data)
+        node_data = self._node_data
         variable_pool = self.graph_runtime_state.variable_pool
         datasource_type = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
         if not datasource_type:
@@ -109,11 +109,7 @@ class DatasourceNode(Node):
 
         # get parameters
         datasource_parameters = datasource_runtime.entity.parameters
-        parameters = self._generate_parameters(
-            datasource_parameters=datasource_parameters,
-            variable_pool=variable_pool,
-            node_data=self._node_data,
-        )
+
         parameters_for_log = self._generate_parameters(
             datasource_parameters=datasource_parameters,
             variable_pool=variable_pool,
