@@ -52,6 +52,7 @@ import {
 import { useInvalidLastRun } from '@/service/use-workflow'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import type { FlowType } from '@/types/common'
+import useMatchSchemaType from '../components/variable/use-match-schema-type'
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -130,21 +131,26 @@ const useOneStepRun = <T>({
 
   const availableNodes = getBeforeNodesInSameBranch(id)
   const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
-  const dataSourceList = useStore(s => s.dataSourceList)
-  const allPluginInfoList = {
-    buildInTools,
-    customTools,
-    workflowTools,
-    mcpTools,
-    dataSourceList: dataSourceList ?? [],
-  }
-  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, [], allPluginInfoList)
+  const workflowStore = useWorkflowStore()
+  const { schemaTypeDefinitions } = useMatchSchemaType()
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
     const isSystem = valueSelector[0] === 'sys'
+    const {
+      buildInTools,
+      customTools,
+      workflowTools,
+      mcpTools,
+      dataSourceList,
+    } = workflowStore.getState()
+    const allPluginInfoList = {
+      buildInTools,
+      customTools,
+      workflowTools,
+      mcpTools,
+      dataSourceList: dataSourceList ?? [],
+    }
+
+    const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, [], allPluginInfoList, schemaTypeDefinitions)
     const targetVar = allOutputVars.find(item => isSystem ? !!item.isStartNode : item.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined
@@ -181,7 +187,6 @@ const useOneStepRun = <T>({
   const loopTimes = loopInputKey ? runInputData[loopInputKey]?.length : 0
 
   const store = useStoreApi()
-  const workflowStore = useWorkflowStore()
   const {
     setShowSingleRunPanel,
   } = workflowStore.getState()
