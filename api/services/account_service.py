@@ -1127,7 +1127,7 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def get_custom_config(tenant_id: str) -> dict:
+    def get_custom_config(tenant_id: str):
         tenant = db.get_or_404(Tenant, tenant_id)
 
         return tenant.custom_config_dict

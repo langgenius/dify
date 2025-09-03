@@ -49,7 +49,7 @@ class ClickzettaConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         """
@@ -342,7 +342,7 @@ class ClickzettaVector(BaseVector):
         """Get a connection context manager."""
         return self.ConnectionContext(self)
 
-    def _parse_metadata(self, raw_metadata: str, row_id: str) -> dict:
+    def _parse_metadata(self, raw_metadata: str, row_id: str):
         """
         Parse metadata from JSON string with proper error handling and fallback.
 

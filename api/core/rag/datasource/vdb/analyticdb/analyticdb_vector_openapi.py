@@ -26,7 +26,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["access_key_id"]:
             raise ValueError("config ANALYTICDB_KEY_ID is required")
         if not values["access_key_secret"]:

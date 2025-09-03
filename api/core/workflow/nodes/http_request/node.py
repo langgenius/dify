@@ -60,7 +60,7 @@ class HttpRequestNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict[str, Any]] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict[str, Any]] = None):
         return {
             "type": "http-request",
             "config": {

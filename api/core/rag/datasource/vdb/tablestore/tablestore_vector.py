@@ -29,7 +29,7 @@ class TableStoreConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["access_key_id"]:
             raise ValueError("config ACCESS_KEY_ID is required")
         if not values["access_key_secret"]:

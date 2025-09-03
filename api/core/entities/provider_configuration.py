@@ -281,7 +281,7 @@ class ProviderConfiguration(BaseModel):
 
     def validate_provider_credentials(
         self, credentials: dict, credential_id: str = "", session: Session | None = None
-    ) -> dict:
+    ):
         """
         Validate custom credentials.
         :param credentials: provider credentials
@@ -290,7 +290,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.provider_credential_schema.credential_form_schemas
@@ -758,7 +758,7 @@ class ProviderConfiguration(BaseModel):
         credentials: dict,
         credential_id: str = "",
         session: Session | None = None,
-    ) -> dict:
+    ):
         """
         Validate custom model credentials.
 
@@ -769,7 +769,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.model_credential_schema.credential_form_schemas
@@ -1345,7 +1345,7 @@ class ProviderConfiguration(BaseModel):
 
         return secret_input_form_variables
 
-    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]) -> dict:
+    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]):
         """
         Obfuscated credentials.
 

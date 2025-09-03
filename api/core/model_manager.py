@@ -46,7 +46,7 @@ class ModelInstance:
         )
 
     @staticmethod
-    def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str) -> dict:
+    def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str):
         """
         Fetch credentials from provider model bundle
         :param provider_model_bundle: provider model bundle
@@ -379,7 +379,7 @@ class ModelInstance:
             except Exception as e:
                 raise e
 
-    def get_tts_voices(self, language: Optional[str] = None) -> list:
+    def get_tts_voices(self, language: Optional[str] = None):
         """
         Invoke large language tts model voices
 

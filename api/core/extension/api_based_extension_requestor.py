@@ -14,7 +14,7 @@ class APIBasedExtensionRequestor:
         self.api_endpoint = api_endpoint
         self.api_key = api_key
 
-    def request(self, point: APIBasedExtensionPoint, params: dict) -> dict:
+    def request(self, point: APIBasedExtensionPoint, params: dict):
         """
         Request the api.
 

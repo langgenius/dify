@@ -331,7 +331,7 @@ class AppService:
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
-    def get_app_meta(self, app_model: App) -> dict:
+    def get_app_meta(self, app_model: App):
         """
         Get app meta info
         :param app_model: app model

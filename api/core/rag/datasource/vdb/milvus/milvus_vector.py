@@ -36,7 +36,7 @@ class MilvusConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         Raises ValueError if required fields are missing.

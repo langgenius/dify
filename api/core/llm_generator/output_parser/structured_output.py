@@ -210,7 +210,7 @@ def _handle_native_json_schema(
     structured_output_schema: Mapping,
     model_parameters: dict,
     rules: list[ParameterRule],
-) -> dict:
+):
     """
     Handle structured output for models with native JSON schema support.
 
@@ -306,7 +306,7 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
     return structured_output
 
 
-def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema: Mapping) -> dict:
+def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema: Mapping):
     """
     Prepare JSON schema based on model requirements.
 

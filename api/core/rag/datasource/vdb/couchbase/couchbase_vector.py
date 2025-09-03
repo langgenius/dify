@@ -36,7 +36,7 @@ class CouchbaseConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values.get("connection_string"):
             raise ValueError("config COUCHBASE_CONNECTION_STRING is required")
         if not values.get("user"):

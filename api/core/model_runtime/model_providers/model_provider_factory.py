@@ -132,7 +132,7 @@ class ModelProviderFactory:
 
         return plugin_model_provider_entity
 
-    def provider_credentials_validate(self, *, provider: str, credentials: dict) -> dict:
+    def provider_credentials_validate(self, *, provider: str, credentials: dict):
         """
         Validate provider credentials
 
@@ -165,7 +165,7 @@ class ModelProviderFactory:
 
     def model_credentials_validate(
         self, *, provider: str, model_type: ModelType, model: str, credentials: dict
-    ) -> dict:
+    ):
         """
         Validate model credentials
 

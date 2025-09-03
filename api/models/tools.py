@@ -54,7 +54,7 @@ class ToolOAuthTenantClient(Base):
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     @property
-    def oauth_params(self) -> dict:
+    def oauth_params(self):
         return cast(dict, json.loads(self.encrypted_oauth_params or "{}"))
 
 
@@ -96,7 +96,7 @@ class BuiltinToolProvider(Base):
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"))
 
     @property
-    def credentials(self) -> dict:
+    def credentials(self):
         return cast(dict, json.loads(self.encrypted_credentials))
 
 
@@ -146,7 +146,7 @@ class ApiToolProvider(Base):
         return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
 
     @property
-    def credentials(self) -> dict:
+    def credentials(self):
         return dict(json.loads(self.credentials_str))
 
     @property
@@ -289,7 +289,7 @@ class MCPToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def credentials(self) -> dict:
+    def credentials(self):
         try:
             return cast(dict, json.loads(self.encrypted_credentials)) or {}
         except Exception:
@@ -327,7 +327,7 @@ class MCPToolProvider(Base):
         return mask_url(self.decrypted_server_url)
 
     @property
-    def decrypted_credentials(self) -> dict:
+    def decrypted_credentials(self):
         from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
         from core.tools.utils.encryption import create_provider_encrypter

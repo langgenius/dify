@@ -163,7 +163,7 @@ class MockTcvectordbClass:
     ):
         return {"code": 0, "msg": "operation success"}
 
-    def drop_collection(self, database_name: str, collection_name: str, timeout: Optional[float] = None) -> dict:
+    def drop_collection(self, database_name: str, collection_name: str, timeout: Optional[float] = None):
         return {"code": 0, "msg": "operation success"}
 
 

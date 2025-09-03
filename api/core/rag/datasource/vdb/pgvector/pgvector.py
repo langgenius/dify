@@ -34,7 +34,7 @@ class PGVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config PGVECTOR_HOST is required")
         if not values["port"]:

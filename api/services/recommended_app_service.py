@@ -6,7 +6,7 @@ from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFa
 
 class RecommendedAppService:
     @classmethod
-    def get_recommended_apps_and_categories(cls, language: str) -> dict:
+    def get_recommended_apps_and_categories(cls, language: str):
         """
         Get recommended apps and categories.
         :param language: language

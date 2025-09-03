@@ -33,7 +33,7 @@ class NacosSettingsSource(RemoteSettingsSource):
             logger.exception("[get-access-token] exception occurred")
             raise
 
-    def _parse_config(self, content: str) -> dict:
+    def _parse_config(self, content: str):
         if not content:
             return {}
         try:

@@ -82,7 +82,7 @@ class TencentVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.TENCENT
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def _has_collection(self) -> bool:

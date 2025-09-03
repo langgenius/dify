@@ -275,7 +275,7 @@ class QuestionClassifierNode(BaseNode):
         return variable_mapping
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         """
         Get default config of node.
         :param filters: filter by node config parameters.

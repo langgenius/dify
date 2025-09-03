@@ -36,7 +36,7 @@ class LindormVectorStoreConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["hosts"]:
             raise ValueError("config URL is required")
         if not values["username"]:
@@ -372,7 +372,7 @@ class LindormVectorStore(BaseVector):
             # logger.info(f"create index success: {self._collection_name}")
 
 
-def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dict:
+def default_text_mapping(dimension: int, method_name: str, **kwargs: Any):
     excludes_from_source = kwargs.get("excludes_from_source", False)
     analyzer = kwargs.get("analyzer", "ik_max_word")
     text_field = kwargs.get("text_field", Field.CONTENT_KEY.value)
@@ -456,7 +456,7 @@ def default_text_search_query(
     routing: Optional[str] = None,
     routing_field: Optional[str] = None,
     **kwargs,
-) -> dict:
+):
     query_clause: dict[str, Any] = {}
     if routing is not None:
         query_clause = {
@@ -513,7 +513,7 @@ def default_vector_search_query(
     filters: Optional[list[dict]] = None,
     filter_type: Optional[str] = None,
     **kwargs,
-) -> dict:
+):
     if filters is not None:
         filter_type = "pre_filter" if filter_type is None else filter_type
         if not isinstance(filters, list):

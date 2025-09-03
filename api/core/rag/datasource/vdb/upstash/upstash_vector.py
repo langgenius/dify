@@ -20,7 +20,7 @@ class UpstashVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["url"]:
             raise ValueError("Upstash URL is required")
         if not values["token"]:

@@ -43,7 +43,7 @@ class ElasticSearchConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         use_cloud = values.get("use_cloud", False)
         cloud_url = values.get("cloud_url")
 

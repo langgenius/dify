@@ -23,7 +23,7 @@ class AnalyticdbVectorBySqlConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config ANALYTICDB_HOST is required")
         if not values["port"]:

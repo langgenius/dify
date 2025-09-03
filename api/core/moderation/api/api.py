@@ -75,7 +75,7 @@ class ApiModeration(Moderation):
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
 
-    def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict) -> dict:
+    def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict):
         if self.config is None:
             raise ValueError("The config is not set.")
         extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id", ""))

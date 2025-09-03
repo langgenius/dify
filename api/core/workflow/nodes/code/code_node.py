@@ -50,7 +50,7 @@ class CodeNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         """
         Get default config of node.
         :param filters: filter by node config parameters.

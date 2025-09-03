@@ -168,14 +168,14 @@ class Jieba(BaseKeyword):
 
         return {}
 
-    def _add_text_to_keyword_table(self, keyword_table: dict, id: str, keywords: list[str]) -> dict:
+    def _add_text_to_keyword_table(self, keyword_table: dict, id: str, keywords: list[str]):
         for keyword in keywords:
             if keyword not in keyword_table:
                 keyword_table[keyword] = set()
             keyword_table[keyword].add(id)
         return keyword_table
 
-    def _delete_ids_from_keyword_table(self, keyword_table: dict, ids: list[str]) -> dict:
+    def _delete_ids_from_keyword_table(self, keyword_table: dict, ids: list[str]):
         # get set of ids that correspond to node
         node_idxs_to_delete = set(ids)
 

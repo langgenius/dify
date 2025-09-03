@@ -90,7 +90,7 @@ class TidbOnQdrantVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.TIDB_ON_QDRANT
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):

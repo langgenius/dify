@@ -89,7 +89,7 @@ class IterationNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         return {
             "type": "iteration",
             "config": {

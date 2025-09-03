@@ -36,7 +36,7 @@ class BaiduConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["endpoint"]:
             raise ValueError("config BAIDU_VECTOR_DB_ENDPOINT is required")
         if not values["account"]:
@@ -66,7 +66,7 @@ class BaiduVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.BAIDU
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):

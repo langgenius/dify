@@ -526,7 +526,7 @@ class ModelLoadBalancingService:
         credentials: dict,
         load_balancing_model_config: Optional[LoadBalancingModelConfig] = None,
         validate: bool = True,
-    ) -> dict:
+    ):
         """
         Validate custom credentials.
         :param tenant_id: workspace id

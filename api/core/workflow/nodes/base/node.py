@@ -141,7 +141,7 @@ class BaseNode:
         return {}
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         return {}
 
     @property
