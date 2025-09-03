@@ -13,6 +13,7 @@ from core.entities.provider_entities import (
     CustomModelConfiguration,
     ProviderQuotaType,
     QuotaConfiguration,
+    UnaddedModelConfiguration,
 )
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
@@ -45,6 +46,7 @@ class CustomConfigurationResponse(BaseModel):
     current_credential_name: Optional[str] = None
     available_credentials: Optional[list[CredentialConfiguration]] = None
     custom_models: Optional[list[CustomModelConfiguration]] = None
+    can_added_models: Optional[list[UnaddedModelConfiguration]] = None
 
 
 class SystemConfigurationResponse(BaseModel):
