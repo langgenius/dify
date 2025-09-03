@@ -165,6 +165,9 @@ const BaseField = ({
               placeholder={memorizedPlaceholder}
               options={memorizedOptions}
               triggerPopupSameWidth
+              popupProps={{
+                className: 'max-h-[320px] overflow-y-auto',
+              }}
             />
           )
         }
