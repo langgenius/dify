@@ -18,6 +18,209 @@ from models.workflow import AppTrigger, AppTriggerStatus, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
 
+from models.workflow import WorkflowPluginTrigger
+
+
+class PluginTriggerApi(Resource):
+    """Workflow Plugin Trigger API"""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def post(self, app_model):
+        """Create plugin trigger"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
+        parser.add_argument("provider_id", type=str, required=True, help="Provider ID is required")
+        parser.add_argument("trigger_name", type=str, required=True, help="Trigger name is required")
+        parser.add_argument(
+            "triggered_by",
+            type=str,
+            required=False,
+            default="production",
+            choices=["debugger", "production"],
+            help="triggered_by must be debugger or production",
+        )
+        args = parser.parse_args()
+
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        node_id = args["node_id"]
+        provider_id = args["provider_id"]
+        trigger_name = args["trigger_name"]
+        triggered_by = args["triggered_by"]
+
+        # Create trigger_id from provider_id and trigger_name
+        trigger_id = f"{provider_id}:{trigger_name}"
+
+        with Session(db.engine) as session:
+            # Check if plugin trigger already exists for this app, node, and environment
+            existing_trigger = session.scalar(
+                select(WorkflowPluginTrigger).where(
+                    WorkflowPluginTrigger.app_id == app_model.id,
+                    WorkflowPluginTrigger.node_id == node_id,
+                    WorkflowPluginTrigger.triggered_by == triggered_by,
+                )
+            )
+
+            if existing_trigger:
+                raise BadRequest("Plugin trigger already exists for this node and environment")
+
+            # Create new plugin trigger
+            plugin_trigger = WorkflowPluginTrigger(
+                app_id=app_model.id,
+                node_id=node_id,
+                tenant_id=current_user.current_tenant_id,
+                provider_id=provider_id,
+                trigger_id=trigger_id,
+                triggered_by=triggered_by,
+            )
+
+            session.add(plugin_trigger)
+            session.commit()
+            session.refresh(plugin_trigger)
+
+        return plugin_trigger
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def get(self, app_model):
+        """Get plugin trigger"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
+        parser.add_argument(
+            "triggered_by",
+            type=str,
+            required=False,
+            default="production",
+            choices=["debugger", "production"],
+            help="triggered_by must be debugger or production",
+        )
+        args = parser.parse_args()
+
+        node_id = args["node_id"]
+        triggered_by = args["triggered_by"]
+
+        with Session(db.engine) as session:
+            # Find plugin trigger
+            plugin_trigger = session.scalar(
+                select(WorkflowPluginTrigger).where(
+                    WorkflowPluginTrigger.app_id == app_model.id,
+                    WorkflowPluginTrigger.node_id == node_id,
+                    WorkflowPluginTrigger.triggered_by == triggered_by,
+                    WorkflowPluginTrigger.tenant_id == current_user.current_tenant_id,
+                )
+            )
+
+            if not plugin_trigger:
+                raise NotFound("Plugin trigger not found")
+            return plugin_trigger
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def put(self, app_model):
+        """Update plugin trigger"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
+        parser.add_argument("provider_id", type=str, required=False, help="Provider ID")
+        parser.add_argument("trigger_name", type=str, required=False, help="Trigger name")
+        parser.add_argument(
+            "triggered_by",
+            type=str,
+            required=False,
+            default="production",
+            choices=["debugger", "production"],
+            help="triggered_by must be debugger or production",
+        )
+        args = parser.parse_args()
+
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        node_id = args["node_id"]
+        triggered_by = args["triggered_by"]
+
+        with Session(db.engine) as session:
+            # Find plugin trigger
+            plugin_trigger = session.scalar(
+                select(WorkflowPluginTrigger).where(
+                    WorkflowPluginTrigger.app_id == app_model.id,
+                    WorkflowPluginTrigger.node_id == node_id,
+                    WorkflowPluginTrigger.triggered_by == triggered_by,
+                    WorkflowPluginTrigger.tenant_id == current_user.current_tenant_id,
+                )
+            )
+
+            if not plugin_trigger:
+                raise NotFound("Plugin trigger not found")
+
+            # Update fields if provided
+            if args.get("provider_id"):
+                plugin_trigger.provider_id = args["provider_id"]
+
+            if args.get("trigger_name"):
+                # Update trigger_id if provider_id or trigger_name changed
+                provider_id = args.get("provider_id") or plugin_trigger.provider_id
+                trigger_name = args["trigger_name"]
+                plugin_trigger.trigger_id = f"{provider_id}:{trigger_name}"
+
+            session.commit()
+            session.refresh(plugin_trigger)
+
+            return plugin_trigger
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def delete(self, app_model):
+        """Delete plugin trigger"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
+        parser.add_argument(
+            "triggered_by",
+            type=str,
+            required=False,
+            default="production",
+            choices=["debugger", "production"],
+            help="triggered_by must be debugger or production",
+        )
+        args = parser.parse_args()
+
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        node_id = args["node_id"]
+        triggered_by = args["triggered_by"]
+
+        with Session(db.engine) as session:
+            # Find plugin trigger
+            plugin_trigger = session.scalar(
+                select(WorkflowPluginTrigger).where(
+                    WorkflowPluginTrigger.app_id == app_model.id,
+                    WorkflowPluginTrigger.node_id == node_id,
+                    WorkflowPluginTrigger.triggered_by == triggered_by,
+                    WorkflowPluginTrigger.tenant_id == current_user.current_tenant_id,
+                )
+            )
+
+            if not plugin_trigger:
+                raise NotFound("Plugin trigger not found")
+
+            session.delete(plugin_trigger)
+            session.commit()
+
+        return {"result": "success"}, 204
+
 
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
@@ -232,5 +435,6 @@ class AppTriggerEnableApi(Resource):
 
 
 api.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
+api.add_resource(PluginTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/plugin")
 api.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
 api.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")

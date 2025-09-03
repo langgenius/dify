@@ -253,7 +253,7 @@ const translation = {
     'start': '始める',
   },
   blocks: {
-    'start': '開始',
+    'start': 'ユーザー入力',
     'originalStartNode': '元の開始ノード',
     'end': '終了',
     'answer': '回答',
@@ -280,6 +280,7 @@ const translation = {
     'trigger-webhook': 'Webhook トリガー',
     'trigger-schedule': 'スケジュールトリガー',
   },
+  customWebhook: 'カスタムWebhook',
   blocksAbout: {
     'start': 'ワークフロー開始時の初期パラメータを定義します。',
     'end': 'ワークフローの終了条件と結果のタイプを定義します。',
@@ -1028,6 +1029,10 @@ const translation = {
       responseBody: 'レスポンスボディ',
       responseBodyPlaceholder: 'ここにレスポンスボディを入力してください',
       headers: 'ヘッダー',
+      validation: {
+        webhookUrlRequired: 'Webhook URLが必要です',
+        invalidParameterType: 'パラメータ"{{name}}"の無効なパラメータタイプ"{{type}}"です',
+      },
     },
   },
   tracing: {

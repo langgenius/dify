@@ -280,6 +280,7 @@ const translation = {
     'trigger-webhook': 'Webhook Trigger',
     'trigger-plugin': 'Plugin Trigger',
   },
+  customWebhook: 'Custom Webhook',
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
     'end': 'Define the end and result type of a workflow',
@@ -1028,6 +1029,10 @@ const translation = {
       responseBody: 'Response Body',
       responseBodyPlaceholder: 'Write your response body here',
       headers: 'Headers',
+      validation: {
+        webhookUrlRequired: 'Webhook URL is required',
+        invalidParameterType: 'Invalid parameter type "{{type}}" for parameter "{{name}}"',
+      },
     },
   },
   triggerStatus: {

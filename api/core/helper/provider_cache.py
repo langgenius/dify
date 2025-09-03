@@ -68,6 +68,31 @@ class ToolProviderCredentialsCache(ProviderCredentialsCache):
         return f"tool_credentials:tenant_id:{tenant_id}:provider:{provider}:credential_id:{credential_id}"
 
 
+class TriggerProviderCredentialsCache(ProviderCredentialsCache):
+    """Cache for trigger provider credentials"""
+
+    def __init__(self, tenant_id: str, provider_id: str, credential_id: str):
+        super().__init__(tenant_id=tenant_id, provider_id=provider_id, credential_id=credential_id)
+
+    def _generate_cache_key(self, **kwargs) -> str:
+        tenant_id = kwargs["tenant_id"]
+        provider_id = kwargs["provider_id"]
+        credential_id = kwargs["credential_id"]
+        return f"trigger_credentials:tenant_id:{tenant_id}:provider_id:{provider_id}:credential_id:{credential_id}"
+
+
+class TriggerProviderOAuthClientParamsCache(ProviderCredentialsCache):
+    """Cache for trigger provider OAuth client"""
+
+    def __init__(self, tenant_id: str, provider_id: str):
+        super().__init__(tenant_id=tenant_id, provider_id=provider_id)
+
+    def _generate_cache_key(self, **kwargs) -> str:
+        tenant_id = kwargs["tenant_id"]
+        provider_id = kwargs["provider_id"]
+        return f"trigger_oauth_client:tenant_id:{tenant_id}:provider_id:{provider_id}"
+
+
 class NoOpProviderCredentialCache:
     """No-op provider credential cache"""
 

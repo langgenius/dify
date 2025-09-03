@@ -30,7 +30,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     if (!payload.webhook_url) {
       return {
         isValid: false,
-        errorMessage: t('workflow.nodes.webhook.validation.webhookUrlRequired'),
+        errorMessage: t('workflow.nodes.triggerWebhook.validation.webhookUrlRequired'),
       }
     }
 
@@ -45,7 +45,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
       if (!isValidParameterType(param.type)) {
         return {
           isValid: false,
-          errorMessage: t('workflow.nodes.webhook.validation.invalidParameterType', {
+          errorMessage: t('workflow.nodes.triggerWebhook.validation.invalidParameterType', {
             name: param.name,
             type: param.type,
           }),

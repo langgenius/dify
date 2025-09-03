@@ -79,6 +79,7 @@ from .tools import (
     ToolModelInvoke,
     WorkflowToolProvider,
 )
+from .trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient, TriggerSubscription
 from .web import PinnedConversation, SavedMessage
 from .workflow import (
     AppTrigger,
@@ -172,6 +173,9 @@ __all__ = [
     "ToolLabelBinding",
     "ToolModelInvoke",
     "TraceAppConfig",
+    "TriggerOAuthSystemClient",
+    "TriggerOAuthTenantClient",
+    "TriggerSubscription",
     "UploadFile",
     "UserFrom",
     "Whitelist",

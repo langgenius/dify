@@ -11,7 +11,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import InputWithCopy from '@/app/components/base/input-with-copy'
-import Input from '@/app/components/base/input'
+import { InputNumber } from '@/app/components/base/input-number'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
@@ -51,6 +51,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleParamsChange,
     handleBodyChange,
     handleStatusCodeChange,
+    handleStatusCodeBlur,
     handleResponseBodyChange,
     generateWebhookUrl,
   } = useConfig(id, data)
@@ -185,13 +186,18 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               <label className="system-sm-medium text-text-tertiary">
                 {t(`${i18nPrefix}.statusCode`)}
               </label>
-              <Input
-                type="number"
+              <InputNumber
                 value={inputs.status_code}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleStatusCodeChange(Number(e.target.value))}
+                onChange={(value) => {
+                  handleStatusCodeChange(value || 200)
+                }}
                 disabled={readOnly}
-                wrapperClassName="w-[120px]"
+                wrapClassName="w-[120px]"
                 className="h-8"
+                defaultValue={200}
+                onBlur={() => {
+                  handleStatusCodeBlur(inputs.status_code)
+                }}
               />
             </div>
             <div>

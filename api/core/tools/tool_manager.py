@@ -37,6 +37,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -47,7 +48,6 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    CredentialType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
