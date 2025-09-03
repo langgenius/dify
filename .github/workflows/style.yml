@@ -45,6 +45,7 @@ jobs:
         run: uv sync --project api --dev
 
       - name: Run ty check
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: dev/ty-check
 
       - name: Dotenv check
