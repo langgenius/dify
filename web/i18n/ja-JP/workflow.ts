@@ -280,6 +280,12 @@ const translation = {
     'trigger-webhook': 'Webhook トリガー',
     'trigger-schedule': 'スケジュールトリガー',
   },
+  blockSelector: {
+    'start': 'ユーザー入力',
+    'trigger-schedule': 'スケジュールトリガー',
+    'trigger-webhook': 'カスタムWebhook',
+    'trigger-plugin': 'プラグイントリガー',
+  },
   blocksAbout: {
     'start': 'ワークフロー開始時の初期パラメータを定義します。',
     'end': 'ワークフローの終了条件と結果のタイプを定義します。',

@@ -68,7 +68,7 @@ const StartBlocks = ({
             className='mb-2'
             type={block.type}
           />
-          <div className='system-md-medium mb-1 text-text-primary'>{block.title}</div>
+          <div className='system-md-medium mb-1 text-text-primary'>{t(`workflow.blockSelector.${block.type}`)}</div>
           <div className='system-xs-regular text-text-secondary'>{nodesExtraData[block.type].about}</div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>
@@ -87,7 +87,7 @@ const StartBlocks = ({
           type={block.type}
         />
         <div className='flex w-0 grow items-center justify-between text-sm text-text-secondary'>
-          <span className='truncate'>{block.title}</span>
+          <span className='truncate'>{t(`workflow.blockSelector.${block.type}`)}</span>
           {block.type === BlockEnumValues.Start && (
             <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{t('workflow.blocks.originalStartNode')}</span>
           )}
