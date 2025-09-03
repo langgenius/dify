@@ -68,7 +68,12 @@ const StartBlocks = ({
             className='mb-2'
             type={block.type}
           />
-          <div className='system-md-medium mb-1 text-text-primary'>{t(`workflow.blockSelector.${block.type}`)}</div>
+          <div className='system-md-medium mb-1 text-text-primary'>
+            {block.type === BlockEnumValues.TriggerWebhook
+              ? t('workflow.customWebhook')
+              : t(`workflow.blocks.${block.type}`)
+            }
+          </div>
           <div className='system-xs-regular text-text-secondary'>{nodesExtraData[block.type].about}</div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>

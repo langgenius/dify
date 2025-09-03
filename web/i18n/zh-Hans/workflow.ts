@@ -280,12 +280,7 @@ const translation = {
     'trigger-schedule': '定时触发器',
     'trigger-plugin': '插件触发器',
   },
-  blockSelector: {
-    'start': '用户输入',
-    'trigger-schedule': '定时触发器',
-    'trigger-webhook': '自定义 Webhook',
-    'trigger-plugin': '插件触发器',
-  },
+  customWebhook: '自定义 Webhook',
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
     'end': '定义一个 workflow 流程的结束和结果类型',
