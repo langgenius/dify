@@ -16,7 +16,7 @@ from typing import final
 from typing_extensions import override
 
 from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType
-from core.workflow.graph_engine.layers import Layer
+from core.workflow.graph_engine.layers import GraphEngineLayer
 from core.workflow.graph_events import (
     GraphEngineEvent,
     NodeRunStartedEvent,
@@ -32,7 +32,7 @@ class LimitType(Enum):
 
 
 @final
-class ExecutionLimitsLayer(Layer):
+class ExecutionLimitsLayer(GraphEngineLayer):
     """
     Layer that enforces execution limits for workflows.
 

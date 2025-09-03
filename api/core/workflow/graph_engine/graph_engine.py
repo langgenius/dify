@@ -33,7 +33,7 @@ from .entities.commands import AbortCommand
 from .error_handling import ErrorHandler
 from .event_management import EventHandler, EventManager
 from .graph_traversal import EdgeProcessor, SkipPropagator
-from .layers.base import Layer
+from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
@@ -221,7 +221,7 @@ class GraphEngine:
 
         # === Extensibility ===
         # Layers allow plugins to extend engine functionality
-        self._layers: list[Layer] = []
+        self._layers: list[GraphEngineLayer] = []
 
         # === Validation ===
         # Ensure all nodes share the same GraphRuntimeState instance
@@ -234,7 +234,7 @@ class GraphEngine:
             if id(node.graph_runtime_state) != expected_state_id:
                 raise ValueError(f"GraphRuntimeState consistency violation: Node '{node.id}' has a different instance")
 
-    def layer(self, layer: Layer) -> "GraphEngine":
+    def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
         """Add a layer for extending functionality."""
         self._layers.append(layer)
         return self

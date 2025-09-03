@@ -9,7 +9,7 @@ from typing import final
 
 from core.workflow.graph_events import GraphEngineEvent
 
-from ..layers.base import Layer
+from ..layers.base import GraphEngineLayer
 
 
 @final
@@ -104,10 +104,10 @@ class EventManager:
         """Initialize the event manager."""
         self._events: list[GraphEngineEvent] = []
         self._lock = ReadWriteLock()
-        self._layers: list[Layer] = []
+        self._layers: list[GraphEngineLayer] = []
         self._execution_complete = threading.Event()
 
-    def set_layers(self, layers: list[Layer]) -> None:
+    def set_layers(self, layers: list[GraphEngineLayer]) -> None:
         """
         Set the layers to notify on event collection.
 

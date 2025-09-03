@@ -12,7 +12,7 @@ from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent
 
 
-class Layer(ABC):
+class GraphEngineLayer(ABC):
     """
     Abstract base class for GraphEngine layers.
 
