@@ -7,7 +7,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
 
-from .entities import WebhookData
+from .entities import ContentType, WebhookData
 
 
 class TriggerWebhookNode(BaseNode):
@@ -103,6 +103,11 @@ class TriggerWebhookNode(BaseNode):
         for body_param in self._node_data.body:
             param_name = body_param.name
             param_type = body_param.type
+
+            if self._node_data.content_type == ContentType.TEXT:
+                # For text/plain, the entire body is a single string parameter
+                outputs[param_name] = str(webhook_data.get("body", {}).get("raw", ""))
+                continue
 
             if param_type == "file":
                 # Get File object (already processed by webhook controller)

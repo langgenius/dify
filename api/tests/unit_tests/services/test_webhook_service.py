@@ -204,6 +204,75 @@ class TestWebhookServiceUnit:
         assert result["valid"] is False
         assert "Required file parameter missing: upload" in result["error"]
 
+    def test_validate_webhook_request_text_plain_with_required_body(self):
+        """Test webhook validation for text/plain content type with required body content."""
+        # Test case 1: text/plain with raw content - should pass
+        webhook_data = {
+            "method": "POST", 
+            "headers": {"content-type": "text/plain"}, 
+            "query_params": {}, 
+            "body": {"raw": "Hello World"}, 
+            "files": {}
+        }
+
+        node_config = {
+            "data": {
+                "method": "post", 
+                "content_type": "text/plain",
+                "body": [{"name": "message", "type": "string", "required": True}]
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+        assert result["valid"] is True
+
+        # Test case 2: text/plain without raw content but required - should fail
+        webhook_data_no_body = {
+            "method": "POST", 
+            "headers": {"content-type": "text/plain"}, 
+            "query_params": {}, 
+            "body": {}, 
+            "files": {}
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data_no_body, node_config)
+        assert result["valid"] is False
+        assert "Required body content missing for text/plain request" in result["error"]
+
+        # Test case 3: text/plain with empty raw content but required - should fail
+        webhook_data_empty_body = {
+            "method": "POST", 
+            "headers": {"content-type": "text/plain"}, 
+            "query_params": {}, 
+            "body": {"raw": ""}, 
+            "files": {}
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data_empty_body, node_config)
+        assert result["valid"] is False
+        assert "Required body content missing for text/plain request" in result["error"]
+
+    def test_validate_webhook_request_text_plain_no_body_params(self):
+        """Test webhook validation for text/plain content type with no body params configured."""
+        webhook_data = {
+            "method": "POST", 
+            "headers": {"content-type": "text/plain"}, 
+            "query_params": {}, 
+            "body": {"raw": "Hello World"}, 
+            "files": {}
+        }
+
+        node_config = {
+            "data": {
+                "method": "post", 
+                "content_type": "text/plain",
+                "body": []  # No body params configured
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+        assert result["valid"] is True
+
     def test_validate_webhook_request_validation_exception(self):
         """Test webhook validation with exception handling."""
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
@@ -214,7 +283,7 @@ class TestWebhookServiceUnit:
         result = WebhookService.validate_webhook_request(webhook_data, node_config)
 
         assert result["valid"] is False
-        assert "Validation failed:" in result["error"]
+        assert "Validation failed" in result["error"]
 
     def test_generate_webhook_response_default(self):
         """Test webhook response generation with default values."""

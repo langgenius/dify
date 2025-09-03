@@ -1,3 +1,4 @@
+import json
 import logging
 from collections.abc import Mapping
 from typing import Any
@@ -157,11 +158,21 @@ class WebhookService:
                     "error": f"HTTP method mismatch. Expected {configured_method}, got {request_method}",
                 }
 
+            # Validate Content-type
+            configured_content_type = node_data.get("content_type", "application/json").lower()
+            request_content_type = webhook_data["headers"].get("Content-Type", "").lower()
+            if not request_content_type:
+                request_content_type = webhook_data["headers"].get("content-type", "application/json").lower()
+            if configured_content_type != request_content_type:
+                return {
+                    "valid": False,
+                    "error": f"Content-type mismatch. Expected {configured_content_type}, got {request_content_type}",
+                }
+
             # Validate required headers (case-insensitive)
             headers = node_data.get("headers", [])
             # Create case-insensitive header lookup
             webhook_headers_lower = {k.lower(): v for k, v in webhook_data["headers"].items()}
-
             for header in headers:
                 if header.get("required", False):
                     header_name = header.get("name", "")
@@ -175,22 +186,30 @@ class WebhookService:
                     param_name = param.get("name", "")
                     if param_name not in webhook_data["query_params"]:
                         return {"valid": False, "error": f"Required query parameter missing: {param_name}"}
+            
+            if configured_content_type == "text/plain":
+                # For text/plain, just validate that we have a body if any body params are configured as required
+                body_params = node_data.get("body", [])
+                if body_params and any(param.get("required", False) for param in body_params):
+                    body_data = webhook_data.get("body", {})
+                    raw_content = body_data.get("raw", "")
+                    if not raw_content or not isinstance(raw_content, str):
+                        return {"valid": False, "error": "Required body content missing for text/plain request"}
+            else:
+                body_params = node_data.get("body", [])
+                for body_param in body_params:
+                    if body_param.get("required", False):
+                        param_name = body_param.get("name", "")
+                        param_type = body_param.get("type", "string")
 
-            # Validate required body parameters
-            body_params = node_data.get("body", [])
-            for body_param in body_params:
-                if body_param.get("required", False):
-                    param_name = body_param.get("name", "")
-                    param_type = body_param.get("type", "string")
-
-                    # Check if parameter exists
-                    if param_type == "file":
-                        file_obj = webhook_data.get("files", {}).get(param_name)
-                        if not file_obj:
-                            return {"valid": False, "error": f"Required file parameter missing: {param_name}"}
-                    else:
-                        if param_name not in webhook_data.get("body", {}):
-                            return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
+                        # Check if parameter exists
+                        if param_type == "file":
+                            file_obj = webhook_data.get("files", {}).get(param_name)
+                            if not file_obj:
+                                return {"valid": False, "error": f"Required file parameter missing: {param_name}"}
+                        else:
+                            if param_name not in webhook_data.get("body", {}):
+                                return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
 
             return {"valid": True}
 
@@ -253,8 +272,6 @@ class WebhookService:
     @classmethod
     def generate_webhook_response(cls, node_config: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
         """Generate HTTP response based on node configuration."""
-        import json
-
         node_data = node_config.get("data", {})
 
         # Get configured status code and response body
