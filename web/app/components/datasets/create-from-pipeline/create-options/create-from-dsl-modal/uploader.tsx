@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   RiDeleteBinLine,
+  RiNodeTree,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { formatFileSize } from '@/utils/format'
 import cn from '@/utils/classnames'
-import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
 import { UploadCloud01 } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
@@ -122,12 +122,12 @@ const Uploader: FC<Props> = ({
         {file && (
           <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', 'hover:border-[#B2CCFF] hover:bg-[#F5F8FF]')}>
             <div className='flex items-center justify-center p-3'>
-              <YamlIcon className='h-6 w-6 shrink-0' />
+              <RiNodeTree className='h-6 w-6 shrink-0' />
             </div>
             <div className='flex grow flex-col items-start gap-0.5 py-1 pr-2'>
               <span className='font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary'>{file.name}</span>
               <div className='font-inter flex h-3 items-center gap-1 self-stretch text-[10px] font-medium uppercase leading-3 text-text-tertiary'>
-                <span>YAML</span>
+                <span>PIPELINE</span>
                 <span className='text-text-quaternary'>·</span>
                 <span>{formatFileSize(file.size)}</span>
               </div>

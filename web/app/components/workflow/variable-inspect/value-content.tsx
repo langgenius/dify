@@ -198,6 +198,7 @@ const ValueContent = ({
                   mdString={value as any}
                   readonly={textEditorDisabled}
                   handleTextChange={handleTextChange}
+                  className={cn(isTruncated && 'pt-[36px]')}
                 />
               ) : (
                 <Textarea

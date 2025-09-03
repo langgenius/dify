@@ -312,10 +312,15 @@ export const useRemoveProviderCredentials = ({
   })
 }
 
-export const useRAGRecommendedPlugins = (enabled: boolean) => {
+const useRAGRecommendedPluginListKey = [NAME_SPACE, 'rag-recommended-plugins']
+
+export const useRAGRecommendedPlugins = () => {
   return useQuery<RAGRecommendedPlugins>({
-    queryKey: [NAME_SPACE, 'rag-recommended-plugins'],
+    queryKey: useRAGRecommendedPluginListKey,
     queryFn: () => get<RAGRecommendedPlugins>('/rag/pipelines/recommended-plugins'),
-    enabled,
   })
+}
+
+export const useInvalidateRAGRecommendedPlugins = () => {
+  return useInvalid(useRAGRecommendedPluginListKey)
 }

@@ -401,7 +401,6 @@ const translation = {
     'tooltips': 'Tooltips',
     'tooltipsPlaceholder': 'Enter helpful text shown when hovering over the label',
     'showAllSettings': 'Show All Settings',
-    'checkbox': 'Checkbox',
     'startSelectedOption': 'Start selected option',
     'noDefaultSelected': 'Don\'t select',
     'hide': 'Hide',

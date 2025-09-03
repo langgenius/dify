@@ -54,7 +54,7 @@ export const useHiddenFieldNames = (type: PipelineInputVarType) => {
         break
       case PipelineInputVarType.checkbox:
         fieldNames = [
-          t('appDebug.variableConfig.startedChecked'),
+          t('appDebug.variableConfig.startChecked'),
           t('appDebug.variableConfig.tooltips'),
         ]
         break

@@ -397,7 +397,6 @@ const translation = {
     'tooltips': '提示',
     'tooltipsPlaceholder': '输入悬停在标签上时显示的提示文本',
     'showAllSettings': '显示所有设置',
-    'checkbox': '复选框',
     'startSelectedOption': '默认选中项',
     'noDefaultSelected': '不默认选中',
     'file': {
