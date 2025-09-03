@@ -3,7 +3,8 @@ import logging
 from json import JSONDecodeError
 from typing import Optional, Union
 
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
+
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
