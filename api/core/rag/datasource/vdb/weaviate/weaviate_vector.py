@@ -37,22 +37,22 @@ class WeaviateVector(BaseVector):
         self._attributes = attributes
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
-        auth_config = weaviate.auth.AuthApiKey(api_key=config.api_key)
+        auth_config = weaviate.AuthApiKey(api_key=config.api_key or "")
 
-        weaviate.connect.connection.has_grpc = False
+        weaviate.connect.connection.has_grpc = False  # ty: ignore [unresolved-attribute]
 
         # Fix to minimize the performance impact of the deprecation check in weaviate-client 3.24.0,
         # by changing the connection timeout to pypi.org from 1 second to 0.001 seconds.
         # TODO: This can be removed once weaviate-client is updated to 3.26.7 or higher,
         #       which does not contain the deprecation check.
-        if hasattr(weaviate.connect.connection, "PYPI_TIMEOUT"):
-            weaviate.connect.connection.PYPI_TIMEOUT = 0.001
+        if hasattr(weaviate.connect.connection, "PYPI_TIMEOUT"):  # ty: ignore [unresolved-attribute]
+            weaviate.connect.connection.PYPI_TIMEOUT = 0.001  # ty: ignore [unresolved-attribute]
 
         try:
             client = weaviate.Client(
                 url=config.endpoint, auth_client_secret=auth_config, timeout_config=(5, 60), startup_period=None
             )
-        except requests.exceptions.ConnectionError:
+        except requests.ConnectionError:
             raise ConnectionError("Vector database connection error")
 
         client.batch.configure(

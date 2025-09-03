@@ -45,9 +45,11 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-                if 0 < vector_space.limit <= vector_space.size:
+                current = int(getattr(vector_space, "size", 0) or 0)
+                limit = int(getattr(vector_space, "limit", 0) or 0)
+                if limit > 0 and (current + count) > limit:
                     raise ValueError(
-                        "Your total number of documents plus the number of uploads have over the limit of "
+                        "Your total number of documents plus the number of uploads have exceeded the limit of "
                         "your subscription."
                     )
         except Exception as e:

@@ -170,7 +170,9 @@ class ModelLoadBalancingService:
                 if variable in credentials:
                     try:
                         credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            credentials.get(variable), decoding_rsa_key, decoding_cipher_rsa
+                            credentials.get(variable),  # ty: ignore [invalid-argument-type]
+                            decoding_rsa_key,
+                            decoding_cipher_rsa,
                         )
                     except ValueError:
                         pass

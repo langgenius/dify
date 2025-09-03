@@ -322,7 +322,87 @@ class TestAppDslService:
 
         # Verify workflow service was called
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
-            app
+            app, None
+        )
+
+    def test_export_dsl_with_workflow_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test successful DSL export with specific workflow ID.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Update app to workflow mode
+        app.mode = "workflow"
+        db_session_with_containers.commit()
+
+        # Mock workflow service to return a workflow when specific workflow_id is provided
+        mock_workflow = MagicMock()
+        mock_workflow.to_dict.return_value = {
+            "graph": {"nodes": [{"id": "start", "type": "start", "data": {"type": "start"}}], "edges": []},
+            "features": {},
+            "environment_variables": [],
+            "conversation_variables": [],
+        }
+
+        # Mock the get_draft_workflow method to return different workflows based on workflow_id
+        def mock_get_draft_workflow(app_model, workflow_id=None):
+            if workflow_id == "specific-workflow-id":
+                return mock_workflow
+            return None
+
+        mock_external_service_dependencies[
+            "workflow_service"
+        ].return_value.get_draft_workflow.side_effect = mock_get_draft_workflow
+
+        # Export DSL with specific workflow ID
+        exported_dsl = AppDslService.export_dsl(app, include_secret=False, workflow_id="specific-workflow-id")
+
+        # Parse exported YAML
+        exported_data = yaml.safe_load(exported_dsl)
+
+        # Verify exported data structure
+        assert exported_data["kind"] == "app"
+        assert exported_data["app"]["name"] == app.name
+        assert exported_data["app"]["mode"] == "workflow"
+
+        # Verify workflow was exported
+        assert "workflow" in exported_data
+        assert "graph" in exported_data["workflow"]
+        assert "nodes" in exported_data["workflow"]["graph"]
+
+        # Verify dependencies were exported
+        assert "dependencies" in exported_data
+        assert isinstance(exported_data["dependencies"], list)
+
+        # Verify workflow service was called with specific workflow ID
+        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
+            app, "specific-workflow-id"
+        )
+
+    def test_export_dsl_with_invalid_workflow_id_raises_error(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test that export_dsl raises error when invalid workflow ID is provided.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Update app to workflow mode
+        app.mode = "workflow"
+        db_session_with_containers.commit()
+
+        # Mock workflow service to return None when invalid workflow ID is provided
+        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.return_value = None
+
+        # Export DSL with invalid workflow ID should raise ValueError
+        with pytest.raises(ValueError, match="Missing draft workflow configuration, please check."):
+            AppDslService.export_dsl(app, include_secret=False, workflow_id="invalid-workflow-id")
+
+        # Verify workflow service was called with the invalid workflow ID
+        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
+            app, "invalid-workflow-id"
         )
 
     def test_check_dependencies_success(self, db_session_with_containers, mock_external_service_dependencies):

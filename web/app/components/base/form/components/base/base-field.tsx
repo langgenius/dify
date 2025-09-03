@@ -143,6 +143,7 @@ const BaseField = ({
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
+              autoComplete={'new-password'}
             />
           )
         }

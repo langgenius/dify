@@ -376,7 +376,12 @@ class MilvusVector(BaseVector):
         if config.token:
             client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
         else:
-            client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
+            client = MilvusClient(
+                uri=config.uri,
+                user=config.user or "",
+                password=config.password or "",
+                db_name=config.database,
+            )
         return client
 
 

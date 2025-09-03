@@ -26,7 +26,7 @@ class ToolLabelManager:
         labels = cls.filter_tool_labels(labels)
 
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
-            provider_id = controller.provider_id
+            provider_id = controller.provider_id  # ty: ignore [unresolved-attribute]
         else:
             raise ValueError("Unsupported tool type")
 
@@ -51,7 +51,7 @@ class ToolLabelManager:
         Get tool labels
         """
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
-            provider_id = controller.provider_id
+            provider_id = controller.provider_id  # ty: ignore [unresolved-attribute]
         elif isinstance(controller, BuiltinToolProviderController):
             return controller.tool_labels
         else:
@@ -85,7 +85,7 @@ class ToolLabelManager:
         provider_ids = []
         for controller in tool_providers:
             assert isinstance(controller, ApiToolProviderController | WorkflowToolProviderController)
-            provider_ids.append(controller.provider_id)
+            provider_ids.append(controller.provider_id)  # ty: ignore [unresolved-attribute]
 
         labels: list[ToolLabelBinding] = (
             db.session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids)).all()

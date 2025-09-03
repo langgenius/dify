@@ -52,12 +52,12 @@ class AnswerStreamProcessor(StreamProcessor):
                     yield event
             elif isinstance(event, NodeRunSucceededEvent | NodeRunExceptionEvent):
                 yield event
-                if event.route_node_state.node_id in self.current_stream_chunk_generating_node_ids:
+                if event.route_node_state.node_id in self.current_stream_chunk_generating_node_ids:  # ty: ignore [unresolved-attribute]
                     # update self.route_position after all stream event finished
-                    for answer_node_id in self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]:
+                    for answer_node_id in self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]:  # ty: ignore [unresolved-attribute]
                         self.route_position[answer_node_id] += 1
 
-                    del self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]
+                    del self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]  # ty: ignore [unresolved-attribute]
 
                 self._remove_unreachable_nodes(event)
 

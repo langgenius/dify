@@ -532,7 +532,7 @@ class AppDslService:
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False) -> str:
+    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: Optional[str] = None) -> str:
         """
         Export app
         :param app_model: App instance
@@ -556,7 +556,7 @@ class AppDslService:
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
-                export_data=export_data, app_model=app_model, include_secret=include_secret
+                export_data=export_data, app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
             )
         else:
             cls._append_model_config_export_data(export_data, app_model)
@@ -564,14 +564,16 @@ class AppDslService:
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
-    def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:
+    def _append_workflow_export_data(
+        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: Optional[str] = None
+    ) -> None:
         """
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
         """
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model)
+        workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
 

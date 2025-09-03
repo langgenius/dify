@@ -291,27 +291,28 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     if not user_id:
         user_id = "DEFAULT-USER"
 
-    end_user = (
-        db.session.query(EndUser)
-        .where(
-            EndUser.tenant_id == app_model.tenant_id,
-            EndUser.app_id == app_model.id,
-            EndUser.session_id == user_id,
-            EndUser.type == "service_api",
+    with Session(db.engine, expire_on_commit=False) as session:
+        end_user = (
+            session.query(EndUser)
+            .where(
+                EndUser.tenant_id == app_model.tenant_id,
+                EndUser.app_id == app_model.id,
+                EndUser.session_id == user_id,
+                EndUser.type == "service_api",
+            )
+            .first()
         )
-        .first()
-    )
 
-    if end_user is None:
-        end_user = EndUser(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type="service_api",
-            is_anonymous=user_id == "DEFAULT-USER",
-            session_id=user_id,
-        )
-        db.session.add(end_user)
-        db.session.commit()
+        if end_user is None:
+            end_user = EndUser(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type="service_api",
+                is_anonymous=user_id == "DEFAULT-USER",
+                session_id=user_id,
+            )
+            session.add(end_user)
+            session.commit()
 
     return end_user
 
