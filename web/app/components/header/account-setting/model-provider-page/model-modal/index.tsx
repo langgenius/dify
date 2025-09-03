@@ -167,7 +167,7 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type && __authorization_name__) {
+    if (__model_name && __model_type) {
       await handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,
