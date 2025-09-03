@@ -1,7 +1,6 @@
-from typing import Optional
 import json
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
@@ -424,7 +423,7 @@ class ToolFile(TypeBase):
         sa.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"),init=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id

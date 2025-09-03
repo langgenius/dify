@@ -99,7 +99,7 @@ class ToolFileManager:
                 mimetype=mimetype,
                 name=present_filename,
                 size=len(file_binary),
-                original_url=None
+                original_url=None,
             )
 
             session.add(tool_file)
