@@ -282,7 +282,7 @@ class Workflow(Base):
         return self._features
 
     @features.setter
-    def features(self, value: str) -> None:
+    def features(self, value: str):
         self._features = value
 
     @property
@@ -439,7 +439,7 @@ class Workflow(Base):
         return results
 
     @conversation_variables.setter
-    def conversation_variables(self, value: Sequence[Variable]) -> None:
+    def conversation_variables(self, value: Sequence[Variable]):
         self._conversation_variables = json.dumps(
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
@@ -892,7 +892,7 @@ class ConversationVariable(Base):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str) -> None:
+    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str):
         self.id = id
         self.app_id = app_id
         self.conversation_id = conversation_id

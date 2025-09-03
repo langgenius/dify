@@ -111,13 +111,13 @@ class BaiduVector(BaseVector):
             return True
         return False
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         quoted_ids = [f"'{id}'" for id in ids]
         self._db.table(self._collection_name).delete(filter=f"id IN({', '.join(quoted_ids)})")
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         self._db.table(self._collection_name).delete(filter=f"{key} = '{value}'")
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -164,7 +164,7 @@ class BaiduVector(BaseVector):
 
         return docs
 
-    def delete(self) -> None:
+    def delete(self):
         try:
             self._db.drop_table(table_name=self._collection_name)
         except ServerError as e:
@@ -201,7 +201,7 @@ class BaiduVector(BaseVector):
         tables = self._db.list_table()
         return any(table.table_name == self._collection_name for table in tables)
 
-    def _create_table(self, dimension: int) -> None:
+    def _create_table(self, dimension: int):
         # Try to grab distributed lock and create table
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=60):

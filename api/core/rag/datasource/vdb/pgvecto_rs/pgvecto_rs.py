@@ -150,7 +150,7 @@ class PGVectoRS(BaseVector):
                 session.execute(select_statement, {"ids": ids})
                 session.commit()
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         with Session(self._client) as session:
             select_statement = sql_text(
                 f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = ANY (:doc_ids); "
@@ -164,7 +164,7 @@ class PGVectoRS(BaseVector):
                     session.execute(select_statement, {"ids": ids})
                     session.commit()
 
-    def delete(self) -> None:
+    def delete(self):
         with Session(self._client) as session:
             session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
             session.commit()

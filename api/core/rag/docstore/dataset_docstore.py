@@ -59,7 +59,7 @@ class DatasetDocumentStore:
 
         return output
 
-    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False) -> None:
+    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False):
         max_position = (
             db.session.query(func.max(DocumentSegment.position))
             .where(DocumentSegment.document_id == self._document_id)
@@ -195,7 +195,7 @@ class DatasetDocumentStore:
             },
         )
 
-    def delete_document(self, doc_id: str, raise_error: bool = True) -> None:
+    def delete_document(self, doc_id: str, raise_error: bool = True):
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
@@ -207,7 +207,7 @@ class DatasetDocumentStore:
         db.session.delete(document_segment)
         db.session.commit()
 
-    def set_document_hash(self, doc_id: str, doc_hash: str) -> None:
+    def set_document_hash(self, doc_id: str, doc_hash: str):
         """Set the hash for a given doc_id."""
         document_segment = self.get_document_segment(doc_id)
 

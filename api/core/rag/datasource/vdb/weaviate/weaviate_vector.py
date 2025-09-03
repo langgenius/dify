@@ -171,7 +171,7 @@ class WeaviateVector(BaseVector):
 
         return True
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         # check whether the index already exists
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):

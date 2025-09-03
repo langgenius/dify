@@ -57,7 +57,7 @@ class ProviderManager:
     ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.decoding_rsa_key = None
         self.decoding_cipher_rsa = None
 

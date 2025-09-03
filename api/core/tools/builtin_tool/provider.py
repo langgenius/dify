@@ -24,7 +24,7 @@ from core.tools.utils.yaml_utils import load_yaml_file
 class BuiltinToolProviderController(ToolProviderController):
     tools: list[BuiltinTool]
 
-    def __init__(self, **data: Any) -> None:
+    def __init__(self, **data: Any):
         self.tools = []
 
         # load provider yaml
@@ -197,7 +197,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.entity.identity.tags or []
 
-    def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
 
@@ -211,7 +211,7 @@ class BuiltinToolProviderController(ToolProviderController):
         self._validate_credentials(user_id, credentials)
 
     @abstractmethod
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
 

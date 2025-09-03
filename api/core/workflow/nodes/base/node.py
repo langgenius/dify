@@ -28,7 +28,7 @@ class BaseNode:
         graph_runtime_state: "GraphRuntimeState",
         previous_node_id: Optional[str] = None,
         thread_pool_id: Optional[str] = None,
-    ) -> None:
+    ):
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
@@ -51,7 +51,7 @@ class BaseNode:
         self.node_id = node_id
 
     @abstractmethod
-    def init_node_data(self, data: Mapping[str, Any]) -> None: ...
+    def init_node_data(self, data: Mapping[str, Any]): ...
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[Union[NodeEvent, "InNodeEvent"], None, None]:

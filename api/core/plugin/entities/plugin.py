@@ -147,7 +147,7 @@ class GenericProviderID:
     def __str__(self) -> str:
         return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
 
-    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+    def __init__(self, value: str, is_hardcoded: bool = False):
         if not value:
             raise NotFound("plugin not found, please add plugin")
         # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
@@ -170,14 +170,14 @@ class GenericProviderID:
 
 
 class ModelProviderID(GenericProviderID):
-    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+    def __init__(self, value: str, is_hardcoded: bool = False):
         super().__init__(value, is_hardcoded)
         if self.organization == "langgenius" and self.provider_name == "google":
             self.plugin_name = "gemini"
 
 
 class ToolProviderID(GenericProviderID):
-    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+    def __init__(self, value: str, is_hardcoded: bool = False):
         super().__init__(value, is_hardcoded)
         if self.organization == "langgenius":
             if self.provider_name in ["jina", "siliconflow", "stepfun", "gitee_ai"]:

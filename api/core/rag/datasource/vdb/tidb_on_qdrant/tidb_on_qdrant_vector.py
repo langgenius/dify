@@ -284,7 +284,7 @@ class TidbOnQdrantVector(BaseVector):
             else:
                 raise e
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 

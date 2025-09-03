@@ -167,7 +167,7 @@ class LindormVectorStore(BaseVector):
         if ids:
             self.delete_by_ids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """Delete documents by their IDs in batch.
 
         Args:
@@ -213,7 +213,7 @@ class LindormVectorStore(BaseVector):
                     else:
                         logger.exception("Error deleting document: %s", error)
 
-    def delete(self) -> None:
+    def delete(self):
         if self._using_ugc:
             routing_filter_query = {
                 "query": {"bool": {"must": [{"term": {f"{self._routing_field}.keyword": self._routing}}]}}

@@ -316,7 +316,7 @@ class AppService:
 
         return app
 
-    def delete_app(self, app: App) -> None:
+    def delete_app(self, app: App):
         """
         Delete app
         :param app: App instance

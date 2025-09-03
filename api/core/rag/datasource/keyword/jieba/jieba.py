@@ -76,7 +76,7 @@ class Jieba(BaseKeyword):
             return False
         return id in set.union(*keyword_table.values())
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table = self._get_dataset_keyword_table()
@@ -116,7 +116,7 @@ class Jieba(BaseKeyword):
 
         return documents
 
-    def delete(self) -> None:
+    def delete(self):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             dataset_keyword_table = self.dataset.dataset_keyword_table

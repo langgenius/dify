@@ -162,7 +162,7 @@ class AppRunner:
         text: str,
         stream: bool,
         usage: Optional[LLMUsage] = None,
-    ) -> None:
+    ):
         """
         Direct output
         :param queue_manager: application queue manager
@@ -204,7 +204,7 @@ class AppRunner:
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
-    ) -> None:
+    ):
         """
         Handle invoke result
         :param invoke_result: invoke result
@@ -222,7 +222,7 @@ class AppRunner:
 
     def _handle_invoke_result_direct(
         self, invoke_result: LLMResult, queue_manager: AppQueueManager, agent: bool
-    ) -> None:
+    ):
         """
         Handle invoke result direct
         :param invoke_result: invoke result
@@ -239,7 +239,7 @@ class AppRunner:
 
     def _handle_invoke_result_stream(
         self, invoke_result: Generator[LLMResultChunk, None, None], queue_manager: AppQueueManager, agent: bool
-    ) -> None:
+    ):
         """
         Handle invoke result
         :param invoke_result: invoke result

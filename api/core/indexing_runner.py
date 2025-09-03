@@ -509,7 +509,7 @@ class IndexingRunner:
         dataset: Dataset,
         dataset_document: DatasetDocument,
         documents: list[Document],
-    ) -> None:
+    ):
         """
         insert index and update document/segment status to completed
         """
@@ -648,7 +648,7 @@ class IndexingRunner:
     @staticmethod
     def _update_document_index_status(
         document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
-    ) -> None:
+    ):
         """
         Update the document indexing status.
         """
@@ -667,7 +667,7 @@ class IndexingRunner:
         db.session.commit()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: dict) -> None:
+    def _update_segments_by_document(dataset_document_id: str, update_params: dict):
         """
         Update the document segment by document id.
         """

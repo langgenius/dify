@@ -142,7 +142,7 @@ def _create_node_execution_from_domain(
 
 def _update_node_execution_from_domain(
     node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution
-) -> None:
+):
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """

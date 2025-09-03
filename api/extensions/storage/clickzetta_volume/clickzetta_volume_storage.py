@@ -217,7 +217,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             logger.exception("SQL execution failed: %s", sql)
             raise
 
-    def _ensure_table_volume_exists(self, dataset_id: str) -> None:
+    def _ensure_table_volume_exists(self, dataset_id: str):
         """Ensure table volume exists for the given dataset_id."""
         if self._config.volume_type != "table" or not dataset_id:
             return
@@ -252,7 +252,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             # Don't raise exception, let the operation continue
             # The table might exist but not be visible due to permissions
 
-    def save(self, filename: str, data: bytes) -> None:
+    def save(self, filename: str, data: bytes):
         """Save data to ClickZetta Volume.
 
         Args:

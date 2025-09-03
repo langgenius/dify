@@ -48,7 +48,7 @@ class MessageCycleManager:
             AdvancedChatAppGenerateEntity,
         ],
         task_state: Union[EasyUITaskState, WorkflowTaskState],
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
 
@@ -131,7 +131,7 @@ class MessageCycleManager:
 
         return None
 
-    def handle_retriever_resources(self, event: QueueRetrieverResourcesEvent) -> None:
+    def handle_retriever_resources(self, event: QueueRetrieverResourcesEvent):
         """
         Handle retriever resources.
         :param event: event

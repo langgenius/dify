@@ -206,7 +206,7 @@ class Graph(BaseModel):
 
     def add_extra_edge(
         self, source_node_id: str, target_node_id: str, run_condition: Optional[RunCondition] = None
-    ) -> None:
+    ):
         """
         Add extra edge to the graph
 
@@ -248,7 +248,7 @@ class Graph(BaseModel):
     @classmethod
     def _recursively_add_node_ids(
         cls, node_ids: list[str], edge_mapping: dict[str, list[GraphEdge]], node_id: str
-    ) -> None:
+    ):
         """
         Recursively add node ids
 
@@ -266,7 +266,7 @@ class Graph(BaseModel):
             )
 
     @classmethod
-    def _check_connected_to_previous_node(cls, route: list[str], edge_mapping: dict[str, list[GraphEdge]]) -> None:
+    def _check_connected_to_previous_node(cls, route: list[str], edge_mapping: dict[str, list[GraphEdge]]):
         """
         Check whether it is connected to the previous node
         """
@@ -297,7 +297,7 @@ class Graph(BaseModel):
         parallel_mapping: dict[str, GraphParallel],
         node_parallel_mapping: dict[str, str],
         parent_parallel: Optional[GraphParallel] = None,
-    ) -> None:
+    ):
         """
         Recursively add parallel ids
 
@@ -502,7 +502,7 @@ class Graph(BaseModel):
         level_limit: int,
         parent_parallel_id: str,
         current_level: int = 1,
-    ) -> None:
+    ):
         """
         Check if it exceeds N layers of parallel
         """
@@ -529,7 +529,7 @@ class Graph(BaseModel):
         edge_mapping: dict[str, list[GraphEdge]],
         merge_node_id: str,
         start_node_id: str,
-    ) -> None:
+    ):
         """
         Recursively add node ids
 
@@ -655,7 +655,7 @@ class Graph(BaseModel):
     @classmethod
     def _recursively_fetch_routes(
         cls, edge_mapping: dict[str, list[GraphEdge]], start_node_id: str, routes_node_ids: list[str]
-    ) -> None:
+    ):
         """
         Recursively fetch route
         """

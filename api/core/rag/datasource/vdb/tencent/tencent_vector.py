@@ -92,7 +92,7 @@ class TencentVector(BaseVector):
             )
         )
 
-    def _create_collection(self, dimension: int) -> None:
+    def _create_collection(self, dimension: int):
         self._dimension = dimension
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
@@ -205,7 +205,7 @@ class TencentVector(BaseVector):
             return True
         return False
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
 
@@ -222,7 +222,7 @@ class TencentVector(BaseVector):
                 database_name=self._client_config.database, collection_name=self.collection_name, document_ids=batch_ids
             )
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         self._client.delete(
             database_name=self._client_config.database,
             collection_name=self.collection_name,
@@ -299,7 +299,7 @@ class TencentVector(BaseVector):
                 docs.append(doc)
         return docs
 
-    def delete(self) -> None:
+    def delete(self):
         if self._has_collection():
             self._client.drop_collection(
                 database_name=self._client_config.database, collection_name=self.collection_name

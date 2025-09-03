@@ -10,7 +10,7 @@ class APIBasedExtensionRequestor:
     timeout: tuple[int, int] = (5, 60)
     """timeout for request connect and read"""
 
-    def __init__(self, api_endpoint: str, api_key: str) -> None:
+    def __init__(self, api_endpoint: str, api_key: str):
         self.api_endpoint = api_endpoint
         self.api_key = api_key
 

@@ -128,7 +128,7 @@ class OpenSearchVector(BaseVector):
         if ids:
             self.delete_by_ids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         index_name = self._collection_name.lower()
         if not self._client.indices.exists(index=index_name):
             logger.warning("Index %s does not exist", index_name)
@@ -159,7 +159,7 @@ class OpenSearchVector(BaseVector):
                     else:
                         logger.exception("Error deleting document: %s", error)
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.indices.delete(index=self._collection_name.lower())
 
     def text_exists(self, id: str) -> bool:

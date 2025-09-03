@@ -45,10 +45,10 @@ class RedisClientWrapper:
 
     _client: Union[redis.Redis, RedisCluster, None]
 
-    def __init__(self) -> None:
+    def __init__(self):
         self._client = None
 
-    def initialize(self, client: Union[redis.Redis, RedisCluster]) -> None:
+    def initialize(self, client: Union[redis.Redis, RedisCluster]):
         if self._client is None:
             self._client = client
 

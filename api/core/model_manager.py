@@ -32,7 +32,7 @@ class ModelInstance:
     Model instance class
     """
 
-    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str) -> None:
+    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
         self.provider_model_bundle = provider_model_bundle
         self.model = model
         self.provider = provider_model_bundle.configuration.provider.provider
@@ -394,7 +394,7 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self) -> None:
+    def __init__(self):
         self._provider_manager = ProviderManager()
 
     def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
@@ -453,7 +453,7 @@ class LBModelManager:
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
         managed_credentials: Optional[dict] = None,
-    ) -> None:
+    ):
         """
         Load balancing model manager
         :param tenant_id: tenant_id
@@ -534,7 +534,7 @@ model: %s""",
 
             return config
 
-    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60) -> None:
+    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60):
         """
         Cooldown model load balancing config
         :param config: model load balancing config
