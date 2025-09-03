@@ -412,7 +412,7 @@ class ToolConversationVariables(Base):
         return json.loads(self.variables_str)
 
 
-class ToolFile(Base):
+class ToolFile(TypeBase):
     """This table stores file metadata generated in workflows,
     not only files created by agent.
     """

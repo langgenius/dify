@@ -26,7 +26,7 @@ def _gen_id():
 
 
 class TestFileSaverImpl:
-    def test_save_binary_string(self, monkeypatch):
+    def test_save_binary_string(self, monkeypatch:pytest.MonkeyPatch):
         user_id = _gen_id()
         tenant_id = _gen_id()
         file_type = FileType.IMAGE
@@ -80,7 +80,7 @@ class TestFileSaverImpl:
         )
         mocked_sign_file.assert_called_once_with(mock_tool_file.id, ".png")
 
-    def test_save_remote_url_request_failed(self, monkeypatch):
+    def test_save_remote_url_request_failed(self, monkeypatch:pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"
         mock_request = httpx.Request("GET", _TEST_URL)
         mock_response = httpx.Response(
@@ -99,7 +99,7 @@ class TestFileSaverImpl:
         mock_get.assert_called_once_with(_TEST_URL)
         assert exc.value.response.status_code == 401
 
-    def test_save_remote_url_success(self, monkeypatch):
+    def test_save_remote_url_success(self, monkeypatch:pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"
         mime_type = "image/png"
         user_id = _gen_id()

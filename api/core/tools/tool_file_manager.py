@@ -131,6 +131,7 @@ class ToolFileManager:
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
+        assert conversation_id is not None
 
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file = ToolFile(
