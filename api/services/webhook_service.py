@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
+from core.variables.types import SegmentType
 from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account, TenantAccountJoin, TenantAccountRole
@@ -186,7 +187,7 @@ class WebhookService:
                     param_name = param.get("name", "")
                     if param_name not in webhook_data["query_params"]:
                         return {"valid": False, "error": f"Required query parameter missing: {param_name}"}
-            
+
             if configured_content_type == "text/plain":
                 # For text/plain, just validate that we have a body if any body params are configured as required
                 body_params = node_data.get("body", [])
@@ -195,27 +196,136 @@ class WebhookService:
                     raw_content = body_data.get("raw", "")
                     if not raw_content or not isinstance(raw_content, str):
                         return {"valid": False, "error": "Required body content missing for text/plain request"}
+
+            elif configured_content_type == "application/json":
+                # For application/json, validate both existence and types of parameters
+                body_params = node_data.get("body", [])
+                body_data = webhook_data.get("body", {})
+
+                for body_param in body_params:
+                    param_name = body_param.get("name", "")
+                    param_type = body_param.get("type", SegmentType.STRING)
+                    is_required = body_param.get("required", False)
+
+                    # Handle regular JSON parameters
+                    param_exists = param_name in body_data
+
+                    # Check if required parameter exists
+                    if is_required and not param_exists:
+                        return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
+
+                    # Validate parameter type if it exists
+                    if param_exists:
+                        param_value = body_data[param_name]
+                        validation_result = cls._validate_json_parameter_type(param_name, param_value, param_type)
+                        if not validation_result["valid"]:
+                            return validation_result
+
             else:
+                # For other content types (multipart/form-data, application/x-www-form-urlencoded, etc.)
+                # Only validate existence of required parameters, no type validation
                 body_params = node_data.get("body", [])
                 for body_param in body_params:
-                    if body_param.get("required", False):
-                        param_name = body_param.get("name", "")
-                        param_type = body_param.get("type", "string")
+                    param_name = body_param.get("name", "")
+                    param_type = body_param.get("type", SegmentType.STRING)
+                    is_required = body_param.get("required", False)
 
-                        # Check if parameter exists
-                        if param_type == "file":
-                            file_obj = webhook_data.get("files", {}).get(param_name)
-                            if not file_obj:
-                                return {"valid": False, "error": f"Required file parameter missing: {param_name}"}
-                        else:
-                            if param_name not in webhook_data.get("body", {}):
-                                return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
+                    if not is_required:
+                        continue
+
+                    # Check if parameter exists
+                    if param_type == SegmentType.FILE:
+                        file_obj = webhook_data.get("files", {}).get(param_name)
+                        if not file_obj:
+                            return {"valid": False, "error": f"Required file parameter missing: {param_name}"}
+                    else:
+                        body_data = webhook_data.get("body", {})
+                        if param_name not in body_data:
+                            return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
 
             return {"valid": True}
 
         except Exception:
             logger.exception("Validation error")
             return {"valid": False, "error": "Validation failed"}
+
+    @classmethod
+    def _validate_json_parameter_type(cls, param_name: str, param_value: Any, param_type: str) -> dict[str, Any]:
+        """Validate JSON parameter type against expected type."""
+        try:
+            if param_type == SegmentType.STRING:
+                if not isinstance(param_value, str):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be a string, got {type(param_value).__name__}",
+                    }
+
+            elif param_type == SegmentType.NUMBER:
+                if not isinstance(param_value, (int, float)):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be a number, got {type(param_value).__name__}",
+                    }
+
+            elif param_type == SegmentType.BOOLEAN:
+                if not isinstance(param_value, bool):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be a boolean, got {type(param_value).__name__}",
+                    }
+
+            elif param_type == SegmentType.OBJECT:
+                if not isinstance(param_value, dict):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be an object, got {type(param_value).__name__}",
+                    }
+
+            elif param_type == SegmentType.ARRAY_STRING:
+                if not isinstance(param_value, list):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be an array, got {type(param_value).__name__}",
+                    }
+                if not all(isinstance(item, str) for item in param_value):
+                    return {"valid": False, "error": f"Parameter '{param_name}' must be an array of strings"}
+
+            elif param_type == SegmentType.ARRAY_NUMBER:
+                if not isinstance(param_value, list):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be an array, got {type(param_value).__name__}",
+                    }
+                if not all(isinstance(item, (int, float)) for item in param_value):
+                    return {"valid": False, "error": f"Parameter '{param_name}' must be an array of numbers"}
+
+            elif param_type == SegmentType.ARRAY_BOOLEAN:
+                if not isinstance(param_value, list):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be an array, got {type(param_value).__name__}",
+                    }
+                if not all(isinstance(item, bool) for item in param_value):
+                    return {"valid": False, "error": f"Parameter '{param_name}' must be an array of booleans"}
+
+            elif param_type == SegmentType.ARRAY_OBJECT:
+                if not isinstance(param_value, list):
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be an array, got {type(param_value).__name__}",
+                    }
+                if not all(isinstance(item, dict) for item in param_value):
+                    return {"valid": False, "error": f"Parameter '{param_name}' must be an array of objects"}
+
+            else:
+                # Unknown type, skip validation
+                logger.warning("Unknown parameter type: %s for parameter %s", param_type, param_name)
+
+            return {"valid": True}
+
+        except Exception:
+            logger.exception("Type validation error for parameter %s", param_name)
+            return {"valid": False, "error": f"Type validation failed for parameter '{param_name}'"}
 
     @classmethod
     def trigger_workflow_execution(

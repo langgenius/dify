@@ -208,18 +208,18 @@ class TestWebhookServiceUnit:
         """Test webhook validation for text/plain content type with required body content."""
         # Test case 1: text/plain with raw content - should pass
         webhook_data = {
-            "method": "POST", 
-            "headers": {"content-type": "text/plain"}, 
-            "query_params": {}, 
-            "body": {"raw": "Hello World"}, 
-            "files": {}
+            "method": "POST",
+            "headers": {"content-type": "text/plain"},
+            "query_params": {},
+            "body": {"raw": "Hello World"},
+            "files": {},
         }
 
         node_config = {
             "data": {
-                "method": "post", 
+                "method": "post",
                 "content_type": "text/plain",
-                "body": [{"name": "message", "type": "string", "required": True}]
+                "body": [{"name": "message", "type": "string", "required": True}],
             }
         }
 
@@ -228,11 +228,11 @@ class TestWebhookServiceUnit:
 
         # Test case 2: text/plain without raw content but required - should fail
         webhook_data_no_body = {
-            "method": "POST", 
-            "headers": {"content-type": "text/plain"}, 
-            "query_params": {}, 
-            "body": {}, 
-            "files": {}
+            "method": "POST",
+            "headers": {"content-type": "text/plain"},
+            "query_params": {},
+            "body": {},
+            "files": {},
         }
 
         result = WebhookService.validate_webhook_request(webhook_data_no_body, node_config)
@@ -241,11 +241,11 @@ class TestWebhookServiceUnit:
 
         # Test case 3: text/plain with empty raw content but required - should fail
         webhook_data_empty_body = {
-            "method": "POST", 
-            "headers": {"content-type": "text/plain"}, 
-            "query_params": {}, 
-            "body": {"raw": ""}, 
-            "files": {}
+            "method": "POST",
+            "headers": {"content-type": "text/plain"},
+            "query_params": {},
+            "body": {"raw": ""},
+            "files": {},
         }
 
         result = WebhookService.validate_webhook_request(webhook_data_empty_body, node_config)
@@ -255,18 +255,18 @@ class TestWebhookServiceUnit:
     def test_validate_webhook_request_text_plain_no_body_params(self):
         """Test webhook validation for text/plain content type with no body params configured."""
         webhook_data = {
-            "method": "POST", 
-            "headers": {"content-type": "text/plain"}, 
-            "query_params": {}, 
-            "body": {"raw": "Hello World"}, 
-            "files": {}
+            "method": "POST",
+            "headers": {"content-type": "text/plain"},
+            "query_params": {},
+            "body": {"raw": "Hello World"},
+            "files": {},
         }
 
         node_config = {
             "data": {
-                "method": "post", 
+                "method": "post",
                 "content_type": "text/plain",
-                "body": []  # No body params configured
+                "body": [],  # No body params configured
             }
         }
 
@@ -435,3 +435,206 @@ class TestWebhookServiceUnit:
 
         # Should skip files without filenames
         assert len(result) == 0
+
+    def test_validate_json_parameter_type_string(self):
+        """Test JSON parameter type validation for string type."""
+        # Valid string
+        result = WebhookService._validate_json_parameter_type("name", "hello", "string")
+        assert result["valid"] is True
+
+        # Invalid string (number)
+        result = WebhookService._validate_json_parameter_type("name", 123, "string")
+        assert result["valid"] is False
+        assert "must be a string, got int" in result["error"]
+
+    def test_validate_json_parameter_type_number(self):
+        """Test JSON parameter type validation for number type."""
+        # Valid integer
+        result = WebhookService._validate_json_parameter_type("count", 42, "number")
+        assert result["valid"] is True
+
+        # Valid float
+        result = WebhookService._validate_json_parameter_type("price", 19.99, "number")
+        assert result["valid"] is True
+
+        # Invalid number (string)
+        result = WebhookService._validate_json_parameter_type("count", "42", "number")
+        assert result["valid"] is False
+        assert "must be a number, got str" in result["error"]
+
+    def test_validate_json_parameter_type_bool(self):
+        """Test JSON parameter type validation for boolean type."""
+        # Valid boolean
+        result = WebhookService._validate_json_parameter_type("enabled", True, "bool")
+        assert result["valid"] is True
+
+        result = WebhookService._validate_json_parameter_type("enabled", False, "bool")
+        assert result["valid"] is True
+
+        # Invalid boolean (string)
+        result = WebhookService._validate_json_parameter_type("enabled", "true", "bool")
+        assert result["valid"] is False
+        assert "must be a boolean, got str" in result["error"]
+
+    def test_validate_json_parameter_type_object(self):
+        """Test JSON parameter type validation for object type."""
+        # Valid object
+        result = WebhookService._validate_json_parameter_type("user", {"name": "John", "age": 30}, "object")
+        assert result["valid"] is True
+
+        # Invalid object (string)
+        result = WebhookService._validate_json_parameter_type("user", "not_an_object", "object")
+        assert result["valid"] is False
+        assert "must be an object, got str" in result["error"]
+
+    def test_validate_json_parameter_type_array_string(self):
+        """Test JSON parameter type validation for array[string] type."""
+        # Valid array of strings
+        result = WebhookService._validate_json_parameter_type("tags", ["tag1", "tag2", "tag3"], "array[string]")
+        assert result["valid"] is True
+
+        # Invalid - not an array
+        result = WebhookService._validate_json_parameter_type("tags", "not_an_array", "array[string]")
+        assert result["valid"] is False
+        assert "must be an array, got str" in result["error"]
+
+        # Invalid - array with non-strings
+        result = WebhookService._validate_json_parameter_type("tags", ["tag1", 123, "tag3"], "array[string]")
+        assert result["valid"] is False
+        assert "must be an array of strings" in result["error"]
+
+    def test_validate_json_parameter_type_array_number(self):
+        """Test JSON parameter type validation for array[number] type."""
+        # Valid array of numbers
+        result = WebhookService._validate_json_parameter_type("scores", [1, 2.5, 3, 4.7], "array[number]")
+        assert result["valid"] is True
+
+        # Invalid - array with non-numbers
+        result = WebhookService._validate_json_parameter_type("scores", [1, "2", 3], "array[number]")
+        assert result["valid"] is False
+        assert "must be an array of numbers" in result["error"]
+
+    def test_validate_json_parameter_type_array_bool(self):
+        """Test JSON parameter type validation for array[bool] type."""
+        # Valid array of booleans
+        result = WebhookService._validate_json_parameter_type("flags", [True, False, True], "array[bool]")
+        assert result["valid"] is True
+
+        # Invalid - array with non-booleans
+        result = WebhookService._validate_json_parameter_type("flags", [True, "false", True], "array[bool]")
+        assert result["valid"] is False
+        assert "must be an array of booleans" in result["error"]
+
+    def test_validate_json_parameter_type_array_object(self):
+        """Test JSON parameter type validation for array[object] type."""
+        # Valid array of objects
+        result = WebhookService._validate_json_parameter_type(
+            "users", [{"name": "John"}, {"name": "Jane"}], "array[object]"
+        )
+        assert result["valid"] is True
+
+        # Invalid - array with non-objects
+        result = WebhookService._validate_json_parameter_type(
+            "users", [{"name": "John"}, "not_object"], "array[object]"
+        )
+        assert result["valid"] is False
+        assert "must be an array of objects" in result["error"]
+
+    def test_validate_json_parameter_type_unknown_type(self):
+        """Test JSON parameter type validation for unknown type."""
+        # Unknown type should return valid and log warning
+        result = WebhookService._validate_json_parameter_type("data", "anything", "unknown_type")
+        assert result["valid"] is True
+
+    def test_validate_webhook_request_json_type_validation(self):
+        """Test webhook validation with JSON parameter type validation."""
+        # Test valid JSON types
+        webhook_data = {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "query_params": {},
+            "body": {
+                "name": "John",
+                "age": 30,
+                "active": True,
+                "profile": {"email": "john@example.com"},
+                "tags": ["developer", "python"],
+                "scores": [85, 92.5, 78],
+                "flags": [True, False],
+                "items": [{"id": 1}, {"id": 2}],
+            },
+            "files": {},
+        }
+
+        node_config = {
+            "data": {
+                "method": "post",
+                "content_type": "application/json",
+                "body": [
+                    {"name": "name", "type": "string", "required": True},
+                    {"name": "age", "type": "number", "required": True},
+                    {"name": "active", "type": "bool", "required": True},
+                    {"name": "profile", "type": "object", "required": True},
+                    {"name": "tags", "type": "array[string]", "required": True},
+                    {"name": "scores", "type": "array[number]", "required": True},
+                    {"name": "flags", "type": "array[bool]", "required": True},
+                    {"name": "items", "type": "array[object]", "required": True},
+                ],
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+        assert result["valid"] is True
+
+    def test_validate_webhook_request_json_type_validation_invalid(self):
+        """Test webhook validation with invalid JSON parameter types."""
+        webhook_data = {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "query_params": {},
+            "body": {
+                "name": 123,  # Should be string
+                "age": "thirty",  # Should be number
+            },
+            "files": {},
+        }
+
+        node_config = {
+            "data": {
+                "method": "post",
+                "content_type": "application/json",
+                "body": [
+                    {"name": "name", "type": "string", "required": True},
+                    {"name": "age", "type": "number", "required": True},
+                ],
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+        assert result["valid"] is False
+        assert "must be a string, got int" in result["error"]
+
+    def test_validate_webhook_request_non_json_skip_type_validation(self):
+        """Test that type validation is skipped for non-JSON content types."""
+        webhook_data = {
+            "method": "POST",
+            "headers": {"Content-Type": "application/x-www-form-urlencoded"},
+            "query_params": {},
+            "body": {
+                "name": 123,  # Would be invalid for string if this was JSON
+            },
+            "files": {},
+        }
+
+        node_config = {
+            "data": {
+                "method": "post",
+                "content_type": "application/x-www-form-urlencoded",
+                "body": [
+                    {"name": "name", "type": "string", "required": True},
+                ],
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+        assert result["valid"] is True  # Should pass because type validation is only for JSON
