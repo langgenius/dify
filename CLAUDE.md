@@ -32,7 +32,7 @@ uv run --project api pytest tests/integration_tests/  # Integration tests
 ./dev/reformat                    # Run all formatters and linters
 uv run --project api ruff check --fix ./    # Fix linting issues
 uv run --project api ruff format ./         # Format code
-uv run --project api mypy .                 # Type checking
+uv run --directory api basedpyright         # Type checking
 ```
 
 ### Frontend (Web)

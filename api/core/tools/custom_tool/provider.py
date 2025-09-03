@@ -191,7 +191,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_tool(self, tool_name: str):
+    def get_tool(self, tool_name: str) -> ApiTool:
         """
         get tool by name
 

@@ -159,7 +159,7 @@ class AppQueueManager:
     def _check_for_sqlalchemy_models(self, data: Any):
         # from entity to dict or list
         if isinstance(data, dict):
-            for key, value in data.items():
+            for value in data.values():
                 self._check_for_sqlalchemy_models(value)
         elif isinstance(data, list):
             for item in data:

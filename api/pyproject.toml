@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.8.0"
+version = "1.8.1"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -111,7 +111,7 @@ dev = [
     "faker~=32.1.0",
     "lxml-stubs~=0.5.1",
     "ty~=0.0.1a19",
-    "mypy~=1.17.1",
+    "basedpyright~=1.31.0",
     "ruff~=0.12.3",
     "pytest~=8.3.2",
     "pytest-benchmark~=4.0.0",
@@ -218,4 +218,3 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]
-

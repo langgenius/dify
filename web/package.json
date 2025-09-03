@@ -1,8 +1,8 @@
 {
   "name": "dify-web",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
-  "packageManager": "pnpm@10.15.0",
+  "packageManager": "pnpm@10.15.1",
   "engines": {
     "node": ">=v22.11.0"
   },

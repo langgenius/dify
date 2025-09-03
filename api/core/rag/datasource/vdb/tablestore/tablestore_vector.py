@@ -71,7 +71,7 @@ class TableStoreVector(BaseVector):
         table_result = result.get_result_by_table(self._table_name)
         for item in table_result:
             if item.is_ok and item.row:
-                kv = {k: v for k, v, t in item.row.attribute_columns}
+                kv = {k: v for k, v, _ in item.row.attribute_columns}
                 docs.append(
                     Document(
                         page_content=kv[Field.CONTENT_KEY.value], metadata=json.loads(kv[Field.METADATA_KEY.value])

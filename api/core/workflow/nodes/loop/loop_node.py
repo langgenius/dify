@@ -324,7 +324,7 @@ class LoopNode(BaseNode):
 
                 # Process conditions if at least one variable is available
                 if available_conditions:
-                    input_conditions, group_result, check_break_result = condition_processor.process_conditions(
+                    _, _, check_break_result = condition_processor.process_conditions(
                         variable_pool=self.graph_runtime_state.variable_pool,
                         conditions=available_conditions,
                         operator=logical_operator,

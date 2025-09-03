@@ -13,7 +13,7 @@ import type {
   CustomModel,
   ModelProvider,
 } from '../declarations'
-import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Badge from '@/app/components/base/badge'
@@ -24,6 +24,8 @@ type SwitchCredentialInLoadBalancingProps = {
   credentials?: Credential[]
   customModelCredential?: Credential
   setCustomModelCredential: Dispatch<SetStateAction<Credential | undefined>>
+  onUpdate?: (payload?: any, formValues?: Record<string, any>) => void
+  onRemove?: (credentialId: string) => void
 }
 const SwitchCredentialInLoadBalancing = ({
   provider,
@@ -31,6 +33,8 @@ const SwitchCredentialInLoadBalancing = ({
   customModelCredential,
   setCustomModelCredential,
   credentials,
+  onUpdate,
+  onRemove,
 }: SwitchCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
 
@@ -94,27 +98,31 @@ const SwitchCredentialInLoadBalancing = ({
     <Authorized
       provider={provider}
       configurationMethod={ConfigurationMethodEnum.customizableModel}
+      currentCustomConfigurationModelFixedFields={model ? {
+        __model_name: model.model,
+        __model_type: model.model_type,
+      } : undefined}
+      authParams={{
+        isModelCredential: true,
+        mode: ModelModalModeEnum.configModelCredential,
+        onUpdate,
+        onRemove,
+      }}
       items={[
         {
-          title: t('common.modelProvider.auth.modelCredentials'),
           model,
           credentials: credentials || [],
+          selectedCredential: customModelCredential ? {
+            credential_id: customModelCredential?.credential_id || '',
+            credential_name: customModelCredential?.credential_name || '',
+          } : undefined,
         },
       ]}
       renderTrigger={renderTrigger}
       onItemClick={handleItemClick}
-      isModelCredential
       enableAddModelCredential
-      bottomAddModelCredentialText={t('common.modelProvider.auth.addModelCredential')}
-      selectedCredential={
-        customModelCredential
-          ? {
-            credential_id: customModelCredential?.credential_id || '',
-            credential_name: customModelCredential?.credential_name || '',
-          }
-          : undefined
-      }
       showItemSelectedIcon
+      popupTitle={t('common.modelProvider.auth.modelCredentials')}
     />
   )
 }
