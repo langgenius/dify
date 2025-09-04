@@ -263,7 +263,6 @@ class Executor:
             if authorization.config is None:
                 raise AuthorizationConfigError("authorization config is required")
 
-
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
 
