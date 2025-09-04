@@ -11,6 +11,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import StrLen, uuid_value
 from libs.login import login_required
+from services.enterprise.plugin_manager_service import CredentialPolicyViolationError
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
@@ -208,23 +209,32 @@ class ModelProviderModelCredentialApi(Resource):
         parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
         args = parser.parse_args()
 
-        model_provider_service = ModelProviderService()
-        current_credential = model_provider_service.get_model_credential(
-            tenant_id=tenant_id,
-            provider=provider,
-            model_type=args["model_type"],
-            model=args["model"],
-            credential_id=args.get("credential_id"),
-        )
+        # Initialize variables to avoid UnboundLocalError
+        current_credential = None
+        is_load_balancing_enabled = False
+        load_balancing_configs = []
 
-        model_load_balancing_service = ModelLoadBalancingService()
-        is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
-            tenant_id=tenant_id,
-            provider=provider,
-            model=args["model"],
-            model_type=args["model_type"],
-            config_from=args.get("config_from", ""),
-        )
+        try:
+            model_provider_service = ModelProviderService()
+            current_credential = model_provider_service.get_model_credential(
+                tenant_id=tenant_id,
+                provider=provider,
+                model_type=args["model_type"],
+                model=args["model"],
+                credential_id=args.get("credential_id"),
+            )
+
+            model_load_balancing_service = ModelLoadBalancingService()
+            is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=args["model"],
+                model_type=args["model_type"],
+                config_from=args.get("config_from", ""),
+            )
+        except CredentialPolicyViolationError:
+            # ignore credential policy violation error
+            pass
 
         if args.get("config_from", "") == "predefined-model":
             available_credentials = model_provider_service.provider_manager.get_provider_available_credentials(

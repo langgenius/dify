@@ -150,6 +150,10 @@ class ProviderConfiguration(BaseModel):
 
             if current_credential_id:
                 self._check_credential_policy_compliance(current_credential_id)
+            else:
+                # no current credential id, check all available credentials
+                for model_configuration in self.custom_configuration.provider.available_credentials:
+                    self._check_credential_policy_compliance(model_configuration.credential_id)
 
             return credentials
 
