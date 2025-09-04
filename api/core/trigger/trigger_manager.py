@@ -46,6 +46,7 @@ class TriggerManager:
                     entity=provider.declaration,
                     plugin_id=provider.plugin_id,
                     plugin_unique_identifier=provider.plugin_unique_identifier,
+                    provider_id=TriggerProviderID(provider.provider),
                     tenant_id=tenant_id,
                 )
                 controllers.append(controller)
@@ -75,6 +76,7 @@ class TriggerManager:
                 entity=provider.declaration,
                 plugin_id=provider.plugin_id,
                 plugin_unique_identifier=provider.plugin_unique_identifier,
+                provider_id=provider_id,
                 tenant_id=tenant_id,
             )
         except Exception as e:
@@ -114,26 +116,6 @@ class TriggerManager:
         :return: Trigger entity or None
         """
         return cls.get_trigger_provider(tenant_id, provider_id).get_trigger(trigger_name)
-
-    @classmethod
-    def validate_trigger_credentials(
-        cls, tenant_id: str, provider_id: TriggerProviderID, user_id: str, credentials: Mapping[str, str]
-    ) -> tuple[bool, str]:
-        """
-        Validate trigger provider credentials
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider ID
-        :param user_id: User ID
-        :param credentials: Credentials to validate
-        :return: Tuple of (is_valid, error_message)
-        """
-        try:
-            provider = cls.get_trigger_provider(tenant_id, provider_id)
-            validation_result = provider.validate_credentials(user_id, credentials)
-            return validation_result.valid, validation_result.message if not validation_result.valid else ""
-        except Exception as e:
-            return False, str(e)
 
     @classmethod
     def invoke_trigger(

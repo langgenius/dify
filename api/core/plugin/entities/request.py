@@ -254,11 +254,13 @@ class TriggerSubscriptionResponse(BaseModel):
 
 
 class TriggerValidateProviderCredentialsResponse(BaseModel):
-    valid: bool
-    message: str
-    error: str
+    result: bool
 
 
 class TriggerDispatchResponse:
     triggers: list[str]
     response: Response
+
+    def __init__(self, triggers: list[str], response: Response):
+        self.triggers = triggers
+        self.response = response

@@ -105,7 +105,7 @@ class TriggerProviderService:
                     # Check provider count limit
                     provider_count = (
                         session.query(TriggerSubscription)
-                        .filter_by(tenant_id=tenant_id, provider_id=provider_id)
+                        .filter_by(tenant_id=tenant_id, provider_id=str(provider_id))
                         .count()
                     )
 
@@ -118,7 +118,7 @@ class TriggerProviderService:
                     # Check if name already exists
                     existing = (
                         session.query(TriggerSubscription)
-                        .filter_by(tenant_id=tenant_id, provider_id=provider_id, name=name)
+                        .filter_by(tenant_id=tenant_id, provider_id=str(provider_id), name=name)
                         .first()
                     )
                     if existing:
@@ -136,7 +136,7 @@ class TriggerProviderService:
                         user_id=user_id,
                         name=name,
                         endpoint_id=endpoint_id,
-                        provider_id=provider_id,
+                        provider_id=str(provider_id),
                         parameters=parameters,
                         properties=properties,
                         credentials=encrypter.encrypt(dict(credentials)),
@@ -447,5 +447,5 @@ class TriggerProviderService:
         Get a trigger subscription by the endpoint ID.
         """
         with Session(db.engine, autoflush=False) as session:
-            subscription = session.query(TriggerSubscription).filter_by(endpoint=endpoint_id).first()
+            subscription = session.query(TriggerSubscription).filter_by(endpoint_id=endpoint_id).first()
             return subscription

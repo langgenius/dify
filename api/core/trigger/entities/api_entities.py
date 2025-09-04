@@ -43,4 +43,15 @@ class TriggerApiEntity(BaseModel):
     output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
 
 
+class SubscriptionBuilderApiEntity(BaseModel):
+    id: str = Field(description="The id of the subscription builder")
+    name: str = Field(description="The name of the subscription builder")
+    provider: str = Field(description="The provider id of the subscription builder")
+    endpoint: str = Field(description="The endpoint id of the subscription builder")
+    parameters: Mapping[str, Any] = Field(description="The parameters of the subscription builder")
+    properties: Mapping[str, Any] = Field(description="The properties of the subscription builder")
+    credentials: Mapping[str, str] = Field(description="The credentials of the subscription builder")
+    credential_type: CredentialType = Field(description="The credential type of the subscription builder")
+
+
 __all__ = ["TriggerApiEntity", "TriggerProviderApiEntity", "TriggerProviderSubscriptionApiEntity"]

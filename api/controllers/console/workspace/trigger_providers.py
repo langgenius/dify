@@ -117,6 +117,43 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
             raise
 
 
+class TriggerSubscriptionBuilderUpdateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider, subscription_builder_id):
+        """Update a subscription instance for a trigger provider"""
+        user = current_user
+        assert isinstance(user, Account)
+        assert user.current_tenant_id is not None
+
+        parser = reqparse.RequestParser()
+        # The name of the subscription builder
+        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
+        # The parameters of the subscription builder
+        parser.add_argument("parameters", type=dict, required=False, nullable=True, location="json")
+        # The properties of the subscription builder
+        parser.add_argument("properties", type=dict, required=False, nullable=True, location="json")
+        # The credentials of the subscription builder
+        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+        args = parser.parse_args()
+        try:
+            return jsonable_encoder(
+                TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
+                    tenant_id=user.current_tenant_id,
+                    provider_id=TriggerProviderID(provider),
+                    subscription_builder_id=subscription_builder_id,
+                    name=args.get("name", None),
+                    parameters=args.get("parameters", None),
+                    properties=args.get("properties", None),
+                    credentials=args.get("credentials", None),
+                )
+            )
+        except Exception as e:
+            logger.exception("Error updating provider credential", exc_info=e)
+            raise
+
+
 class TriggerSubscriptionBuilderBuildApi(Resource):
     @setup_required
     @login_required
@@ -216,9 +253,26 @@ class TriggerOAuthAuthorizeApi(Resource):
                 redirect_uri=redirect_uri,
                 system_credentials=oauth_client_params,
             )
+            # Create subscription builder
+            subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
+                tenant_id=tenant_id,
+                user_id=user.id,
+                provider_id=provider_id,
+                credentials={},
+                credential_type=CredentialType.OAUTH2,
+                credential_expires_at=0,
+                expires_at=0,
+            )
 
             # Create response with cookie
-            response = make_response(jsonable_encoder(authorization_url_response))
+            response = make_response(
+                jsonable_encoder(
+                    {
+                        "authorization_url": authorization_url_response,
+                        "subscription_builder": subscription_builder,
+                    }
+                )
+            )
             response.set_cookie(
                 "context_id",
                 context_id,
@@ -409,6 +463,10 @@ api.add_resource(
 api.add_resource(
     TriggerSubscriptionBuilderCreateApi,
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/create",
+)
+api.add_resource(
+    TriggerSubscriptionBuilderUpdateApi,
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/update/<path:subscription_builder_id>",
 )
 api.add_resource(
     TriggerSubscriptionBuilderVerifyApi,
