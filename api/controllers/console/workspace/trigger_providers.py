@@ -154,6 +154,24 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
             raise
 
 
+class TriggerSubscriptionBuilderRequestLogsApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider, subscription_builder_id):
+        """Get the request logs for a subscription instance for a trigger provider"""
+        user = current_user
+        assert isinstance(user, Account)
+        assert user.current_tenant_id is not None
+
+        try:
+            return jsonable_encoder(TriggerSubscriptionBuilderService.list_request_logs(subscription_builder_id))
+        except Exception as e:
+            logger.exception("Error getting request logs for provider credential", exc_info=e)
+            raise
+
+
 class TriggerSubscriptionBuilderBuildApi(Resource):
     @setup_required
     @login_required
@@ -475,6 +493,10 @@ api.add_resource(
 api.add_resource(
     TriggerSubscriptionBuilderBuildApi,
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/build/<path:subscription_builder_id>",
+)
+api.add_resource(
+    TriggerSubscriptionBuilderRequestLogsApi,
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/request-logs/<path:subscription_builder_id>",
 )
 
 

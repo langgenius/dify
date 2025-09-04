@@ -13,7 +13,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
-from models.model import AppMode
+from models.model import Account, AppMode
 from models.workflow import AppTrigger, AppTriggerStatus, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,8 @@ class PluginTriggerApi(Resource):
         parser.add_argument("subscription_id", type=str, required=True, help="Subscription ID is required")
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -82,7 +83,8 @@ class PluginTriggerApi(Resource):
         parser.add_argument("subscription_id", type=str, required=False, help="Subscription ID")
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -106,7 +108,8 @@ class PluginTriggerApi(Resource):
         parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -140,7 +143,8 @@ class WebhookTriggerApi(Resource):
         )
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -203,7 +207,8 @@ class WebhookTriggerApi(Resource):
         )
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -295,7 +300,8 @@ class AppTriggerEnableApi(Resource):
         parser.add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        # The role of the current user must be admin, owner, or editor
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         if not current_user.is_editor:
             raise Forbidden()
 
