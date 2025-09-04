@@ -16,7 +16,8 @@ import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import type { ChunkingMode, FileItem } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
+import type { FileItem } from '@/models/datasets'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -129,19 +130,14 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     }
   }
 
-  const mode = useMemo(() => {
-    if (documentDetail?.document_process_rule?.mode)
-      return documentDetail.document_process_rule.mode
-    return documentDetail?.doc_form === 'hierarchical_model' ? 'hierarchical' : 'custom'
-  }, [documentDetail?.document_process_rule?.mode, documentDetail?.dataset_process_rule?.mode])
-
   const parentMode = useMemo(() => {
     return documentDetail?.document_process_rule?.rules?.parent_mode || documentDetail?.dataset_process_rule?.rules?.parent_mode || 'paragraph'
   }, [documentDetail?.document_process_rule?.rules?.parent_mode, documentDetail?.dataset_process_rule?.rules?.parent_mode])
 
   const isFullDocMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'full-doc'
-  }, [mode, parentMode])
+    const chunkMode = documentDetail?.doc_form
+    return chunkMode === ChunkingMode.parentChild && parentMode === 'full-doc'
+  }, [documentDetail?.doc_form, parentMode])
 
   return (
     <DocumentContext.Provider value={{

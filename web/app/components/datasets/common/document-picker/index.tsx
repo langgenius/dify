@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -53,7 +53,9 @@ const DocumentPicker: FC<Props> = ({
     },
   })
   const documentsList = data?.data
+  const isGeneralMode = chunkingMode === ChunkingMode.text
   const isParentChild = chunkingMode === ChunkingMode.parentChild
+  const isQAMode = chunkingMode === ChunkingMode.qa
   const TypeIcon = isParentChild ? ParentChildChunk : GeneralChunk
 
   const [open, {
@@ -66,6 +68,12 @@ const DocumentPicker: FC<Props> = ({
     onChange(documentsList?.find(item => item.id === id) as SimpleDocumentDetail)
     setOpen(false)
   }, [documentsList, onChange, setOpen])
+
+  const parentModeLabel = useMemo(() => {
+    if (!parentMode)
+      return '--'
+    return parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')
+  }, [parentMode, t])
 
   return (
     <PortalToFollowElem
@@ -84,8 +92,9 @@ const DocumentPicker: FC<Props> = ({
             <div className='flex h-3 items-center space-x-0.5 text-text-tertiary'>
               <TypeIcon className='h-3 w-3' />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
-                {isParentChild ? t('dataset.chunkingMode.parentChild') : t('dataset.chunkingMode.general')}
-                {isParentChild && ` · ${!parentMode ? '--' : parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')}`}
+                {isGeneralMode && t('dataset.chunkingMode.general')}
+                {isQAMode && t('dataset.chunkingMode.qa')}
+                {isParentChild && `${t('dataset.chunkingMode.parentChild')} · ${parentModeLabel}`}
               </span>
             </div>
           </div>
