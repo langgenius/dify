@@ -3,7 +3,7 @@ const translation = {
     retrievalSetting: {
       title: 'Pengaturan Pengambilan',
       description: 'tentang metode pengambilan.',
-      longDescription: 'tentang metode pengambilan, Anda dapat mengudagnya kapan saja di pengaturan Pengetahuan.',
+      longDescription: 'tentang metode pengambilan, Anda dapat mengunduhnya kapan saja di pengaturan Pengetahuan.',
       method: 'Metode Pengambilan',
       learnMore: 'Pelajari lebih lanjut',
     },

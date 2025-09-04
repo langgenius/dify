@@ -494,6 +494,7 @@ const translation = {
       specifyModelCredentialTip: 'از اعتبارنامه مدل پیکربندی شده استفاده کنید.',
       providerManagedTip: 'تنظیمات فعلی توسط ارائه‌دهنده میزبانی می‌شود.',
       modelCredentials: 'مدل اعتبارنامه',
+      manageCredentials: 'مدیریت اعتبارنامه ها',
     },
   },
   dataSource: {

@@ -5,5 +5,12 @@ set -x
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/.."
 
+# Get the path argument if provided
+PATH_TO_CHECK="$1"
+
 # run basedpyright checks
-uv run --directory api --dev basedpyright
+if [ -n "$PATH_TO_CHECK" ]; then
+    uv run --directory api --dev basedpyright "$PATH_TO_CHECK"
+else
+    uv run --directory api --dev basedpyright
+fi

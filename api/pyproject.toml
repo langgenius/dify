@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.8.0"
+version = "1.8.1"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -214,7 +214,7 @@ vdb = [
     "tidb-vector==0.0.9",
     "upstash-vector==0.6.0",
     "volcengine-compat~=1.0.0",
-    "weaviate-client~=3.24.0",
+    "weaviate-client~=3.26.7",
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]
