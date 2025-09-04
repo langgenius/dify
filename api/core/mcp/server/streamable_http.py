@@ -142,7 +142,7 @@ def handle_call_tool(
         end_user,
         args,
         InvokeFrom.SERVICE_API,
-        streaming=app.mode == AppMode.AGENT_CHAT.value,
+        streaming=app.mode == AppMode.AGENT_CHAT,
     )
 
     answer = extract_answer_from_response(app, response)
@@ -157,7 +157,7 @@ def build_parameter_schema(
     """Build parameter schema for the tool"""
     parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
 
-    if app_mode in {AppMode.COMPLETION.value, AppMode.WORKFLOW.value}:
+    if app_mode in {AppMode.COMPLETION, AppMode.WORKFLOW}:
         return {
             "type": "object",
             "properties": parameters,
@@ -175,9 +175,9 @@ def build_parameter_schema(
 
 def prepare_tool_arguments(app: App, arguments: dict[str, Any]) -> dict[str, Any]:
     """Prepare arguments based on app mode"""
-    if app.mode == AppMode.WORKFLOW.value:
+    if app.mode == AppMode.WORKFLOW:
         return {"inputs": arguments}
-    elif app.mode == AppMode.COMPLETION.value:
+    elif app.mode == AppMode.COMPLETION:
         return {"query": "", "inputs": arguments}
     else:
         # Chat modes - create a copy to avoid modifying original dict
@@ -218,13 +218,13 @@ def process_streaming_response(response: RateLimitGenerator) -> str:
 def process_mapping_response(app: App, response: Mapping) -> str:
     """Process mapping response based on app mode"""
     if app.mode in {
-        AppMode.ADVANCED_CHAT.value,
-        AppMode.COMPLETION.value,
-        AppMode.CHAT.value,
-        AppMode.AGENT_CHAT.value,
+        AppMode.ADVANCED_CHAT,
+        AppMode.COMPLETION,
+        AppMode.CHAT,
+        AppMode.AGENT_CHAT,
     }:
         return response.get("answer", "")
-    elif app.mode == AppMode.WORKFLOW.value:
+    elif app.mode == AppMode.WORKFLOW:
         return json.dumps(response["data"]["outputs"], ensure_ascii=False)
     else:
         raise ValueError("Invalid app mode: " + str(app.mode))

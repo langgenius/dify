@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -51,7 +51,7 @@ class WorkflowTaskState(TaskState):
     answer: str = ""
 
 
-class StreamEvent(Enum):
+class StreamEvent(StrEnum):
     """
     Stream event
     """

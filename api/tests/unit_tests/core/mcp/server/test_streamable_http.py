@@ -28,7 +28,7 @@ class TestHandleMCPRequest:
         """Setup test fixtures"""
         self.app = Mock(spec=App)
         self.app.name = "test_app"
-        self.app.mode = AppMode.CHAT.value
+        self.app.mode = AppMode.CHAT
 
         self.mcp_server = Mock(spec=AppMCPServer)
         self.mcp_server.description = "Test server"
@@ -195,7 +195,7 @@ class TestIndividualHandlers:
     def test_handle_list_tools(self):
         """Test list tools handler"""
         app_name = "test_app"
-        app_mode = AppMode.CHAT.value
+        app_mode = AppMode.CHAT
         description = "Test server"
         parameters_dict: dict[str, str] = {}
         user_input_form: list[VariableEntity] = []
@@ -211,7 +211,7 @@ class TestIndividualHandlers:
     def test_handle_call_tool(self, mock_app_generate):
         """Test call tool handler"""
         app = Mock(spec=App)
-        app.mode = AppMode.CHAT.value
+        app.mode = AppMode.CHAT
 
         # Create mock request
         mock_request = Mock()
@@ -251,7 +251,7 @@ class TestUtilityFunctions:
 
     def test_build_parameter_schema_chat_mode(self):
         """Test building parameter schema for chat mode"""
-        app_mode = AppMode.CHAT.value
+        app_mode = AppMode.CHAT
         parameters_dict: dict[str, str] = {"name": "Enter your name"}
 
         user_input_form = [
@@ -274,7 +274,7 @@ class TestUtilityFunctions:
 
     def test_build_parameter_schema_workflow_mode(self):
         """Test building parameter schema for workflow mode"""
-        app_mode = AppMode.WORKFLOW.value
+        app_mode = AppMode.WORKFLOW
         parameters_dict: dict[str, str] = {"input_text": "Enter text"}
 
         user_input_form = [
@@ -297,7 +297,7 @@ class TestUtilityFunctions:
     def test_prepare_tool_arguments_chat_mode(self):
         """Test preparing tool arguments for chat mode"""
         app = Mock(spec=App)
-        app.mode = AppMode.CHAT.value
+        app.mode = AppMode.CHAT
 
         arguments = {"query": "test question", "name": "John"}
 
@@ -311,7 +311,7 @@ class TestUtilityFunctions:
     def test_prepare_tool_arguments_workflow_mode(self):
         """Test preparing tool arguments for workflow mode"""
         app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW.value
+        app.mode = AppMode.WORKFLOW
 
         arguments = {"input_text": "test input"}
 
@@ -323,7 +323,7 @@ class TestUtilityFunctions:
     def test_prepare_tool_arguments_completion_mode(self):
         """Test preparing tool arguments for completion mode"""
         app = Mock(spec=App)
-        app.mode = AppMode.COMPLETION.value
+        app.mode = AppMode.COMPLETION
 
         arguments = {"name": "John"}
 
@@ -335,7 +335,7 @@ class TestUtilityFunctions:
     def test_extract_answer_from_mapping_response_chat(self):
         """Test extracting answer from mapping response for chat mode"""
         app = Mock(spec=App)
-        app.mode = AppMode.CHAT.value
+        app.mode = AppMode.CHAT
 
         response = {"answer": "test answer", "other": "data"}
 
@@ -346,7 +346,7 @@ class TestUtilityFunctions:
     def test_extract_answer_from_mapping_response_workflow(self):
         """Test extracting answer from mapping response for workflow mode"""
         app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW.value
+        app.mode = AppMode.WORKFLOW
 
         response = {"data": {"outputs": {"result": "test result"}}}
 

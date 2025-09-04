@@ -145,7 +145,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 if self._task_state.metadata:
                     extras["metadata"] = self._task_state.metadata.model_dump()
                 response: Union[ChatbotAppBlockingResponse, CompletionAppBlockingResponse]
-                if self._conversation_mode == AppMode.COMPLETION.value:
+                if self._conversation_mode == AppMode.COMPLETION:
                     response = CompletionAppBlockingResponse(
                         task_id=self._application_generate_entity.task_id,
                         data=CompletionAppBlockingResponse.Data(

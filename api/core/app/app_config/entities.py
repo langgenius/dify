@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -61,7 +61,7 @@ class PromptTemplateEntity(BaseModel):
     Prompt Template Entity.
     """
 
-    class PromptType(Enum):
+    class PromptType(StrEnum):
         """
         Prompt Type.
         'simple', 'advanced'
@@ -195,7 +195,7 @@ class DatasetRetrieveConfigEntity(BaseModel):
     Dataset Retrieve Config Entity.
     """
 
-    class RetrieveStrategy(Enum):
+    class RetrieveStrategy(StrEnum):
         """
         Dataset Retrieve Strategy.
         'single' or 'multiple'
@@ -293,14 +293,14 @@ class AppConfig(BaseModel):
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 
 
-class EasyUIBasedAppModelConfigFrom(Enum):
+class EasyUIBasedAppModelConfigFrom(StrEnum):
     """
     App Model Config From.
     """
 
-    ARGS = "args"
-    APP_LATEST_CONFIG = "app-latest-config"
-    CONVERSATION_SPECIFIC_CONFIG = "conversation-specific-config"
+    ARGS = auto()
+    APP_LATEST_CONFIG = auto()
+    CONVERSATION_SPECIFIC_CONFIG = auto()
 
 
 class EasyUIBasedAppConfig(AppConfig):

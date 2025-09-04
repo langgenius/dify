@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class EmbeddingInputType(Enum):
+class EmbeddingInputType(StrEnum):
     """
     Enum for embedding input type.
     """
