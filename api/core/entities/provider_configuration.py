@@ -269,8 +269,6 @@ class ProviderConfiguration(BaseModel):
                 except Exception:
                     pass
 
-        self._check_credential_policy_compliance(credential_id)
-
         return self.obfuscated_credentials(
             credentials=credentials,
             credential_form_schemas=self.provider.provider_credential_schema.credential_form_schemas
@@ -300,10 +298,6 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: if provided, return the specified credential
         :return:
         """
-        if FeatureService.get_system_features().plugin_manager.enabled:
-            if self.custom_configuration.provider and self.custom_configuration.provider.current_credential_id:
-                self._check_credential_policy_compliance(self.custom_configuration.provider.current_credential_id)
-
         if credential_id:
             return self._get_specific_provider_credential(credential_id)
 
@@ -778,8 +772,6 @@ class ProviderConfiguration(BaseModel):
         current_credential_id = credential_record.id
         current_credential_name = credential_record.credential_name
 
-        self._check_credential_policy_compliance(current_credential_id)
-
         credentials = self.obfuscated_credentials(
             credentials=credentials,
             credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
@@ -834,8 +826,6 @@ class ProviderConfiguration(BaseModel):
             ):
                 current_credential_id = model_configuration.current_credential_id
                 current_credential_name = model_configuration.current_credential_name
-                if current_credential_id:
-                    self._check_credential_policy_compliance(current_credential_id)
 
                 credentials = self.obfuscated_credentials(
                     credentials=model_configuration.credentials,
