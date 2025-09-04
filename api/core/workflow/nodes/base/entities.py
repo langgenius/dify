@@ -73,9 +73,6 @@ class DefaultValue(BaseModel):
 
     @model_validator(mode="after")
     def validate_value_type(self) -> "DefaultValue":
-        if self.type is None:
-            raise DefaultValueTypeError("type field is required")
-
         # Type validation configuration
         type_validators = {
             DefaultValueType.STRING: {

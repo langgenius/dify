@@ -108,8 +108,6 @@ class CodeNode(Node):
         """
         if value is None:
             return None
-        if not isinstance(value, str):
-            raise OutputValidationError(f"Output variable `{variable}` must be a string")
 
         if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
             raise OutputValidationError(
@@ -122,8 +120,6 @@ class CodeNode(Node):
     def _check_boolean(self, value: bool | None, variable: str) -> bool | None:
         if value is None:
             return None
-        if not isinstance(value, bool):
-            raise OutputValidationError(f"Output variable `{variable}` must be a boolean")
 
         return value
 
@@ -136,8 +132,6 @@ class CodeNode(Node):
         """
         if value is None:
             return None
-        if not isinstance(value, int | float):
-            raise OutputValidationError(f"Output variable `{variable}` must be a number")
 
         if value > dify_config.CODE_MAX_NUMBER or value < dify_config.CODE_MIN_NUMBER:
             raise OutputValidationError(

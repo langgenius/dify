@@ -10,7 +10,7 @@ from core.file import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import ImagePromptMessageContent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -38,7 +38,6 @@ from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
-    InvalidInvokeResultError,
     InvalidModelModeError,
     InvalidModelTypeError,
     InvalidNumberOfParametersError,
@@ -304,8 +303,6 @@ class ParameterExtractorNode(Node):
         )
 
         # handle invoke result
-        if not isinstance(invoke_result, LLMResult):
-            raise InvalidInvokeResultError(f"Invalid invoke result: {invoke_result}")
 
         text = invoke_result.message.content or ""
         if not isinstance(text, str):
@@ -316,9 +313,6 @@ class ParameterExtractorNode(Node):
 
         # deduct quota
         llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
-
-        if text is None:
-            text = ""
 
         return text, usage, tool_call
 
@@ -583,8 +577,6 @@ class ParameterExtractorNode(Node):
             return int(value)
         elif isinstance(value, (int, float)):
             return value
-        elif not isinstance(value, str):
-            return None
         if "." in value:
             try:
                 return float(value)
@@ -697,7 +689,7 @@ class ParameterExtractorNode(Node):
         for parameter in data.parameters:
             if parameter.type == "number":
                 result[parameter.name] = 0
-            elif parameter.type == "bool":
+            elif parameter.type == "boolean":
                 result[parameter.name] = False
             elif parameter.type in {"string", "select"}:
                 result[parameter.name] = ""

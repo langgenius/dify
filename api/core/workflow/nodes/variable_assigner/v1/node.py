@@ -117,12 +117,8 @@ class VariableAssignerNode(Node):
 
             case WriteMode.CLEAR:
                 income_value = get_zero_value(original_variable.value_type)
-                if income_value is None:
-                    raise VariableOperatorNodeError("income value not found")
                 updated_variable = original_variable.model_copy(update={"value": income_value.to_object()})
 
-            case _:
-                raise VariableOperatorNodeError(f"unsupported write mode: {self._node_data.write_mode}")
 
         # Over write the variable.
         self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)

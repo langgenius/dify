@@ -195,9 +195,8 @@ class LLMNode(Node):
             generator = self._fetch_context(node_data=self._node_data)
             context = None
             for event in generator:
-                if isinstance(event, RunRetrieverResourceEvent):
-                    context = event.context
-                    yield event
+                context = event.context
+                yield event
             if context:
                 node_inputs["#context#"] = context
 
@@ -282,7 +281,7 @@ class LLMNode(Node):
             outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
-            if self._file_outputs is not None:
+            if self._file_outputs:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
             # Send final chunk event to indicate streaming is complete
@@ -827,9 +826,7 @@ class LLMNode(Node):
 
         prompt_template = typed_node_data.prompt_template
         variable_selectors = []
-        if isinstance(prompt_template, list) and all(
-            isinstance(prompt, LLMNodeChatModelMessage) for prompt in prompt_template
-        ):
+        if isinstance(prompt_template, list):
             for prompt in prompt_template:
                 if prompt.edition_type != "jinja2":
                     variable_template_parser = VariableTemplateParser(template=prompt.text)
@@ -1063,7 +1060,7 @@ class LLMNode(Node):
             return
         if isinstance(contents, str):
             yield contents
-        elif isinstance(contents, list):
+        else:
             for item in contents:
                 if isinstance(item, TextPromptMessageContent):
                     yield item.data
@@ -1077,9 +1074,6 @@ class LLMNode(Node):
                 else:
                     logger.warning("unknown item type encountered, type=%s", type(item))
                     yield str(item)
-        else:
-            logger.warning("unknown contents type encountered, type=%s", type(contents))
-            yield str(contents)
 
     @property
     def retry(self) -> bool:

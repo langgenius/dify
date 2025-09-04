@@ -323,7 +323,7 @@ class ToolNode(Node):
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 # JSON message handling for tool node
-                if message.message.json_object is not None:
+                if message.message.json_object:
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
