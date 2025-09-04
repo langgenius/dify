@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from json import JSONDecodeError
 from typing import Any, Optional
 
-from core.entities.provider_configuration import ProviderConfigurations
 from extensions.ext_redis import redis_client
 
 
@@ -100,7 +99,7 @@ class ProviderConfigurationsCache:
         """
         return provider_configurations_cache.get(self.cache_key)
 
-    def set(self, configurations: ProviderConfigurations) -> None:
+    def set(self, configurations: 'ProviderConfigurations') -> None:
         """
         Cache provider configurations.
 
