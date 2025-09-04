@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.8.0"
+version = "2.0.0-beta1"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
