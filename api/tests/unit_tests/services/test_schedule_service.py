@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
+from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from events.event_handlers.sync_workflow_schedule_when_app_published import (
     sync_schedule_from_workflow,
 )
@@ -258,72 +259,190 @@ class TestVisualToCron(unittest.TestCase):
 
     def test_visual_to_cron_hourly(self):
         """Test converting hourly visual config to cron."""
-        visual_config = {"on_minute": 15}
+        visual_config = VisualConfig(on_minute=15)
         result = ScheduleService.visual_to_cron("hourly", visual_config)
         assert result == "15 * * * *"
 
     def test_visual_to_cron_daily(self):
         """Test converting daily visual config to cron."""
-        visual_config = {"time": "2:30 PM"}
+        visual_config = VisualConfig(time="2:30 PM")
         result = ScheduleService.visual_to_cron("daily", visual_config)
         assert result == "30 14 * * *"
 
     def test_visual_to_cron_weekly(self):
         """Test converting weekly visual config to cron."""
-        visual_config = {
-            "time": "10:00 AM",
-            "weekdays": ["mon", "wed", "fri"],
-        }
+        visual_config = VisualConfig(
+            time="10:00 AM",
+            weekdays=["mon", "wed", "fri"],
+        )
         result = ScheduleService.visual_to_cron("weekly", visual_config)
         assert result == "0 10 * * 1,3,5"
 
     def test_visual_to_cron_monthly_with_specific_days(self):
         """Test converting monthly visual config with specific days."""
-        visual_config = {
-            "time": "11:30 AM",
-            "monthly_days": [1, 15],
-        }
+        visual_config = VisualConfig(
+            time="11:30 AM",
+            monthly_days=[1, 15],
+        )
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "30 11 1,15 * *"
 
     def test_visual_to_cron_monthly_with_last_day(self):
         """Test converting monthly visual config with last day using 'L' syntax."""
-        visual_config = {
-            "time": "11:30 AM",
-            "monthly_days": [1, "last"],
-        }
+        visual_config = VisualConfig(
+            time="11:30 AM",
+            monthly_days=[1, "last"],
+        )
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "30 11 1,L * *"
 
     def test_visual_to_cron_monthly_only_last_day(self):
         """Test converting monthly visual config with only last day."""
-        visual_config = {
-            "time": "9:00 PM",
-            "monthly_days": ["last"],
-        }
+        visual_config = VisualConfig(
+            time="9:00 PM",
+            monthly_days=["last"],
+        )
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "0 21 L * *"
 
     def test_visual_to_cron_monthly_with_end_days_and_last(self):
         """Test converting monthly visual config with days 29, 30, 31 and 'last'."""
-        visual_config = {
-            "time": "3:45 PM",
-            "monthly_days": [29, 30, 31, "last"],
-        }
+        visual_config = VisualConfig(
+            time="3:45 PM",
+            monthly_days=[29, 30, 31, "last"],
+        )
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         # Should have 29,30,31,L - the L handles all possible last days
         assert result == "45 15 29,30,31,L * *"
 
     def test_visual_to_cron_invalid_frequency(self):
         """Test converting with invalid frequency."""
-        result = ScheduleService.visual_to_cron("invalid", {})
-        assert result is None
+        with pytest.raises(ScheduleConfigError, match="Unsupported frequency: invalid"):
+            ScheduleService.visual_to_cron("invalid", VisualConfig())
 
     def test_visual_to_cron_weekly_no_weekdays(self):
         """Test converting weekly with no weekdays specified."""
-        visual_config = {"time": "10:00 AM"}
+        visual_config = VisualConfig(time="10:00 AM")
+        with pytest.raises(ScheduleConfigError, match="Weekdays are required for weekly schedules"):
+            ScheduleService.visual_to_cron("weekly", visual_config)
+
+    def test_visual_to_cron_hourly_no_minute(self):
+        """Test converting hourly with no on_minute specified."""
+        visual_config = VisualConfig()  # on_minute defaults to 0
+        result = ScheduleService.visual_to_cron("hourly", visual_config)
+        assert result == "0 * * * *"  # Should use default value 0
+
+    def test_visual_to_cron_daily_no_time(self):
+        """Test converting daily with no time specified."""
+        visual_config = VisualConfig(time=None)
+        with pytest.raises(ScheduleConfigError, match="time is required for daily schedules"):
+            ScheduleService.visual_to_cron("daily", visual_config)
+
+    def test_visual_to_cron_weekly_no_time(self):
+        """Test converting weekly with no time specified."""
+        visual_config = VisualConfig(weekdays=["mon"])
+        visual_config.time = None  # Override default
+        with pytest.raises(ScheduleConfigError, match="time is required for weekly schedules"):
+            ScheduleService.visual_to_cron("weekly", visual_config)
+
+    def test_visual_to_cron_monthly_no_time(self):
+        """Test converting monthly with no time specified."""
+        visual_config = VisualConfig(monthly_days=[1])
+        visual_config.time = None  # Override default
+        with pytest.raises(ScheduleConfigError, match="time is required for monthly schedules"):
+            ScheduleService.visual_to_cron("monthly", visual_config)
+
+    def test_visual_to_cron_monthly_duplicate_days(self):
+        """Test monthly with duplicate days should be deduplicated."""
+        visual_config = VisualConfig(
+            time="10:00 AM",
+            monthly_days=[1, 15, 1, 15, 31],  # Duplicates
+        )
+        result = ScheduleService.visual_to_cron("monthly", visual_config)
+        assert result == "0 10 1,15,31 * *"  # Should be deduplicated
+
+    def test_visual_to_cron_monthly_unsorted_days(self):
+        """Test monthly with unsorted days should be sorted."""
+        visual_config = VisualConfig(
+            time="2:30 PM",
+            monthly_days=[20, 5, 15, 1, 10],  # Unsorted
+        )
+        result = ScheduleService.visual_to_cron("monthly", visual_config)
+        assert result == "30 14 1,5,10,15,20 * *"  # Should be sorted
+
+    def test_visual_to_cron_weekly_all_weekdays(self):
+        """Test weekly with all weekdays."""
+        visual_config = VisualConfig(
+            time="8:00 AM",
+            weekdays=["sun", "mon", "tue", "wed", "thu", "fri", "sat"],
+        )
         result = ScheduleService.visual_to_cron("weekly", visual_config)
-        assert result is None
+        assert result == "0 8 * * 0,1,2,3,4,5,6"
+
+    def test_visual_to_cron_hourly_boundary_values(self):
+        """Test hourly with boundary minute values."""
+        # Minimum value
+        visual_config = VisualConfig(on_minute=0)
+        result = ScheduleService.visual_to_cron("hourly", visual_config)
+        assert result == "0 * * * *"
+        
+        # Maximum value
+        visual_config = VisualConfig(on_minute=59)
+        result = ScheduleService.visual_to_cron("hourly", visual_config)
+        assert result == "59 * * * *"
+
+    def test_visual_to_cron_daily_midnight_noon(self):
+        """Test daily at special times (midnight and noon)."""
+        # Midnight
+        visual_config = VisualConfig(time="12:00 AM")
+        result = ScheduleService.visual_to_cron("daily", visual_config)
+        assert result == "0 0 * * *"
+        
+        # Noon
+        visual_config = VisualConfig(time="12:00 PM")
+        result = ScheduleService.visual_to_cron("daily", visual_config)
+        assert result == "0 12 * * *"
+
+    def test_visual_to_cron_monthly_mixed_with_last_and_duplicates(self):
+        """Test monthly with mixed days, 'last', and duplicates."""
+        visual_config = VisualConfig(
+            time="11:45 PM",
+            monthly_days=[15, 1, "last", 15, 30, 1, "last"],  # Mixed with duplicates
+        )
+        result = ScheduleService.visual_to_cron("monthly", visual_config)
+        assert result == "45 23 1,15,30,L * *"  # Deduplicated and sorted with L at end
+
+    def test_visual_to_cron_weekly_single_day(self):
+        """Test weekly with single weekday."""
+        visual_config = VisualConfig(
+            time="6:30 PM",
+            weekdays=["sun"],
+        )
+        result = ScheduleService.visual_to_cron("weekly", visual_config)
+        assert result == "30 18 * * 0"
+
+    def test_visual_to_cron_monthly_all_possible_days(self):
+        """Test monthly with all 31 days plus 'last'."""
+        all_days = list(range(1, 32)) + ["last"]
+        visual_config = VisualConfig(
+            time="12:01 AM",
+            monthly_days=all_days,
+        )
+        result = ScheduleService.visual_to_cron("monthly", visual_config)
+        expected_days = ','.join([str(i) for i in range(1, 32)]) + ',L'
+        assert result == f"1 0 {expected_days} * *"
+
+    def test_visual_to_cron_monthly_no_days(self):
+        """Test monthly without any days specified should raise error."""
+        visual_config = VisualConfig(time="10:00 AM", monthly_days=[])
+        with pytest.raises(ScheduleConfigError, match="Monthly days are required for monthly schedules"):
+            ScheduleService.visual_to_cron("monthly", visual_config)
+
+    def test_visual_to_cron_weekly_empty_weekdays_list(self):
+        """Test weekly with empty weekdays list should raise error."""
+        visual_config = VisualConfig(time="10:00 AM", weekdays=[])
+        with pytest.raises(ScheduleConfigError, match="Weekdays are required for weekly schedules"):
+            ScheduleService.visual_to_cron("weekly", visual_config)
 
 
 class TestParseTime(unittest.TestCase):
@@ -451,8 +570,8 @@ class TestExtractScheduleConfig(unittest.TestCase):
         workflow = Mock(spec=Workflow)
         workflow.graph_dict = None
 
-        config = ScheduleService.extract_schedule_config(workflow)
-        assert config is None
+        with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
+            ScheduleService.extract_schedule_config(workflow)
 
 
 class TestScheduleWithTimezone(unittest.TestCase):
@@ -465,10 +584,10 @@ class TestScheduleWithTimezone(unittest.TestCase):
         it runs at 10:30 AM Shanghai time, not 10:30 AM UTC.
         """
         # User in Shanghai wants to run a task at 10:30 AM local time
-        visual_config = {
-            "time": "10:30 AM",  # This is Shanghai time
-            "monthly_days": [1],
-        }
+        visual_config = VisualConfig(
+            time="10:30 AM",  # This is Shanghai time
+            monthly_days=[1],
+        )
 
         # Convert to cron expression
         cron_expr = ScheduleService.visual_to_cron("monthly", visual_config)
@@ -499,10 +618,10 @@ class TestScheduleWithTimezone(unittest.TestCase):
         This verifies that a schedule set for "9:00 AM" runs at 9 AM local time
         regardless of the timezone.
         """
-        visual_config = {
-            "time": "9:00 AM",
-            "weekdays": ["mon"],
-        }
+        visual_config = VisualConfig(
+            time="9:00 AM",
+            weekdays=["mon"],
+        )
 
         cron_expr = ScheduleService.visual_to_cron("weekly", visual_config)
         assert cron_expr is not None
@@ -531,9 +650,9 @@ class TestScheduleWithTimezone(unittest.TestCase):
         A schedule set for "10:00 AM" should always run at 10 AM local time,
         even when DST changes.
         """
-        visual_config = {
-            "time": "10:00 AM",
-        }
+        visual_config = VisualConfig(
+            time="10:00 AM",
+        )
 
         cron_expr = ScheduleService.visual_to_cron("daily", visual_config)
         assert cron_expr is not None
