@@ -119,7 +119,7 @@ class WebhookService:
 
                     # Create file using ToolFileManager
                     tool_file = tool_file_manager.create_file_by_raw(
-                        user_id="webhook_user",
+                        user_id=webhook_trigger.created_by,
                         tenant_id=webhook_trigger.tenant_id,
                         conversation_id=None,
                         file_binary=file_content,
@@ -135,8 +135,7 @@ class WebhookService:
                         mapping=mapping,
                         tenant_id=webhook_trigger.tenant_id,
                     )
-
-                    processed_files[name] = file_obj
+                    processed_files[name] = file_obj.to_dict()
 
                 except Exception:
                     logger.exception("Failed to process file upload %s", name)
@@ -164,6 +163,10 @@ class WebhookService:
             request_content_type = webhook_data["headers"].get("Content-Type", "").lower()
             if not request_content_type:
                 request_content_type = webhook_data["headers"].get("content-type", "application/json").lower()
+
+            # Extract the main content type (ignore parameters like boundary)
+            request_content_type = request_content_type.split(";")[0].strip()
+
             if configured_content_type != request_content_type:
                 return {
                     "valid": False,
@@ -221,9 +224,58 @@ class WebhookService:
                         if not validation_result["valid"]:
                             return validation_result
 
+            elif configured_content_type == "application/x-www-form-urlencoded":
+                # For form-urlencoded data, all values must be strings - no other types allowed
+                body_params = node_data.get("body", [])
+                body_data = webhook_data.get("body", {})
+
+                for body_param in body_params:
+                    param_name = body_param.get("name", "")
+                    param_type = body_param.get("type", SegmentType.STRING)
+                    is_required = body_param.get("required", False)
+
+                    param_exists = param_name in body_data
+                    if is_required and not param_exists:
+                        return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
+
+                    # Ensure the actual value is also a string
+                    if param_exists and param_type != SegmentType.STRING:
+                        param_value = body_data[param_name]
+                        validation_result = cls._validate_form_parameter_type(param_name, param_value, param_type)
+                        if not validation_result["valid"]:
+                            return validation_result
+
+            elif configured_content_type == "multipart/form-data":
+                # For multipart data, supports both strings and files
+                body_params = node_data.get("body", [])
+                body_data = webhook_data.get("body", {})
+
+                for body_param in body_params:
+                    param_name = body_param.get("name", "")
+                    param_type = body_param.get("type", SegmentType.STRING)
+                    is_required = body_param.get("required", False)
+
+                    if param_type == SegmentType.FILE:
+                        # File parameters are handled separately in files dict
+                        file_obj = webhook_data.get("files", {}).get(param_name)
+                        if is_required and not file_obj:
+                            return {"valid": False, "error": f"Required file parameter missing: {param_name}"}
+                    else:
+                        # Multipart form data parameters are all strings
+                        param_exists = param_name in body_data
+
+                        if is_required and not param_exists:
+                            return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
+
+                        # For form data, validate that non-string types can be converted
+                        if param_exists and param_type != SegmentType.STRING:
+                            param_value = body_data[param_name]
+                            validation_result = cls._validate_form_parameter_type(param_name, param_value, param_type)
+                            if not validation_result["valid"]:
+                                return validation_result
+
             else:
-                # For other content types (multipart/form-data, application/x-www-form-urlencoded, etc.)
-                # Only validate existence of required parameters, no type validation
+                # For other unsupported content types, only validate existence of required parameters
                 body_params = node_data.get("body", [])
                 for body_param in body_params:
                     param_name = body_param.get("name", "")
@@ -328,6 +380,47 @@ class WebhookService:
             return {"valid": False, "error": f"Type validation failed for parameter '{param_name}'"}
 
     @classmethod
+    def _validate_form_parameter_type(cls, param_name: str, param_value: str, param_type: str) -> dict[str, Any]:
+        """Validate form parameter type against expected type. Form data are always strings but can be converted."""
+        try:
+            # Form data values are always strings, but we can validate if they can be interpreted as other types
+            if param_type == SegmentType.STRING:
+                # String is always valid
+                return {"valid": True}
+
+            elif param_type == SegmentType.NUMBER:
+                # Check if string can be converted to number
+                try:
+                    float(param_value)
+                    return {"valid": True}
+                except ValueError:
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be a valid number, got '{param_value}'",
+                    }
+
+            elif param_type == SegmentType.BOOLEAN:
+                # Check if string represents a boolean
+                if param_value.lower() in ["true", "false", "1", "0", "yes", "no"]:
+                    return {"valid": True}
+                else:
+                    return {
+                        "valid": False,
+                        "error": f"Parameter '{param_name}' must be a boolean value, got '{param_value}'",
+                    }
+
+            else:
+                # For other types (object, arrays), form data is not suitable
+                return {
+                    "valid": False,
+                    "error": f"Parameter '{param_name}' type '{param_type}' is not supported for form data.",
+                }
+
+        except Exception:
+            logger.exception("Form type validation error for parameter %s", param_name)
+            return {"valid": False, "error": f"Form type validation failed for parameter '{param_name}'"}
+
+    @classmethod
     def trigger_workflow_execution(
         cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
     ) -> None:
@@ -355,7 +448,6 @@ class WebhookService:
                     "webhook_headers": webhook_data.get("headers", {}),
                     "webhook_query_params": webhook_data.get("query_params", {}),
                     "webhook_body": webhook_data.get("body", {}),
-                    "webhook_files": webhook_data.get("files", {}),
                 }
 
                 # Create trigger data

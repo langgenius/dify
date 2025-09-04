@@ -176,6 +176,7 @@ class WebhookTriggerApi(Resource):
                 tenant_id=current_user.current_tenant_id,
                 webhook_id=webhook_id,
                 triggered_by=triggered_by,
+                created_by=current_user.id,
             )
 
             session.add(webhook_trigger)
