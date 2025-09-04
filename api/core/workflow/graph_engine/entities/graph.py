@@ -287,6 +287,7 @@ class Graph(BaseModel):
             condition_parallels = {}
             for condition_hash, condition_parallel_branch_node_ids in parallel_branch_node_ids.items():
                 # any target node id in node_parallel_mapping
+                parallel = None
                 if condition_parallel_branch_node_ids:
                     parent_parallel_id = parent_parallel.id if parent_parallel else None
 
