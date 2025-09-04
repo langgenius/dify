@@ -577,16 +577,19 @@ class ParameterExtractorNode(Node):
             return int(value)
         elif isinstance(value, (int, float)):
             return value
-        if "." in value:
-            try:
-                return float(value)
-            except ValueError:
-                return None
+        elif isinstance(value, str):
+            if "." in value:
+                try:
+                    return float(value)
+                except ValueError:
+                    return None
+            else:
+                try:
+                    return int(value)
+                except ValueError:
+                    return None
         else:
-            try:
-                return int(value)
-            except ValueError:
-                return None
+            return None
 
     def _transform_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
         """
