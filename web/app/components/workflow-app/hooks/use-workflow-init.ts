@@ -30,7 +30,7 @@ export const useWorkflowInit = () => {
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id })
+    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
   }, [appDetail.id, workflowStore])
 
   const handleUpdateWorkflowConfig = useCallback((config: Record<string, any>) => {

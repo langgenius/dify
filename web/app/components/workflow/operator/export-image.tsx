@@ -10,7 +10,6 @@ import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
 import { RiExportLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -25,14 +24,14 @@ const ExportImage: FC = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const reactFlow = useReactFlow()
 
-  const appDetail = useAppStore(s => s.appDetail)
   const [open, setOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
   const [previewTitle, setPreviewTitle] = useState('')
   const knowledgeName = useStore(s => s.knowledgeName)
+  const appName = useStore(s => s.appName)
 
   const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
-    if (!appDetail && !knowledgeName)
+    if (!appName && !knowledgeName)
       return
 
     if (getNodesReadOnly())
@@ -43,6 +42,7 @@ const ExportImage: FC = () => {
     if (!flowElement) return
 
     try {
+      let filename = appName || knowledgeName
       const filter = (node: HTMLElement) => {
         if (node instanceof HTMLImageElement)
           return node.complete && node.naturalHeight !== 0
@@ -51,7 +51,6 @@ const ExportImage: FC = () => {
       }
 
       let dataUrl
-      let filename = `${appDetail.name}`
 
       if (currentWorkflow) {
         // Get all nodes and their bounds
@@ -158,7 +157,7 @@ const ExportImage: FC = () => {
         // For current view, just download
         const link = document.createElement('a')
         link.href = dataUrl
-        link.download = `${appDetail ? filename : knowledgeName}.${type}`
+        link.download = `${filename}.${type}`
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -167,7 +166,7 @@ const ExportImage: FC = () => {
     catch (error) {
       console.error('Export image failed:', error)
     }
-  }, [getNodesReadOnly, appDetail, reactFlow, knowledgeName])
+  }, [getNodesReadOnly, appName, reactFlow, knowledgeName])
 
   const handleTrigger = useCallback(() => {
     if (getNodesReadOnly())
