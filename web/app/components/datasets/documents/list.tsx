@@ -6,10 +6,10 @@ import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { pick, uniq } from 'lodash-es'
 import {
   RiEditLine,
+  RiGlobalLine,
 } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 import s from './style.module.css'
@@ -23,6 +23,7 @@ import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
+import type { LegacyDataSourceInfo, LocalFileInfo, OnlineDocumentInfo, OnlineDriveInfo } from '@/models/datasets'
 import { ChunkingMode, DataSourceType, DocumentActionType, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -36,6 +37,7 @@ import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-docum
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import StatusItem from './status-item'
 import Operations from './operations'
+import { DatasourceType } from '@/models/pipeline'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
@@ -249,6 +251,46 @@ const DocumentList: FC<IDocumentListProps> = ({
     }
   }
 
+  const getFileExtension = useCallback((fileName: string): string => {
+    if (!fileName)
+      return ''
+    const parts = fileName.split('.')
+    if (parts.length <= 1 || (parts[0] === '' && parts.length === 2))
+      return ''
+
+    return parts[parts.length - 1].toLowerCase()
+  }, [])
+
+  const isCreateFromRAGPipeline = useCallback((createFrom: string) => {
+    return createFrom === 'rag-pipeline'
+  }, [])
+
+  /**
+   * Calculate the data source type
+   * DataSourceType: FILE, NOTION, WEB (legacy)
+   * DatasourceType: localFile, onlineDocument, websiteCrawl, onlineDrive (new)
+   */
+  const isLocalFile = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
+    if (createFrom === 'rag-pipeline')
+      return dataSourceType === DatasourceType.localFile
+    return dataSourceType === DataSourceType.FILE
+  }, [])
+  const isOnlineDocument = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
+    if (createFrom === 'rag-pipeline')
+      return dataSourceType === DatasourceType.onlineDocument
+    return dataSourceType === DataSourceType.NOTION
+  }, [])
+  const isWebsiteCrawl = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
+    if (createFrom === 'rag-pipeline')
+      return dataSourceType === DatasourceType.websiteCrawl
+    return dataSourceType === DataSourceType.WEB
+  }, [])
+  const isOnlineDrive = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
+    if (createFrom === 'rag-pipeline')
+      return dataSourceType === DatasourceType.onlineDrive
+    return false
+  }, [])
+
   return (
     <div className='relative flex h-full w-full flex-col'>
       <div className='relative grow overflow-x-auto'>
@@ -287,7 +329,8 @@ const DocumentList: FC<IDocumentListProps> = ({
           </thead>
           <tbody className="text-text-secondary">
             {localDocs.map((doc, index) => {
-              const isFile = doc.data_source_type === DataSourceType.FILE
+              const isFile = isLocalFile(doc.data_source_type, doc.created_from)
+              const createFromRAGPipeline = isCreateFromRAGPipeline(doc.created_from)
               const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
               return <tr
                 key={doc.id}
@@ -313,10 +356,43 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </td>
                 <td>
                   <div className={'group mr-6 flex max-w-[460px] items-center hover:mr-0'}>
-                    <div className='shrink-0'>
-                      {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='mr-1.5 mt-[-3px] inline-flex align-middle' type='page' src={doc.data_source_info.notion_page_icon} />}
-                      {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
-                      {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='mr-1.5 mt-[-3px] inline-flex align-middle' />}
+                    <div className='flex shrink-0 items-center'>
+                      {isOnlineDocument(doc.data_source_type, doc.created_from) && (
+                        <NotionIcon
+                          className='mr-1.5'
+                          type='page'
+                          src={
+                            createFromRAGPipeline
+                              ? (doc.data_source_info as OnlineDocumentInfo).page.page_icon
+                              : (doc.data_source_info as LegacyDataSourceInfo).notion_page_icon
+                          }
+                        />
+                      )}
+                      {isLocalFile(doc.data_source_type, doc.created_from) && (
+                        <FileTypeIcon
+                          type={
+                            extensionToFileType(
+                              createFromRAGPipeline
+                                ? (doc?.data_source_info as LocalFileInfo)?.extension
+                                : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
+                            )
+                          }
+                          className='mr-1.5'
+                        />
+                      )}
+                      {isOnlineDrive(doc.data_source_type, doc.created_from) && (
+                        <FileTypeIcon
+                          type={
+                            extensionToFileType(
+                              getFileExtension((doc?.data_source_info as unknown as OnlineDriveInfo)?.name),
+                            )
+                          }
+                          className='mr-1.5'
+                        />
+                      )}
+                      {isWebsiteCrawl(doc.data_source_type, doc.created_from) && (
+                        <RiGlobalLine className='mr-1.5 size-4' />
+                      )}
                     </div>
                     <Tooltip
                       popupContent={doc.name}
@@ -353,7 +429,8 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </td>
                 <td>
                   {
-                    (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
+                    (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status)
+                      && isOnlineDocument(doc.data_source_type, doc.created_from))
                       ? <ProgressBar percent={doc.percent || 0} />
                       : <StatusItem status={doc.display_status} />
                   }

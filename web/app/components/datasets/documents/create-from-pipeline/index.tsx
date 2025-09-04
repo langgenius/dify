@@ -209,10 +209,11 @@ const CreateFormPipeline = () => {
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       const { bucket } = dataSourceStore.getState()
-      const { id, type } = previewOnlineDriveFileRef.current!
+      const { id, type, name } = previewOnlineDriveFileRef.current!
       datasourceInfoList.push({
         bucket,
         id,
+        name,
         type,
         credential_id: currentCredentialId,
       })
@@ -292,6 +293,7 @@ const CreateFormPipeline = () => {
         datasourceInfoList.push({
           bucket,
           id: file?.id,
+          name: file?.name,
           type: file?.type,
           credential_id: currentCredentialId,
         })

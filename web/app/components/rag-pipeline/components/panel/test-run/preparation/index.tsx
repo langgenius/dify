@@ -109,6 +109,7 @@ const Preparation = () => {
       datasourceInfoList.push({
         bucket,
         id: file?.id,
+        name: file?.name,
         type: file?.type,
         credential_id: credentialId,
       })

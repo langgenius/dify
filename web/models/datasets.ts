@@ -1,5 +1,5 @@
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
-import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
+import type { AppIconType, AppMode, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
@@ -308,7 +308,7 @@ export const DisplayStatusList = [
 
 export type DocumentDisplayStatus = typeof DisplayStatusList[number]
 
-export type DataSourceInfo = {
+export type LegacyDataSourceInfo = {
   upload_file: {
     id: string
     name: string
@@ -326,6 +326,47 @@ export type DataSourceInfo = {
   url: string
   credential_id?: string
 }
+
+export type LocalFileInfo = {
+  extension: string
+  mime_type: string
+  name: string
+  related_id: string
+  size: number
+  transfer_method: TransferMethod
+  url: string
+}
+
+export type WebsiteCrawlInfo = {
+  content: string
+  credential_id: string
+  description: string
+  source_url: string
+  title: string
+}
+
+export type OnlineDocumentInfo = {
+  credential_id: string
+  workspace_id: string
+  page: {
+    last_edited_time: string
+    page_icon: DataSourceNotionPage['page_icon']
+    page_id: string
+    page_name: string
+    parent_id: string
+    type: string
+  },
+}
+
+export type OnlineDriveInfo = {
+  bucket: string
+  credential_id: string
+  id: string
+  name: string
+  type: 'file' | 'folder'
+}
+
+export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo
 
 export type InitialDocumentDetail = {
   id: string
@@ -350,7 +391,6 @@ export type InitialDocumentDetail = {
 export type SimpleDocumentDetail = InitialDocumentDetail & {
   enabled: boolean
   word_count: number
-  is_qa: boolean // TODO waiting for backend to add this field
   error?: string | null
   archived: boolean
   updated_at: number
@@ -363,6 +403,7 @@ export type SimpleDocumentDetail = InitialDocumentDetail & {
     }
   }
   doc_metadata?: MetadataItemWithValue[]
+  created_from: string
 }
 
 export type DocumentListResponse = {
