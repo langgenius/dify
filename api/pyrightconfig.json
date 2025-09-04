@@ -5,7 +5,6 @@
   "pythonVersion": "3.11",
   "pythonPlatform": "All",
   "reportMissingTypeStubs": false,
-  "reportGeneralTypeIssues": "none",
   "reportOptionalMemberAccess": "none",
   "reportOptionalIterable": "none",
   "reportOptionalOperand": "none",
