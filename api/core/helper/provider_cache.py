@@ -104,7 +104,7 @@ class ProviderConfigurationsCache:
         """
         return provider_configurations_cache.get(self.cache_key)
 
-    def set(self, configurations: 'ProviderConfigurations') -> None:
+    def set(self, configurations: "ProviderConfigurations") -> None:
         """
         Cache provider configurations.
 
