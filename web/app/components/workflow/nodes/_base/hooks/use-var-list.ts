@@ -21,6 +21,8 @@ function useVarList<T>({
 
   const handleAddVariable = useCallback(() => {
     const newInputs = produce(inputs, (draft: any) => {
+      if (!draft[varKey])
+        draft[varKey] = []
       draft[varKey].push({
         variable: '',
         value_selector: [],

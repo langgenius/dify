@@ -167,11 +167,11 @@ def test_process():
                 "id": "llm5",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "a{{#llm2.text#}}b"},
+                "data": {"type": "answer", "title": "answer", "answer": "a{{#llm2.text#}}b", "outputs": []},
                 "id": "answer",
             },
             {
-                "data": {"type": "answer", "title": "answer2", "answer": "c{{#llm3.text#}}d"},
+                "data": {"type": "answer", "title": "answer2", "answer": "c{{#llm3.text#}}d", "outputs": []},
                 "id": "answer2",
             },
         ],
