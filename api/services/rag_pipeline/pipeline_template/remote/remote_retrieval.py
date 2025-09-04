@@ -21,7 +21,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             result = self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
-            result = [DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)]
+            result = DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
         return result
 
     def get_pipeline_templates(self, language: str) -> dict:
