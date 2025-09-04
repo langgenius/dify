@@ -1,4 +1,4 @@
-import { CONVERSATION_ID_INFO } from '@/config'
+import { CONVERSATION_ID_INFO } from '@/app/components/base/chat/constants'
 
 /**
  * Utility functions for managing conversation IDs in localStorage
