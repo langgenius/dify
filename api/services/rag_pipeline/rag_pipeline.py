@@ -352,10 +352,9 @@ class RagPipelineService:
                 knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
 
                 # update dataset
-                with Session(db.engine) as session:
-                    dataset = pipeline.retrieve_dataset(session=session)
-                    if not dataset:
-                        raise ValueError("Dataset not found")
+                dataset = pipeline.retrieve_dataset(session=session)
+                if not dataset:
+                    raise ValueError("Dataset not found")
                 DatasetService.update_rag_pipeline_dataset_settings(
                     session=session,
                     dataset=dataset,
