@@ -51,8 +51,9 @@ async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string
     const queryString = decodedRedirectUrl.split('?')[1]
     if (queryString) {
       const redirectParams = new URLSearchParams(queryString)
+      for (const [key, value] of redirectParams.entries()) {
         urlParams.set(key, value)
-      })
+      }
     }
   }
 
@@ -66,19 +67,6 @@ async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string
   )
 
   return systemVariables
-}
-
-async function getProcessedUserVariablesFromUrlParams(): Promise<Record<string, any>> {
-  const urlParams = new URLSearchParams(window.location.search)
-  const userVariables: Record<string, any> = {}
-  const entriesArray = Array.from(urlParams.entries())
-  await Promise.all(
-    entriesArray.map(async ([key, value]) => {
-      if (key.startsWith('user.'))
-        userVariables[key.slice(5)] = await decodeBase64AndDecompress(decodeURIComponent(value))
-    }),
-  )
-  return userVariables
 }
 
 async function getRawUserVariablesFromUrlParams(): Promise<Record<string, any>> {
