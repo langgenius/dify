@@ -1,7 +1,10 @@
 // TypeScript type definitions for Dify's i18next configuration
+// This file is auto-generated. Do not edit manually.
+// To regenerate, run: pnpm run gen:i18n-types
 import 'react-i18next'
 
 // Extract types from translation files using typeof import pattern
+
 type AppAnnotationMessages = typeof import('../i18n/en-US/app-annotation').default
 type AppApiMessages = typeof import('../i18n/en-US/app-api').default
 type AppDebugMessages = typeof import('../i18n/en-US/app-debug').default

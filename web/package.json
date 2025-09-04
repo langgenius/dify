@@ -35,6 +35,8 @@
     "uglify-embed": "node ./bin/uglify-embed",
     "check-i18n": "node ./i18n-config/check-i18n.js",
     "auto-gen-i18n": "node ./i18n-config/auto-gen-i18n.js",
+    "gen:i18n-types": "node ./i18n-config/generate-i18n-types.js",
+    "check:i18n-types": "node ./i18n-config/check-i18n-sync.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
