@@ -24,7 +24,7 @@ import StepIndicator from './step-indicator'
 
 const Preparation = () => {
   const {
-    localFileList: fileList,
+    localFileList,
     onlineDocuments,
     websitePages,
     selectedFileIds,
@@ -54,7 +54,7 @@ const Preparation = () => {
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
     if (datasourceType === DatasourceType.localFile)
-      return !fileList.length || fileList.some(file => !file.file.id)
+      return !localFileList.length || localFileList.some(file => !file.file.id)
     if (datasourceType === DatasourceType.onlineDocument)
       return !onlineDocuments.length
     if (datasourceType === DatasourceType.websiteCrawl)
@@ -62,7 +62,7 @@ const Preparation = () => {
     if (datasourceType === DatasourceType.onlineDrive)
       return !selectedFileIds.length
     return false
-  }, [datasource, datasourceType, fileList, onlineDocuments.length, selectedFileIds.length, websitePages.length])
+  }, [datasource, datasourceType, localFileList, onlineDocuments.length, selectedFileIds.length, websitePages.length])
 
   const { handleRun } = useWorkflowRun()
 

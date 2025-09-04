@@ -29,6 +29,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
     handleRunWithSyncDraft,
     datasourceType,
     datasourceNodeData,
+    startRunBtnDisabled,
   } = useBeforeRunForm(props)
 
   const { clearOnlineDocumentData } = useOnlineDocument()
@@ -94,7 +95,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             onClick={handleRunWithSyncDraft}
             variant='primary'
             loading={isPending}
-            disabled={isPending}
+            disabled={isPending || startRunBtnDisabled}
           >
             {t('workflow.singleRun.startRun')}
           </Button>

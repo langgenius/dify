@@ -155,7 +155,7 @@ const ChunkPreview = ({
       {!isPending && currentDocForm === ChunkingMode.qa && estimateData?.qa_preview && (
         estimateData?.qa_preview.map((item, index) => (
           <ChunkContainer
-            key={item.question}
+            key={`${item.question}-${index}`}
             label={`Chunk-${index + 1}`}
             characterCount={item.question.length + item.answer.length}
           >
@@ -166,7 +166,7 @@ const ChunkPreview = ({
       {!isPending && currentDocForm === ChunkingMode.text && estimateData?.preview && (
         estimateData?.preview.map((item, index) => (
           <ChunkContainer
-            key={item.content}
+            key={`${item.content}-${index}`}
             label={`Chunk-${index + 1}`}
             characterCount={item.content.length}
           >
@@ -179,7 +179,7 @@ const ChunkPreview = ({
           const indexForLabel = index + 1
           return (
             <ChunkContainer
-              key={item.content}
+              key={`${item.content}-${index}`}
               label={`Chunk-${indexForLabel}`}
               characterCount={item.content.length}
             >

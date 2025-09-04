@@ -1,6 +1,6 @@
 import { useStoreApi } from 'reactflow'
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNodeDataUpdate, useNodesSyncDraft } from '../../../hooks'
 import { NodeRunningStatus } from '../../../types'
 import { useInvalidLastRun } from '@/service/use-workflow'
@@ -8,9 +8,10 @@ import type { NodeRunResult } from '@/types/workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
-import { useDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
+import { useShallow } from 'zustand/react/shallow'
 
 const useBeforeRunForm = ({
   nodeId,
@@ -31,6 +32,31 @@ const useBeforeRunForm = ({
 
   const datasourceType = payload.provider_type as DatasourceType
   const datasourceNodeData = payload as DataSourceNodeType
+
+  const {
+    localFileList,
+    onlineDocuments,
+    websitePages,
+    selectedFileIds,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    localFileList: state.localFileList,
+    onlineDocuments: state.onlineDocuments,
+    websitePages: state.websitePages,
+    selectedFileIds: state.selectedFileIds,
+  })))
+
+  const startRunBtnDisabled = useMemo(() => {
+    if (!datasourceNodeData) return false
+    if (datasourceType === DatasourceType.localFile)
+      return !localFileList.length || localFileList.some(file => !file.file.id)
+    if (datasourceType === DatasourceType.onlineDocument)
+      return !onlineDocuments.length
+    if (datasourceType === DatasourceType.websiteCrawl)
+      return !websitePages.length
+    if (datasourceType === DatasourceType.onlineDrive)
+      return !selectedFileIds.length
+    return false
+  }, [datasourceNodeData, datasourceType, localFileList, onlineDocuments.length, selectedFileIds.length, websitePages.length])
 
   useEffect(() => {
     isPausedRef.current = isPaused
@@ -174,6 +200,7 @@ const useBeforeRunForm = ({
     handleRunWithSyncDraft,
     datasourceType,
     datasourceNodeData,
+    startRunBtnDisabled,
   }
 }
 
