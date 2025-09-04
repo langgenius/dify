@@ -255,7 +255,13 @@ class CodeNode(Node):
                     )
             elif output_config.type == SegmentType.NUMBER:
                 # check if number available
-                checked = self._check_number(value=result[output_name], variable=f"{prefix}{dot}{output_name}")
+                value = result.get(output_name)
+                if not isinstance(value, (int, float, None)):
+                    raise OutputValidationError(
+                        f"Output {prefix}{dot}{output_name} is not a number,"
+                        f" got {type(result.get(output_name))} instead."
+                    )
+                checked = self._check_number(value=value, variable=f"{prefix}{dot}{output_name}")
                 # If the output is a boolean and the output schema specifies a NUMBER type,
                 # convert the boolean value to an integer.
                 #
