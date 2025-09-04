@@ -351,6 +351,7 @@ class AccountService:
     @staticmethod
     def update_account(account, **kwargs):
         """Update account fields"""
+        account = db.session.merge(account)
         for field, value in kwargs.items():
             if hasattr(account, field):
                 setattr(account, field, value)
