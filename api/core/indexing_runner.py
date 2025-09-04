@@ -270,7 +270,9 @@ class IndexingRunner:
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
-        preview_texts = []  # type: ignore
+        # keep separate, avoid union-list ambiguity
+        preview_texts: list[PreviewDetail] = []
+        qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
         index_type = doc_form
@@ -293,14 +295,14 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 10:
                     if doc_form and doc_form == "qa_model":
-                        preview_detail = QAPreviewDetail(
+                        qa_detail = QAPreviewDetail(
                             question=document.page_content, answer=document.metadata.get("answer") or ""
                         )
-                        preview_texts.append(preview_detail)
+                        qa_preview_texts.append(qa_detail)
                     else:
-                        preview_detail = PreviewDetail(content=document.page_content)  # type: ignore
+                        preview_detail = PreviewDetail(content=document.page_content)
                         if document.children:
-                            preview_detail.child_chunks = [child.page_content for child in document.children]  # type: ignore
+                            preview_detail.child_chunks = [child.page_content for child in document.children]
                         preview_texts.append(preview_detail)
 
                 # delete image files and related db records
@@ -321,8 +323,8 @@ class IndexingRunner:
                     db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
-            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=preview_texts, preview=[])
-        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)  # type: ignore
+            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
+        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
