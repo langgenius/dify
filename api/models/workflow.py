@@ -1447,7 +1447,7 @@ class WorkflowPluginTrigger(Base):
     __tablename__ = "workflow_plugin_triggers"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_plugin_trigger_pkey"),
-        sa.Index("workflow_plugin_trigger_tenant_subscription_idx", "tenant_id", "subscription_id"),
+        sa.Index("workflow_plugin_trigger_tenant_subscription_idx", "tenant_id", "subscription_id", "trigger_id"),
         sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node_subscription"),
     )
 

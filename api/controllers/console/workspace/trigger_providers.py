@@ -154,7 +154,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
             raise
 
 
-class TriggerSubscriptionBuilderRequestLogsApi(Resource):
+class TriggerSubscriptionBuilderLogsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -165,9 +165,10 @@ class TriggerSubscriptionBuilderRequestLogsApi(Resource):
         assert user.current_tenant_id is not None
 
         try:
-            return jsonable_encoder(TriggerSubscriptionBuilderService.list_request_logs(subscription_builder_id))
+            logs = TriggerSubscriptionBuilderService.list_logs(subscription_builder_id)
+            return jsonable_encoder({"logs": [log.model_dump(mode="json") for log in logs]})
         except Exception as e:
-            logger.exception("Error getting request logs for provider credential", exc_info=e)
+            logger.exception("Error getting request logs for subscription builder", exc_info=e)
             raise
 
 
@@ -494,8 +495,8 @@ api.add_resource(
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/build/<path:subscription_builder_id>",
 )
 api.add_resource(
-    TriggerSubscriptionBuilderRequestLogsApi,
-    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/request-logs/<path:subscription_builder_id>",
+    TriggerSubscriptionBuilderLogsApi,
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/logs/<path:subscription_builder_id>",
 )
 
 

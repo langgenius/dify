@@ -34,11 +34,9 @@ class TriggerService:
         cls, subscription: TriggerSubscription, trigger: TriggerEntity, request: Request
     ) -> None:
         """Process triggered workflows."""
-        # 1. Find associated WorkflowPluginTriggers
-        trigger_id = f"{subscription.provider_id}:{trigger.identity.name}"
-        plugin_triggers = cls._get_plugin_triggers(trigger_id)
 
-        if not plugin_triggers:
+        subscribers = cls._get_subscriber_triggers(subscription=subscription, trigger=trigger)
+        if not subscribers:
             logger.warning(
                 "No workflows found for trigger '%s' in subscription '%s'",
                 trigger.identity.name,
@@ -61,7 +59,7 @@ class TriggerService:
                 logger.error("Tenant owner not found for tenant %s", subscription.tenant_id)
                 return
 
-            for plugin_trigger in plugin_triggers:
+            for plugin_trigger in subscribers:
                 # 2. Get workflow
                 workflow = session.scalar(
                     select(Workflow)
@@ -145,16 +143,13 @@ class TriggerService:
         )
 
         if dispatch_response.triggers:
-            # Process triggers asynchronously to avoid blocking
-            from tasks.trigger_processing_tasks import process_triggers_async
-
-            # Serialize and store the request
             request_id = f"trigger_request_{uuid.uuid4().hex}"
             serialized_request = serialize_request(request)
             storage.save(f"triggers/{request_id}", serialized_request)
 
-            # Queue async task with just the request ID
-            process_triggers_async.delay(
+            from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
+
+            dispatch_triggered_workflows_async(
                 endpoint_id=endpoint_id,
                 provider_id=subscription.provider_id,
                 subscription_id=subscription.id,
@@ -163,7 +158,7 @@ class TriggerService:
             )
 
             logger.info(
-                "Queued async processing for %d triggers on endpoint %s with request_id %s",
+                "Queued async dispatching for %d triggers on endpoint %s with request_id %s",
                 len(dispatch_response.triggers),
                 endpoint_id,
                 request_id,
@@ -172,15 +167,19 @@ class TriggerService:
         return dispatch_response.response
 
     @classmethod
-    def _get_plugin_triggers(cls, trigger_id: str) -> list[WorkflowPluginTrigger]:
-        """Get WorkflowPluginTriggers for a trigger_id."""
-        with Session(db.engine) as session:
-            triggers = session.scalars(
+    def _get_subscriber_triggers(
+        cls, subscription: TriggerSubscription, trigger: TriggerEntity
+    ) -> list[WorkflowPluginTrigger]:
+        """Get WorkflowPluginTriggers for a subscription and trigger."""
+        with Session(db.engine, expire_on_commit=False) as session:
+            subscribers = session.scalars(
                 select(WorkflowPluginTrigger).where(
-                    WorkflowPluginTrigger.trigger_id == trigger_id,
+                    WorkflowPluginTrigger.tenant_id == subscription.tenant_id,
+                    WorkflowPluginTrigger.subscription_id == subscription.id,
+                    WorkflowPluginTrigger.trigger_id == trigger.identity.name,
                 )
             ).all()
-            return list(triggers)
+            return list(subscribers)
 
     @classmethod
     def _store_trigger_data(

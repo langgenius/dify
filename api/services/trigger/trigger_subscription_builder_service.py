@@ -2,6 +2,7 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any
 
 from flask import Request, Response
@@ -251,18 +252,41 @@ class TriggerSubscriptionBuilderService:
         return None
 
     @classmethod
-    def append_request_log(cls, endpoint_id: str, request: Request, response: Response) -> None:
-        """
-        Append the validation request log to Redis.
-        """
-        pass
+    def append_log(cls, endpoint_id: str, request: Request, response: Response) -> None:
+        """Append validation request log to Redis."""
+        log = RequestLog(
+            id=str(uuid.uuid4()),
+            endpoint=endpoint_id,
+            request={
+                "method": request.method,
+                "url": request.url,
+                "headers": dict(request.headers),
+                "data": request.get_data(as_text=True),
+            },
+            response={
+                "status_code": response.status_code,
+                "headers": dict(response.headers),
+                "data": response.get_data(as_text=True),
+            },
+            created_at=datetime.now(),
+        )
+
+        key = f"trigger:subscription:validation:logs:{endpoint_id}"
+        logs = json.loads(redis_client.get(key) or "[]")
+        logs.append(log.model_dump(mode="json"))
+
+        # Keep last N logs
+        logs = logs[-cls.__VALIDATION_REQUEST_CACHE_COUNT__ :]
+        redis_client.setex(key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_MS__, json.dumps(logs, default=str))
 
     @classmethod
-    def list_request_logs(cls, endpoint_id: str) -> list[RequestLog]:
-        """
-        List the request logs for a validation endpoint.
-        """
-        return []
+    def list_logs(cls, endpoint_id: str) -> list[RequestLog]:
+        """List request logs for validation endpoint."""
+        key = f"trigger:subscription:validation:logs:{endpoint_id}"
+        logs_json = redis_client.get(key)
+        if not logs_json:
+            return []
+        return [RequestLog.model_validate(log) for log in json.loads(logs_json)]
 
     @classmethod
     def process_builder_validation_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
@@ -288,5 +312,5 @@ class TriggerSubscriptionBuilderService:
             subscription=subscription_builder.to_subscription(),
         )
         # append the request log
-        cls.append_request_log(endpoint_id, request, response.response)
+        cls.append_log(endpoint_id, request, response.response)
         return response.response
