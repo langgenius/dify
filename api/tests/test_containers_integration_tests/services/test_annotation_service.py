@@ -410,18 +410,18 @@ class TestAnnotationService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create annotations with specific keywords
-        unique_keyword = fake.word()
+        unique_keyword = f"unique_{fake.uuid4()[:8]}"
         annotation_args = {
             "question": f"Question with {unique_keyword} keyword",
             "answer": f"Answer with {unique_keyword} keyword",
         }
         AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
-
         # Create another annotation without the keyword
         other_args = {
-            "question": "Question without keyword",
-            "answer": "Answer without keyword",
+            "question": "Different question without special term",
+            "answer": "Different answer without special content",
         }
+
         AppAnnotationService.insert_app_annotation_directly(other_args, app.id)
 
         # Search with keyword
@@ -471,7 +471,7 @@ class TestAnnotationService:
         # Verify annotation was deleted
         from extensions.ext_database import db
 
-        deleted_annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called (when annotation setting exists)
@@ -674,7 +674,7 @@ class TestAnnotationService:
 
         history = (
             db.session.query(AppAnnotationHitHistory)
-            .filter(
+            .where(
                 AppAnnotationHitHistory.annotation_id == annotation.id, AppAnnotationHitHistory.message_id == message_id
             )
             .first()
@@ -1175,7 +1175,7 @@ class TestAnnotationService:
         AppAnnotationService.delete_app_annotation(app.id, annotation_id)
 
         # Verify annotation was deleted
-        deleted_annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called

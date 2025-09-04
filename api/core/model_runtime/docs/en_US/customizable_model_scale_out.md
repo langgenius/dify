@@ -56,7 +56,6 @@ provider_credential_schema:
   credential_form_schemas:
 ```
 
-
 Then, we need to determine what credentials are required to define a model in Xinference.
 
 - Since it supports three different types of models, we need to specify the model_type to denote the model type. Here is how we can define it:
@@ -190,7 +189,6 @@ def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[Pr
   :return: token count
   """
 ```
-
 
 Sometimes, you might not want to return 0 directly. In such cases, you can use `self._get_num_tokens_by_gpt2(text: str)` to get pre-computed tokens and ensure environment variable `PLUGIN_BASED_TOKEN_COUNTING_ENABLED` is set to `true`, This method is provided by the `AIModel` base class, and it uses GPT2's Tokenizer for calculation. However, it should be noted that this is only a substitute and may not be fully accurate.
 

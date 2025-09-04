@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from yarl import URL
 
 import contexts
@@ -197,14 +199,11 @@ class ToolManager:
                 # get specific credentials
                 if is_valid_uuid(credential_id):
                     try:
-                        builtin_provider = (
-                            db.session.query(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.id == credential_id,
-                            )
-                            .first()
+                        builtin_provider_stmt = select(BuiltinToolProvider).where(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.id == credential_id,
                         )
+                        builtin_provider = db.session.scalar(builtin_provider_stmt)
                     except Exception as e:
                         builtin_provider = None
                         logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
@@ -304,23 +303,19 @@ class ToolManager:
                 tenant_id=tenant_id,
                 controller=api_provider,
             )
-            return cast(
-                ApiTool,
-                api_provider.get_tool(tool_name).fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials=encrypter.decrypt(credentials),
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return api_provider.get_tool(tool_name).fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials=encrypter.decrypt(credentials),
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.WORKFLOW:
-            workflow_provider = (
-                db.session.query(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
+            workflow_provider_stmt = select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
+            workflow_provider = db.session.scalar(workflow_provider_stmt)
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
@@ -330,16 +325,13 @@ class ToolManager:
             if controller_tools is None or len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            return cast(
-                WorkflowTool,
-                controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials={},
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
@@ -617,8 +609,9 @@ class ToolManager:
                 WHERE tenant_id = :tenant_id
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
-        ids = [row.id for row in db.session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
-        return db.session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
+        with Session(db.engine, autoflush=False) as session:
+            ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
+            return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 
     @classmethod
     def list_providers_from_api(
@@ -646,8 +639,8 @@ class ToolManager:
                 for provider in builtin_providers:
                     # handle include, exclude
                     if is_filtered(
-                        include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
-                        exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
+                        include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                        exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
                         name_func=lambda x: x.identity.name,
                     ):
@@ -959,7 +952,7 @@ class ToolManager:
         elif provider_type == ToolProviderType.WORKFLOW:
             return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.PLUGIN:
-            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+            provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
             if isinstance(provider, PluginToolProviderController):
                 try:
                     return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)

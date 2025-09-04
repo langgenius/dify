@@ -25,6 +25,8 @@ from services.feature_service import FeatureService
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
+logger = logging.getLogger(__name__)
+
 
 class AppService:
     def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
@@ -94,8 +96,8 @@ class AppService:
                 )
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
-            except Exception as e:
-                logging.exception("Get default model instance failed, tenant_id: %s", tenant_id)
+            except Exception:
+                logger.exception("Get default model instance failed, tenant_id: %s", tenant_id)
                 model_instance = None
 
             if model_instance:
@@ -199,7 +201,7 @@ class AppService:
 
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
-                except Exception as e:
+                except Exception:
                     pass
 
             # override agent mode

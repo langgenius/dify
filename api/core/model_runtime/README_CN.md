@@ -20,19 +20,19 @@
 
   ![image-20231210143654461](./docs/zh_Hans/images/index/image-20231210143654461.png)
 
-​	展示所有已支持的供应商列表，除了返回供应商名称、图标之外，还提供了支持的模型类型列表，预定义模型列表、配置方式以及配置凭据的表单规则等等，规则设计详见：[Schema](./docs/zh_Hans/schema.md)。
+​ 展示所有已支持的供应商列表，除了返回供应商名称、图标之外，还提供了支持的模型类型列表，预定义模型列表、配置方式以及配置凭据的表单规则等等，规则设计详见：[Schema](./docs/zh_Hans/schema.md)。
 
 - 可选择的模型列表展示
 
   ![image-20231210144229650](./docs/zh_Hans/images/index/image-20231210144229650.png)
 
-​	配置供应商/模型凭据后，可在此下拉（应用编排界面/默认模型）查看可用的 LLM 列表，其中灰色的为未配置凭据供应商的预定义模型列表，方便用户查看已支持的模型。
+​ 配置供应商/模型凭据后，可在此下拉（应用编排界面/默认模型）查看可用的 LLM 列表，其中灰色的为未配置凭据供应商的预定义模型列表，方便用户查看已支持的模型。
 
-​	除此之外，该列表还返回了 LLM 可配置的参数信息和规则，如下图：
+​ 除此之外，该列表还返回了 LLM 可配置的参数信息和规则，如下图：
 
-​	![image-20231210144814617](./docs/zh_Hans/images/index/image-20231210144814617.png)	
+​ ![image-20231210144814617](./docs/zh_Hans/images/index/image-20231210144814617.png)
 
-​	这里的参数均为后端定义，相比之前只有 5 种固定参数，这里可为不同模型设置所支持的各种参数，详见：[Schema](./docs/zh_Hans/schema.md#ParameterRule)。
+​ 这里的参数均为后端定义，相比之前只有 5 种固定参数，这里可为不同模型设置所支持的各种参数，详见：[Schema](./docs/zh_Hans/schema.md#ParameterRule)。
 
 - 供应商/模型凭据鉴权
 
@@ -40,7 +40,7 @@
 
 ![image-20231210151628992](./docs/zh_Hans/images/index/image-20231210151628992.png)
 
-​	供应商列表返回了凭据表单的配置信息，可通过 Runtime 提供的接口对凭据进行鉴权，上图 1 为供应商凭据 DEMO，上图 2 为模型凭据 DEMO。
+​ 供应商列表返回了凭据表单的配置信息，可通过 Runtime 提供的接口对凭据进行鉴权，上图 1 为供应商凭据 DEMO，上图 2 为模型凭据 DEMO。
 
 ## 结构
 
@@ -57,9 +57,10 @@ Model Runtime 分三层：
   提供获取当前供应商模型列表、获取模型实例、供应商凭据鉴权、供应商配置规则信息，**可横向扩展**以支持不同的供应商。
 
   对于供应商/模型凭据，有两种情况
+
   - 如 OpenAI 这类中心化供应商，需要定义如**api_key**这类的鉴权凭据
   - 如[**Xinference**](https://github.com/xorbitsai/inference)这类本地部署的供应商，需要定义如**server_url**这类的地址凭据，有时候还需要定义**model_uid**之类的模型类型凭据，就像下面这样，当在供应商层定义了这些凭据后，就可以在前端页面上直接展示，无需修改前端逻辑。
-  ![Alt text](docs/zh_Hans/images/index/image.png)
+    ![Alt text](docs/zh_Hans/images/index/image.png)
 
   当配置好凭据后，就可以通过 DifyRuntime 的外部接口直接获取到对应供应商所需要的**Schema**（凭据表单规则），从而在可以在不修改前端逻辑的情况下，提供新的供应商/模型的支持。
 
@@ -76,14 +77,17 @@ Model Runtime 分三层：
 ## 下一步
 
 ### [增加新的供应商配置 👈🏻](./docs/zh_Hans/provider_scale_out.md)
+
 当添加后，这里将会出现一个新的供应商
 
 ![Alt text](docs/zh_Hans/images/index/image-1.png)
 
-### [为已存在的供应商新增模型 👈🏻](./docs/zh_Hans/provider_scale_out.md#增加模型)
+### [为已存在的供应商新增模型 👈🏻](./docs/zh_Hans/provider_scale_out.md#%E5%A2%9E%E5%8A%A0%E6%A8%A1%E5%9E%8B)
+
 当添加后，对应供应商的模型列表中将会出现一个新的预定义模型供用户选择，如 GPT-3.5 GPT-4 ChatGLM3-6b 等，而对于支持自定义模型的供应商，则不需要新增模型。
 
 ![Alt text](docs/zh_Hans/images/index/image-2.png)
 
 ### [接口的具体实现 👈🏻](./docs/zh_Hans/interfaces.md)
+
 你可以在这里找到你想要查看的接口的具体实现，以及接口的参数和返回值的具体含义。

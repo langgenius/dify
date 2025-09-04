@@ -1,6 +1,5 @@
-import datetime
 import uuid
-from typing import cast
+from typing import Optional
 
 import pandas as pd
 from flask_login import current_user
@@ -10,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -40,7 +40,7 @@ class AppAnnotationService:
             if not message:
                 raise NotFound("Message Not Exists.")
 
-            annotation = message.annotation
+            annotation: Optional[MessageAnnotation] = message.annotation
             # save the message annotation
             if annotation:
                 annotation.content = args["answer"]
@@ -70,7 +70,7 @@ class AppAnnotationService:
                 app_id,
                 annotation_setting.collection_binding_id,
             )
-        return cast(MessageAnnotation, annotation)
+        return annotation
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
@@ -282,7 +282,7 @@ class AppAnnotationService:
         annotations_to_delete = (
             db.session.query(MessageAnnotation, AppAnnotationSetting)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .where(MessageAnnotation.id.in_(annotation_ids))
             .all()
         )
 
@@ -293,7 +293,7 @@ class AppAnnotationService:
         annotation_ids_to_delete = [annotation.id for annotation, _ in annotations_to_delete]
 
         # Step 2: Bulk delete hit histories in a single query
-        db.session.query(AppAnnotationHitHistory).filter(
+        db.session.query(AppAnnotationHitHistory).where(
             AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)
         ).delete(synchronize_session=False)
 
@@ -307,7 +307,7 @@ class AppAnnotationService:
         # Step 4: Bulk delete annotations in a single query
         deleted_count = (
             db.session.query(MessageAnnotation)
-            .filter(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            .where(MessageAnnotation.id.in_(annotation_ids_to_delete))
             .delete(synchronize_session=False)
         )
 
@@ -330,7 +330,7 @@ class AppAnnotationService:
             # Skip the first row
             df = pd.read_csv(file, dtype=str)
             result = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():
                 content = {"question": row.iloc[0], "answer": row.iloc[1]}
                 result.append(content)
             if len(result) == 0:
@@ -473,7 +473,7 @@ class AppAnnotationService:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        annotation_setting.updated_at = naive_utc_now()
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -493,7 +493,7 @@ class AppAnnotationService:
     def clear_all_annotations(cls, app_id: str) -> dict:
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
@@ -505,9 +505,9 @@ class AppAnnotationService:
             db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         )
 
-        annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
+        annotations_query = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id)
         for annotation in annotations_query.yield_per(100):
-            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).filter(
+            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).where(
                 AppAnnotationHitHistory.annotation_id == annotation.id
             )
             for annotation_hit_history in annotation_hit_histories_query.yield_per(100):

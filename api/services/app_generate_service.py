@@ -55,7 +55,7 @@ class AppGenerateService:
                 cls.system_rate_limiter.increment_rate_limit(app_model.tenant_id)
 
         # app level rate limiter
-        max_active_request = AppGenerateService._get_max_active_requests(app_model)
+        max_active_request = cls._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
         try:
@@ -227,7 +227,7 @@ class AppGenerateService:
         # If workflow_id is specified, get the specific workflow version
         if workflow_id:
             try:
-                workflow_uuid = uuid.UUID(workflow_id)
+                _ = uuid.UUID(workflow_id)
             except ValueError:
                 raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
             workflow = workflow_service.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)

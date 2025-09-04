@@ -3,6 +3,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+logger = logging.getLogger(__name__)
+
 
 class SMTPClient:
     def __init__(
@@ -43,14 +45,14 @@ class SMTPClient:
             msg.attach(MIMEText(mail["html"], "html"))
 
             smtp.sendmail(self._from, mail["to"], msg.as_string())
-        except smtplib.SMTPException as e:
-            logging.exception("SMTP error occurred")
+        except smtplib.SMTPException:
+            logger.exception("SMTP error occurred")
             raise
-        except TimeoutError as e:
-            logging.exception("Timeout occurred while sending email")
+        except TimeoutError:
+            logger.exception("Timeout occurred while sending email")
             raise
-        except Exception as e:
-            logging.exception("Unexpected error occurred while sending email to %s", mail["to"])
+        except Exception:
+            logger.exception("Unexpected error occurred while sending email to %s", mail["to"])
             raise
         finally:
             if smtp:

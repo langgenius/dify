@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, func, text
+from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
@@ -77,7 +77,7 @@ class App(Base):
     description: Mapped[str] = mapped_column(sa.Text, server_default=sa.text("''::character varying"))
     mode: Mapped[str] = mapped_column(String(255))
     icon_type: Mapped[Optional[str]] = mapped_column(String(255))  # image, emoji
-    icon = db.Column(String(255))
+    icon = mapped_column(String(255))
     icon_background: Mapped[Optional[str]] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
@@ -522,33 +522,6 @@ class AppModelConfig(Base):
         self.file_upload = json.dumps(model_config.get("file_upload")) if model_config.get("file_upload") else None
         return self
 
-    def copy(self):
-        new_app_model_config = AppModelConfig(
-            id=self.id,
-            app_id=self.app_id,
-            opening_statement=self.opening_statement,
-            suggested_questions=self.suggested_questions,
-            suggested_questions_after_answer=self.suggested_questions_after_answer,
-            speech_to_text=self.speech_to_text,
-            text_to_speech=self.text_to_speech,
-            more_like_this=self.more_like_this,
-            sensitive_word_avoidance=self.sensitive_word_avoidance,
-            external_data_tools=self.external_data_tools,
-            model=self.model,
-            user_input_form=self.user_input_form,
-            dataset_query_variable=self.dataset_query_variable,
-            pre_prompt=self.pre_prompt,
-            agent_mode=self.agent_mode,
-            retriever_resource=self.retriever_resource,
-            prompt_type=self.prompt_type,
-            chat_prompt_config=self.chat_prompt_config,
-            completion_prompt_config=self.completion_prompt_config,
-            dataset_configs=self.dataset_configs,
-            file_upload=self.file_upload,
-        )
-
-        return new_app_model_config
-
 
 class RecommendedApp(Base):
     __tablename__ = "recommended_apps"
@@ -605,6 +578,32 @@ class InstalledApp(Base):
     def tenant(self):
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
+
+
+class OAuthProviderApp(Base):
+    """
+    Globally shared OAuth provider app information.
+    Only for Dify Cloud.
+    """
+
+    __tablename__ = "oauth_provider_apps"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="oauth_provider_app_pkey"),
+        sa.Index("oauth_provider_app_client_id_idx", "client_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    app_icon = mapped_column(String(255), nullable=False)
+    app_label = mapped_column(sa.JSON, nullable=False, server_default="{}")
+    client_id = mapped_column(String(255), nullable=False)
+    client_secret = mapped_column(String(255), nullable=False)
+    redirect_uris = mapped_column(sa.JSON, nullable=False, server_default="[]")
+    scope = mapped_column(
+        String(255),
+        nullable=False,
+        server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
+    )
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
 
 
 class Conversation(Base):
@@ -904,7 +903,7 @@ class Message(Base):
     message_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     message_unit_price = mapped_column(sa.Numeric(10, 4), nullable=False)
     message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    answer: Mapped[str] = db.Column(sa.Text, nullable=False)  # TODO make it mapped_column
+    answer: Mapped[str] = mapped_column(sa.Text, nullable=False)
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_unit_price = mapped_column(sa.Numeric(10, 4), nullable=False)
     answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
@@ -1321,7 +1320,7 @@ class MessageAnnotation(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    question = db.Column(sa.Text, nullable=True)
+    question = mapped_column(sa.Text, nullable=True)
     content = mapped_column(sa.Text, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     account_id = mapped_column(StringUUID, nullable=False)
@@ -1553,7 +1552,7 @@ class ApiToken(Base):
     def generate_api_key(prefix, n):
         while True:
             result = prefix + generate_string(n)
-            if db.session.query(ApiToken).where(ApiToken.token == result).count() > 0:
+            if db.session.scalar(select(exists().where(ApiToken.token == result))):
                 continue
             return result
 
@@ -1677,7 +1676,7 @@ class MessageAgentThought(Base):
     message_unit_price = mapped_column(sa.Numeric, nullable=True)
     message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
     message_files = mapped_column(sa.Text, nullable=True)
-    answer = db.Column(sa.Text, nullable=True)
+    answer = mapped_column(sa.Text, nullable=True)
     answer_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
     answer_unit_price = mapped_column(sa.Numeric, nullable=True)
     answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))

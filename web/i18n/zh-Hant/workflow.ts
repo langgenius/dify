@@ -842,6 +842,7 @@ const translation = {
           upload_file_id: '上傳檔 ID',
         },
         text: '代理生成的內容',
+        usage: '模型用量信息',
         json: '代理生成的 JSON',
       },
       checkList: {
@@ -995,6 +996,7 @@ const translation = {
     copyLastRunError: '未能複製上一次運行的輸入',
     noMatchingInputsFound: '在上次運行中未找到匹配的輸入',
     noLastRunFound: '沒有找到之前的運行',
+    lastOutput: '最後的輸出',
   },
 }
 

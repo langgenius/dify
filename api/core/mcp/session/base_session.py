@@ -4,7 +4,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
 from types import TracebackType
-from typing import Any, Generic, Self, TypeVar
+from typing import Any, Generic, Optional, Self, TypeVar
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -30,6 +30,9 @@ from core.mcp.types import (
     ServerResult,
     SessionMessage,
 )
+
+logger = logging.getLogger(__name__)
+
 
 SendRequestT = TypeVar("SendRequestT", ClientRequest, ServerRequest)
 SendResultT = TypeVar("SendResultT", ClientResult, ServerResult)
@@ -209,7 +212,7 @@ class BaseSession(
         request: SendRequestT,
         result_type: type[ReceiveResultT],
         request_read_timeout_seconds: timedelta | None = None,
-        metadata: MessageMetadata = None,
+        metadata: Optional[MessageMetadata] = None,
     ) -> ReceiveResultT:
         """
         Sends a request and wait for a response. Raises an McpError if the
@@ -366,7 +369,7 @@ class BaseSession(
                             self._handle_incoming(notification)
                     except Exception as e:
                         # For other validation errors, log and continue
-                        logging.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
+                        logger.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
                 else:  # Response or error
                     response_queue = self._response_streams.get(message.message.root.id)
                     if response_queue is not None:
@@ -376,7 +379,7 @@ class BaseSession(
             except queue.Empty:
                 continue
             except Exception:
-                logging.exception("Error in message processing loop")
+                logger.exception("Error in message processing loop")
                 raise
 
     def _received_request(self, responder: RequestResponder[ReceiveRequestT, SendResultT]) -> None:

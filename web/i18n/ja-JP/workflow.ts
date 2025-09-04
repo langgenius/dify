@@ -882,6 +882,7 @@ const translation = {
         },
         text: 'エージェント生成コンテンツ',
         json: 'エージェント生成の JSON',
+        usage: 'モデル使用量',
       },
       checkList: {
         strategyNotSelected: '戦略が選択されていません',
@@ -996,6 +997,7 @@ const translation = {
     copyLastRunError: '最後の実行の入力をコピーできませんでした',
     noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
     lastRunInputsCopied: '前回の実行から{{count}}個の入力をコピーしました',
+    lastOutput: '最後の出力',
   },
 }
 

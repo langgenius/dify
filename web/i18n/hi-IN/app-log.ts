@@ -1,7 +1,7 @@
 const translation = {
   title: 'लॉग्स',
   description: 'लॉग्स एप्लिकेशन के रनिंग स्टेटस को रिकॉर्ड करते हैं, जिसमें यूजर इनपुट और एआई रिप्लाईज़ शामिल हैं।',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'अपडेट का समय',
@@ -95,6 +95,7 @@ const translation = {
     finalProcessing: 'अंतिम प्रसंस्करण',
     iteration: 'चलना',
   },
+  dateFormat: 'MM/DD/YYYY',
 }
 
 export default translation

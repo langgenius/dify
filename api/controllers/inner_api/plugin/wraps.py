@@ -4,7 +4,7 @@ from typing import Optional
 
 from flask import current_app, request
 from flask_login import user_logged_in
-from flask_restful import reqparse
+from flask_restx import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 

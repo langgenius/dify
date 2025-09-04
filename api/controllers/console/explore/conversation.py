@@ -1,6 +1,6 @@
 from flask_login import current_user
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import marshal_with, reqparse
+from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -61,7 +61,6 @@ class ConversationApi(InstalledAppResource):
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}, 204
 

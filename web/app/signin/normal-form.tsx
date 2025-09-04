@@ -14,6 +14,7 @@ import { LicenseStatus } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
 const NormalForm = () => {
   const { t } = useTranslation()
@@ -37,7 +38,8 @@ const NormalForm = () => {
       if (consoleToken && refreshToken) {
         localStorage.setItem('console_token', consoleToken)
         localStorage.setItem('refresh_token', refreshToken)
-        router.replace('/apps')
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        router.replace(redirectUrl || '/apps')
         return
       }
 

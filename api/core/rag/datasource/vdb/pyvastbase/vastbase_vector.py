@@ -3,8 +3,8 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import psycopg2.extras  # type: ignore
-import psycopg2.pool  # type: ignore
+import psycopg2.extras
+import psycopg2.pool
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -170,7 +170,7 @@ class VastbaseVector(BaseVector):
                 metadata, text, distance = record
                 score = 1 - distance
                 metadata["score"] = score
-                if score > score_threshold:
+                if score >= score_threshold:
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 

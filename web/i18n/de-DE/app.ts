@@ -278,6 +278,11 @@ const translation = {
       themeDarkDesc: 'Verwenden Sie das dunkle Erscheinungsbild',
       runDesc: 'Führen Sie schnelle Befehle aus (Thema, Sprache, ...)',
       themeCategoryTitle: 'Thema',
+      slashDesc: 'Führen Sie Befehle wie /theme, /lang aus',
+      accountDesc: 'Gehe zur Kontoseite',
+      feedbackDesc: 'Offene Diskussionen zum Feedback der Gemeinschaft',
+      communityDesc: 'Offene Discord-Community',
+      docDesc: 'Öffnen Sie die Hilfedokumentation',
     },
     emptyState: {
       noPluginsFound: 'Keine Plugins gefunden',
@@ -292,6 +297,7 @@ const translation = {
       plugins: 'Plugins',
       apps: 'Apps',
       workflowNodes: 'Workflow-Knoten',
+      commands: 'Befehle',
     },
     clearToSearchAll: 'Löschen Sie @, um alle zu durchsuchen',
     searchTemporarilyUnavailable: 'Suche vorübergehend nicht verfügbar',
@@ -311,6 +317,7 @@ const translation = {
     inScope: 'in {{scope}}s',
     noMatchingCommands: 'Keine übereinstimmenden Befehle gefunden',
     tryDifferentSearch: 'Versuchen Sie es mit einem anderen Suchbegriff',
+    slashHint: 'Geben Sie / ein, um alle verfügbaren Befehle anzuzeigen.',
   },
 }
 

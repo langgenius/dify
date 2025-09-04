@@ -2,7 +2,7 @@ import uuid
 from typing import cast
 
 from flask_login import current_user
-from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
+from flask_restx import Resource, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
@@ -237,9 +237,14 @@ class AppExportApi(Resource):
         # Add include_secret params
         parser = reqparse.RequestParser()
         parser.add_argument("include_secret", type=inputs.boolean, default=False, location="args")
+        parser.add_argument("workflow_id", type=str, location="args")
         args = parser.parse_args()
 
-        return {"data": AppDslService.export_dsl(app_model=app_model, include_secret=args["include_secret"])}
+        return {
+            "data": AppDslService.export_dsl(
+                app_model=app_model, include_secret=args["include_secret"], workflow_id=args.get("workflow_id")
+            )
+        }
 
 
 class AppNameApi(Resource):

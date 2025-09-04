@@ -1,7 +1,7 @@
-from flask_restful import Resource, marshal_with
+from flask_restx import Resource
 
-from controllers.common import fields
-from controllers.service_api import api
+from controllers.common.fields import build_parameters_model
+from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
@@ -9,13 +9,26 @@ from models.model import App, AppMode
 from services.app_service import AppService
 
 
+@service_api_ns.route("/parameters")
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
+    @service_api_ns.doc("get_app_parameters")
+    @service_api_ns.doc(description="Retrieve application input parameters and configuration")
+    @service_api_ns.doc(
+        responses={
+            200: "Parameters retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Application not found",
+        }
+    )
     @validate_app_token
-    @marshal_with(fields.parameters_fields)
+    @service_api_ns.marshal_with(build_parameters_model(service_api_ns))
     def get(self, app_model: App):
-        """Retrieve app parameters."""
+        """Retrieve app parameters.
+
+        Returns the input form parameters and configuration for the application.
+        """
         if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
             workflow = app_model.workflow
             if workflow is None:
@@ -35,17 +48,43 @@ class AppParameterApi(Resource):
         return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
 
 
+@service_api_ns.route("/meta")
 class AppMetaApi(Resource):
+    @service_api_ns.doc("get_app_meta")
+    @service_api_ns.doc(description="Get application metadata")
+    @service_api_ns.doc(
+        responses={
+            200: "Metadata retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Application not found",
+        }
+    )
     @validate_app_token
     def get(self, app_model: App):
-        """Get app meta"""
+        """Get app metadata.
+
+        Returns metadata about the application including configuration and settings.
+        """
         return AppService().get_app_meta(app_model)
 
 
+@service_api_ns.route("/info")
 class AppInfoApi(Resource):
+    @service_api_ns.doc("get_app_info")
+    @service_api_ns.doc(description="Get basic application information")
+    @service_api_ns.doc(
+        responses={
+            200: "Application info retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Application not found",
+        }
+    )
     @validate_app_token
     def get(self, app_model: App):
-        """Get app information"""
+        """Get app information.
+
+        Returns basic information about the application including name, description, tags, and mode.
+        """
         tags = [tag.name for tag in app_model.tags]
         return {
             "name": app_model.name,
@@ -54,8 +93,3 @@ class AppInfoApi(Resource):
             "mode": app_model.mode,
             "author_name": app_model.author_name,
         }
-
-
-api.add_resource(AppParameterApi, "/parameters")
-api.add_resource(AppMetaApi, "/meta")
-api.add_resource(AppInfoApi, "/info")

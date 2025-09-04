@@ -1,6 +1,7 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.helper.encrypter import decrypt_token
@@ -11,7 +12,7 @@ from models.api_based_extension import APIBasedExtension
 
 class ModerationInputParams(BaseModel):
     app_id: str = ""
-    inputs: dict = {}
+    inputs: dict = Field(default_factory=dict)
     query: str = ""
 
 
@@ -87,10 +88,9 @@ class ApiModeration(Moderation):
 
     @staticmethod
     def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> Optional[APIBasedExtension]:
-        extension = (
-            db.session.query(APIBasedExtension)
-            .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .first()
+        stmt = select(APIBasedExtension).where(
+            APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )
+        extension = db.session.scalar(stmt)
 
         return extension

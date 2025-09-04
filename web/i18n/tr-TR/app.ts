@@ -271,6 +271,12 @@ const translation = {
       themeDarkDesc: 'Koyu görünümü kullan',
       themeCategoryDesc: 'Uygulama temasını değiştir',
       runDesc: 'Hızlı komutlar çalıştır (tema, dil, ...)',
+      searchPluginsDesc: 'Eklentilerinizi arayın ve gezinin',
+      slashDesc: '/tema, /dil gibi komutları çalıştırın',
+      communityDesc: 'Açık Discord topluluğu',
+      accountDesc: 'Hesap sayfasına gidin',
+      feedbackDesc: 'Açık topluluk geri bildirim tartışmaları',
+      docDesc: 'Yardım belgelerini aç',
     },
     emptyState: {
       noAppsFound: 'Uygulama bulunamadı',
@@ -285,6 +291,7 @@ const translation = {
       plugins: 'Eklentiler',
       knowledgeBases: 'Bilgi Tabanları',
       workflowNodes: 'İş Akışı Düğümleri',
+      commands: 'Komutlar',
     },
     searchFailed: 'Arama başarısız oldu',
     clearToSearchAll: 'Tümünü aramak için @ işaretini kaldırın',
@@ -304,6 +311,7 @@ const translation = {
     inScope: '{{scope}}s içinde',
     tryDifferentSearch: 'Farklı bir arama terimi deneyin',
     noMatchingCommands: 'Eşleşen komut bulunamadı',
+    slashHint: 'Tüm mevcut komutları görmek için / yazın',
   },
 }
 

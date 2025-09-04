@@ -2,7 +2,7 @@ import uuid
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, reqparse
+from flask_restx import Resource, marshal, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -584,7 +584,12 @@ class ChildChunkUpdateApi(Resource):
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
             db.session.query(ChildChunk)
-            .where(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .where(
+                ChildChunk.id == str(child_chunk_id),
+                ChildChunk.tenant_id == current_user.current_tenant_id,
+                ChildChunk.segment_id == segment.id,
+                ChildChunk.document_id == document_id,
+            )
             .first()
         )
         if not child_chunk:
@@ -633,7 +638,12 @@ class ChildChunkUpdateApi(Resource):
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
             db.session.query(ChildChunk)
-            .where(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .where(
+                ChildChunk.id == str(child_chunk_id),
+                ChildChunk.tenant_id == current_user.current_tenant_id,
+                ChildChunk.segment_id == segment.id,
+                ChildChunk.document_id == document_id,
+            )
             .first()
         )
         if not child_chunk:

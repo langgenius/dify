@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
-from typing import Any, Optional, cast
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from core.mcp.client.sse_client import sse_client
@@ -116,8 +116,7 @@ class MCPClient:
 
             self._session_context = ClientSession(*streams)
             self._session = self._exit_stack.enter_context(self._session_context)
-            session = cast(ClientSession, self._session)
-            session.initialize()
+            self._session.initialize()
             return
 
         except MCPAuthError:
@@ -152,7 +151,7 @@ class MCPClient:
             # ExitStack will handle proper cleanup of all managed context managers
             self._exit_stack.close()
         except Exception as e:
-            logging.exception("Error during cleanup")
+            logger.exception("Error during cleanup")
             raise ValueError(f"Error during cleanup: {e}")
         finally:
             self._session = None

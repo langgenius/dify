@@ -277,6 +277,11 @@ const translation = {
       languageChangeDesc: 'Zmień język interfejsu',
       themeSystemDesc: 'Podążaj za wyglądem swojego systemu operacyjnego',
       runDesc: 'Uruchom szybkie polecenia (motyw, język, ...)',
+      slashDesc: 'Wykonuj polecenia takie jak /theme, /lang',
+      communityDesc: 'Otwarta społeczność Discord',
+      docDesc: 'Otwórz dokumentację pomocy',
+      accountDesc: 'Przejdź do strony konta',
+      feedbackDesc: 'Otwarte dyskusje na temat opinii społeczności',
     },
     emptyState: {
       noAppsFound: 'Nie znaleziono aplikacji',
@@ -291,6 +296,7 @@ const translation = {
       workflowNodes: 'Węzły przepływu pracy',
       knowledgeBases: 'Bazy wiedzy',
       plugins: 'Wtyczki',
+      commands: 'Polecenia',
     },
     useAtForSpecific: 'Użyj @ dla określonych typów',
     searchPlaceholder: 'Wyszukaj lub wpisz @ dla poleceń...',
@@ -310,6 +316,7 @@ const translation = {
     inScope: 'w {{scope}}s',
     noMatchingCommands: 'Nie znaleziono pasujących poleceń',
     tryDifferentSearch: 'Spróbuj użyć innego hasła',
+    slashHint: 'Wpisz / aby zobaczyć wszystkie dostępne polecenia',
   },
 }
 

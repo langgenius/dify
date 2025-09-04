@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import queue
@@ -11,7 +12,7 @@ import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
 
 if TYPE_CHECKING:
-    from clickzetta import Connection
+    from clickzetta.connector.v0.connection import Connection  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -214,10 +215,8 @@ class ClickzettaConnectionPool:
                     return connection
                 else:
                     # Connection expired or invalid, close it
-                    try:
+                    with contextlib.suppress(Exception):
                         connection.close()
-                    except Exception:
-                        pass
 
             # No valid connection found, create new one
             return self._create_connection(config)
@@ -228,10 +227,8 @@ class ClickzettaConnectionPool:
 
         if config_key not in self._pool_locks:
             # Pool was cleaned up, just close the connection
-            try:
+            with contextlib.suppress(Exception):
                 connection.close()
-            except Exception:
-                pass
             return
 
         with self._pool_locks[config_key]:
@@ -243,10 +240,8 @@ class ClickzettaConnectionPool:
                 logger.debug("Returned ClickZetta connection to pool")
             else:
                 # Pool full or connection invalid, close it
-                try:
+                with contextlib.suppress(Exception):
                     connection.close()
-                except Exception:
-                    pass
 
     def _cleanup_expired_connections(self) -> None:
         """Clean up expired connections from all pools."""
@@ -265,10 +260,8 @@ class ClickzettaConnectionPool:
                         if current_time - last_used < self._connection_timeout:
                             valid_connections.append((connection, last_used))
                         else:
-                            try:
+                            with contextlib.suppress(Exception):
                                 connection.close()
-                            except Exception:
-                                pass
 
                     self._pools[config_key] = valid_connections
 
@@ -299,10 +292,8 @@ class ClickzettaConnectionPool:
                 with self._pool_locks[config_key]:
                     pool = self._pools[config_key]
                     for connection, _ in pool:
-                        try:
+                        with contextlib.suppress(Exception):
                             connection.close()
-                        except Exception:
-                            pass
                     pool.clear()
 
 
@@ -710,7 +701,7 @@ class ClickzettaVector(BaseVector):
                         len(data_rows),
                         vector_dimension,
                     )
-                except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+                except (RuntimeError, ValueError, TypeError, ConnectionError):
                     logger.exception("Parameterized SQL execution failed for %d documents", len(data_rows))
                     logger.exception("SQL template: %s", insert_sql)
                     logger.exception("Sample data row: %s", data_rows[0] if data_rows else "None")
@@ -796,7 +787,7 @@ class ClickzettaVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
 
         # Handle filter parameter from canvas (workflow)
-        filter_param = kwargs.get("filter", {})
+        _ = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
@@ -888,7 +879,7 @@ class ClickzettaVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
 
         # Handle filter parameter from canvas (workflow)
-        filter_param = kwargs.get("filter", {})
+        _ = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
@@ -947,7 +938,7 @@ class ClickzettaVector(BaseVector):
                                     metadata = {}
                             else:
                                 metadata = {}
-                        except (json.JSONDecodeError, TypeError) as e:
+                        except (json.JSONDecodeError, TypeError):
                             logger.exception("JSON parsing failed")
                             # Fallback: extract document_id with regex
 
@@ -965,7 +956,7 @@ class ClickzettaVector(BaseVector):
                         metadata["score"] = 1.0  # Clickzetta doesn't provide relevance scores
                         doc = Document(page_content=row[1], metadata=metadata)
                         documents.append(doc)
-                except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+                except (RuntimeError, ValueError, TypeError, ConnectionError):
                     logger.exception("Full-text search failed")
                     # Fallback to LIKE search if full-text search fails
                     return self._search_by_like(query, **kwargs)
@@ -987,7 +978,7 @@ class ClickzettaVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
 
         # Handle filter parameter from canvas (workflow)
-        filter_param = kwargs.get("filter", {})
+        _ = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
