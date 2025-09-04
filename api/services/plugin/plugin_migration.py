@@ -26,6 +26,7 @@ from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -457,17 +458,8 @@ class PluginMigration:
                         for plugin_id in batch_plugin_ids
                         if plugin_id not in installed_plugins_ids and plugin_id in plugin_ids
                     ]
-                    manager.install_from_identifiers(
-                        tenant_id,
-                        batch_plugin_identifiers,
-                        PluginInstallationSource.Marketplace,
-                        metas=[
-                            {
-                                "plugin_unique_identifier": identifier,
-                            }
-                            for identifier in batch_plugin_identifiers
-                        ],
-                    )
+                    PluginService.install_from_marketplace_pkg(tenant_id, batch_plugin_identifiers)
+
                 total_success_tenant += 1
             except Exception:
                 logger.exception("Failed to install plugins for tenant %s", tenant_id)

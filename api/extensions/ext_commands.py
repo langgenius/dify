@@ -13,6 +13,7 @@ def init_app(app: DifyApp):
         extract_unique_plugins,
         fix_app_site_missing,
         install_plugins,
+        install_rag_pipeline_plugins,
         migrate_data_for_plugin,
         old_metadata_migration,
         remove_orphaned_files_on_storage,
@@ -21,6 +22,7 @@ def init_app(app: DifyApp):
         reset_password,
         setup_datasource_oauth_client,
         setup_system_tool_oauth_client,
+        transform_datasource_credentials,
         upgrade_db,
         vdb_migrate,
     )
@@ -46,6 +48,8 @@ def init_app(app: DifyApp):
         setup_system_tool_oauth_client,
         cleanup_orphaned_draft_variables,
         setup_datasource_oauth_client,
+        transform_datasource_credentials,
+        install_rag_pipeline_plugins,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
