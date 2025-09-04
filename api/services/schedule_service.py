@@ -233,38 +233,46 @@ class ScheduleService:
         Maintains consistency with frontend UI expectations while supporting croniter's extended syntax.
         """
         if frequency == "hourly":
+            if visual_config.on_minute is None:
+                raise ScheduleConfigError("on_minute is required for hourly schedules")
             return f"{visual_config.on_minute} * * * *"
 
         elif frequency == "daily":
+            if not visual_config.time:
+                raise ScheduleConfigError("time is required for daily schedules")
             hour, minute = convert_12h_to_24h(visual_config.time)
             return f"{minute} {hour} * * *"
 
         elif frequency == "weekly":
+            if not visual_config.time:
+                raise ScheduleConfigError("time is required for weekly schedules")
+            if not visual_config.weekdays:
+                raise ScheduleConfigError("Weekdays are required for weekly schedules")
             hour, minute = convert_12h_to_24h(visual_config.time)
             weekday_map = {"sun": "0", "mon": "1", "tue": "2", "wed": "3", "thu": "4", "fri": "5", "sat": "6"}
             cron_weekdays = [weekday_map[day] for day in visual_config.weekdays]
             return f"{minute} {hour} * * {','.join(sorted(cron_weekdays))}"
 
         elif frequency == "monthly":
+            if not visual_config.time:
+                raise ScheduleConfigError("time is required for monthly schedules")
+            if not visual_config.monthly_days:
+                raise ScheduleConfigError("Monthly days are required for monthly schedules")
             hour, minute = convert_12h_to_24h(visual_config.time)
 
-            cron_days = []
+            numeric_days = []
+            has_last = False
             for day in visual_config.monthly_days:
                 if day == "last":
-                    cron_days.append("L")
+                    has_last = True
                 else:
-                    cron_days.append(str(day))
-
-            numeric_days = [d for d in cron_days if d != "L"]
-            has_last = "L" in cron_days
-
-            sorted_days = []
-            if numeric_days:
-                sorted_days = sorted(set(numeric_days), key=int)
+                    numeric_days.append(day)
+            
+            result_days = [str(d) for d in sorted(set(numeric_days))]
             if has_last:
-                sorted_days.append("L")
+                result_days.append("L")
 
-            return f"{minute} {hour} {','.join(sorted_days)} * *"
+            return f"{minute} {hour} {','.join(result_days)} * *"
 
         else:
             raise ScheduleConfigError(f"Unsupported frequency: {frequency}")
