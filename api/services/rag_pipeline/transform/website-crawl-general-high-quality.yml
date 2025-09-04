@@ -90,7 +90,7 @@ workflow:
             embedding_model_name: text-embedding-ada-002
             embedding_provider_name: langgenius/openai/openai
         selected: false
-        title: 知识库
+        title: Knowledge Base
         type: knowledge-index
       height: 114
       id: '1752477924228'
@@ -198,7 +198,7 @@ workflow:
     - data:
         output_type: string
         selected: false
-        title: 变量聚合器
+        title: Variable Aggregator
         type: variable-aggregator
         variables:
         - - '1752491761974'
@@ -393,10 +393,10 @@ workflow:
         provider_name: langgenius/general_chunker/general_chunker
         provider_type: builtin
         selected: false
-        title: 通用文本分块
+        title: General Chunker
         tool_configurations: {}
-        tool_description: 一个用于通用文本分块模式的工具，检索和召回的块是相同的。
-        tool_label: 通用文本分块
+        tool_description: A tool for general text chunking mode, the chunks retrieved and recalled are the same.
+        tool_label: General Chunker
         tool_name: general_chunker  
         tool_parameters:
           chunk_overlap_length:

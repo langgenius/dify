@@ -63,7 +63,7 @@ workflow:
             embedding_model_name: text-embedding-ada-002
             embedding_provider_name: langgenius/openai/openai
         selected: false
-        title: 知识库
+        title: Knowledge Base
         type: knowledge-index
       height: 114
       id: '1752477924228'
@@ -84,7 +84,7 @@ workflow:
         datasource_name: notion_datasource
         datasource_parameters: {}
         plugin_id: langgenius/notion_datasource
-        provider_name: notion
+        provider_name: notion_datasource
         provider_type: online_document
         selected: false
         title: Notion数据源
@@ -343,10 +343,10 @@ workflow:
         provider_name: langgenius/parentchild_chunker/parentchild_chunker
         provider_type: builtin
         selected: true
-        title: 父子分块处理器
+        title: Parent-child Chunker
         tool_configurations: {}
-        tool_description: 将文档处理为父子分块结构
-        tool_label: 父子分块处理器
+        tool_description: Parent-child Chunk Structure
+        tool_label: Parent-child Chunker
         tool_name: parentchild_chunker
         tool_parameters:
           input_text:

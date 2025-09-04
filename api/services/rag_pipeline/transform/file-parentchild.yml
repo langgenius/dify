@@ -120,7 +120,7 @@ workflow:
             embedding_model_name: text-embedding-ada-002
             embedding_provider_name: langgenius/openai/openai
         selected: false
-        title: 知识库
+        title: Knowledge Base
         type: knowledge-index
       height: 114
       id: '1752477924228'
@@ -229,10 +229,10 @@ workflow:
         provider_name: langgenius/dify_extractor/dify_extractor
         provider_type: builtin
         selected: false
-        title: Dify文本提取器
+        title: Dify Extractor
         tool_configurations: {}
         tool_description: Dify Extractor
-        tool_label: Dify文本提取器
+        tool_label: Dify Extractor
         tool_name: dify_extractor
         tool_parameters:
           file:
@@ -362,7 +362,7 @@ workflow:
           id: 24e47cad-f1e2-4f74-9884-3f49d5bb37b7
           logical_operator: or
         selected: false
-        title: 条件分支
+        title: IF/ELSE
         type: if-else
       height: 358
       id: '1752481129417'
@@ -391,7 +391,7 @@ workflow:
               - text
         output_type: string
         selected: false
-        title: 变量聚合器
+        title: Variable Aggregator
         type: variable-aggregator
         variables:
         - - '1752481112180'
@@ -652,10 +652,10 @@ workflow:
         provider_name: langgenius/parentchild_chunker/parentchild_chunker
         provider_type: builtin
         selected: false
-        title: 父子分块处理器
+        title: Parent-child Chunker
         tool_configurations: {}
-        tool_description: 将文档处理为父子分块结构
-        tool_label: 父子分块处理器
+        tool_description: Parent-child Chunk Structure
+        tool_label: Parent-child Chunker
         tool_name: parentchild_chunker
         tool_parameters:
           input_text:
