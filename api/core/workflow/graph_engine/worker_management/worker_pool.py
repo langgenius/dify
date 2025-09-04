@@ -146,8 +146,6 @@ class WorkerPool:
             worker_id=worker_id,
             flask_app=self._flask_app,
             context_vars=self._context_vars,
-            # on_idle_callback=self._on_worker_idle,
-            # on_active_callback=self._on_worker_active,
         )
 
         worker.start()
