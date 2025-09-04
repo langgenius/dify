@@ -39,7 +39,7 @@ from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
 from .state_management import UnifiedStateManager
-from .worker_management import SimpleWorkerPool
+from .worker_management import WorkerPool
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +187,7 @@ class GraphEngine:
         context_vars = contextvars.copy_context()
 
         # Create worker pool for parallel node execution
-        self._worker_pool = SimpleWorkerPool(
+        self._worker_pool = WorkerPool(
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,

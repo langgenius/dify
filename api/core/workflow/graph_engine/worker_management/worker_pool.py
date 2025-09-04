@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 @final
-class SimpleWorkerPool:
+class WorkerPool:
     """
     Simple worker pool with integrated management.
 
