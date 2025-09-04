@@ -265,8 +265,11 @@ class CodeNode(Node):
 
             elif output_config.type == SegmentType.STRING:
                 # check if string available
+                value = result.get("output_name")
+                if value is not None and not isinstance(value, str):
+                    raise OutputValidationError(f"Output value `{value}` is not string")
                 transformed_result[output_name] = self._check_string(
-                    value=result[output_name],
+                    value=value,
                     variable=f"{prefix}{dot}{output_name}",
                 )
             elif output_config.type == SegmentType.BOOLEAN:
