@@ -72,14 +72,13 @@ const Select: FC<ISelectProps> = ({
   const [open, setOpen] = useState(false)
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+  // Ensure selectedItem is properly set when defaultValue or items change
   useEffect(() => {
     let defaultSelect = null
-    const existed = items.find((item: Item) => item.value === defaultValue)
-    if (existed)
-      defaultSelect = existed
-
+    // Handle cases where defaultValue might be undefined, null, or empty string
+    defaultSelect = (defaultValue && items.find((item: Item) => item.value === defaultValue)) || null
     setSelectedItem(defaultSelect)
-  }, [defaultValue])
+  }, [defaultValue, items])
 
   const filteredItems: Item[]
     = query === ''
@@ -195,14 +194,13 @@ const SimpleSelect: FC<ISelectProps> = ({
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
 
+  // Ensure selectedItem is properly set when defaultValue or items change
   useEffect(() => {
     let defaultSelect = null
-    const existed = items.find((item: Item) => item.value === defaultValue)
-    if (existed)
-      defaultSelect = existed
-
+    // Handle cases where defaultValue might be undefined, null, or empty string
+    defaultSelect = (defaultValue && items.find((item: Item) => item.value === defaultValue)) || null
     setSelectedItem(defaultSelect)
-  }, [defaultValue])
+  }, [defaultValue, items])
 
   const listboxRef = useRef<HTMLDivElement>(null)
 

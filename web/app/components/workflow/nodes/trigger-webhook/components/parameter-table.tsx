@@ -46,7 +46,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
         key: 'type',
         title: 'Type',
         type: (isRequestBody ? 'select' : 'input') as ColumnConfig['type'],
-        width: 'w-[78px]',
+        width: 'w-[120px]',
         placeholder: 'Type',
         options: isRequestBody ? typeOptions : undefined,
       }]
