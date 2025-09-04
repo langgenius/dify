@@ -256,7 +256,7 @@ class CodeNode(Node):
             elif output_config.type == SegmentType.NUMBER:
                 # check if number available
                 value = result.get(output_name)
-                if not isinstance(value, (int, float, None)):
+                if value is not None and not isinstance(value, (int, float)):
                     raise OutputValidationError(
                         f"Output {prefix}{dot}{output_name} is not a number,"
                         f" got {type(result.get(output_name))} instead."
@@ -271,9 +271,11 @@ class CodeNode(Node):
 
             elif output_config.type == SegmentType.STRING:
                 # check if string available
-                value = result.get("output_name")
+                value = result.get(output_name)
                 if value is not None and not isinstance(value, str):
-                    raise OutputValidationError(f"Output value `{value}` is not string")
+                    raise OutputValidationError(
+                        f"Output {prefix}{dot}{output_name} must be a string, got {type(value).__name__} instead"
+                    )
                 transformed_result[output_name] = self._check_string(
                     value=value,
                     variable=f"{prefix}{dot}{output_name}",
@@ -388,7 +390,7 @@ class CodeNode(Node):
                         )
                 else:
                     for i, inner_value in enumerate(value):
-                        if not isinstance(inner_value, bool | None):
+                        if inner_value is not None and not isinstance(inner_value, bool):
                             raise OutputValidationError(
                                 f"Output {prefix}{dot}{output_name}[{i}] is not a boolean,"
                                 f" got {type(inner_value)} instead."
