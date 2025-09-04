@@ -29,6 +29,7 @@ import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import LoopDefault from '@/app/components/workflow/nodes/loop/default'
+import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import { ssePost } from '@/service/base'
 import { noop } from 'lodash-es'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
@@ -47,6 +48,7 @@ const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
+const { checkValid: checkHumanInputValid } = HumanInputDefault
 import {
   useStoreApi,
 } from 'reactflow'
@@ -68,6 +70,7 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
+  [BlockEnum.HumanInput]: checkHumanInputValid,
 } as any
 
 export type Params<T> = {
@@ -251,7 +254,6 @@ const useOneStepRun = <T>({
       const { isValid } = checkValidWrap()
       setCanShowSingleRun(isValid)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { Trans, useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
@@ -7,13 +7,22 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import EmailInput from './recipient/email-input'
+import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import {
+  getNodeInfoById,
+  isConversationVar,
+  isENV,
+  isSystemVar,
+} from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import type { EmailConfig } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { fetchMembers } from '@/service/common'
-import { noop } from 'lodash-es'
+import { noop, unionBy } from 'lodash-es'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
@@ -25,6 +34,32 @@ type EmailConfigureModalProps = {
   config?: EmailConfig
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+}
+
+const isOutput = (valueSelector: string[]) => {
+  return valueSelector[0] === '$output'
+}
+
+const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
+  const targetVar = list.find(item => item.nodeId === valueSelector[0])
+    if (!targetVar)
+      return undefined
+
+    let curr: any = targetVar.vars
+    for (let i = 1; i < valueSelector.length; i++) {
+      const key = valueSelector[i]
+      const isLast = i === valueSelector.length - 1
+
+      if (Array.isArray(curr))
+        curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
+
+      if (isLast)
+        return curr
+      else if (curr?.type === VarType.object || curr?.type === VarType.file)
+        curr = curr.children
+    }
+
+    return undefined
 }
 
 const EmailSenderModal = ({
@@ -52,8 +87,53 @@ const EmailSenderModal = ({
   )
   const accounts = members?.accounts || []
 
+  const generatedInputs = useMemo(() => {
+    const valueSelectors = doGetInputVars(config?.body || '')
+    const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
+      const varInfo = getNodeInfoById(availableNodes, item[0])?.data
+
+      return {
+        label: {
+          nodeType: varInfo?.type,
+          nodeName: varInfo?.title || availableNodes[0]?.data.title, // default start node title
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          isChatVar: isConversationVar(item),
+        },
+        variable: `#${item.join('.')}#`,
+        value_selector: item,
+      }
+    })
+    const varInputs = variables.filter(item => !isENV(item.value_selector) && !isOutput(item.value_selector)).map((item) => {
+      const originalVar = getOriginVar(item.value_selector, nodesOutputVars)
+      if (!originalVar) {
+        return {
+          label: item.label || item.variable,
+          variable: item.variable,
+          type: InputVarType.textInput,
+          required: false,
+          value_selector: item.value_selector,
+        }
+      }
+      return {
+        label: item.label || item.variable,
+        variable: item.variable,
+        type: originalVar.type === VarType.number ? InputVarType.number : InputVarType.textInput,
+        required: false,
+      }
+    })
+    return varInputs
+  }, [availableNodes, config?.body, nodesOutputVars])
+
+  const [inputs, setInputs] = useState<Record<string, any>>({})
   const [collapsed, setCollapsed] = useState(true)
   const [done, setDone] = useState(false)
+
+  const handleValueChange = (variable: string, v: string) => {
+    setInputs({
+      ...inputs,
+      [variable]: v,
+    })
+  }
 
   const handleConfirm = useCallback(() => {
     // TODO send api
@@ -193,22 +273,36 @@ const EmailSenderModal = ({
         </>
       )}
       {/* vars */}
-      <div className='px-6'>
-        <Divider className='!mb-2 !mt-4 !h-px !w-12 bg-divider-regular'/>
-      </div>
-      <div className='px-6 py-2'>
-        <div className='group flex h-6 cursor-pointer items-center' onClick={() => setCollapsed(!collapsed)}>
-          <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`)}</div>
-          <div className='system-xs-regular text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emailSender.optional`)}</div>
-          <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
+      <>
+        <div className='px-6'>
+          <Divider className='!mb-2 !mt-4 !h-px !w-12 bg-divider-regular'/>
         </div>
-        <div className='system-xs-regular text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`)}</div>
-        {!collapsed && (
-          <div className='mt-3'>
-            {/* form TODO */}
+        <div className='px-6 py-2'>
+          <div className='group flex h-6 cursor-pointer items-center' onClick={() => setCollapsed(!collapsed)}>
+            <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`)}</div>
+            <div className='system-xs-regular text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emailSender.optional`)}</div>
+            <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
           </div>
-        )}
-      </div>
+          <div className='system-xs-regular text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`)}</div>
+          {!collapsed && (
+            <div className='mt-3 space-y-4'>
+              {generatedInputs.map((variable, index) => (
+                <div
+                  key={variable.variable}
+                  className='mb-4 last-of-type:mb-0'
+                >
+                  <FormItem
+                    autoFocus={index === 0}
+                    payload={variable}
+                    value={inputs[variable.variable]}
+                    onChange={v => handleValueChange(variable.variable, v)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </>
       <div className='flex flex-row-reverse gap-2 p-6 pt-5'>
         <Button
           variant='primary'

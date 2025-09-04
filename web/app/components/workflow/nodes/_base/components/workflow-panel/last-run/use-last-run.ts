@@ -57,6 +57,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.HumanInput]: undefined,
 }
 
 const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
@@ -89,6 +90,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.Assigner]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.HumanInput]: undefined,
 }
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
@@ -197,7 +199,6 @@ const useLastRun = <T>({
       setTabType(TabType.lastRun)
 
     setInitShowLastRunTab(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(appId!, id)
 
