@@ -229,7 +229,7 @@ class HostedFetchPipelineTemplateConfig(BaseSettings):
 
     HOSTED_FETCH_PIPELINE_TEMPLATES_MODE: str = Field(
         description="Mode for fetching pipeline templates: remote, db, or builtin default to remote,",
-        default="database",
+        default="remote",
     )
 
     HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN: str = Field(
