@@ -74,6 +74,22 @@ class Worker(threading.Thread):
         """Signal the worker to stop processing."""
         self._stop_event.set()
 
+    @property
+    def is_idle(self) -> bool:
+        """Check if the worker is currently idle."""
+        # Worker is idle if it hasn't processed a task recently (within 0.2 seconds)
+        return (time.time() - self._last_task_time) > 0.2
+
+    @property
+    def idle_duration(self) -> float:
+        """Get the duration in seconds since the worker last processed a task."""
+        return time.time() - self._last_task_time
+
+    @property
+    def worker_id(self) -> int:
+        """Get the worker's ID."""
+        return self._worker_id
+
     @override
     def run(self) -> None:
         """
