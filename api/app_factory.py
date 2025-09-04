@@ -24,7 +24,7 @@ def create_flask_app_with_configs() -> DifyApp:
     def before_request():
         # add an unique identifier to each request
         RecyclableContextVar.increment_thread_recycles()
-    
+
     # Capture the decorator's return value to avoid pyright reportUnusedFunction
     _ = before_request
 
