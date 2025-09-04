@@ -31,6 +31,7 @@ const NotionPagePreview = ({
       const res = await fetchNotionPagePreview({
         workspaceID: currentPage.workspace_id,
         pageID: currentPage.page_id,
+        pageType: currentPage.type,
         credentialID: notionCredentialId,
       })
       setPreviewContent(res.content)
