@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from enum import StrEnum
+from enum import StrEnum, auto
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -56,32 +56,32 @@ class StreamEvent(StrEnum):
     Stream event
     """
 
-    PING = "ping"
-    ERROR = "error"
-    MESSAGE = "message"
-    MESSAGE_END = "message_end"
-    TTS_MESSAGE = "tts_message"
-    TTS_MESSAGE_END = "tts_message_end"
-    MESSAGE_FILE = "message_file"
-    MESSAGE_REPLACE = "message_replace"
-    AGENT_THOUGHT = "agent_thought"
-    AGENT_MESSAGE = "agent_message"
-    WORKFLOW_STARTED = "workflow_started"
-    WORKFLOW_FINISHED = "workflow_finished"
-    NODE_STARTED = "node_started"
-    NODE_FINISHED = "node_finished"
-    NODE_RETRY = "node_retry"
-    PARALLEL_BRANCH_STARTED = "parallel_branch_started"
-    PARALLEL_BRANCH_FINISHED = "parallel_branch_finished"
-    ITERATION_STARTED = "iteration_started"
-    ITERATION_NEXT = "iteration_next"
-    ITERATION_COMPLETED = "iteration_completed"
-    LOOP_STARTED = "loop_started"
-    LOOP_NEXT = "loop_next"
-    LOOP_COMPLETED = "loop_completed"
-    TEXT_CHUNK = "text_chunk"
-    TEXT_REPLACE = "text_replace"
-    AGENT_LOG = "agent_log"
+    PING = auto()
+    ERROR = auto()
+    MESSAGE = auto()
+    MESSAGE_END = auto()
+    TTS_MESSAGE = auto()
+    TTS_MESSAGE_END = auto()
+    MESSAGE_FILE = auto()
+    MESSAGE_REPLACE = auto()
+    AGENT_THOUGHT = auto()
+    AGENT_MESSAGE = auto()
+    WORKFLOW_STARTED = auto()
+    WORKFLOW_FINISHED = auto()
+    NODE_STARTED = auto()
+    NODE_FINISHED = auto()
+    NODE_RETRY = auto()
+    PARALLEL_BRANCH_STARTED = auto()
+    PARALLEL_BRANCH_FINISHED = auto()
+    ITERATION_STARTED = auto()
+    ITERATION_NEXT = auto()
+    ITERATION_COMPLETED = auto()
+    LOOP_STARTED = auto()
+    LOOP_NEXT = auto()
+    LOOP_COMPLETED = auto()
+    TEXT_CHUNK = auto()
+    TEXT_REPLACE = auto()
+    AGENT_LOG = auto()
 
 
 class StreamResponse(BaseModel):

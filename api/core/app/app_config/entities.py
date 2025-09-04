@@ -67,8 +67,8 @@ class PromptTemplateEntity(BaseModel):
         'simple', 'advanced'
         """
 
-        SIMPLE = "simple"
-        ADVANCED = "advanced"
+        SIMPLE = auto()
+        ADVANCED = auto()
 
         @classmethod
         def value_of(cls, value: str):
@@ -201,8 +201,8 @@ class DatasetRetrieveConfigEntity(BaseModel):
         'single' or 'multiple'
         """
 
-        SINGLE = "single"
-        MULTIPLE = "multiple"
+        SINGLE = auto()
+        MULTIPLE = auto()
 
         @classmethod
         def value_of(cls, value: str):

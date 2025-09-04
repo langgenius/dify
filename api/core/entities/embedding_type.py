@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import StrEnum, auto
 
 
 class EmbeddingInputType(StrEnum):
@@ -6,5 +6,5 @@ class EmbeddingInputType(StrEnum):
     Enum for embedding input type.
     """
 
-    DOCUMENT = "document"
-    QUERY = "query"
+    DOCUMENT = auto()
+    QUERY = auto()
