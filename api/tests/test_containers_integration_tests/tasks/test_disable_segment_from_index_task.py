@@ -8,14 +8,12 @@ data and external dependencies.
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
 
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -140,7 +138,7 @@ class TestDisableSegmentFromIndexTask:
             doc_form=doc_form,
             word_count=1000,
             tokens=500,
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
         )
         db.session.add(document)
         db.session.commit()
@@ -185,7 +183,7 @@ class TestDisableSegmentFromIndexTask:
             status=status,
             enabled=enabled,
             created_by=account.id,
-            completed_at=datetime.now(timezone.utc) if status == "completed" else None,
+            completed_at=datetime.now(UTC) if status == "completed" else None,
         )
         db.session.add(segment)
         db.session.commit()
