@@ -23,6 +23,12 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
+from services.enterprise.plugin_manager_service import (
+    CheckCredentialPolicyComplianceRequest,
+    PluginCredentialType,
+    PluginManagerService,
+)
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -362,6 +368,16 @@ class ModelInstance:
                 else:
                     raise last_exception
 
+            # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
+            try:
+                self.load_balancing_manager._check_credential_policy_compliance(lb_config)
+            except Exception as e:
+                logger.warning(
+                    "Load balancing config %s failed policy compliance check in round-robin: %s", lb_config.id, str(e)
+                )
+                self.load_balancing_manager.cooldown(lb_config, expire=60)
+                continue
+
             try:
                 if "credentials" in kwargs:
                     del kwargs["credentials"]
@@ -515,6 +531,17 @@ class LBModelManager:
 
                 continue
 
+            # Check policy compliance for the selected configuration
+            try:
+                self._check_credential_policy_compliance(config)
+            except Exception as e:
+                logger.warning("Load balancing config %s failed policy compliance check: %s", config.id, str(e))
+                cooldown_load_balancing_configs.append(config)
+                if len(cooldown_load_balancing_configs) >= len(self._load_balancing_configs):
+                    # all configs are in cooldown or failed policy compliance
+                    return None
+                continue
+
             if dify_config.DEBUG:
                 logger.info(
                     """Model LB
@@ -583,3 +610,22 @@ model: %s""",
 
         ttl = cast(int, ttl)
         return True, ttl
+
+    def _check_credential_policy_compliance(self, config: ModelLoadBalancingConfiguration) -> None:
+        """
+        Check credential policy compliance for the given load balancing configuration.
+
+        :param config: The load balancing configuration to check
+        """
+        if FeatureService.get_system_features().plugin_manager.enabled and config.credential_source_type:
+            # Only check policy compliance for configurations that have a credential_id
+            # This includes both "provider" and "custom_model" credential source types
+            # Custom credentials stored directly in encrypted_config (without credential_id) are not checked
+            if config.credential_id:
+                PluginManagerService.check_credential_policy_compliance(
+                    CheckCredentialPolicyComplianceRequest(
+                        dify_credential_id=config.credential_id,
+                        provider=self._provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+                )
