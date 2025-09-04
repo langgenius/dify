@@ -3,14 +3,14 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 from typing import Optional
 
-from core.helper.model_cache import ModelTypeInstanceCache
-from core.helper.provider_cache import ProviderConfigurationsCache
 from pydantic import BaseModel
 
 from configs import dify_config
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
+from core.helper.model_cache import ModelTypeInstanceCache
+from core.helper.provider_cache import ProviderConfigurationsCache
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     GenericProviderID,
