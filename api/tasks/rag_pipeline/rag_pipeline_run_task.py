@@ -20,7 +20,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 
 
-@shared_task(queue="dataset")
+@shared_task(queue="pipeline")
 def rag_pipeline_run_task(
     pipeline_id: str,
     application_generate_entity: dict,
