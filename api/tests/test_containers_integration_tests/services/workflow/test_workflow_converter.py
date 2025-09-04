@@ -231,7 +231,7 @@ class TestWorkflowConverter:
         assert new_app.id is not None
 
         # Verify workflow was created
-        workflow = db.session.query(Workflow).filter(Workflow.app_id == new_app.id).first()
+        workflow = db.session.query(Workflow).where(Workflow.app_id == new_app.id).first()
         assert workflow is not None
         assert workflow.tenant_id == app.tenant_id
         assert workflow.type == "chat"
