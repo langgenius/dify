@@ -178,7 +178,9 @@ class WorkflowResponseConverter:
                 self._application_generate_entity.app_config.tenant_id,
                 event.provider_id,
             )
-            response.data.extras["icon"] = provider_entity.declaration.identity.icon
+            response.data.extras["icon"] = provider_entity.declaration.identity.generate_datasource_icon_url(
+                self._application_generate_entity.app_config.tenant_id
+            )
 
         return response
 

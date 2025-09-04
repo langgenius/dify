@@ -3,7 +3,9 @@ from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from yarl import URL
 
+from configs import dify_config
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.parameters import (
@@ -143,6 +145,21 @@ class DatasourceProviderIdentity(BaseModel):
         default=[],
         description="The tags of the tool",
     )
+
+    def generate_datasource_icon_url(self, tenant_id: str) -> str:
+        HARD_CODED_DATASOURCE_ICONS = ["https://assets.dify.ai/images/File%20Upload.svg"]
+        if self.icon in HARD_CODED_DATASOURCE_ICONS:
+            return self.icon
+        return str(
+            URL(dify_config.CONSOLE_API_URL or "/")
+            / "console"
+            / "api"
+            / "workspaces"
+            / "current"
+            / "plugin"
+            / "icon"
+            % {"tenant_id": tenant_id, "filename": self.icon}
+        )
 
 
 class DatasourceProviderEntity(BaseModel):
