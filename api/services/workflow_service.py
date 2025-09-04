@@ -331,6 +331,11 @@ class WorkflowService:
                             workflow.tenant_id, model_config["provider"], model_config["model"]
                         )
 
+                        # Validate load balancing credentials for agent model if load balancing is enabled
+                        # Create a temporary node_data structure for the agent's model
+                        agent_model_node_data = {"model": model_config}
+                        self._validate_load_balancing_credentials(workflow, agent_model_node_data, node_id)
+
                     # Validate agent tools
                     tools = agent_params.get("tools", {}).get("value", [])
                     for tool in tools:
@@ -354,6 +359,9 @@ class WorkflowService:
                     if provider and model_name:
                         # Validate that the provider+model combination can fetch valid credentials
                         self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
+
+                        # Validate load balancing credentials if load balancing is enabled
+                        self._validate_load_balancing_credentials(workflow, node_data, node_id)
                     else:
                         raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
 
@@ -457,6 +465,110 @@ class WorkflowService:
 
         except Exception as e:
             raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
+
+    def _validate_load_balancing_credentials(self, workflow: Workflow, node_data: dict, node_id: str) -> None:
+        """
+        Validate load balancing credentials for a workflow node.
+
+        :param workflow: The workflow being validated
+        :param node_data: The node data containing model configuration
+        :param node_id: The node ID for error reporting
+        :raises ValueError: If load balancing credentials violate policy compliance
+        """
+        # Extract model configuration
+        model_config = node_data.get("model", {})
+        provider = model_config.get("provider")
+        model_name = model_config.get("name")
+
+        if not provider or not model_name:
+            return  # No model config to validate
+
+        # Check if this model has load balancing enabled
+        if self._is_load_balancing_enabled(workflow.tenant_id, provider, model_name):
+            # Get all load balancing configurations for this model
+            load_balancing_configs = self._get_load_balancing_configs(workflow.tenant_id, provider, model_name)
+
+            # Validate each load balancing configuration
+            for config in load_balancing_configs:
+                if config.get("credential_id"):
+                    self._check_credential_policy_compliance(
+                        config["credential_id"], provider, PluginCredentialType.MODEL
+                    )
+
+    def _is_load_balancing_enabled(self, tenant_id: str, provider: str, model_name: str) -> bool:
+        """
+        Check if load balancing is enabled for a specific model.
+
+        :param tenant_id: The tenant ID
+        :param provider: The provider name
+        :param model_name: The model name
+        :return: True if load balancing is enabled, False otherwise
+        """
+        try:
+            from core.model_runtime.entities.model_entities import ModelType
+            from core.provider_manager import ProviderManager
+
+            # Get provider configurations
+            provider_manager = ProviderManager()
+            provider_configurations = provider_manager.get_configurations(tenant_id)
+            provider_configuration = provider_configurations.get(provider)
+
+            if not provider_configuration:
+                return False
+
+            # Get provider model setting
+            provider_model_setting = provider_configuration.get_provider_model_setting(
+                model_type=ModelType.LLM,  # Load balancing is primarily used for LLM models
+                model=model_name,
+            )
+
+            return (
+                provider_model_setting
+                and provider_model_setting.load_balancing_enabled
+                and provider_model_setting.load_balancing_configs
+            )
+
+        except Exception:
+            # If we can't determine the status, assume load balancing is not enabled
+            return False
+
+    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict]:
+        """
+        Get all load balancing configurations for a model.
+
+        :param tenant_id: The tenant ID
+        :param provider: The provider name
+        :param model_name: The model name
+        :return: List of load balancing configuration dictionaries
+        """
+        try:
+            from services.model_load_balancing_service import ModelLoadBalancingService
+
+            # Use the existing service to get load balancing configurations
+            model_load_balancing_service = ModelLoadBalancingService()
+            _, configs = model_load_balancing_service.get_load_balancing_configs(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=model_name,
+                model_type="llm",  # Load balancing is primarily used for LLM models
+                config_from="predefined-model",  # Check both predefined and custom models
+            )
+
+            # Also get custom model configurations
+            _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
+                tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
+            )
+
+            # Combine both lists
+            all_configs = configs + custom_configs
+
+            # Filter out configurations without credential_id (these are custom credentials stored directly)
+            return [config for config in all_configs if config.get("credential_id")]
+
+        except Exception:
+            # If we can't get the configurations, return empty list
+            # This will prevent validation errors from breaking the workflow
+            return []
 
     def get_default_block_configs(self) -> list[dict]:
         """
