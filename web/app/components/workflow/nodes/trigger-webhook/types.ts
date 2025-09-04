@@ -1,14 +1,8 @@
-import type { CommonNodeType, InputVar } from '@/app/components/workflow/types'
+import type { CommonNodeType, VarType, Variable } from '@/app/components/workflow/types'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 
-export type ParameterType = 'string' | 'number' | 'boolean' | 'array[string]' | 'array[number]' | 'array[boolean]' | 'array[object]' | 'object' | 'file'
-
 export type ArrayElementType = 'string' | 'number' | 'boolean' | 'object'
-
-export const isArrayType = (type: ParameterType): type is `array[${ArrayElementType}]` => {
-  return type.startsWith('array[') && type.endsWith(']')
-}
 
 export const getArrayElementType = (arrayType: `array[${ArrayElementType}]`): ArrayElementType => {
   const match = arrayType.match(/^array\[(.+)\]$/)
@@ -17,7 +11,7 @@ export const getArrayElementType = (arrayType: `array[${ArrayElementType}]`): Ar
 
 export type WebhookParameter = {
   name: string
-  type: ParameterType
+  type: VarType
   required: boolean
 }
 
@@ -37,5 +31,5 @@ export type WebhookTriggerNodeType = CommonNodeType & {
   async_mode: boolean
   status_code: number
   response_body: string
-  variables: InputVar[]
+  variables: Variable[]
 }
