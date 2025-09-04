@@ -15,6 +15,7 @@ import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
@@ -135,15 +136,12 @@ class WorkflowRunner:
             raise ValueError(f"Fixtures directory does not exist: {self.fixtures_dir}")
 
     def load_fixture(self, fixture_name: str) -> dict[str, Any]:
-        """Load a YAML fixture file."""
+        """Load a YAML fixture file with caching to avoid repeated parsing."""
         if not fixture_name.endswith(".yml") and not fixture_name.endswith(".yaml"):
             fixture_name = f"{fixture_name}.yml"
 
         fixture_path = self.fixtures_dir / fixture_name
-        if not fixture_path.exists():
-            raise FileNotFoundError(f"Fixture file not found: {fixture_path}")
-
-        return load_yaml_file(str(fixture_path), ignore_error=False)
+        return _load_fixture(fixture_path, fixture_name)
 
     def create_graph_from_fixture(
         self,
@@ -709,3 +707,12 @@ class TableTestRunner:
         report.append("=" * 80)
 
         return "\n".join(report)
+
+
+@lru_cache(maxsize=32)
+def _load_fixture(fixture_path: Path, fixture_name: str) -> dict[str, Any]:
+    """Load a YAML fixture file with caching to avoid repeated parsing."""
+    if not fixture_path.exists():
+        raise FileNotFoundError(f"Fixture file not found: {fixture_path}")
+
+    return load_yaml_file(str(fixture_path), ignore_error=False)

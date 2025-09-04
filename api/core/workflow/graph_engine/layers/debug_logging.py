@@ -33,11 +33,11 @@ from core.workflow.graph_events import (
     NodeRunSucceededEvent,
 )
 
-from .base import Layer
+from .base import GraphEngineLayer
 
 
 @final
-class DebugLoggingLayer(Layer):
+class DebugLoggingLayer(GraphEngineLayer):
     """
     A layer that provides comprehensive logging of GraphEngine execution.
 

@@ -5,12 +5,12 @@ This module provides the layer infrastructure for extending GraphEngine function
 with middleware-like components that can observe events and interact with execution.
 """
 
-from .base import Layer
+from .base import GraphEngineLayer
 from .debug_logging import DebugLoggingLayer
 from .execution_limits import ExecutionLimitsLayer
 
 __all__ = [
     "DebugLoggingLayer",
     "ExecutionLimitsLayer",
-    "Layer",
+    "GraphEngineLayer",
 ]

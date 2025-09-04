@@ -31,8 +31,6 @@ _VALID_PARAMETER_TYPES = frozenset(
 
 
 def _validate_type(parameter_type: str) -> SegmentType:
-    if not isinstance(parameter_type, str):
-        raise TypeError(f"type should be str, got {type(parameter_type)}, value={parameter_type}")
     if parameter_type not in _VALID_PARAMETER_TYPES:
         raise ValueError(f"type {parameter_type} is not allowd to use in Parameter Extractor node.")
 

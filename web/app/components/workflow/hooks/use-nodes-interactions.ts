@@ -37,6 +37,7 @@ import {
 import {
   genNewNodeTitleFromOld,
   generateNewNode,
+  getNestedNodePosition,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
@@ -1341,8 +1342,7 @@ export const useNodesInteractions = () => {
           })
           newChildren.push(newIterationStartNode!)
         }
-
-        if (nodeToPaste.data.type === BlockEnum.Loop) {
+        else if (nodeToPaste.data.type === BlockEnum.Loop) {
           newLoopStartNode!.parentId = newNode.id;
           (newNode.data as LoopNodeType).start_node_id = newLoopStartNode!.id
 
@@ -1352,6 +1352,44 @@ export const useNodesInteractions = () => {
           })
           newChildren.push(newLoopStartNode!)
         }
+        else {
+          // single node paste
+          const selectedNode = nodes.find(node => node.selected)
+          if (selectedNode) {
+            const commonNestedDisallowPasteNodes = [
+              // end node only can be placed outermost layer
+              BlockEnum.End,
+            ]
+
+            // handle disallow paste node
+            if (commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
+              return
+
+            // handle paste to nested block
+            if (selectedNode.data.type === BlockEnum.Iteration) {
+              newNode.data.isInIteration = true
+              newNode.data.iteration_id = selectedNode.data.iteration_id
+              newNode.parentId = selectedNode.id
+              newNode.positionAbsolute = {
+                x: newNode.position.x,
+                y: newNode.position.y,
+              }
+              // set position base on parent node
+              newNode.position = getNestedNodePosition(newNode, selectedNode)
+            }
+            else if (selectedNode.data.type === BlockEnum.Loop) {
+              newNode.data.isInLoop = true
+              newNode.data.loop_id = selectedNode.data.loop_id
+              newNode.parentId = selectedNode.id
+              newNode.positionAbsolute = {
+                x: newNode.position.x,
+                y: newNode.position.y,
+              }
+              // set position base on parent node
+              newNode.position = getNestedNodePosition(newNode, selectedNode)
+            }
+          }
+        }
 
         nodesToPaste.push(newNode)
 
@@ -1359,6 +1397,7 @@ export const useNodesInteractions = () => {
           nodesToPaste.push(...newChildren)
       })
 
+      // only handle edge when paste nested block
       edges.forEach((edge) => {
         const sourceId = idMapping[edge.source]
         const targetId = idMapping[edge.target]

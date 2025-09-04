@@ -274,5 +274,3 @@ class VariableAssignerNode(Node):
                 if not variable.value:
                     return variable.value
                 return variable.value[:-1]
-            case _:
-                raise OperationNotSupportedError(operation=operation, variable_type=variable.value_type)

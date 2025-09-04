@@ -8,7 +8,7 @@ from ..command_processing import CommandProcessor
 from ..domain import GraphExecution
 from ..event_management import EventManager
 from ..state_management import UnifiedStateManager
-from ..worker_management import SimpleWorkerPool
+from ..worker_management import WorkerPool
 
 if TYPE_CHECKING:
     from ..event_management import EventHandler
@@ -30,7 +30,7 @@ class ExecutionCoordinator:
         event_handler: "EventHandler",
         event_collector: EventManager,
         command_processor: CommandProcessor,
-        worker_pool: SimpleWorkerPool,
+        worker_pool: WorkerPool,
     ) -> None:
         """
         Initialize the execution coordinator.
