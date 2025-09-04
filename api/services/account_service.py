@@ -214,6 +214,7 @@ class AccountService:
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
+        db.session.add(account)
         db.session.commit()
         return account
 
