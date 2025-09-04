@@ -20,6 +20,8 @@ const translation = {
       tokens: 'TOKENS',
       user: '用户或账户',
       version: '版本',
+      selectAllConversations: '全选会话',
+      selectConversation: '选择会话',
     },
     pagination: {
       previous: '上一页',

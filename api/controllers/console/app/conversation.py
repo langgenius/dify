@@ -1,10 +1,14 @@
 from datetime import datetime
+import logging
 
 import pytz  # pip install pytz
+
+logger = logging.getLogger(__name__)
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -110,6 +114,10 @@ class CompletionConversationApi(Resource):
     def delete(self, app_model):
         """Clear completion conversations and related data including files"""
         if not current_user.is_editor:
+            logger.warning(
+                "Unauthorized deletion attempt: user %s tried to delete completion conversations for app %s",
+                current_user.id, app_model.id
+            )
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -150,7 +158,7 @@ class CompletionConversationApi(Resource):
             if all_message_ids:
                 try:
                     db.session.query(MessageFeedback).filter(MessageFeedback.message_id.in_(all_message_ids)).delete(synchronize_session=False)
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(MessageFile).filter(MessageFile.message_id.in_(all_message_ids)).delete(synchronize_session=False)  
@@ -175,23 +183,23 @@ class CompletionConversationApi(Resource):
                     db.session.query(ConversationVariable).filter(
                         ConversationVariable.conversation_id == conversation.id
                     ).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(ToolConversationVariables).filter(
                         ToolConversationVariables.conversation_id == conversation.id
                     ).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(ToolFile).filter(ToolFile.conversation_id == conversation.id).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(PinnedConversation).filter(
                         PinnedConversation.conversation_id == conversation.id
                     ).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
 
             # Delete upload file records
@@ -396,6 +404,10 @@ class ChatConversationApi(Resource):
     def delete(self, app_model):
         """Clear chat conversations and related data including files"""
         if not current_user.is_editor:
+            logger.warning(
+                "Unauthorized deletion attempt: user %s tried to delete chat conversations for app %s",
+                current_user.id, app_model.id
+            )
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -436,7 +448,7 @@ class ChatConversationApi(Resource):
             if all_message_ids:
                 try:
                     db.session.query(MessageFeedback).filter(MessageFeedback.message_id.in_(all_message_ids)).delete(synchronize_session=False)
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(MessageFile).filter(MessageFile.message_id.in_(all_message_ids)).delete(synchronize_session=False)  
@@ -461,23 +473,23 @@ class ChatConversationApi(Resource):
                     db.session.query(ConversationVariable).filter(
                         ConversationVariable.conversation_id == conversation.id
                     ).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(ToolConversationVariables).filter(
                         ToolConversationVariables.conversation_id == conversation.id
                     ).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(ToolFile).filter(ToolFile.conversation_id == conversation.id).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
                     db.session.query(PinnedConversation).filter(
                         PinnedConversation.conversation_id == conversation.id
                     ).delete()
-                except Exception:
+                except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
 
             # Delete upload file records

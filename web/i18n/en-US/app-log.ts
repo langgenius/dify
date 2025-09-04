@@ -20,6 +20,8 @@ const translation = {
       tokens: 'TOKENS',
       user: 'End User or Account',
       version: 'VERSION',
+      selectAllConversations: 'Select all conversations',
+      selectConversation: 'Select conversation',
     },
     pagination: {
       previous: 'Prev',

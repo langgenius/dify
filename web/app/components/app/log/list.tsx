@@ -973,6 +973,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, s
                 checked={isAllSelected}
                 indeterminate={isSomeSelected}
                 onCheck={handleSelectAll}
+                aria-label={t('appLog.table.header.selectAllConversations')}
               />
             </td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
@@ -999,6 +1000,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, s
                   <Checkbox
                     checked={selectedItems.includes(log.id)}
                     onCheck={() => handleSelectItem(log.id)}
+                    aria-label={t('appLog.table.header.selectConversation')}
                   />
                   {!log.read_at && (
                     <span className='inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500'></span>
