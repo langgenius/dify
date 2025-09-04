@@ -820,7 +820,8 @@ class DocumentSegment(Base):
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
-        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?.*?)?"
+        # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
+        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
