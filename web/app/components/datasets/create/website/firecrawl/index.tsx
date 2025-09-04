@@ -112,6 +112,10 @@ const FireCrawl: FC<Props> = ({
           },
         }
       }
+      res.data = res.data.map((item: any) => ({
+        ...item,
+        content: item.markdown,
+      }))
       // update the progress
       setCrawlResult({
         ...res,
@@ -161,6 +165,10 @@ const FireCrawl: FC<Props> = ({
         setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
       }
       else {
+        data.data = data.data.map((item: any) => ({
+          ...item,
+          content: item.markdown,
+        }))
         setCrawlResult(data)
         onCheckedCrawlResultChange(data.data || []) // default select the crawl result
         setCrawlErrorMessage('')
