@@ -50,7 +50,7 @@ PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE = (
     "- operator\n"
     "- itertools\n\n"
     "Example:\n"
-    "def main(arg1: str, arg2: int):\n"
+    "def main(arg1: str, arg2: int) -> dict:\n"
     "    return {\n"
     '        "result": arg1 * arg2,\n'
     "    }\n\n"

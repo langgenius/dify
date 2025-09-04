@@ -443,7 +443,7 @@ class LLMGenerator:
                 ideal_output=ideal_output,
             )
 
-        def agent_log_of(node_execution: WorkflowNodeExecutionModel):
+        def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
             raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
             if not raw_agent_log:
                 return []
