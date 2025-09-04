@@ -61,6 +61,12 @@ jobs:
     if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
 
+  playwright-tests:
+    name: Playwright Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.web-changed == 'true'
+    uses: ./.github/workflows/playwright.yml
+
   style-check:
     name: Style Check
     uses: ./.github/workflows/style.yml

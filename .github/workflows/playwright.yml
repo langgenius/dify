@@ -1,0 +1,77 @@
+name: Playwright Tests
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+
+concurrency:
+  group: playwright-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web-changed: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: web/**
+
+  test:
+    needs: check-changes
+    if: needs.check-changes.outputs.web-changed == 'true'
+    timeout-minutes: 60
+    name: Playwright Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ./web/package.json
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Copy production env
+        run: cp .env.example .env.local
+
+      - name: Modify env values
+        run: |
+          sed -i 's|NEXT_PUBLIC_EDITION=.*|NEXT_PUBLIC_EDITION=CLOUD|' .env.local
+          sed -i 's|NEXT_PUBLIC_DEPLOY_ENV=.*|NEXT_PUBLIC_DEPLOY_ENV=PRODUCTION|' .env.local
+          sed -i 's|NEXT_PUBLIC_API_PREFIX=.*|NEXT_PUBLIC_API_PREFIX=https://cloud.dify.ai/console/api|' .env.local
+          sed -i 's|NEXT_PUBLIC_PUBLIC_API_PREFIX=.*|NEXT_PUBLIC_PUBLIC_API_PREFIX=https://udify.app/api|' .env.local
+
+      - name: Run Playwright tests
+        run: pnpm e2e-test:ci
+
