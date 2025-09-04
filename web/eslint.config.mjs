@@ -134,10 +134,6 @@ export default combine(
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
-      // Custom rule overrides (modify rule levels or disable rules)
-      rules: {
-        "@eslint-react/no-missing-key": "warn",
-      },
       globals: {
         ...globals.browser,
         ...globals.es2025,
@@ -270,4 +266,9 @@ export default combine(
   oxlint.configs['flat/recommended'],
   eslintReact.configs.recommended,
   eslintReact.configs["recommended-typescript"],
+  {
+    rules: {
+      '@eslint-react/no-missing-key': 'warn',
+    }
+  }
 )
