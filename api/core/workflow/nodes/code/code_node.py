@@ -279,31 +279,36 @@ class CodeNode(Node):
                 )
             elif output_config.type == SegmentType.ARRAY_NUMBER:
                 # check if array of number available
-                if not isinstance(result[output_name], list):
-                    if result[output_name] is None:
+                value = result[output_name]
+                if not isinstance(value, list):
+                    if value is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(
-                            f"Output {prefix}{dot}{output_name} is not an array,"
-                            f" got {type(result.get(output_name))} instead."
+                            f"Output {prefix}{dot}{output_name} is not an array, got {type(value)} instead."
                         )
                 else:
-                    if len(result[output_name]) > dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
+                    if len(value) > dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
                             f" less than {dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements."
                         )
 
+                    for i, inner_value in enumerate(value):
+                        if not isinstance(inner_value, (int, float)):
+                            raise OutputValidationError(
+                                f"The element at index {i} of output variable `{prefix}{dot}{output_name}` must be"
+                                f" a number."
+                            )
+                        _ = self._check_number(value=inner_value, variable=f"{prefix}{dot}{output_name}[{i}]")
                     transformed_result[output_name] = [
                         # If the element is a boolean and the output schema specifies a `array[number]` type,
                         # convert the boolean value to an integer.
                         #
                         # This ensures compatibility with existing workflows that may use
                         # `True` and `False` as values for NUMBER type outputs.
-                        self._convert_boolean_to_int(
-                            self._check_number(value=value, variable=f"{prefix}{dot}{output_name}[{i}]"),
-                        )
-                        for i, value in enumerate(result[output_name])
+                        self._convert_boolean_to_int(v)
+                        for v in value
                     ]
             elif output_config.type == SegmentType.ARRAY_STRING:
                 # check if array of string available
@@ -366,8 +371,9 @@ class CodeNode(Node):
                     ]
             elif output_config.type == SegmentType.ARRAY_BOOLEAN:
                 # check if array of object available
-                if not isinstance(result[output_name], list):
-                    if result[output_name] is None:
+                value = result[output_name]
+                if not isinstance(value, list):
+                    if value is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(
@@ -375,10 +381,14 @@ class CodeNode(Node):
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
-                    transformed_result[output_name] = [
-                        self._check_boolean(value=value, variable=f"{prefix}{dot}{output_name}[{i}]")
-                        for i, value in enumerate(result[output_name])
-                    ]
+                    for i, inner_value in enumerate(value):
+                        if not isinstance(inner_value, bool | None):
+                            raise OutputValidationError(
+                                f"Output {prefix}{dot}{output_name}[{i}] is not a boolean,"
+                                f" got {type(inner_value)} instead."
+                            )
+                        _ = self._check_boolean(value=inner_value, variable=f"{prefix}{dot}{output_name}[{i}]")
+                    transformed_result[output_name] = value
 
             else:
                 raise OutputValidationError(f"Output type {output_config.type} is not supported.")
