@@ -746,6 +746,7 @@ class PipelineGenerator(BaseAppGenerator):
                     all_files.append(
                         {
                             "id": datasource_info.get("id", ""),
+                            "name": datasource_info.get("name", "untitled"),
                             "bucket": datasource_info.get("bucket", None),
                         }
                     )
@@ -777,7 +778,6 @@ class PipelineGenerator(BaseAppGenerator):
             provider_type=datasource_runtime.datasource_provider_type(),
         )
         is_truncated = False
-        last_file_key = None
         for result in result_generator:
             for files in result.result:
                 for file in files.files:
@@ -795,6 +795,7 @@ class PipelineGenerator(BaseAppGenerator):
                         all_files.append(
                             {
                                 "id": file.id,
+                                "name": file.name,
                                 "bucket": bucket,
                             }
                         )
