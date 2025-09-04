@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
-import { useStore } from '../../store'
+import { useStore, useWorkflowStore } from '../../store'
 import type { ToolNodeType, ToolVarInputs } from './types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -21,6 +21,7 @@ import {
 import { canFindTool } from '@/utils'
 
 const useConfig = (id: string, payload: ToolNodeType) => {
+  const workflowStore = useWorkflowStore()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleFetchAllTools } = useFetchToolsData()
   const { t } = useTranslation()
@@ -146,7 +147,9 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     if (!currTool)
       return
     const inputsWithDefaultValue = formattingParameters()
+    const { setControlPromptEditorRerenderKey } = workflowStore.getState()
     setInputs(inputsWithDefaultValue)
+    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
   }, [currTool])
 
   // setting when call

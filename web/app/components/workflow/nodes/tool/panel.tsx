@@ -43,9 +43,11 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
   if (isLoading) {
-    return <div className='flex h-[200px] items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className='flex h-[200px] items-center justify-center'>
+        <Loading />
+      </div>
+    )
   }
 
   return (
