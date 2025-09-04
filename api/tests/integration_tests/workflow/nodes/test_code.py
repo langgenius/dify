@@ -162,7 +162,7 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     result = node._run()
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert result.error == "Output variable `result` must be a string"
+    assert result.error == "Output result must be a string, got int instead"
 
 
 def test_execute_code_output_validator_depth():
