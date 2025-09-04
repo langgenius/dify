@@ -110,9 +110,11 @@ class PipelineGenerator(BaseAppGenerator):
         workflow_thread_pool_id: Optional[str] = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
         # Add null check for dataset
-        dataset = pipeline.dataset
-        if not dataset:
-            raise ValueError("Pipeline dataset is required")
+
+        with Session(db.engine) as session:
+            dataset = pipeline.retrieve_dataset(session)
+            if not dataset:
+                raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
         datasource_type: str = args["datasource_type"]
@@ -360,9 +362,10 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=args.get("start_node_id", "shared")
         )
 
-        dataset = pipeline.dataset
-        if not dataset:
-            raise ValueError("Pipeline dataset is required")
+        with Session(db.engine) as session:
+            dataset = pipeline.retrieve_dataset(session)
+            if not dataset:
+                raise ValueError("Pipeline dataset is required")
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
@@ -446,9 +449,10 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
-        dataset = pipeline.dataset
-        if not dataset:
-            raise ValueError("Pipeline dataset is required")
+        with Session(db.engine) as session:
+            dataset = pipeline.retrieve_dataset(session)
+            if not dataset:
+                raise ValueError("Pipeline dataset is required")
 
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(

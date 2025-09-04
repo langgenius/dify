@@ -15,7 +15,7 @@ from typing import Any, Optional, cast
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
@@ -1286,9 +1286,8 @@ class Pipeline(Base):  # type: ignore[name-defined]
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
-    @property
-    def dataset(self):
-        return db.session.query(Dataset).filter(Dataset.pipeline_id == self.id).first()
+    def retrieve_dataset(self, session: Session):
+        return session.query(Dataset).filter(Dataset.pipeline_id == self.id).first()
 
 
 class DocumentPipelineExecutionLog(Base):
@@ -1307,6 +1306,7 @@ class DocumentPipelineExecutionLog(Base):
     input_data = db.Column(db.JSON, nullable=False)
     created_by = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
 
 class PipelineRecommendedPlugin(Base):
     __tablename__ = "pipeline_recommended_plugins"

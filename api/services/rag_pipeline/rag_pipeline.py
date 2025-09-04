@@ -352,9 +352,10 @@ class RagPipelineService:
                 knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
 
                 # update dataset
-                dataset = pipeline.dataset
-                if not dataset:
-                    raise ValueError("Dataset not found")
+                with Session(db.engine) as session:
+                    dataset = pipeline.retrieve_dataset(session=session)
+                    if not dataset:
+                        raise ValueError("Dataset not found")
                 DatasetService.update_rag_pipeline_dataset_settings(
                     session=session,
                     dataset=dataset,
@@ -1110,9 +1111,10 @@ class RagPipelineService:
         workflow = db.session.query(Workflow).filter(Workflow.id == pipeline.workflow_id).first()
         if not workflow:
             raise ValueError("Workflow not found")
-        dataset = pipeline.dataset
-        if not dataset:
-            raise ValueError("Dataset not found")
+        with Session(db.engine) as session:
+            dataset = pipeline.retrieve_dataset(session=session)
+            if not dataset:
+                raise ValueError("Dataset not found")
 
         # check template name is exist
         template_name = args.get("name")
@@ -1136,7 +1138,9 @@ class RagPipelineService:
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-        dsl = RagPipelineDslService.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
+        with Session(db.engine) as session:
+            rag_pipeline_dsl_service = RagPipelineDslService(session)
+            dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
 
         pipeline_customized_template = PipelineCustomizedTemplate(
             name=args.get("name"),

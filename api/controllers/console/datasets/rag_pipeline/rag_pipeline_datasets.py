@@ -1,5 +1,6 @@
 from flask_login import current_user  # type: ignore  # type: ignore
 from flask_restx import Resource, marshal, reqparse  # type: ignore
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -10,6 +11,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_rate_limit_check,
     setup_required,
 )
+from extensions.ext_database import db
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import login_required
 from models.dataset import DatasetPermissionEnum
@@ -64,10 +66,12 @@ class CreateRagPipelineDatasetApi(Resource):
             yaml_content=args["yaml_content"],
         )
         try:
-            import_info = RagPipelineDslService.create_rag_pipeline_dataset(
-                tenant_id=current_user.current_tenant_id,
-                rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
-            )
+            with Session(db.engine) as session:
+                rag_pipeline_dsl_service = RagPipelineDslService(session)
+                import_info = rag_pipeline_dsl_service.create_rag_pipeline_dataset(
+                    tenant_id=current_user.current_tenant_id,
+                    rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
+                )
             if rag_pipeline_dataset_create_entity.permission == "partial_members":
                 DatasetPermissionService.update_partial_member_list(
                     current_user.current_tenant_id,
