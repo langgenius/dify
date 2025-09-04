@@ -197,9 +197,7 @@ class DatasourceNode(Node):
                         storage_key=upload_file.key,
                         url=upload_file.source_url,
                     )
-                    file_info_dict = file_info.to_dict()
-                    file_info_dict["name"] = file_info.filename
-                    variable_pool.add([self._node_id, "file"], file_info_dict)
+                    variable_pool.add([self._node_id, "file"], file_info)
                     # variable_pool.add([self.node_id, "file"], file_info.to_dict())
                     yield StreamCompletedEvent(
                         node_run_result=NodeRunResult(
@@ -207,7 +205,7 @@ class DatasourceNode(Node):
                             inputs=parameters_for_log,
                             metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                             outputs={
-                                "file": file_info_dict,
+                                "file": file_info,
                                 "datasource_type": datasource_type,
                             },
                         )
@@ -503,7 +501,6 @@ class DatasourceNode(Node):
             conversation_id=None,
         )
         file = None
-        file_info_dict = None
         for message in message_stream:
             if message.type == DatasourceMessage.MessageType.BINARY_LINK:
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
@@ -530,16 +527,14 @@ class DatasourceNode(Node):
                     tenant_id=self.tenant_id,
                 )
         if file:
-            file_info_dict = file.to_dict()
-            file_info_dict["name"] = file.filename
-            variable_pool.add([self._node_id, "file"], file_info_dict)
+            variable_pool.add([self._node_id, "file"], file)
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=parameters_for_log,
                 metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                 outputs={
-                    "file": file_info_dict,
+                    "file": file,
                     "datasource_type": datasource_type,
                 },
             )
