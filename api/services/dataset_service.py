@@ -1093,7 +1093,7 @@ class DocumentService:
         account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
-    ):
+    ) -> tuple[list[Document], str]:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit

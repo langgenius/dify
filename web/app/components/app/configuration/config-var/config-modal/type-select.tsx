@@ -54,7 +54,7 @@ const TypeSelector: FC<Props> = ({
             <InputVarTypeIcon type={selectedItem?.value as InputVarType} className='size-4 shrink-0 text-text-secondary' />
             <span
               className={`
-              ml-1.5 ${!selectedItem?.name && 'text-components-input-text-placeholder'}
+              ml-1.5 text-components-input-text-filled ${!selectedItem?.name && 'text-components-input-text-placeholder'}
             `}
             >
               {selectedItem?.name}
