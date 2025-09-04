@@ -97,12 +97,45 @@ class WebhookService:
             # Handle file uploads
             if request.files:
                 data["files"] = cls._process_file_uploads(request.files, webhook_trigger)
-        else:
-            # Raw text data
+        elif "application/octet-stream" in content_type:
+            # Binary data - process as file using ToolFileManager
+            try:
+                file_content = request.get_data()
+                if file_content:
+                    tool_file_manager = ToolFileManager()
+
+                    # Create file using ToolFileManager
+                    tool_file = tool_file_manager.create_file_by_raw(
+                        user_id=webhook_trigger.created_by,
+                        tenant_id=webhook_trigger.tenant_id,
+                        conversation_id=None,
+                        file_binary=file_content,
+                        mimetype="application/octet-stream",
+                    )
+
+                    # Build File object
+                    mapping = {
+                        "tool_file_id": tool_file.id,
+                        "transfer_method": FileTransferMethod.TOOL_FILE.value,
+                    }
+                    file_obj = file_factory.build_from_mapping(
+                        mapping=mapping,
+                        tenant_id=webhook_trigger.tenant_id,
+                    )
+                    data["body"] = {"raw": file_obj.to_dict()}
+                else:
+                    data["body"] = {"raw": None}
+            except Exception:
+                logger.exception("Failed to process octet-stream data")
+                data["body"] = {"raw": None}
+        elif "text/plain" in content_type:
+            # Text data - store as raw string
             try:
                 data["body"] = {"raw": request.get_data(as_text=True)}
             except Exception:
                 data["body"] = {"raw": ""}
+        else:
+            raise ValueError(f"Unsupported Content-Type: {content_type}")
 
         return data
 
@@ -221,27 +254,21 @@ class WebhookService:
                         if not validation_result["valid"]:
                             return validation_result
 
-            else:
-                # For other content types (multipart/form-data, application/x-www-form-urlencoded, etc.)
-                # Only validate existence of required parameters, no type validation
+            elif configured_content_type == "application/octet-stream":
+                # For octet-stream, the binary data is processed as a file object
                 body_params = node_data.get("body", [])
-                for body_param in body_params:
-                    param_name = body_param.get("name", "")
-                    param_type = body_param.get("type", SegmentType.STRING)
-                    is_required = body_param.get("required", False)
+                body_data = webhook_data.get("body", {})
 
-                    if not is_required:
-                        continue
+                if body_params and any(param.get("required", False) for param in body_params):
+                    raw_file = body_data.get("raw")
+                    if not raw_file:
+                        return {
+                            "valid": False,
+                            "error": "Required binary data missing for application/octet-stream request",
+                        }
 
-                    # Check if parameter exists
-                    if param_type == SegmentType.FILE:
-                        file_obj = webhook_data.get("files", {}).get(param_name)
-                        if not file_obj:
-                            return {"valid": False, "error": f"Required file parameter missing: {param_name}"}
-                    else:
-                        body_data = webhook_data.get("body", {})
-                        if param_name not in body_data:
-                            return {"valid": False, "error": f"Required body parameter missing: {param_name}"}
+            else:
+                raise ValueError(f"Unsupported Content-Type for validation: {configured_content_type}")
 
             return {"valid": True}
 
