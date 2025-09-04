@@ -435,7 +435,7 @@ class ToolFile(TypeBase):
     # mime type
     mimetype: Mapped[str] = mapped_column(String(255), nullable=False)
     # original url
-    original_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    original_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True, default=None)
     # name
     name: Mapped[str] = mapped_column(default="")
     # size
