@@ -5,6 +5,11 @@ from typing import Any, Optional
 
 from extensions.ext_redis import redis_client
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.entities.provider_configuration import ProviderConfigurations
+
 
 class ProviderCredentialsCache(ABC):
     """Base class for provider credentials cache"""
