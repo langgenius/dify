@@ -41,7 +41,6 @@ const FormContentPreview: FC<Props> = ({
       <div className='max-h-[calc(100vh-167px)] overflow-y-auto px-4'>
         <Markdown
           content={content}
-          customDisallowedElements={['variable']}
           rehypePlugins={[rehypeVariable]}
           customComponents={{
             variable: ({ node, ...props }: any) => (
