@@ -7,10 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
+from core.plugin.utils.http_parser import serialize_request
 from core.trigger.entities.entities import TriggerEntity
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.trigger import TriggerSubscription
@@ -143,13 +145,30 @@ class TriggerService:
         )
 
         if dispatch_response.triggers:
-            triggers = cls.select_triggers(controller, dispatch_response, provider_id, subscription)
-            for trigger in triggers:
-                cls.process_triggered_workflows(
-                    subscription=subscription,
-                    trigger=trigger,
-                    request=request,
-                )
+            # Process triggers asynchronously to avoid blocking
+            from tasks.trigger_processing_tasks import process_triggers_async
+
+            # Serialize and store the request
+            request_id = f"trigger_request_{uuid.uuid4().hex}"
+            serialized_request = serialize_request(request)
+            storage.save(f"triggers/{request_id}", serialized_request)
+
+            # Queue async task with just the request ID
+            process_triggers_async.delay(
+                endpoint_id=endpoint_id,
+                provider_id=subscription.provider_id,
+                subscription_id=subscription.id,
+                triggers=list(dispatch_response.triggers),
+                request_id=request_id,
+            )
+
+            logger.info(
+                "Queued async processing for %d triggers on endpoint %s with request_id %s",
+                len(dispatch_response.triggers),
+                endpoint_id,
+                request_id,
+            )
+
         return dispatch_response.response
 
     @classmethod
@@ -159,7 +178,6 @@ class TriggerService:
             triggers = session.scalars(
                 select(WorkflowPluginTrigger).where(
                     WorkflowPluginTrigger.trigger_id == trigger_id,
-                    WorkflowPluginTrigger.triggered_by == "production",  # Only production triggers for now
                 )
             ).all()
             return list(triggers)

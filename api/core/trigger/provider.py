@@ -16,7 +16,7 @@ from core.plugin.entities.request import (
     TriggerInvokeResponse,
 )
 from core.plugin.impl.trigger import PluginTriggerManager
-from core.trigger.entities.api_entities import TriggerProviderApiEntity
+from core.trigger.entities.api_entities import TriggerApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     ProviderConfig,
     Subscription,
@@ -69,7 +69,30 @@ class PluginTriggerProviderController:
         """
         Convert to API entity
         """
-        return TriggerProviderApiEntity(**self.entity.model_dump())
+        return TriggerProviderApiEntity(
+            author=self.entity.identity.author,
+            name=self.entity.identity.name,
+            label=self.entity.identity.label,
+            description=self.entity.identity.description,
+            icon=self.entity.identity.icon,
+            icon_dark=self.entity.identity.icon_dark,
+            tags=self.entity.identity.tags,
+            plugin_id=self.plugin_id,
+            plugin_unique_identifier=self.plugin_unique_identifier,
+            credentials_schema=self.entity.credentials_schema,
+            oauth_client_schema=self.entity.oauth_schema.client_schema if self.entity.oauth_schema else [],
+            subscription_schema=self.entity.subscription_schema,
+            triggers=[
+                TriggerApiEntity(
+                    name=trigger.identity.name,
+                    identity=trigger.identity,
+                    description=trigger.description,
+                    parameters=trigger.parameters,
+                    output_schema=trigger.output_schema,
+                )
+                for trigger in self.entity.triggers
+            ],
+        )
 
     @property
     def identity(self) -> TriggerProviderIdentity:
@@ -172,6 +195,18 @@ class PluginTriggerProviderController:
         :return: List of OAuth client config schemas
         """
         return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
+
+    def get_properties_schema(self) -> list[BasicProviderConfig]:
+        """
+        Get properties schema for this provider
+
+        :return: List of properties config schemas
+        """
+        return (
+            [x.to_basic_provider_config() for x in self.entity.subscription_schema.properties_schema.copy()]
+            if self.entity.subscription_schema.properties_schema
+            else []
+        )
 
     def dispatch(self, user_id: str, request: Request, subscription: Subscription) -> TriggerDispatchResponse:
         """

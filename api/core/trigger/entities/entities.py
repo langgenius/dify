@@ -58,6 +58,7 @@ class TriggerProviderIdentity(BaseModel):
     label: I18nObject = Field(..., description="The label of the trigger provider")
     description: I18nObject = Field(..., description="The description of the trigger provider")
     icon: Optional[str] = Field(default=None, description="The icon of the trigger provider")
+    icon_dark: Optional[str] = Field(default=None, description="The dark icon of the trigger provider")
     tags: list[str] = Field(default_factory=list, description="The tags of the trigger provider")
 
 

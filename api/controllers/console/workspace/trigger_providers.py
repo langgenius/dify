@@ -155,7 +155,6 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
 
 
 class TriggerSubscriptionBuilderRequestLogsApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -470,7 +469,7 @@ class TriggerOAuthClientManageApi(Resource):
 
 
 # Trigger Subscription
-api.add_resource(TriggerProviderListApi, "/workspaces/current/trigger-providers")
+api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
 api.add_resource(TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")
 api.add_resource(
     TriggerSubscriptionDeleteApi,

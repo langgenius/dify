@@ -5,13 +5,12 @@ from pydantic import BaseModel, Field
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import (
-    OAuthSchema,
     SubscriptionSchema,
     TriggerDescription,
-    TriggerEntity,
+    TriggerIdentity,
     TriggerParameter,
-    TriggerProviderIdentity,
 )
 
 
@@ -26,21 +25,34 @@ class TriggerProviderSubscriptionApiEntity(BaseModel):
     properties: dict = Field(description="The properties of the subscription")
 
 
-class TriggerProviderApiEntity(BaseModel):
-    identity: TriggerProviderIdentity = Field(description="The identity of the trigger provider")
-    credentials_schema: list[ProviderConfig] = Field(description="The credentials schema of the trigger provider")
-    oauth_schema: Optional[OAuthSchema] = Field(description="The OAuth schema of the trigger provider")
-    subscription_schema: Optional[SubscriptionSchema] = Field(
-        description="The subscription schema of the trigger provider"
-    )
-    triggers: list[TriggerEntity] = Field(description="The triggers of the trigger provider")
-
-
 class TriggerApiEntity(BaseModel):
     name: str = Field(description="The name of the trigger")
+    identity: TriggerIdentity = Field(description="The identity of the trigger")
     description: TriggerDescription = Field(description="The description of the trigger")
     parameters: list[TriggerParameter] = Field(description="The parameters of the trigger")
     output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
+
+
+class TriggerProviderApiEntity(BaseModel):
+    author: str = Field(..., description="The author of the trigger provider")
+    name: str = Field(..., description="The name of the trigger provider")
+    label: I18nObject = Field(..., description="The label of the trigger provider")
+    description: I18nObject = Field(..., description="The description of the trigger provider")
+    icon: Optional[str] = Field(default=None, description="The icon of the trigger provider")
+    icon_dark: Optional[str] = Field(default=None, description="The dark icon of the trigger provider")
+    tags: list[str] = Field(default_factory=list, description="The tags of the trigger provider")
+
+    plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
+    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
+
+    credentials_schema: list[ProviderConfig] = Field(description="The credentials schema of the trigger provider")
+    oauth_client_schema: list[ProviderConfig] = Field(
+        default_factory=list, description="The schema of the OAuth client"
+    )
+    subscription_schema: Optional[SubscriptionSchema] = Field(
+        description="The subscription schema of the trigger provider"
+    )
+    triggers: list[TriggerApiEntity] = Field(description="The triggers of the trigger provider")
 
 
 class SubscriptionBuilderApiEntity(BaseModel):

@@ -1,180 +1,159 @@
 from io import BytesIO
-from typing import Any
 
 from flask import Request, Response
 from werkzeug.datastructures import Headers
 
 
 def serialize_request(request: Request) -> bytes:
-    """
-    Convert a Request object to raw HTTP data.
-
-    Args:
-        request: The Request object to convert.
-
-    Returns:
-        The raw HTTP data as bytes.
-    """
-    # Start with the request line
     method = request.method
-    path = request.full_path
-    # Remove trailing ? if there's no query string
-    path = path.removesuffix("?")
-    protocol = request.headers.get("HTTP_VERSION", "HTTP/1.1")
-    raw_data = f"{method} {path} {protocol}\r\n".encode()
+    path = request.full_path.rstrip("?")
+    raw = f"{method} {path} HTTP/1.1\r\n".encode()
 
-    # Add headers
-    for header_name, header_value in request.headers.items():
-        raw_data += f"{header_name}: {header_value}\r\n".encode()
+    for name, value in request.headers.items():
+        raw += f"{name}: {value}\r\n".encode()
 
-    # Add empty line to separate headers from body
-    raw_data += b"\r\n"
+    raw += b"\r\n"
 
-    # Add body if exists
     body = request.get_data(as_text=False)
     if body:
-        raw_data += body
+        raw += body
 
-    return raw_data
+    return raw
 
 
 def deserialize_request(raw_data: bytes) -> Request:
-    """
-    Convert raw HTTP data to a Request object.
+    header_end = raw_data.find(b"\r\n\r\n")
+    if header_end == -1:
+        header_end = raw_data.find(b"\n\n")
+        if header_end == -1:
+            header_data = raw_data
+            body = b""
+        else:
+            header_data = raw_data[:header_end]
+            body = raw_data[header_end + 2 :]
+    else:
+        header_data = raw_data[:header_end]
+        body = raw_data[header_end + 4 :]
 
-    Args:
-        raw_data: The raw HTTP data as bytes.
+    lines = header_data.split(b"\r\n")
+    if len(lines) == 1 and b"\n" in lines[0]:
+        lines = header_data.split(b"\n")
 
-    Returns:
-        A Flask Request object.
-    """
-    lines = raw_data.split(b"\r\n")
+    if not lines or not lines[0]:
+        raise ValueError("Empty HTTP request")
 
-    # Parse request line
-    request_line = lines[0].decode("utf-8")
-    parts = request_line.split(" ", 2)  # Split into max 3 parts
+    request_line = lines[0].decode("utf-8", errors="ignore")
+    parts = request_line.split(" ", 2)
     if len(parts) < 2:
         raise ValueError(f"Invalid request line: {request_line}")
 
     method = parts[0]
-    path = parts[1]
+    full_path = parts[1]
     protocol = parts[2] if len(parts) > 2 else "HTTP/1.1"
 
-    # Parse headers
+    if "?" in full_path:
+        path, query_string = full_path.split("?", 1)
+    else:
+        path = full_path
+        query_string = ""
+
     headers = Headers()
-    body_start = 0
-    for i in range(1, len(lines)):
-        line = lines[i]
-        if line == b"":
-            body_start = i + 1
-            break
-        if b":" in line:
-            header_line = line.decode("utf-8")
-            name, value = header_line.split(":", 1)
-            headers[name.strip()] = value.strip()
+    for line in lines[1:]:
+        if not line:
+            continue
+        line_str = line.decode("utf-8", errors="ignore")
+        if ":" not in line_str:
+            continue
+        name, value = line_str.split(":", 1)
+        headers.add(name, value.strip())
 
-    # Extract body
-    body = b""
-    if body_start > 0 and body_start < len(lines):
-        body = b"\r\n".join(lines[body_start:])
+    host = headers.get("Host", "localhost")
+    if ":" in host:
+        server_name, server_port = host.rsplit(":", 1)
+    else:
+        server_name = host
+        server_port = "80"
 
-    # Create environ for Request
     environ = {
         "REQUEST_METHOD": method,
-        "PATH_INFO": path.split("?")[0] if "?" in path else path,
-        "QUERY_STRING": path.split("?")[1] if "?" in path else "",
-        "SERVER_NAME": headers.get("Host", "localhost").split(":")[0],
-        "SERVER_PORT": headers.get("Host", "localhost:80").split(":")[1] if ":" in headers.get("Host", "") else "80",
+        "PATH_INFO": path,
+        "QUERY_STRING": query_string,
+        "SERVER_NAME": server_name,
+        "SERVER_PORT": server_port,
         "SERVER_PROTOCOL": protocol,
         "wsgi.input": BytesIO(body),
-        "wsgi.url_scheme": "https" if headers.get("X-Forwarded-Proto") == "https" else "http",
-        "CONTENT_LENGTH": str(len(body)) if body else "0",
-        "CONTENT_TYPE": headers.get("Content-Type", ""),
+        "wsgi.url_scheme": "http",
     }
 
-    # Add headers to environ
-    for header_name, header_value in headers.items():
-        env_name = f"HTTP_{header_name.upper().replace('-', '_')}"
-        if header_name.upper() not in ["CONTENT-TYPE", "CONTENT-LENGTH"]:
-            environ[env_name] = header_value
+    if "Content-Type" in headers:
+        environ["CONTENT_TYPE"] = headers.get("Content-Type")
+
+    if "Content-Length" in headers:
+        environ["CONTENT_LENGTH"] = headers.get("Content-Length")
+    elif body:
+        environ["CONTENT_LENGTH"] = str(len(body))
+
+    for name, value in headers.items():
+        if name.upper() in ("CONTENT-TYPE", "CONTENT-LENGTH"):
+            continue
+        env_name = f"HTTP_{name.upper().replace('-', '_')}"
+        environ[env_name] = value
 
     return Request(environ)
 
 
 def serialize_response(response: Response) -> bytes:
-    """
-    Convert a Response object to raw HTTP data.
+    raw = f"HTTP/1.1 {response.status}\r\n".encode()
 
-    Args:
-        response: The Response object to convert.
+    for name, value in response.headers.items():
+        raw += f"{name}: {value}\r\n".encode()
 
-    Returns:
-        The raw HTTP data as bytes.
-    """
-    # Start with the status line
-    protocol = "HTTP/1.1"
-    status_code = response.status_code
-    status_text = response.status.split(" ", 1)[1] if " " in response.status else "OK"
-    raw_data = f"{protocol} {status_code} {status_text}\r\n".encode()
+    raw += b"\r\n"
 
-    # Add headers
-    for header_name, header_value in response.headers.items():
-        raw_data += f"{header_name}: {header_value}\r\n".encode()
-
-    # Add empty line to separate headers from body
-    raw_data += b"\r\n"
-
-    # Add body if exists
     body = response.get_data(as_text=False)
     if body:
-        raw_data += body
+        raw += body
 
-    return raw_data
+    return raw
 
 
 def deserialize_response(raw_data: bytes) -> Response:
-    """
-    Convert raw HTTP data to a Response object.
+    header_end = raw_data.find(b"\r\n\r\n")
+    if header_end == -1:
+        header_end = raw_data.find(b"\n\n")
+        if header_end == -1:
+            header_data = raw_data
+            body = b""
+        else:
+            header_data = raw_data[:header_end]
+            body = raw_data[header_end + 2 :]
+    else:
+        header_data = raw_data[:header_end]
+        body = raw_data[header_end + 4 :]
 
-    Args:
-        raw_data: The raw HTTP data as bytes.
+    lines = header_data.split(b"\r\n")
+    if len(lines) == 1 and b"\n" in lines[0]:
+        lines = header_data.split(b"\n")
 
-    Returns:
-        A Flask Response object.
-    """
-    lines = raw_data.split(b"\r\n")
+    if not lines or not lines[0]:
+        raise ValueError("Empty HTTP response")
 
-    # Parse status line
-    status_line = lines[0].decode("utf-8")
+    status_line = lines[0].decode("utf-8", errors="ignore")
     parts = status_line.split(" ", 2)
     if len(parts) < 2:
         raise ValueError(f"Invalid status line: {status_line}")
 
     status_code = int(parts[1])
 
-    # Parse headers
-    headers: dict[str, Any] = {}
-    body_start = 0
-    for i in range(1, len(lines)):
-        line = lines[i]
-        if line == b"":
-            body_start = i + 1
-            break
-        if b":" in line:
-            header_line = line.decode("utf-8")
-            name, value = header_line.split(":", 1)
-            headers[name.strip()] = value.strip()
+    response = Response(response=body, status=status_code)
 
-    # Extract body
-    body = b""
-    if body_start > 0 and body_start < len(lines):
-        body = b"\r\n".join(lines[body_start:])
-
-    # Create Response object
-    response = Response(
-        response=body,
-        status=status_code,
-        headers=headers,
-    )
+    for line in lines[1:]:
+        if not line:
+            continue
+        line_str = line.decode("utf-8", errors="ignore")
+        if ":" not in line_str:
+            continue
+        name, value = line_str.split(":", 1)
+        response.headers[name] = value.strip()
 
     return response

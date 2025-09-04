@@ -20,6 +20,7 @@ from core.trigger.entities.api_entities import (
 )
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import (
+    create_trigger_provider_encrypter_for_properties,
     create_trigger_provider_encrypter_for_subscription,
     create_trigger_provider_oauth_encrypter,
 )
@@ -124,9 +125,15 @@ class TriggerProviderService:
                     if existing:
                         raise ValueError(f"Credential name '{name}' already exists for this provider")
 
-                    encrypter, _ = create_provider_encrypter(
+                    credential_encrypter, _ = create_provider_encrypter(
                         tenant_id=tenant_id,
                         config=provider_controller.get_credential_schema_config(credential_type),
+                        cache=NoOpProviderCredentialCache(),
+                    )
+
+                    properties_encrypter, _ = create_provider_encrypter(
+                        tenant_id=tenant_id,
+                        config=provider_controller.get_properties_schema(),
                         cache=NoOpProviderCredentialCache(),
                     )
 
@@ -138,8 +145,8 @@ class TriggerProviderService:
                         endpoint_id=endpoint_id,
                         provider_id=str(provider_id),
                         parameters=parameters,
-                        properties=properties,
-                        credentials=encrypter.encrypt(dict(credentials)),
+                        properties=properties_encrypter.encrypt(dict(properties)),
+                        credentials=credential_encrypter.encrypt(dict(credentials)),
                         credential_type=credential_type.value,
                         credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
@@ -448,4 +455,22 @@ class TriggerProviderService:
         """
         with Session(db.engine, autoflush=False) as session:
             subscription = session.query(TriggerSubscription).filter_by(endpoint_id=endpoint_id).first()
+            if not subscription:
+                return None
+            provider_controller = TriggerManager.get_trigger_provider(
+                subscription.tenant_id, TriggerProviderID(subscription.provider_id)
+            )
+            credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+                tenant_id=subscription.tenant_id,
+                controller=provider_controller,
+                subscription=subscription,
+            )
+            subscription.credentials = credential_encrypter.decrypt(subscription.credentials)
+
+            properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
+                tenant_id=subscription.tenant_id,
+                controller=provider_controller,
+                subscription=subscription,
+            )
+            subscription.properties = properties_encrypter.decrypt(subscription.properties)
             return subscription
