@@ -113,17 +113,6 @@ class DebugLoggingLayer(GraphEngineLayer):
             # Log initial state
             self.logger.info("Initial State:")
 
-            # Log inputs if available
-            if self.graph_runtime_state.variable_pool:
-                initial_vars: dict[str, Any] = {}
-                # Access the variable dictionary directly
-                for node_id, variables in self.graph_runtime_state.variable_pool.variable_dictionary.items():
-                    for var_key, var in variables.items():
-                        initial_vars[f"{node_id}.{var_key}"] = str(var.value) if hasattr(var, "value") else str(var)
-
-                if initial_vars:
-                    self.logger.info("  Initial variables: %s", self._format_dict(initial_vars))
-
     @override
     def on_event(self, event: GraphEngineEvent) -> None:
         """Log individual events based on their type."""
