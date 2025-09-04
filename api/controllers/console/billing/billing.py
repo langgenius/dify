@@ -35,7 +35,7 @@ class Invoices(Resource):
         assert isinstance(current_user, Account)
         BillingService.is_tenant_owner_or_admin(current_user)
         assert current_user.current_tenant_id is not None
-        return BillingService.get_invoices(current_user.email)
+        return BillingService.get_invoices(current_user.email, current_user.current_tenant_id)
 
 
 api.add_resource(Subscription, "/billing/subscription")
