@@ -359,7 +359,6 @@ class WorkflowService:
                     if provider and model_name:
                         # Validate that the provider+model combination can fetch valid credentials
                         self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
-
                         # Validate load balancing credentials if load balancing is enabled
                         self._validate_load_balancing_credentials(workflow, node_data, node_id)
                     else:
@@ -487,7 +486,6 @@ class WorkflowService:
         if self._is_load_balancing_enabled(workflow.tenant_id, provider, model_name):
             # Get all load balancing configurations for this model
             load_balancing_configs = self._get_load_balancing_configs(workflow.tenant_id, provider, model_name)
-
             # Validate each load balancing configuration
             for config in load_balancing_configs:
                 if config.get("credential_id"):
@@ -518,15 +516,10 @@ class WorkflowService:
 
             # Get provider model setting
             provider_model_setting = provider_configuration.get_provider_model_setting(
-                model_type=ModelType.LLM,  # Load balancing is primarily used for LLM models
+                model_type=ModelType.LLM,
                 model=model_name,
             )
-
-            return (
-                provider_model_setting
-                and provider_model_setting.load_balancing_enabled
-                and provider_model_setting.load_balancing_configs
-            )
+            return provider_model_setting and provider_model_setting.load_balancing_enabled
 
         except Exception:
             # If we can't determine the status, assume load balancing is not enabled
