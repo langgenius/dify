@@ -188,6 +188,7 @@ const Item: FC<ItemProps> = ({
           }
           onClick={handleChosen}
           onMouseDown={(e) => {
+            e.preventDefault()
             e.stopPropagation()
             e.nativeEvent.stopImmediatePropagation()
           }}
