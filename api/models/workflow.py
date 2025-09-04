@@ -1397,6 +1397,7 @@ class WorkflowWebhookTrigger(Base):
     - tenant_id (uuid) Workspace ID
     - webhook_id (varchar) Webhook ID for URL: https://api.dify.ai/triggers/webhook/:webhook_id
     - triggered_by (varchar) Environment: debugger or production
+    - created_by (varchar) User ID of the creator
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time
     """
@@ -1415,6 +1416,7 @@ class WorkflowWebhookTrigger(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
     triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
