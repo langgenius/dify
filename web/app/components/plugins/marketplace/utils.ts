@@ -117,6 +117,9 @@ export const getMarketplaceListCondition = (pluginType: string) => {
   if (pluginType === PluginType.extension)
     return 'category=endpoint'
 
+  if (pluginType === PluginType.datasource)
+    return 'category=datasource'
+
   if (pluginType === 'bundle')
     return 'type=bundle'
 
