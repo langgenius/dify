@@ -133,7 +133,7 @@ const translation = {
       search: 'Metadata pencarian',
     },
     datasetMetadata: {
-      disabled: 'Cacat',
+      disabled: 'Nonaktif',
       addMetaData: 'Tambahkan Metadata',
       description: 'Anda dapat mengelola semua metadata dalam pengetahuan ini di sini. Modifikasi akan disinkronkan ke setiap dokumen.',
       deleteTitle: 'Konfirmasi untuk menghapus',
@@ -141,7 +141,7 @@ const translation = {
       rename: 'Ubah nama',
       builtInDescription: 'Metadata bawaan secara otomatis diekstrak dan dihasilkan. Itu harus diaktifkan sebelum digunakan dan tidak dapat diedit.',
       namePlaceholder: 'Nama metadata',
-      builtIn: 'Built-in',
+      builtIn: 'Bawaan',
     },
     documentMetadata: {
       metadataToolTip: 'Metadata berfungsi sebagai filter penting yang meningkatkan akurasi dan relevansi pengambilan informasi. Anda dapat memodifikasi dan menambahkan metadata untuk dokumen ini di sini.',

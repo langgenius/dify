@@ -170,27 +170,21 @@ class ListOperatorNode(Node):
                 )
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
-            elif isinstance(variable, ArrayBooleanSegment):
-                if not isinstance(condition.value, bool):
-                    raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
+            else:
                 filter_func = _get_boolean_filter_func(condition=condition.comparison_operator, value=condition.value)
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
-            else:
-                raise AssertionError("this statment should be unreachable.")
         return variable
 
     def _apply_order(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
         if isinstance(variable, (ArrayStringSegment, ArrayNumberSegment, ArrayBooleanSegment)):
-            result = sorted(variable.value, reverse=self._node_data.order_by == Order.DESC)
+            result = sorted(variable.value, reverse=self._node_data.order_by.value == Order.DESC)
             variable = variable.model_copy(update={"value": result})
-        elif isinstance(variable, ArrayFileSegment):
+        else:
             result = _order_file(
                 order=self._node_data.order_by.value, order_by=self._node_data.order_by.key, array=variable.value
             )
             variable = variable.model_copy(update={"value": result})
-        else:
-            raise AssertionError("this statement should be unreachable")
 
         return variable
 
@@ -304,7 +298,7 @@ def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str
     if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
-    if key in {"type", "transfer_method"} and isinstance(value, Sequence):
+    if key in {"type", "transfer_method"}:
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_sequence_filter_func(condition=condition, value=value)(extract_func(x))
     elif key == "size" and isinstance(value, str):

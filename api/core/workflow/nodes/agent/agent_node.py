@@ -579,7 +579,7 @@ class AgentNode(Node):
                         for key, value in msg_metadata.items()
                         if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                     }
-                if message.message.json_object is not None:
+                if message.message.json_object:
                     json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)

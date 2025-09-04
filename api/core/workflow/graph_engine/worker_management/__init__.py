@@ -5,8 +5,8 @@ This package manages the worker pool, including creation,
 scaling, and activity tracking.
 """
 
-from .simple_worker_pool import SimpleWorkerPool
+from .worker_pool import WorkerPool
 
 __all__ = [
-    "SimpleWorkerPool",
+    "WorkerPool",
 ]

@@ -98,7 +98,8 @@ const ExportImage: FC = () => {
           style: {
             width: `${contentWidth}px`,
             height: `${contentHeight}px`,
-            transform: `translate(${padding - nodesBounds.x}px, ${padding - nodesBounds.y}px) scale(${zoom})`,
+            transform: `translate(${padding - nodesBounds.x}px, ${padding - nodesBounds.y}px)`,
+            transformOrigin: 'top left',
           },
         }
 

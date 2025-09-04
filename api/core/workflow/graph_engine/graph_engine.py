@@ -17,6 +17,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
+from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphNodeEventBase,
@@ -33,12 +34,12 @@ from .entities.commands import AbortCommand
 from .error_handling import ErrorHandler
 from .event_management import EventHandler, EventManager
 from .graph_traversal import EdgeProcessor, SkipPropagator
-from .layers.base import Layer
+from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
 from .state_management import UnifiedStateManager
-from .worker_management import SimpleWorkerPool
+from .worker_management import WorkerPool
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ class GraphEngine:
         context_vars = contextvars.copy_context()
 
         # Create worker pool for parallel node execution
-        self._worker_pool = SimpleWorkerPool(
+        self._worker_pool = WorkerPool(
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
@@ -221,7 +222,7 @@ class GraphEngine:
 
         # === Extensibility ===
         # Layers allow plugins to extend engine functionality
-        self._layers: list[Layer] = []
+        self._layers: list[GraphEngineLayer] = []
 
         # === Validation ===
         # Ensure all nodes share the same GraphRuntimeState instance
@@ -234,7 +235,7 @@ class GraphEngine:
             if id(node.graph_runtime_state) != expected_state_id:
                 raise ValueError(f"GraphRuntimeState consistency violation: Node '{node.id}' has a different instance")
 
-    def layer(self, layer: Layer) -> "GraphEngine":
+    def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
         """Add a layer for extending functionality."""
         self._layers.append(layer)
         return self
@@ -288,9 +289,11 @@ class GraphEngine:
     def _initialize_layers(self) -> None:
         """Initialize layers with context."""
         self._event_manager.set_layers(self._layers)
+        # Create a read-only wrapper for the runtime state
+        read_only_state = ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state)
         for layer in self._layers:
             try:
-                layer.initialize(self._graph_runtime_state, self._command_channel)
+                layer.initialize(read_only_state, self._command_channel)
             except Exception as e:
                 logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
 

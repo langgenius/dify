@@ -115,7 +115,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const [selectedCredential, setSelectedCredential] = useState<Credential & { addNewCredential?: boolean } | undefined>()
   const formRef2 = useRef<FormRefObject>(null)
   const isEditMode = !!Object.keys(formValues).filter((key) => {
-    return key !== '__model_name' && key !== '__model_type'
+    return key !== '__model_name' && key !== '__model_type' && !!formValues[key]
   }).length && isCurrentWorkspaceManager
 
   const handleSave = useCallback(async () => {
@@ -167,7 +167,7 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type && __authorization_name__) {
+    if (__model_name && __model_type) {
       await handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,

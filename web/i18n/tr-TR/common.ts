@@ -746,7 +746,7 @@ const translation = {
     content: 'Geri Bildirim İçeriği',
     subtitle: 'Lütfen bu yanıtla ilgili neyin yanlış gittiğini bize bildirin',
     title: 'Geri Bildirim Sağla',
-    placeholder: 'Lütfen neyin yanlış gittiğini veya nasıl iyileşebileceğimizı açıklayın...',
+    placeholder: 'Lütfen neyin yanlış gittiğini veya nasıl iyileşebileceğimizi açıklayın...',
   },
 }
 

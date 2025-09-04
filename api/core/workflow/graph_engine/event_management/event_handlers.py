@@ -267,10 +267,10 @@ class EventHandler:
         # in runtime state, rather than allowing nodes to directly access runtime state.
         for key, value in event.node_run_result.outputs.items():
             if key == "answer":
-                existing = self._graph_runtime_state.outputs.get("answer", "")
+                existing = self._graph_runtime_state.get_output("answer", "")
                 if existing:
-                    self._graph_runtime_state.outputs["answer"] = f"{existing}{value}"
+                    self._graph_runtime_state.set_output("answer", f"{existing}{value}")
                 else:
-                    self._graph_runtime_state.outputs["answer"] = value
+                    self._graph_runtime_state.set_output("answer", value)
             else:
-                self._graph_runtime_state.outputs[key] = value
+                self._graph_runtime_state.set_output(key, value)
