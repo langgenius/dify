@@ -706,7 +706,14 @@ class TestMCPToolManageService:
 
         # Verify mock interactions
         mock_mcp_client.assert_called_once_with(
-            "https://example.com/mcp", mcp_provider.id, tenant.id, authed=False, for_list=True, headers={}, timeout=30.0, sse_read_timeout=300.0
+            "https://example.com/mcp",
+            mcp_provider.id,
+            tenant.id,
+            authed=False,
+            for_list=True,
+            headers={},
+            timeout=30.0,
+            sse_read_timeout=300.0,
         )
 
     def test_list_mcp_tool_from_remote_server_auth_error(
@@ -1218,7 +1225,14 @@ class TestMCPToolManageService:
 
         # Verify mock interactions
         mock_mcp_client.assert_called_once_with(
-            "https://example.com/mcp", mcp_provider.id, tenant.id, authed=False, for_list=True, headers={}, timeout=30.0, sse_read_timeout=300.0
+            "https://example.com/mcp",
+            mcp_provider.id,
+            tenant.id,
+            authed=False,
+            for_list=True,
+            headers={},
+            timeout=30.0,
+            sse_read_timeout=300.0,
         )
 
     def test_re_connect_mcp_provider_auth_error(self, db_session_with_containers, mock_external_service_dependencies):
