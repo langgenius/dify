@@ -88,7 +88,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
-  const [datasetConfig] = useDatasetDetailContext(s => [s.dataset])
+  const datasetConfig = useDatasetDetailContext(s => s.dataset)
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
@@ -261,35 +261,35 @@ const DocumentList: FC<IDocumentListProps> = ({
     return parts[parts.length - 1].toLowerCase()
   }, [])
 
-  const isCreateFromRAGPipeline = useCallback((createFrom: string) => {
-    return createFrom === 'rag-pipeline'
-  }, [])
+  const isCreateFromRAGPipeline = useMemo(() => {
+    return datasetConfig?.runtime_mode === 'rag_pipeline'
+  }, [datasetConfig?.runtime_mode])
 
   /**
    * Calculate the data source type
    * DataSourceType: FILE, NOTION, WEB (legacy)
    * DatasourceType: localFile, onlineDocument, websiteCrawl, onlineDrive (new)
    */
-  const isLocalFile = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
-    if (createFrom === 'rag-pipeline')
+  const isLocalFile = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
+    if (isCreateFromRAGPipeline)
       return dataSourceType === DatasourceType.localFile
     return dataSourceType === DataSourceType.FILE
-  }, [])
-  const isOnlineDocument = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
-    if (createFrom === 'rag-pipeline')
+  }, [isCreateFromRAGPipeline])
+  const isOnlineDocument = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
+    if (isCreateFromRAGPipeline)
       return dataSourceType === DatasourceType.onlineDocument
     return dataSourceType === DataSourceType.NOTION
-  }, [])
-  const isWebsiteCrawl = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
-    if (createFrom === 'rag-pipeline')
+  }, [isCreateFromRAGPipeline])
+  const isWebsiteCrawl = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
+    if (isCreateFromRAGPipeline)
       return dataSourceType === DatasourceType.websiteCrawl
     return dataSourceType === DataSourceType.WEB
-  }, [])
-  const isOnlineDrive = useCallback((dataSourceType: DataSourceType | DatasourceType, createFrom: string) => {
-    if (createFrom === 'rag-pipeline')
+  }, [isCreateFromRAGPipeline])
+  const isOnlineDrive = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
+    if (isCreateFromRAGPipeline)
       return dataSourceType === DatasourceType.onlineDrive
     return false
-  }, [])
+  }, [isCreateFromRAGPipeline])
 
   return (
     <div className='relative flex h-full w-full flex-col'>
@@ -329,8 +329,7 @@ const DocumentList: FC<IDocumentListProps> = ({
           </thead>
           <tbody className="text-text-secondary">
             {localDocs.map((doc, index) => {
-              const isFile = isLocalFile(doc.data_source_type, doc.created_from)
-              const createFromRAGPipeline = isCreateFromRAGPipeline(doc.created_from)
+              const isFile = isLocalFile(doc.data_source_type)
               const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
               return <tr
                 key={doc.id}
@@ -357,22 +356,22 @@ const DocumentList: FC<IDocumentListProps> = ({
                 <td>
                   <div className={'group mr-6 flex max-w-[460px] items-center hover:mr-0'}>
                     <div className='flex shrink-0 items-center'>
-                      {isOnlineDocument(doc.data_source_type, doc.created_from) && (
+                      {isOnlineDocument(doc.data_source_type) && (
                         <NotionIcon
                           className='mr-1.5'
                           type='page'
                           src={
-                            createFromRAGPipeline
+                            isCreateFromRAGPipeline
                               ? (doc.data_source_info as OnlineDocumentInfo).page.page_icon
                               : (doc.data_source_info as LegacyDataSourceInfo).notion_page_icon
                           }
                         />
                       )}
-                      {isLocalFile(doc.data_source_type, doc.created_from) && (
+                      {isLocalFile(doc.data_source_type) && (
                         <FileTypeIcon
                           type={
                             extensionToFileType(
-                              createFromRAGPipeline
+                              isCreateFromRAGPipeline
                                 ? (doc?.data_source_info as LocalFileInfo)?.extension
                                 : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
                             )
@@ -380,7 +379,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                           className='mr-1.5'
                         />
                       )}
-                      {isOnlineDrive(doc.data_source_type, doc.created_from) && (
+                      {isOnlineDrive(doc.data_source_type) && (
                         <FileTypeIcon
                           type={
                             extensionToFileType(
@@ -390,7 +389,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                           className='mr-1.5'
                         />
                       )}
-                      {isWebsiteCrawl(doc.data_source_type, doc.created_from) && (
+                      {isWebsiteCrawl(doc.data_source_type) && (
                         <RiGlobalLine className='mr-1.5 size-4' />
                       )}
                     </div>
@@ -430,7 +429,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                 <td>
                   {
                     (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status)
-                      && isOnlineDocument(doc.data_source_type, doc.created_from))
+                      && isOnlineDocument(doc.data_source_type))
                       ? <ProgressBar percent={doc.percent || 0} />
                       : <StatusItem status={doc.display_status} />
                   }
