@@ -10,7 +10,8 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import sonar from 'eslint-plugin-sonarjs'
 import oxlint from 'eslint-plugin-oxlint'
 import next from '@next/eslint-plugin-next'
-
+import eslintReact from "@eslint-react/eslint-plugin";
+import tseslint from "typescript-eslint";
 // import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default combine(
@@ -127,6 +128,16 @@ export default combine(
     },
 
     languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        // Enable project service for better TypeScript integration
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // Custom rule overrides (modify rule levels or disable rules)
+      rules: {
+        "@eslint-react/no-missing-key": "warn",
+      },
       globals: {
         ...globals.browser,
         ...globals.es2025,
@@ -257,4 +268,6 @@ export default combine(
     },
   },
   oxlint.configs['flat/recommended'],
+  eslintReact.configs.recommended,
+  eslintReact.configs["recommended-typescript"],
 )
