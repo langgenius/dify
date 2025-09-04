@@ -653,13 +653,13 @@ class PipelineGenerator(BaseAppGenerator):
         document_form: str,
     ):
         if datasource_type == "local_file":
-            name = datasource_info["name"]
+            name = datasource_info.get("name", "untitled")
         elif datasource_type == "online_document":
-            name = datasource_info["page"]["page_name"]
+            name = datasource_info.get("page", {}).get("page_name", "untitled")
         elif datasource_type == "website_crawl":
-            name = datasource_info["title"]
+            name = datasource_info.get("title", "untitled")
         elif datasource_type == "online_drive":
-            name = datasource_info["key"]
+            name = datasource_info.get("name", "untitled")
         else:
             raise ValueError(f"Unsupported datasource type: {datasource_type}")
 
