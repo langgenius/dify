@@ -3,8 +3,8 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 from typing import Optional
 
-from api.core.helper.model_cache import ModelTypeInstanceCache
-from api.core.helper.provider_cache import ProviderConfigurationsCache
+from core.helper.model_cache import ModelTypeInstanceCache
+from core.helper.provider_cache import ProviderConfigurationsCache
 from pydantic import BaseModel
 
 from configs import dify_config

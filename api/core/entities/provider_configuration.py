@@ -5,8 +5,8 @@ from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
 from typing import Optional
 
-from api.core.helper.model_cache import ModelTypeInstanceCache
-from api.core.helper.provider_cache import ProviderConfigurationsCache
+from core.helper.model_cache import ModelTypeInstanceCache
+from core.helper.provider_cache import ProviderConfigurationsCache
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session

@@ -4,8 +4,8 @@ from collections import defaultdict
 from json import JSONDecodeError
 from typing import Any, Optional, cast
 
-from api.core.helper.model_cache import ModelTypeInstanceCache
-from api.core.helper.provider_cache import ProviderConfigurationsCache
+from core.helper.model_cache import ModelTypeInstanceCache
+from core.helper.provider_cache import ProviderConfigurationsCache
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
