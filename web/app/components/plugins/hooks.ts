@@ -26,9 +26,16 @@ export const useTags = (translateFromOut?: TFunction) => {
     return acc
   }, {} as Record<string, Tag>)
 
+  const getTagLabel = (name: string) => {
+    if (!tagsMap[name])
+      return name
+    return tagsMap[name].label
+  }
+
   return {
     tags,
     tagsMap,
+    getTagLabel,
   }
 }
 
