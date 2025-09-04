@@ -88,7 +88,8 @@ export const clearChatConversations = async ({ appId, conversationIds }: { appId
     const result = await del<any>(`/apps/${appId}/chat-conversations`, { body })
 
     // Clear localStorage to prevent 404 errors on explore pages
-    clearConversationIds(appId, { clearAll: true, debug: true })
+    // Only clear conversation IDs for this specific app
+    clearConversationIds(appId, { debug: true })
 
     // Clear SWR caches
     await Promise.all([
@@ -121,7 +122,8 @@ export const clearCompletionConversations = async ({ appId, conversationIds }: {
     const result = await del<any>(`/apps/${appId}/completion-conversations`, { body })
 
     // Clear localStorage to prevent 404 errors on explore pages
-    clearConversationIds(appId, { clearAll: true, debug: true })
+    // Only clear conversation IDs for this specific app
+    clearConversationIds(appId, { debug: true })
 
     // Clear SWR caches
     await Promise.all([
