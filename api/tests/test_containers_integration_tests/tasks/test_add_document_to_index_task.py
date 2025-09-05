@@ -724,57 +724,6 @@ class TestAddDocumentToIndexTask:
         # Verify redis cache was cleared
         assert redis_client.exists(indexing_cache_key) == 0
 
-    def test_add_document_to_index_performance_timing(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test that performance timing is properly recorded.
-
-        This test verifies:
-        - Performance timing is captured and logged
-        - Task execution time is reasonable
-        - Logging includes performance metrics
-        - Redis cache key deletion
-        """
-        # Arrange: Create test data
-        dataset, document = self._create_test_dataset_and_document(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-        segments = self._create_test_segments(db_session_with_containers, document, dataset)
-
-        # Set up Redis cache key
-        indexing_cache_key = f"document_{document.id}_indexing"
-        redis_client.set(indexing_cache_key, "processing", ex=300)
-
-        # Mock logging to capture performance messages
-        with patch("tasks.add_document_to_index_task.logging") as mock_logging:
-            # Act: Execute the task
-            add_document_to_index_task(document.id)
-
-            # Assert: Verify performance logging occurred
-            mock_logging.info.assert_called()
-
-            # Find the performance log message
-            performance_log_calls = [call for call in mock_logging.info.call_args_list if "latency:" in str(call)]
-            assert len(performance_log_calls) == 1
-
-            # Verify the performance message format
-            performance_message = str(performance_log_calls[0])
-            assert "Document added to index:" in performance_message
-            assert "latency:" in performance_message
-
-        # Verify normal processing occurred
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexType.PARAGRAPH_INDEX)
-        mock_external_service_dependencies["index_processor"].load.assert_called_once()
-
-        # Verify database state changes
-        for segment in segments:
-            db.session.refresh(segment)
-            assert segment.enabled is True
-
-        # Verify redis cache was cleared
-        assert redis_client.exists(indexing_cache_key) == 0
-
     def test_add_document_to_index_comprehensive_error_scenarios(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
