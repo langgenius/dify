@@ -928,7 +928,7 @@ class ToolManager:
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
-    ) -> Union[str, dict]:
+    ) -> Union[str, dict[str, Any]]:
         """
         get the tool icon
 
