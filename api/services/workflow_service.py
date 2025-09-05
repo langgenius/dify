@@ -396,7 +396,7 @@ class WorkflowService:
                     )
                 )
         except Exception as e:
-            raise ValueError(f"Credential policy compliance check failed: {str(e)}")
+            raise e
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
@@ -487,11 +487,14 @@ class WorkflowService:
             # Get all load balancing configurations for this model
             load_balancing_configs = self._get_load_balancing_configs(workflow.tenant_id, provider, model_name)
             # Validate each load balancing configuration
-            for config in load_balancing_configs:
-                if config.get("credential_id"):
-                    self._check_credential_policy_compliance(
-                        config["credential_id"], provider, PluginCredentialType.MODEL
-                    )
+            try:
+                for config in load_balancing_configs:
+                    if config.get("credential_id"):
+                        self._check_credential_policy_compliance(
+                            config["credential_id"], provider, PluginCredentialType.MODEL
+                        )
+            except Exception as e:
+                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}")
 
     def _is_load_balancing_enabled(self, tenant_id: str, provider: str, model_name: str) -> bool:
         """
