@@ -1198,7 +1198,7 @@ class DocumentService:
                             "Invalid process rule mode: %s, can not find dataset process rule",
                             process_rule.mode,
                         )
-                        return
+                        return [], ""
                     db.session.add(dataset_process_rule)
                     db.session.commit()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"
