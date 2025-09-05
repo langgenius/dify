@@ -100,9 +100,9 @@ const TriggerPluginItem: FC<Props> = ({
               type={BlockEnum.TriggerPlugin}
               toolIcon={payload.icon}
             />
-            <div className='ml-2 flex w-0 grow items-center text-sm text-text-primary'>
-              <span className='max-w-[250px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
-              <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{groupName}</span>
+            <div className='ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary'>
+              <span className='max-w-[200px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
+              <span className='system-xs-regular ml-2 truncate text-text-quaternary'>{groupName}</span>
             </div>
           </div>
 
