@@ -112,6 +112,7 @@ class TestWebAppAuthService:
 
         # Create account with password
         import uuid
+
         unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
         account = Account(
             email=unique_email,
@@ -327,6 +328,7 @@ class TestWebAppAuthService:
         # Arrange: Create account without password
         fake = Faker()
         import uuid
+
         unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
@@ -438,6 +440,7 @@ class TestWebAppAuthService:
         # Arrange: Create banned account
         fake = Faker()
         import uuid
+
         unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
