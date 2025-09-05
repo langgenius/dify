@@ -623,7 +623,7 @@ class VolumePermissionError(Exception):
 
 def check_volume_permission(
     permission_manager: VolumePermissionManager, operation: str, dataset_id: Optional[str] = None
-) -> None:
+):
     """Permission check decorator function
 
     Args:
