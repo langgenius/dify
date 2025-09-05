@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { pick, uniq } from 'lodash-es'
@@ -22,7 +22,6 @@ import type { Item } from '@/app/components/base/select'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import NotionIcon from '@/app/components/base/notion-icon'
-import ProgressBar from '@/app/components/base/progress-bar'
 import type { LegacyDataSourceInfo, LocalFileInfo, OnlineDocumentInfo, OnlineDriveInfo } from '@/models/datasets'
 import { ChunkingMode, DataSourceType, DocumentActionType, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
@@ -68,7 +67,6 @@ type IDocumentListProps = {
   onUpdate: () => void
   onManageMetadata: () => void
   statusFilter: Item
-  onStatusFilterChange: (filter: string) => void
 }
 
 /**
@@ -92,7 +90,6 @@ const DocumentList: FC<IDocumentListProps> = ({
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
-  const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -109,7 +106,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     onUpdate,
   })
 
-  useEffect(() => {
+  const localDocs = useMemo(() => {
     let filteredDocs = documents
 
     if (statusFilter.value !== 'all') {
@@ -120,10 +117,8 @@ const DocumentList: FC<IDocumentListProps> = ({
       )
     }
 
-    if (!sortField) {
-      setLocalDocs(filteredDocs)
-      return
-    }
+    if (!sortField)
+      return filteredDocs
 
     const sortedDocs = [...filteredDocs].sort((a, b) => {
       let aValue: any
@@ -160,7 +155,7 @@ const DocumentList: FC<IDocumentListProps> = ({
       }
     })
 
-    setLocalDocs(sortedDocs)
+    return sortedDocs
   }, [documents, sortField, sortOrder, statusFilter])
 
   const handleSort = (field: 'name' | 'word_count' | 'hit_count' | 'created_at') => {
@@ -261,9 +256,9 @@ const DocumentList: FC<IDocumentListProps> = ({
     return parts[parts.length - 1].toLowerCase()
   }, [])
 
-  const isCreateFromRAGPipeline = useMemo(() => {
-    return datasetConfig?.runtime_mode === 'rag_pipeline'
-  }, [datasetConfig?.runtime_mode])
+  const isCreateFromRAGPipeline = useCallback((createdFrom: string) => {
+    return createdFrom === 'rag_pipeline'
+  }, [])
 
   /**
    * Calculate the data source type
@@ -271,25 +266,17 @@ const DocumentList: FC<IDocumentListProps> = ({
    * DatasourceType: localFile, onlineDocument, websiteCrawl, onlineDrive (new)
    */
   const isLocalFile = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.localFile
-    return dataSourceType === DataSourceType.FILE
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.localFile || dataSourceType === DataSourceType.FILE
+  }, [])
   const isOnlineDocument = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.onlineDocument
-    return dataSourceType === DataSourceType.NOTION
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.onlineDocument || dataSourceType === DataSourceType.NOTION
+  }, [])
   const isWebsiteCrawl = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.websiteCrawl
-    return dataSourceType === DataSourceType.WEB
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.websiteCrawl || dataSourceType === DataSourceType.WEB
+  }, [])
   const isOnlineDrive = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.onlineDrive
-    return false
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.onlineDrive
+  }, [])
 
   return (
     <div className='relative flex h-full w-full flex-col'>
@@ -361,7 +348,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                           className='mr-1.5'
                           type='page'
                           src={
-                            isCreateFromRAGPipeline
+                            isCreateFromRAGPipeline(doc.created_from)
                               ? (doc.data_source_info as OnlineDocumentInfo).page.page_icon
                               : (doc.data_source_info as LegacyDataSourceInfo).notion_page_icon
                           }
@@ -371,7 +358,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                         <FileTypeIcon
                           type={
                             extensionToFileType(
-                              isCreateFromRAGPipeline
+                              isCreateFromRAGPipeline(doc.created_from)
                                 ? (doc?.data_source_info as LocalFileInfo)?.extension
                                 : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
                             )
@@ -427,12 +414,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                   {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
                 </td>
                 <td>
-                  {
-                    (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status)
-                      && isOnlineDocument(doc.data_source_type))
-                      ? <ProgressBar percent={doc.percent || 0} />
-                      : <StatusItem status={doc.display_status} />
-                  }
+                  <StatusItem status={doc.display_status} />
                 </td>
                 <td>
                   <Operations
