@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 
 const regex = /\{\{#(.+?)#\}\}/g
 
@@ -6,9 +6,8 @@ export function rehypeVariable() {
   return (tree: any) => {
     const iterate = (node: any, index: number, parent: any) => {
       const value = node.value
-      if(node.type === 'text')
-        console.log(value)
 
+      regex.lastIndex = 0
       if(node.type === 'text' && regex.test(value)) {
         let m: RegExpExecArray | null
         let last = 0
@@ -20,9 +19,11 @@ export function rehypeVariable() {
 
           parts.push({
             type: 'element',
-            tagName: 'variable', // variable is also be cleared
+            tagName: 'variable',
             properties: { path: m[0].trim() },
+            children: [],
           })
+
           last = m.index + m[0].length
         }
 
@@ -34,17 +35,26 @@ export function rehypeVariable() {
         }
       }
       if (node.children) {
-        node.children.forEach((item: any, i: number) => {
-          iterate(item, i, node)
-        })
+        let i = 0
+        // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
+        while(i < node.children.length) {
+          iterate(node.children[i], i, node)
+          i++
+        }
       }
     }
-    tree.children.forEach((item: any, i: number) => {
-      iterate(item, i, tree)
-    }, tree)
+    let i = 0
+    // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
+    while(i < tree.children.length) {
+      iterate(tree.children[i], i, tree)
+      i++
+    }
   }
 }
 
 export const Variable: React.FC<{ path: string }> = ({ path }) => {
-  return <span style={{ color: 'blue', fontWeight: 700 }}>{path.replaceAll('.', '/')}</span>
+  return <span className='text-text-accent'>{
+    path.replaceAll('.', '/')
+      .replace('{{#', '{{')
+      .replace('#}}', '}}')}</span>
 }
