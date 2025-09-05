@@ -33,7 +33,9 @@ export type BeforeRunFormProps = {
   existVarValuesInForms: Record<string, any>[]
   filteredExistVarForms: FormProps[]
   generatedFormContentData?: Record<string, any>
-  setSubmittedData?: (data: Record<string, any>) => void
+  showGeneratedForm?: boolean
+  handleShowGeneratedForm?: (data: Record<string, any>) => void
+  handleHideGeneratedForm?: () => void
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
@@ -70,7 +72,9 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   filteredExistVarForms,
   existVarValuesInForms,
   generatedFormContentData,
-  setSubmittedData,
+  showGeneratedForm = false,
+  handleShowGeneratedForm,
+  handleHideGeneratedForm,
 }) => {
   const { t } = useTranslation()
 
@@ -143,7 +147,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     }
 
     if (isHumanInput)
-      setSubmittedData?.(submitData)
+      handleShowGeneratedForm?.(submitData)
     else
       onRun(submitData)
   }
@@ -167,7 +171,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       onHide={onHide}
     >
       <div className='h-0 grow overflow-y-auto pb-4'>
-        {!generatedFormContentData && (
+        {!showGeneratedForm && (
           <div className='mt-3 space-y-4 px-4'>
             {filteredExistVarForms.map((form, index) => (
               <div key={index}>
@@ -181,21 +185,29 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
             ))}
           </div>
         )}
-        {generatedFormContentData && (
-          <SingleRunForm />
+        {showGeneratedForm && generatedFormContentData && (
+          <SingleRunForm
+            nodeName={nodeName}
+            handleBack={handleHideGeneratedForm}
+            formContent={generatedFormContentData.formContent}
+            inputFields={generatedFormContentData.inputFields}
+            userActions={generatedFormContentData.userActions}
+          />
         )}
-        <div className='mt-4 flex justify-between space-x-2 px-4' >
-          {!isHumanInput && (
-            <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
-              <div>{t(`${i18nPrefix}.startRun`)}</div>
-            </Button>
-          )}
-          {isHumanInput && (
-            <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
-              <div>{t('workflow.nodes.humanInput.singleRun.button')}</div>
-            </Button>
-          )}
-        </div>
+        {!showGeneratedForm && (
+          <div className='mt-4 flex justify-between space-x-2 px-4' >
+            {!isHumanInput && (
+              <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
+                <div>{t(`${i18nPrefix}.startRun`)}</div>
+              </Button>
+            )}
+            {isHumanInput && (
+              <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
+                <div>{t('workflow.nodes.humanInput.singleRun.button')}</div>
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </PanelWrap>
   )

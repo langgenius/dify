@@ -25,6 +25,7 @@ const useSingleRunFormParams = ({
   const { t } = useTranslation()
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null)
+  const [showGeneratedForm, setShowGeneratedForm] = useState(false)
   const generatedInputs = useMemo(() => {
     if (!inputs.form_content)
       return []
@@ -71,28 +72,43 @@ const useSingleRunFormParams = ({
       return null
     if (!generatedInputs.length) {
       return {
-        content: inputs.form_content,
+        formContent: inputs.form_content,
         inputFields: formContentOutputFields,
+        userActions: inputs.user_actions,
       }
     }
     else {
       if (!submittedData)
         return null
       const newContent = inputs.form_content.replace(/{{#(.*?)#}}/g, (originStr, varName) => {
-        return submittedData[varName] || isOutput(varName.split('.')) ? originStr : ''
+        if (isOutput(varName.split('.')))
+          return originStr
+        return submittedData[`#${varName}#`] ?? ''
       })
       return {
-        content: newContent,
+        formContent: newContent,
         inputFields: formContentOutputFields,
+        userActions: inputs.user_actions,
       }
     }
-  }, [inputs.form_content, submittedData, formContentOutputFields])
+  }, [inputs.form_content, inputs.user_actions, submittedData, formContentOutputFields])
+
+  const handleShowGeneratedForm = (formValue: Record<string, any>) => {
+    setSubmittedData(formValue)
+    setShowGeneratedForm(true)
+  }
+
+  const handleHideGeneratedForm = () => {
+    setShowGeneratedForm(false)
+  }
 
   return {
     forms,
     getDependentVars,
     generatedFormContentData,
-    setSubmittedData,
+    showGeneratedForm,
+    handleShowGeneratedForm,
+    handleHideGeneratedForm,
   }
 }
 
