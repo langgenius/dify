@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { pick, uniq } from 'lodash-es'
@@ -22,7 +22,6 @@ import type { Item } from '@/app/components/base/select'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import NotionIcon from '@/app/components/base/notion-icon'
-import ProgressBar from '@/app/components/base/progress-bar'
 import type { LegacyDataSourceInfo, LocalFileInfo, OnlineDocumentInfo, OnlineDriveInfo } from '@/models/datasets'
 import { ChunkingMode, DataSourceType, DocumentActionType, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
@@ -91,7 +90,6 @@ const DocumentList: FC<IDocumentListProps> = ({
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
-  const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -108,7 +106,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     onUpdate,
   })
 
-  useEffect(() => {
+  const localDocs = useMemo(() => {
     let filteredDocs = documents
 
     if (statusFilter.value !== 'all') {
@@ -119,10 +117,8 @@ const DocumentList: FC<IDocumentListProps> = ({
       )
     }
 
-    if (!sortField) {
-      setLocalDocs(filteredDocs)
-      return
-    }
+    if (!sortField)
+      return filteredDocs
 
     const sortedDocs = [...filteredDocs].sort((a, b) => {
       let aValue: any
@@ -159,7 +155,7 @@ const DocumentList: FC<IDocumentListProps> = ({
       }
     })
 
-    setLocalDocs(sortedDocs)
+    return sortedDocs
   }, [documents, sortField, sortOrder, statusFilter])
 
   const handleSort = (field: 'name' | 'word_count' | 'hit_count' | 'created_at') => {
@@ -418,12 +414,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                   {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
                 </td>
                 <td>
-                  {
-                    (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status)
-                      && isOnlineDocument(doc.data_source_type))
-                      ? <ProgressBar percent={doc.percent || 0} />
-                      : <StatusItem status={doc.display_status} />
-                  }
+                  <StatusItem status={doc.display_status} />
                 </td>
                 <td>
                   <Operations

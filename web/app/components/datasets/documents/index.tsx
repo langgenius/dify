@@ -154,14 +154,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     }
   }, [debouncedSearchValue, query.keyword, updateQuery])
 
-  const { data: documentsRes, isFetching: isListLoading } = useDocumentList({
+  const { data: documentsRes, isLoading: isListLoading } = useDocumentList({
     datasetId,
     query: {
       page: currPage + 1,
       limit,
       keyword: debouncedSearchValue,
     },
-    refetchInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0,
+    refetchInterval: timerCanRun ? 2500 : 0,
   })
 
   const invalidDocumentList = useInvalidDocumentList(datasetId)
@@ -187,10 +187,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     }, 5000)
   }, [])
 
-  const documentsWithProgress = useMemo(() => {
+  useEffect(() => {
     let completedNum = 0
     let percent = 0
-    const documentsData = documentsRes?.data?.map((documentItem) => {
+    documentsRes?.data?.forEach((documentItem) => {
       const { indexing_status, completed_segments, total_segments } = documentItem
       const isEmbedded = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
 
@@ -211,12 +211,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         percent,
       }
     })
-    if (completedNum === documentsRes?.data?.length)
-      setTimerCanRun(false)
-    return {
-      ...documentsRes,
-      data: documentsData,
-    }
+    setTimerCanRun(completedNum !== documentsRes?.data?.length)
   }, [documentsRes])
   const total = documentsRes?.total || 0
 
@@ -229,7 +224,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
-  const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
+  const documentsList = documentsRes?.data
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   // Clear selection when search changes to avoid confusion
