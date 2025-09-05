@@ -43,10 +43,6 @@ def _validate_type(parameter_type: str) -> SegmentType:
     return SegmentType(parameter_type)
 
 
-class _ParameterConfigError(Exception):
-    pass
-
-
 class ParameterConfig(BaseModel):
     """
     Parameter Config.

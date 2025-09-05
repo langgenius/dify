@@ -9,7 +9,10 @@ import type {
   AnyFieldApi,
   AnyFormApi,
 } from '@tanstack/react-form'
-import { useForm } from '@tanstack/react-form'
+import {
+  useForm,
+  useStore,
+} from '@tanstack/react-form'
 import type {
   FormRef,
   FormSchema,
@@ -36,6 +39,7 @@ export type BaseFormProps = {
   formFromProps?: AnyFormApi
   onSubmit?: (values: Record<string, any>) => void
   onCancel?: () => void
+  onChange?: (field: string, value: any) => void
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -51,6 +55,7 @@ const BaseForm = ({
   formFromProps,
   onSubmit,
   onCancel,
+  onChange,
 }: BaseFormProps) => {
   const { t } = useTranslation()
   const initialDefaultValues = useMemo(() => {
@@ -69,6 +74,20 @@ const BaseForm = ({
   const form: any = formFromProps || formFromHook
   const { getFormValues } = useGetFormValues(form, formSchemas)
   const { getValidators } = useGetValidators()
+
+  const showOnValues = useStore(form.store, (s: any) => {
+    const result: Record<string, any> = {}
+    formSchemas.forEach((schema) => {
+      const { show_on } = schema
+      const showOn = typeof show_on === 'function' ? show_on(form) : show_on
+      if (showOn?.length) {
+        showOn?.forEach((condition) => {
+          result[condition.variable] = s.values[condition.variable]
+        })
+      }
+    })
+    return result
+  })
 
   useImperativeHandle(ref, () => {
     return {
@@ -94,18 +113,28 @@ const BaseForm = ({
           inputContainerClassName={inputContainerClassName}
           inputClassName={inputClassName}
           disabled={disabled}
+          onChange={onChange}
         />
       )
     }
 
     return null
-  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled])
+  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled, onChange])
 
   const renderFieldWrapper = useCallback((formSchema: FormSchema) => {
     const validators = getValidators(formSchema)
     const {
       name,
+      show_on = [],
     } = formSchema
+    const showOn = typeof show_on === 'function' ? show_on(form) : show_on
+    const show = (showOn || []).every((condition) => {
+      const conditionValue = showOnValues[condition.variable]
+      return Array.isArray(condition.value) ? condition.value.includes(conditionValue) : conditionValue === condition.value
+    })
+
+    if (!show)
+      return null
 
     return (
       <form.Field
@@ -116,7 +145,7 @@ const BaseForm = ({
         {renderField}
       </form.Field>
     )
-  }, [renderField, form, getValidators])
+  }, [renderField, form, getValidators, showOnValues])
 
   if (!formSchemas?.length)
     return null

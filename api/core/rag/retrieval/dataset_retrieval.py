@@ -9,7 +9,6 @@ from typing import Any, Optional, Union, cast
 from flask import Flask, current_app
 from sqlalchemy import Float, and_, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
-from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -526,7 +525,7 @@ class DatasetRetrieval:
                         )
                         child_chunk = db.session.scalar(child_chunk_stmt)
                         if child_chunk:
-                            segment = (
+                            _ = (
                                 db.session.query(DocumentSegment)
                                 .where(DocumentSegment.id == child_chunk.segment_id)
                                 .update(
@@ -534,7 +533,6 @@ class DatasetRetrieval:
                                     synchronize_session=False,
                                 )
                             )
-                            db.session.commit()
                     else:
                         query = db.session.query(DocumentSegment).where(
                             DocumentSegment.index_node_id == document.metadata["doc_id"]
@@ -594,9 +592,8 @@ class DatasetRetrieval:
         metadata_condition: Optional[MetadataCondition] = None,
     ):
         with flask_app.app_context():
-            with Session(db.engine) as session:
-                dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-                dataset = db.session.scalar(dataset_stmt)
+            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             if not dataset:
                 return []
@@ -988,7 +985,7 @@ class DatasetRetrieval:
             )
 
             # handle invoke result
-            result_text, usage = self._handle_invoke_result(invoke_result=invoke_result)
+            result_text, _ = self._handle_invoke_result(invoke_result=invoke_result)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
             automatic_metadata_filters = []
@@ -1003,7 +1000,7 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
+        except Exception:
             return None
         return automatic_metadata_filters
 

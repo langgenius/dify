@@ -42,6 +42,7 @@ export type BaseFieldProps = {
   formSchema: FormSchema
   field: AnyFieldApi
   disabled?: boolean
+  onChange?: (field: string, value: any) => void
 }
 const BaseField = ({
   fieldClassName,
@@ -51,6 +52,7 @@ const BaseField = ({
   formSchema,
   field,
   disabled: propsDisabled,
+  onChange,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -63,11 +65,10 @@ const BaseField = ({
     fieldClassName: formFieldClassName,
     inputContainerClassName: formInputContainerClassName,
     inputClassName: formInputClassName,
-    show_on = [],
     url,
     help,
     selfFormProps,
-    onChange,
+    onChange: formOnChange,
     tooltip,
     disabled: formSchemaDisabled,
   } = formSchema
@@ -126,35 +127,20 @@ const BaseField = ({
     }) || []
   }, [options, renderI18nObject, optionValues])
   const value = useStore(field.form.store, s => s.values[field.name])
-  const values = useStore(field.form.store, (s) => {
-    return (Array.isArray(show_on) ? show_on : show_on(field.form)).reduce((acc, condition) => {
-      acc[condition.variable] = s.values[condition.variable]
-      return acc
-    }, {} as Record<string, any>)
-  })
-  const show = useMemo(() => {
-    return (Array.isArray(show_on) ? show_on : show_on(field.form)).every((condition) => {
-      const conditionValue = values[condition.variable]
-      return Array.isArray(condition.value) ? condition.value.includes(conditionValue) : conditionValue === condition.value
-    })
-  }, [values, show_on, field.name])
-  const handleChange = useCallback((value: any) => {
-    if (disabled)
-      return
-    field.handleChange(value)
-    onChange?.(field.form, value)
-  }, [field, onChange, disabled])
-
-  const selfProps = typeof selfFormProps === 'function' ? selfFormProps(field.form) : selfFormProps
-
   const booleanRadioValue = useMemo(() => {
     if (value === null || value === undefined)
       return undefined
     return value ? 1 : 0
   }, [value])
+  const handleChange = useCallback((value: any) => {
+    if (disabled)
+      return
+    field.handleChange(value)
+    formOnChange?.(field.form, value)
+    onChange?.(field.name, value)
+  }, [field, onChange, disabled])
 
-  if (!show)
-    return null
+  const selfProps = typeof selfFormProps === 'function' ? selfFormProps(field.form) : selfFormProps
 
   return (
     <>
@@ -431,7 +417,7 @@ const BaseField = ({
               <Radio.Group
                 className={cn('flex w-full items-center space-x-1', inputClassName, formInputClassName)}
                 value={booleanRadioValue}
-                onChange={val => field.handleChange(val === 1)}
+                onChange={handleChange}
               >
                 <Radio value={1} className='m-0 h-7 flex-1 justify-center p-0'>True</Radio>
                 <Radio value={0} className='m-0 h-7 flex-1 justify-center p-0'>False</Radio>

@@ -145,7 +145,10 @@ class AccountService:
         if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = naive_utc_now()
             db.session.commit()
-
+        # NOTE: make sure account is accessible outside of a db session
+        # This ensures that it will work correctly after upgrading to Flask version 3.1.2
+        db.session.refresh(account)
+        db.session.close()
         return account
 
     @staticmethod
@@ -211,6 +214,7 @@ class AccountService:
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
+        db.session.add(account)
         db.session.commit()
         return account
 
@@ -348,6 +352,7 @@ class AccountService:
     @staticmethod
     def update_account(account, **kwargs):
         """Update account fields"""
+        account = db.session.merge(account)
         for field, value in kwargs.items():
             if hasattr(account, field):
                 setattr(account, field, value)

@@ -59,7 +59,7 @@ class FilePreviewApi(Resource):
         args = file_preview_parser.parse_args()
 
         # Validate file ownership and get file objects
-        message_file, upload_file = self._validate_file_ownership(file_id, app_model.id)
+        _, upload_file = self._validate_file_ownership(file_id, app_model.id)
 
         # Get file content generator
         try:

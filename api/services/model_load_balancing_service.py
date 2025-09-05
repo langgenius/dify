@@ -3,6 +3,8 @@ import logging
 from json import JSONDecodeError
 from typing import Optional, Union
 
+from sqlalchemy import or_
+
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
@@ -69,7 +71,7 @@ class ModelLoadBalancingService:
         provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
 
     def get_load_balancing_configs(
-        self, tenant_id: str, provider: str, model: str, model_type: str
+        self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
     ) -> tuple[bool, list[dict]]:
         """
         Get load balancing configurations.
@@ -100,6 +102,11 @@ class ModelLoadBalancingService:
         if provider_model_setting and provider_model_setting.load_balancing_enabled:
             is_load_balancing_enabled = True
 
+        if config_from == "predefined-model":
+            credential_source_type = "provider"
+        else:
+            credential_source_type = "custom_model"
+
         # Get load balancing configurations
         load_balancing_configs = (
             db.session.query(LoadBalancingModelConfig)
@@ -108,6 +115,10 @@ class ModelLoadBalancingService:
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
                 LoadBalancingModelConfig.model_name == model,
+                or_(
+                    LoadBalancingModelConfig.credential_source_type == credential_source_type,
+                    LoadBalancingModelConfig.credential_source_type.is_(None),
+                ),
             )
             .order_by(LoadBalancingModelConfig.created_at)
             .all()
@@ -170,7 +181,9 @@ class ModelLoadBalancingService:
                 if variable in credentials:
                     try:
                         credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            credentials.get(variable), decoding_rsa_key, decoding_cipher_rsa
+                            credentials.get(variable),  # ty: ignore [invalid-argument-type]
+                            decoding_rsa_key,
+                            decoding_cipher_rsa,
                         )
                     except ValueError:
                         pass
@@ -403,7 +416,7 @@ class ModelLoadBalancingService:
                 self._clear_credentials_cache(tenant_id, config_id)
             else:
                 # create load balancing config
-                if name in {"__inherit__", "__delete__"}:
+                if name == "__inherit__":
                     raise ValueError("Invalid load balancing config name")
 
                 if credential_id:

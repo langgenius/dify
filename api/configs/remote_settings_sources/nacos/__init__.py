@@ -29,7 +29,7 @@ class NacosSettingsSource(RemoteSettingsSource):
         try:
             content = NacosHttpClient().http_request("/nacos/v1/cs/configs", method="GET", headers={}, params=params)
             self.remote_configs = self._parse_config(content)
-        except Exception as e:
+        except Exception:
             logger.exception("[get-access-token] exception occurred")
             raise
 

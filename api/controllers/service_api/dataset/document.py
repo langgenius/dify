@@ -410,7 +410,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:
-            documents, batch = DocumentService.save_document_with_dataset_id(
+            documents, _ = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 knowledge_config=knowledge_config,
                 account=dataset.created_by_account,

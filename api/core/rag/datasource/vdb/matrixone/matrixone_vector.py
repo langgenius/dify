@@ -99,7 +99,7 @@ class MatrixoneVector(BaseVector):
                 return client
             try:
                 client.create_full_text_index()
-            except Exception as e:
+            except Exception:
                 logger.exception("Failed to create full text index")
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
             return client
