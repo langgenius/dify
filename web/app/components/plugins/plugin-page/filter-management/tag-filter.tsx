@@ -27,7 +27,7 @@ const TagsFilter = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const { tags: options, tagsMap } = useTags()
+  const { tags: options, getTagLabel } = useTags()
   const filteredOptions = options.filter(option => option.name.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (value.includes(id))
@@ -59,7 +59,7 @@ const TagsFilter = ({
               !selectedTagsLength && t('pluginTags.allTags')
             }
             {
-              !!selectedTagsLength && value.map(val => tagsMap[val].label).slice(0, 2).join(',')
+              !!selectedTagsLength && value.map(val => getTagLabel(val)).slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (
