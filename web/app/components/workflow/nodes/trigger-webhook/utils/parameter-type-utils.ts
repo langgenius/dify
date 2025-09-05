@@ -42,9 +42,9 @@ const CONTENT_TYPE_CONFIGS = {
     supportedTypes: [VarType.string, VarType.number, VarType.boolean] as const,
     description: 'Form data supports basic types',
   },
-  'forms': {
-    supportedTypes: [VarType.string, VarType.number, VarType.boolean] as const,
-    description: 'Form data supports basic types',
+  'application/octet-stream': {
+    supportedTypes: [VarType.file] as const,
+    description: 'octet-stream supports only binary data',
   },
   'multipart/form-data': {
     supportedTypes: [VarType.string, VarType.number, VarType.boolean, VarType.file] as const,

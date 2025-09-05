@@ -78,17 +78,19 @@ const ParameterTable: FC<ParameterTableProps> = ({
 
   const handleDataChange = (data: GenericTableRow[]) => {
     // For text/plain, enforce single text body semantics: keep only first non-empty row and force string type
+    // For application/octet-stream, enforce single file body semantics: keep only first non-empty row and force file type
     const isTextPlain = isRequestBody && (contentType || '').toLowerCase() === 'text/plain'
+    const isOctetStream = isRequestBody && (contentType || '').toLowerCase() === 'application/octet-stream'
 
     const normalized = data
       .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
       .map(row => ({
         name: String(row.key),
-        type: isTextPlain ? VarType.string : normalizeParameterType((row.type as string)),
+        type: isTextPlain ? VarType.string : isOctetStream ? VarType.file : normalizeParameterType((row.type as string)),
         required: Boolean(row.required),
       }))
 
-    const newParams: WebhookParameter[] = isTextPlain
+    const newParams: WebhookParameter[] = (isTextPlain || isOctetStream)
       ? normalized.slice(0, 1)
       : normalized
 
