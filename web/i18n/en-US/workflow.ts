@@ -1029,6 +1029,7 @@ const translation = {
       },
       singleRun: {
         label: 'Form variables',
+        button: 'Generate Form',
       },
     },
   },

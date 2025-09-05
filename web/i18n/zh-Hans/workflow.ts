@@ -1029,6 +1029,7 @@ const translation = {
       },
       singleRun: {
         label: '表单变量',
+        button: '生成表单',
       },
     },
   },

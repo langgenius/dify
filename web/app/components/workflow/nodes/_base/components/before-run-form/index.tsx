@@ -11,10 +11,13 @@ import { InputVarType } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import type { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import type { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import PanelWrap from './panel-wrap'
+import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
+
 const i18nPrefix = 'workflow.singleRun'
 
 export type BeforeRunFormProps = {
@@ -29,6 +32,8 @@ export type BeforeRunFormProps = {
   showSpecialResultPanel?: boolean
   existVarValuesInForms: Record<string, any>[]
   filteredExistVarForms: FormProps[]
+  generatedFormContentData?: Record<string, any>
+  setSubmittedData?: (data: Record<string, any>) => void
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
@@ -58,13 +63,18 @@ function formatValue(value: string | any, type: InputVarType) {
 }
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
+  nodeType,
   onHide,
   onRun,
   forms,
   filteredExistVarForms,
   existVarValuesInForms,
+  generatedFormContentData,
+  setSubmittedData,
 }) => {
   const { t } = useTranslation()
+
+  const isHumanInput = nodeType === BlockEnum.HumanInput
 
   const isFileLoaded = (() => {
     if (!forms || forms.length === 0)
@@ -80,7 +90,8 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     return true
   })()
-  const handleRun = () => {
+
+  const handleRunOrGenerateForm = () => {
     let errMsg = ''
     forms.forEach((form, i) => {
       const existVarValuesInForm = existVarValuesInForms[i]
@@ -131,8 +142,12 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       return
     }
 
-    onRun(submitData)
+    if (isHumanInput)
+      setSubmittedData?.(submitData)
+    else
+      onRun(submitData)
   }
+
   const hasRun = useRef(false)
   useEffect(() => {
     // React 18 run twice in dev mode
@@ -152,22 +167,34 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       onHide={onHide}
     >
       <div className='h-0 grow overflow-y-auto pb-4'>
-        <div className='mt-3 space-y-4 px-4'>
-          {filteredExistVarForms.map((form, index) => (
-            <div key={index}>
-              <Form
-                key={index}
-                className={cn(index < forms.length - 1 && 'mb-4')}
-                {...form}
-              />
-              {index < forms.length - 1 && <Split />}
-            </div>
-          ))}
-        </div>
+        {!generatedFormContentData && (
+          <div className='mt-3 space-y-4 px-4'>
+            {filteredExistVarForms.map((form, index) => (
+              <div key={index}>
+                <Form
+                  key={index}
+                  className={cn(index < forms.length - 1 && 'mb-4')}
+                  {...form}
+                />
+                {index < forms.length - 1 && <Split />}
+              </div>
+            ))}
+          </div>
+        )}
+        {generatedFormContentData && (
+          <SingleRunForm />
+        )}
         <div className='mt-4 flex justify-between space-x-2 px-4' >
-          <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-            <div>{t(`${i18nPrefix}.startRun`)}</div>
-          </Button>
+          {!isHumanInput && (
+            <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
+              <div>{t(`${i18nPrefix}.startRun`)}</div>
+            </Button>
+          )}
+          {isHumanInput && (
+            <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
+              <div>{t('workflow.nodes.humanInput.singleRun.button')}</div>
+            </Button>
+          )}
         </div>
       </div>
     </PanelWrap>
