@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Any, Optional, cast
+from typing import Optional, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
