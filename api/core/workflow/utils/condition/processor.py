@@ -27,7 +27,6 @@ class ConditionProcessor:
         self,
         *,
         variable_pool: VariablePool,
-        selectors: dict | None = None,
         conditions: Sequence[Condition],
         operator: Literal["and", "or"],
     ):
@@ -62,8 +61,6 @@ class ConditionProcessor:
                     expected=None,
                 )
             else:
-                if selectors is not None:
-                    selectors[condition.variable_selector[1]] = condition.variable_selector
                 actual_value = variable.value if variable else None
                 expected_value: str | Sequence[str] | bool | list[bool] | None = condition.value
                 if isinstance(expected_value, str):

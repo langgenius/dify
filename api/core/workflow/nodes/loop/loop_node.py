@@ -289,6 +289,8 @@ class LoopNode(BaseNode):
         Returns:
             dict:  {'check_break_result': bool}
         """
+        condition_selectors = self._extract_selectors_from_conditions(break_conditions)
+        extended_selectors = {**loop_variable_selectors, **condition_selectors}
         # Run workflow
         rst = graph_engine.run()
         current_index_variable = variable_pool.get([self.node_id, "index"])
@@ -332,7 +334,6 @@ class LoopNode(BaseNode):
                 if exists_variable:
                     input_conditions, group_result, check_break_result = condition_processor.process_conditions(
                         variable_pool=self.graph_runtime_state.variable_pool,
-                        selectors=loop_variable_selectors,
                         conditions=break_conditions,
                         operator=logical_operator,
                     )
@@ -401,7 +402,7 @@ class LoopNode(BaseNode):
                 yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
 
         _outputs: dict[str, Segment | int | None] = {}
-        for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
+        for loop_variable_key, loop_variable_selector in extended_selectors.items():
             _loop_variable_segment = variable_pool.get(loop_variable_selector)
             if _loop_variable_segment:
                 _outputs[loop_variable_key] = _loop_variable_segment
@@ -432,6 +433,13 @@ class LoopNode(BaseNode):
         )
 
         return {"check_break_result": False}
+    
+    def _extract_selectors_from_conditions(self, conditions: list) -> dict[str, list[str]]:
+        return {
+            condition.variable_selector[1]: condition.variable_selector 
+            for condition in conditions 
+            if condition.variable_selector and len(condition.variable_selector) >= 2
+        }
 
     def _handle_event_metadata(
         self,
