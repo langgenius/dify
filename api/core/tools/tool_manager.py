@@ -642,7 +642,7 @@ class ToolManager:
                         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
                         exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
-                        name_func=lambda x: x.identity.name,
+                        name_func=lambda x: x.entity.identity.name,
                     ):
                         continue
                     user_provider = ToolTransformService.builtin_provider_to_user_provider(
