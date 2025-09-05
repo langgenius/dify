@@ -1,4 +1,6 @@
 import type { PluginMeta } from '../../plugins/types'
+import type { Collection, Tool } from '../../tools/types'
+import type { TypeWithI18N } from '../../base/form/types'
 
 export enum TabsEnum {
   Start = 'start',
@@ -49,4 +51,52 @@ export type ToolValue = {
   enabled?: boolean
   extra?: Record<string, any>
   credential_id?: string
+}
+
+// Backend API types - exact match with Python definitions
+export type TriggerParameter = {
+  name: string
+  label: TypeWithI18N
+  description?: TypeWithI18N
+  type: string
+  required?: boolean
+  default?: any
+}
+
+export type TriggerIdentity = {
+  author: string
+  name: string
+  version: string
+}
+
+export type TriggerDescription = {
+  human: TypeWithI18N
+  llm: TypeWithI18N
+}
+
+export type TriggerApiEntity = {
+  name: string
+  identity: TriggerIdentity
+  description: TriggerDescription
+  parameters: TriggerParameter[]
+  output_schema?: Record<string, any>
+}
+
+export type TriggerProviderApiEntity = {
+  author: string
+  name: string
+  label: TypeWithI18N
+  description: TypeWithI18N
+  icon?: string
+  icon_dark?: string
+  tags: string[]
+  plugin_id?: string
+  plugin_unique_identifier?: string
+  triggers: TriggerApiEntity[]
+}
+
+// Frontend types - compatible with ToolWithProvider
+export type TriggerWithProvider = Collection & {
+  tools: Tool[] // Use existing Tool type for compatibility
+  meta: PluginMeta
 }

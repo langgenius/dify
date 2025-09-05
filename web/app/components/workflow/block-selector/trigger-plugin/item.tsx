@@ -5,7 +5,7 @@ import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
 import { CollectionType } from '../../../tools/types'
-import type { ToolWithProvider } from '../../types'
+import type { TriggerWithProvider } from '../types'
 import { BlockEnum } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import TriggerPluginActionItem from './action-item'
@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 
 type Props = {
   className?: string
-  payload: ToolWithProvider
+  payload: TriggerWithProvider
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
@@ -54,7 +54,7 @@ const TriggerPluginItem: FC<Props> = ({
     if (payload.type === CollectionType.workflow)
       return t('workflow.tabs.workflowTool')
 
-    return ''
+    return payload.author || ''
   }, [payload.author, payload.type, t])
 
   return (
@@ -88,7 +88,7 @@ const TriggerPluginItem: FC<Props> = ({
               tool_description: tool.description[language],
               title: tool.label[language],
               is_team_authorization: payload.is_team_authorization,
-              output_schema: tool.output_schema,
+              output_schema: tool.output_schema || {},
               paramSchemas: tool.parameters,
               params,
             })

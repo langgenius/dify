@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { ToolWithProvider } from '../../types'
+import type { TriggerWithProvider } from '../types'
+import type { Tool } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import Tooltip from '@/app/components/base/tooltip'
-import type { Tool } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
-  provider: ToolWithProvider
+  provider: TriggerWithProvider
   payload: Tool
   disabled?: boolean
   isAdded?: boolean
@@ -55,20 +55,20 @@ const TriggerPluginActionItem: FC<Props> = ({
           if (disabled) return
           const params: Record<string, string> = {}
           if (payload.parameters) {
-            payload.parameters.forEach((item) => {
+            payload.parameters.forEach((item: any) => {
               params[item.name] = ''
             })
           }
           onSelect(BlockEnum.TriggerPlugin, {
             provider_id: provider.id,
-            provider_type: provider.type,
+            provider_type: provider.type as string,
             provider_name: provider.name,
             tool_name: payload.name,
             tool_label: payload.label[language],
             tool_description: payload.description[language],
             title: payload.label[language],
             is_team_authorization: provider.is_team_authorization,
-            output_schema: payload.output_schema,
+            output_schema: payload.output_schema || {},
             paramSchemas: payload.parameters,
             params,
             meta: provider.meta,
