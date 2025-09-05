@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 class ToolTransformService:
-    
     @classmethod
     def get_tool_provider_icon_url(cls, provider_type: str, provider_name: str, icon: str | dict) -> Union[str, dict]:
         """
@@ -69,9 +68,7 @@ class ToolTransformService:
         elif isinstance(provider, ToolProviderApiEntity):
             if provider.plugin_id:
                 if isinstance(provider.icon, str):
-                    provider.icon = PluginService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.icon
-                    )
+                    provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
                 if isinstance(provider.icon_dark, str) and provider.icon_dark:
                     provider.icon_dark = PluginService.get_plugin_icon_url(
                         tenant_id=tenant_id, filename=provider.icon_dark

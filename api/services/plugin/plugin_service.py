@@ -184,7 +184,6 @@ class PluginService:
         )
         return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
 
-
     @staticmethod
     def get_asset(tenant_id: str, asset_file: str) -> tuple[bytes, str]:
         """
