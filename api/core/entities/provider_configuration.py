@@ -1807,30 +1807,26 @@ class ProviderConfigurations(BaseModel):
         """
         return list(self.values())
 
-    def __getitem__(self, key) -> ProviderConfiguration:
+    def __getitem__(self, key):
         if "/" not in key:
             key = str(ModelProviderID(key))
 
         return self.configurations[key]
 
-    def __setitem__(self, key: str, value: ProviderConfiguration) -> None:
+    def __setitem__(self, key, value):
         self.configurations[key] = value
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self):
         return iter(self.configurations)
 
     def values(self) -> Iterator[ProviderConfiguration]:
         return iter(self.configurations.values())
 
-    def get(
-        self,
-        key: str,
-        default: ProviderConfiguration | None = None,
-    ) -> ProviderConfiguration | None:
+    def get(self, key, default=None) -> ProviderConfiguration | None:
         if "/" not in key:
             key = str(ModelProviderID(key))
 
-        return self.configurations.get(key, default)
+        return self.configurations.get(key, default)  # type: ignore
 
 
 class ProviderModelBundle(BaseModel):
