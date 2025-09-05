@@ -99,12 +99,13 @@ class MessageCycleManager:
 
                 # generate conversation name
                 try:
-                    name = LLMGenerator.generate_conversation_name(app_model.tenant_id, query)
+                    name = LLMGenerator.generate_conversation_name(
+                        app_model.tenant_id, query, conversation_id, conversation.app_id
+                    )
                     conversation.name = name
                 except Exception:
                     if dify_config.DEBUG:
                         logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
-                    pass
 
                 db.session.merge(conversation)
                 db.session.commit()

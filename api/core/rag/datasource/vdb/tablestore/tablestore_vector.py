@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+from collections.abc import Iterable
 from typing import Any, Optional
 
 import tablestore  # type: ignore
@@ -102,9 +103,12 @@ class TableStoreVector(BaseVector):
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        _, return_row, _ = self._tablestore_client.get_row(
+        result = self._tablestore_client.get_row(
             table_name=self._table_name, primary_key=[("id", id)], columns_to_get=["id"]
         )
+        assert isinstance(result, tuple | list)
+        # Unpack the tuple result
+        _, return_row, _ = result
 
         return return_row is not None
 
@@ -169,6 +173,7 @@ class TableStoreVector(BaseVector):
 
     def _create_search_index_if_not_exist(self, dimension: int) -> None:
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
+        assert isinstance(search_index_list, Iterable)
         if self._index_name in [t[1] for t in search_index_list]:
             logger.info("Tablestore system index[%s] already exists", self._index_name)
             return None
@@ -212,6 +217,7 @@ class TableStoreVector(BaseVector):
 
     def _delete_table_if_exist(self):
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
+        assert isinstance(search_index_list, Iterable)
         for resp_tuple in search_index_list:
             self._tablestore_client.delete_search_index(resp_tuple[0], resp_tuple[1])
             logger.info("Tablestore delete index[%s] successfully.", self._index_name)
@@ -269,7 +275,7 @@ class TableStoreVector(BaseVector):
             )
 
             if search_response is not None:
-                rows.extend([row[0][0][1] for row in search_response.rows])
+                rows.extend([row[0][0][1] for row in list(search_response.rows)])
 
             if search_response is None or search_response.next_token == b"":
                 break
