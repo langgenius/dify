@@ -17,7 +17,7 @@ class NacosHttpClient:
         self.ak = os.getenv("DIFY_ENV_NACOS_ACCESS_KEY")
         self.sk = os.getenv("DIFY_ENV_NACOS_SECRET_KEY")
         self.server = os.getenv("DIFY_ENV_NACOS_SERVER_ADDR", "localhost:8848")
-        self.token = None
+        self.token: str | None = None
         self.token_ttl = 18000
         self.token_expire_time: float = 0
 
@@ -49,16 +49,17 @@ class NacosHttpClient:
             headers["timeStamp"] = ts
         if self.username and self.password:
             self.get_access_token(force_refresh=False)
-            params["accessToken"] = self.token
+            if self.token is not None:
+                params["accessToken"] = self.token
 
-    def __do_sign(self, sign_str, sk):
+    def __do_sign(self, sign_str: str, sk: str) -> str:
         return (
             base64.encodebytes(hmac.new(sk.encode(), sign_str.encode(), digestmod=hashlib.sha1).digest())
             .decode()
             .strip()
         )
 
-    def get_sign_str(self, group, tenant, ts):
+    def get_sign_str(self, group: str, tenant: str, ts: str) -> str:
         sign_str = ""
         if tenant:
             sign_str = tenant + "+"
@@ -67,7 +68,7 @@ class NacosHttpClient:
         sign_str += ts  # Directly concatenate ts without conditional checks, because the nacos auth header forced it.
         return sign_str
 
-    def get_access_token(self, force_refresh=False):
+    def get_access_token(self, force_refresh: bool = False) -> str | None:
         current_time = time.time()
         if self.token and not force_refresh and self.token_expire_time > current_time:
             return self.token
