@@ -470,6 +470,12 @@ const translation = {
         required: '必需的',
         resultTip: '這是生成的結果。如果您不滿意，可以回去修改您的提示。',
       },
+      reasoningFormat: {
+        title: '啟用推理標籤分離',
+        tooltip: '從 think 標籤中提取內容並將其存儲在 reasoning_content 欄位中。',
+        tagged: '保持思考標籤',
+        separated: '分開思考標籤',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: '查詢變量',
