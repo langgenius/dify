@@ -1027,6 +1027,9 @@ const translation = {
         reasonContent: '需要人类输入才能继续',
         inputURL: '输入 URL ：',
       },
+      singleRun: {
+        label: '表单变量',
+      },
     },
   },
   tracing: {

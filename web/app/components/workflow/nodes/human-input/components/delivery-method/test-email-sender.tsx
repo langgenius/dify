@@ -23,6 +23,7 @@ import type {
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { fetchMembers } from '@/service/common'
 import { noop, unionBy } from 'lodash-es'
+import { isOutput } from '../../utils'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
@@ -34,10 +35,6 @@ type EmailConfigureModalProps = {
   config?: EmailConfig
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
-}
-
-const isOutput = (valueSelector: string[]) => {
-  return valueSelector[0] === '$output'
 }
 
 const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {

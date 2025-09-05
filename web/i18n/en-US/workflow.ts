@@ -1027,6 +1027,9 @@ const translation = {
         reasonContent: 'Human input required to proceed',
         inputURL: 'Input URL:',
       },
+      singleRun: {
+        label: 'Form variables',
+      },
     },
   },
   tracing: {

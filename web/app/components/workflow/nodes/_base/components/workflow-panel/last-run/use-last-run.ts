@@ -19,6 +19,7 @@ import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
+import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/use-single-run-form-params'
 
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
@@ -57,7 +58,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
-  [BlockEnum.HumanInput]: undefined,
+  [BlockEnum.HumanInput]: useHumanInputSingleRunFormParams,
 }
 
 const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
