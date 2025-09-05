@@ -299,9 +299,14 @@ class DatasetQueueMonitorConfig(BaseSettings):
 
 
 class MiddlewareConfig(
+    # Note: This multiple inheritance pattern causes a false positive typing error
+    # in basedpyright strict mode regarding model_config compatibility between
+    # ConfigDict (from BaseModel) and SettingsConfigDict (from BaseSettings).
+    # The code works correctly at runtime as Pydantic properly handles the
+    # multiple inheritance of BaseSettings subclasses.
+    #
     # place the configs in alphabet order
-    CeleryConfig,
-    DatabaseConfig,
+    CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
     KeywordStoreConfig,
     RedisConfig,
     # configs of storage and storage providers
