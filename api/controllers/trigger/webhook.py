@@ -1,7 +1,7 @@
 import logging
 
 from flask import jsonify
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp
 from services.webhook_service import WebhookService
@@ -39,6 +39,8 @@ def handle_webhook(webhook_id: str):
 
     except ValueError as e:
         raise NotFound(str(e))
+    except RequestEntityTooLarge:
+        raise
     except Exception as e:
         logger.exception("Webhook processing failed for %s", webhook_id)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500

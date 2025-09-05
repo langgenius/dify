@@ -6,7 +6,9 @@ from typing import Any
 from flask import request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import RequestEntityTooLarge
 
+from configs import dify_config
 from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.types import SegmentType
@@ -74,6 +76,14 @@ class WebhookService:
     @classmethod
     def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> dict[str, Any]:
         """Extract and process data from incoming webhook request."""
+
+        content_length = request.content_length
+        if content_length and content_length > dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE:
+            raise RequestEntityTooLarge(
+                f"Webhook request too large: {content_length} bytes exceeds maximum allowed size \
+                    of {dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE} bytes"
+            )
+
         data = {
             "method": request.method,
             "headers": dict(request.headers),
