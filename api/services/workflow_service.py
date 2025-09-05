@@ -312,7 +312,7 @@ class WorkflowService:
                 # Extract and validate credentials based on node type
                 if node_type == "tool":
                     credential_id = node_data.get("credential_id")
-                    provider = node_data.get("provider_id")  # Tool nodes store provider_id
+                    provider = node_data.get("provider_id")
                     if provider:
                         if credential_id:
                             # Check specific credential
@@ -324,7 +324,6 @@ class WorkflowService:
                 elif node_type == "agent":
                     agent_params = node_data.get("agent_parameters", {})
 
-                    # Validate agent model (LLM model for the agent itself)
                     model_config = agent_params.get("model", {}).get("value", {})
                     if model_config.get("provider") and model_config.get("model"):
                         self._validate_llm_model_config(
@@ -332,7 +331,6 @@ class WorkflowService:
                         )
 
                         # Validate load balancing credentials for agent model if load balancing is enabled
-                        # Create a temporary node_data structure for the agent's model
                         agent_model_node_data = {"model": model_config}
                         self._validate_load_balancing_credentials(workflow, agent_model_node_data, node_id)
 
@@ -351,7 +349,6 @@ class WorkflowService:
                                 self._check_default_tool_credential(workflow.tenant_id, provider)
 
                 elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
-                    # These nodes use LLM models - validate the provider+model combination
                     model_config = node_data.get("model", {})
                     provider = model_config.get("provider")
                     model_name = model_config.get("name")
@@ -365,7 +362,6 @@ class WorkflowService:
                         raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
 
             except Exception as e:
-                # Re-raise the error immediately with context
                 if isinstance(e, ValueError):
                     raise e
                 else:
@@ -540,7 +536,6 @@ class WorkflowService:
         try:
             from services.model_load_balancing_service import ModelLoadBalancingService
 
-            # Use the existing service to get load balancing configurations
             model_load_balancing_service = ModelLoadBalancingService()
             _, configs = model_load_balancing_service.get_load_balancing_configs(
                 tenant_id=tenant_id,
@@ -550,15 +545,11 @@ class WorkflowService:
                 config_from="predefined-model",  # Check both predefined and custom models
             )
 
-            # Also get custom model configurations
             _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
                 tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
             )
-
-            # Combine both lists
             all_configs = configs + custom_configs
 
-            # Filter out configurations without credential_id (these are custom credentials stored directly)
             return [config for config in all_configs if config.get("credential_id")]
 
         except Exception:
