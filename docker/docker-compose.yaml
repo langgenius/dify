@@ -10,7 +10,7 @@ x-shared-env: &shared-api-worker-env
   SERVICE_API_URL: ${SERVICE_API_URL:-}
   APP_API_URL: ${APP_API_URL:-}
   APP_WEB_URL: ${APP_WEB_URL:-}
-  FILES_URL: ${FILES_URL:-}
+  FILES_URL: ${FILES_URL:-http://api:5001}
   INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
   LANG: ${LANG:-en_US.UTF-8}
   LC_ALL: ${LC_ALL:-en_US.UTF-8}
