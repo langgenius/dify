@@ -1,10 +1,11 @@
 {
-  "include": ["."],
+  "include": [
+    "."
+  ],
   "exclude": [
     "tests/",
     "migrations/",
     ".venv/",
-    "models/",
     "core/",
     "controllers/",
     "tasks/",
