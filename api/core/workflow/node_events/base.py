@@ -13,6 +13,11 @@ class NodeEventBase(BaseModel):
     pass
 
 
+def _default_metadata():
+    v: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
+    return v
+
+
 class NodeRunResult(BaseModel):
     """
     Node Run Result.
@@ -23,7 +28,7 @@ class NodeRunResult(BaseModel):
     inputs: Mapping[str, Any] = Field(default_factory=dict)
     process_data: Mapping[str, Any] = Field(default_factory=dict)
     outputs: Mapping[str, Any] = Field(default_factory=dict)
-    metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = Field(default_factory=dict)
+    metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = Field(default_factory=_default_metadata)
     llm_usage: LLMUsage = Field(default_factory=LLMUsage.empty_usage)
 
     edge_source_handle: str = "source"  # source handle id of node with multiple branches

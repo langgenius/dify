@@ -14,7 +14,7 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_V
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
 
-VariableValue = Union[str, int, float, dict, list, File]
+VariableValue = Union[str, int, float, dict[str, object], list[object], File]
 
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
@@ -40,11 +40,11 @@ class VariablePool(BaseModel):
     )
     environment_variables: Sequence[VariableUnion] = Field(
         description="Environment variables.",
-        default_factory=list,
+        default_factory=list[VariableUnion],
     )
     conversation_variables: Sequence[VariableUnion] = Field(
         description="Conversation variables.",
-        default_factory=list,
+        default_factory=list[VariableUnion],
     )
 
     def model_post_init(self, context: Any, /) -> None:
@@ -191,7 +191,7 @@ class VariablePool(BaseModel):
 
     def convert_template(self, template: str, /):
         parts = VARIABLE_PATTERN.split(template)
-        segments = []
+        segments: list[Segment] = []
         for part in filter(lambda x: x, parts):
             if "." in part and (variable := self.get(part.split("."))):
                 segments.append(variable)
