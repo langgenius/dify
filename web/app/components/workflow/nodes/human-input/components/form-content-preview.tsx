@@ -10,7 +10,7 @@ import Badge from '@/app/components/base/badge'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { RiCloseLine } from '@remixicon/react'
-import { Variable, rehypeVariable } from './variable-in-markdown'
+import { Variable, rehypeNotes, rehypeVariable } from './variable-in-markdown'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -41,7 +41,7 @@ const FormContentPreview: FC<Props> = ({
       <div className='max-h-[calc(100vh-167px)] overflow-y-auto px-4'>
         <Markdown
           content={content}
-          rehypePlugins={[rehypeVariable]}
+          rehypePlugins={[rehypeVariable, rehypeNotes]}
           customComponents={{
             variable: ({ node, ...props }: any) => (
               <Variable path={node.properties?.path as string} />

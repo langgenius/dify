@@ -1,19 +1,20 @@
 import type React from 'react'
 
-const regex = /\{\{#(.+?)#\}\}/g
+const variableRegex = /\{\{#(.+?)#\}\}/g
+const noteRegex = /\{\{#\$(.+?)#\}\}/g
 
 export function rehypeVariable() {
   return (tree: any) => {
     const iterate = (node: any, index: number, parent: any) => {
       const value = node.value
 
-      regex.lastIndex = 0
-      if(node.type === 'text' && regex.test(value)) {
+      variableRegex.lastIndex = 0
+      if(node.type === 'text' && variableRegex.test(value) && !noteRegex.test(value)) {
         let m: RegExpExecArray | null
         let last = 0
         const parts: any[] = []
-        regex.lastIndex = 0
-        while ((m = regex.exec(value))) {
+        variableRegex.lastIndex = 0
+        while ((m = variableRegex.exec(value))) {
           if (m.index > last)
             parts.push({ type: 'text', value: value.slice(last, m.index) })
 
@@ -32,6 +33,68 @@ export function rehypeVariable() {
             parts.push({ type: 'text', value: value.slice(last) })
 
           parent.children.splice(index, 1, ...parts)
+        }
+      }
+      if (node.children) {
+        let i = 0
+        // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
+        while(i < node.children.length) {
+          iterate(node.children[i], i, node)
+          i++
+        }
+      }
+    }
+    let i = 0
+    // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
+    while(i < tree.children.length) {
+      iterate(tree.children[i], i, tree)
+      i++
+    }
+  }
+}
+
+export function rehypeNotes() {
+  return (tree: any) => {
+    const iterate = (node: any, index: number, parent: any) => {
+      const value = node.value
+
+      noteRegex.lastIndex = 0
+      if(node.type === 'text' && noteRegex.test(value)) {
+        let m: RegExpExecArray | null
+        let last = 0
+        const parts: any[] = []
+        noteRegex.lastIndex = 0
+        while ((m = noteRegex.exec(value))) {
+          if (m.index > last)
+            parts.push({ type: 'text', value: value.slice(last, m.index) })
+
+          parts.push({
+            type: 'element',
+            tagName: 'h2',
+            properties: {},
+            children: [
+              {
+                type: 'text',
+                value: 'Notes',
+              },
+            ],
+          })
+          parts.push({
+            type: 'element',
+            tagName: 'note', // choose a right tag
+            properties: { path: m[0].trim() },
+            children: [],
+          })
+
+          last = m.index + m[0].length
+        }
+
+        if (parts.length) {
+          if (last < value.length)
+            parts.push({ type: 'text', value: value.slice(last) })
+
+          parent.children.splice(index, 1, ...parts)
+          parent.tagName = 'div' // h2 can not in p
         }
       }
       if (node.children) {
