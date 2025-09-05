@@ -21,7 +21,9 @@ class NacosHttpClient:
         self.token_ttl = 18000
         self.token_expire_time: float = 0
 
-    def http_request(self, url: str, method: str = "GET", headers: dict[str, str] | None = None, params: dict[str, str] | None = None) -> str:
+    def http_request(
+        self, url: str, method: str = "GET", headers: dict[str, str] | None = None, params: dict[str, str] | None = None
+    ) -> str:
         if headers is None:
             headers = {}
         if params is None:
