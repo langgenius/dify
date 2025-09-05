@@ -162,34 +162,31 @@ class TriggerProviderService:
             raise ValueError(str(e))
 
     @classmethod
-    def delete_trigger_provider(cls, tenant_id: str, subscription_id: str) -> dict:
+    def delete_trigger_provider(cls, session: Session, tenant_id: str, subscription_id: str):
         """
-        Delete a trigger provider subscription.
+        Delete a trigger provider subscription within an existing session.
 
+        :param session: Database session
         :param tenant_id: Tenant ID
         :param subscription_id: Subscription instance ID
         :return: Success response
         """
-        with Session(db.engine) as session:
-            db_provider = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
-            if not db_provider:
-                raise ValueError(f"Trigger provider subscription {subscription_id} not found")
+        db_provider = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
+        if not db_provider:
+            raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-            provider_controller = TriggerManager.get_trigger_provider(
-                tenant_id, TriggerProviderID(db_provider.provider_id)
-            )
-            # Clear cache
-            _, cache = create_trigger_provider_encrypter_for_subscription(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=db_provider,
-            )
+        provider_controller = TriggerManager.get_trigger_provider(
+            tenant_id, TriggerProviderID(db_provider.provider_id)
+        )
+        # Clear cache
+        _, cache = create_trigger_provider_encrypter_for_subscription(
+            tenant_id=tenant_id,
+            controller=provider_controller,
+            subscription=db_provider,
+        )
 
-            session.delete(db_provider)
-            session.commit()
-
-            cache.delete()
-            return {"result": "success"}
+        session.delete(db_provider)
+        cache.delete()
 
     @classmethod
     def refresh_oauth_token(

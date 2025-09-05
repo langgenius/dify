@@ -2,6 +2,7 @@ import logging
 
 from flask import make_response, redirect, request
 from flask_restx import Resource, reqparse
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
@@ -11,11 +12,13 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
+from extensions.ext_database import db
 from libs.login import current_user, login_required
 from models.account import Account
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.workflow_plugin_trigger_service import WorkflowPluginTriggerService
 
 logger = logging.getLogger(__name__)
 
@@ -212,12 +215,21 @@ class TriggerSubscriptionDeleteApi(Resource):
             raise Forbidden()
 
         try:
-            result = TriggerProviderService.delete_trigger_provider(
-                tenant_id=user.current_tenant_id,
-                subscription_id=subscription_id,
-            )
-            return result
-
+            with Session(db.engine) as session:
+                # Delete trigger provider subscription
+                TriggerProviderService.delete_trigger_provider(
+                    session=session,
+                    tenant_id=user.current_tenant_id,
+                    subscription_id=subscription_id,
+                )
+                # Delete plugin triggers
+                WorkflowPluginTriggerService.delete_plugin_trigger_by_subscription(
+                    session=session,
+                    tenant_id=user.current_tenant_id,
+                    subscription_id=subscription_id,
+                )
+                session.commit()
+            return {"result": "success"}
         except ValueError as e:
             raise BadRequest(str(e))
         except Exception as e:
