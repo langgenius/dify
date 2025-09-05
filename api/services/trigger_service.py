@@ -176,7 +176,7 @@ class TriggerService:
                 select(WorkflowPluginTrigger).where(
                     WorkflowPluginTrigger.tenant_id == subscription.tenant_id,
                     WorkflowPluginTrigger.subscription_id == subscription.id,
-                    WorkflowPluginTrigger.trigger_id == trigger.identity.name,
+                    WorkflowPluginTrigger.trigger_name == trigger.identity.name,
                 )
             ).all()
             return list(subscribers)

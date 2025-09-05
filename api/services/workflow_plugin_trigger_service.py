@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from models.trigger import TriggerSubscription
@@ -38,9 +38,6 @@ class WorkflowPluginTriggerService:
         Raises:
             BadRequest: If plugin trigger already exists for this app and node
         """
-        # Create trigger_id from provider_id and trigger_name
-        trigger_id = f"{provider_id}:{trigger_name}"
-
         with Session(db.engine) as session:
             # Check if plugin trigger already exists for this app and node
             # Based on unique constraint: uniq_app_node
@@ -52,7 +49,7 @@ class WorkflowPluginTriggerService:
             )
 
             if existing_trigger:
-                raise BadRequest("Plugin trigger already exists for this app and node")
+                raise ValueError("Plugin trigger already exists for this app and node")
 
             # Check if subscription exists
             subscription = session.scalar(
@@ -62,7 +59,7 @@ class WorkflowPluginTriggerService:
             )
 
             if not subscription:
-                raise BadRequest("Subscription not found")
+                raise NotFound("Subscription not found")
 
             # Create new plugin trigger
             plugin_trigger = WorkflowPluginTrigger(
@@ -70,7 +67,7 @@ class WorkflowPluginTriggerService:
                 node_id=node_id,
                 tenant_id=tenant_id,
                 provider_id=provider_id,
-                trigger_id=trigger_id,
+                trigger_name=trigger_name,
                 subscription_id=subscription_id,
             )
 
@@ -194,17 +191,13 @@ class WorkflowPluginTriggerService:
         cls,
         app_id: str,
         node_id: str,
-        provider_id: Optional[str] = None,
-        trigger_name: Optional[str] = None,
-        subscription_id: Optional[str] = None,
+        subscription_id: str,
     ) -> WorkflowPluginTrigger:
         """Update a plugin trigger
 
         Args:
             app_id: The app ID
             node_id: The node ID in the workflow
-            provider_id: The new provider ID (optional)
-            trigger_name: The new trigger name (optional)
             subscription_id: The new subscription ID (optional)
 
         Returns:
@@ -225,17 +218,18 @@ class WorkflowPluginTriggerService:
             if not plugin_trigger:
                 raise NotFound("Plugin trigger not found")
 
-            # Update fields if provided
-            if provider_id:
-                plugin_trigger.provider_id = provider_id
+            # Check if subscription exists
+            subscription = session.scalar(
+                select(TriggerSubscription).where(
+                    TriggerSubscription.id == subscription_id,
+                )
+            )
 
-            if trigger_name:
-                # Update trigger_id if provider_id or trigger_name changed
-                provider_id = provider_id or plugin_trigger.provider_id
-                plugin_trigger.trigger_id = f"{provider_id}:{trigger_name}"
+            if not subscription:
+                raise NotFound("Subscription not found")
 
-            if subscription_id:
-                plugin_trigger.subscription_id = subscription_id
+            # Update subscription ID
+            plugin_trigger.subscription_id = subscription_id
 
             session.commit()
             session.refresh(plugin_trigger)
@@ -285,7 +279,7 @@ class WorkflowPluginTriggerService:
             if trigger_name:
                 # Update trigger_id if provider_id or trigger_name changed
                 provider_id = provider_id or plugin_trigger.provider_id
-                plugin_trigger.trigger_id = f"{provider_id}:{trigger_name}"
+                plugin_trigger.trigger_name = f"{provider_id}:{trigger_name}"
 
             if new_subscription_id:
                 plugin_trigger.subscription_id = new_subscription_id

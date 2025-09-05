@@ -1438,7 +1438,7 @@ class WorkflowPluginTrigger(Base):
     - node_id (varchar) Node ID which node in the workflow
     - tenant_id (uuid) Workspace ID
     - provider_id (varchar) Plugin provider ID
-    - trigger_id (varchar) trigger id (github_issues_trigger)
+    - trigger_name (varchar) trigger name (github_issues_trigger)
     - subscription_id (varchar) Subscription ID
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time
@@ -1447,7 +1447,7 @@ class WorkflowPluginTrigger(Base):
     __tablename__ = "workflow_plugin_triggers"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_plugin_trigger_pkey"),
-        sa.Index("workflow_plugin_trigger_tenant_subscription_idx", "tenant_id", "subscription_id", "trigger_id"),
+        sa.Index("workflow_plugin_trigger_tenant_subscription_idx", "tenant_id", "subscription_id", "trigger_name"),
         sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node_subscription"),
     )
 
@@ -1456,7 +1456,7 @@ class WorkflowPluginTrigger(Base):
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_id: Mapped[str] = mapped_column(String(512), nullable=False)
-    trigger_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    trigger_name: Mapped[str] = mapped_column(String(255), nullable=False)
     subscription_id: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(

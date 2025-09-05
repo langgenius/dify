@@ -10,6 +10,7 @@ from configs import dify_config
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
@@ -31,10 +32,10 @@ class PluginTriggerApi(Resource):
     def post(self, app_model):
         """Create plugin trigger"""
         parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
-        parser.add_argument("provider_id", type=str, required=True, help="Provider ID is required")
-        parser.add_argument("trigger_name", type=str, required=True, help="Trigger name is required")
-        parser.add_argument("subscription_id", type=str, required=True, help="Subscription ID is required")
+        parser.add_argument("node_id", type=str, required=False, location="json")
+        parser.add_argument("provider_id", type=str, required=False, location="json")
+        parser.add_argument("trigger_name", type=str, required=False, location="json")
+        parser.add_argument("subscription_id", type=str, required=False, location="json")
         args = parser.parse_args()
 
         assert isinstance(current_user, Account)
@@ -51,7 +52,7 @@ class PluginTriggerApi(Resource):
             subscription_id=args["subscription_id"],
         )
 
-        return plugin_trigger
+        return jsonable_encoder(plugin_trigger)
 
     @setup_required
     @login_required
@@ -68,7 +69,7 @@ class PluginTriggerApi(Resource):
             node_id=args["node_id"],
         )
 
-        return plugin_trigger
+        return jsonable_encoder(plugin_trigger)
 
     @setup_required
     @login_required
@@ -78,9 +79,7 @@ class PluginTriggerApi(Resource):
         """Update plugin trigger"""
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
-        parser.add_argument("provider_id", type=str, required=False, help="Provider ID")
-        parser.add_argument("trigger_name", type=str, required=False, help="Trigger name")
-        parser.add_argument("subscription_id", type=str, required=False, help="Subscription ID")
+        parser.add_argument("subscription_id", type=str, required=True, location="json", help="Subscription ID")
         args = parser.parse_args()
 
         assert isinstance(current_user, Account)
@@ -91,12 +90,10 @@ class PluginTriggerApi(Resource):
         plugin_trigger = WorkflowPluginTriggerService.update_plugin_trigger(
             app_id=app_model.id,
             node_id=args["node_id"],
-            provider_id=args.get("provider_id"),
-            trigger_name=args.get("trigger_name"),
-            subscription_id=args.get("subscription_id"),
+            subscription_id=args["subscription_id"],
         )
 
-        return plugin_trigger
+        return jsonable_encoder(plugin_trigger)
 
     @setup_required
     @login_required
