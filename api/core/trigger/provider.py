@@ -27,6 +27,7 @@ from core.trigger.entities.entities import (
     Unsubscription,
 )
 from core.trigger.errors import TriggerProviderCredentialValidationError
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -69,13 +70,23 @@ class PluginTriggerProviderController:
         """
         Convert to API entity
         """
+        icon = (
+            PluginService.get_plugin_icon_url(self.tenant_id, self.entity.identity.icon)
+            if self.entity.identity.icon
+            else None
+        )
+        icon_dark = (
+            PluginService.get_plugin_icon_url(self.tenant_id, self.entity.identity.icon_dark)
+            if self.entity.identity.icon_dark
+            else None
+        )
         return TriggerProviderApiEntity(
             author=self.entity.identity.author,
             name=self.entity.identity.name,
             label=self.entity.identity.label,
             description=self.entity.identity.description,
-            icon=self.entity.identity.icon,
-            icon_dark=self.entity.identity.icon_dark,
+            icon=icon,
+            icon_dark=icon_dark,
             tags=self.entity.identity.tags,
             plugin_id=self.plugin_id,
             plugin_unique_identifier=self.plugin_unique_identifier,
