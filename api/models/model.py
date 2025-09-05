@@ -1481,6 +1481,10 @@ class EndUser(Base, UserMixin):
     def is_anonymous(self) -> Literal[False]:
         return False
 
+    @is_anonymous.setter
+    def is_anonymous(self, value: bool) -> None:
+        self._is_anonymous = value
+
     session_id: Mapped[str] = mapped_column()
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
