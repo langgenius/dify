@@ -660,25 +660,39 @@ class Conversation(Base):
             # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
             from factories import file_factory
 
-            if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value["upload_file_id"] = value["related_id"]
-                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
-            elif isinstance(value, list) and all(
-                isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
+            if (
+                isinstance(value, dict)
+                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
-                file_list: list[Any] = []
-                for item in value:
-                    if not isinstance(item, dict):
-                        continue
-                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                        item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                        item["upload_file_id"] = item["related_id"]
-                    file_list.append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
-                inputs[key] = file_list
+                value_dict = cast(dict[str, Any], value)
+                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value_dict["tool_file_id"] = value_dict["related_id"]
+                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
+                    value_dict["upload_file_id"] = value_dict["related_id"]
+                tenant_id = cast(str, value_dict.get("tenant_id", ""))
+                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+            elif isinstance(value, list):
+                value_list = cast(list[Any], value)
+                if all(
+                    isinstance(item, dict)
+                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                    for item in value_list
+                ):
+                    file_list: list[File] = []
+                    for item in value_list:
+                        if not isinstance(item, dict):
+                            continue
+                        item_dict = cast(dict[str, Any], item)
+                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                            item_dict["tool_file_id"] = item_dict["related_id"]
+                        elif item_dict["transfer_method"] in [
+                            FileTransferMethod.LOCAL_FILE,
+                            FileTransferMethod.REMOTE_URL,
+                        ]:
+                            item_dict["upload_file_id"] = item_dict["related_id"]
+                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
+                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                    inputs[key] = file_list
 
         return inputs
 
@@ -688,8 +702,10 @@ class Conversation(Base):
         for k, v in inputs.items():
             if isinstance(v, File):
                 inputs[k] = v.model_dump()
-            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
-                inputs[k] = [item.model_dump() for item in v if isinstance(item, File)]
+            elif isinstance(v, list):
+                v_list = cast(list[Any], v)
+                if all(isinstance(item, File) for item in v_list):
+                    inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
 
     @property
@@ -933,25 +949,39 @@ class Message(Base):
             # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
             from factories import file_factory
 
-            if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value["upload_file_id"] = value["related_id"]
-                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
-            elif isinstance(value, list) and all(
-                isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
+            if (
+                isinstance(value, dict)
+                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
-                file_list: list[Any] = []
-                for item in value:
-                    if not isinstance(item, dict):
-                        continue
-                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                        item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                        item["upload_file_id"] = item["related_id"]
-                    file_list.append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
-                inputs[key] = file_list
+                value_dict = cast(dict[str, Any], value)
+                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value_dict["tool_file_id"] = value_dict["related_id"]
+                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
+                    value_dict["upload_file_id"] = value_dict["related_id"]
+                tenant_id = cast(str, value_dict.get("tenant_id", ""))
+                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+            elif isinstance(value, list):
+                value_list = cast(list[Any], value)
+                if all(
+                    isinstance(item, dict)
+                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                    for item in value_list
+                ):
+                    file_list: list[File] = []
+                    for item in value_list:
+                        if not isinstance(item, dict):
+                            continue
+                        item_dict = cast(dict[str, Any], item)
+                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                            item_dict["tool_file_id"] = item_dict["related_id"]
+                        elif item_dict["transfer_method"] in [
+                            FileTransferMethod.LOCAL_FILE,
+                            FileTransferMethod.REMOTE_URL,
+                        ]:
+                            item_dict["upload_file_id"] = item_dict["related_id"]
+                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
+                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                    inputs[key] = file_list
         return inputs
 
     @inputs.setter
@@ -960,8 +990,10 @@ class Message(Base):
         for k, v in inputs.items():
             if isinstance(v, File):
                 inputs[k] = v.model_dump()
-            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
-                inputs[k] = [item.model_dump() for item in v if isinstance(item, File)]
+            elif isinstance(v, list):
+                v_list = cast(list[Any], v)
+                if all(isinstance(item, File) for item in v_list):
+                    inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
 
     @property
@@ -1118,7 +1150,7 @@ class Message(Base):
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
-        files = []
+        files: list[File] = []
         for message_file in message_files:
             if message_file.transfer_method == FileTransferMethod.LOCAL_FILE.value:
                 if message_file.upload_file_id is None:
@@ -1206,7 +1238,7 @@ class Message(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "MessageFile":
+    def from_dict(cls, data: dict[str, Any]) -> "Message":
         return cls(
             id=data["id"],
             app_id=data["app_id"],
@@ -1441,11 +1473,14 @@ class EndUser(Base, UserMixin):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
-    _is_anonymous: Mapped[bool] = mapped_column("is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true"))
-    
+    _is_anonymous: Mapped[bool] = mapped_column(
+        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true")
+    )
+
     @property
-    def is_anonymous(self) -> bool:
-        return self._is_anonymous
+    def is_anonymous(self) -> Literal[False]:
+        return False
+
     session_id: Mapped[str] = mapped_column()
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1528,7 +1563,7 @@ class Site(Base):
         self._custom_disclaimer = value
 
     @staticmethod
-    def generate_code(n):
+    def generate_code(n: int) -> str:
         while True:
             result = generate_string(n)
             while db.session.query(Site).where(Site.code == result).count() > 0:

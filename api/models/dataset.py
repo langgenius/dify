@@ -907,6 +907,7 @@ class DatasetKeywordTable(Base):
                                 result[keyword] = node_idxs
                         return result
                     return dct
+
                 super().__init__(object_hook=object_hook, *args, **kwargs)
 
         # get dataset

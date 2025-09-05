@@ -659,7 +659,7 @@ class WorkflowNodeExecutionModel(Base):
     __tablename__ = "workflow_node_executions"
 
     @declared_attr
-    def __table_args__(cls) -> Any:  # type: ignore[misc]
+    def __table_args__(cls) -> Any:  # type: ignore[misc]  # noqa: N805
         return (
             PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
             Index(
