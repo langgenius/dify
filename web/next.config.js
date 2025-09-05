@@ -15,6 +15,18 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 })
 
+/**
+ * Creates a patched code inspector plugin configuration
+ * @param {import('code-inspector-plugin').CodeInspectorPluginOptions} [options] - Configuration options
+ */
+const patchedCodeInspectorPlugin = (options) => {
+  if (process.env.NODE_ENV === 'production') return {}
+  return {
+    '**/*.{jsx,tsx,js,mjs,mts}': Object.values(codeInspectorPlugin(options))[0],
+  }
+}
+
+
 // the default url to prevent parse url error when running jest
 const hasSetWebPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
 const port = process.env.PORT || 3000
@@ -24,12 +36,10 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
-  webpack: (config, { dev, isServer }) => {
-    if (dev) {
-      config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
-    }
-
-    return config
+  turbopack: {
+    rules: patchedCodeInspectorPlugin({
+      bundler: 'turbopack'
+    })
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
@@ -45,6 +55,10 @@ const nextConfig = {
     })),
   },
   experimental: {
+    optimizePackageImports: [
+      '@remixicon/react',
+      '@heroicons/react'
+    ],
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
