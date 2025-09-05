@@ -87,7 +87,6 @@ export const StatusItem: FC<{
   }
   datasetId?: string
   onUpdate?: (operationName?: string) => void
-
 }> = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate }) => {
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
@@ -182,12 +181,14 @@ export const OperationAction: FC<{
     data_source_type: string
     doc_form: string
     display_status?: string
-  }
+  },
+  selectedIds?: string[]
+  onSelectedIdChange?: (ids: string[]) => void
   datasetId: string
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
-}> = ({ embeddingAvailable, datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
+}> = ({ embeddingAvailable, datasetId, detail, selectedIds, onSelectedIdChange, onUpdate, scene = 'list', className = '' }) => {
   const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -240,6 +241,10 @@ export const OperationAction: FC<{
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      // If it is a delete operation, need to update the selectedIds state
+      if (selectedIds && onSelectedIdChange && operationName === 'delete')
+        onSelectedIdChange(selectedIds.filter(selectedId => selectedId !== id))
+
       onUpdate(operationName)
     }
     else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
@@ -475,8 +480,8 @@ const DocumentList: FC<IDocumentListProps> = ({
     if (statusFilter.value !== 'all') {
       filteredDocs = filteredDocs.filter(doc =>
         typeof doc.display_status === 'string'
-          && typeof statusFilter.value === 'string'
-          && doc.display_status.toLowerCase() === statusFilter.value.toLowerCase(),
+        && typeof statusFilter.value === 'string'
+        && doc.display_status.toLowerCase() === statusFilter.value.toLowerCase(),
       )
     }
 
@@ -603,6 +608,10 @@ const DocumentList: FC<IDocumentListProps> = ({
 
       if (!e) {
         Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        // Update selectedIds, removing the IDs of deleted documents
+        if (actionName === DocumentActionType.delete)
+          onSelectedIdChange([])
+
         onUpdate()
       }
       else { Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
@@ -721,6 +730,8 @@ const DocumentList: FC<IDocumentListProps> = ({
                 <td>
                   <OperationAction
                     embeddingAvailable={embeddingAvailable}
+                    selectedIds={selectedIds}
+                    onSelectedIdChange={onSelectedIdChange}
                     datasetId={datasetId}
                     detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}
                     onUpdate={onUpdate}
