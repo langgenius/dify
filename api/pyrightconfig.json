@@ -1,7 +1,5 @@
 {
-  "include": [
-    "."
-  ],
+  "include": ["."],
   "exclude": [
     "tests/",
     "migrations/",
@@ -21,13 +19,8 @@
     "events/",
     "contexts/",
     "constants/",
-    "commands.py",
-    "configs/__pycache__",
-    "configs/observability",
-    "configs/extra",
-    "configs/feature",
-    "configs/remote_settings_sources",
-    "configs/app_config.py"
+    "configs",
+    "commands.py"
   ],
   "typeCheckingMode": "strict",
   "pythonVersion": "3.11",
