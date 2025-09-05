@@ -84,6 +84,7 @@ class NacosHttpClient:
             self.token = response_data.get("accessToken")
             self.token_ttl = response_data.get("tokenTtl", 18000)
             self.token_expire_time = current_time + self.token_ttl - 10
+            return self.token
         except Exception:
             logger.exception("[get-access-token] exception occur")
             raise
