@@ -98,6 +98,9 @@ const translation = {
       upload_file: 'Tải lên tệp',
       notion: 'Đồng bộ từ Notion',
       github: 'Đồng bộ từ Github',
+      online_document: 'Tài liệu trực tuyến',
+      website_crawl: 'Thu thập dữ liệu trang web',
+      local_file: 'Tệp cục bộ',
     },
     type: {
       book: 'Sách',

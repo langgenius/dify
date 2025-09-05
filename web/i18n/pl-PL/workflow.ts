@@ -217,6 +217,8 @@ const translation = {
     back: 'Wstecz',
     iteration: 'Iteracja',
     loop: 'Pętla',
+    preparingDataSource: 'Przygotowywanie źródła danych',
+    reRun: 'Ponowne uruchomienie',
   },
   tabs: {
     'tools': 'Narzędzia',
@@ -235,6 +237,8 @@ const translation = {
     'blocks': 'Węzły',
     'addAll': 'Dodaj wszystko',
     'allAdded': 'Wszystko dodane',
+    'sources': 'Źródeł',
+    'searchDataSource': 'Wyszukiwanie w źródle danych',
   },
   blocks: {
     'start': 'Start',
@@ -259,6 +263,8 @@ const translation = {
     'loop-start': 'Początek pętli',
     'loop-end': 'Wyjście z pętli',
     'loop': 'Pętla',
+    'knowledge-index': 'Baza wiedzy',
+    'datasource': 'Źródło danych',
   },
   blocksAbout: {
     'start': 'Zdefiniuj początkowe parametry uruchamiania przepływu pracy',
@@ -281,6 +287,8 @@ const translation = {
     'agent': 'Wywoływanie dużych modeli językowych w celu odpowiadania na pytania lub przetwarzania języka naturalnego',
     'loop': 'Wykonaj pętlę logiki, dopóki nie zostanie spełniony warunek zakończenia lub nie zostanie osiągnięta maksymalna liczba iteracji.',
     'loop-end': 'Odpowiada "break". Ten węzeł nie ma elementów konfiguracyjnych. Gdy ciało pętli dotrze do tego węzła, pętla zostaje zakończona.',
+    'knowledge-index': 'Baza wiedzy o',
+    'datasource': 'Informacje o źródle danych',
   },
   operator: {
     zoomIn: 'Powiększ',
@@ -381,6 +389,7 @@ const translation = {
         variable: 'Użyj zmiennej',
         input: 'Wartość wejściowa',
       },
+      inputVars: 'Zmienne wejściowe',
     },
     start: {
       required: 'wymagane',
@@ -909,6 +918,25 @@ const translation = {
       currentLoopCount: 'Aktualna liczba pętli: {{count}}',
       deleteTitle: 'Usunąć węzeł pętli?',
     },
+    dataSource: {
+      add: 'Dodawanie źródła danych',
+      supportedFileFormatsPlaceholder: 'Rozszerzenie pliku, e.g. doc',
+      supportedFileFormats: 'Obsługiwane formaty plików',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Dowiedz się więcej',
+        title: 'Wybierz strukturę porcji',
+        message: 'Baza wiedzy Dify obsługuje trzy struktury fragmentacji: Ogólne, Nadrzędne-podrzędne oraz Q&A. Każda baza wiedzy może mieć tylko jedną strukturę. Dane wyjściowe z poprzedniego węzła muszą być wyrównane z wybraną strukturą fragmentów. Należy pamiętać, że wybór struktury fragmentacji ma wpływ na dostępne metody indeksowania.',
+      },
+      aboutRetrieval: 'o metodzie wyszukiwania.',
+      chunkStructure: 'Struktura porcji',
+      retrievalSettingIsRequired: 'Wymagane jest ustawienie pobierania',
+      changeChunkStructure: 'Zmień strukturę porcji',
+      chooseChunkStructure: 'Wybieranie struktury fragmentów',
+      indexMethodIsRequired: 'Metoda indeksowa jest wymagana',
+      chunkIsRequired: 'Wymagana jest struktura porcji',
+    },
   },
   tracing: {
     stopBy: 'Zatrzymane przez {{user}}',
@@ -979,6 +1007,10 @@ const translation = {
       view: 'Zobacz dziennik',
       resetConversationVar: 'Zresetuj zmienną rozmowy do wartości domyślnej',
       emptyTip: 'Po przejściu przez węzeł na kanwie lub uruchomieniu węzła krok po kroku, możesz zobaczyć bieżącą wartość zmiennej węzła w Inspektorze Zmiennych.',
+      export: 'eksport',
+      largeDataNoExport: 'Duże dane — tylko częściowy podgląd',
+      largeData: 'Duże dane, podgląd tylko do odczytu. Eksportuj, aby wyświetlić wszystko.',
+      exportToolTip: 'Eksportuj zmienną jako plik',
     },
     settingsTab: 'Ustawienia',
     lastRunTab: 'Ostatnie uruchomienie',

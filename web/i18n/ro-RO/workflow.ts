@@ -217,6 +217,8 @@ const translation = {
     back: 'Înapoi',
     iteration: 'Iterație',
     loop: 'Loop',
+    reRun: 'Reluare',
+    preparingDataSource: 'Pregătirea sursei de date',
   },
   tabs: {
     'tools': 'Instrumente',
@@ -235,6 +237,8 @@ const translation = {
     'searchBlock': 'Căutare nod',
     'addAll': 'Adaugă tot',
     'allAdded': 'Toate adăugate',
+    'sources': 'Surse',
+    'searchDataSource': 'Sursa de date de căutare',
   },
   blocks: {
     'start': 'Începe',
@@ -259,6 +263,8 @@ const translation = {
     'loop': 'Loop',
     'loop-end': 'Ieșire din buclă',
     'loop-start': 'Întreținere buclă',
+    'knowledge-index': 'Cunoştinţe',
+    'datasource': 'Sursa datelor',
   },
   blocksAbout: {
     'start': 'Definiți parametrii inițiali pentru lansarea unui flux de lucru',
@@ -281,6 +287,8 @@ const translation = {
     'agent': 'Invocarea modelelor lingvistice mari pentru a răspunde la întrebări sau pentru a procesa limbajul natural',
     'loop': 'Executați o buclă de logică până când condiția de terminare este îndeplinită sau numărul maxim de bucle este atins.',
     'loop-end': 'Echivalent cu „break”. Acest nod nu are elemente de configurare. Când corpul buclei ajunge la acest nod, bucla se termină.',
+    'datasource': 'Sursa de date Despre',
+    'knowledge-index': 'Baza de cunoștințe despre',
   },
   operator: {
     zoomIn: 'Mărește',
@@ -381,6 +389,7 @@ const translation = {
         variable: 'Folosește variabila',
         input: 'Valoare de intrare',
       },
+      inputVars: 'Variabile de intrare',
     },
     start: {
       required: 'necesar',
@@ -909,6 +918,25 @@ const translation = {
       comma: ',',
       variableName: 'Nume Variabil',
     },
+    dataSource: {
+      add: 'Adăugarea sursei de date',
+      supportedFileFormatsPlaceholder: 'Extensie de fișier, e.g. doc',
+      supportedFileFormats: 'Formate de fișiere acceptate',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Află mai multe',
+        title: 'Vă rugăm să alegeți o structură de bucăți',
+        message: 'Baza de cunoștințe Dify acceptă trei structuri de fragmentare: General, Părinte-copil și Întrebări și răspunsuri. Fiecare bază de cunoștințe poate avea o singură structură. Ieșirea de la nodul precedent trebuie să se alinieze cu structura de bucăți selectată. Rețineți că alegerea structurii de fragmentare afectează metodele de index disponibile.',
+      },
+      indexMethodIsRequired: 'Este necesară metoda indexului',
+      chunkStructure: 'Structura bucății',
+      chunkIsRequired: 'Este necesară structura bucății',
+      retrievalSettingIsRequired: 'Setarea de recuperare este necesară',
+      aboutRetrieval: 'despre metoda de recuperare.',
+      chooseChunkStructure: 'Alegeți o structură de bucăți',
+      changeChunkStructure: 'Modificați structura bucății',
+    },
   },
   tracing: {
     stopBy: 'Oprit de {{user}}',
@@ -979,6 +1007,10 @@ const translation = {
       edited: 'Editat',
       clearNode: 'Șterge variabila cached',
       emptyTip: 'După ce ai trecut printr-un nod pe canvas sau ai rulat un nod pas cu pas, poți vizualiza valoarea curentă a variabilei nodului în Inspectarea Variabilelor.',
+      export: 'export',
+      largeDataNoExport: 'Date mari - doar previzualizare parțială',
+      exportToolTip: 'Exportați variabila ca fișier',
+      largeData: 'Date mari, previzualizare doar în citire. Exportați pentru a vedea totul.',
     },
     settingsTab: 'Setări',
     lastRunTab: 'Ultima execuție',

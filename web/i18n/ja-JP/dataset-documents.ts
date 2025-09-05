@@ -99,6 +99,9 @@ const translation = {
       upload_file: 'ファイルをアップロード',
       notion: 'Notion から同期',
       github: 'GitHub から同期',
+      website_crawl: 'ウェブサイトクロール',
+      online_document: 'オンライン文書',
+      local_file: 'ローカルファイル',
     },
     type: {
       book: '書籍',

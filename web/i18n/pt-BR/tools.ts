@@ -234,6 +234,7 @@ const translation = {
       publishTip: 'Aplicativo não publicado. Por favor, publique o aplicativo primeiro.',
     },
   },
+  allTools: 'Todas as ferramentas',
 }
 
 export default translation

@@ -217,6 +217,8 @@ const translation = {
     testRunIteration: 'Testiranje ponovitve',
     back: 'Nazaj',
     testRun: 'Testna vožnja',
+    reRun: 'Ponovni zagon',
+    preparingDataSource: 'Priprava vira podatkov',
   },
   tabs: {
     'customTool': 'Po meri',
@@ -235,6 +237,8 @@ const translation = {
     'agent': 'Agentska strategija',
     'addAll': 'Dodaj vse',
     'allAdded': 'Vse dodano',
+    'sources': 'Virov',
+    'searchDataSource': 'Iskanje vira podatkov',
   },
   blocks: {
     'iteration': 'Iteracija',
@@ -259,6 +263,8 @@ const translation = {
     'loop': 'Zanka',
     'agent': 'Agent',
     'variable-assigner': 'Spremenljivka agregator',
+    'datasource': 'Vir podatkov',
+    'knowledge-index': 'Baza znanja',
   },
   blocksAbout: {
     'list-operator': 'Uporabljeno za filtriranje ali razvrščanje vsebine polja.',
@@ -281,6 +287,8 @@ const translation = {
     'variable-assigner': 'Združite večpodružinske spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
     'variable-aggregator': 'Združite večpodružnične spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
     'assigner': 'Vožnji vozlišča za dodelitev spremenljivk se uporablja za dodeljevanje vrednosti spremenljivkam, ki jih je mogoče zapisati (kot so spremenljivke za pogovor).',
+    'datasource': 'Vir podatkov O nas',
+    'knowledge-index': 'Baza znanja O',
   },
   operator: {
     zoomOut: 'Zoomirati ven',
@@ -388,6 +396,7 @@ const translation = {
         variable: 'Uporabi spremenljivko',
         input: 'Vhodna vrednost',
       },
+      inputVars: 'Vhodne spremenljivke',
     },
     start: {
       outputVars: {
@@ -916,6 +925,25 @@ const translation = {
       parameterSchema: 'Parametrska shema',
       clickToViewParameterSchema: 'Kliknite za prikaz sheme parametrov',
     },
+    dataSource: {
+      supportedFileFormats: 'Podprte oblike zapisa datotek',
+      add: 'Dodajanje vira podatkov',
+      supportedFileFormatsPlaceholder: 'Razširitev datoteke, e.g. doc',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Izvedi več',
+        title: 'Prosimo, izberite strukturo kosov',
+        message: 'Baza znanja Dify podpira tri strukture del: Splošno, Staršev-otrok in Vprašanja in odgovori. Vsaka baza znanja ima lahko samo eno strukturo. Izhod iz prejšnjega vozlišča mora biti poravnan z izbrano strukturo kosov. Upoštevajte, da izbira strukture koščkov vpliva na razpoložljive metode indeksa.',
+      },
+      chunkIsRequired: 'Potrebna je struktura kosov',
+      chooseChunkStructure: 'Izbira strukture koščka',
+      retrievalSettingIsRequired: 'Zahtevana je nastavitev pridobivanja',
+      indexMethodIsRequired: 'Zahteva se indeksna metoda',
+      chunkStructure: 'Struktura kosov',
+      changeChunkStructure: 'Spreminjanje strukture kosov',
+      aboutRetrieval: 'o metodi iskanja.',
+    },
   },
   tracing: {
     stopBy: 'Ohranjaj se pri {{user}}',
@@ -979,6 +1007,10 @@ const translation = {
       edited: 'Uredjeno',
       resetConversationVar: 'Ponastavi spremenljivko pogovora na privzeto vrednost',
       emptyTip: 'Po prehodu skozi vozlišče na platnu ali po zagonu vozlišča korak za korakom lahko v pregledu spremenljivk vidite trenutno vrednost spremenljivke vozlišča.',
+      export: 'izvoz',
+      exportToolTip: 'Izvozi spremenljivko kot datoteko',
+      largeDataNoExport: 'Veliki podatki – samo delni predogled',
+      largeData: 'Veliki podatki, predogled samo za branje. Izvozi, če si želite ogledati vse.',
     },
     settingsTab: 'Nastavitve',
     lastRunTab: 'Zadnji zagon',

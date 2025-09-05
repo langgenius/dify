@@ -98,6 +98,9 @@ const translation = {
       upload_file: '파일 업로드',
       notion: 'Notion 에서 동기화',
       github: 'GitHub 에서 동기화',
+      website_crawl: '웹사이트 크롤링',
+      local_file: '로컬 파일',
+      online_document: '온라인 문서',
     },
     type: {
       book: '도서',

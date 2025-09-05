@@ -6,6 +6,7 @@ const translation = {
     models: 'Modelle',
     all: 'Alle',
     tools: 'Werkzeuge',
+    datasources: 'Datenquellen',
   },
   categorySingle: {
     extension: 'Erweiterung',
@@ -13,6 +14,7 @@ const translation = {
     bundle: 'Bündel',
     model: 'Modell',
     tool: 'Werkzeug',
+    datasource: 'Datenquelle',
   },
   list: {
     source: {
@@ -249,6 +251,8 @@ const translation = {
     unavailable: 'Nicht verfügbar',
     credentialUnavailable: 'Anmeldeinformationen derzeit nicht verfügbar. Bitte kontaktieren Sie den Administrator.',
     customCredentialUnavailable: 'Benutzerdefinierte Anmeldeinformationen derzeit nicht verfügbar',
+    connectedWorkspace: 'Vernetzter Arbeitsbereich',
+    emptyAuth: 'Bitte konfigurieren Sie die Authentifizierung',
   },
   deprecated: 'Abgelehnt',
   autoUpdate: {

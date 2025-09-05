@@ -91,6 +91,9 @@ const translation = {
       notion: 'Sinkronkan formulir Notion',
       upload_file: 'Unggah File',
       github: 'Sinkronkan formulir Github',
+      website_crawl: 'Perayapan Situs Web',
+      online_document: 'Dokumen Online',
+      local_file: 'File Lokal',
     },
     type: {
       book: 'Buku',

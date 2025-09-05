@@ -222,6 +222,8 @@ const translation = {
     back: 'Indietro',
     iteration: 'Iterazione',
     loop: 'Anello',
+    reRun: 'Ripetizione',
+    preparingDataSource: 'Preparazione dell\'origine dati',
   },
   tabs: {
     'tools': 'Strumenti',
@@ -240,6 +242,8 @@ const translation = {
     'blocks': 'Nodi',
     'allAdded': 'Tutto aggiunto',
     'addAll': 'Aggiungi tutto',
+    'sources': 'Fonti',
+    'searchDataSource': 'Cerca origine dati',
   },
   blocks: {
     'start': 'Inizio',
@@ -264,6 +268,8 @@ const translation = {
     'loop-end': 'Uscire dal ciclo',
     'loop-start': 'Inizio ciclo',
     'loop': 'Anello',
+    'knowledge-index': 'Knowledge base',
+    'datasource': 'Origine dati',
   },
   blocksAbout: {
     'start': 'Definisci i parametri iniziali per l\'avvio di un flusso di lavoro',
@@ -295,6 +301,8 @@ const translation = {
     'agent': 'Richiamo di modelli linguistici di grandi dimensioni per rispondere a domande o elaborare il linguaggio naturale',
     'loop-end': 'Equivalente a "break". Questo nodo non ha elementi di configurazione. Quando il corpo del ciclo raggiunge questo nodo, il ciclo termina.',
     'loop': 'Esegui un ciclo di logica fino a quando la condizione di terminazione non viene soddisfatta o il numero massimo di cicli viene raggiunto.',
+    'datasource': 'Origine dati Informazioni',
+    'knowledge-index': 'Base di conoscenza su',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -396,6 +404,7 @@ const translation = {
         input: 'Valore di input',
         variable: 'Usa la variabile',
       },
+      inputVars: 'Variabili di input',
     },
     start: {
       required: 'richiesto',
@@ -935,6 +944,25 @@ const translation = {
       exitConditionTip: 'Un nodo di ciclo ha bisogno di almeno una condizione di uscita.',
       error_other: '{{count}} Errori',
     },
+    dataSource: {
+      supportedFileFormatsPlaceholder: 'Estensione del file, e.g. doc',
+      add: 'Aggiungere un\'origine dati',
+      supportedFileFormats: 'Formati di file supportati',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Ulteriori informazioni',
+        title: 'Si prega di scegliere una struttura a blocchi',
+        message: 'La Knowledge Base di Dify supporta tre strutture di suddivisione in blocchi: Generale, Padre-figlio e Domande e risposte. Ogni Knowledge Base può avere una sola struttura. L\'output del nodo precedente deve essere allineato con la struttura del blocco selezionata. Si noti che la scelta della struttura di suddivisione in blocchi influisce sui metodi di indice disponibili.',
+      },
+      indexMethodIsRequired: 'È necessario il metodo dell\'indice',
+      chunkStructure: 'Struttura a blocchi',
+      changeChunkStructure: 'Modifica la struttura dei blocchi',
+      chooseChunkStructure: 'Scegliere una struttura a blocchi',
+      aboutRetrieval: 'Informazioni sul metodo di recupero.',
+      chunkIsRequired: 'È necessaria una struttura a blocchi',
+      retrievalSettingIsRequired: 'È richiesta l\'impostazione di recupero',
+    },
   },
   tracing: {
     stopBy: 'Interrotto da {{user}}',
@@ -1005,6 +1033,10 @@ const translation = {
       clearAll: 'Ripristina tutto',
       reset: 'Ripristina il valore dell\'ultima esecuzione',
       emptyTip: 'Dopo aver eseguito un nodo sulla tela o eseguendo un nodo passo dopo passo, puoi visualizzare il valore attuale della variabile nodo in Ispeziona Variabile.',
+      export: 'esportazione',
+      largeData: 'Dati di grandi dimensioni, anteprima di sola lettura. Esporta per visualizzare tutto.',
+      exportToolTip: 'Esporta variabile come file',
+      largeDataNoExport: 'Dati di grandi dimensioni - solo anteprima parziale',
     },
     settingsTab: 'Impostazioni',
     lastRunTab: 'Ultima corsa',

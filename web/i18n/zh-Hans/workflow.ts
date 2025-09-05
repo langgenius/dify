@@ -929,6 +929,7 @@ const translation = {
     dataSource: {
       supportedFileFormats: '支持的文件格式',
       supportedFileFormatsPlaceholder: '文件格式，例如：doc',
+      add: '添加数据源',
     },
     knowledgeBase: {
       chunkStructure: '分段结构',

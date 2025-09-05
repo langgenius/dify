@@ -9,6 +9,7 @@ const translation = {
     models: 'Modeli',
     agents: 'Strategije agenta',
     tools: 'Orodja',
+    datasources: 'Viri podatkov',
   },
   categorySingle: {
     extension: 'Razširitev',
@@ -16,6 +17,7 @@ const translation = {
     agent: 'Agentska strategija',
     tool: 'Orodje',
     model: 'Model',
+    datasource: 'Vir podatkov',
   },
   list: {
     source: {
@@ -249,6 +251,8 @@ const translation = {
     unavailable: 'Nedostopno',
     customCredentialUnavailable: 'Trenutno niso na voljo prilagojene prijave.',
     credentialUnavailable: 'Trenutno niso na voljo poverilnice. Prosimo, kontaktirajte administratorja.',
+    connectedWorkspace: 'Povezani delovni prostor',
+    emptyAuth: 'Prosimo, konfigurirajte preverjanje pristnosti',
   },
   deprecated: 'Zastaran',
   autoUpdate: {

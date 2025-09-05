@@ -6,6 +6,7 @@ const translation = {
     tools: 'Outils',
     bundles: 'Paquets',
     all: 'Tout',
+    datasources: 'Sources des données',
   },
   categorySingle: {
     extension: 'Extension',
@@ -13,6 +14,7 @@ const translation = {
     model: 'Modèle',
     agent: 'Stratégie d’agent',
     bundle: 'Paquet',
+    datasource: 'Source des données',
   },
   list: {
     source: {
@@ -249,6 +251,8 @@ const translation = {
     customCredentialUnavailable: 'Les identifiants personnalisés ne sont actuellement pas disponibles.',
     credentialUnavailable: 'Les informations d\'identification ne sont actuellement pas disponibles. Veuillez contacter l\'administrateur.',
     unavailable: 'Non disponible',
+    connectedWorkspace: 'Espace de travail connecté',
+    emptyAuth: 'Veuillez configurer l’authentification',
   },
   deprecated: 'Obsolète',
   autoUpdate: {
