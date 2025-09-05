@@ -432,7 +432,7 @@ class WorkflowDraftVariableService:
         variable_reloaded = self._session.execute(variable_query).scalars().first()
         variable_file = variable_reloaded.variable_file
         if variable_file is None:
-            _logger.warning(
+            logger.warning(
                 "Associated WorkflowDraftVariableFile not found, draft_var_id=%s, file_id=%s",
                 variable_reloaded.id,
                 variable_reloaded.file_id,
@@ -442,7 +442,7 @@ class WorkflowDraftVariableService:
 
         upload_file = variable_file.upload_file
         if upload_file is None:
-            _logger.warning(
+            logger.warning(
                 "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
                 variable_reloaded.id,
                 variable_reloaded.file_id,
@@ -475,7 +475,7 @@ class WorkflowDraftVariableService:
         for i in deletions:
             variable_file = variable_files_by_id.get(i.draft_var_file_id)
             if variable_file is None:
-                _logger.warning(
+                logger.warning(
                     "Associated WorkflowDraftVariableFile not found, draft_var_id=%s, file_id=%s",
                     i.draft_var_id,
                     i.draft_var_file_id,
@@ -484,7 +484,7 @@ class WorkflowDraftVariableService:
 
             upload_file = variable_file.upload_file
             if upload_file is None:
-                _logger.warning(
+                logger.warning(
                     "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
                     i.draft_var_id,
                     i.draft_var_file_id,
