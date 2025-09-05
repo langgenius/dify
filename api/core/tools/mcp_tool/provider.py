@@ -48,7 +48,7 @@ class MCPToolProviderController(ToolProviderController):
         return ToolProviderType.MCP
 
     @classmethod
-    def _from_db(cls, db_provider: MCPToolProvider) -> "MCPToolProviderController":
+    def from_db(cls, db_provider: MCPToolProvider) -> "MCPToolProviderController":
         """
         from db provider
         """

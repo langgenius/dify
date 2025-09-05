@@ -332,7 +332,7 @@ class MCPToolProvider(Base):
         from core.tools.mcp_tool.provider import MCPToolProviderController
         from core.tools.utils.encryption import create_provider_encrypter
 
-        provider_controller = MCPToolProviderController._from_db(self)  # type: ignore[attr-defined]
+        provider_controller = MCPToolProviderController.from_db(self)
 
         encrypter, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,
@@ -340,7 +340,7 @@ class MCPToolProvider(Base):
             cache=NoOpProviderCredentialCache(),
         )
 
-        return encrypter.decrypt(self.credentials)  # type: ignore
+        return encrypter.decrypt(self.credentials)
 
 
 class ToolModelInvoke(Base):

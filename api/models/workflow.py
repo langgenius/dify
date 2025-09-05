@@ -659,7 +659,8 @@ class WorkflowNodeExecutionModel(Base):
     __tablename__ = "workflow_node_executions"
 
     @declared_attr
-    def __table_args__(cls) -> Any:  # type: ignore[misc]  # noqa: N805
+    @classmethod
+    def __table_args__(cls) -> Any:
         return (
             PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
             Index(
@@ -696,7 +697,7 @@ class WorkflowNodeExecutionModel(Base):
                 # MyPy may flag the following line because it doesn't recognize that
                 # the `declared_attr` decorator passes the receiving class as the first
                 # argument to this method, allowing us to reference class attributes.
-                cls.created_at.desc(),  # type: ignore
+                cls.created_at.desc(),
             ),
         )
 
