@@ -43,29 +43,25 @@ async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
 
 async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
-  const systemVariables: Record<string, any> = {}
-
   const redirectUrl = urlParams.get('redirect_url')
   if (redirectUrl) {
     const decodedRedirectUrl = decodeURIComponent(redirectUrl)
     const queryString = decodedRedirectUrl.split('?')[1]
     if (queryString) {
       const redirectParams = new URLSearchParams(queryString)
-      for (const [key, value] of redirectParams.entries()) {
-        urlParams.set(key, value)
-      }
+      for (const [key, value] of redirectParams.entries())
+        urlParams.set(key, value)          // 合并到当前参数
     }
   }
 
+  const systemVariables: Record<string, any> = {}
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
     entriesArray.map(async ([key, value]) => {
-      if (key.startsWith('sys.')) {
+      if (key.startsWith('sys.'))
         systemVariables[key.slice(4)] = await decodeBase64AndDecompress(decodeURIComponent(value))
-      }
-    })
+    }),
   )
-
   return systemVariables
 }
 
