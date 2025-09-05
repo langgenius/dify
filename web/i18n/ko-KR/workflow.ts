@@ -496,6 +496,12 @@ const translation = {
         doc: '구조화된 출력에 대해 더 알아보세요.',
         import: 'JSON 에서 가져오기',
       },
+      reasoningFormat: {
+        title: '추론 태그 분리 활성화',
+        separated: '추론 태그 분리',
+        tooltip: '추론 태그에서 내용을 추출하고 이를 reasoning_content 필드에 저장합니다',
+        tagged: '추론 태그 유지',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: '쿼리 변수',

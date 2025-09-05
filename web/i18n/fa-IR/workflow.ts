@@ -469,6 +469,12 @@ const translation = {
         fieldNamePlaceholder: 'نام میدان',
         generationTip: 'شما می‌توانید از زبان طبیعی برای ایجاد سریع یک طرح‌واره JSON استفاده کنید.',
       },
+      reasoningFormat: {
+        separated: 'تگ‌های تفکر جداگانه',
+        title: 'فعال‌سازی جداسازی برچسب‌های استدلال',
+        tagged: 'به فکر برچسب‌ها باشید',
+        tooltip: 'محتوا را از تگ‌های تفکر استخراج کرده و در فیلد reasoning_content ذخیره کنید.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'متغیر جستجو',

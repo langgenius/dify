@@ -19,6 +19,7 @@ class ModelInvokeCompletedEvent(NodeEventBase):
     text: str
     usage: LLMUsage
     finish_reason: str | None = None
+    reasoning_content: str | None = None
 
 
 class RunRetryEvent(NodeEventBase):

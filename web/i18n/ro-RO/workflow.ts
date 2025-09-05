@@ -469,6 +469,12 @@ const translation = {
         back: 'Înapoi',
         promptPlaceholder: 'Descrie schema ta JSON...',
       },
+      reasoningFormat: {
+        tagged: 'Ține minte etichetele',
+        separated: 'Etichete de gândire separate',
+        title: 'Activează separarea etichetelor de raționare',
+        tooltip: 'Extrage conținutul din etichetele think și stochează-l în câmpul reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variabilă de interogare',

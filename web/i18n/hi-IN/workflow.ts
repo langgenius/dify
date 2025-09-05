@@ -482,6 +482,12 @@ const translation = {
         required: 'आवश्यक',
         addChildField: 'बच्चे का क्षेत्र जोड़ें',
       },
+      reasoningFormat: {
+        title: 'कारण संबंध टैग विभाजन सक्षम करें',
+        separated: 'अलग सोच टैग',
+        tagged: 'टैग्स के बारे में सोचते रहें',
+        tooltip: 'थिंक टैग से सामग्री निकाले और इसे reasoning_content क्षेत्र में संग्रहित करें।',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'प्रश्न वेरिएबल',

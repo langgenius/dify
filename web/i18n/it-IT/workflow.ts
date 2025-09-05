@@ -486,6 +486,12 @@ const translation = {
         generating: 'Generazione dello schema JSON...',
         generatedResult: 'Risultato generato',
       },
+      reasoningFormat: {
+        title: 'Abilita la separazione dei tag di ragionamento',
+        tagged: 'Continua a pensare ai tag',
+        separated: 'Tag di pensiero separati',
+        tooltip: 'Estrai il contenuto dai tag think e conservalo nel campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variabile Query',

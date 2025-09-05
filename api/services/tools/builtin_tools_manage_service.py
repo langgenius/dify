@@ -573,7 +573,7 @@ class BuiltinToolManageService:
                     include_set=dify_config.POSITION_TOOL_INCLUDES_SET,  # type: ignore
                     exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,  # type: ignore
                     data=provider_controller,
-                    name_func=lambda x: x.identity.name,
+                    name_func=lambda x: x.entity.identity.name,
                 ):
                     continue
 

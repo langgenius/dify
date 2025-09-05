@@ -469,6 +469,12 @@ const translation = {
         generating: 'Генерация схемы JSON...',
         promptTooltip: 'Преобразуйте текстовое описание в стандартизированную структуру JSON Schema.',
       },
+      reasoningFormat: {
+        tagged: 'Продолжайте думать о тегах',
+        title: 'Включите разделение тегов на основе логики',
+        tooltip: 'Извлечь содержимое из тегов think и сохранить его в поле reasoning_content.',
+        separated: 'Отдельные теги для мышления',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Переменная запроса',

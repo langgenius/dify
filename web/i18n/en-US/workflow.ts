@@ -448,6 +448,12 @@ const translation = {
         variable: 'Variable',
       },
       sysQueryInUser: 'sys.query in user message is required',
+      reasoningFormat: {
+        title: 'Enable reasoning tag separation',
+        tagged: 'Keep think tags',
+        separated: 'Separate think tags',
+        tooltip: 'Extract content from think tags and store it in the reasoning_content field.',
+      },
       jsonSchema: {
         title: 'Structured Output Schema',
         instruction: 'Instruction',

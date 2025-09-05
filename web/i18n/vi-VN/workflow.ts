@@ -469,6 +469,12 @@ const translation = {
         addChildField: 'Thêm trường trẻ em',
         title: 'Sơ đồ đầu ra có cấu trúc',
       },
+      reasoningFormat: {
+        tagged: 'Giữ lại thẻ suy nghĩ',
+        tooltip: 'Trích xuất nội dung từ các thẻ think và lưu nó vào trường reasoning_content.',
+        separated: 'Tách biệt các thẻ suy nghĩ',
+        title: 'Bật chế độ phân tách nhãn lý luận',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Biến truy vấn',
