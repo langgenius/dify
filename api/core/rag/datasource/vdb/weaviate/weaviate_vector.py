@@ -257,15 +257,23 @@ class WeaviateVector(BaseVector):
         return docs
 
     def _default_schema(self, index_name: str) -> dict:
-        return {
-            "class": index_name,
-            "properties": [
-                {
-                    "name": "text",
-                    "dataType": ["text"],
-                }
-            ],
-        }
+        if dify_config.WEAVIATE_TOKENIZATION:
+            return {
+                "class": index_name,
+                "properties": [
+                    {"name": "text", "dataType": ["text"], "tokenization": dify_config.WEAVIATE_TOKENIZATION}
+                ],
+            }
+        else:
+            return {
+                "class": index_name,
+                "properties": [
+                    {
+                        "name": "text",
+                        "dataType": ["text"],
+                    }
+                ],
+            }
 
     def _json_serializable(self, value: Any) -> Any:
         if isinstance(value, datetime.datetime):
