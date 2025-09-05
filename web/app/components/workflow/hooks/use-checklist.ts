@@ -4,8 +4,9 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import type {
+  CommonEdgeType,
   CommonNodeType,
   Edge,
   Node,
@@ -166,7 +167,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       list.push({
         id: 'start-node-required',
         type: BlockEnum.Start,
-        title: t('workflow.blocks.start'),
+        title: t('workflow.panel.startNode'),
         errorMessage: t('workflow.common.needStartNode'),
       })
     }
@@ -324,5 +325,26 @@ export const useChecklistBeforePublish = () => {
 
   return {
     handleCheckBeforePublish,
+  }
+}
+
+export const useWorkflowRunValidation = () => {
+  const { t } = useTranslation()
+  const nodes = useNodes<CommonNodeType>()
+  const edges = useEdges<CommonEdgeType>()
+  const needWarningNodes = useChecklist(nodes, edges)
+  const { notify } = useToastContext()
+
+  const validateBeforeRun = useCallback(() => {
+    if (needWarningNodes.length > 0) {
+      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      return false
+    }
+    return true
+  }, [needWarningNodes, notify, t])
+
+  return {
+    validateBeforeRun,
+    hasValidationErrors: needWarningNodes.length > 0,
   }
 }

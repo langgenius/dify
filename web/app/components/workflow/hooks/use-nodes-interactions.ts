@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
 import produce from 'immer'
 import type {
   NodeDragHandler,
@@ -18,7 +19,6 @@ import {
 } from 'reactflow'
 import { unionBy } from 'lodash-es'
 import type { ToolDefaultValue } from '../block-selector/types'
-import { ENTRY_NODE_TYPES } from '../block-selector/constants'
 import type {
   Edge,
   Node,
@@ -63,32 +63,20 @@ import {
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { deleteWebhookUrl } from '@/service/apps'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
-// Helper function to check if a node is an entry node
-const isEntryNode = (nodeType: BlockEnum): boolean => {
-  return ENTRY_NODE_TYPES.includes(nodeType as any)
-}
-
-// Helper function to check if entry node can be deleted
-const canDeleteEntryNode = (nodes: Node[], nodeId: string): boolean => {
-  const targetNode = nodes.find(node => node.id === nodeId)
-  if (!targetNode || !isEntryNode(targetNode.data.type))
-    return true // Non-entry nodes can always be deleted
-
-  // Count all entry nodes
-  const entryNodes = nodes.filter(node => isEntryNode(node.data.type))
-
-  // Can delete if there's more than one entry node
-  return entryNodes.length > 1
-}
+// Entry node deletion restriction has been removed to allow empty workflows
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const appId = useAppStore.getState().appDetail?.id
   const {
     checkNestedParallelLimit,
     getAfterNodesInSameBranch,
@@ -107,6 +95,32 @@ export const useNodesInteractions = () => {
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
+
+  // Unified error handler for start node missing scenarios
+  const handleStartNodeMissingError = useCallback((error: Error, operationKey: string): boolean => {
+    if (error.message === 'Start node not found') {
+      const operation = t(`workflow.error.operations.${operationKey}`) || operationKey
+      notify({
+        type: 'error',
+        message: t('workflow.error.startNodeRequired', { operation }) || `Please add a start node first before ${operation}`,
+      })
+      return true // Error handled
+    }
+    return false // Error not handled, should re-throw
+  }, [notify, t])
+
+  // Safe wrapper for checkNestedParallelLimit with error handling
+  const safeCheckParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string, operationKey = 'updatingWorkflow') => {
+    try {
+      return checkNestedParallelLimit(nodes, edges, parentNodeId)
+    }
+    catch (error: any) {
+      if (handleStartNodeMissingError(error, operationKey))
+        return false // Operation blocked but gracefully handled
+
+      throw error // Re-throw other errors
+    }
+  }, [checkNestedParallelLimit, handleStartNodeMissingError])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     workflowStore.setState({ nodeAnimation: false })
@@ -436,7 +450,7 @@ export const useNodesInteractions = () => {
       draft.push(newEdge)
     })
 
-    if (checkNestedParallelLimit(newNodes, newEdges, targetNode?.parentId)) {
+    if (safeCheckParallelLimit(newNodes, newEdges, targetNode?.parentId, 'connectingNodes')) {
       setNodes(newNodes)
       setEdges(newEdges)
 
@@ -451,7 +465,7 @@ export const useNodesInteractions = () => {
       setConnectingNodePayload(undefined)
       setEnteringNodePayload(undefined)
     }
-  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, checkNestedParallelLimit])
+  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, safeCheckParallelLimit])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
@@ -568,9 +582,7 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
 
-    // Check if entry node can be deleted (must keep at least one entry node)
-    if (!canDeleteEntryNode(nodes, nodeId))
-      return // Cannot delete the last entry node
+    // Allow deleting any node including the last entry node
 
     const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
     const currentNode = nodes[currentNodeIndex]
@@ -579,6 +591,18 @@ export const useNodesInteractions = () => {
       return
 
     deleteNodeInspectorVars(nodeId)
+
+    if (currentNode.data.type === BlockEnum.TriggerWebhook) {
+      if (appId) {
+        try {
+          deleteWebhookUrl({ appId, nodeId })
+        }
+        catch (error) {
+          console.error('Failed to delete webhook URL:', error)
+        }
+      }
+    }
+
     if (currentNode.data.type === BlockEnum.Iteration) {
       const iterationChildren = nodes.filter(node => node.parentId === currentNode.id)
 
@@ -843,7 +867,7 @@ export const useNodesInteractions = () => {
         draft.push(newEdge)
       })
 
-      if (checkNestedParallelLimit(newNodes, newEdges, prevNode.parentId)) {
+      if (safeCheckParallelLimit(newNodes, newEdges, prevNode.parentId, 'addingNodes')) {
         setNodes(newNodes)
         setEdges(newEdges)
       }
@@ -963,7 +987,7 @@ export const useNodesInteractions = () => {
           draft.push(newEdge)
         })
 
-        if (checkNestedParallelLimit(newNodes, newEdges, nextNode.parentId)) {
+        if (safeCheckParallelLimit(newNodes, newEdges, nextNode.parentId, 'modifyingWorkflow')) {
           setNodes(newNodes)
           setEdges(newEdges)
         }
@@ -972,7 +996,7 @@ export const useNodesInteractions = () => {
         }
       }
       else {
-        if (checkNestedParallelLimit(newNodes, edges))
+        if (safeCheckParallelLimit(newNodes, edges, undefined, 'updatingWorkflow'))
           setNodes(newNodes)
 
         else
@@ -1121,7 +1145,7 @@ export const useNodesInteractions = () => {
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
-  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit])
+  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, safeCheckParallelLimit])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,
@@ -1410,7 +1434,7 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const bundledNodes = nodes.filter(node =>
-      node.data._isBundled && canDeleteEntryNode(nodes, node.id),
+      node.data._isBundled,
     )
 
     if (bundledNodes.length) {
@@ -1424,7 +1448,7 @@ export const useNodesInteractions = () => {
       return
 
     const selectedNode = nodes.find(node =>
-      node.data.selected && canDeleteEntryNode(nodes, node.id),
+      node.data.selected,
     )
 
     if (selectedNode)

@@ -8,12 +8,10 @@ import ModeToggle from './components/mode-toggle'
 import FrequencySelector from './components/frequency-selector'
 import WeekdaySelector from './components/weekday-selector'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import dayjs from 'dayjs'
 import NextExecutionTimes from './components/next-execution-times'
-import ExecuteNowButton from './components/execute-now-button'
-import RecurConfig from './components/recur-config'
 import MonthlyDaysSelector from './components/monthly-days-selector'
+import OnMinuteSelector from './components/on-minute-selector'
 import Input from '@/app/components/base/input'
 import useConfig from './use-config'
 
@@ -32,14 +30,8 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
     handleCronExpressionChange,
     handleWeekdaysChange,
     handleTimeChange,
-    handleRecurEveryChange,
-    handleRecurUnitChange,
+    handleOnMinuteChange,
   } = useConfig(id, data)
-
-  const handleExecuteNow = () => {
-    // TODO: Implement execute now functionality
-    console.log('Execute now clicked')
-  }
 
   return (
     <div className='mt-2'>
@@ -68,57 +60,35 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="mb-2 block text-xs font-medium text-gray-500">
-                      {inputs.frequency === 'hourly' || inputs.frequency === 'once'
-                        ? t('workflow.nodes.triggerSchedule.startTime')
-                        : t('workflow.nodes.triggerSchedule.time')
-                      }
-                    </label>
-                    {inputs.frequency === 'hourly' || inputs.frequency === 'once' ? (
-                      <DatePicker
-                        notClearable={true}
-                        value={inputs.visual_config?.datetime ? dayjs(inputs.visual_config.datetime) : dayjs()}
-                        onChange={(date) => {
-                          const newInputs = {
-                            ...inputs,
-                            visual_config: {
-                              ...inputs.visual_config,
-                              datetime: date ? date.toISOString() : undefined,
-                            },
-                          }
-                          setInputs(newInputs)
-                        }}
-                        onClear={() => {
-                          const newInputs = {
-                            ...inputs,
-                            visual_config: {
-                              ...inputs.visual_config,
-                              datetime: undefined,
-                            },
-                          }
-                          setInputs(newInputs)
-                        }}
-                        placeholder={t('workflow.nodes.triggerSchedule.selectDateTime')}
-                        needTimePicker={true}
+                    {inputs.frequency === 'hourly' ? (
+                      <OnMinuteSelector
+                        value={inputs.visual_config?.on_minute}
+                        onChange={handleOnMinuteChange}
                       />
                     ) : (
-                      <TimePicker
-                        notClearable={true}
-                        value={inputs.visual_config?.time
-                          ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
-                          : dayjs('1/1/2000 11:30 AM')
-                        }
-                        onChange={(time) => {
-                          if (time) {
-                            const timeString = time.format('h:mm A')
-                            handleTimeChange(timeString)
+                      <>
+                        <label className="mb-2 block text-xs font-medium text-gray-500">
+                          {t('workflow.nodes.triggerSchedule.time')}
+                        </label>
+                        <TimePicker
+                          notClearable={true}
+                          timezone={inputs.timezone}
+                          value={inputs.visual_config?.time
+                            ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
+                            : dayjs('1/1/2000 11:30 AM')
                           }
-                        }}
-                        onClear={() => {
-                          handleTimeChange('11:30 AM')
-                        }}
-                        placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
-                      />
+                          onChange={(time) => {
+                            if (time) {
+                              const timeString = time.format('h:mm A')
+                              handleTimeChange(timeString)
+                            }
+                          }}
+                          onClear={() => {
+                            handleTimeChange('11:30 AM')
+                          }}
+                          placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
+                        />
+                      </>
                     )}
                   </div>
                 </div>
@@ -127,15 +97,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                   <WeekdaySelector
                     selectedDays={inputs.visual_config?.weekdays || []}
                     onChange={handleWeekdaysChange}
-                  />
-                )}
-
-                {inputs.frequency === 'hourly' && (
-                  <RecurConfig
-                    recurEvery={inputs.visual_config?.recur_every}
-                    recurUnit={inputs.visual_config?.recur_unit}
-                    onRecurEveryChange={handleRecurEveryChange}
-                    onRecurUnitChange={handleRecurUnitChange}
                   />
                 )}
 
@@ -170,9 +131,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                     className="font-mono"
                   />
                 </div>
-                <div className="text-xs text-gray-500">
-                  Enter cron expression (minute hour day month weekday)
-                </div>
               </div>
             )}
           </div>
@@ -182,9 +140,6 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
 
         <NextExecutionTimes data={inputs} />
 
-        <div className="pt-2">
-          <ExecuteNowButton onClick={handleExecuteNow} />
-        </div>
       </div>
     </div>
   )

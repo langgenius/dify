@@ -1,25 +1,29 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useAppContext } from '@/context/app-context'
+import { getDefaultVisualConfig } from './constants'
 
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
-  const defaultPayload = {
-    ...payload,
-    mode: payload.mode || 'visual',
-    frequency: payload.frequency || 'daily',
-    visual_config: {
-      time: '11:30 AM',
-      weekdays: ['sun'],
-      ...payload.visual_config,
-    },
-    timezone: payload.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-    enabled: payload.enabled !== undefined ? payload.enabled : true,
-  }
+  const { userProfile } = useAppContext()
 
-  const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, defaultPayload)
+  const frontendPayload = useMemo(() => {
+    return {
+      ...payload,
+      mode: payload.mode || 'visual',
+      frequency: payload.frequency || 'weekly',
+      timezone: userProfile.timezone || 'UTC',
+      visual_config: {
+        ...getDefaultVisualConfig(),
+        ...payload.visual_config,
+      },
+    }
+  }, [payload, userProfile.timezone])
+
+  const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload)
 
   const handleModeChange = useCallback((mode: ScheduleMode) => {
     const newInputs = {
@@ -35,15 +39,8 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
       frequency,
       visual_config: {
         ...inputs.visual_config,
-        ...(frequency === 'hourly' || frequency === 'once') && !inputs.visual_config?.datetime && {
-          datetime: new Date().toISOString(),
-        },
         ...(frequency === 'hourly') && {
-          recur_every: inputs.visual_config?.recur_every || 1,
-          recur_unit: inputs.visual_config?.recur_unit || 'hours',
-        },
-        ...(frequency !== 'hourly' && frequency !== 'once') && {
-          datetime: undefined,
+          on_minute: inputs.visual_config?.on_minute ?? 0,
         },
       },
     }
@@ -80,23 +77,12 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleRecurEveryChange = useCallback((recur_every: number) => {
+  const handleOnMinuteChange = useCallback((on_minute: number) => {
     const newInputs = {
       ...inputs,
       visual_config: {
         ...inputs.visual_config,
-        recur_every,
-      },
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleRecurUnitChange = useCallback((recur_unit: 'hours' | 'minutes') => {
-    const newInputs = {
-      ...inputs,
-      visual_config: {
-        ...inputs.visual_config,
-        recur_unit,
+        on_minute,
       },
     }
     setInputs(newInputs)
@@ -111,8 +97,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     handleCronExpressionChange,
     handleWeekdaysChange,
     handleTimeChange,
-    handleRecurEveryChange,
-    handleRecurUnitChange,
+    handleOnMinuteChange,
   }
 }
 

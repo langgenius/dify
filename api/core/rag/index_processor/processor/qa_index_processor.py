@@ -23,6 +23,8 @@ from libs import helper
 from models.dataset import Dataset
 from services.entities.knowledge_entities.knowledge_entities import Rule
 
+logger = logging.getLogger(__name__)
+
 
 class QAIndexProcessor(BaseIndexProcessor):
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
@@ -182,7 +184,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
-                logging.exception("Failed to format qa document")
+                logger.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 

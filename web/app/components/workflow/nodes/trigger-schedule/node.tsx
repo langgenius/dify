@@ -18,7 +18,11 @@ const Node: FC<NodeProps<ScheduleTriggerNodeType>> = ({
         {t(`${i18nPrefix}.nextExecutionTime`)}
       </div>
       <div className="flex h-[26px] items-center rounded-md bg-workflow-block-parma-bg px-2 text-xs text-text-secondary">
-        {getNextExecutionTime(data)}
+        <div className="w-0 grow">
+          <div className="truncate" title={getNextExecutionTime(data)}>
+            {getNextExecutionTime(data)}
+          </div>
+        </div>
       </div>
     </div>
   )

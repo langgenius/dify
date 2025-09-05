@@ -1,7 +1,7 @@
-from flask_restful import Resource
+from flask_restx import Resource
 
 from controllers.console.wraps import setup_required
-from controllers.inner_api import api
+from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.file.helpers import get_signed_file_url_for_plugin
@@ -35,11 +35,21 @@ from models.account import Account, Tenant
 from models.model import EndUser
 
 
+@inner_api_ns.route("/invoke/llm")
 class PluginInvokeLLMApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeLLM)
+    @inner_api_ns.doc("plugin_invoke_llm")
+    @inner_api_ns.doc(description="Invoke LLM models through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "LLM invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLM):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm(user_model.id, tenant_model, payload)
@@ -48,11 +58,21 @@ class PluginInvokeLLMApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/llm/structured-output")
 class PluginInvokeLLMWithStructuredOutputApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeLLMWithStructuredOutput)
+    @inner_api_ns.doc("plugin_invoke_llm_structured")
+    @inner_api_ns.doc(description="Invoke LLM models with structured output through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "LLM structured output invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLMWithStructuredOutput):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm_with_structured_output(
@@ -63,11 +83,21 @@ class PluginInvokeLLMWithStructuredOutputApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/text-embedding")
 class PluginInvokeTextEmbeddingApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeTextEmbedding)
+    @inner_api_ns.doc("plugin_invoke_text_embedding")
+    @inner_api_ns.doc(description="Invoke text embedding models through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Text embedding successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
         try:
             return jsonable_encoder(
@@ -83,11 +113,17 @@ class PluginInvokeTextEmbeddingApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/rerank")
 class PluginInvokeRerankApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeRerank)
+    @inner_api_ns.doc("plugin_invoke_rerank")
+    @inner_api_ns.doc(description="Invoke rerank models through plugin interface")
+    @inner_api_ns.doc(
+        responses={200: "Rerank successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeRerank):
         try:
             return jsonable_encoder(
@@ -103,11 +139,21 @@ class PluginInvokeRerankApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/tts")
 class PluginInvokeTTSApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeTTS)
+    @inner_api_ns.doc("plugin_invoke_tts")
+    @inner_api_ns.doc(description="Invoke text-to-speech models through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "TTS invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTTS):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_tts(
@@ -120,11 +166,17 @@ class PluginInvokeTTSApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/speech2text")
 class PluginInvokeSpeech2TextApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeSpeech2Text)
+    @inner_api_ns.doc("plugin_invoke_speech2text")
+    @inner_api_ns.doc(description="Invoke speech-to-text models through plugin interface")
+    @inner_api_ns.doc(
+        responses={200: "Speech2Text successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSpeech2Text):
         try:
             return jsonable_encoder(
@@ -140,11 +192,17 @@ class PluginInvokeSpeech2TextApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/moderation")
 class PluginInvokeModerationApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeModeration)
+    @inner_api_ns.doc("plugin_invoke_moderation")
+    @inner_api_ns.doc(description="Invoke moderation models through plugin interface")
+    @inner_api_ns.doc(
+        responses={200: "Moderation successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeModeration):
         try:
             return jsonable_encoder(
@@ -160,11 +218,21 @@ class PluginInvokeModerationApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/tool")
 class PluginInvokeToolApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeTool)
+    @inner_api_ns.doc("plugin_invoke_tool")
+    @inner_api_ns.doc(description="Invoke tools through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Tool invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
@@ -182,11 +250,21 @@ class PluginInvokeToolApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/parameter-extractor")
 class PluginInvokeParameterExtractorNodeApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeParameterExtractorNode)
+    @inner_api_ns.doc("plugin_invoke_parameter_extractor")
+    @inner_api_ns.doc(description="Invoke parameter extractor node through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Parameter extraction successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeParameterExtractorNode):
         try:
             return jsonable_encoder(
@@ -205,11 +283,21 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/question-classifier")
 class PluginInvokeQuestionClassifierNodeApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeQuestionClassifierNode)
+    @inner_api_ns.doc("plugin_invoke_question_classifier")
+    @inner_api_ns.doc(description="Invoke question classifier node through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Question classification successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeQuestionClassifierNode):
         try:
             return jsonable_encoder(
@@ -228,11 +316,21 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/app")
 class PluginInvokeAppApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeApp)
+    @inner_api_ns.doc("plugin_invoke_app")
+    @inner_api_ns.doc(description="Invoke application through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "App invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
             app_id=payload.app_id,
@@ -248,11 +346,21 @@ class PluginInvokeAppApi(Resource):
         return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
 
 
+@inner_api_ns.route("/invoke/encrypt")
 class PluginInvokeEncryptApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeEncrypt)
+    @inner_api_ns.doc("plugin_invoke_encrypt")
+    @inner_api_ns.doc(description="Encrypt or decrypt data through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Encryption/decryption successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeEncrypt):
         """
         encrypt or decrypt data
@@ -265,11 +373,21 @@ class PluginInvokeEncryptApi(Resource):
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
+@inner_api_ns.route("/invoke/summary")
 class PluginInvokeSummaryApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestInvokeSummary)
+    @inner_api_ns.doc("plugin_invoke_summary")
+    @inner_api_ns.doc(description="Invoke summary functionality through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Summary generation successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSummary):
         try:
             return BaseBackwardsInvocationResponse(
@@ -285,40 +403,43 @@ class PluginInvokeSummaryApi(Resource):
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
+@inner_api_ns.route("/upload/file/request")
 class PluginUploadFileRequestApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestRequestUploadFile)
+    @inner_api_ns.doc("plugin_upload_file_request")
+    @inner_api_ns.doc(description="Request signed URL for file upload through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Signed URL generated successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
         url = get_signed_file_url_for_plugin(payload.filename, payload.mimetype, tenant_model.id, user_model.id)
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
 
+@inner_api_ns.route("/fetch/app/info")
 class PluginFetchAppInfoApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
     @plugin_data(payload_type=RequestFetchAppInfo)
+    @inner_api_ns.doc("plugin_fetch_app_info")
+    @inner_api_ns.doc(description="Fetch application information through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "App information retrieved successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestFetchAppInfo):
         return BaseBackwardsInvocationResponse(
             data=PluginAppBackwardsInvocation.fetch_app_info(payload.app_id, tenant_model.id)
         ).model_dump()
-
-
-api.add_resource(PluginInvokeLLMApi, "/invoke/llm")
-api.add_resource(PluginInvokeLLMWithStructuredOutputApi, "/invoke/llm/structured-output")
-api.add_resource(PluginInvokeTextEmbeddingApi, "/invoke/text-embedding")
-api.add_resource(PluginInvokeRerankApi, "/invoke/rerank")
-api.add_resource(PluginInvokeTTSApi, "/invoke/tts")
-api.add_resource(PluginInvokeSpeech2TextApi, "/invoke/speech2text")
-api.add_resource(PluginInvokeModerationApi, "/invoke/moderation")
-api.add_resource(PluginInvokeToolApi, "/invoke/tool")
-api.add_resource(PluginInvokeParameterExtractorNodeApi, "/invoke/parameter-extractor")
-api.add_resource(PluginInvokeQuestionClassifierNodeApi, "/invoke/question-classifier")
-api.add_resource(PluginInvokeAppApi, "/invoke/app")
-api.add_resource(PluginInvokeEncryptApi, "/invoke/encrypt")
-api.add_resource(PluginInvokeSummaryApi, "/invoke/summary")
-api.add_resource(PluginUploadFileRequestApi, "/upload/file/request")
-api.add_resource(PluginFetchAppInfoApi, "/fetch/app/info")

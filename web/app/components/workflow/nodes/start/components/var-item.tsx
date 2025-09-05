@@ -19,7 +19,7 @@ type Props = {
   className?: string
   readonly: boolean
   payload: InputVar
-  onChange?: (item: InputVar, moreInfo?: MoreInfo) => void
+  onChange?: (item: InputVar, moreInfo?: MoreInfo) => boolean
   onRemove?: () => void
   rightContent?: React.JSX.Element
   varKeys?: string[]
@@ -31,7 +31,7 @@ const VarItem: FC<Props> = ({
   className,
   readonly,
   payload,
-  onChange = noop,
+  onChange = () => true,
   onRemove = noop,
   rightContent,
   varKeys = [],
@@ -48,7 +48,9 @@ const VarItem: FC<Props> = ({
   }] = useBoolean(false)
 
   const handlePayloadChange = useCallback((payload: InputVar, moreInfo?: MoreInfo) => {
-    onChange(payload, moreInfo)
+    const isValid = onChange(payload, moreInfo)
+    if(!isValid)
+      return
     hideEditVarModal()
   }, [onChange, hideEditVarModal])
   return (

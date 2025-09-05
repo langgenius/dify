@@ -42,6 +42,34 @@ const translation = {
   rejectContent: 'Infelizmente, você não é elegível para o status de Educação Verificada e, portanto, não pode receber o cupom exclusivo de 100% para o Plano Profissional Dify se usar este endereço de e-mail.',
   successTitle: 'Você Tem a Educação Dify Verificada',
   submitError: 'A submissão do formulário falhou. Por favor, tente novamente mais tarde.',
+  notice: {
+    expired: {
+      summary: {
+        line2: 'No entanto, você não é mais elegível para novos cupons de desconto na educação.',
+        line1: 'Você ainda pode acessar e usar o Dify.',
+      },
+      title: 'Seu status de educação expirou',
+    },
+    isAboutToExpire: {
+      summary: 'Não se preocupe — isso não afetará sua assinatura atual, mas você não receberá o desconto educacional quando ela for renovada, a menos que você verifique seu status novamente.',
+    },
+    stillInEducation: {
+      title: 'Ainda na educação?',
+      isAboutToExpire: 'Verifique novamente agora para receber um novo cupom para o próximo ano acadêmico. Ele será salvo na sua conta e estará pronto para ser usado na sua próxima renovação.',
+      expired: 'Reveja agora para obter um novo cupom para o próximo ano acadêmico. Nós o adicionaremos à sua conta e você poderá usá-lo na próxima atualização.',
+    },
+    alreadyGraduated: {
+      title: 'Já se formou?',
+      isAboutToExpire: 'Sua assinatura atual ainda permanecerá ativa. Quando ela terminar, você será movido para o plano Sandbox, ou poderá fazer um upgrade a qualquer momento para restaurar o acesso completo aos recursos pagos.',
+      expired: 'Sinta-se à vontade para atualizar a qualquer momento para obter acesso total aos recursos pagos.',
+    },
+    action: {
+      reVerify: 'Reverifique',
+      upgrade: 'Atualizar',
+      dismiss: 'Dispensar',
+    },
+    dateFormat: 'DD/MM/AAAA',
+  },
 }
 
 export default translation

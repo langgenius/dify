@@ -6,7 +6,6 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from datetime import UTC, datetime
 from typing import Any, Optional, cast
 
 from flask import Flask, current_app
@@ -51,6 +50,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom
 from models.workflow import WorkflowType
@@ -374,7 +374,7 @@ class GraphEngine:
                         if len(sub_edge_mappings) == 0:
                             continue
 
-                        edge = cast(GraphEdge, sub_edge_mappings[0])
+                        edge = sub_edge_mappings[0]
                         if edge.run_condition is None:
                             logger.warning("Edge %s run condition is None", edge.target_node_id)
                             continue
@@ -640,7 +640,7 @@ class GraphEngine:
         while should_continue_retry and retries <= max_retries:
             try:
                 # run node
-                retry_start_at = datetime.now(UTC).replace(tzinfo=None)
+                retry_start_at = naive_utc_now()
                 # yield control to other threads
                 time.sleep(0.001)
                 event_stream = node.run()

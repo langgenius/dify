@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
 from yarl import URL
 
 import contexts
@@ -36,6 +37,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -46,7 +48,6 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    CredentialType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -330,16 +331,13 @@ class ToolManager:
             if controller_tools is None or len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            return cast(
-                WorkflowTool,
-                controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials={},
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
@@ -617,8 +615,9 @@ class ToolManager:
                 WHERE tenant_id = :tenant_id
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
-        ids = [row.id for row in db.session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
-        return db.session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
+        with Session(db.engine, autoflush=False) as session:
+            ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
+            return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 
     @classmethod
     def list_providers_from_api(
@@ -646,8 +645,8 @@ class ToolManager:
                 for provider in builtin_providers:
                     # handle include, exclude
                     if is_filtered(
-                        include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
-                        exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
+                        include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                        exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
                         name_func=lambda x: x.identity.name,
                     ):
@@ -959,7 +958,7 @@ class ToolManager:
         elif provider_type == ToolProviderType.WORKFLOW:
             return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.PLUGIN:
-            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+            provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
             if isinstance(provider, PluginToolProviderController):
                 try:
                     return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)

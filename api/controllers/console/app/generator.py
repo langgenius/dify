@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.error import (
@@ -137,7 +137,7 @@ class InstructionGenerateApi(Resource):
                 from models import App, db
                 from services.workflow_service import WorkflowService
 
-                app = db.session.query(App).filter(App.id == args["flow_id"]).first()
+                app = db.session.query(App).where(App.id == args["flow_id"]).first()
                 if not app:
                     return {"error": f"app {args['flow_id']} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app)

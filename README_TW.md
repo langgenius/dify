@@ -106,85 +106,18 @@ docker compose up -d
 **7. 後端即服務**：
 Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify 整合到您自己的業務邏輯中。
 
-## 功能比較
-
-<table style="width: 100%;">
-  <tr>
-    <th align="center">功能</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">OpenAI Assistants API</th>
-  </tr>
-  <tr>
-    <td align="center">程式設計方法</td>
-    <td align="center">API + 應用導向</td>
-    <td align="center">Python 代碼</td>
-    <td align="center">應用導向</td>
-    <td align="center">API 導向</td>
-  </tr>
-  <tr>
-    <td align="center">支援的 LLM 模型</td>
-    <td align="center">豐富多樣</td>
-    <td align="center">豐富多樣</td>
-    <td align="center">豐富多樣</td>
-    <td align="center">僅限 OpenAI</td>
-  </tr>
-  <tr>
-    <td align="center">RAG 引擎</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">代理功能</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">工作流程</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">可觀察性</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">企業級功能 (SSO/存取控制)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">本地部署</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
-
 ## 使用 Dify
 
 - **雲端服務 </br>**
   我們提供 [Dify Cloud](https://dify.ai) 服務，任何人都可以零配置嘗試。它提供與自部署版本相同的所有功能，並在沙盒計劃中包含 200 次免費 GPT-4 調用。
 
 - **自託管 Dify 社區版</br>**
-  使用這份[快速指南](#快速開始)在您的環境中快速運行 Dify。
+  使用這份[快速指南](#%E5%BF%AB%E9%80%9F%E9%96%8B%E5%A7%8B)在您的環境中快速運行 Dify。
   使用我們的[文檔](https://docs.dify.ai)獲取更多參考和深入指導。
 
 - **企業/組織版 Dify</br>**
-  我們提供額外的企業中心功能。[通過這個聊天機器人記錄您的問題](https://udify.app/chat/22L1zSxg6yW1cWQg)或[發送電子郵件給我們](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)討論企業需求。</br>
+  我們提供額外的企業中心功能。[通過這個聊天機器人記錄您的問題](https://udify.app/chat/22L1zSxg6yW1cWQg)或[發送電子郵件給我們](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry)討論企業需求。</br>
+
   > 對於使用 AWS 的初創企業和小型企業，請查看 [AWS Marketplace 上的 Dify Premium](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)，並一鍵部署到您自己的 AWS VPC。這是一個經濟實惠的 AMI 產品，可選擇使用自定義徽標和品牌創建應用。
 
 ## 保持領先
@@ -238,10 +171,9 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 將 Dify 一鍵部署到 AKS
 
-
 ## 貢獻
 
-對於想要貢獻程式碼的開發者，請參閱我們的[貢獻指南](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)。
+對於想要貢獻程式碼的開發者，請參閱我們的[貢獻指南](https://github.com/langgenius/dify/blob/main/CONTRIBUTING_TW.md)。
 同時，也請考慮透過在社群媒體和各種活動與會議上分享 Dify 來支持我們。
 
 > 我們正在尋找貢獻者協助將 Dify 翻譯成中文和英文以外的語言。如果您有興趣幫忙，請查看 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) 獲取更多資訊，並在我們的 [Discord 社群伺服器](https://discord.gg/8Tpq4AcN9c) 的 `global-users` 頻道留言給我們。

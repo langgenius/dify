@@ -38,6 +38,8 @@ from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
+logger = logging.getLogger(__name__)
+
 
 @click.command("reset-password", help="Reset the account password.")
 @click.option("--email", prompt=True, help="Account email to reset password for")
@@ -685,7 +687,7 @@ def upgrade_db():
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception:
-            logging.exception("Failed to execute database migration")
+            logger.exception("Failed to execute database migration")
         finally:
             lock.release()
     else:
@@ -733,7 +735,7 @@ where sites.id is null limit 1000"""
                 except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
-                    logging.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
+                    logger.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
                     continue
 
             if not processed_count:
@@ -1196,6 +1198,55 @@ def setup_system_tool_oauth_client(provider, client_params):
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
     oauth_client = ToolOAuthSystemClient(
+        provider=provider_name,
+        plugin_id=plugin_id,
+        encrypted_oauth_params=oauth_client_params,
+    )
+    db.session.add(oauth_client)
+    db.session.commit()
+    click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+
+
+@click.command("setup-system-trigger-oauth-client", help="Setup system trigger oauth client.")
+@click.option("--provider", prompt=True, help="Provider name")
+@click.option("--client-params", prompt=True, help="Client Params")
+def setup_system_trigger_oauth_client(provider, client_params):
+    """
+    Setup system trigger oauth client
+    """
+    from core.plugin.entities.plugin import TriggerProviderID
+    from models.trigger import TriggerOAuthSystemClient
+
+    provider_id = TriggerProviderID(provider)
+    provider_name = provider_id.provider_name
+    plugin_id = provider_id.plugin_id
+
+    try:
+        # json validate
+        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
+        client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
+        click.echo(click.style("Client params validated successfully.", fg="green"))
+
+        click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
+        click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
+        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        click.echo(click.style("Client params encrypted successfully.", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
+        return
+
+    deleted_count = (
+        db.session.query(TriggerOAuthSystemClient)
+        .filter_by(
+            provider=provider_name,
+            plugin_id=plugin_id,
+        )
+        .delete()
+    )
+    if deleted_count > 0:
+        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+
+    oauth_client = TriggerOAuthSystemClient(
         provider=provider_name,
         plugin_id=plugin_id,
         encrypted_oauth_params=oauth_client_params,

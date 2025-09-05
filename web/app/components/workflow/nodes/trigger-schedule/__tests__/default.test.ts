@@ -31,8 +31,7 @@ describe('Schedule Trigger Node Default', () => {
   describe('Basic Configuration', () => {
     it('should have correct default value', () => {
       expect(nodeDefault.defaultValue.mode).toBe('visual')
-      expect(nodeDefault.defaultValue.frequency).toBe('daily')
-      expect(nodeDefault.defaultValue.enabled).toBe(true)
+      expect(nodeDefault.defaultValue.frequency).toBe('weekly')
     })
 
     it('should have empty prev nodes', () => {

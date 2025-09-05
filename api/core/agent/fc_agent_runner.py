@@ -126,8 +126,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_call_inputs = json.dumps(
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
-                        except json.JSONDecodeError:
-                            # ensure ascii to avoid encoding error
+                        except TypeError:
+                            # fallback: force ASCII to handle non-serializable objects
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                     if chunk.delta.message and chunk.delta.message.content:
@@ -153,8 +153,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_call_inputs = json.dumps(
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
-                    except json.JSONDecodeError:
-                        # ensure ascii to avoid encoding error
+                    except TypeError:
+                        # fallback: force ASCII to handle non-serializable objects
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                 if result.usage:
@@ -395,9 +395,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=query))
-
             # get image detail config
             image_detail_config = (
                 self.application_generate_entity.file_upload_config.image_config.detail
@@ -408,6 +405,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 else None
             )
             image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in self.files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(
@@ -415,6 +414,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         image_detail_config=image_detail_config,
                     )
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:

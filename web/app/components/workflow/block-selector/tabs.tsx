@@ -20,6 +20,7 @@ export type TabsProps = {
   filterElem: React.ReactNode
   noBlocks?: boolean
   showStartTab?: boolean
+  forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -31,6 +32,7 @@ const Tabs: FC<TabsProps> = ({
   filterElem,
   noBlocks,
   showStartTab = false,
+  forceShowStartContent = false,
 }) => {
   const tabs = useTabs(showStartTab)
   const { data: buildInTools } = useAllBuiltInTools()
@@ -64,12 +66,13 @@ const Tabs: FC<TabsProps> = ({
       }
       {filterElem}
       {
-        activeTab === TabsEnum.Start && !noBlocks && (
+        activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
           <div className='border-t border-divider-subtle'>
             <AllStartBlocks
               searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
+              tags={tags}
             />
           </div>
         )

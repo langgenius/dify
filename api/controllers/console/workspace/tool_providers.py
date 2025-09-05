@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_login import current_user
-from flask_restful import (
+from flask_restx import (
     Resource,
     reqparse,
 )
@@ -22,8 +22,8 @@ from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.entities.tool_entities import CredentialType
 from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import login_required
 from services.plugin.oauth_service import OAuthProxyService
@@ -95,7 +95,6 @@ class ToolBuiltinProviderInfoApi(Resource):
     def get(self, provider):
         user = current_user
 
-        user_id = user.id
         tenant_id = user.current_tenant_id
 
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))

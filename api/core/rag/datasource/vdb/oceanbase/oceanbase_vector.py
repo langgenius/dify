@@ -152,7 +152,7 @@ class OceanBaseVector(BaseVector):
             ob_full_version = result.fetchone()[0]
             ob_version = ob_full_version.split()[1]
             logger.debug("Current OceanBase version is %s", ob_version)
-            return version.parse(ob_version).base_version >= version.parse("4.3.5.1").base_version
+            return version.parse(ob_version) >= version.parse("4.3.5.1")
         except Exception as e:
             logger.warning("Failed to check OceanBase version: %s. Disabling hybrid search.", str(e))
             return False

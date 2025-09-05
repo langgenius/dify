@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
@@ -34,14 +33,15 @@ export const useNodesSyncDraft = () => {
       conversationVariables,
       environmentVariables,
       syncWorkflowDraftHash,
+      isWorkflowDataLoaded,
     } = workflowStore.getState()
 
     if (appId) {
       const nodes = getNodes()
-      const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
-      if (!hasStartNode)
-        return
+      // Prevent sync if workflow data hasn't been loaded yet
+      if (!isWorkflowDataLoaded)
+        return null
 
       const features = featuresStore!.getState().features
       const producedNodes = produce(nodes, (draft) => {

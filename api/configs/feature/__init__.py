@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import (
     AliasChoices,
@@ -144,6 +144,17 @@ class CodeExecutionSandboxConfig(BaseSettings):
     CODE_MAX_NUMBER_ARRAY_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for numeric arrays in code execution",
         default=1000,
+    )
+
+
+class TriggerConfig(BaseSettings):
+    """
+    Configuration for trigger
+    """
+
+    WEBHOOK_REQUEST_BODY_MAX_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for webhook request bodies in bytes",
+        default=10485760,
     )
 
 
@@ -976,12 +987,25 @@ class WorkflowLogConfig(BaseSettings):
     )
 
 
+class SwaggerUIConfig(BaseSettings):
+    SWAGGER_UI_ENABLED: bool = Field(
+        description="Whether to enable Swagger UI in api module",
+        default=True,
+    )
+
+    SWAGGER_UI_PATH: str = Field(
+        description="Swagger UI page path in api module",
+        default="/swagger-ui.html",
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    TriggerConfig,
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,
@@ -1007,6 +1031,7 @@ class FeatureConfig(
     WorkspaceConfig,
     LoginConfig,
     AccountConfig,
+    SwaggerUIConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,

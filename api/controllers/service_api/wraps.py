@@ -1,13 +1,13 @@
 import time
 from collections.abc import Callable
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum, auto
 from functools import wraps
 from typing import Optional
 
 from flask import current_app, request
-from flask_login import user_logged_in  # type: ignore
-from flask_restful import Resource
+from flask_login import user_logged_in
+from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -23,14 +23,14 @@ from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
 
-class WhereisUserArg(Enum):
+class WhereisUserArg(StrEnum):
     """
     Enum for whereis_user_arg.
     """
 
-    QUERY = "query"
-    JSON = "json"
-    FORM = "form"
+    QUERY = auto()
+    JSON = auto()
+    FORM = auto()
 
 
 class FetchUserArg(BaseModel):

@@ -49,6 +49,7 @@ export const useWorkflowInit = () => {
         }, {} as Record<string, string>),
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
         conversationVariables: res.conversation_variables || [],
+        isWorkflowDataLoaded: true,
       })
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
@@ -57,13 +58,21 @@ export const useWorkflowInit = () => {
       if (error && error.json && !error.bodyUsed && appDetail) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({ notInitialWorkflow: true })
+            const isAdvancedChat = appDetail.mode === 'advanced-chat'
+            workflowStore.setState({
+              notInitialWorkflow: true,
+              showOnboarding: !isAdvancedChat,
+              hasShownOnboarding: false,
+            })
+            const nodesData = isAdvancedChat ? nodesTemplate : []
+            const edgesData = isAdvancedChat ? edgesTemplate : []
+
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
                 graph: {
-                  nodes: nodesTemplate,
-                  edges: edgesTemplate,
+                  nodes: nodesData,
+                  edges: edgesData,
                 },
                 features: {
                   retriever_resource: { enabled: true },
@@ -83,7 +92,6 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {

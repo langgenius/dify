@@ -79,8 +79,12 @@ from .tools import (
     ToolModelInvoke,
     WorkflowToolProvider,
 )
+from .trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient, TriggerSubscription
 from .web import PinnedConversation, SavedMessage
 from .workflow import (
+    AppTrigger,
+    AppTriggerStatus,
+    AppTriggerType,
     ConversationVariable,
     Workflow,
     WorkflowAppLog,
@@ -104,9 +108,12 @@ __all__ = [
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
     "AppDatasetJoin",
-    "AppMCPServer",  # Added
+    "AppMCPServer",
     "AppMode",
     "AppModelConfig",
+    "AppTrigger",
+    "AppTriggerStatus",
+    "AppTriggerType",
     "BuiltinToolProvider",
     "CeleryTask",
     "CeleryTaskSet",
@@ -165,6 +172,9 @@ __all__ = [
     "ToolLabelBinding",
     "ToolModelInvoke",
     "TraceAppConfig",
+    "TriggerOAuthSystemClient",
+    "TriggerOAuthTenantClient",
+    "TriggerSubscription",
     "UploadFile",
     "UserFrom",
     "Whitelist",

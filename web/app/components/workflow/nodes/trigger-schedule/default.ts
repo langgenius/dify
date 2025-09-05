@@ -1,9 +1,10 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { ScheduleTriggerNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
+import { getDefaultScheduleConfig } from './constants'
 const isValidTimeFormat = (time: string): boolean => {
   const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
   if (!timeRegex.test(time)) return false
@@ -19,24 +20,8 @@ const isValidTimeFormat = (time: string): boolean => {
 }
 
 const validateHourlyConfig = (config: any, t: any): string => {
-  const i18nPrefix = 'workflow.errorMsg'
-
-  if (!config.datetime)
-    return t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.startTime') })
-
-  const startTime = new Date(config.datetime)
-  if (Number.isNaN(startTime.getTime()))
-    return t('workflow.nodes.triggerSchedule.invalidStartTime')
-
-  if (startTime <= new Date())
-    return t('workflow.nodes.triggerSchedule.startTimeMustBeFuture')
-
-  const recurEvery = config.recur_every || 1
-  if (recurEvery < 1 || recurEvery > 999)
-    return t('workflow.nodes.triggerSchedule.invalidRecurEvery')
-
-  if (!config.recur_unit || !['hours', 'minutes'].includes(config.recur_unit))
-    return t('workflow.nodes.triggerSchedule.invalidRecurUnit')
+  if (config.on_minute === undefined || config.on_minute < 0 || config.on_minute > 59)
+    return t('workflow.nodes.triggerSchedule.invalidOnMinute')
 
   return ''
 }
@@ -97,22 +82,6 @@ const validateMonthlyConfig = (config: any, t: any): string => {
   return ''
 }
 
-const validateOnceConfig = (config: any, t: any): string => {
-  const i18nPrefix = 'workflow.errorMsg'
-
-  if (!config.datetime)
-    return t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.executionTime') })
-
-  const executionTime = new Date(config.datetime)
-  if (Number.isNaN(executionTime.getTime()))
-    return t('workflow.nodes.triggerSchedule.invalidExecutionTime')
-
-  if (executionTime <= new Date())
-    return t('workflow.nodes.triggerSchedule.executionTimeMustBeFuture')
-
-  return ''
-}
-
 const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string => {
   const i18nPrefix = 'workflow.errorMsg'
   const { visual_config } = payload
@@ -129,8 +98,6 @@ const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string 
       return validateWeeklyConfig(visual_config, t)
     case 'monthly':
       return validateMonthlyConfig(visual_config, t)
-    case 'once':
-      return validateOnceConfig(visual_config, t)
     default:
       return t('workflow.nodes.triggerSchedule.invalidFrequency')
   }
@@ -138,23 +105,17 @@ const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string 
 
 const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
   defaultValue: {
-    mode: 'visual',
-    frequency: 'daily',
+    ...getDefaultScheduleConfig(),
     cron_expression: '',
-    visual_config: {
-      time: '11:30 AM',
-      weekdays: ['sun'],
-    },
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    enabled: true,
-  },
+    timezone: 'UTC',
+  } as ScheduleTriggerNodeType,
   getAvailablePrevNodes(_isChatMode: boolean) {
     return []
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
+      ? []
+      : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes.filter(type => type !== BlockEnum.Start)
   },
   checkValid(payload: ScheduleTriggerNodeType, t: any) {
@@ -169,7 +130,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
       try {
         Intl.DateTimeFormat(undefined, { timeZone: payload.timezone })
       }
- catch {
+      catch {
         errorMessages = t('workflow.nodes.triggerSchedule.invalidTimezone')
       }
     }
@@ -177,13 +138,13 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
       if (payload.mode === 'cron') {
         if (!payload.cron_expression || payload.cron_expression.trim() === '')
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.cronExpression') })
-         else if (!isValidCronExpression(payload.cron_expression))
+        else if (!isValidCronExpression(payload.cron_expression))
           errorMessages = t('workflow.nodes.triggerSchedule.invalidCronExpression')
       }
- else if (payload.mode === 'visual') {
+      else if (payload.mode === 'visual') {
         if (!payload.frequency)
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.frequency') })
-         else
+        else
           errorMessages = validateVisualConfig(payload, t)
       }
     }
@@ -193,7 +154,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
         if (nextTimes.length === 0)
           errorMessages = t('workflow.nodes.triggerSchedule.noValidExecutionTime')
       }
- catch {
+      catch {
         errorMessages = t('workflow.nodes.triggerSchedule.executionTimeCalculationError')
       }
     }

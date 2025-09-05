@@ -16,7 +16,8 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
     const newSelected = current.includes(day)
       ? current.filter(d => d !== day)
       : [...current, day]
-    onChange(newSelected)
+    // Ensure at least one day is selected (consistent with WeekdaySelector)
+    onChange(newSelected.length > 0 ? newSelected : [day])
   }
 
   const isDaySelected = (day: number | 'last') => selectedDays?.includes(day) || false
@@ -73,6 +74,15 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
           </div>
         ))}
       </div>
+
+      {/* Warning message for day 31 - aligned with grid */}
+      {selectedDays?.includes(31) && (
+        <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+          <div className="col-span-7 text-xs text-gray-500">
+            {t('workflow.nodes.triggerSchedule.lastDayTooltip')}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
 import Loading from '@/app/components/base/loading'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
+import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { ToastContext } from '@/app/components/base/toast'
 import {
   fetchAppDetail,
@@ -33,6 +34,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const showMCPCard = isInPanel
+  const showTriggerCard = isInPanel && appDetail?.mode === 'workflow'
 
   const updateAppDetail = async () => {
     try {
@@ -122,6 +124,11 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       />
       {showMCPCard && (
         <MCPServiceCard
+          appInfo={appDetail}
+        />
+      )}
+      {showTriggerCard && (
+        <TriggerCard
           appInfo={appDetail}
         />
       )}

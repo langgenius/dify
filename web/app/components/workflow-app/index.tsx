@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useEffect,
   useMemo,
 } from 'react'
 import useSWR from 'swr'
@@ -10,6 +11,7 @@ import {
 import {
   useWorkflowInit,
 } from './hooks'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   initialEdges,
   initialNodes,
@@ -32,8 +34,23 @@ const WorkflowAppWithAdditionalContext = () => {
     data,
     isLoading,
   } = useWorkflowInit()
+  const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Reset the loaded flag when component unmounts
+      workflowStore.setState({ isWorkflowDataLoaded: false })
+
+      // Cancel any pending debounced sync operations
+      const { debouncedSyncWorkflowDraft } = workflowStore.getState()
+      // The debounced function from lodash has a cancel method
+      if (debouncedSyncWorkflowDraft && 'cancel' in debouncedSyncWorkflowDraft)
+        (debouncedSyncWorkflowDraft as any).cancel()
+    }
+  }, [workflowStore])
 
   const nodesData = useMemo(() => {
     if (data)

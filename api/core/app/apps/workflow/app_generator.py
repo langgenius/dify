@@ -54,6 +54,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
+        root_node_id: Optional[str] = None,
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
@@ -68,6 +70,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
+        root_node_id: Optional[str] = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -82,6 +86,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
+        root_node_id: Optional[str] = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
@@ -95,6 +101,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
+        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
+        root_node_id: Optional[str] = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -130,17 +138,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
             **extract_external_trace_id_from_args(args),
         }
         workflow_run_id = str(uuid.uuid4())
+        if triggered_from in (WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN):
+            # start node get inputs
+            inputs = self._prepare_user_inputs(
+                user_inputs=inputs,
+                variables=app_config.variables,
+                tenant_id=app_model.tenant_id,
+                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+            )
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             file_upload_config=file_extra_config,
-            inputs=self._prepare_user_inputs(
-                user_inputs=inputs,
-                variables=app_config.variables,
-                tenant_id=app_model.tenant_id,
-                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
-            ),
+            inputs=inputs,
             files=list(system_files),
             user_id=user.id,
             stream=streaming,
@@ -159,7 +170,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        if invoke_from == InvokeFrom.DEBUGGER:
+        if triggered_from is not None:
+            # Use explicitly provided triggered_from (for async triggers)
+            workflow_triggered_from = triggered_from
+        elif invoke_from == InvokeFrom.DEBUGGER:
             workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
         else:
             workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
@@ -187,6 +201,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             workflow_thread_pool_id=workflow_thread_pool_id,
+            root_node_id=root_node_id,
         )
 
     def _generate(
@@ -202,6 +217,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         workflow_thread_pool_id: Optional[str] = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        root_node_id: Optional[str] = None,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -239,6 +255,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "context": context,
                 "workflow_thread_pool_id": workflow_thread_pool_id,
                 "variable_loader": variable_loader,
+                "root_node_id": root_node_id,
             },
         )
 
@@ -435,6 +452,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         context: contextvars.Context,
         variable_loader: VariableLoader,
         workflow_thread_pool_id: Optional[str] = None,
+        root_node_id: Optional[str] = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -478,6 +496,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 variable_loader=variable_loader,
                 workflow=workflow,
                 system_user_id=system_user_id,
+                root_node_id=root_node_id,
             )
 
             try:

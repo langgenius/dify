@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
@@ -79,7 +79,7 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
 
-    def _init_graph(self, graph_config: Mapping[str, Any]) -> Graph:
+    def _init_graph(self, graph_config: Mapping[str, Any], root_node_id: Optional[str] = None) -> Graph:
         """
         Init graph
         """
@@ -92,7 +92,7 @@ class WorkflowBasedAppRunner:
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
         # init graph
-        graph = Graph.init(graph_config=graph_config)
+        graph = Graph.init(graph_config=graph_config, root_node_id=root_node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")

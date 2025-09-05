@@ -134,7 +134,7 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
         }
       })
     }
- else {
+    else {
       // Leaf node - add iteration/loop children if any
       if (root.data.type === BlockEnum.Iteration)
         list.push(...nodes.filter(node => node.parentId === root.id))

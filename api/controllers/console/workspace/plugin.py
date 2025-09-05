@@ -2,7 +2,7 @@ import io
 
 from flask import request, send_file
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -516,6 +516,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         parser.add_argument("provider", type=str, required=True, location="args")
         parser.add_argument("action", type=str, required=True, location="args")
         parser.add_argument("parameter", type=str, required=True, location="args")
+        parser.add_argument("extra", type=dict, required=False, location="args")
         parser.add_argument("provider_type", type=str, required=True, location="args")
         args = parser.parse_args()
 
@@ -527,6 +528,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 args["provider"],
                 args["action"],
                 args["parameter"],
+                args["extra"],
                 args["provider_type"],
             )
         except PluginDaemonClientSideError as e:

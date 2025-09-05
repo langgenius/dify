@@ -44,6 +44,8 @@ type NodeSelectorProps = {
   disabled?: boolean
   noBlocks?: boolean
   showStartTab?: boolean
+  defaultActiveTab?: TabsEnum
+  forceShowStartContent?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -61,6 +63,8 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   disabled,
   noBlocks = false,
   showStartTab = false,
+  defaultActiveTab,
+  forceShowStartContent = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -87,7 +91,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     onSelect(type, toolDefaultValue)
   }, [handleOpenChange, onSelect])
 
-  const [activeTab, setActiveTab] = useState(noBlocks ? TabsEnum.Tools : TabsEnum.Blocks)
+  const [activeTab, setActiveTab] = useState(
+    defaultActiveTab || (noBlocks ? TabsEnum.Tools : TabsEnum.Blocks),
+  )
   const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
     setActiveTab(newActiveTab)
   }, [])
@@ -131,13 +137,24 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
+        <div className={`rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
           <Tabs
             activeTab={activeTab}
             onActiveTabChange={handleActiveTabChange}
             filterElem={
               <div className='relative m-2' onClick={e => e.stopPropagation()}>
-                {(activeTab === TabsEnum.Start || activeTab === TabsEnum.Blocks) && (
+                {activeTab === TabsEnum.Start && (
+                  <SearchBox
+                    search={searchText}
+                    onSearchChange={setSearchText}
+                    tags={tags}
+                    onTagsChange={setTags}
+                    size='small'
+                    placeholder={searchPlaceholder}
+                    inputClassName='grow'
+                  />
+                )}
+                {activeTab === TabsEnum.Blocks && (
                   <Input
                     showLeftIcon
                     showClearIcon
@@ -155,7 +172,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     tags={tags}
                     onTagsChange={setTags}
                     size='small'
-                    placeholder={t('plugin.searchTools')!}
+                    placeholder={searchPlaceholder}
                     inputClassName='grow'
                   />
                 )}
@@ -167,6 +184,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
             showStartTab={showStartTab}
+            forceShowStartContent={forceShowStartContent}
           />
         </div>
       </PortalToFollowElemContent>

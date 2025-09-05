@@ -1,5 +1,5 @@
 'use client'
-import { RiCloseLine, RiSearchLine } from '@remixicon/react'
+import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import TagsFilter from './tags-filter'
 import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
@@ -48,7 +48,7 @@ const SearchBox = ({
             <RiSearchLine className='mr-1.5 size-4 text-text-placeholder' />
             <input
               className={cn(
-                'body-md-medium block grow appearance-none bg-transparent text-text-secondary outline-none',
+                'system-sm-regular block grow appearance-none bg-transparent text-text-secondary outline-none',
               )}
               value={search}
               onChange={(e) => {
@@ -58,10 +58,8 @@ const SearchBox = ({
             />
             {
               search && (
-                <div className='absolute right-2 top-1/2 -translate-y-1/2'>
-                  <ActionButton onClick={() => onSearchChange('')}>
-                    <RiCloseLine className='h-4 w-4' />
-                  </ActionButton>
+                <div className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')} onClick={() => onSearchChange('')}>
+                  <RiCloseCircleFill className='h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary' />
                 </div>
               )
             }

@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 import sqlalchemy as sa
-from flask_login import current_user
-from sqlalchemy import DateTime, orm
+from sqlalchemy import DateTime, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -18,7 +17,6 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIAB
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_tenant_id
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
@@ -40,7 +38,7 @@ from .engine import db
 from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class WorkflowType(Enum):
@@ -338,12 +336,13 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return (
-            db.session.query(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
-            .count()
-            > 0
+        stmt = select(
+            exists().where(
+                WorkflowToolProvider.tenant_id == self.tenant_id,
+                WorkflowToolProvider.app_id == self.app_id,
+            )
         )
+        return db.session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
@@ -351,8 +350,8 @@ class Workflow(Base):
         if self._environment_variables is None:
             self._environment_variables = "{}"
 
-        # Get tenant_id from current_user (Account or EndUser)
-        tenant_id = extract_tenant_id(current_user)
+        # Use workflow.tenant_id to avoid relying on request user in background threads
+        tenant_id = self.tenant_id
 
         if not tenant_id:
             return []
@@ -382,8 +381,8 @@ class Workflow(Base):
             self._environment_variables = "{}"
             return
 
-        # Get tenant_id from current_user (Account or EndUser)
-        tenant_id = extract_tenant_id(current_user)
+        # Use workflow.tenant_id to avoid relying on request user in background threads
+        tenant_id = self.tenant_id
 
         if not tenant_id:
             self._environment_variables = "{}"
@@ -923,7 +922,7 @@ def _naive_utc_datetime():
 
 class WorkflowDraftVariable(Base):
     """`WorkflowDraftVariable` record variables and outputs generated during
-    debugging worfklow or chatflow.
+    debugging workflow or chatflow.
 
     IMPORTANT: This model maintains multiple invariant rules that must be preserved.
     Do not instantiate this class directly with the constructor.
@@ -1057,7 +1056,7 @@ class WorkflowDraftVariable(Base):
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
         if not isinstance(selector, list):
-            _logger.error(
+            logger.error(
                 "invalid selector loaded from database, type=%s, value=%s",
                 type(selector),
                 self.selector,
@@ -1264,3 +1263,265 @@ class WorkflowDraftVariable(Base):
 
 def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
+
+
+class WorkflowTriggerStatus(StrEnum):
+    """Workflow Trigger Execution Status"""
+
+    PENDING = "pending"
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    RATE_LIMITED = "rate_limited"
+    RETRYING = "retrying"
+
+
+class WorkflowTriggerLog(Base):
+    """
+    Workflow Trigger Log
+
+    Track async trigger workflow runs with re-invocation capability
+
+    Attributes:
+    - id (uuid) Trigger Log ID (used as workflow_trigger_log_id)
+    - tenant_id (uuid) Workspace ID
+    - app_id (uuid) App ID
+    - workflow_id (uuid) Workflow ID
+    - workflow_run_id (uuid) Optional - Associated workflow run ID when execution starts
+    - root_node_id (string) Optional - Custom starting node ID for workflow execution
+    - trigger_type (string) Type of trigger: webhook, schedule, plugin
+    - trigger_data (text) Full trigger data including inputs (JSON)
+    - inputs (text) Input parameters (JSON)
+    - outputs (text) Optional - Output content (JSON)
+    - status (string) Execution status
+    - error (text) Optional - Error message if failed
+    - queue_name (string) Celery queue used
+    - celery_task_id (string) Optional - Celery task ID for tracking
+    - retry_count (int) Number of retry attempts
+    - elapsed_time (float) Optional - Time consumption in seconds
+    - total_tokens (int) Optional - Total tokens used
+    - created_by_role (string) Creator role: account, end_user
+    - created_by (string) Creator ID
+    - created_at (timestamp) Creation time
+    - triggered_at (timestamp) Optional - When actually triggered
+    - finished_at (timestamp) Optional - Completion time
+    """
+
+    __tablename__ = "workflow_trigger_logs"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_trigger_log_pkey"),
+        sa.Index("workflow_trigger_log_tenant_app_idx", "tenant_id", "app_id"),
+        sa.Index("workflow_trigger_log_status_idx", "status"),
+        sa.Index("workflow_trigger_log_created_at_idx", "created_at"),
+        sa.Index("workflow_trigger_log_workflow_run_idx", "workflow_run_id"),
+        sa.Index("workflow_trigger_log_workflow_id_idx", "workflow_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    root_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    trigger_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    trigger_data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Full TriggerData as JSON
+    inputs: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Just inputs for easy viewing
+    outputs: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default=WorkflowTriggerStatus.PENDING)
+    error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+
+    queue_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    celery_task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    retry_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+
+    elapsed_time: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    total_tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    @property
+    def created_by_account(self):
+        created_by_role = CreatorUserRole(self.created_by_role)
+        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+
+    @property
+    def created_by_end_user(self):
+        from models.model import EndUser
+
+        created_by_role = CreatorUserRole(self.created_by_role)
+        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API responses"""
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "app_id": self.app_id,
+            "workflow_id": self.workflow_id,
+            "workflow_run_id": self.workflow_run_id,
+            "trigger_type": self.trigger_type,
+            "trigger_data": json.loads(self.trigger_data),
+            "inputs": json.loads(self.inputs),
+            "outputs": json.loads(self.outputs) if self.outputs else None,
+            "status": self.status,
+            "error": self.error,
+            "queue_name": self.queue_name,
+            "celery_task_id": self.celery_task_id,
+            "retry_count": self.retry_count,
+            "elapsed_time": self.elapsed_time,
+            "total_tokens": self.total_tokens,
+            "created_by_role": self.created_by_role,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "triggered_at": self.triggered_at.isoformat() if self.triggered_at else None,
+            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+        }
+
+
+class WorkflowWebhookTrigger(Base):
+    """
+    Workflow Webhook Trigger
+
+    Attributes:
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Node ID which node in the workflow
+    - tenant_id (uuid) Workspace ID
+    - webhook_id (varchar) Webhook ID for URL: https://api.dify.ai/triggers/webhook/:webhook_id
+    - triggered_by (varchar) Environment: debugger or production
+    - created_by (varchar) User ID of the creator
+    - created_at (timestamp) Creation time
+    - updated_at (timestamp) Last update time
+    """
+
+    __tablename__ = "workflow_webhook_triggers"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_webhook_trigger_pkey"),
+        sa.Index("workflow_webhook_trigger_tenant_idx", "tenant_id"),
+        sa.UniqueConstraint("app_id", "node_id", "triggered_by", name="uniq_node"),
+        sa.UniqueConstraint("webhook_id", name="uniq_webhook_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
+    triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
+
+
+class WorkflowPluginTrigger(Base):
+    """
+    Workflow Plugin Trigger
+
+    Maps plugin triggers to workflow nodes, similar to WorkflowWebhookTrigger
+
+    Attributes:
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Node ID which node in the workflow
+    - tenant_id (uuid) Workspace ID
+    - provider_id (varchar) Plugin provider ID
+    - trigger_id (varchar) trigger id (github_issues_trigger)
+    - subscription_id (varchar) Subscription ID
+    - created_at (timestamp) Creation time
+    - updated_at (timestamp) Last update time
+    """
+
+    __tablename__ = "workflow_plugin_triggers"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_plugin_trigger_pkey"),
+        sa.Index("workflow_plugin_trigger_tenant_subscription_idx", "tenant_id", "subscription_id", "trigger_id"),
+        sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node_subscription"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    trigger_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    subscription_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
+
+
+class AppTriggerType(StrEnum):
+    """App Trigger Type Enum"""
+
+    TRIGGER_WEBHOOK = "trigger-webhook"
+    TRIGGER_SCHEDULE = "trigger-schedule"
+    TRIGGER_PLUGIN = "trigger-plugin"
+
+
+class AppTriggerStatus(StrEnum):
+    """App Trigger Status Enum"""
+
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+    UNAUTHORIZED = "unauthorized"
+
+
+class AppTrigger(Base):
+    """
+    App Trigger
+
+    Manages multiple triggers for an app with enable/disable and authorization states.
+
+    Attributes:
+    - id (uuid) Primary key
+    - tenant_id (uuid) Workspace ID
+    - app_id (uuid) App ID
+    - trigger_type (string) Type: webhook, schedule, plugin
+    - title (string) Trigger title
+
+    - status (string) Status: enabled, disabled, unauthorized, error
+    - node_id (string) Optional workflow node ID
+    - created_at (timestamp) Creation time
+    - updated_at (timestamp) Last update time
+    """
+
+    __tablename__ = "app_triggers"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_trigger_pkey"),
+        sa.Index("app_trigger_tenant_app_idx", "tenant_id", "app_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=False)
+    trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(255), server_default="", nullable=True)
+    status: Mapped[str] = mapped_column(
+        EnumText(AppTriggerStatus, length=50), nullable=False, default=AppTriggerStatus.DISABLED
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=naive_utc_now(),
+        server_onupdate=func.current_timestamp(),
+    )

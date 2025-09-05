@@ -17,7 +17,6 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
     { value: 'daily', name: t('workflow.nodes.triggerSchedule.frequency.daily') },
     { value: 'weekly', name: t('workflow.nodes.triggerSchedule.frequency.weekly') },
     { value: 'monthly', name: t('workflow.nodes.triggerSchedule.frequency.monthly') },
-    { value: 'once', name: t('workflow.nodes.triggerSchedule.frequency.once') },
   ], [t])
 
   return (

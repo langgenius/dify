@@ -22,8 +22,10 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 
 import {
+  AGENT_OUTPUT_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
@@ -56,11 +58,13 @@ export const hasValidChildren = (children: any): boolean => {
   )
 }
 
-const inputVarTypeToVarType = (type: InputVarType): VarType => {
+export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
+    [InputVarType.checkbox]: VarType.boolean,
     [InputVarType.singleFile]: VarType.file,
     [InputVarType.multiFiles]: VarType.arrayFile,
+    [InputVarType.jsonObject]: VarType.object,
   } as any)[type] || VarType.string
 }
 
@@ -227,14 +231,27 @@ const formatItem = (
         variables,
       } = data as StartNodeType
       res.vars = variables.map((v) => {
-        return {
+        const type = inputVarTypeToVarType(v.type)
+        const varRes: Var = {
           variable: v.variable,
-          type: inputVarTypeToVarType(v.type),
+          type,
           isParagraph: v.type === InputVarType.paragraph,
           isSelect: v.type === InputVarType.select,
           options: v.options,
           required: v.required,
         }
+        try {
+          if(type === VarType.object && v.json_schema) {
+            varRes.children = {
+              schema: JSON.parse(v.json_schema),
+            }
+          }
+        }
+        catch (error) {
+          console.error('Error formatting variable:', error)
+        }
+
+        return varRes
       })
       if (isChatMode) {
         res.vars.push({
@@ -269,6 +286,26 @@ const formatItem = (
       res.vars.push({
         variable: 'sys.workflow_run_id',
         type: VarType.string,
+      })
+
+      break
+    }
+
+    case BlockEnum.TriggerWebhook: {
+      const {
+        variables = [],
+      } = data as WebhookTriggerNodeType
+      res.vars = variables.map((v) => {
+        const type = v.value_type || VarType.string
+        const varRes: Var = {
+          variable: v.variable,
+          type,
+          isParagraph: false,
+          isSelect: false,
+          options: v.options,
+          required: v.required,
+        }
+        return varRes
       })
 
       break
@@ -498,6 +535,7 @@ const formatItem = (
       res.vars = [
         ...outputs,
         ...TOOL_OUTPUT_STRUCT,
+        ...AGENT_OUTPUT_STRUCT,
       ]
       break
     }
@@ -677,9 +715,9 @@ const getIterationItemType = ({
       curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
 
       if (isLast)
-      arrayType = curr?.type
+        arrayType = curr?.type
       else if (curr?.type === VarType.object || curr?.type === VarType.file)
-      curr = curr.children || []
+        curr = curr.children || []
     }
   }
 
@@ -688,6 +726,8 @@ const getIterationItemType = ({
       return VarType.string
     case VarType.arrayNumber:
       return VarType.number
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
@@ -741,6 +781,8 @@ const getLoopItemType = ({
       return VarType.number
     case VarType.arrayObject:
       return VarType.object
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.array:
       return VarType.any
     case VarType.arrayFile:

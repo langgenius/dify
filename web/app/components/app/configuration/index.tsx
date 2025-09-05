@@ -60,7 +60,6 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { fetchCollectionList } from '@/service/tools'
 import type { Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
@@ -82,6 +81,7 @@ import { supportFunctionCall } from '@/utils/tool-call'
 import { MittProvider } from '@/context/mitt-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
+import { fetchCollectionList } from '@/service/tools'
 import { useAppContext } from '@/context/app-context'
 
 type PublishConfig = {
