@@ -39,7 +39,7 @@ class ModelConfigResource(Resource):
         )
         new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 
-        if app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
+        if app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
             # get original app model config
             original_app_model_config = (
                 db.session.query(AppModelConfig).where(AppModelConfig.id == app_model.app_model_config_id).first()

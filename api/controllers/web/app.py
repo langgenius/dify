@@ -38,7 +38,7 @@ class AppParameterApi(WebApiResource):
     @marshal_with(fields.parameters_fields)
     def get(self, app_model: App, end_user):
         """Retrieve app parameters."""
-        if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()

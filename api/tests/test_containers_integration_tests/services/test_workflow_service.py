@@ -96,7 +96,7 @@ class TestWorkflowService:
         app.tenant_id = fake.uuid4()
         app.name = fake.company()
         app.description = fake.text()
-        app.mode = AppMode.WORKFLOW.value
+        app.mode = AppMode.WORKFLOW
         app.icon_type = "emoji"
         app.icon = "🤖"
         app.icon_background = "#FFEAD5"
@@ -883,7 +883,7 @@ class TestWorkflowService:
 
         # Create chat mode app
         app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.CHAT.value
+        app.mode = AppMode.CHAT
 
         # Create app model config (required for conversion)
         from models.model import AppModelConfig
@@ -926,7 +926,7 @@ class TestWorkflowService:
 
         # Assert
         assert result is not None
-        assert result.mode == AppMode.ADVANCED_CHAT.value  # CHAT mode converts to ADVANCED_CHAT, not WORKFLOW
+        assert result.mode == AppMode.ADVANCED_CHAT  # CHAT mode converts to ADVANCED_CHAT, not WORKFLOW
         assert result.name == conversion_args["name"]
         assert result.icon == conversion_args["icon"]
         assert result.icon_type == conversion_args["icon_type"]
@@ -945,7 +945,7 @@ class TestWorkflowService:
 
         # Create completion mode app
         app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.COMPLETION.value
+        app.mode = AppMode.COMPLETION
 
         # Create app model config (required for conversion)
         from models.model import AppModelConfig
@@ -988,7 +988,7 @@ class TestWorkflowService:
 
         # Assert
         assert result is not None
-        assert result.mode == AppMode.WORKFLOW.value
+        assert result.mode == AppMode.WORKFLOW
         assert result.name == conversion_args["name"]
         assert result.icon == conversion_args["icon"]
         assert result.icon_type == conversion_args["icon_type"]
@@ -1007,7 +1007,7 @@ class TestWorkflowService:
 
         # Create workflow mode app (already in workflow mode)
         app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.WORKFLOW.value
+        app.mode = AppMode.WORKFLOW
 
         from extensions.ext_database import db
 
@@ -1030,7 +1030,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.ADVANCED_CHAT.value
+        app.mode = AppMode.ADVANCED_CHAT
 
         from extensions.ext_database import db
 
@@ -1061,7 +1061,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.WORKFLOW.value
+        app.mode = AppMode.WORKFLOW
 
         from extensions.ext_database import db
 

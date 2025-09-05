@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class AudioService:
     @classmethod
     def transcript_asr(cls, app_model: App, file: FileStorage, end_user: Optional[str] = None):
-        if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise ValueError("Speech to text is not enabled")
@@ -86,7 +86,7 @@ class AudioService:
         def invoke_tts(text_content: str, app_model: App, voice: Optional[str] = None, is_draft: bool = False):
             with app.app_context():
                 if voice is None:
-                    if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+                    if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
                         if is_draft:
                             workflow = WorkflowService().get_draft_workflow(app_model=app_model)
                         else:

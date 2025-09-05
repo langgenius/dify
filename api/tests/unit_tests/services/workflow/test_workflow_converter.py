@@ -66,7 +66,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     app_model = MagicMock()
     app_model.id = "app_id"
     app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.CHAT.value
+    app_model.mode = AppMode.CHAT
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
@@ -127,7 +127,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
     app_model = MagicMock()
     app_model.id = "app_id"
     app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.WORKFLOW.value
+    app_model.mode = AppMode.WORKFLOW
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
