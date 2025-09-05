@@ -74,7 +74,7 @@ const FormContentPreview: FC<Props> = ({
             </Button>
           ))}
         </div>
-        <div className='system-xs-regular mt-1 px-4 text-text-tertiary'>In preview mode, action buttons are not functional.</div>
+        <div className='system-xs-regular mt-1 text-text-tertiary'>{t('workflow.nodes.humanInput.editor.previewTip')}</div>
       </div>
     </div>
   )

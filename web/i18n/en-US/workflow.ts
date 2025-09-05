@@ -994,6 +994,7 @@ const translation = {
       },
       editor: {
         notes: 'notes',
+        previewTip: 'In preview mode, action buttons are not functional.',
       },
       errorMsg: {
         noDeliveryMethod: 'Please select at least one delivery method',

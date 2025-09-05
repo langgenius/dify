@@ -994,6 +994,7 @@ const translation = {
       },
       editor: {
         notes: ' 笔记',
+        previewTip: '在预览模式下，操作按钮无法使用。',
       },
       errorMsg: {
         noDeliveryMethod: '请至少选择一种提交方式',
