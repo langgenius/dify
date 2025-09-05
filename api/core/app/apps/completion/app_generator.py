@@ -262,6 +262,9 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             raise MessageNotExistsError()
 
         current_app_model_config = app_model.app_model_config
+        if not current_app_model_config:
+            raise MoreLikeThisDisabledError()
+
         more_like_this = current_app_model_config.more_like_this_dict
 
         if not current_app_model_config.more_like_this or more_like_this.get("enabled", False) is False:

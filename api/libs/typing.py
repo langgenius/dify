@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Index, PrimaryKeyConstraint
 
 
-def is_table_args_tuple(value: Any) -> TypeGuard[tuple["PrimaryKeyConstraint", "Index", ...]]:
+def is_table_args_tuple(value: Any) -> TypeGuard[tuple["PrimaryKeyConstraint", "Index"]]:
     """Type guard for checking if a value is a valid __table_args__ tuple."""
     from sqlalchemy import Index, PrimaryKeyConstraint
 
