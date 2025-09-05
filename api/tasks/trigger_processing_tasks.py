@@ -25,7 +25,7 @@ TRIGGER_QUEUE = "triggered_workflow_dispatcher"
 
 
 @shared_task(queue=TRIGGER_QUEUE, bind=True, max_retries=3)
-def process_triggers_async(
+def dispatch_triggered_workflows_async(
     self,
     endpoint_id: str,
     provider_id: str,
@@ -34,21 +34,21 @@ def process_triggers_async(
     request_id: str,
 ) -> dict:
     """
-    Process triggers asynchronously.
+    Dispatch triggers asynchronously.
 
     Args:
         endpoint_id: Endpoint ID
         provider_id: Provider ID
         subscription_id: Subscription ID
-        triggers: List of triggers to process
+        triggers: List of triggers to dispatch
         request_id: Unique ID of the stored request
 
     Returns:
-        dict: Execution result with status and processed trigger count
+        dict: Execution result with status and dispatched trigger count
     """
     try:
         logger.info(
-            "Starting async trigger processing for endpoint=%s, triggers=%s, request_id=%s",
+            "Starting async trigger dispatching for endpoint=%s, triggers=%s, request_id=%s",
             endpoint_id,
             triggers,
             request_id,
@@ -70,21 +70,20 @@ def process_triggers_async(
                 return {"status": "failed", "error": "Subscription not found"}
 
             # Get controller
-            provider_id_obj = TriggerProviderID(provider_id)
-            controller = TriggerManager.get_trigger_provider(subscription.tenant_id, provider_id_obj)
+            controller = TriggerManager.get_trigger_provider(subscription.tenant_id, TriggerProviderID(provider_id))
             if not controller:
                 logger.error("Controller not found for provider: %s", provider_id)
                 return {"status": "failed", "error": "Controller not found"}
 
-            # Process each trigger
-            processed_count = 0
-            for trigger_name in triggers:
+            # Dispatch each trigger
+            dispatched_count = 0
+            for trigger in triggers:
                 try:
-                    trigger = controller.get_trigger(trigger_name)
+                    trigger = controller.get_trigger(trigger)
                     if trigger is None:
                         logger.error(
                             "Trigger '%s' not found in provider '%s'",
-                            trigger_name,
+                            trigger,
                             provider_id,
                         )
                         continue
@@ -94,20 +93,20 @@ def process_triggers_async(
                         trigger=trigger,
                         request=request,
                     )
-                    processed_count += 1
+                    dispatched_count += 1
 
                 except Exception:
                     logger.exception(
-                        "Failed to process trigger '%s' for subscription %s",
-                        trigger_name,
+                        "Failed to dispatch trigger '%s' for subscription %s",
+                        trigger,
                         subscription_id,
                     )
                     # Continue processing other triggers even if one fails
                     continue
 
             logger.info(
-                "Completed async trigger processing: processed %d/%d triggers",
-                processed_count,
+                "Completed async trigger dispatching: processed %d/%d triggers",
+                dispatched_count,
                 len(triggers),
             )
 
@@ -118,13 +117,13 @@ def process_triggers_async(
 
             return {
                 "status": "completed",
-                "processed_count": processed_count,
+                "dispatched_count": dispatched_count,
                 "total_count": len(triggers),
             }
 
     except Exception as e:
         logger.exception(
-            "Error in async trigger processing for endpoint %s",
+            "Error in async trigger dispatching for endpoint %s",
             endpoint_id,
         )
         # Retry the task if not exceeded max retries
