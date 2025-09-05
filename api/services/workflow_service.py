@@ -522,7 +522,7 @@ class WorkflowService:
                 model_type=ModelType.LLM,
                 model=model_name,
             )
-            return provider_model_setting and provider_model_setting.load_balancing_enabled
+            return provider_model_setting is not None and provider_model_setting.load_balancing_enabled
 
         except Exception:
             # If we can't determine the status, assume load balancing is not enabled
