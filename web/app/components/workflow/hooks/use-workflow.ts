@@ -508,20 +508,20 @@ export const useToolIcon = (data: Node['data']) => {
   const toolIcon = useMemo(() => {
     if (!data)
       return ''
-    if (data.type === BlockEnum.Tool || data.type === BlockEnum.TriggerPlugin) {
-      let targetTools = workflowTools
 
-      if (data.type === BlockEnum.TriggerPlugin) {
-        targetTools = triggerPlugins || []
-      }
-      else {
-        if (data.provider_type === CollectionType.builtIn)
-          targetTools = buildInTools
-        else if (data.provider_type === CollectionType.custom)
-          targetTools = customTools
-        else if (data.provider_type === CollectionType.mcp)
-          targetTools = mcpTools
-      }
+    if (data.type === BlockEnum.TriggerPlugin) {
+      const targetTools = triggerPlugins || []
+      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
+    }
+
+    if (data.type === BlockEnum.Tool) {
+      let targetTools = workflowTools
+      if (data.provider_type === CollectionType.builtIn)
+        targetTools = buildInTools
+      else if (data.provider_type === CollectionType.custom)
+        targetTools = customTools
+      else if (data.provider_type === CollectionType.mcp)
+        targetTools = mcpTools
 
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
