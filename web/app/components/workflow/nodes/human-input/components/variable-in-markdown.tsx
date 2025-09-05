@@ -10,6 +10,7 @@ export function rehypeVariable() {
       const value = node.value
 
       variableRegex.lastIndex = 0
+      noteRegex.lastIndex = 0
       if(node.type === 'text' && variableRegex.test(value) && !noteRegex.test(value)) {
         let m: RegExpExecArray | null
         let last = 0
@@ -69,17 +70,6 @@ export function rehypeNotes() {
           if (m.index > last)
             parts.push({ type: 'text', value: value.slice(last, m.index) })
 
-          parts.push({
-            type: 'element',
-            tagName: 'h2',
-            properties: {},
-            children: [
-              {
-                type: 'text',
-                value: 'Notes',
-              },
-            ],
-          })
           const name = m[0].split('.').slice(-1)[0].replace('#}}', '')
           parts.push({
             type: 'element',
@@ -96,7 +86,7 @@ export function rehypeNotes() {
             parts.push({ type: 'text', value: value.slice(last) })
 
           parent.children.splice(index, 1, ...parts)
-          parent.tagName = 'div' // h2 can not in p
+          parent.tagName = 'div' // h2 can not in p. In note content include the h2
         }
       }
       if (node.children) {
@@ -124,11 +114,14 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
       .replace('#}}', '}}')}</span>
 }
 
-export const Note: React.FC<{ placeholder: FormInputItemPlaceholder }> = ({ placeholder }) => {
+export const Note: React.FC<{ placeholder: FormInputItemPlaceholder, title: string }> = ({ placeholder, title }) => {
   const isVariable = placeholder.type === 'variable'
   return (
-    <div className='mt-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2'>
-      {isVariable ? <Variable path={`{{${placeholder.selector.join('.')}}}`} /> : <span>{placeholder.value}</span>}
-    </div>
+    <>
+      <h2>{title}</h2>
+      <div className='mt-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2'>
+        {isVariable ? <Variable path={`{{${placeholder.selector.join('.')}}}`} /> : <span>{placeholder.value}</span>}
+      </div>
+    </>
   )
 }

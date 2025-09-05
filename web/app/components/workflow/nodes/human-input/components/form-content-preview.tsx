@@ -55,7 +55,12 @@ const FormContentPreview: FC<Props> = ({
                 )
               }
               const placeholder = input.placeholder
-              return <Note placeholder={placeholder!} />
+              return (
+                <Note
+                  placeholder={placeholder!}
+                  title={t('workflow.nodes.humanInput.editor.notes')}
+                />
+              )
             })(),
           }}
         />
