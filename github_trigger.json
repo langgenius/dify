@@ -1,0 +1,446 @@
+[
+    {
+        "author": "langgenius",
+        "name": "github_trigger",
+        "label": {
+            "en_US": "GitHub Triggers",
+            "zh_Hans": "GitHub \u89e6\u53d1\u5668",
+            "pt_BR": "GitHub Triggers",
+            "ja_JP": "GitHub Triggers"
+        },
+        "description": {
+            "en_US": "GitHub is an online software source code hosting service with webhook trigger support.",
+            "zh_Hans": "GitHub \u662f\u4e00\u4e2a\u5728\u7ebf\u8f6f\u4ef6\u6e90\u4ee3\u7801\u6258\u7ba1\u670d\u52a1\u5e73\u53f0\uff0c\u652f\u6301 webhook \u89e6\u53d1\u5668\u3002",
+            "pt_BR": "GitHub \u00e9 uma plataforma online para servi\u00e7os de hospedagem de c\u00f3digo fonte de software com suporte a triggers de webhook.",
+            "ja_JP": "GitHub is an online software source code hosting service with webhook trigger support."
+        },
+        "icon": "http:\/\/localhost:5001\/console\/api\/workspaces\/current\/plugin\/icon?tenant_id=136e9466-0322-4c81-9608-4e184fd0ebe9&filename=39caebfb135f32ef84814b28aadb2a992a00894f07ffd5d56a0e2b3e0d03ef8c.svg",
+        "icon_dark": null,
+        "tags": [
+            "utilities"
+        ],
+        "plugin_id": "langgenius\/github_trigger",
+        "plugin_unique_identifier": "langgenius\/github_trigger:0.0.2@81e506632f97c4cbfefa44107b2fbedaff5b74b5183c000d13eba10f47c1f603",
+        "credentials_schema": [
+            {
+                "type": "secret-input",
+                "name": "access_tokens",
+                "scope": null,
+                "required": true,
+                "default": null,
+                "options": null,
+                "label": {
+                    "en_US": "Access Tokens",
+                    "zh_Hans": "Access Tokens",
+                    "pt_BR": "Tokens de acesso",
+                    "ja_JP": "Access Tokens"
+                },
+                "help": {
+                    "en_US": "Get your Access Tokens from GitHub",
+                    "zh_Hans": "\u4ece GitHub \u83b7\u53d6\u60a8\u7684 Access Tokens",
+                    "pt_BR": "Obtenha sua chave da API do Google no Google",
+                    "ja_JP": "Get your Access Tokens from GitHub"
+                },
+                "url": "https:\/\/github.com\/settings\/tokens?type=beta",
+                "placeholder": {
+                    "en_US": "Please input your GitHub Access Tokens",
+                    "zh_Hans": "\u8bf7\u8f93\u5165\u4f60\u7684 GitHub Access Tokens",
+                    "pt_BR": "Insira seus Tokens de Acesso do GitHub",
+                    "ja_JP": "Please input your GitHub Access Tokens"
+                }
+            }
+        ],
+        "oauth_client_schema": [
+            {
+                "type": "secret-input",
+                "name": "client_id",
+                "scope": null,
+                "required": true,
+                "default": null,
+                "options": null,
+                "label": {
+                    "en_US": "Client ID",
+                    "zh_Hans": "Client ID",
+                    "pt_BR": "Client ID",
+                    "ja_JP": "Client ID"
+                },
+                "help": {
+                    "en_US": "Client ID is used to authenticate requests to the GitHub API.",
+                    "zh_Hans": "Client ID \u7528\u4e8e\u8ba4\u8bc1\u8bf7\u6c42\u5230 GitHub API\u3002",
+                    "pt_BR": "Client ID \u00e9 usado para autenticar solicita\u00e7\u00f5es \u00e0 API do GitHub.",
+                    "ja_JP": "Client ID is used to authenticate requests to the GitHub API."
+                },
+                "url": "https:\/\/github.com\/settings\/applications\/new",
+                "placeholder": {
+                    "en_US": "Please input your Client ID",
+                    "zh_Hans": "\u8bf7\u8f93\u5165\u4f60\u7684 Client ID",
+                    "pt_BR": "Insira seu Client ID",
+                    "ja_JP": "Please input your Client ID"
+                }
+            },
+            {
+                "type": "secret-input",
+                "name": "client_secret",
+                "scope": null,
+                "required": true,
+                "default": null,
+                "options": null,
+                "label": {
+                    "en_US": "Client Secret",
+                    "zh_Hans": "Client Secret",
+                    "pt_BR": "Client Secret",
+                    "ja_JP": "Client Secret"
+                },
+                "help": {
+                    "en_US": "Client Secret is used to authenticate requests to the GitHub API.",
+                    "zh_Hans": "Client Secret \u7528\u4e8e\u8ba4\u8bc1\u8bf7\u6c42\u5230 GitHub API\u3002",
+                    "pt_BR": "Client Secret \u00e9 usado para autenticar solicita\u00e7\u00f5es \u00e0 API do GitHub.",
+                    "ja_JP": "Client Secret is used to authenticate requests to the GitHub API."
+                },
+                "url": "https:\/\/github.com\/settings\/applications\/new",
+                "placeholder": {
+                    "en_US": "Please input your Client Secret",
+                    "zh_Hans": "\u8bf7\u8f93\u5165\u4f60\u7684 Client Secret",
+                    "pt_BR": "Insira seu Client Secret",
+                    "ja_JP": "Please input your Client Secret"
+                }
+            }
+        ],
+        "subscription_schema": {
+            "parameters_schema": [
+                {
+                    "name": "repository",
+                    "label": {
+                        "en_US": "Repository",
+                        "zh_Hans": "\u4ed3\u5e93",
+                        "pt_BR": "Reposit\u00f3rio",
+                        "ja_JP": "Repository"
+                    },
+                    "type": "dynamic-select",
+                    "auto_generate": null,
+                    "template": null,
+                    "scope": null,
+                    "required": true,
+                    "default": null,
+                    "min": null,
+                    "max": null,
+                    "precision": null,
+                    "options": null,
+                    "description": null
+                },
+                {
+                    "name": "events",
+                    "label": {
+                        "en_US": "Events to Listen",
+                        "zh_Hans": "\u76d1\u542c\u4e8b\u4ef6",
+                        "pt_BR": "Events to Listen",
+                        "ja_JP": "Events to Listen"
+                    },
+                    "type": "dynamic-select",
+                    "auto_generate": null,
+                    "template": null,
+                    "scope": null,
+                    "required": true,
+                    "default": [
+                        "issue_comment",
+                        "issues"
+                    ],
+                    "min": null,
+                    "max": null,
+                    "precision": null,
+                    "options": [
+                        {
+                            "value": "issue_comment",
+                            "label": {
+                                "en_US": "Issue Comments",
+                                "zh_Hans": "Issue \u8bc4\u8bba",
+                                "pt_BR": "Issue Comments",
+                                "ja_JP": "Issue Comments"
+                            },
+                            "icon": null
+                        },
+                        {
+                            "value": "issues",
+                            "label": {
+                                "en_US": "Issues",
+                                "zh_Hans": "Issues",
+                                "pt_BR": "Issues",
+                                "ja_JP": "Issues"
+                            },
+                            "icon": null
+                        },
+                        {
+                            "value": "pull_request",
+                            "label": {
+                                "en_US": "Pull Requests",
+                                "zh_Hans": "Pull Requests",
+                                "pt_BR": "Pull Requests",
+                                "ja_JP": "Pull Requests"
+                            },
+                            "icon": null
+                        },
+                        {
+                            "value": "push",
+                            "label": {
+                                "en_US": "Push",
+                                "zh_Hans": "\u63a8\u9001",
+                                "pt_BR": "Push",
+                                "ja_JP": "Push"
+                            },
+                            "icon": null
+                        }
+                    ],
+                    "description": null
+                }
+            ],
+            "properties_schema": [
+                {
+                    "type": "secret-input",
+                    "name": "webhook_secret",
+                    "scope": null,
+                    "required": false,
+                    "default": null,
+                    "options": null,
+                    "label": {
+                        "en_US": "Webhook Secret",
+                        "zh_Hans": "Webhook Secret",
+                        "pt_BR": "Webhook Secret",
+                        "ja_JP": "Webhook Secret"
+                    },
+                    "help": {
+                        "en_US": "Optional webhook secret for validating GitHub webhook requests",
+                        "zh_Hans": "\u53ef\u9009\u7684\u7528\u4e8e\u9a8c\u8bc1 GitHub webhook \u8bf7\u6c42\u7684 webhook \u5bc6\u94a5",
+                        "pt_BR": "Segredo opcional do webhook para validar solicita\u00e7\u00f5es do webhook do GitHub",
+                        "ja_JP": "Optional webhook secret for validating GitHub webhook requests"
+                    },
+                    "url": null,
+                    "placeholder": null
+                }
+            ]
+        },
+        "triggers": [
+            {
+                "name": "issue_comment",
+                "identity": {
+                    "author": "langgenius",
+                    "name": "issue_comment",
+                    "label": {
+                        "en_US": "Issue Comment Event",
+                        "zh_Hans": "Issue \u8bc4\u8bba\u4e8b\u4ef6",
+                        "pt_BR": "Evento de Coment\u00e1rio de Issue",
+                        "ja_JP": "Issue Comment Event"
+                    },
+                    "provider": "github_trigger"
+                },
+                "description": {
+                    "human": {
+                        "en_US": "Triggers when someone comments on an issue or pull request",
+                        "zh_Hans": "\u5f53\u6709\u4eba\u5728 issue \u6216 pull request \u4e0a\u8bc4\u8bba\u65f6\u89e6\u53d1",
+                        "pt_BR": "Dispara quando algu\u00e9m comenta em uma issue ou pull request",
+                        "ja_JP": "Triggers when someone comments on an issue or pull request"
+                    },
+                    "llm": {
+                        "en_US": "This trigger activates when a comment is created, edited, or deleted on a GitHub issue or pull request, providing information about the comment, issue, and user.",
+                        "zh_Hans": "\u5f53\u5728 GitHub issue \u6216 pull request \u4e0a\u521b\u5efa\u3001\u7f16\u8f91\u6216\u5220\u9664\u8bc4\u8bba\u65f6\uff0c\u6b64\u89e6\u53d1\u5668\u4f1a\u88ab\u6fc0\u6d3b\uff0c\u63d0\u4f9b\u6709\u5173\u8bc4\u8bba\u3001issue \u548c\u7528\u6237\u7684\u4fe1\u606f\u3002",
+                        "pt_BR": "Este gatilho \u00e9 ativado quando um coment\u00e1rio \u00e9 criado, editado ou deletado em uma issue ou pull request do GitHub, fornecendo informa\u00e7\u00f5es sobre o coment\u00e1rio, issue e usu\u00e1rio.",
+                        "ja_JP": "This trigger activates when a comment is created, edited, or deleted on a GitHub issue or pull request, providing information about the comment, issue, and user."
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "action_filter",
+                        "label": {
+                            "en_US": "Action Filter",
+                            "zh_Hans": "\u52a8\u4f5c\u8fc7\u6ee4\u5668",
+                            "pt_BR": "Filtro de A\u00e7\u00e3o",
+                            "ja_JP": "Action Filter"
+                        },
+                        "type": "select",
+                        "auto_generate": null,
+                        "template": null,
+                        "scope": null,
+                        "required": false,
+                        "default": "any",
+                        "min": null,
+                        "max": null,
+                        "precision": null,
+                        "options": [
+                            {
+                                "value": "any",
+                                "label": {
+                                    "en_US": "Any Action",
+                                    "zh_Hans": "\u4efb\u4f55\u52a8\u4f5c",
+                                    "pt_BR": "Any Action",
+                                    "ja_JP": "Any Action"
+                                },
+                                "icon": null
+                            },
+                            {
+                                "value": "created",
+                                "label": {
+                                    "en_US": "Created",
+                                    "zh_Hans": "\u521b\u5efa",
+                                    "pt_BR": "Created",
+                                    "ja_JP": "Created"
+                                },
+                                "icon": null
+                            },
+                            {
+                                "value": "edited",
+                                "label": {
+                                    "en_US": "Edited",
+                                    "zh_Hans": "\u7f16\u8f91",
+                                    "pt_BR": "Edited",
+                                    "ja_JP": "Edited"
+                                },
+                                "icon": null
+                            },
+                            {
+                                "value": "deleted",
+                                "label": {
+                                    "en_US": "Deleted",
+                                    "zh_Hans": "\u5220\u9664",
+                                    "pt_BR": "Deleted",
+                                    "ja_JP": "Deleted"
+                                },
+                                "icon": null
+                            }
+                        ],
+                        "description": {
+                            "en_US": "Filter by comment action type",
+                            "zh_Hans": "\u6309\u8bc4\u8bba\u52a8\u4f5c\u7c7b\u578b\u8fc7\u6ee4",
+                            "pt_BR": "Filtrar por tipo de a\u00e7\u00e3o do coment\u00e1rio",
+                            "ja_JP": "Filter by comment action type"
+                        }
+                    },
+                    {
+                        "name": "issue_filter",
+                        "label": {
+                            "en_US": "Issue Number Filter",
+                            "zh_Hans": "Issue \u7f16\u53f7\u8fc7\u6ee4\u5668",
+                            "pt_BR": "Filtro de N\u00famero da Issue",
+                            "ja_JP": "Issue Number Filter"
+                        },
+                        "type": "number",
+                        "auto_generate": null,
+                        "template": null,
+                        "scope": null,
+                        "required": false,
+                        "default": null,
+                        "min": null,
+                        "max": null,
+                        "precision": null,
+                        "options": null,
+                        "description": {
+                            "en_US": "Filter by specific issue number (optional)",
+                            "zh_Hans": "\u6309\u7279\u5b9a issue \u7f16\u53f7\u8fc7\u6ee4\uff08\u53ef\u9009\uff09",
+                            "pt_BR": "Filtrar por n\u00famero espec\u00edfico da issue (opcional)",
+                            "ja_JP": "Filter by specific issue number (optional)"
+                        }
+                    }
+                ],
+                "output_schema": {
+                    "properties": {
+                        "action": {
+                            "description": "The action performed on the comment (created, edited, deleted)",
+                            "type": "string"
+                        },
+                        "comment": {
+                            "properties": {
+                                "body": {
+                                    "description": "The content of the comment",
+                                    "type": "string"
+                                },
+                                "created_at": {
+                                    "description": "When the comment was created",
+                                    "type": "string"
+                                },
+                                "html_url": {
+                                    "description": "The URL to view the comment on GitHub",
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "description": "The ID of the comment",
+                                    "type": "number"
+                                },
+                                "updated_at": {
+                                    "description": "When the comment was last updated",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "issue": {
+                            "properties": {
+                                "body": {
+                                    "description": "The issue description",
+                                    "type": "string"
+                                },
+                                "html_url": {
+                                    "description": "The URL to view the issue on GitHub",
+                                    "type": "string"
+                                },
+                                "is_pull_request": {
+                                    "description": "Whether this is a pull request",
+                                    "type": "boolean"
+                                },
+                                "labels": {
+                                    "description": "Labels attached to the issue",
+                                    "type": "array"
+                                },
+                                "number": {
+                                    "description": "The issue number",
+                                    "type": "number"
+                                },
+                                "state": {
+                                    "description": "The issue state (open, closed)",
+                                    "type": "string"
+                                },
+                                "title": {
+                                    "description": "The issue title",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "repository": {
+                            "properties": {
+                                "full_name": {
+                                    "description": "The full repository name (owner\/repo)",
+                                    "type": "string"
+                                },
+                                "html_url": {
+                                    "description": "The repository URL",
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "description": "The repository name",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "sender": {
+                            "properties": {
+                                "avatar_url": {
+                                    "description": "The avatar URL of the comment author",
+                                    "type": "string"
+                                },
+                                "html_url": {
+                                    "description": "The profile URL of the comment author",
+                                    "type": "string"
+                                },
+                                "login": {
+                                    "description": "The username of the comment author",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                }
+            }
+        ]
+    }
+]
