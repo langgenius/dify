@@ -88,8 +88,6 @@ class ToolFileManager:
             present_filename = filename if has_extension else f"{filename}{extension}"
         filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
-        if conversation_id is None:
-            raise ValueError("conversation_id cannot be None")
 
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file = ToolFile(
@@ -134,9 +132,6 @@ class ToolFileManager:
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
-        if conversation_id is None:
-            raise ValueError("conversation_id cannot be None")
-
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file = ToolFile(
                 user_id=user_id,
