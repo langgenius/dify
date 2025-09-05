@@ -82,6 +82,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
                 tenant_id=user.current_tenant_id,
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
+                name=args.get("name", None),
                 credentials=credentials,
                 credential_type=credential_type,
                 credential_expires_at=-1,

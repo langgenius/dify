@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 from extensions.ext_database import db
+from models.trigger import TriggerSubscription
 from models.workflow import WorkflowPluginTrigger
 
 
@@ -52,6 +53,16 @@ class WorkflowPluginTriggerService:
 
             if existing_trigger:
                 raise BadRequest("Plugin trigger already exists for this app and node")
+
+            # Check if subscription exists
+            subscription = session.scalar(
+                select(TriggerSubscription).where(
+                    TriggerSubscription.id == subscription_id,
+                )
+            )
+
+            if not subscription:
+                raise BadRequest("Subscription not found")
 
             # Create new plugin trigger
             plugin_trigger = WorkflowPluginTrigger(
@@ -340,7 +351,7 @@ class WorkflowPluginTriggerService:
         )
 
         if not plugin_trigger:
-            raise NotFound("Plugin trigger not found")
+            return
 
         session.delete(plugin_trigger)
 

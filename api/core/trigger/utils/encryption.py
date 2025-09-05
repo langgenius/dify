@@ -65,6 +65,13 @@ def create_trigger_provider_encrypter_for_subscription(
     )
     return encrypter, cache
 
+def delete_cache_for_subscription(tenant_id: str, provider_id: str, subscription_id: str):
+    cache = TriggerProviderCredentialsCache(
+        tenant_id=tenant_id,
+        provider_id=provider_id,
+        credential_id=subscription_id,
+    )
+    cache.delete()
 
 def create_trigger_provider_encrypter_for_properties(
     tenant_id: str,

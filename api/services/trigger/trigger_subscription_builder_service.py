@@ -96,6 +96,7 @@ class TriggerSubscriptionBuilderService:
         if credential_type == CredentialType.UNAUTHORIZED:
             # manually create
             TriggerProviderService.add_trigger_provider(
+                subscription_id=subscription_builder.id,
                 tenant_id=tenant_id,
                 user_id=user_id,
                 name=subscription_builder.name,
@@ -120,6 +121,7 @@ class TriggerSubscriptionBuilderService:
             )
 
             TriggerProviderService.add_trigger_provider(
+                subscription_id=subscription_builder.id,
                 tenant_id=tenant_id,
                 user_id=user_id,
                 name=subscription_builder.name,
@@ -145,6 +147,7 @@ class TriggerSubscriptionBuilderService:
         credential_type: CredentialType,
         credential_expires_at: int,
         expires_at: int,
+        name: str | None,
     ) -> SubscriptionBuilder:
         """
         Add a new trigger subscription validation.
@@ -157,7 +160,7 @@ class TriggerSubscriptionBuilderService:
         subscription_id = str(uuid.uuid4())
         subscription_builder = SubscriptionBuilder(
             id=subscription_id,
-            name="",
+            name=name or "",
             endpoint_id=subscription_id,
             tenant_id=tenant_id,
             user_id=user_id,

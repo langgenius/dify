@@ -2,6 +2,7 @@ import json
 import logging
 from collections.abc import Mapping
 from typing import Any, Optional
+import uuid
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -23,6 +24,7 @@ from core.trigger.utils.encryption import (
     create_trigger_provider_encrypter_for_properties,
     create_trigger_provider_encrypter_for_subscription,
     create_trigger_provider_oauth_encrypter,
+    delete_cache_for_subscription,
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -82,6 +84,7 @@ class TriggerProviderService:
         parameters: Mapping[str, Any],
         properties: Mapping[str, Any],
         credentials: Mapping[str, str],
+        subscription_id: Optional[str] = None,
         credential_expires_at: int = -1,
         expires_at: int = -1,
     ) -> dict:
@@ -139,6 +142,7 @@ class TriggerProviderService:
 
                     # Create provider record
                     db_provider = TriggerSubscription(
+                        id=subscription_id or str(uuid.uuid4()),
                         tenant_id=tenant_id,
                         user_id=user_id,
                         name=name,
@@ -175,17 +179,14 @@ class TriggerProviderService:
         if not db_provider:
             raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, TriggerProviderID(db_provider.provider_id))
         # Clear cache
-        _, cache = create_trigger_provider_encrypter_for_subscription(
-            tenant_id=tenant_id,
-            controller=provider_controller,
-            subscription=db_provider,
-        )
-
         session.delete(db_provider)
-        cache.delete()
-
+        delete_cache_for_subscription(
+            tenant_id=tenant_id,
+            provider_id=db_provider.provider_id,
+            subscription_id=db_provider.id,
+        )
+        
     @classmethod
     def refresh_oauth_token(
         cls,
