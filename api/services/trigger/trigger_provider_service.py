@@ -175,9 +175,7 @@ class TriggerProviderService:
         if not db_provider:
             raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-        provider_controller = TriggerManager.get_trigger_provider(
-            tenant_id, TriggerProviderID(db_provider.provider_id)
-        )
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id, TriggerProviderID(db_provider.provider_id))
         # Clear cache
         _, cache = create_trigger_provider_encrypter_for_subscription(
             tenant_id=tenant_id,
