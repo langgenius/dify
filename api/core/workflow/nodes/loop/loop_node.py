@@ -433,11 +433,11 @@ class LoopNode(BaseNode):
         )
 
         return {"check_break_result": False}
-    
+
     def _extract_selectors_from_conditions(self, conditions: list) -> dict[str, list[str]]:
         return {
-            condition.variable_selector[1]: condition.variable_selector 
-            for condition in conditions 
+            condition.variable_selector[1]: condition.variable_selector
+            for condition in conditions
             if condition.variable_selector and len(condition.variable_selector) >= 2
         }
 
