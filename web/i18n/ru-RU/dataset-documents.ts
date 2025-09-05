@@ -99,6 +99,9 @@ const translation = {
       upload_file: 'Загрузить файл',
       notion: 'Синхронизировать из Notion',
       github: 'Синхронизировать из Github',
+      local_file: 'Локальный файл',
+      online_document: 'Онлайн-документ',
+      website_crawl: 'Сканирование сайта',
     },
     type: {
       book: 'Книга',

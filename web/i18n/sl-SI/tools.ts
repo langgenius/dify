@@ -234,6 +234,7 @@ const translation = {
       publishTip: 'Aplikacija ni objavljena. Najprej objavite aplikacijo.',
     },
   },
+  allTools: 'Vsa orodja',
 }
 
 export default translation

@@ -6,6 +6,7 @@ const translation = {
     extensions: 'एक्सटेंशन्स',
     tools: 'उपकरण',
     agents: 'एजेंट रणनीतियाँ',
+    datasources: 'डेटा स्रोत',
   },
   categorySingle: {
     extension: 'विस्तार',
@@ -13,6 +14,7 @@ const translation = {
     tool: 'उपकरण',
     agent: 'एजेंट रणनीति',
     model: 'मॉडल',
+    datasource: 'डेटा स्रोत',
   },
   list: {
     source: {
@@ -249,6 +251,8 @@ const translation = {
     unavailable: 'अप्राप्त',
     customCredentialUnavailable: 'कस्टम क्रेडेंशियल वर्तमान में उपलब्ध नहीं हैं',
     credentialUnavailable: 'वर्तमान में क्रेडेंशियल्स उपलब्ध नहीं हैं। कृपया प्रशासन से संपर्क करें।',
+    connectedWorkspace: 'संयुक्त कार्यक्षेत्र',
+    emptyAuth: 'कृपया प्रमाणीकरण कॉन्फ़िगर करें',
   },
   deprecated: 'अनुशंसित नहीं',
   autoUpdate: {

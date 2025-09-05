@@ -217,6 +217,8 @@ const translation = {
     back: 'Quay lại',
     iteration: 'Lặp',
     loop: 'Vòng',
+    reRun: 'Chạy lại',
+    preparingDataSource: 'Chuẩn bị nguồn dữ liệu',
   },
   tabs: {
     'tools': 'Công cụ',
@@ -235,6 +237,8 @@ const translation = {
     'searchBlock': 'Tìm kiếm nút',
     'allAdded': 'Tất cả đã được thêm vào',
     'addAll': 'Thêm tất cả',
+    'sources': 'Nguồn',
+    'searchDataSource': 'Tìm kiếm nguồn dữ liệu',
   },
   blocks: {
     'start': 'Bắt đầu',
@@ -259,6 +263,8 @@ const translation = {
     'loop': 'Vòng',
     'loop-end': 'Thoát vòng lặp',
     'loop-start': 'Bắt đầu vòng lặp',
+    'datasource': 'Nguồn dữ liệu',
+    'knowledge-index': 'Cơ sở kiến thức',
   },
   blocksAbout: {
     'start': 'Định nghĩa các tham số ban đầu để khởi chạy quy trình làm việc',
@@ -281,6 +287,8 @@ const translation = {
     'agent': 'Gọi các mô hình ngôn ngữ lớn để trả lời câu hỏi hoặc xử lý ngôn ngữ tự nhiên',
     'loop': 'Thực hiện một vòng lặp logic cho đến khi điều kiện dừng được đáp ứng hoặc số lần lặp tối đa được đạt.',
     'loop-end': 'Tương đương với "dừng lại". Nút này không có các mục cấu hình. Khi thân vòng lặp đến nút này, vòng lặp sẽ kết thúc.',
+    'datasource': 'Nguồn dữ liệu Giới thiệu',
+    'knowledge-index': 'Cơ sở kiến thức về',
   },
   operator: {
     zoomIn: 'Phóng to',
@@ -381,6 +389,7 @@ const translation = {
         input: 'Giá trị đầu vào',
         variable: 'Sử dụng biến',
       },
+      inputVars: 'Biến đầu vào',
     },
     start: {
       required: 'bắt buộc',
@@ -909,6 +918,25 @@ const translation = {
       error_one: '{{count}} Lỗi',
       loopNode: 'Nút Lặp',
     },
+    dataSource: {
+      supportedFileFormats: 'Các định dạng tệp được hỗ trợ',
+      supportedFileFormatsPlaceholder: 'Phần mở rộng tệp, e.g. doc',
+      add: 'Thêm nguồn dữ liệu',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Tìm hiểu thêm',
+        message: 'Cơ sở kiến thức Dify hỗ trợ ba cấu trúc phân đoạn: General, Parent-child và Q&A. Mỗi cơ sở tri thức chỉ có thể có một cấu trúc. Đầu ra từ nút trước đó phải phù hợp với cấu trúc chunk đã chọn. Lưu ý rằng việc lựa chọn cấu trúc chunking ảnh hưởng đến các phương thức index có sẵn.',
+        title: 'Vui lòng chọn cấu trúc chunk',
+      },
+      chunkIsRequired: 'Cấu trúc chunk là bắt buộc',
+      chunkStructure: 'Cấu trúc Chunk',
+      aboutRetrieval: 'về phương pháp truy xuất.',
+      retrievalSettingIsRequired: 'Cài đặt truy xuất là bắt buộc',
+      changeChunkStructure: 'Thay đổi cấu trúc chunk',
+      chooseChunkStructure: 'Chọn cấu trúc chunk',
+      indexMethodIsRequired: 'Phương pháp chỉ mục là bắt buộc',
+    },
   },
   tracing: {
     stopBy: 'Dừng bởi {{user}}',
@@ -979,6 +1007,10 @@ const translation = {
       clearNode: 'Xóa biến đã được lưu trong bộ nhớ cache',
       emptyLink: 'Tìm hiểu thêm',
       emptyTip: 'Sau khi bước qua một nút trên canvas hoặc chạy một nút từng bước, bạn có thể xem giá trị hiện tại của biến nút trong Variable Inspect.',
+      export: 'xuất khẩu',
+      exportToolTip: 'Xuất biến dưới dạng tệp',
+      largeData: 'Dữ liệu lớn, xem trước chỉ đọc. Xuất để xem tất cả.',
+      largeDataNoExport: 'Dữ liệu lớn - chỉ xem trước một phần',
     },
     settingsTab: 'Cài đặt',
     lastRunTab: 'Chạy Lần Cuối',

@@ -97,6 +97,7 @@ const translation = {
       configureJinaReader: 'Konfigurirajte Jina Reader',
       configureFirecrawl: 'Konfigurirajte Firecrawl',
       watercrawlTitle: 'Izvleci vsebino z interneta z Watercrawl',
+      running: 'Tek',
     },
     cancel: 'Odpovedati',
   },
@@ -182,6 +183,7 @@ const translation = {
     useQALanguage: 'Delček z obliko zapisa vprašanj in odgovorov v',
     general: 'Splošno',
     switch: 'Stikalo',
+    qaTip: 'Če uporabljate strukturirane podatke vprašanj in odgovorov, lahko ustvarite dokumente, ki združujejo vprašanja z odgovori. Ti dokumenti so indeksirani na podlagi dela vprašanj, kar sistemu omogoča, da pridobi ustrezne odgovore na podlagi podobnosti poizvedbe.',
   },
   stepThree: {
     creationTitle: '🎉 Znanje ustvarjeno',

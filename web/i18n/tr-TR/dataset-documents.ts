@@ -98,6 +98,9 @@ const translation = {
       upload_file: 'Dosya Yükle',
       notion: 'Notion\'dan Senkronize Et',
       github: 'GitHub\'dan Senkronize Et',
+      website_crawl: 'Web Sitesi Taraması',
+      online_document: 'Çevrimiçi Belge',
+      local_file: 'Yerel Dosya',
     },
     type: {
       book: 'Kitap',

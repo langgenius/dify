@@ -6,6 +6,7 @@ const translation = {
     agents: 'استراتژی های عامل',
     tools: 'ابزار',
     extensions: 'پسوند',
+    datasources: 'منابع داده',
   },
   categorySingle: {
     tool: 'ابزار',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'فرمت',
     model: 'مدل',
     bundle: 'بسته',
+    datasource: 'منبع داده',
   },
   list: {
     source: {
@@ -249,6 +251,8 @@ const translation = {
     unavailable: 'در دسترس نیست',
     credentialUnavailable: 'دسترسی به مدارک در حال حاضر امکان‌پذیر نیست. لطفاً با مدیر تماس بگیرید.',
     customCredentialUnavailable: 'اعتبارنامه‌های سفارشی در حال حاضر در دسترس نیستند',
+    connectedWorkspace: 'فضای کاری متصل',
+    emptyAuth: 'لطفا احراز هویت را پیکربندی کنید',
   },
   deprecated: 'منسوخ شده',
   autoUpdate: {

@@ -98,6 +98,9 @@ const translation = {
       upload_file: 'อัปโหลดไฟล์',
       notion: 'ซิงค์แบบฟอร์ม Notion',
       github: 'แบบฟอร์มซิงค์ Github',
+      online_document: 'เอกสารออนไลน์',
+      local_file: 'ไฟล์ท้องถิ่น',
+      website_crawl: 'รวบรวมข้อมูลเว็บไซต์',
     },
     type: {
       book: 'หนังสือ',

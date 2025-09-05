@@ -100,6 +100,9 @@ const translation = {
       upload_file: 'Carica File',
       notion: 'Sincronizza da Notion',
       github: 'Sincronizza da Github',
+      online_document: 'Documento online',
+      local_file: 'File locale',
+      website_crawl: 'Scansione del sito web',
     },
     type: {
       book: 'Libro',

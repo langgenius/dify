@@ -104,6 +104,7 @@ const translation = {
     },
     ragAPIRequestTooltip: 'Dify のナレッジベース処理機能のみを呼び出す API 呼び出しの数を指します。',
     receiptInfo: 'チームオーナーとチーム管理者のみが購読および請求情報を表示できます',
+    startBuilding: '構築を開始する',
   },
   plans: {
     sandbox: {

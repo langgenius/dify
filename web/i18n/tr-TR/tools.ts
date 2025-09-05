@@ -234,6 +234,7 @@ const translation = {
       publishTip: 'Uygulama yayınlanmadı. Lütfen önce uygulamayı yayınlayın.',
     },
   },
+  allTools: 'Tüm araçlar',
 }
 
 export default translation

@@ -80,6 +80,7 @@ const translation = {
     noTemplateFoundTip: 'विभिन्न कीवर्ड का उपयोग करके खोजने का प्रयास करें।',
     workflowUserDescription: 'ड्रैग-एंड-ड्रॉप सरलता के साथ स्वायत्त AI वर्कफ़्लो का दृश्य निर्माण करें।',
     dropDSLToCreateApp: 'यहाँ DSL फ़ाइल ड्रॉप करें ताकि ऐप बनाया जा सके',
+    import: 'आयात',
   },
   editApp: 'जानकारी संपादित करें',
   editAppTitle: 'ऐप जानकारी संपादित करें',

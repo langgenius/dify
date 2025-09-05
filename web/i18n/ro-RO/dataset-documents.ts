@@ -99,6 +99,9 @@ const translation = {
       upload_file: 'Încarcă fișier',
       notion: 'Sincronizează din Notion',
       github: 'Sincronizează din Github',
+      local_file: 'Fișier local',
+      website_crawl: 'Accesarea cu crawlere a site-ului web',
+      online_document: 'Online Document',
     },
     type: {
       book: 'Carte',

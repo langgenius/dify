@@ -486,6 +486,15 @@ const translation = {
       addModelCredential: '모델 자격 증명 추가',
       specifyModelCredential: '모델 자격 증명을 명시하세요.',
       providerManagedTip: '현재 구성은 제공업체에 의해 호스팅되고 있습니다.',
+      addModel: '모델 추가',
+      removeModel: '모델 제거',
+      manageCredentials: '자격 증명 관리',
+      selectModelCredential: '모델 자격 증명 선택',
+      modelCredential: '모델 자격 증명',
+      addNewModelCredential: '새 모델 자격 증명 추가',
+      editModelCredential: '모델 자격 증명 편집',
+      customModelCredentials: '사용자 지정 모델 자격 증명',
+      customModelCredentialsDeleteTip: '자격 증명이 사용 중이며 삭제할 수 없습니다.',
     },
   },
   dataSource: {
@@ -585,6 +594,7 @@ const translation = {
     viewDoc: '문서 보기',
     relatedApp: '관련 앱',
     noRelatedApp: '연결된 앱 없음',
+    pipeline: '파이프라인',
   },
   voiceInput: {
     speaking: '지금 말하고 있습니다...',
@@ -743,6 +753,9 @@ const translation = {
     title: '피드백 제공하기',
     subtitle: '이 응답에서 무엇이 잘못되었는지 말씀해 주세요.',
     placeholder: '문제가 무엇인지 또는 어떻게 개선할 수 있는지 설명해 주십시오...',
+  },
+  label: {
+    optional: '(선택 사항)',
   },
 }
 

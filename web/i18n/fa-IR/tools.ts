@@ -234,6 +234,7 @@ const translation = {
       publishTip: 'برنامه منتشر نشده است. لطفاً ابتدا برنامه را منتشر کنید.',
     },
   },
+  allTools: 'همه ابزارها',
 }
 
 export default translation
