@@ -17,6 +17,7 @@ import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import VersionHistoryButton from './version-history-button'
+import OnlineUsers from './online-users'
 
 export type HeaderInNormalProps = {
   components?: {
@@ -60,6 +61,8 @@ const HeaderInNormal = ({
       </div>
       <div className='flex items-center gap-2'>
         {components?.left}
+        <OnlineUsers />
+        <Divider type='vertical' className='mx-auto h-3.5' />
         <EnvButton disabled={nodesReadOnly} />
         <Divider type='vertical' className='mx-auto h-3.5' />
         <RunAndHistory />
