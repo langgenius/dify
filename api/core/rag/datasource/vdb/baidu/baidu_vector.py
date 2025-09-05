@@ -157,7 +157,7 @@ class BaiduVector(BaseVector):
             if meta is not None:
                 meta = json.loads(meta)
             score = row.get("score", 0.0)
-            if score > score_threshold:
+            if score >= score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=row_data.get(self.field_text), metadata=meta)
                 docs.append(doc)

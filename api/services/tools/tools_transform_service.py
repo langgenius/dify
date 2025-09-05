@@ -128,7 +128,7 @@ class ToolTransformService:
             )
         }
 
-        for name, value in schema.items():
+        for name in schema:
             if result.masked_credentials:
                 result.masked_credentials[name] = ""
 

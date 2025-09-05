@@ -48,7 +48,7 @@ class OpenSearchConfig(BaseModel):
         return values
 
     def create_aws_managed_iam_auth(self) -> Urllib3AWSV4SignerAuth:
-        import boto3  # type: ignore
+        import boto3
 
         return Urllib3AWSV4SignerAuth(
             credentials=boto3.Session().get_credentials(),
@@ -197,7 +197,7 @@ class OpenSearchVector(BaseVector):
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
-        except Exception as e:
+        except Exception:
             logger.exception("Error executing vector search, query: %s", query)
             raise
 
@@ -211,7 +211,7 @@ class OpenSearchVector(BaseVector):
 
             metadata["score"] = hit["_score"]
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if hit["_score"] > score_threshold:
+            if hit["_score"] >= score_threshold:
                 doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)
 

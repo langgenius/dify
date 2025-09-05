@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
 
@@ -198,14 +199,11 @@ class ToolManager:
                 # get specific credentials
                 if is_valid_uuid(credential_id):
                     try:
-                        builtin_provider = (
-                            db.session.query(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.id == credential_id,
-                            )
-                            .first()
+                        builtin_provider_stmt = select(BuiltinToolProvider).where(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.id == credential_id,
                         )
+                        builtin_provider = db.session.scalar(builtin_provider_stmt)
                     except Exception as e:
                         builtin_provider = None
                         logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
@@ -305,23 +303,19 @@ class ToolManager:
                 tenant_id=tenant_id,
                 controller=api_provider,
             )
-            return cast(
-                ApiTool,
-                api_provider.get_tool(tool_name).fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials=encrypter.decrypt(credentials),
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return api_provider.get_tool(tool_name).fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials=encrypter.decrypt(credentials),
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.WORKFLOW:
-            workflow_provider = (
-                db.session.query(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
+            workflow_provider_stmt = select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
+            workflow_provider = db.session.scalar(workflow_provider_stmt)
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
@@ -331,16 +325,13 @@ class ToolManager:
             if controller_tools is None or len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            return cast(
-                WorkflowTool,
-                controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials={},
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
@@ -648,10 +639,10 @@ class ToolManager:
                 for provider in builtin_providers:
                     # handle include, exclude
                     if is_filtered(
-                        include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
-                        exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
+                        include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                        exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
-                        name_func=lambda x: x.identity.name,
+                        name_func=lambda x: x.entity.identity.name,
                     ):
                         continue
                     user_provider = ToolTransformService.builtin_provider_to_user_provider(

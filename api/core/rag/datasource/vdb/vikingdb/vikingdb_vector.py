@@ -32,9 +32,9 @@ class VikingDBConfig(BaseModel):
     scheme: str
     connection_timeout: int
     socket_timeout: int
-    index_type: str = IndexType.HNSW
-    distance: str = DistanceType.L2
-    quant: str = QuantType.Float
+    index_type: str = str(IndexType.HNSW)
+    distance: str = str(DistanceType.L2)
+    quant: str = str(QuantType.Float)
 
 
 class VikingDBVector(BaseVector):
@@ -192,7 +192,7 @@ class VikingDBVector(BaseVector):
             metadata = result.fields.get(vdb_Field.METADATA_KEY.value)
             if metadata is not None:
                 metadata = json.loads(metadata)
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(page_content=result.fields.get(vdb_Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)

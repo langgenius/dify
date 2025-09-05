@@ -35,7 +35,6 @@ if $api_modified; then
 
     status=${status:-0}
 
-
     if [ $status -ne 0 ]; then
       echo "Ruff linter on api module error, exit code: $status"
       echo "Please run 'dev/reformat' to fix the fixable linting errors."

@@ -3,8 +3,8 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import psycopg2.extras  # type: ignore
-import psycopg2.pool  # type: ignore
+import psycopg2.extras
+import psycopg2.pool
 from pydantic import BaseModel, model_validator
 
 from core.rag.models.document import Document
@@ -228,8 +228,8 @@ class AnalyticdbVectorBySql:
             )
             documents = []
             for record in cur:
-                id, vector, score, page_content, metadata = record
-                if score > score_threshold:
+                _, vector, score, page_content, metadata = record
+                if score >= score_threshold:
                     metadata["score"] = score
                     doc = Document(
                         page_content=page_content,
@@ -260,7 +260,7 @@ class AnalyticdbVectorBySql:
             )
             documents = []
             for record in cur:
-                id, vector, page_content, metadata, score = record
+                _, vector, page_content, metadata, score = record
                 metadata["score"] = score
                 doc = Document(
                     page_content=page_content,

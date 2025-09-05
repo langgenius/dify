@@ -53,6 +53,18 @@ class AppSiteApi(WebApiResource):
         "custom_config": fields.Raw(attribute="custom_config"),
     }
 
+    @api.doc("Get App Site Info")
+    @api.doc(description="Retrieve app site information and configuration.")
+    @api.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "App Not Found",
+            500: "Internal Server Error",
+        }
+    )
     @marshal_with(app_fields)
     def get(self, app_model, end_user):
         """Retrieve app site info."""

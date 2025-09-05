@@ -246,6 +246,10 @@ class StreamableHTTPTransport:
                 logger.debug("Received 202 Accepted")
                 return
 
+            if response.status_code == 204:
+                logger.debug("Received 204 No Content")
+                return
+
             if response.status_code == 404:
                 if isinstance(message.root, JSONRPCRequest):
                     self._send_session_terminated_error(

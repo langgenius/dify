@@ -1,0 +1,78 @@
+name: Main CI Pipeline
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+  statuses: write
+
+concurrency:
+  group: main-ci-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # Check which paths were changed to determine which tests to run
+  check-changes:
+    name: Check Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      api-changed: ${{ steps.changes.outputs.api }}
+      web-changed: ${{ steps.changes.outputs.web }}
+      vdb-changed: ${{ steps.changes.outputs.vdb }}
+      migration-changed: ${{ steps.changes.outputs.migration }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - 'docker/**'
+              - '.github/workflows/api-tests.yml'
+            web:
+              - 'web/**'
+            vdb:
+              - 'api/core/rag/datasource/**'
+              - 'docker/**'
+              - '.github/workflows/vdb-tests.yml'
+              - 'api/uv.lock'
+              - 'api/pyproject.toml'
+            migration:
+              - 'api/migrations/**'
+              - '.github/workflows/db-migration-test.yml'
+
+  # Run tests in parallel
+  api-tests:
+    name: API Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.api-changed == 'true'
+    uses: ./.github/workflows/api-tests.yml
+
+  web-tests:
+    name: Web Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.web-changed == 'true'
+    uses: ./.github/workflows/web-tests.yml
+
+  style-check:
+    name: Style Check
+    uses: ./.github/workflows/style.yml
+
+  vdb-tests:
+    name: VDB Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.vdb-changed == 'true'
+    uses: ./.github/workflows/vdb-tests.yml
+
+  db-migration-test:
+    name: DB Migration Test
+    needs: check-changes
+    if: needs.check-changes.outputs.migration-changed == 'true'
+    uses: ./.github/workflows/db-migration-test.yml
