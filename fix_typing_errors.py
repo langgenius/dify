@@ -6,6 +6,7 @@ Automated typing error fixer using progressive refinement strategy.
 import json
 import re
 import subprocess
+import sys
 import time
 from collections import deque
 from pathlib import Path
@@ -86,9 +87,9 @@ class TypeCheckingRunner:
     def fix_errors_with_claude(self, path: str) -> None:
         """Start a Claude Code instance to fix typing errors."""
         prompt = f"""Fix all typing errors in the path '{path}'.
-        
+
         Run './dev/basedpyright-check' to see the errors, then fix them.
-        
+
         Important guidelines for fixing typing errors:
         - DO NOT use bypass methods like cast(), Any, type: ignore, or similar workarounds
         - Use isinstance() checks for runtime type validation
@@ -96,16 +97,18 @@ class TypeCheckingRunner:
         - Add proper type annotations that accurately reflect the actual types
         - Preserve the existing functionality while adding proper type annotations
         - Focus on understanding the actual data flow and types rather than suppressing errors
-        
+
         After fixing all typing errors, create a git commit with the message:
         'fix: resolve typing errors in {path}'
-        
+
         Make sure all errors are properly fixed before committing."""
 
         print(f"\n🤖 Starting Claude Code to fix errors in '{path}'...")
-        subprocess.run(
-            ["claude", prompt, "--dangerously-skip-permissions"],
-            check=True
+        _ = subprocess.run(
+            ["claude", prompt, "--dangerously-skip-permissions", "-p"],
+            check=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
         )
 
 
@@ -177,9 +180,6 @@ def main():
         if error_count < 50 or is_single_file:
             print(f"  🔧 Attempting to fix {error_count} errors...")
             type_checker.fix_errors_with_claude(current_path)
-
-            # Wait for user to confirm completion
-            input("\n⏸️  Press Enter after Claude Code has finished fixing errors...")
 
             # Verify fixes
             error_count_after, _ = type_checker.run_type_checking()
