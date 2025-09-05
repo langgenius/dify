@@ -21,7 +21,7 @@ class ContentType(StrEnum):
     FORM_DATA = "multipart/form-data"
     FORM_URLENCODED = "application/x-www-form-urlencoded"
     TEXT = "text/plain"
-    RAW = "application/octet-stream"
+    BINARY = "application/octet-stream"
 
 
 class WebhookParameter(BaseModel):

@@ -108,7 +108,7 @@ class TriggerWebhookNode(BaseNode):
                 # For text/plain, the entire body is a single string parameter
                 outputs[param_name] = str(webhook_data.get("body", {}).get("raw", ""))
                 continue
-            elif self._node_data.content_type == ContentType.RAW:
+            elif self._node_data.content_type == ContentType.BINARY:
                 outputs[param_name] = webhook_data.get("body", {}).get("raw", b"")
                 continue
 
