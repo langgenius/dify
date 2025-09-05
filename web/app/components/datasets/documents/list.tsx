@@ -68,7 +68,6 @@ type IDocumentListProps = {
   onUpdate: () => void
   onManageMetadata: () => void
   statusFilter: Item
-  onStatusFilterChange: (filter: string) => void
 }
 
 /**
@@ -261,9 +260,9 @@ const DocumentList: FC<IDocumentListProps> = ({
     return parts[parts.length - 1].toLowerCase()
   }, [])
 
-  const isCreateFromRAGPipeline = useMemo(() => {
-    return datasetConfig?.runtime_mode === 'rag_pipeline'
-  }, [datasetConfig?.runtime_mode])
+  const isCreateFromRAGPipeline = useCallback((createdFrom: string) => {
+    return createdFrom === 'rag_pipeline'
+  }, [])
 
   /**
    * Calculate the data source type
@@ -271,25 +270,17 @@ const DocumentList: FC<IDocumentListProps> = ({
    * DatasourceType: localFile, onlineDocument, websiteCrawl, onlineDrive (new)
    */
   const isLocalFile = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.localFile
-    return dataSourceType === DataSourceType.FILE
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.localFile || dataSourceType === DataSourceType.FILE
+  }, [])
   const isOnlineDocument = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.onlineDocument
-    return dataSourceType === DataSourceType.NOTION
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.onlineDocument || dataSourceType === DataSourceType.NOTION
+  }, [])
   const isWebsiteCrawl = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.websiteCrawl
-    return dataSourceType === DataSourceType.WEB
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.websiteCrawl || dataSourceType === DataSourceType.WEB
+  }, [])
   const isOnlineDrive = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
-    if (isCreateFromRAGPipeline)
-      return dataSourceType === DatasourceType.onlineDrive
-    return false
-  }, [isCreateFromRAGPipeline])
+    return dataSourceType === DatasourceType.onlineDrive
+  }, [])
 
   return (
     <div className='relative flex h-full w-full flex-col'>
@@ -361,7 +352,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                           className='mr-1.5'
                           type='page'
                           src={
-                            isCreateFromRAGPipeline
+                            isCreateFromRAGPipeline(doc.created_from)
                               ? (doc.data_source_info as OnlineDocumentInfo).page.page_icon
                               : (doc.data_source_info as LegacyDataSourceInfo).notion_page_icon
                           }
@@ -371,7 +362,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                         <FileTypeIcon
                           type={
                             extensionToFileType(
-                              isCreateFromRAGPipeline
+                              isCreateFromRAGPipeline(doc.created_from)
                                 ? (doc?.data_source_info as LocalFileInfo)?.extension
                                 : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
                             )
