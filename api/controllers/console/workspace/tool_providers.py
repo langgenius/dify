@@ -199,6 +199,11 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
+        # Validate provider against an allowlist of known providers
+        valid_providers = ["provider1", "provider2", "provider3"]  # Example allowlist
+        if provider not in valid_providers:
+            raise Forbidden("Invalid provider specified.")
+        
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
