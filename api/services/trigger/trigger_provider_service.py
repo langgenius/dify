@@ -186,7 +186,7 @@ class TriggerProviderService:
             provider_id=db_provider.provider_id,
             subscription_id=db_provider.id,
         )
-        
+
     @classmethod
     def refresh_oauth_token(
         cls,
