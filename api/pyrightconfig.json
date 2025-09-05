@@ -1,5 +1,7 @@
 {
-  "include": ["."],
+  "include": [
+    "."
+  ],
   "exclude": [
     "tests/",
     "migrations/",
@@ -19,7 +21,6 @@
     "events/",
     "contexts/",
     "constants/",
-    "configs",
     "commands.py"
   ],
   "typeCheckingMode": "strict",
