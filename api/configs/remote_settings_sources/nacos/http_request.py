@@ -21,7 +21,11 @@ class NacosHttpClient:
         self.token_ttl = 18000
         self.token_expire_time: float = 0
 
-    def http_request(self, url, method="GET", headers=None, params=None):
+    def http_request(self, url: str, method: str = "GET", headers: dict[str, str] | None = None, params: dict[str, str] | None = None) -> str:
+        if headers is None:
+            headers = {}
+        if params is None:
+            params = {}
         try:
             self._inject_auth_info(headers, params)
             response = requests.request(method, url="http://" + self.server + url, headers=headers, params=params)
@@ -30,7 +34,7 @@ class NacosHttpClient:
         except requests.RequestException as e:
             return f"Request to Nacos failed: {e}"
 
-    def _inject_auth_info(self, headers, params, module="config"):
+    def _inject_auth_info(self, headers: dict[str, str], params: dict[str, str], module: str = "config") -> None:
         headers.update({"User-Agent": "Nacos-Http-Client-In-Dify:v0.0.1"})
 
         if module == "login":
