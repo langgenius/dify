@@ -1,4 +1,5 @@
 import type React from 'react'
+import type { FormInputItemPlaceholder } from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
 const noteRegex = /\{\{#\$(.+?)#\}\}/g
@@ -21,7 +22,7 @@ export function rehypeVariable() {
           parts.push({
             type: 'element',
             tagName: 'variable',
-            properties: { path: m[0].trim() },
+            properties: { 'data-path': m[0].trim() },
             children: [],
           })
 
@@ -79,10 +80,11 @@ export function rehypeNotes() {
               },
             ],
           })
+          const name = m[0].split('.').slice(-1)[0].replace('#}}', '')
           parts.push({
             type: 'element',
-            tagName: 'note', // choose a right tag
-            properties: { path: m[0].trim() },
+            tagName: 'section',
+            properties: { 'data-name': name },
             children: [],
           })
 
@@ -120,4 +122,13 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
     path.replaceAll('.', '/')
       .replace('{{#', '{{')
       .replace('#}}', '}}')}</span>
+}
+
+export const Note: React.FC<{ placeholder: FormInputItemPlaceholder }> = ({ placeholder }) => {
+  const isVariable = placeholder.type === 'variable'
+  return (
+    <div className='mt-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2'>
+      {isVariable ? <Variable path={`{{${placeholder.selector.join('.')}}}`} /> : <span>{placeholder.value}</span>}
+    </div>
+  )
 }

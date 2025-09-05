@@ -10,7 +10,7 @@ import Badge from '@/app/components/base/badge'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { RiCloseLine } from '@remixicon/react'
-import { Variable, rehypeNotes, rehypeVariable } from './variable-in-markdown'
+import { Note, Variable, rehypeNotes, rehypeVariable } from './variable-in-markdown'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -43,9 +43,20 @@ const FormContentPreview: FC<Props> = ({
           content={content}
           rehypePlugins={[rehypeVariable, rehypeNotes]}
           customComponents={{
-            variable: ({ node, ...props }: any) => (
-              <Variable path={node.properties?.path as string} />
+            variable: ({ node }: any) => (
+              <Variable path={node.properties?.['data-path'] as string} />
             ),
+            section: ({ node }: any) => (() => {
+              const name = node.properties?.['data-name'] as string
+              const input = formInputs.find(i => i.output_variable_name === name)
+              if(!input) {
+                return (
+                  <div>Can't find note: {name}</div>
+                )
+              }
+              const placeholder = input.placeholder
+              return <Note placeholder={placeholder!} />
+            })(),
           }}
         />
         <div className='mt-3 flex flex-wrap gap-1 py-1'>
