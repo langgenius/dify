@@ -5,6 +5,7 @@ import { useStore } from '../store'
 import cn from '@/utils/classnames'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/solid/arrows'
 import { getUserColor } from '../collaboration/utils/user-color'
+import Tooltip from '@/app/components/base/tooltip'
 
 const OnlineUsers = () => {
   const appId = useStore(s => s.appId)
@@ -28,32 +29,56 @@ const OnlineUsers = () => {
           {visibleUsers.map((user, index) => {
             const userColor = getUserColor(user.user_id)
             return (
-              <div
+              <Tooltip
                 key={`${user.sid}-${index}`}
-                className="relative"
-                style={{ zIndex: visibleUsers.length - index }}
+                popupContent={user.username || 'User'}
+                position="bottom"
+                triggerMethod="hover"
+                needsDelay={false}
+                asChild
               >
-                <Avatar
-                  name={user.username || 'User'}
-                  avatar={user.avatar}
-                  size={28}
-                  className="ring-2 ring-white"
-                  backgroundColor={userColor}
-                />
-              </div>
+                <div
+                  className="relative cursor-pointer"
+                  style={{ zIndex: visibleUsers.length - index }}
+                >
+                  <Avatar
+                    name={user.username || 'User'}
+                    avatar={user.avatar}
+                    size={28}
+                    className="ring-2 ring-white"
+                    backgroundColor={userColor}
+                  />
+                </div>
+              </Tooltip>
             )
           })}
           {remainingCount > 0 && (
-            <div
-              className={cn(
-                'flex h-7 w-7 items-center justify-center',
-                'rounded-full bg-gray-300',
-                'text-xs font-medium text-gray-700',
-                'ring-2 ring-white',
-              )}
+            <Tooltip
+              popupContent={
+                <div className="flex flex-col gap-1">
+                  {onlineUsers.slice(maxVisible).map((user, index) => (
+                    <div key={`${user.sid}-tooltip-${index}`}>
+                      {user.username || 'User'}
+                    </div>
+                  ))}
+                </div>
+              }
+              position="bottom"
+              triggerMethod="hover"
+              needsDelay={false}
+              asChild
             >
-              +{remainingCount}
-            </div>
+              <div
+                className={cn(
+                  'flex h-7 w-7 items-center justify-center',
+                  'cursor-pointer rounded-full bg-gray-300',
+                  'text-xs font-medium text-gray-700',
+                  'ring-2 ring-white',
+                )}
+              >
+                +{remainingCount}
+              </div>
+            </Tooltip>
           )}
         </div>
         {remainingCount > 0 && (
