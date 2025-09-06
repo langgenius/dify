@@ -1,5 +1,4 @@
 import uuid
-from collections.abc import Sequence
 from typing import Optional
 
 from flask_login import current_user
