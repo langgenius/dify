@@ -17,7 +17,7 @@ def mock_plugin_daemon(
     :return: unpatch function
     """
 
-    def unpatch() -> None:
+    def unpatch():
         monkeypatch.undo()
 
     monkeypatch.setattr(PluginModelClient, "invoke_llm", MockModelClass.invoke_llm)

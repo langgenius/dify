@@ -719,7 +719,7 @@ class DatasetService:
         )
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
+    def get_dataset_auto_disable_logs(dataset_id: str):
         features = FeatureService.get_features(current_user.current_tenant_id)
         if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
             return {
@@ -1093,7 +1093,7 @@ class DocumentService:
         account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
-    ):
+    ) -> tuple[list[Document], str]:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
@@ -1198,7 +1198,7 @@ class DocumentService:
                             "Invalid process rule mode: %s, can not find dataset process rule",
                             process_rule.mode,
                         )
-                        return
+                        return [], ""
                     db.session.add(dataset_process_rule)
                     db.session.commit()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"
