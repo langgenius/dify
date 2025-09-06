@@ -99,9 +99,9 @@ class MatrixoneVector(BaseVector):
                 return client
             try:
                 client.create_full_text_index()
+                redis_client.set(collection_exist_cache_key, 1, ex=3600)
             except Exception:
                 logger.exception("Failed to create full text index")
-            redis_client.set(collection_exist_cache_key, 1, ex=3600)
             return client
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
