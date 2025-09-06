@@ -1,0 +1,2 @@
+class TriggerProviderCredentialValidationError(ValueError):
+    pass

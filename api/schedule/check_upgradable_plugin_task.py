@@ -20,7 +20,7 @@ def check_upgradable_plugin_task():
 
     strategies = (
         db.session.query(TenantPluginAutoUpgradeStrategy)
-        .filter(
+        .where(
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
             < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,

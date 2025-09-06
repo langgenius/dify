@@ -134,7 +134,7 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
         }
       })
     }
- else {
+    else {
       // Leaf node - add iteration/loop children if any
       if (root.data.type === BlockEnum.Iteration)
         list.push(...nodes.filter(node => node.parentId === root.id))
@@ -350,7 +350,7 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
 }
 
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
-  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.TriggerWebhook
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
 }
 
 /**

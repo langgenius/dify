@@ -1,6 +1,6 @@
 'use client'
 import { memo, useEffect, useMemo } from 'react'
-import { useAllBuiltInTools } from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 import TriggerPluginItem from './item'
 import type { BlockEnum } from '../../types'
 import type { ToolDefaultValue } from '../types'
@@ -19,11 +19,12 @@ const TriggerPluginList = ({
   onContentStateChange,
   tags = [],
 }: TriggerPluginListProps) => {
-  const { data: buildInTools = [] } = useAllBuiltInTools()
+  const { data: triggerPluginsData } = useAllTriggerPlugins()
   const language = useGetLanguage()
 
   const triggerPlugins = useMemo(() => {
-    return buildInTools.filter((toolWithProvider) => {
+    // Follow exact same pattern as tools
+    return (triggerPluginsData || []).filter((toolWithProvider) => {
       if (toolWithProvider.tools.length === 0) return false
 
       // Filter by search text
@@ -37,7 +38,7 @@ const TriggerPluginList = ({
 
       return true
     })
-  }, [buildInTools, searchText, language])
+  }, [triggerPluginsData, searchText, language])
 
   const hasContent = triggerPlugins.length > 0
 

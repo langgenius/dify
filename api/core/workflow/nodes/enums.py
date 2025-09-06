@@ -27,6 +27,7 @@ class NodeType(StrEnum):
     AGENT = "agent"
     TRIGGER_WEBHOOK = "trigger-webhook"
     TRIGGER_SCHEDULE = "trigger-schedule"
+    TRIGGER_PLUGIN = "trigger-plugin"
 
 
 class ErrorStrategy(StrEnum):

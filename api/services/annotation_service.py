@@ -1,5 +1,5 @@
 import uuid
-from typing import cast
+from typing import Optional
 
 import pandas as pd
 from flask_login import current_user
@@ -40,7 +40,7 @@ class AppAnnotationService:
             if not message:
                 raise NotFound("Message Not Exists.")
 
-            annotation = message.annotation
+            annotation: Optional[MessageAnnotation] = message.annotation
             # save the message annotation
             if annotation:
                 annotation.content = args["answer"]
@@ -70,7 +70,7 @@ class AppAnnotationService:
                 app_id,
                 annotation_setting.collection_binding_id,
             )
-        return cast(MessageAnnotation, annotation)
+        return annotation
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
@@ -282,7 +282,7 @@ class AppAnnotationService:
         annotations_to_delete = (
             db.session.query(MessageAnnotation, AppAnnotationSetting)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .where(MessageAnnotation.id.in_(annotation_ids))
             .all()
         )
 
@@ -493,7 +493,7 @@ class AppAnnotationService:
     def clear_all_annotations(cls, app_id: str) -> dict:
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 

@@ -4,4 +4,4 @@ from flask import Blueprint
 bp = Blueprint("trigger", __name__, url_prefix="/triggers")
 
 # Import routes after blueprint creation to avoid circular imports
-from . import webhook
+from . import trigger, webhook

@@ -374,7 +374,7 @@ class GraphEngine:
                         if len(sub_edge_mappings) == 0:
                             continue
 
-                        edge = cast(GraphEdge, sub_edge_mappings[0])
+                        edge = sub_edge_mappings[0]
                         if edge.run_condition is None:
                             logger.warning("Edge %s run condition is None", edge.target_node_id)
                             continue

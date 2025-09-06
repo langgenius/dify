@@ -41,7 +41,7 @@ import AccessControl from '../app-access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 
 export type IAppCardProps = {
@@ -107,12 +107,12 @@ function AppCard({
     : t('appOverview.overview.apiInfo.title')
   const isWorkflowApp = appInfo.mode === 'workflow'
   const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
-  const hasEntryNode = getWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
-  const missingEntryNode = isWorkflowApp && !hasEntryNode
+  const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
+  const missingStartNode = isWorkflowApp && !hasStartNode
   const hasInsufficientPermissions = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
-  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode
-  const runningStatus = (appUnpublished || missingEntryNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
-  const isMinimalState = appUnpublished || missingEntryNode
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode
+  const runningStatus = (appUnpublished || missingStartNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
+  const isMinimalState = appUnpublished || missingStartNode
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
   const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
@@ -178,7 +178,7 @@ function AppCard({
       setAppDetail(res)
       setShowAccessControl(false)
     }
- catch (error) {
+    catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
   }, [appDetail, setAppDetail])
@@ -211,85 +211,81 @@ function AppCard({
                   : t('appOverview.overview.status.disable')}
               </div>
             </div>
-            {isApp ? (
-              <Tooltip
-                popupContent={
-                  toggleDisabled && (appUnpublished || missingEntryNode) ? (
-                    <>
-                      <div className="mb-1 text-xs font-normal text-text-secondary">
-                        {t('appOverview.overview.appInfo.enableTooltip.description')}
-                      </div>
-                      <div
-                        className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                        onClick={() => window.open(docLink('/guides/workflow/node/start'), '_blank')}
-                      >
-                        {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
-                      </div>
-                    </>
-                  ) : ''
-                }
-                position="right"
-                popupClassName="w-58 max-w-60 rounded-xl border-[0.5px] p-3.5 shadow-lg backdrop-blur-[10px]"
-                offset={24}
-              >
-                <div>
-                  <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
-                </div>
-              </Tooltip>
-            ) : (
-              <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
-            )}
+            <Tooltip
+              popupContent={
+                toggleDisabled && (appUnpublished || missingStartNode) ? (
+                  <>
+                    <div className="mb-1 text-xs font-normal text-text-secondary">
+                      {t('appOverview.overview.appInfo.enableTooltip.description')}
+                    </div>
+                    <div
+                      className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
+                      onClick={() => window.open(docLink('/guides/workflow/node/start'), '_blank')}
+                    >
+                      {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+                    </div>
+                  </>
+                ) : ''
+              }
+              position="right"
+              popupClassName="w-58 max-w-60 rounded-xl border-[0.5px] p-3.5 shadow-lg backdrop-blur-[10px]"
+              offset={24}
+            >
+              <div>
+                <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
+              </div>
+            </Tooltip>
           </div>
           {!isMinimalState && (
             <div className='flex flex-col items-start justify-center self-stretch'>
-            <div className="system-xs-medium pb-1 text-text-tertiary">
-              {isApp
-                ? t('appOverview.overview.appInfo.accessibleAddress')
-                : t('appOverview.overview.apiInfo.accessibleAddress')}
-            </div>
-            <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
-              <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-                <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
-                  {isApp ? appUrl : apiUrl}
-                </div>
+              <div className="system-xs-medium pb-1 text-text-tertiary">
+                {isApp
+                  ? t('appOverview.overview.appInfo.accessibleAddress')
+                  : t('appOverview.overview.apiInfo.accessibleAddress')}
               </div>
-              <CopyFeedback
-                content={isApp ? appUrl : apiUrl}
-                className={'!size-6'}
-              />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
-              {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
-              {/* button copy link/ button regenerate */}
-              {showConfirmDelete && (
-                <Confirm
-                  type='warning'
-                  title={t('appOverview.overview.appInfo.regenerate')}
-                  content={t('appOverview.overview.appInfo.regenerateNotice')}
-                  isShow={showConfirmDelete}
-                  onConfirm={() => {
-                    onGenCode()
-                    setShowConfirmDelete(false)
-                  }}
-                  onCancel={() => setShowConfirmDelete(false)}
+              <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
+                <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
+                  <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
+                    {isApp ? appUrl : apiUrl}
+                  </div>
+                </div>
+                <CopyFeedback
+                  content={isApp ? appUrl : apiUrl}
+                  className={'!size-6'}
                 />
-              )}
-              {isApp && isCurrentWorkspaceManager && (
-                <Tooltip
-                  popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
-                >
-                  <div
-                    className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
-                    onClick={() => setShowConfirmDelete(true)}
+                {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
+                {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
+                {/* button copy link/ button regenerate */}
+                {showConfirmDelete && (
+                  <Confirm
+                    type='warning'
+                    title={t('appOverview.overview.appInfo.regenerate')}
+                    content={t('appOverview.overview.appInfo.regenerateNotice')}
+                    isShow={showConfirmDelete}
+                    onConfirm={() => {
+                      onGenCode()
+                      setShowConfirmDelete(false)
+                    }}
+                    onCancel={() => setShowConfirmDelete(false)}
+                  />
+                )}
+                {isApp && isCurrentWorkspaceManager && (
+                  <Tooltip
+                    popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                   >
                     <div
-                      className={
-                        `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
-                    ></div>
-                  </div>
-                </Tooltip>
-              )}
+                      className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
+                      onClick={() => setShowConfirmDelete(true)}
+                    >
+                      <div
+                        className={
+                          `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
+                      ></div>
+                    </div>
+                  </Tooltip>
+                )}
+              </div>
             </div>
-          </div>
           )}
           {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
             <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
@@ -331,33 +327,33 @@ function AppCard({
           <div className={'flex items-center gap-1 self-stretch p-3'}>
             {!isApp && <SecretKeyButton appId={appInfo.id} />}
             {OPERATIONS_MAP[cardType].map((op) => {
-            const disabled
+              const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
                 ? false
                 : !runningStatus
-            return (
-              <Button
-                className="mr-1 min-w-[88px]"
-                size="small"
-                variant={'ghost'}
-                key={op.opName}
-                onClick={genClickFuncByName(op.opName)}
-                disabled={disabled}
-              >
-                <Tooltip
-                  popupContent={
-                    t('appOverview.overview.appInfo.preUseReminder') ?? ''
-                  }
-                  popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
+              return (
+                <Button
+                  className="mr-1 min-w-[88px]"
+                  size="small"
+                  variant={'ghost'}
+                  key={op.opName}
+                  onClick={genClickFuncByName(op.opName)}
+                  disabled={disabled}
                 >
-                  <div className="flex items-center justify-center gap-[1px]">
-                    <op.opIcon className="h-3.5 w-3.5" />
-                    <div className={`${runningStatus ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
-                  </div>
-                </Tooltip>
-              </Button>
-            )
-          })}
+                  <Tooltip
+                    popupContent={
+                      t('appOverview.overview.appInfo.preUseReminder') ?? ''
+                    }
+                    popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
+                  >
+                    <div className="flex items-center justify-center gap-[1px]">
+                      <op.opIcon className="h-3.5 w-3.5" />
+                      <div className={`${(runningStatus || !disabled) ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
+                    </div>
+                  </Tooltip>
+                </Button>
+              )
+            })}
           </div>
         )}
       </div>

@@ -15,7 +15,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from core.workflow.nodes.webhook import TriggerWebhookNode
+from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType

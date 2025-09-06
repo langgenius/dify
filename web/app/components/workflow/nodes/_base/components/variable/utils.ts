@@ -296,24 +296,14 @@ const formatItem = (
         variables = [],
       } = data as WebhookTriggerNodeType
       res.vars = variables.map((v) => {
-        const type = inputVarTypeToVarType(v.type)
+        const type = v.value_type || VarType.string
         const varRes: Var = {
           variable: v.variable,
           type,
-          isParagraph: v.type === InputVarType.paragraph,
-          isSelect: v.type === InputVarType.select,
+          isParagraph: false,
+          isSelect: false,
           options: v.options,
           required: v.required,
-        }
-        try {
-          if(type === VarType.object && v.json_schema) {
-            varRes.children = {
-              schema: JSON.parse(v.json_schema),
-            }
-          }
-        }
-        catch (error) {
-          console.error('Error formatting TriggerWebhook variable:', error)
         }
         return varRes
       })
@@ -725,9 +715,9 @@ const getIterationItemType = ({
       curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
 
       if (isLast)
-      arrayType = curr?.type
+        arrayType = curr?.type
       else if (curr?.type === VarType.object || curr?.type === VarType.file)
-      curr = curr.children || []
+        curr = curr.children || []
     }
   }
 

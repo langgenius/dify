@@ -5,7 +5,7 @@ import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
 import { CollectionType } from '../../../tools/types'
-import type { ToolWithProvider } from '../../types'
+import type { TriggerWithProvider } from '../types'
 import { BlockEnum } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import TriggerPluginActionItem from './action-item'
@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 
 type Props = {
   className?: string
-  payload: ToolWithProvider
+  payload: TriggerWithProvider
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
@@ -54,7 +54,7 @@ const TriggerPluginItem: FC<Props> = ({
     if (payload.type === CollectionType.workflow)
       return t('workflow.tabs.workflowTool')
 
-    return ''
+    return payload.author || ''
   }, [payload.author, payload.type, t])
 
   return (
@@ -88,7 +88,7 @@ const TriggerPluginItem: FC<Props> = ({
               tool_description: tool.description[language],
               title: tool.label[language],
               is_team_authorization: payload.is_team_authorization,
-              output_schema: tool.output_schema,
+              output_schema: tool.output_schema || {},
               paramSchemas: tool.parameters,
               params,
             })
@@ -100,9 +100,9 @@ const TriggerPluginItem: FC<Props> = ({
               type={BlockEnum.TriggerPlugin}
               toolIcon={payload.icon}
             />
-            <div className='ml-2 flex w-0 grow items-center text-sm text-text-primary'>
-              <span className='max-w-[250px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
-              <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{groupName}</span>
+            <div className='ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary'>
+              <span className='max-w-[200px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
+              <span className='system-xs-regular ml-2 truncate text-text-quaternary'>{groupName}</span>
             </div>
           </div>
 

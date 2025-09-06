@@ -1,11 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { useEffect, useState } from 'react'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
+import { useFetchDynamicOptions } from '@/service/use-plugins'
 
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import FormInputTypeSwitch from './form-input-type-switch'
@@ -31,6 +33,7 @@ type Props = {
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  extraParams?: Record<string, any>
 }
 
 const FormInputItem: FC<Props> = ({
@@ -42,8 +45,11 @@ const FormInputItem: FC<Props> = ({
   inPanel,
   currentTool,
   currentProvider,
+  extraParams,
 }) => {
   const language = useLanguage()
+  const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false)
 
   const {
     placeholder,
@@ -61,7 +67,8 @@ const FormInputItem: FC<Props> = ({
   const isShowJSONEditor = isObject || isArray
   const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
   const isBoolean = type === FormTypeEnum.boolean
-  const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
+  const isSelect = type === FormTypeEnum.select
+  const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray
@@ -119,11 +126,43 @@ const FormInputItem: FC<Props> = ({
   const getVarKindType = () => {
     if (isFile)
       return VarKindType.variable
-    if (isSelect || isBoolean || isNumber || isArray || isObject)
+    if (isSelect || isDynamicSelect || isBoolean || isNumber || isArray || isObject)
       return VarKindType.constant
     if (isString)
       return VarKindType.mixed
   }
+
+  // Fetch dynamic options hook
+  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
+    currentProvider?.plugin_id || '',
+    currentProvider?.name || '',
+    currentTool?.name || '',
+    variable || '',
+    'tool',
+    extraParams,
+  )
+
+  // Fetch dynamic options when component mounts or dependencies change
+  useEffect(() => {
+    const fetchOptions = async () => {
+      if (isDynamicSelect && currentTool && currentProvider) {
+        setIsLoadingOptions(true)
+        try {
+          const data = await fetchDynamicOptions()
+          setDynamicOptions(data?.options || [])
+        }
+        catch (error) {
+          console.error('Failed to fetch dynamic options:', error)
+          setDynamicOptions([])
+        }
+        finally {
+          setIsLoadingOptions(false)
+        }
+      }
+    }
+
+    fetchOptions()
+  }, [isDynamicSelect, currentTool?.name, currentProvider?.name, variable, extraParams])
 
   const handleTypeChange = (newType: string) => {
     if (newType === VarKindType.variable) {
@@ -219,9 +258,48 @@ const FormInputItem: FC<Props> = ({
               return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
 
             return true
-          }).map((option: { value: any; label: { [x: string]: any; en_US: any } }) => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
+          }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => ({
+            value: option.value,
+            name: option.label[language] || option.label.en_US,
+            icon: option.icon,
+          }))}
           onSelect={item => handleValueChange(item.value as string)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
+          renderOption={options.some((opt: any) => opt.icon) ? ({ item }) => (
+            <div className="flex items-center">
+              {item.icon && (
+                <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
+              )}
+              <span>{item.name}</span>
+            </div>
+          ) : undefined}
+        />
+      )}
+      {isDynamicSelect && (
+        <SimpleSelect
+          wrapperClassName='h-8 grow'
+          disabled={readOnly || isLoadingOptions}
+          defaultValue={varInput?.value}
+          items={(dynamicOptions || options || []).filter((option: { show_on?: any[] }) => {
+            if (option.show_on?.length)
+              return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+
+            return true
+          }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => ({
+            value: option.value,
+            name: option.label[language] || option.label.en_US,
+            icon: option.icon,
+          }))}
+          onSelect={item => handleValueChange(item.value as string)}
+          placeholder={isLoadingOptions ? 'Loading...' : (placeholder?.[language] || placeholder?.en_US)}
+          renderOption={({ item }) => (
+            <div className="flex items-center">
+              {item.icon && (
+                <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
+              )}
+              <span>{item.name}</span>
+            </div>
+          )}
         />
       )}
       {isShowJSONEditor && isConstant && (

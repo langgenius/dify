@@ -1,14 +1,17 @@
-import type { CommonNodeType, InputVar } from '@/app/components/workflow/types'
-import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { CommonNodeType, VarType, Variable } from '@/app/components/workflow/types'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 
-export type ParameterType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'file'
+export type ArrayElementType = 'string' | 'number' | 'boolean' | 'object'
+
+export const getArrayElementType = (arrayType: `array[${ArrayElementType}]`): ArrayElementType => {
+  const match = arrayType.match(/^array\[(.+)\]$/)
+  return (match?.[1] as ArrayElementType) || 'string'
+}
 
 export type WebhookParameter = {
   name: string
-  type: ParameterType
+  type: VarType
   required: boolean
 }
 
@@ -28,8 +31,5 @@ export type WebhookTriggerNodeType = CommonNodeType & {
   async_mode: boolean
   status_code: number
   response_body: string
-  http_methods?: HttpMethod[]
-  error_strategy?: ErrorHandleTypeEnum
-  default_value?: DefaultValueForm[]
-  variables: InputVar[]
+  variables: Variable[]
 }

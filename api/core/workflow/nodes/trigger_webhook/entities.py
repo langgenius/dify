@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.workflow.nodes.base import BaseNodeData
 
@@ -21,7 +21,7 @@ class ContentType(StrEnum):
     FORM_DATA = "multipart/form-data"
     FORM_URLENCODED = "application/x-www-form-urlencoded"
     TEXT = "text/plain"
-    FORM = "form"
+    BINARY = "application/octet-stream"
 
 
 class WebhookParameter(BaseModel):
@@ -35,7 +35,17 @@ class WebhookBodyParameter(BaseModel):
     """Body parameter with type information."""
 
     name: str
-    type: Literal["string", "number", "boolean", "object", "array", "file"] = "string"
+    type: Literal[
+        "string",
+        "number",
+        "boolean",
+        "object",
+        "array[string]",
+        "array[number]",
+        "array[boolean]",
+        "array[object]",
+        "file",
+    ] = "string"
     required: bool = False
 
 
@@ -52,6 +62,14 @@ class WebhookData(BaseNodeData):
     headers: Sequence[WebhookParameter] = Field(default_factory=list)
     params: Sequence[WebhookParameter] = Field(default_factory=list)  # query parameters
     body: Sequence[WebhookBodyParameter] = Field(default_factory=list)
+
+    @field_validator("method", mode="before")
+    @classmethod
+    def normalize_method(cls, v) -> str:
+        """Normalize HTTP method to lowercase to support both uppercase and lowercase input."""
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
     status_code: int = 200  # Expected status code for response
     response_body: str = ""  # Template for response body

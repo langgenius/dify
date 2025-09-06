@@ -277,6 +277,10 @@ const translation = {
       languageCategoryDesc: 'Cambiar el idioma de la interfaz',
       themeCategoryDesc: 'Cambiar el tema de la aplicación',
       slashDesc: 'Ejecuta comandos como /tema, /idioma',
+      accountDesc: 'Navegar a la página de cuenta',
+      communityDesc: 'Abrir comunidad de Discord',
+      feedbackDesc: 'Discusiones de retroalimentación de la comunidad abierta',
+      docDesc: 'Abrir la documentación de ayuda',
     },
     emptyState: {
       noAppsFound: 'No se encontraron aplicaciones',
@@ -311,6 +315,7 @@ const translation = {
     inScope: 'en {{scope}}s',
     tryDifferentSearch: 'Prueba con un término de búsqueda diferente',
     noMatchingCommands: 'No se encontraron comandos coincidentes',
+    slashHint: 'Escribe / para ver todos los comandos disponibles',
   },
 }
 

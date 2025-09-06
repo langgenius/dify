@@ -26,6 +26,7 @@ def upgrade():
     sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
     sa.Column('webhook_id', sa.String(length=24), nullable=False),
     sa.Column('triggered_by', sa.String(length=16), nullable=False),
+    sa.Column('created_by', models.types.StringUUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id', name='workflow_webhook_trigger_pkey'),

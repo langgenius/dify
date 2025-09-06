@@ -147,6 +147,17 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
 
+class TriggerConfig(BaseSettings):
+    """
+    Configuration for trigger
+    """
+
+    WEBHOOK_REQUEST_BODY_MAX_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for webhook request bodies in bytes",
+        default=10485760,
+    )
+
+
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -994,6 +1005,7 @@ class FeatureConfig(
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    TriggerConfig,
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,

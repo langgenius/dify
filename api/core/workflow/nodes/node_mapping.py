@@ -19,6 +19,7 @@ from core.workflow.nodes.question_classifier import QuestionClassifierNode
 from core.workflow.nodes.start import StartNode
 from core.workflow.nodes.template_transform import TemplateTransformNode
 from core.workflow.nodes.tool import ToolNode
+from core.workflow.nodes.trigger_plugin import TriggerPluginNode
 from core.workflow.nodes.trigger_webhook import TriggerWebhookNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
 from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode as VariableAssignerNodeV1
@@ -136,5 +137,9 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     NodeType.TRIGGER_WEBHOOK: {
         LATEST_VERSION: TriggerWebhookNode,
         "1": TriggerWebhookNode,
+    },
+    NodeType.TRIGGER_PLUGIN: {
+        LATEST_VERSION: TriggerPluginNode,
+        "1": TriggerPluginNode,
     },
 }

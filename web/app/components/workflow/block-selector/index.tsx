@@ -137,7 +137,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
+        <div className={`rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
           <Tabs
             activeTab={activeTab}
             onActiveTabChange={handleActiveTabChange}

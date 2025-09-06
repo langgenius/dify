@@ -4,9 +4,12 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.parameters import PluginParameterOption
+from core.plugin.entities.plugin import TriggerProviderID
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
+from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from models.tools import BuiltinToolProvider
 
@@ -20,7 +23,8 @@ class PluginParameterService:
         provider: str,
         action: str,
         parameter: str,
-        provider_type: Literal["tool"],
+        extra: dict | None,
+        provider_type: Literal["tool", "trigger"],
     ) -> Sequence[PluginParameterOption]:
         """
         Get dynamic select options for a plugin parameter.
@@ -33,7 +37,7 @@ class PluginParameterService:
             parameter: The parameter name.
         """
         credentials: Mapping[str, Any] = {}
-
+        credential_type: str = CredentialType.API_KEY.value
         match provider_type:
             case "tool":
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
@@ -49,24 +53,43 @@ class PluginParameterService:
                 else:
                     # fetch credentials from db
                     with Session(db.engine) as session:
-                        db_record = (
-                            session.query(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.provider == provider,
+                        if extra and "credential_id" in extra:
+                            credential_id = extra["credential_id"]
+                            db_record = (
+                                session.query(BuiltinToolProvider)
+                                .where(
+                                    BuiltinToolProvider.tenant_id == tenant_id,
+                                    BuiltinToolProvider.provider == provider,
+                                    BuiltinToolProvider.id == credential_id,
+                                )
+                                .first()
                             )
-                            .first()
-                        )
+                        else:
+                            db_record = (
+                                session.query(BuiltinToolProvider)
+                                .where(
+                                    BuiltinToolProvider.tenant_id == tenant_id,
+                                    BuiltinToolProvider.provider == provider,
+                                )
+                                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                                .first()
+                            )
 
                     if db_record is None:
                         raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
 
                     credentials = encrypter.decrypt(db_record.credentials)
+                    credential_type = db_record.credential_type
+            case "trigger":
+                provider_controller = TriggerManager.get_trigger_provider(tenant_id, TriggerProviderID(provider))
+
             case _:
                 raise ValueError(f"Invalid provider type: {provider_type}")
 
         return (
             DynamicSelectClient()
-            .fetch_dynamic_select_options(tenant_id, user_id, plugin_id, provider, action, credentials, parameter)
+            .fetch_dynamic_select_options(
+                tenant_id, user_id, plugin_id, provider, action, credentials, credential_type, parameter
+            )
             .options
         )

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, orm
+from sqlalchemy import DateTime, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -336,12 +336,13 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return (
-            db.session.query(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
-            .count()
-            > 0
+        stmt = select(
+            exists().where(
+                WorkflowToolProvider.tenant_id == self.tenant_id,
+                WorkflowToolProvider.app_id == self.app_id,
+            )
         )
+        return db.session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
@@ -921,7 +922,7 @@ def _naive_utc_datetime():
 
 class WorkflowDraftVariable(Base):
     """`WorkflowDraftVariable` record variables and outputs generated during
-    debugging worfklow or chatflow.
+    debugging workflow or chatflow.
 
     IMPORTANT: This model maintains multiple invariant rules that must be preserved.
     Do not instantiate this class directly with the constructor.
@@ -1396,6 +1397,7 @@ class WorkflowWebhookTrigger(Base):
     - tenant_id (uuid) Workspace ID
     - webhook_id (varchar) Webhook ID for URL: https://api.dify.ai/triggers/webhook/:webhook_id
     - triggered_by (varchar) Environment: debugger or production
+    - created_by (varchar) User ID of the creator
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time
     """
@@ -1414,6 +1416,48 @@ class WorkflowWebhookTrigger(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
     triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
+    )
+
+
+class WorkflowPluginTrigger(Base):
+    """
+    Workflow Plugin Trigger
+
+    Maps plugin triggers to workflow nodes, similar to WorkflowWebhookTrigger
+
+    Attributes:
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Node ID which node in the workflow
+    - tenant_id (uuid) Workspace ID
+    - provider_id (varchar) Plugin provider ID
+    - trigger_name (varchar) trigger name (github_issues_trigger)
+    - subscription_id (varchar) Subscription ID
+    - created_at (timestamp) Creation time
+    - updated_at (timestamp) Last update time
+    """
+
+    __tablename__ = "workflow_plugin_triggers"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_plugin_trigger_pkey"),
+        sa.Index("workflow_plugin_trigger_tenant_subscription_idx", "tenant_id", "subscription_id", "trigger_name"),
+        sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node_subscription"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    trigger_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    subscription_id: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,

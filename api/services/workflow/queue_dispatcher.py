@@ -55,9 +55,7 @@ class BaseQueueDispatcher(ABC):
             True if quota available, False otherwise
         """
         # Check without consuming
-        remaining = self.rate_limiter.get_remaining_quota(
-            tenant_id=tenant_id, max_daily_limit=self.get_daily_limit()
-        )
+        remaining = self.rate_limiter.get_remaining_quota(tenant_id=tenant_id, max_daily_limit=self.get_daily_limit())
         return remaining > 0
 
     def consume_quota(self, tenant_id: str) -> bool:
@@ -70,9 +68,7 @@ class BaseQueueDispatcher(ABC):
         Returns:
             True if quota consumed successfully, False if limit reached
         """
-        return self.rate_limiter.check_and_consume(
-            tenant_id=tenant_id, max_daily_limit=self.get_daily_limit()
-        )
+        return self.rate_limiter.check_and_consume(tenant_id=tenant_id, max_daily_limit=self.get_daily_limit())
 
 
 class ProfessionalQueueDispatcher(BaseQueueDispatcher):

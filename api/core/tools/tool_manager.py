@@ -37,6 +37,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -47,7 +48,6 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    CredentialType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -331,16 +331,13 @@ class ToolManager:
             if controller_tools is None or len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            return cast(
-                WorkflowTool,
-                controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials={},
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
@@ -648,8 +645,8 @@ class ToolManager:
                 for provider in builtin_providers:
                     # handle include, exclude
                     if is_filtered(
-                        include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
-                        exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
+                        include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                        exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
                         name_func=lambda x: x.identity.name,
                     ):

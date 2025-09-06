@@ -171,14 +171,15 @@ const GenericTable: FC<GenericTableProps> = ({
             onSelect={item => handleChange(item.value)}
             disabled={readonly}
             placeholder={column.placeholder}
+            hideChecked={false}
+            notClearable={true}
             // wrapper provides compact height, trigger is transparent like text
             wrapperClassName="h-6 w-full min-w-0"
             className={cn(
-              'h-6 rounded-none bg-transparent px-0 text-text-secondary',
+              'h-6 rounded-none bg-transparent pl-0 pr-6 text-text-secondary',
               'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
             )}
-            optionWrapClassName="w-26 min-w-26 z-[5] -ml-3"
-            notClearable
+            optionWrapClassName="w-26 min-w-26 z-[60] -ml-3"
           />
         )
 
@@ -224,7 +225,7 @@ const GenericTable: FC<GenericTableProps> = ({
           </div>
         )}
         <div className="divide-y divide-divider-subtle">
-          {displayRows.map(({ row, dataIndex, isVirtual }, renderIndex) => {
+          {displayRows.map(({ row, dataIndex, isVirtual: _isVirtual }, renderIndex) => {
             const rowKey = `row-${renderIndex}`
 
             // Check if primary identifier column has content

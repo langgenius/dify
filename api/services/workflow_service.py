@@ -5,7 +5,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import VariableEntityType
@@ -87,15 +87,14 @@ class WorkflowService:
         )
 
     def is_workflow_exist(self, app_model: App) -> bool:
-        return (
-            db.session.query(Workflow)
-            .where(
+        stmt = select(
+            exists().where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
-            .count()
-        ) > 0
+        )
+        return db.session.execute(stmt).scalar_one()
 
     def get_draft_workflow(self, app_model: App) -> Optional[Workflow]:
         """

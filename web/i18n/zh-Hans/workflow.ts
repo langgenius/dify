@@ -255,7 +255,7 @@ const translation = {
     'start': '开始',
   },
   blocks: {
-    'start': '开始',
+    'start': '用户输入',
     'originalStartNode': '原始开始节点',
     'end': '结束',
     'answer': '直接回复',
@@ -282,6 +282,7 @@ const translation = {
     'trigger-schedule': '定时触发器',
     'trigger-plugin': '插件触发器',
   },
+  customWebhook: '自定义 Webhook',
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
     'end': '定义一个 workflow 流程的结束和结果类型',
@@ -1030,6 +1031,17 @@ const translation = {
       responseBody: '响应体',
       responseBodyPlaceholder: '在此输入您的响应体',
       headers: 'Headers',
+      validation: {
+        webhookUrlRequired: '需要提供Webhook URL',
+        invalidParameterType: '参数"{{name}}"的参数类型"{{type}}"无效',
+      },
+    },
+    triggerPlugin: {
+      authorized: '已授权',
+      notConfigured: '未配置',
+      error: '错误',
+      configuration: '配置',
+      remove: '移除',
     },
   },
   tracing: {

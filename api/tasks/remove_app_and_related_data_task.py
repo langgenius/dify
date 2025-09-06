@@ -69,6 +69,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_trace_app_configs(tenant_id, app_id)
         _delete_conversation_variables(app_id=app_id)
         _delete_draft_variables(app_id)
+        _delete_app_plugin_triggers(tenant_id, app_id)
 
         end_at = time.perf_counter()
         logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
@@ -412,3 +413,13 @@ def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: s
                     logger.exception("Error occurred while deleting %s %s", name, record_id)
                     continue
             rs.close()
+
+
+def _delete_app_plugin_triggers(tenant_id: str, app_id: str):
+    with db.engine.begin() as conn:
+        result = conn.execute(
+            sa.text("DELETE FROM workflow_plugin_triggers WHERE app_id = :app_id"), {"app_id": app_id}
+        )
+        deleted_count = result.rowcount
+        if deleted_count > 0:
+            logger.info(click.style(f"Deleted {deleted_count} workflow plugin triggers for app {app_id}", fg="green"))

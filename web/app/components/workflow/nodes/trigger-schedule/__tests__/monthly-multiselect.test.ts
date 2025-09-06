@@ -116,7 +116,7 @@ describe('Monthly Multi-Select Execution Time Calculator', () => {
           time: '10:30 AM',
         },
         timezone: 'UTC',
-              id: 'test',
+        id: 'test',
         type: 'trigger-schedule',
         data: {},
         position: { x: 0, y: 0 },
