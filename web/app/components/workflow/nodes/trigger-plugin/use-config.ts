@@ -31,10 +31,22 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     return currentProvider?.tools.find(tool => tool.name === tool_name)
   }, [currentProvider, tool_name])
 
-  const triggerParameterSchema = useMemo(() => {
+  // Dynamic subscription parameters (from subscription_schema.parameters_schema)
+  const subscriptionParameterSchema = useMemo(() => {
+    if (!currentProvider?.subscription_schema?.parameters_schema) return []
+    return toolParametersToFormSchemas(currentProvider.subscription_schema.parameters_schema as any)
+  }, [currentProvider])
+
+  // Dynamic trigger parameters (from specific trigger.parameters)
+  const triggerSpecificParameterSchema = useMemo(() => {
     if (!currentTrigger) return []
     return toolParametersToFormSchemas(currentTrigger.parameters)
   }, [currentTrigger])
+
+  // Combined parameter schema (subscription + trigger specific)
+  const triggerParameterSchema = useMemo(() => {
+    return [...subscriptionParameterSchema, ...triggerSpecificParameterSchema]
+  }, [subscriptionParameterSchema, triggerSpecificParameterSchema])
 
   const triggerParameterValue = useMemo(() => {
     if (!triggerParameterSchema.length) return {}

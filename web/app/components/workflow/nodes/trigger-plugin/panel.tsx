@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import type { PluginTriggerNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
@@ -37,15 +36,13 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
       {triggerParameterSchema.length > 0 && (
         <>
           <div className='px-4 pb-4'>
-            <Field title="Parameters">
-              <ToolForm
-                readOnly={readOnly}
-                nodeId={id}
-                schema={triggerParameterSchema as any}
-                value={triggerParameterValue}
-                onChange={setTriggerParameterValue}
-              />
-            </Field>
+            <ToolForm
+              readOnly={readOnly}
+              nodeId={id}
+              schema={triggerParameterSchema as any}
+              value={triggerParameterValue}
+              onChange={setTriggerParameterValue}
+            />
           </div>
         </>
       )}
