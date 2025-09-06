@@ -43,6 +43,8 @@ class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
         app_model = installed_app.app
+        if not app_model:
+            raise ValueError("App not found")
         return AppService().get_app_meta(app_model)
 
 

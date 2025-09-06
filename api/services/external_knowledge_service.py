@@ -114,8 +114,9 @@ class ExternalDatasetService:
         )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
-        if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
-            args.get("settings")["api_key"] = external_knowledge_api.settings_dict.get("api_key")
+        settings = args.get("settings")
+        if settings and settings.get("api_key") == HIDDEN_VALUE and external_knowledge_api.settings_dict:
+            settings["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
         external_knowledge_api.name = args.get("name")
         external_knowledge_api.description = args.get("description", "")

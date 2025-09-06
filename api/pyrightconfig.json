@@ -6,7 +6,6 @@
     "tests/",
     "migrations/",
     ".venv/",
-    "models/",
     "core/",
     "controllers/",
     "tasks/",

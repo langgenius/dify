@@ -973,7 +973,7 @@ class DocumentService:
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
             for document in documents
-            if document.data_source_type == "upload_file"
+            if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
         batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
@@ -1067,8 +1067,9 @@ class DocumentService:
         # sync document indexing
         document.indexing_status = "waiting"
         data_source_info = document.data_source_info_dict
-        data_source_info["mode"] = "scrape"
-        document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
+        if data_source_info:
+            data_source_info["mode"] = "scrape"
+            document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
         db.session.add(document)
         db.session.commit()
 
