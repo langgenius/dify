@@ -9,6 +9,7 @@ import { useBoolean } from 'ahooks'
 import JsonSchemaConfigModal from './json-schema-config-modal'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import { preValidateSchema } from '../utils'
 
 type Props = {
   className?: string
@@ -49,7 +50,7 @@ const StructureOutput: FC<Props> = ({
           <div className='system-xs-medium text-components-button-secondary-text'>{t('app.structOutput.configure')}</div>
         </Button>
       </div>
-      {(value?.schema && value.schema.properties && Object.keys(value.schema.properties).length > 0) ? (
+      {(value?.schema && preValidateSchema(value.schema).success && value.schema.properties && Object.keys(value.schema.properties).length > 0) ? (
         <ShowPanel
           payload={value}
         />) : (
