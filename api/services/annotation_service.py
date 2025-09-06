@@ -73,7 +73,7 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
+    def enable_app_annotation(cls, args: dict, app_id: str):
         enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
@@ -96,7 +96,7 @@ class AppAnnotationService:
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
-    def disable_app_annotation(cls, app_id: str) -> dict:
+    def disable_app_annotation(cls, app_id: str):
         disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
@@ -315,7 +315,7 @@ class AppAnnotationService:
         return {"deleted_count": deleted_count}
 
     @classmethod
-    def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
+    def batch_import_app_annotations(cls, app_id, file: FileStorage):
         # get app info
         app = (
             db.session.query(App)
@@ -490,7 +490,7 @@ class AppAnnotationService:
         }
 
     @classmethod
-    def clear_all_annotations(cls, app_id: str) -> dict:
+    def clear_all_annotations(cls, app_id: str):
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")

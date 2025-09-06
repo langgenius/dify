@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="mail")
-def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None:
+def send_change_mail_task(language: str, to: str, code: str, phase: str):
     """
     Send change email notification with internationalization support.
 
@@ -43,7 +43,7 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None
 
 
 @shared_task(queue="mail")
-def send_change_mail_completed_notification_task(language: str, to: str) -> None:
+def send_change_mail_completed_notification_task(language: str, to: str):
     """
     Send change email completed notification with internationalization support.
 

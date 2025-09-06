@@ -27,7 +27,7 @@ class TokenBufferMemory:
         self,
         conversation: Conversation,
         model_instance: ModelInstance,
-    ) -> None:
+    ):
         self.conversation = conversation
         self.model_instance = model_instance
 

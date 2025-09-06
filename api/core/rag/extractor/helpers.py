@@ -29,7 +29,7 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
     """
     import chardet
 
-    def read_and_detect(file_path: str) -> list[dict]:
+    def read_and_detect(file_path: str):
         with open(file_path, "rb") as f:
             # Read only a sample of the file for encoding detection
             # This prevents timeout on large files while still providing accurate encoding detection

@@ -507,7 +507,7 @@ class DatasetRetrieval:
 
     def _on_retrieval_end(
         self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
-    ) -> None:
+    ):
         """Handle retrieval end."""
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
@@ -560,7 +560,7 @@ class DatasetRetrieval:
                 )
             )
 
-    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
+    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
         """
         Handle query.
         """

@@ -477,6 +477,12 @@ const translation = {
           saveSchema: '編集中のフィールドを確定してから保存してください。',
         },
       },
+      reasoningFormat: {
+        tagged: 'タグを考え続けてください',
+        separated: '思考タグを分ける',
+        title: '推論タグの分離を有効にする',
+        tooltip: 'thinkタグから内容を抽出し、それをreasoning_contentフィールドに保存します。',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: '検索変数',

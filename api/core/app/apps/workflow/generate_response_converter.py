@@ -17,7 +17,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = WorkflowAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
+    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -26,7 +26,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
         return dict(blocking_response.to_dict())
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
+    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
