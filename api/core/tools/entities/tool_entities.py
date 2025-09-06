@@ -150,7 +150,7 @@ class ToolInvokeMessage(BaseModel):
 
         @model_validator(mode="before")
         @classmethod
-        def transform_variable_value(cls, values) -> Any:
+        def transform_variable_value(cls, values):
             """
             Only basic types and lists are allowed.
             """
@@ -428,7 +428,7 @@ class ToolInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "time_cost": self.time_cost,
             "error": self.error,

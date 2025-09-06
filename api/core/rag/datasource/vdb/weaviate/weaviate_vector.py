@@ -24,7 +24,7 @@ class WeaviateConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")
         return values
@@ -75,7 +75,7 @@ class WeaviateVector(BaseVector):
         dataset_id = dataset.id
         return Dataset.gen_collection_name_by_id(dataset_id)
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -164,7 +164,7 @@ class WeaviateVector(BaseVector):
 
         return True
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         # check whether the index already exists
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):
@@ -256,7 +256,7 @@ class WeaviateVector(BaseVector):
             docs.append(Document(page_content=text, vector=additional["vector"], metadata=res))
         return docs
 
-    def _default_schema(self, index_name: str) -> dict:
+    def _default_schema(self, index_name: str):
         return {
             "class": index_name,
             "properties": [
@@ -267,7 +267,7 @@ class WeaviateVector(BaseVector):
             ],
         }
 
-    def _json_serializable(self, value: Any) -> Any:
+    def _json_serializable(self, value: Any):
         if isinstance(value, datetime.datetime):
             return value.isoformat()
         return value

@@ -25,7 +25,7 @@ class PublishFrom(IntEnum):
 
 
 class AppQueueManager:
-    def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom) -> None:
+    def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom):
         if not user_id:
             raise ValueError("user is required")
 
@@ -73,14 +73,14 @@ class AppQueueManager:
                     self.publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
                     last_ping_time = elapsed_time // 10
 
-    def stop_listen(self) -> None:
+    def stop_listen(self):
         """
         Stop listen to queue
         :return:
         """
         self._q.put(None)
 
-    def publish_error(self, e, pub_from: PublishFrom) -> None:
+    def publish_error(self, e, pub_from: PublishFrom):
         """
         Publish error
         :param e: error
@@ -89,7 +89,7 @@ class AppQueueManager:
         """
         self.publish(QueueErrorEvent(error=e), pub_from)
 
-    def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+    def publish(self, event: AppQueueEvent, pub_from: PublishFrom):
         """
         Publish event to queue
         :param event:
@@ -100,7 +100,7 @@ class AppQueueManager:
         self._publish(event, pub_from)
 
     @abstractmethod
-    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
         """
         Publish event to queue
         :param event:
@@ -110,7 +110,7 @@ class AppQueueManager:
         raise NotImplementedError
 
     @classmethod
-    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str) -> None:
+    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str):
         """
         Set task stop flag
         :return:
