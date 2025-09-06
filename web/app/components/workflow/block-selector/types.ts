@@ -58,26 +58,43 @@ export type TriggerParameter = {
   name: string
   label: TypeWithI18N
   description?: TypeWithI18N
-  type: string
+  type: 'string' | 'number' | 'boolean' | 'select' | 'file' | 'files'
+        | 'model-selector' | 'app-selector' | 'object' | 'array' | 'dynamic-select'
+  auto_generate?: {
+    type: string
+    value?: any
+  } | null
+  template?: {
+    type: string
+    value?: any
+  } | null
+  scope?: string | null
   required?: boolean
   default?: any
+  min?: number | null
+  max?: number | null
+  precision?: number | null
   options?: Array<{
     value: string
     label: TypeWithI18N
-    icon?: string
-  }>
-  min?: number
-  max?: number
-  precision?: number
+    icon?: string | null
+  }> | null
 }
 
 export type TriggerCredentialField = {
-  type: string
+  type: 'secret-input' | 'text-input' | 'select' | 'boolean'
+        | 'app-selector' | 'model-selector' | 'tools-selector'
   name: string
+  scope?: string | null
   required: boolean
+  default?: string | number | boolean | Array<any> | null
+  options?: Array<{
+    value: string
+    label: TypeWithI18N
+  }> | null
   label: TypeWithI18N
   help?: TypeWithI18N
-  url?: string
+  url?: string | null
   placeholder?: TypeWithI18N
 }
 
