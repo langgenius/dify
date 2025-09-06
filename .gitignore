@@ -218,6 +218,3 @@ mise.toml
 .roo/
 api/.env.backup
 /clickzetta
-
-# mcp
-.serena
