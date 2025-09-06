@@ -26,7 +26,7 @@ const UserCursors: FC<UserCursorsProps> = ({
         return (
           <div
             key={userId}
-            className="pointer-events-none absolute z-[10000] -translate-x-0.5 -translate-y-0.5 transition-all duration-150 ease-out"
+            className="pointer-events-none absolute z-[10000] transition-all duration-150 ease-out"
             style={{
               left: cursor.x,
               top: cursor.y,
@@ -41,16 +41,16 @@ const UserCursors: FC<UserCursorsProps> = ({
               className="drop-shadow-md"
             >
               <path
-                d="M3 3L16 8L9 10L7 17L3 3Z"
+                d="M5 3L5 15L8 11.5L11 16L13 15L10 10.5L14 10.5L5 3Z"
                 fill={userColor}
                 stroke="white"
-                strokeWidth="1"
+                strokeWidth="1.5"
                 strokeLinejoin="round"
               />
             </svg>
 
             <div
-              className="absolute -top-0.5 left-[18px] max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
+              className="absolute left-4 top-4 max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
               style={{
                 backgroundColor: userColor,
               }}
