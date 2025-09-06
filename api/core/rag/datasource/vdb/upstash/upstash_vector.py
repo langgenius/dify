@@ -20,7 +20,7 @@ class UpstashVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["url"]:
             raise ValueError("Upstash URL is required")
         if not values["token"]:
@@ -60,7 +60,7 @@ class UpstashVector(BaseVector):
         response = self.get_ids_by_metadata_field("doc_id", id)
         return len(response) > 0
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         item_ids = []
         for doc_id in ids:
             ids = self.get_ids_by_metadata_field("doc_id", doc_id)
@@ -68,7 +68,7 @@ class UpstashVector(BaseVector):
                 item_ids += ids
         self._delete_by_ids(ids=item_ids)
 
-    def _delete_by_ids(self, ids: list[str]) -> None:
+    def _delete_by_ids(self, ids: list[str]):
         if ids:
             self.index.delete(ids=ids)
 
@@ -81,7 +81,7 @@ class UpstashVector(BaseVector):
         )
         return [result.id for result in query_result]
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self._delete_by_ids(ids)
@@ -117,7 +117,7 @@ class UpstashVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
-    def delete(self) -> None:
+    def delete(self):
         self.index.reset()
 
     def get_type(self) -> str:

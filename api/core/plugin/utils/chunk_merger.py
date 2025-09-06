@@ -18,7 +18,7 @@ class FileChunk:
     bytes_written: int = field(default=0, init=False)
     data: bytearray = field(init=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         self.data = bytearray(self.total_length)
 
 

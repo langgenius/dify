@@ -5,7 +5,7 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 
 class Jinja2TemplateTransformer(TemplateTransformer):
     @classmethod
-    def transform_response(cls, response: str) -> dict:
+    def transform_response(cls, response: str):
         """
         Transform response to dict
         :param response: response

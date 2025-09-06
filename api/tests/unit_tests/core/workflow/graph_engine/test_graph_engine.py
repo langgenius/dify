@@ -777,7 +777,7 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
             },
             {
                 "data": {
-                    "code": '\ndef main(arg1: str, arg2: str) -> dict:\n    return {\n        "result": arg1 + arg2,\n    }\n',  # noqa: E501
+                    "code": '\ndef main(arg1: str, arg2: str):\n    return {\n        "result": arg1 + arg2,\n    }\n',
                     "code_language": "python3",
                     "desc": "",
                     "outputs": {"result": {"children": None, "type": "string"}},
