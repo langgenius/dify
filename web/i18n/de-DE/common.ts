@@ -490,6 +490,7 @@ const translation = {
       providerManagedTip: 'Die aktuelle Konfiguration wird vom Anbieter gehostet.',
       configLoadBalancing: 'Konfiguration Lastenverteilung',
       specifyModelCredentialTip: 'Verwenden Sie ein konfiguriertes Modellzugang.',
+      manageCredentials: 'Anmeldeinformationen verwalten',
     },
   },
   dataSource: {

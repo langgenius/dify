@@ -18,7 +18,7 @@ class NotionInfo(BaseModel):
     tenant_id: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
 
@@ -49,5 +49,5 @@ class ExtractSetting(BaseModel):
     document_model: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)

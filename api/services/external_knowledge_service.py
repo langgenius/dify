@@ -89,7 +89,7 @@ class ExternalDatasetService:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
-        except Exception as e:
+        except Exception:
             raise ValueError(f"failed to connect to the endpoint: {endpoint}")
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
@@ -277,7 +277,7 @@ class ExternalDatasetService:
         query: str,
         external_retrieval_parameters: dict,
         metadata_condition: Optional[MetadataCondition] = None,
-    ) -> list:
+    ):
         external_knowledge_binding = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )

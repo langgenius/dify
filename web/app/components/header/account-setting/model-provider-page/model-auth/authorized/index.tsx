@@ -1,12 +1,11 @@
 import {
+  Fragment,
   memo,
   useCallback,
-  useMemo,
   useState,
 } from 'react'
 import {
   RiAddLine,
-  RiEqualizer2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -25,6 +24,7 @@ import type {
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
+  ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
 import { useAuth } from '../hooks'
@@ -34,15 +34,20 @@ type AuthorizedProps = {
   provider: ModelProvider,
   configurationMethod: ConfigurationMethodEnum,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  isModelCredential?: boolean
+  authParams?: {
+    isModelCredential?: boolean
+    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
+    onRemove?: (credentialId: string) => void
+    mode?: ModelModalModeEnum
+  }
   items: {
     title?: string
     model?: CustomModel
+    selectedCredential?: Credential
     credentials: Credential[]
   }[]
-  selectedCredential?: Credential
   disabled?: boolean
-  renderTrigger?: (open?: boolean) => React.ReactNode
+  renderTrigger: (open?: boolean) => React.ReactNode
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   offset?: PortalToFollowElemOptions['offset']
@@ -50,18 +55,22 @@ type AuthorizedProps = {
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   showItemSelectedIcon?: boolean
-  onUpdate?: () => void
   onItemClick?: (credential: Credential, model?: CustomModel) => void
   enableAddModelCredential?: boolean
-  bottomAddModelCredentialText?: string
+  triggerOnlyOpenModal?: boolean
+  hideAddAction?: boolean
+  disableItemClick?: boolean
+  popupTitle?: string
+  showModelTitle?: boolean
+  disableDeleteButShowAction?: boolean
+  disableDeleteTip?: string
 }
 const Authorized = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
   items,
-  isModelCredential,
-  selectedCredential,
+  authParams,
   disabled,
   renderTrigger,
   isOpen,
@@ -71,10 +80,14 @@ const Authorized = ({
   triggerPopupSameWidth = false,
   popupClassName,
   showItemSelectedIcon,
-  onUpdate,
   onItemClick,
-  enableAddModelCredential,
-  bottomAddModelCredentialText,
+  triggerOnlyOpenModal,
+  hideAddAction,
+  disableItemClick,
+  popupTitle,
+  showModelTitle,
+  disableDeleteButShowAction,
+  disableDeleteTip,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
@@ -86,6 +99,12 @@ const Authorized = ({
     setIsLocalOpen(open)
   }, [onOpenChange])
   const {
+    isModelCredential,
+    onUpdate,
+    onRemove,
+    mode,
+  } = authParams || {}
+  const {
     openConfirmDelete,
     closeConfirmDelete,
     doingAction,
@@ -93,7 +112,17 @@ const Authorized = ({
     handleConfirmDelete,
     deleteCredentialId,
     handleOpenModal,
-  } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields, isModelCredential, onUpdate)
+  } = useAuth(
+    provider,
+    configurationMethod,
+    currentCustomConfigurationModelFixedFields,
+    {
+      isModelCredential,
+      onUpdate,
+      onRemove,
+      mode,
+    },
+  )
 
   const handleEdit = useCallback((credential?: Credential, model?: CustomModel) => {
     handleOpenModal(credential, model)
@@ -101,27 +130,17 @@ const Authorized = ({
   }, [handleOpenModal, setMergedIsOpen])
 
   const handleItemClick = useCallback((credential: Credential, model?: CustomModel) => {
+    if (disableItemClick)
+      return
+
     if (onItemClick)
       onItemClick(credential, model)
     else
       handleActiveCredential(credential, model)
 
     setMergedIsOpen(false)
-  }, [handleActiveCredential, onItemClick, setMergedIsOpen])
+  }, [handleActiveCredential, onItemClick, setMergedIsOpen, disableItemClick])
   const notAllowCustomCredential = provider.allow_custom_token === false
-
-  const Trigger = useMemo(() => {
-    const Item = (
-      <Button
-        className='grow'
-        size='small'
-      >
-        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
-        {t('common.operation.config')}
-      </Button>
-    )
-    return Item
-  }, [t])
 
   return (
     <>
@@ -134,44 +153,60 @@ const Authorized = ({
       >
         <PortalToFollowElemTrigger
           onClick={() => {
+            if (triggerOnlyOpenModal) {
+              handleOpenModal()
+              return
+            }
+
             setMergedIsOpen(!mergedIsOpen)
           }}
           asChild
         >
-          {
-            renderTrigger
-              ? renderTrigger(mergedIsOpen)
-              : Trigger
-          }
+          {renderTrigger(mergedIsOpen)}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[100]'>
           <div className={cn(
-            'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+            'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
             popupClassName,
           )}>
+            {
+              popupTitle && (
+                <div className='system-xs-medium px-3 pb-0.5 pt-[10px] text-text-tertiary'>
+                  {popupTitle}
+                </div>
+              )
+            }
             <div className='max-h-[304px] overflow-y-auto'>
               {
                 items.map((item, index) => (
-                  <AuthorizedItem
-                    key={index}
-                    title={item.title}
-                    model={item.model}
-                    credentials={item.credentials}
-                    disabled={disabled}
-                    onDelete={openConfirmDelete}
-                    onEdit={handleEdit}
-                    showItemSelectedIcon={showItemSelectedIcon}
-                    selectedCredentialId={selectedCredential?.credential_id}
-                    onItemClick={handleItemClick}
-                    enableAddModelCredential={enableAddModelCredential}
-                    notAllowCustomCredential={notAllowCustomCredential}
-                  />
+                  <Fragment key={index}>
+                    <AuthorizedItem
+                      provider={provider}
+                      title={item.title}
+                      model={item.model}
+                      credentials={item.credentials}
+                      disabled={disabled}
+                      onDelete={openConfirmDelete}
+                      disableDeleteButShowAction={disableDeleteButShowAction}
+                      disableDeleteTip={disableDeleteTip}
+                      onEdit={handleEdit}
+                      showItemSelectedIcon={showItemSelectedIcon}
+                      selectedCredentialId={item.selectedCredential?.credential_id}
+                      onItemClick={handleItemClick}
+                      showModelTitle={showModelTitle}
+                    />
+                    {
+                      index !== items.length - 1 && (
+                        <div className='h-[1px] bg-divider-subtle'></div>
+                      )
+                    }
+                  </Fragment>
                 ))
               }
             </div>
             <div className='h-[1px] bg-divider-subtle'></div>
             {
-              isModelCredential && !notAllowCustomCredential && (
+              isModelCredential && !notAllowCustomCredential && !hideAddAction && (
                 <div
                   onClick={() => handleEdit(
                     undefined,
@@ -182,15 +217,15 @@ const Authorized = ({
                       }
                       : undefined,
                   )}
-                  className='system-xs-medium flex h-[30px] cursor-pointer items-center px-3 text-text-accent-light-mode-only'
+                  className='system-xs-medium flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only'
                 >
                   <RiAddLine className='mr-1 h-4 w-4' />
-                  {bottomAddModelCredentialText ?? t('common.modelProvider.auth.addModelCredential')}
+                  {t('common.modelProvider.auth.addModelCredential')}
                 </div>
               )
             }
             {
-              !isModelCredential && !notAllowCustomCredential && (
+              !isModelCredential && !notAllowCustomCredential && !hideAddAction && (
                 <div className='p-2'>
                   <Button
                     onClick={() => handleEdit()}

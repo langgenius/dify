@@ -303,16 +303,13 @@ class ToolManager:
                 tenant_id=tenant_id,
                 controller=api_provider,
             )
-            return cast(
-                ApiTool,
-                api_provider.get_tool(tool_name).fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials=encrypter.decrypt(credentials),
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return api_provider.get_tool(tool_name).fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials=encrypter.decrypt(credentials),
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
         elif provider_type == ToolProviderType.WORKFLOW:
             workflow_provider_stmt = select(WorkflowToolProvider).where(
@@ -645,7 +642,7 @@ class ToolManager:
                         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
                         exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
-                        name_func=lambda x: x.identity.name,
+                        name_func=lambda x: x.entity.identity.name,
                     ):
                         continue
                     user_provider = ToolTransformService.builtin_provider_to_user_provider(
@@ -781,7 +778,7 @@ class ToolManager:
         return controller
 
     @classmethod
-    def user_get_api_provider(cls, provider: str, tenant_id: str) -> dict:
+    def user_get_api_provider(cls, provider: str, tenant_id: str):
         """
         get api provider
         """
@@ -876,7 +873,7 @@ class ToolManager:
         )
 
     @classmethod
-    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
@@ -893,7 +890,7 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)

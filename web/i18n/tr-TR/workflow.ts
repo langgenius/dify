@@ -470,6 +470,12 @@ const translation = {
         addChildField: 'Çocuk Alanı Ekle',
         resultTip: 'İşte oluşturulan sonuç. Eğer memnun değilseniz, geri dönüp isteminizi değiştirebilirsiniz.',
       },
+      reasoningFormat: {
+        separated: 'Ayrı düşünce etiketleri',
+        title: 'Akıl yürütme etiket ayrımını etkinleştir',
+        tagged: 'Etiketleri düşünmeye devam et',
+        tooltip: 'Düşünce etiketlerinden içeriği çıkarın ve bunu reasoning_content alanında saklayın.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Sorgu Değişkeni',

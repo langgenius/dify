@@ -44,9 +44,13 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
-      - name: Run ty check
+      - name: Run Basedpyright Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: dev/ty-check
+        run: dev/basedpyright-check
+
+      - name: Run Mypy Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'

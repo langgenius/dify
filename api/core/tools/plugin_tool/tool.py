@@ -11,7 +11,7 @@ from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, Too
 class PluginTool(Tool):
     def __init__(
         self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, icon: str, plugin_unique_identifier: str
-    ) -> None:
+    ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
         self.icon = icon

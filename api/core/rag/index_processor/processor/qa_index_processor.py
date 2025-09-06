@@ -113,7 +113,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             # Skip the first row
             df = pd.read_csv(file)
             text_docs = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})
                 text_docs.append(data)
             if len(text_docs) == 0:
@@ -183,7 +183,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                         qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
-            except Exception as e:
+            except Exception:
                 logger.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)

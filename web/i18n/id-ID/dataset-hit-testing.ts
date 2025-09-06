@@ -11,7 +11,7 @@ const translation = {
     countWarning: 'Hingga 200 karakter.',
     placeholder: 'Silakan masukkan teks, disarankan untuk memasukkan kalimat deklaratif singkat.',
     indexWarning: 'Pengetahuan berkualitas tinggi saja.',
-    testing: 'Ujian',
+    testing: 'Pengujian',
   },
   hit: {
     emptyTip: 'Hasil Pengujian Pengambilan akan ditampilkan di sini',
@@ -22,7 +22,7 @@ const translation = {
   open: 'Buka',
   settingTitle: 'Pengaturan Pengambilan',
   dateTimeFormat: 'MM / DD / YYYY hh: mm A',
-  desc: 'Uji efek pukulan Pengetahuan berdasarkan teks kueri yang diberikan.',
+  desc: 'Uji dampak pengetahuan terhadap hasil pencarian berdasarkan teks kueri yang diberikan.',
   viewDetail: 'Lihat Detail',
   viewChart: 'Lihat GRAFIK VAKTOR',
   chunkDetail: 'Detail Potongan',
