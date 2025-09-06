@@ -20,7 +20,6 @@
     "events/",
     "contexts/",
     "constants/",
-    "configs/",
     "commands.py"
   ],
   "typeCheckingMode": "strict",
