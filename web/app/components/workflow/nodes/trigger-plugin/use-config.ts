@@ -3,7 +3,7 @@ import produce from 'immer'
 import type { PluginTriggerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { useAllTriggerPlugins, useTriggerSubscriptions } from '@/service/use-triggers'
 import {
   addDefaultValue,
   toolParametersToFormSchemas,
@@ -19,6 +19,19 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   const { inputs, setInputs: doSetInputs } = useNodeCrud<PluginTriggerNodeType>(id, payload)
 
   const { provider_id, provider_name, tool_name, config } = inputs
+
+  // Construct provider for authentication check
+  const authProvider = useMemo(() => {
+    if (provider_id && provider_name)
+      return `${provider_id}/${provider_name}`
+    return provider_id || ''
+  }, [provider_id, provider_name])
+
+  const { data: subscriptions = [] } = useTriggerSubscriptions(
+    authProvider,
+    !!authProvider,
+  )
+
   const currentProvider = useMemo<TriggerWithProvider | undefined>(() => {
     return triggerPlugins.find(provider =>
       provider.name === provider_name
@@ -81,6 +94,15 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     return Object.values(properties).some((prop: any) => prop.type === 'object')
   }, [outputSchema])
 
+  // Authentication status check
+  const isAuthenticated = useMemo(() => {
+    if (!subscriptions.length) return false
+    const subscription = subscriptions[0]
+    return subscription.credential_type !== 'unauthorized'
+  }, [subscriptions])
+
+  const showAuthRequired = !isAuthenticated && !!currentProvider
+
   return {
     readOnly,
     inputs,
@@ -92,6 +114,8 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     setInputVar,
     outputSchema,
     hasObjectOutput,
+    isAuthenticated,
+    showAuthRequired,
   }
 }
 

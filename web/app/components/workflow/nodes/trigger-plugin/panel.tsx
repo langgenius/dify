@@ -20,6 +20,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
     setTriggerParameterValue,
     outputSchema,
     hasObjectOutput,
+    isAuthenticated,
   } = useConfig(id, data)
 
   // Convert output schema to VarItem format
@@ -31,9 +32,8 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      {/* Dynamic Parameters Form */}
-
-      {triggerParameterSchema.length > 0 && (
+      {/* Dynamic Parameters Form - Only show when authenticated */}
+      {isAuthenticated && triggerParameterSchema.length > 0 && (
         <>
           <div className='px-4 pb-4'>
             <ToolForm
@@ -44,11 +44,11 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
               onChange={setTriggerParameterValue}
             />
           </div>
+          <Split />
         </>
       )}
 
-      <Split />
-
+      {/* Output Variables - Always show */}
       <OutputVars>
         <>
           {outputVars.map(varItem => (
