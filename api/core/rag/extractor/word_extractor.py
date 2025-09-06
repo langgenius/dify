@@ -56,7 +56,7 @@ class WordExtractor(BaseExtractor):
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
-    def __del__(self) -> None:
+    def __del__(self):
         if hasattr(self, "temp_file"):
             self.temp_file.close()
 
