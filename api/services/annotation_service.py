@@ -1,5 +1,5 @@
 import uuid
-from typing import cast
+from typing import Optional
 
 import pandas as pd
 from flask_login import current_user
@@ -40,7 +40,7 @@ class AppAnnotationService:
             if not message:
                 raise NotFound("Message Not Exists.")
 
-            annotation = message.annotation
+            annotation: Optional[MessageAnnotation] = message.annotation
             # save the message annotation
             if annotation:
                 annotation.content = args["answer"]
@@ -70,10 +70,10 @@ class AppAnnotationService:
                 app_id,
                 annotation_setting.collection_binding_id,
             )
-        return cast(MessageAnnotation, annotation)
+        return annotation
 
     @classmethod
-    def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
+    def enable_app_annotation(cls, args: dict, app_id: str):
         enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
@@ -96,7 +96,7 @@ class AppAnnotationService:
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
-    def disable_app_annotation(cls, app_id: str) -> dict:
+    def disable_app_annotation(cls, app_id: str):
         disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
@@ -282,7 +282,7 @@ class AppAnnotationService:
         annotations_to_delete = (
             db.session.query(MessageAnnotation, AppAnnotationSetting)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .where(MessageAnnotation.id.in_(annotation_ids))
             .all()
         )
 
@@ -315,7 +315,7 @@ class AppAnnotationService:
         return {"deleted_count": deleted_count}
 
     @classmethod
-    def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
+    def batch_import_app_annotations(cls, app_id, file: FileStorage):
         # get app info
         app = (
             db.session.query(App)
@@ -330,7 +330,7 @@ class AppAnnotationService:
             # Skip the first row
             df = pd.read_csv(file, dtype=str)
             result = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():
                 content = {"question": row.iloc[0], "answer": row.iloc[1]}
                 result.append(content)
             if len(result) == 0:
@@ -490,10 +490,10 @@ class AppAnnotationService:
         }
 
     @classmethod
-    def clear_all_annotations(cls, app_id: str) -> dict:
+    def clear_all_annotations(cls, app_id: str):
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 

@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
@@ -10,6 +10,8 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DocumentSegment
 from models.model import UploadFile
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -23,7 +25,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
 
     Usage: batch_clean_document_task.delay(document_ids, dataset_id)
     """
-    logging.info(click.style("Start batch clean documents when documents deleted", fg="green"))
+    logger.info(click.style("Start batch clean documents when documents deleted", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -47,7 +49,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                         if image_file and image_file.key:
                             storage.delete(image_file.key)
                     except Exception:
-                        logging.exception(
+                        logger.exception(
                             "Delete image_files failed when storage deleted, \
                                           image_upload_file_is: %s",
                             upload_file_id,
@@ -62,18 +64,18 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 try:
                     storage.delete(file.key)
                 except Exception:
-                    logging.exception("Delete file failed when document deleted, file_id: %s", file.id)
+                    logger.exception("Delete file failed when document deleted, file_id: %s", file.id)
                 db.session.delete(file)
             db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(
                 f"Cleaned documents when documents deleted latency: {end_at - start_at}",
                 fg="green",
             )
         )
     except Exception:
-        logging.exception("Cleaned documents when documents deleted failed")
+        logger.exception("Cleaned documents when documents deleted failed")
     finally:
         db.session.close()

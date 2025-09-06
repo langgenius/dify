@@ -13,6 +13,8 @@ from libs.oauth_data_source import NotionOAuth
 
 from ..wraps import account_initialization_required, setup_required
 
+logger = logging.getLogger(__name__)
+
 
 def get_oauth_providers():
     with current_app.app_context():
@@ -79,8 +81,8 @@ class OAuthDataSourceBinding(Resource):
                 return {"error": "Invalid code"}, 400
             try:
                 oauth_provider.get_access_token(code)
-            except requests.exceptions.HTTPError as e:
-                logging.exception(
+            except requests.HTTPError as e:
+                logger.exception(
                     "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
                 )
                 return {"error": "OAuth data source process failed"}, 400
@@ -102,8 +104,8 @@ class OAuthDataSourceSync(Resource):
             return {"error": "Invalid provider"}, 400
         try:
             oauth_provider.sync_data_source(binding_id)
-        except requests.exceptions.HTTPError as e:
-            logging.exception(
+        except requests.HTTPError as e:
+            logger.exception(
                 "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
             )
             return {"error": "OAuth data source process failed"}, 400

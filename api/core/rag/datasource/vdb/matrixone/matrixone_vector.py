@@ -29,7 +29,7 @@ class MatrixoneConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config host is required")
         if not values["port"]:
@@ -99,7 +99,7 @@ class MatrixoneVector(BaseVector):
                 return client
             try:
                 client.create_full_text_index()
-            except Exception as e:
+            except Exception:
                 logger.exception("Failed to create full text index")
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
             return client
@@ -128,7 +128,7 @@ class MatrixoneVector(BaseVector):
         return len(result) > 0
 
     @ensure_client
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         assert self.client is not None
         if not ids:
             return
@@ -141,7 +141,7 @@ class MatrixoneVector(BaseVector):
         return [result.id for result in results]
 
     @ensure_client
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         assert self.client is not None
         self.client.delete(filter={key: value})
 
@@ -207,7 +207,7 @@ class MatrixoneVector(BaseVector):
         return docs
 
     @ensure_client
-    def delete(self) -> None:
+    def delete(self):
         assert self.client is not None
         self.client.delete()
 

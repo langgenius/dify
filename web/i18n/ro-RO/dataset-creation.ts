@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Creați Cunoștințe',
-      update: 'Adăugați date',
       fallbackRoute: 'Cunoaștere',
     },
     one: 'Alegeți sursa de date',

@@ -67,7 +67,7 @@ class IterationNode(BaseNode):
 
     _node_data: IterationNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = IterationNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -89,7 +89,7 @@ class IterationNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         return {
             "type": "iteration",
             "config": {
@@ -441,8 +441,8 @@ class IterationNode(BaseNode):
             iteration_run_id = parallel_mode_run_id if parallel_mode_run_id is not None else f"{current_index}"
             next_index = int(current_index) + 1
             for event in rst:
-                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:
-                    event.in_iteration_id = self.node_id
+                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:  # ty: ignore [unresolved-attribute]
+                    event.in_iteration_id = self.node_id  # ty: ignore [unresolved-attribute]
 
                 if (
                     isinstance(event, BaseNodeEvent)

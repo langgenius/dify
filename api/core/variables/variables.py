@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, TypeAlias, cast
+from typing import Annotated, TypeAlias
 from uuid import uuid4
 
 from pydantic import Discriminator, Field, Tag
@@ -8,11 +8,13 @@ from core.helper import encrypter
 
 from .segments import (
     ArrayAnySegment,
+    ArrayBooleanSegment,
     ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArraySegment,
     ArrayStringSegment,
+    BooleanSegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
@@ -84,7 +86,7 @@ class SecretVariable(StringVariable):
 
     @property
     def log(self) -> str:
-        return cast(str, encrypter.obfuscated_token(self.value))
+        return encrypter.obfuscated_token(self.value)
 
 
 class NoneVariable(NoneSegment, Variable):
@@ -96,7 +98,15 @@ class FileVariable(FileSegment, Variable):
     pass
 
 
+class BooleanVariable(BooleanSegment, Variable):
+    pass
+
+
 class ArrayFileVariable(ArrayFileSegment, ArrayVariable):
+    pass
+
+
+class ArrayBooleanVariable(ArrayBooleanSegment, ArrayVariable):
     pass
 
 
@@ -114,11 +124,13 @@ VariableUnion: TypeAlias = Annotated[
         | Annotated[IntegerVariable, Tag(SegmentType.INTEGER)]
         | Annotated[ObjectVariable, Tag(SegmentType.OBJECT)]
         | Annotated[FileVariable, Tag(SegmentType.FILE)]
+        | Annotated[BooleanVariable, Tag(SegmentType.BOOLEAN)]
         | Annotated[ArrayAnyVariable, Tag(SegmentType.ARRAY_ANY)]
         | Annotated[ArrayStringVariable, Tag(SegmentType.ARRAY_STRING)]
         | Annotated[ArrayNumberVariable, Tag(SegmentType.ARRAY_NUMBER)]
         | Annotated[ArrayObjectVariable, Tag(SegmentType.ARRAY_OBJECT)]
         | Annotated[ArrayFileVariable, Tag(SegmentType.ARRAY_FILE)]
+        | Annotated[ArrayBooleanVariable, Tag(SegmentType.ARRAY_BOOLEAN)]
         | Annotated[SecretVariable, Tag(SegmentType.SECRET)]
     ),
     Discriminator(get_segment_discriminator),

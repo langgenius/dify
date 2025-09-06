@@ -4,6 +4,7 @@ import operator
 from typing import Any, Optional, cast
 
 import requests
+from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -367,22 +368,17 @@ class NotionExtractor(BaseExtractor):
 
     @classmethod
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
-            .where(
-                db.and_(
-                    DataSourceOauthBinding.tenant_id == tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.disabled == False,
-                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
-                )
-            )
-            .first()
+        stmt = select(DataSourceOauthBinding).where(
+            DataSourceOauthBinding.tenant_id == tenant_id,
+            DataSourceOauthBinding.provider == "notion",
+            DataSourceOauthBinding.disabled == False,
+            DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
         )
+        data_source_binding = db.session.scalar(stmt)
 
         if not data_source_binding:
             raise Exception(
                 f"No notion data source binding found for tenant {tenant_id} and notion workspace {notion_workspace_id}"
             )
 
-        return cast(str, data_source_binding.access_token)
+        return data_source_binding.access_token

@@ -545,6 +545,7 @@ export type Segment = {
   keywords: string[]
   hit_count: number
   index_node_hash: string
+  answer: string
 }
 
 export type Document = {

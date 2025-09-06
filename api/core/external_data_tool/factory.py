@@ -6,14 +6,14 @@ from extensions.ext_code_based_extension import code_based_extension
 
 
 class ExternalDataToolFactory:
-    def __init__(self, name: str, tenant_id: str, app_id: str, variable: str, config: dict) -> None:
+    def __init__(self, name: str, tenant_id: str, app_id: str, variable: str, config: dict):
         extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
         self.__extension_instance = extension_class(
             tenant_id=tenant_id, app_id=app_id, variable=variable, config=config
         )
 
     @classmethod
-    def validate_config(cls, name: str, tenant_id: str, config: dict) -> None:
+    def validate_config(cls, name: str, tenant_id: str, config: dict):
         """
         Validate the incoming form config data.
 
@@ -22,7 +22,6 @@ class ExternalDataToolFactory:
         :param config: the form config data
         :return:
         """
-        code_based_extension.validate_form_schema(ExtensionModule.EXTERNAL_DATA_TOOL, name, config)
         extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
         # FIXME mypy issue here, figure out how to fix it
         extension_class.validate_config(tenant_id, config)  # type: ignore

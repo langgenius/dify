@@ -246,6 +246,9 @@ const translation = {
     useApi: '使用 API 金鑰',
     clientInfo: '由於未找到此工具提供者的系統客戶端秘密，因此需要手動設置，對於 redirect_uri，請使用',
     useApiAuthDesc: '配置完憑證後，工作區內的所有成員在協調應用程式時都可以使用此工具。',
+    unavailable: '無法使用',
+    customCredentialUnavailable: '自訂憑證目前無法使用',
+    credentialUnavailable: '凭證目前無法使用。請聯繫管理員。',
   },
   deprecated: '不推薦使用的',
   autoUpdate: {

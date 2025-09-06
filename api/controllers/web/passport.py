@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
@@ -17,9 +17,19 @@ from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
 
 
+@web_ns.route("/passport")
 class PassportResource(Resource):
     """Base resource for passport."""
 
+    @web_ns.doc("get_passport")
+    @web_ns.doc(description="Get authentication passport for web application access")
+    @web_ns.doc(
+        responses={
+            200: "Passport retrieved successfully",
+            401: "Unauthorized - missing app code or invalid authentication",
+            404: "Application or user not found",
+        }
+    )
     def get(self):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
@@ -92,9 +102,6 @@ class PassportResource(Resource):
         return {
             "access_token": tk,
         }
-
-
-api.add_resource(PassportResource, "/passport")
 
 
 def decode_enterprise_webapp_user_id(jwt_token: str | None):

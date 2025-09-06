@@ -283,6 +283,10 @@ const translation = {
       runDesc: 'Esegui comandi rapidi (tema, lingua, ...)',
       themeSystemDesc: 'Segui l\'aspetto del tuo sistema operativo',
       slashDesc: 'Esegui comandi come /theme, /lang',
+      communityDesc: 'Apri la community di Discord',
+      accountDesc: 'Vai alla pagina dell\'account',
+      feedbackDesc: 'Discussioni di feedback della comunità aperta',
+      docDesc: 'Apri la documentazione di aiuto',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Nessuna base di conoscenza trovata',
@@ -317,6 +321,7 @@ const translation = {
     inScope: 'in {{scope}}s',
     tryDifferentSearch: 'Prova un termine di ricerca diverso',
     noMatchingCommands: 'Nessun comando corrispondente trovato',
+    slashHint: 'Digita / per vedere tutti i comandi disponibili',
   },
 }
 

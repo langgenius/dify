@@ -276,6 +276,10 @@ const translation = {
       languageChangeDesc: '更改 UI 語言',
       runDesc: '執行快速命令（主題、語言等...）',
       slashDesc: '執行命令如 /theme, /lang',
+      communityDesc: '開放的 Discord 社區',
+      accountDesc: '導航到帳戶頁面',
+      feedbackDesc: '開放社區反饋討論',
+      docDesc: '開啟幫助文件',
     },
     emptyState: {
       noAppsFound: '未找到應用',
@@ -310,6 +314,7 @@ const translation = {
     inScope: '在 {{scope}}s 中',
     noMatchingCommands: '未找到匹配的命令',
     tryDifferentSearch: '嘗試其他搜尋字詞',
+    slashHint: '輸入 / 以查看所有可用的指令',
   },
 }
 

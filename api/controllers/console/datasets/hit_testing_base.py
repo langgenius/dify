@@ -23,6 +23,8 @@ from fields.hit_testing_fields import hit_testing_record_fields
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
 
+logger = logging.getLogger(__name__)
+
 
 class DatasetsHitTestingBase:
     @staticmethod
@@ -81,5 +83,5 @@ class DatasetsHitTestingBase:
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
-            logging.exception("Hit testing failed.")
+            logger.exception("Hit testing failed.")
             raise InternalServerError(str(e))

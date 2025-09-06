@@ -6,7 +6,7 @@ from typing import Optional
 
 from flask import request
 from requests import get
-from yaml import YAMLError, safe_load  # type: ignore
+from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -242,7 +242,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None) -> dict:
+    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None):
         warning = warning or {}
         """
         parse swagger to openapi

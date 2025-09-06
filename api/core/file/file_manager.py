@@ -88,6 +88,7 @@ def to_prompt_message_content(
         "url": _to_url(f) if dify_config.MULTIMODAL_SEND_FORMAT == "url" else "",
         "format": f.extension.removeprefix("."),
         "mime_type": f.mime_type,
+        "filename": f.filename or "",
     }
     if f.type == FileType.IMAGE:
         params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
