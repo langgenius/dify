@@ -1,5 +1,6 @@
 import logging
 from argparse import ArgumentTypeError
+from collections.abc import Sequence
 from typing import Literal, cast
 
 from flask import request
@@ -79,7 +80,7 @@ class DocumentResource(Resource):
 
         return document
 
-    def get_batch_documents(self, dataset_id: str, batch: str) -> list[Document]:
+    def get_batch_documents(self, dataset_id: str, batch: str) -> Sequence[Document]:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")

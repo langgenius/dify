@@ -1,5 +1,7 @@
 from typing import cast
 
+from sqlalchemy import select
+
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from events.app_event import app_published_workflow_was_updated
@@ -15,7 +17,7 @@ def handle(sender, **kwargs):
     published_workflow = cast(Workflow, published_workflow)
 
     dataset_ids = get_dataset_ids_from_workflow(published_workflow)
-    app_dataset_joins = db.session.query(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id).all()
+    app_dataset_joins = db.session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
 
     removed_dataset_ids: set[str] = set()
     if not app_dataset_joins:

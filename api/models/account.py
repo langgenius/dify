@@ -218,10 +218,12 @@ class Tenant(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
-        return (
-            db.session.query(Account)
-            .where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
-            .all()
+        return list(
+            db.session.scalars(
+                select(Account).where(
+                    Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id
+                )
+            ).all()
         )
 
     @property
