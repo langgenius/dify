@@ -196,6 +196,7 @@ const translation = {
       headerValuePlaceholder: 'e.g., Bearer token123',
       addHeader: 'Add Header',
       noHeaders: 'No custom headers configured',
+      maskedHeadersTip: 'Header values are masked for security. Changes will update the actual values.',
       cancel: 'Cancel',
       save: 'Save',
       confirm: 'Add & Authorize',

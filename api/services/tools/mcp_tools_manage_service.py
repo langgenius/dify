@@ -1,7 +1,7 @@
 import hashlib
 import json
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +26,36 @@ class MCPToolManageService:
     """
     Service class for managing mcp tools.
     """
+
+    @staticmethod
+    def _encrypt_headers(headers: dict[str, str], tenant_id: str) -> dict[str, str]:
+        """
+        Encrypt headers using ProviderConfigEncrypter with all headers as SECRET_INPUT.
+
+        Args:
+            headers: Dictionary of headers to encrypt
+            tenant_id: Tenant ID for encryption
+
+        Returns:
+            Dictionary with all headers encrypted
+        """
+        if not headers:
+            return {}
+
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        # Create dynamic config for all headers as SECRET_INPUT
+        config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers]
+
+        encrypter_instance, _ = create_provider_encrypter(
+            tenant_id=tenant_id,
+            config=config,
+            cache=NoOpProviderCredentialCache(),
+        )
+
+        return cast(dict[str, str], encrypter_instance.encrypt(headers))
 
     @staticmethod
     def get_mcp_provider_by_provider_id(provider_id: str, tenant_id: str) -> MCPToolProvider:
@@ -84,6 +114,12 @@ class MCPToolManageService:
             if existing_provider.server_identifier == server_identifier:
                 raise ValueError(f"MCP tool {server_identifier} already exists")
         encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
+        # Encrypt headers
+        encrypted_headers = None
+        if headers:
+            encrypted_headers_dict = MCPToolManageService._encrypt_headers(headers, tenant_id)
+            encrypted_headers = json.dumps(encrypted_headers_dict)
+
         mcp_tool = MCPToolProvider(
             tenant_id=tenant_id,
             name=name,
@@ -96,7 +132,7 @@ class MCPToolManageService:
             server_identifier=server_identifier,
             timeout=timeout,
             sse_read_timeout=sse_read_timeout,
-            headers=json.dumps(headers) if headers else None,
+            encrypted_headers=encrypted_headers,
         )
         db.session.add(mcp_tool)
         db.session.commit()
@@ -223,7 +259,12 @@ class MCPToolManageService:
             if sse_read_timeout is not None:
                 mcp_provider.sse_read_timeout = sse_read_timeout
             if headers is not None:
-                mcp_provider.headers = json.dumps(headers) if headers else None
+                # Encrypt headers
+                if headers:
+                    encrypted_headers_dict = MCPToolManageService._encrypt_headers(headers, tenant_id)
+                    mcp_provider.encrypted_headers = json.dumps(encrypted_headers_dict)
+                else:
+                    mcp_provider.encrypted_headers = None
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()

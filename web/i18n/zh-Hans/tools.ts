@@ -196,6 +196,7 @@ const translation = {
       headerValuePlaceholder: '例如：Bearer token123',
       addHeader: '添加请求头',
       noHeaders: '未配置自定义请求头',
+      maskedHeadersTip: '为了安全，请求头值已被掩码处理。修改将更新实际值。',
       cancel: '取消',
       save: '保存',
       confirm: '添加并授权',

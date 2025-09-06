@@ -16,12 +16,14 @@ type Props = {
   headers: Record<string, string>
   onChange: (headers: Record<string, string>) => void
   readonly?: boolean
+  isMasked?: boolean
 }
 
 const HeadersInput = ({
   headers,
   onChange,
   readonly = false,
+  isMasked = false,
 }: Props) => {
   const { t } = useTranslation()
 
@@ -79,6 +81,11 @@ const HeadersInput = ({
 
   return (
     <div className='space-y-2'>
+      {isMasked && (
+        <div className='body-xs-regular text-text-tertiary'>
+          {t('tools.mcp.modal.maskedHeadersTip')}
+        </div>
+      )}
       <div className='overflow-hidden rounded-lg border border-divider-regular'>
         <div className='system-xs-medium-uppercase bg-background-secondary flex h-7 items-center leading-7 text-text-tertiary'>
           <div className='h-full w-1/2 border-r border-divider-regular pl-3'>{t('tools.mcp.modal.headerKey')}</div>

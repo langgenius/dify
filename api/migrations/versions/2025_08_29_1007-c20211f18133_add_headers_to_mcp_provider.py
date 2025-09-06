@@ -18,13 +18,13 @@ depends_on = None
 
 
 def upgrade():
-    # Add headers column to tool_mcp_providers table
-    op.add_column('tool_mcp_providers', sa.Column('headers', sa.Text(), nullable=True))
+    # Add encrypted_headers column to tool_mcp_providers table
+    op.add_column('tool_mcp_providers', sa.Column('encrypted_headers', sa.Text(), nullable=True))
     
     # Add comment to the column
-    op.execute("COMMENT ON COLUMN tool_mcp_providers.headers IS 'Custom HTTP headers for MCP server requests (JSON format)'")
+    op.execute("COMMENT ON COLUMN tool_mcp_providers.encrypted_headers IS 'Encrypted HTTP headers for MCP server requests (JSON format)'")
 
 
 def downgrade():
-    # Remove headers column from tool_mcp_providers table
-    op.drop_column('tool_mcp_providers', 'headers')
+    # Remove encrypted_headers column from tool_mcp_providers table
+    op.drop_column('tool_mcp_providers', 'encrypted_headers')

@@ -71,7 +71,7 @@ const MCPModal = ({
   const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)
   const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.sse_read_timeout || 300)
   const [headers, setHeaders] = React.useState<Record<string, string>>(
-    data?.headers || {},
+    data?.masked_headers || {},
   )
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
@@ -85,7 +85,7 @@ const MCPModal = ({
       setServerIdentifier(data.server_identifier || '')
       setMcpTimeout(data.timeout || 30)
       setSseReadTimeout(data.sse_read_timeout || 300)
-      setHeaders(data.headers || {})
+      setHeaders(data.masked_headers || {})
       setAppIcon(getIcon(data))
     }
  else {
@@ -269,6 +269,7 @@ const MCPModal = ({
               headers={headers}
               onChange={setHeaders}
               readonly={false}
+              isMasked={!isCreate && Object.keys(headers).length > 0}
             />
           </div>
         </div>

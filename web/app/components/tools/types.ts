@@ -60,6 +60,7 @@ export type Collection = {
   timeout?: number
   sse_read_timeout?: number
   headers?: Record<string, string>
+  masked_headers?: Record<string, string>
 }
 
 export type ToolParameter = {
