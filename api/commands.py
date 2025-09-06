@@ -93,7 +93,7 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
-    with Session(db.engine, expire_on_commit=False) as session:
+    with Session(db.engine, expire_on_commit=False) as session, session.begin():
         account = session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
@@ -132,7 +132,7 @@ def reset_encrypt_key_pair():
     if dify_config.EDITION != "SELF_HOSTED":
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
-    with Session(db.engine, expire_on_commit=False) as session:
+    with Session(db.engine, expire_on_commit=False) as session, session.begin():
         tenants = session.query(Tenant).all()
     for tenant in tenants:
         if not tenant:
@@ -175,7 +175,7 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             per_page = 50
-            with Session(db.engine, expire_on_commit=False) as session:
+            with Session(db.engine, expire_on_commit=False) as session, session.begin():
                 apps = (
                     session.query(App)
                     .where(App.status == "normal")
@@ -197,7 +197,7 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                with Session(db.engine, expire_on_commit=False) as session:
+                with Session(db.engine, expire_on_commit=False) as session, session.begin():
                     app_annotation_setting = (
                         session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
                     )
@@ -207,7 +207,7 @@ def migrate_annotation_vector_database():
                     click.echo(f"App annotation setting disabled: {app.id}")
                     continue
                 # get dataset_collection_binding info
-                with Session(db.engine, expire_on_commit=False) as session:
+                with Session(db.engine, expire_on_commit=False) as session, session.begin():
                     dataset_collection_binding = (
                         session.query(DatasetCollectionBinding)
                         .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
@@ -216,7 +216,7 @@ def migrate_annotation_vector_database():
                 if not dataset_collection_binding:
                     click.echo(f"App annotation collection binding not found: {app.id}")
                     continue
-                with Session(db.engine, expire_on_commit=False) as session:
+                with Session(db.engine, expire_on_commit=False) as session, session.begin():
                     annotations = session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
                 dataset = Dataset(
                     id=app.id,
