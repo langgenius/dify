@@ -1525,3 +1525,60 @@ class AppTrigger(Base):
         default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
     )
+
+
+class WorkflowSchedulePlan(Base):
+    """
+    Workflow Schedule Configuration
+
+    Store schedule configurations for time-based workflow triggers.
+    Uses cron expressions with timezone support for flexible scheduling.
+
+    Attributes:
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Starting node ID for workflow execution
+    - tenant_id (uuid) Workspace ID for multi-tenancy
+    - cron_expression (varchar) Cron expression defining schedule pattern
+    - timezone (varchar) Timezone for cron evaluation (e.g., 'Asia/Shanghai')
+    - next_run_at (timestamp) Next scheduled execution time
+    - created_at (timestamp) Creation timestamp
+    - updated_at (timestamp) Last update timestamp
+    """
+
+    __tablename__ = "workflow_schedule_plans"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_schedule_plan_pkey"),
+        sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node"),
+        sa.Index("workflow_schedule_plan_next_idx", "next_run_at"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+    # Schedule configuration
+    cron_expression: Mapped[str] = mapped_column(String(255), nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    # Schedule control
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary representation"""
+        return {
+            "id": self.id,
+            "app_id": self.app_id,
+            "node_id": self.node_id,
+            "tenant_id": self.tenant_id,
+            "cron_expression": self.cron_expression,
+            "timezone": self.timezone,
+            "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
