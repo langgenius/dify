@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import Avatar from '@/app/components/base/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { useStore } from '../store'
@@ -6,10 +7,16 @@ import cn from '@/utils/classnames'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/solid/arrows'
 import { getUserColor } from '../collaboration/utils/user-color'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 
 const OnlineUsers = () => {
   const appId = useStore(s => s.appId)
   const { onlineUsers } = useCollaboration(appId)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   if (!onlineUsers || onlineUsers.length === 0)
     return null
@@ -53,37 +60,60 @@ const OnlineUsers = () => {
             )
           })}
           {remainingCount > 0 && (
-            <Tooltip
-              popupContent={
-                <div className="flex flex-col gap-1">
-                  {onlineUsers.slice(maxVisible).map((user, index) => (
-                    <div key={`${user.sid}-tooltip-${index}`}>
-                      {user.username || 'User'}
-                    </div>
-                  ))}
-                </div>
-              }
-              position="bottom"
-              triggerMethod="hover"
-              needsDelay={false}
-              asChild
+            <PortalToFollowElem
+              open={dropdownOpen}
+              onOpenChange={setDropdownOpen}
+              placement="bottom-start"
             >
-              <div
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center',
-                  'cursor-pointer rounded-full bg-gray-300',
-                  'text-xs font-medium text-gray-700',
-                  'ring-2 ring-white',
-                )}
+              <PortalToFollowElemTrigger
+                onMouseEnter={() => setDropdownOpen(true)}
+                onMouseLeave={() => setDropdownOpen(false)}
+                asChild
               >
-                +{remainingCount}
-              </div>
-            </Tooltip>
+                <div className="flex items-center">
+                  <div
+                    className={cn(
+                      'flex h-7 w-7 items-center justify-center',
+                      'cursor-pointer rounded-full bg-gray-300',
+                      'text-xs font-medium text-gray-700',
+                      'ring-2 ring-white',
+                    )}
+                  >
+                    +{remainingCount}
+                  </div>
+                  <ChevronDown className="ml-1 h-3 w-3 text-gray-500" />
+                </div>
+              </PortalToFollowElemTrigger>
+              <PortalToFollowElemContent
+                onMouseEnter={() => setDropdownOpen(true)}
+                onMouseLeave={() => setDropdownOpen(false)}
+                className="z-[9999]"
+              >
+                <div className="mt-2 min-w-[200px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+                  {onlineUsers.map((user) => {
+                    const userColor = getUserColor(user.user_id)
+                    return (
+                      <div
+                        key={user.sid}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover"
+                      >
+                        <Avatar
+                          name={user.username || 'User'}
+                          avatar={user.avatar}
+                          size={24}
+                          backgroundColor={userColor}
+                        />
+                        <span className="text-sm text-text-secondary">
+                          {user.username || 'User'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </PortalToFollowElemContent>
+            </PortalToFollowElem>
           )}
         </div>
-        {remainingCount > 0 && (
-          <ChevronDown className="ml-1 h-3 w-3 text-gray-500" />
-        )}
       </div>
     </div>
   )
