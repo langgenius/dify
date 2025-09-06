@@ -1,8 +1,8 @@
 from flask_login import current_user
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginPermissionDeniedError
@@ -10,7 +10,26 @@ from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
 
+@console_ns.route("/workspaces/current/endpoints/create")
 class EndpointCreateApi(Resource):
+    @api.doc("create_endpoint")
+    @api.doc(description="Create a new plugin endpoint")
+    @api.expect(
+        api.model(
+            "EndpointCreateRequest",
+            {
+                "plugin_unique_identifier": fields.String(required=True, description="Plugin unique identifier"),
+                "settings": fields.Raw(required=True, description="Endpoint settings"),
+                "name": fields.String(required=True, description="Endpoint name"),
+            },
+        )
+    )
+    @api.response(
+        200,
+        "Endpoint created successfully",
+        api.model("EndpointCreateResponse", {"success": fields.Boolean(description="Operation success")}),
+    )
+    @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
     @account_initialization_required
@@ -43,7 +62,20 @@ class EndpointCreateApi(Resource):
             raise ValueError(e.description) from e
 
 
+@console_ns.route("/workspaces/current/endpoints/list")
 class EndpointListApi(Resource):
+    @api.doc("list_endpoints")
+    @api.doc(description="List plugin endpoints with pagination")
+    @api.expect(
+        api.parser()
+        .add_argument("page", type=int, required=True, location="args", help="Page number")
+        .add_argument("page_size", type=int, required=True, location="args", help="Page size")
+    )
+    @api.response(
+        200,
+        "Success",
+        api.model("EndpointListResponse", {"endpoints": fields.List(fields.Raw(description="Endpoint information"))}),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -70,7 +102,23 @@ class EndpointListApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/endpoints/list/plugin")
 class EndpointListForSinglePluginApi(Resource):
+    @api.doc("list_plugin_endpoints")
+    @api.doc(description="List endpoints for a specific plugin")
+    @api.expect(
+        api.parser()
+        .add_argument("page", type=int, required=True, location="args", help="Page number")
+        .add_argument("page_size", type=int, required=True, location="args", help="Page size")
+        .add_argument("plugin_id", type=str, required=True, location="args", help="Plugin ID")
+    )
+    @api.response(
+        200,
+        "Success",
+        api.model(
+            "PluginEndpointListResponse", {"endpoints": fields.List(fields.Raw(description="Endpoint information"))}
+        ),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -100,7 +148,19 @@ class EndpointListForSinglePluginApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/endpoints/delete")
 class EndpointDeleteApi(Resource):
+    @api.doc("delete_endpoint")
+    @api.doc(description="Delete a plugin endpoint")
+    @api.expect(
+        api.model("EndpointDeleteRequest", {"endpoint_id": fields.String(required=True, description="Endpoint ID")})
+    )
+    @api.response(
+        200,
+        "Endpoint deleted successfully",
+        api.model("EndpointDeleteResponse", {"success": fields.Boolean(description="Operation success")}),
+    )
+    @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
     @account_initialization_required
@@ -123,7 +183,26 @@ class EndpointDeleteApi(Resource):
         }
 
 
+@console_ns.route("/workspaces/current/endpoints/update")
 class EndpointUpdateApi(Resource):
+    @api.doc("update_endpoint")
+    @api.doc(description="Update a plugin endpoint")
+    @api.expect(
+        api.model(
+            "EndpointUpdateRequest",
+            {
+                "endpoint_id": fields.String(required=True, description="Endpoint ID"),
+                "settings": fields.Raw(required=True, description="Updated settings"),
+                "name": fields.String(required=True, description="Updated name"),
+            },
+        )
+    )
+    @api.response(
+        200,
+        "Endpoint updated successfully",
+        api.model("EndpointUpdateResponse", {"success": fields.Boolean(description="Operation success")}),
+    )
+    @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
     @account_initialization_required
@@ -154,7 +233,19 @@ class EndpointUpdateApi(Resource):
         }
 
 
+@console_ns.route("/workspaces/current/endpoints/enable")
 class EndpointEnableApi(Resource):
+    @api.doc("enable_endpoint")
+    @api.doc(description="Enable a plugin endpoint")
+    @api.expect(
+        api.model("EndpointEnableRequest", {"endpoint_id": fields.String(required=True, description="Endpoint ID")})
+    )
+    @api.response(
+        200,
+        "Endpoint enabled successfully",
+        api.model("EndpointEnableResponse", {"success": fields.Boolean(description="Operation success")}),
+    )
+    @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
     @account_initialization_required
@@ -177,7 +268,19 @@ class EndpointEnableApi(Resource):
         }
 
 
+@console_ns.route("/workspaces/current/endpoints/disable")
 class EndpointDisableApi(Resource):
+    @api.doc("disable_endpoint")
+    @api.doc(description="Disable a plugin endpoint")
+    @api.expect(
+        api.model("EndpointDisableRequest", {"endpoint_id": fields.String(required=True, description="Endpoint ID")})
+    )
+    @api.response(
+        200,
+        "Endpoint disabled successfully",
+        api.model("EndpointDisableResponse", {"success": fields.Boolean(description="Operation success")}),
+    )
+    @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
     @account_initialization_required
@@ -198,12 +301,3 @@ class EndpointDisableApi(Resource):
                 tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
             )
         }
-
-
-api.add_resource(EndpointCreateApi, "/workspaces/current/endpoints/create")
-api.add_resource(EndpointListApi, "/workspaces/current/endpoints/list")
-api.add_resource(EndpointListForSinglePluginApi, "/workspaces/current/endpoints/list/plugin")
-api.add_resource(EndpointDeleteApi, "/workspaces/current/endpoints/delete")
-api.add_resource(EndpointUpdateApi, "/workspaces/current/endpoints/update")
-api.add_resource(EndpointEnableApi, "/workspaces/current/endpoints/enable")
-api.add_resource(EndpointDisableApi, "/workspaces/current/endpoints/disable")

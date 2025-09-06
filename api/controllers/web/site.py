@@ -2,7 +2,7 @@ from flask_restx import fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from libs.helper import AppIconUrlField
@@ -11,6 +11,7 @@ from models.model import Site
 from services.feature_service import FeatureService
 
 
+@web_ns.route("/site")
 class AppSiteApi(WebApiResource):
     """Resource for app sites."""
 
@@ -53,9 +54,9 @@ class AppSiteApi(WebApiResource):
         "custom_config": fields.Raw(attribute="custom_config"),
     }
 
-    @api.doc("Get App Site Info")
-    @api.doc(description="Retrieve app site information and configuration.")
-    @api.doc(
+    @web_ns.doc("Get App Site Info")
+    @web_ns.doc(description="Retrieve app site information and configuration.")
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request",
@@ -80,9 +81,6 @@ class AppSiteApi(WebApiResource):
         can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
 
         return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
-
-
-api.add_resource(AppSiteApi, "/site")
 
 
 class AppSiteInfo:
