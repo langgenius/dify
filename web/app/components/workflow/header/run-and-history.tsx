@@ -16,8 +16,8 @@ import {
 import { WorkflowRunningStatus } from '../types'
 import ViewHistory from './view-history'
 import Checklist from './checklist'
-import TestRunDropdown, { type TestRunDropdownRef } from './test-run-dropdown'
-import type { TriggerOption } from './test-run-dropdown'
+import TestRunMenu, { type TestRunMenuRef } from './test-run-menu'
+import type { TriggerOption } from './test-run-menu'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import cn from '@/utils/classnames'
 import {
@@ -36,12 +36,12 @@ const RunMode = memo(() => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
   const dynamicOptions = useDynamicTestRunOptions()
-  const testRunDropdownRef = useRef<TestRunDropdownRef>(null)
+  const testRunMenuRef = useRef<TestRunMenuRef>(null)
 
   useEffect(() => {
     // @ts-expect-error - Dynamic property for backward compatibility with keyboard shortcuts
     window._toggleTestRunDropdown = () => {
-      testRunDropdownRef.current?.toggle()
+      testRunMenuRef.current?.toggle()
     }
     return () => {
       // @ts-expect-error - Dynamic property cleanup
@@ -89,8 +89,8 @@ const RunMode = memo(() => {
             </div>
           )
           : (
-            <TestRunDropdown
-              ref={testRunDropdownRef}
+            <TestRunMenu
+              ref={testRunMenuRef}
               options={dynamicOptions}
               onSelect={handleTriggerSelect}
             >
@@ -105,7 +105,7 @@ const RunMode = memo(() => {
                 {t('workflow.common.run')}
                 <ShortcutsName keys={['alt', 'r']} className="ml-1" textColor="secondary" />
               </div>
-            </TestRunDropdown>
+            </TestRunMenu>
           )
       }
       {
