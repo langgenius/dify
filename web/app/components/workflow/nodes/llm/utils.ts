@@ -324,10 +324,50 @@ export const convertBooleanToString = (schema: any) => {
   return schema
 }
 
+// Deep validation for the app-supported JSON Schema subset used by structured output
+// Ensures every property has a valid `type`, arrays define `items`, and objects have `properties` objects.
+const enumArray = z.array(z.union([z.string(), z.number()]))
+
+// Recursive Field schema
+const fieldSchema: z.ZodType<any> = z.lazy(() => z.object({
+  type: z.nativeEnum(Type),
+  description: z.string().optional(),
+  enum: enumArray.optional(),
+  // For object
+  properties: z.record(z.string(), fieldSchema).optional(),
+  required: z.array(z.string()).optional(),
+  additionalProperties: z.boolean().optional(),
+  // For array
+  items: z.lazy(() => z.object({
+    // Array items cannot be an array type, allow string/number/boolean/object
+    type: z.union([
+      z.literal(Type.string),
+      z.literal(Type.number),
+      z.literal(Type.boolean),
+      z.literal(Type.object),
+    ]),
+    description: z.string().optional(),
+    enum: enumArray.optional(),
+    properties: z.record(z.string(), fieldSchema).optional(),
+    required: z.array(z.string()).optional(),
+    additionalProperties: z.boolean().optional(),
+  })).optional(),
+}).superRefine((val, ctx) => {
+  // Object fields must have properties as an object
+  if (val.type === Type.object && (val.properties === undefined || typeof val.properties !== 'object')) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Object fields must have a properties object.' })
+  }
+  // Array fields must define items
+  if (val.type === Type.array && !val.items) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Array fields must define an items schema.' })
+  }
+}))
+
 const schemaRootObject = z.object({
-  type: z.literal('object'),
-  properties: z.record(z.string(), z.any()),
-  required: z.array(z.string()),
+  type: z.literal(Type.object),
+  properties: z.record(z.string(), fieldSchema),
+  required: z.array(z.string()).optional(),
+  // Some models may not support this, but we keep it lenient here and transform later for specific models
   additionalProperties: z.boolean().optional(),
 })
 
