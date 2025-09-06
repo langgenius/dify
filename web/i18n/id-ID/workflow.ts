@@ -461,6 +461,12 @@ const translation = {
       contextTooltip: 'Anda dapat mengimpor Pengetahuan sebagai konteks',
       notSetContextInPromptTip: 'Untuk mengaktifkan fitur konteks, silakan isi variabel konteks di PROMPT.',
       context: 'konteks',
+      reasoningFormat: {
+        tagged: 'Tetap pikirkan tag',
+        title: 'Aktifkan pemisahan tag penalaran',
+        separated: 'Pisahkan tag pemikiran',
+        tooltip: 'Ekstrak konten dari tag pikir dan simpan di field reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       outputVars: {

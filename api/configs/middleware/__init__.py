@@ -300,8 +300,7 @@ class DatasetQueueMonitorConfig(BaseSettings):
 
 class MiddlewareConfig(
     # place the configs in alphabet order
-    CeleryConfig,
-    DatabaseConfig,
+    CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
     KeywordStoreConfig,
     RedisConfig,
     # configs of storage and storage providers
