@@ -32,7 +32,7 @@ class SetupApi(Resource):
         """Get system setup status"""
         if dify_config.EDITION == "SELF_HOSTED":
             setup_status = get_setup_status()
-            # 检查setup_status是否为DifySetup对象而不是bool
+            # Check if setup_status is a DifySetup object rather than a bool
             if setup_status and not isinstance(setup_status, bool):
                 return {"step": "finished", "setup_at": setup_status.setup_at.isoformat()}
             elif setup_status:
