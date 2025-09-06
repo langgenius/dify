@@ -21,9 +21,6 @@ def upgrade():
     # Add encrypted_headers column to tool_mcp_providers table
     op.add_column('tool_mcp_providers', sa.Column('encrypted_headers', sa.Text(), nullable=True))
     
-    # Add comment to the column
-    op.execute("COMMENT ON COLUMN tool_mcp_providers.encrypted_headers IS 'Encrypted HTTP headers for MCP server requests (JSON format)'")
-
 
 def downgrade():
     # Remove encrypted_headers column from tool_mcp_providers table
