@@ -50,7 +50,7 @@ class WorkflowCycleManager:
         workflow_info: CycleManagerWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
         self._workflow_info = workflow_info
@@ -298,7 +298,7 @@ class WorkflowCycleManager:
         error_message: Optional[str] = None,
         exceptions_count: int = 0,
         finished_at: Optional[datetime] = None,
-    ) -> None:
+    ):
         """Update workflow execution with completion data."""
         execution.status = status
         execution.outputs = outputs or {}
@@ -315,7 +315,7 @@ class WorkflowCycleManager:
         workflow_execution: WorkflowExecution,
         conversation_id: Optional[str],
         external_trace_id: Optional[str],
-    ) -> None:
+    ):
         """Add trace task if trace manager is provided."""
         if trace_manager:
             trace_manager.add_trace_task(
@@ -333,7 +333,7 @@ class WorkflowCycleManager:
         workflow_execution_id: str,
         error_message: str,
         now: datetime,
-    ) -> None:
+    ):
         """Fail all running node executions for a workflow."""
         running_node_executions = [
             node_exec
@@ -403,7 +403,7 @@ class WorkflowCycleManager:
         status: WorkflowNodeExecutionStatus,
         error: Optional[str] = None,
         handle_special_values: bool = False,
-    ) -> None:
+    ):
         """Update node execution with completion data."""
         finished_at = naive_utc_now()
         elapsed_time = (finished_at - event.start_at).total_seconds()

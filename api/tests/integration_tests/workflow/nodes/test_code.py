@@ -78,7 +78,7 @@ def init_code_node(code_config: dict):
 @pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
 def test_execute_code(setup_code_executor_mock):
     code = """
-    def main(args1: int, args2: int) -> dict:
+    def main(args1: int, args2: int):
         return {
             "result": args1 + args2,
         }
@@ -124,7 +124,7 @@ def test_execute_code(setup_code_executor_mock):
 @pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
 def test_execute_code_output_validator(setup_code_executor_mock):
     code = """
-    def main(args1: int, args2: int) -> dict:
+    def main(args1: int, args2: int):
         return {
             "result": args1 + args2,
         }
@@ -167,7 +167,7 @@ def test_execute_code_output_validator(setup_code_executor_mock):
 
 def test_execute_code_output_validator_depth():
     code = """
-    def main(args1: int, args2: int) -> dict:
+    def main(args1: int, args2: int):
         return {
             "result": {
                 "result": args1 + args2,
@@ -285,7 +285,7 @@ def test_execute_code_output_validator_depth():
 
 def test_execute_code_output_object_list():
     code = """
-    def main(args1: int, args2: int) -> dict:
+    def main(args1: int, args2: int):
         return {
             "result": {
                 "result": args1 + args2,
@@ -360,7 +360,7 @@ def test_execute_code_output_object_list():
 
 def test_execute_code_scientific_notation():
     code = """
-    def main() -> dict:
+    def main():
         return {
             "result": -8.0E-5
         }

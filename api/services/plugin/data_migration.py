@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class PluginDataMigration:
     @classmethod
-    def migrate(cls) -> None:
+    def migrate(cls):
         cls.migrate_db_records("providers", "provider_name", ModelProviderID)  # large table
         cls.migrate_db_records("provider_models", "provider_name", ModelProviderID)
         cls.migrate_db_records("provider_orders", "provider_name", ModelProviderID)
@@ -26,7 +26,7 @@ class PluginDataMigration:
         cls.migrate_db_records("tool_builtin_providers", "provider", ToolProviderID)
 
     @classmethod
-    def migrate_datasets(cls) -> None:
+    def migrate_datasets(cls):
         table_name = "datasets"
         provider_column_name = "embedding_model_provider"
 
@@ -126,9 +126,7 @@ limit 1000"""
         )
 
     @classmethod
-    def migrate_db_records(
-        cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]
-    ) -> None:
+    def migrate_db_records(cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]):
         click.echo(click.style(f"Migrating [{table_name}] data for plugin", fg="white"))
 
         processed_count = 0

@@ -220,7 +220,7 @@ class WorkflowTool(Tool):
 
         return result, files
 
-    def _update_file_mapping(self, file_dict: dict) -> dict:
+    def _update_file_mapping(self, file_dict: dict):
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
         if transfer_method == FileTransferMethod.TOOL_FILE:
             file_dict["tool_file_id"] = file_dict.get("related_id")

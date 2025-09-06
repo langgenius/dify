@@ -13,7 +13,7 @@ class WorkflowRuntimeTypeConverter:
         result = self._to_json_encodable_recursive(value)
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
-    def _to_json_encodable_recursive(self, value: Any) -> Any:
+    def _to_json_encodable_recursive(self, value: Any):
         if value is None:
             return value
         if isinstance(value, (bool, int, str, float)):

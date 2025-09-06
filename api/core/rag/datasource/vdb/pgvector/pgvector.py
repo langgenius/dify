@@ -34,7 +34,7 @@ class PGVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config PGVECTOR_HOST is required")
         if not values["port"]:
@@ -146,7 +146,7 @@ class PGVector(BaseVector):
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         # Avoiding crashes caused by performing delete operations on empty lists in certain scenarios
         # Scenario 1: extract a document fails, resulting in a table not being created.
         # Then clicking the retry button triggers a delete operation on an empty list.
@@ -162,7 +162,7 @@ class PGVector(BaseVector):
             except Exception as e:
                 raise e
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE meta->>%s = %s", (key, value))
 
@@ -242,7 +242,7 @@ class PGVector(BaseVector):
 
         return docs
 
-    def delete(self) -> None:
+    def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 

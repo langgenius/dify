@@ -115,7 +115,7 @@ class PluginDeclaration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_category(cls, values: dict) -> dict:
+    def validate_category(cls, values: dict):
         # auto detect category
         if values.get("tool"):
             values["category"] = PluginCategory.Tool

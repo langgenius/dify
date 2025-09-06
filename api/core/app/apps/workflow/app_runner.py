@@ -34,7 +34,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
-    ) -> None:
+    ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
@@ -44,7 +44,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._workflow = workflow
         self._sys_user_id = system_user_id
 
-    def run(self) -> None:
+    def run(self):
         """
         Run application
         """

@@ -280,9 +280,7 @@ class ProviderConfiguration(BaseModel):
             else [],
         )
 
-    def validate_provider_credentials(
-        self, credentials: dict, credential_id: str = "", session: Session | None = None
-    ) -> dict:
+    def validate_provider_credentials(self, credentials: dict, credential_id: str = "", session: Session | None = None):
         """
         Validate custom credentials.
         :param credentials: provider credentials
@@ -291,7 +289,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.provider_credential_schema.credential_form_schemas
@@ -402,7 +400,7 @@ class ProviderConfiguration(BaseModel):
             logger.warning("Error generating next credential name: %s", str(e))
             return "API KEY 1"
 
-    def create_provider_credential(self, credentials: dict, credential_name: str | None) -> None:
+    def create_provider_credential(self, credentials: dict, credential_name: str | None):
         """
         Add custom provider credentials.
         :param credentials: provider credentials
@@ -458,7 +456,7 @@ class ProviderConfiguration(BaseModel):
         credentials: dict,
         credential_id: str,
         credential_name: str | None,
-    ) -> None:
+    ):
         """
         update a saved provider credential (by credential_id).
 
@@ -519,7 +517,7 @@ class ProviderConfiguration(BaseModel):
         credential_record: ProviderCredential | ProviderModelCredential,
         credential_source: str,
         session: Session,
-    ) -> None:
+    ):
         """
         Update load balancing configurations that reference the given credential_id.
 
@@ -559,7 +557,7 @@ class ProviderConfiguration(BaseModel):
 
         session.commit()
 
-    def delete_provider_credential(self, credential_id: str) -> None:
+    def delete_provider_credential(self, credential_id: str):
         """
         Delete a saved provider credential (by credential_id).
 
@@ -636,7 +634,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def switch_active_provider_credential(self, credential_id: str) -> None:
+    def switch_active_provider_credential(self, credential_id: str):
         """
         Switch active provider credential (copy the selected one into current active snapshot).
 
@@ -815,7 +813,7 @@ class ProviderConfiguration(BaseModel):
         credentials: dict,
         credential_id: str = "",
         session: Session | None = None,
-    ) -> dict:
+    ):
         """
         Validate custom model credentials.
 
@@ -826,7 +824,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.model_credential_schema.credential_form_schemas
@@ -1010,7 +1008,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def delete_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def delete_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
         Delete a saved provider credential (by credential_id).
 
@@ -1080,7 +1078,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def add_model_credential_to_model(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def add_model_credential_to_model(self, model_type: ModelType, model: str, credential_id: str):
         """
         if model list exist this custom model, switch the custom model credential.
         if model list not exist this custom model, use the credential to add a new custom model record.
@@ -1123,7 +1121,7 @@ class ProviderConfiguration(BaseModel):
             session.add(provider_model_record)
             session.commit()
 
-    def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
         switch the custom model credential.
 
@@ -1153,7 +1151,7 @@ class ProviderConfiguration(BaseModel):
             session.add(provider_model_record)
             session.commit()
 
-    def delete_custom_model(self, model_type: ModelType, model: str) -> None:
+    def delete_custom_model(self, model_type: ModelType, model: str):
         """
         Delete custom model.
         :param model_type: model type
@@ -1350,7 +1348,7 @@ class ProviderConfiguration(BaseModel):
             provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
         )
 
-    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None) -> None:
+    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):
         """
         Switch preferred provider type.
         :param provider_type:
@@ -1362,7 +1360,7 @@ class ProviderConfiguration(BaseModel):
         if provider_type == ProviderType.SYSTEM and not self.system_configuration.enabled:
             return
 
-        def _switch(s: Session) -> None:
+        def _switch(s: Session):
             # get preferred provider
             model_provider_id = ModelProviderID(self.provider.provider)
             provider_names = [self.provider.provider]
@@ -1406,7 +1404,7 @@ class ProviderConfiguration(BaseModel):
 
         return secret_input_form_variables
 
-    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]) -> dict:
+    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]):
         """
         Obfuscated credentials.
 

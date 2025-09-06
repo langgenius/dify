@@ -16,7 +16,7 @@ class PluginToolManager(BasePluginClient):
         Fetch tool providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]):
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
                 provider_name = declaration.get("identity", {}).get("name")
@@ -48,7 +48,7 @@ class PluginToolManager(BasePluginClient):
         """
         tool_provider_id = ToolProviderID(provider)
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]):
             data = json_response.get("data")
             if data:
                 for tool in data.get("declaration", {}).get("tools", []):
