@@ -3,7 +3,6 @@ import { del, get, post } from './base'
 import type {
   TriggerOAuthClientParams,
   TriggerOAuthConfig,
-  TriggerOAuthResponse,
   TriggerProviderApiEntity,
   TriggerSubscription,
   TriggerSubscriptionBuilder,
@@ -251,7 +250,7 @@ export const useInitiateTriggerOAuth = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'initiate-oauth'],
     mutationFn: (provider: string) => {
-      return get<TriggerOAuthResponse>(
+      return get<{ authorization_url: string; subscription_builder: any }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
       )
     },

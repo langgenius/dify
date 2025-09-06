@@ -8,10 +8,12 @@ import { useStore } from '@/app/components/workflow/store'
 import AuthenticationMenu from '@/app/components/workflow/nodes/trigger-plugin/components/authentication-menu'
 import type { AuthSubscription } from '@/app/components/workflow/nodes/trigger-plugin/components/authentication-menu'
 import {
-  useConfigureTriggerOAuth,
   useDeleteTriggerSubscription,
+  useInitiateTriggerOAuth,
+  useInvalidateTriggerSubscriptions,
   useTriggerSubscriptions,
 } from '@/service/use-triggers'
+import { useToastContext } from '@/app/components/base/toast'
 
 type NodeAuthProps = {
   data: Node['data']
@@ -20,6 +22,7 @@ type NodeAuthProps = {
 
 const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
   const buildInTools = useStore(s => s.buildInTools)
+  const { notify } = useToastContext()
 
   // Construct the correct provider path for trigger plugins
   // Format should be: plugin_id/provider_name (e.g., "langgenius/github_trigger/github_trigger")
@@ -41,7 +44,8 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
     data.type === BlockEnum.TriggerPlugin && !!provider,
   )
   const deleteSubscription = useDeleteTriggerSubscription()
-  const configureTriggerOAuth = useConfigureTriggerOAuth()
+  const initiateTriggerOAuth = useInitiateTriggerOAuth()
+  const invalidateSubscriptions = useInvalidateTriggerSubscriptions()
 
   const currCollection = useMemo(() => {
     return buildInTools.find(item => canFindTool(item.id, data.provider_id))
@@ -81,19 +85,32 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
     }
   }, [data.type, subscriptions])
 
-  const handleConfigure = useCallback(() => {
-    // Navigate to OAuth configuration flow
-    if (provider) {
-      configureTriggerOAuth.mutate({
-        provider,
-        client_params: {
-          client_id: '',
-          client_secret: '',
-        },
-        enabled: true,
+  const handleConfigure = useCallback(async () => {
+    if (!provider) return
+
+    try {
+      // 直接启动OAuth流程，后端会自动创建subscription builder
+      const response = await initiateTriggerOAuth.mutateAsync(provider)
+      if (response.authorization_url) {
+        // 打开OAuth授权窗口
+        const authWindow = window.open(response.authorization_url, 'oauth_authorization', 'width=600,height=600')
+
+        // 监听窗口关闭，刷新订阅列表
+        const checkClosed = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(checkClosed)
+            invalidateSubscriptions(provider)
+          }
+        }, 1000)
+      }
+    }
+    catch (error: any) {
+      notify({
+        type: 'error',
+        message: `Failed to configure authentication: ${error.message}`,
       })
     }
-  }, [provider, configureTriggerOAuth])
+  }, [provider, initiateTriggerOAuth, invalidateSubscriptions, notify])
 
   const handleRemove = useCallback(() => {
     if (authSubscription.id)
