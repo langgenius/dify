@@ -199,7 +199,7 @@ export const useTriggerSubscriptionBuilderLogs = (
 ) => {
   const { enabled = true, refetchInterval = false } = options
 
-  return useQuery<any[]>({
+  return useQuery<Record<string, any>[]>({
     queryKey: [NAME_SPACE, 'subscription-builder-logs', provider, subscriptionBuilderId],
     queryFn: () => get(
       `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/logs/${subscriptionBuilderId}`,

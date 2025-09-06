@@ -89,13 +89,13 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
     if (!provider) return
 
     try {
-      // 直接启动OAuth流程，后端会自动创建subscription builder
+      // Directly initiate OAuth flow, backend will automatically create subscription builder
       const response = await initiateTriggerOAuth.mutateAsync(provider)
       if (response.authorization_url) {
-        // 打开OAuth授权窗口
+        // Open OAuth authorization window
         const authWindow = window.open(response.authorization_url, 'oauth_authorization', 'width=600,height=600')
 
-        // 监听窗口关闭，刷新订阅列表
+        // Monitor window closure and refresh subscription list
         const checkClosed = setInterval(() => {
           if (authWindow?.closed) {
             clearInterval(checkClosed)

@@ -1034,6 +1034,13 @@ const translation = {
         invalidParameterType: '参数"{{name}}"的参数类型"{{type}}"无效',
       },
     },
+    triggerPlugin: {
+      authorized: '已授权',
+      notConfigured: '未配置',
+      error: '错误',
+      configuration: '配置',
+      remove: '移除',
+    },
   },
   tracing: {
     stopBy: '由{{user}}终止',
