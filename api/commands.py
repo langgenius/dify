@@ -54,7 +54,7 @@ def reset_password(email, new_password, password_confirm):
     if str(new_password).strip() != str(password_confirm).strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
-    with Session(db.engine, expire_on_commit=False) as session:
+    with Session(db.engine, expire_on_commit=False) as session, session.begin():
         account = session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
