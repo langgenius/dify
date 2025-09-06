@@ -12,11 +12,15 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useAppContext } from '@/context/app-context'
 
 const OnlineUsers = () => {
   const appId = useStore(s => s.appId)
   const { onlineUsers } = useCollaboration(appId)
+  const { userProfile } = useAppContext()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+
+  const currentUserId = userProfile?.id
 
   if (!onlineUsers || onlineUsers.length === 0)
     return null
@@ -34,11 +38,16 @@ const OnlineUsers = () => {
       <div className="flex items-center">
         <div className="flex items-center -space-x-2">
           {visibleUsers.map((user, index) => {
-            const userColor = getUserColor(user.user_id)
+            const isCurrentUser = user.user_id === currentUserId
+            const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
+            const displayName = isCurrentUser
+              ? `${user.username || 'User'} (You)`
+              : (user.username || 'User')
+
             return (
               <Tooltip
                 key={`${user.sid}-${index}`}
-                popupContent={user.username || 'User'}
+                popupContent={displayName}
                 position="bottom"
                 triggerMethod="hover"
                 needsDelay={false}
@@ -91,7 +100,12 @@ const OnlineUsers = () => {
               >
                 <div className="mt-2 min-w-[200px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
                   {onlineUsers.map((user) => {
-                    const userColor = getUserColor(user.user_id)
+                    const isCurrentUser = user.user_id === currentUserId
+                    const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
+                    const displayName = isCurrentUser
+                      ? `${user.username || 'User'} (You)`
+                      : (user.username || 'User')
+
                     return (
                       <div
                         key={user.sid}
@@ -104,7 +118,7 @@ const OnlineUsers = () => {
                           backgroundColor={userColor}
                         />
                         <span className="text-sm text-text-secondary">
-                          {user.username || 'User'}
+                          {displayName}
                         </span>
                       </div>
                     )
