@@ -1,8 +1,8 @@
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 
 from constants.languages import supported_language
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -11,7 +11,27 @@ from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService
 
 
+@console_ns.route("/activate/check")
 class ActivateCheckApi(Resource):
+    @api.doc("check_activation_token")
+    @api.doc(description="Check if activation token is valid")
+    @api.expect(
+        api.parser()
+        .add_argument("workspace_id", type=str, location="args", help="Workspace ID")
+        .add_argument("email", type=str, location="args", help="Email address")
+        .add_argument("token", type=str, required=True, location="args", help="Activation token")
+    )
+    @api.response(
+        200,
+        "Success",
+        api.model(
+            "ActivationCheckResponse",
+            {
+                "is_valid": fields.Boolean(description="Whether token is valid"),
+                "data": fields.Raw(description="Activation data if valid"),
+            },
+        ),
+    )
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="args")
@@ -38,7 +58,35 @@ class ActivateCheckApi(Resource):
             return {"is_valid": False}
 
 
+@console_ns.route("/activate")
 class ActivateApi(Resource):
+    @api.doc("activate_account")
+    @api.doc(description="Activate account with invitation token")
+    @api.expect(
+        api.model(
+            "ActivationRequest",
+            {
+                "workspace_id": fields.String(description="Workspace ID"),
+                "email": fields.String(description="Email address"),
+                "token": fields.String(required=True, description="Activation token"),
+                "name": fields.String(required=True, description="User name (max 30 characters)"),
+                "interface_language": fields.String(required=True, description="Interface language"),
+                "timezone": fields.String(required=True, description="User timezone"),
+            },
+        )
+    )
+    @api.response(
+        200,
+        "Account activated successfully",
+        api.model(
+            "ActivationResponse",
+            {
+                "result": fields.String(description="Operation result"),
+                "data": fields.Raw(description="Login token data"),
+            },
+        ),
+    )
+    @api.response(400, "Already activated or invalid token")
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="json")
@@ -70,7 +118,3 @@ class ActivateApi(Resource):
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
 
         return {"result": "success", "data": token_pair.model_dump()}
-
-
-api.add_resource(ActivateCheckApi, "/activate/check")
-api.add_resource(ActivateApi, "/activate")
