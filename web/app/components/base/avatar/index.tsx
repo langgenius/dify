@@ -8,6 +8,7 @@ export type AvatarProps = {
   size?: number
   className?: string
   textClassName?: string
+  backgroundColor?: string
 }
 const Avatar = ({
   name,
@@ -15,9 +16,18 @@ const Avatar = ({
   size = 30,
   className,
   textClassName,
+  backgroundColor,
 }: AvatarProps) => {
-  const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
-  const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
+  const avatarClassName = backgroundColor
+    ? 'shrink-0 flex items-center rounded-full'
+    : 'shrink-0 flex items-center rounded-full bg-primary-600'
+  const style = {
+    width: `${size}px`,
+    height: `${size}px`,
+    fontSize: `${size}px`,
+    lineHeight: `${size}px`,
+    ...(backgroundColor && !avatar ? { backgroundColor } : {}),
+  }
   const [imgError, setImgError] = useState(false)
 
   const handleError = () => {
