@@ -167,7 +167,6 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
             call_depth=1,
-            workflow_thread_pool_id=None,
         )
 
     @classmethod

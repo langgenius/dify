@@ -87,7 +87,6 @@ const translation = {
       depthLimit: 'Обмеження рівня паралельного вкладеності шарів {{num}}',
     },
     disconnect: 'Відключити',
-    parallelRun: 'Паралельний біг',
     jumpToNode: 'Перейти до цього вузла',
     addParallelNode: 'Додати паралельний вузол',
     parallel: 'ПАРАЛЕЛЬНИЙ',

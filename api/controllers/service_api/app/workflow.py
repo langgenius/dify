@@ -26,7 +26,8 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
@@ -262,7 +263,12 @@ class WorkflowTaskStopApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}
 

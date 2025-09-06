@@ -15,12 +15,8 @@ from sqlalchemy.orm import sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from core.workflow.nodes.enums import NodeType
+from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
@@ -245,7 +241,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
             # Update the in-memory cache after successful save
             if db_model.node_execution_id:
-                logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
         except Exception:

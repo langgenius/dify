@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileUploadConfig
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.repositories.draft_variable_repository import (
     DraftVariableSaver,
     DraftVariableSaverFactory,

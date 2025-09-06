@@ -86,7 +86,6 @@ const translation = {
       limit: 'O paralelismo é limitado a {{num}} ramificações.',
       depthLimit: 'Limite de camada de aninhamento paralelo de {{num}} camadas',
     },
-    parallelRun: 'Execução paralela',
     disconnect: 'Desligar',
     jumpToNode: 'Ir para este nó',
     addParallelNode: 'Adicionar nó paralelo',

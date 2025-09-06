@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.variables import StringSegment
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from models.enums import DraftVariableType
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
 from services.workflow_draft_variable_service import (

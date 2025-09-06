@@ -12,7 +12,6 @@ permissions:
   statuses: write
   contents: read
 
-
 jobs:
   python-style:
     name: Python Style
