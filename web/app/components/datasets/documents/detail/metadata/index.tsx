@@ -285,7 +285,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   }
 
   const onCancel = () => {
-    setMetadataParams({ documentType: doc_type || '', metadata: { ...(docDetail?.doc_metadata || {}) } })
+    setMetadataParams({ documentType: doc_type || '', metadata: { ...docDetail?.doc_metadata } })
     setEditStatus(!doc_type)
     if (!doc_type)
       setShowDocTypes(true)

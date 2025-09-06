@@ -137,12 +137,13 @@ export const PortalToFollowElemTrigger = (
 
   // `asChild` allows the user to pass any element as the anchor
   if (asChild && React.isValidElement(children)) {
+    const childrenProps = children.props || {}
     return React.cloneElement(
       children,
       context.getReferenceProps({
         ref,
         ...props,
-        ...(children.props || {}),
+        ...childrenProps,
         'data-state': context.open ? 'open' : 'closed',
       } as React.HTMLProps<HTMLElement>),
     )

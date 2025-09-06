@@ -45,7 +45,7 @@ const ConfigVision: FC = () => {
       if (draft.file) {
         draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
         draft.file.image = {
-          ...(draft.file.image || {}),
+          ...draft.file.image,
           enabled: value,
         }
       }

@@ -682,7 +682,7 @@ export const useChat = (
     updateChatTreeNode(targetAnswerId, {
       content: chatList[index].content,
       annotation: {
-        ...(chatList[index].annotation || {}),
+        ...chatList[index].annotation,
         id: '',
       } as Annotation,
     })
