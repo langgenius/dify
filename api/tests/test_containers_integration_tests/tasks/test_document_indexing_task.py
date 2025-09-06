@@ -283,7 +283,7 @@ class TestDocumentIndexingTask:
         dataset, documents = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=2
         )
-        
+
         # Mix existing and non-existent document IDs
         fake = Faker()
         existing_document_ids = [doc.id for doc in documents]
@@ -489,11 +489,11 @@ class TestDocumentIndexingTask:
         dataset, base_documents = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=2
         )
-        
+
         # Create additional documents with different states
         fake = Faker()
         extra_documents = []
-        
+
         # Document with different indexing status
         doc1 = Document(
             id=fake.uuid4(),
@@ -510,7 +510,7 @@ class TestDocumentIndexingTask:
         )
         db.session.add(doc1)
         extra_documents.append(doc1)
-        
+
         # Document with disabled status
         doc2 = Document(
             id=fake.uuid4(),
@@ -527,9 +527,9 @@ class TestDocumentIndexingTask:
         )
         db.session.add(doc2)
         extra_documents.append(doc2)
-        
+
         db.session.commit()
-        
+
         all_documents = base_documents + extra_documents
         document_ids = [doc.id for doc in all_documents]
 
@@ -578,12 +578,9 @@ class TestDocumentIndexingTask:
             # Assert: Verify performance logging
             # Check that info logging was called
             assert mock_logger.info.called
-            
+
             # Check for performance log with latency information
-            performance_log_calls = [
-                call for call in mock_logger.info.call_args_list
-                if "latency:" in str(call)
-            ]
+            performance_log_calls = [call for call in mock_logger.info.call_args_list if "latency:" in str(call)]
             assert len(performance_log_calls) == 1
 
             # Verify the log contains expected information
@@ -614,7 +611,7 @@ class TestDocumentIndexingTask:
         dataset2, documents2 = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=2
         )
-        
+
         document_ids1 = [doc.id for doc in documents1]
         document_ids2 = [doc.id for doc in documents2]
 
@@ -635,11 +632,11 @@ class TestDocumentIndexingTask:
         # Verify each task processed its own documents
         call_args_list = mock_external_service_dependencies["indexing_runner_instance"].run.call_args_list
         assert len(call_args_list) == 2
-        
+
         # First call should have documents1
         first_call_documents = call_args_list[0][0][0]
         assert len(first_call_documents) == 2
-        
+
         # Second call should have documents2
         second_call_documents = call_args_list[1][0][0]
         assert len(second_call_documents) == 2
@@ -663,14 +660,15 @@ class TestDocumentIndexingTask:
         document_ids = [doc.id for doc in documents]
 
         # Act: Execute the task with large batch
-        import psutil
         import os
-        
+
+        import psutil
+
         process = psutil.Process(os.getpid())
         memory_before = process.memory_info().rss
-        
+
         document_indexing_task(dataset.id, document_ids)
-        
+
         memory_after = process.memory_info().rss
         memory_increase = memory_after - memory_before
 
@@ -708,6 +706,7 @@ class TestDocumentIndexingTask:
 
         # Mock IndexingRunner to fail after some processing
         call_count = 0
+
         def side_effect(docs):
             nonlocal call_count
             call_count += 1
@@ -766,7 +765,7 @@ class TestDocumentIndexingTask:
 
         # Simulate retry scenario - reset mocks and execute again
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = None
-        
+
         # Reset document states for retry
         for document in documents:
             document.indexing_status = "waiting"
@@ -802,12 +801,13 @@ class TestDocumentIndexingTask:
         dataset, documents = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=5
         )
-        
+
         # Create additional related data to test database integrity
         fake = Faker()
-        
+
         # Create some document segments to test relationships
         from models.dataset import DocumentSegment
+
         segments = []
         for i, document in enumerate(documents):
             segment = DocumentSegment(
@@ -827,7 +827,7 @@ class TestDocumentIndexingTask:
             )
             db.session.add(segment)
             segments.append(segment)
-        
+
         db.session.commit()
         document_ids = [doc.id for doc in documents]
 
@@ -871,7 +871,7 @@ class TestDocumentIndexingTask:
         # Arrange: Create multiple datasets with different configurations
         datasets = []
         all_documents = []
-        
+
         # Create 3 datasets with different document counts
         for i in range(3):
             dataset, documents = self._create_test_dataset_and_documents(
@@ -900,7 +900,7 @@ class TestDocumentIndexingTask:
         # Verify each dataset's documents were processed correctly
         call_args_list = mock_external_service_dependencies["indexing_runner_instance"].run.call_args_list
         assert len(call_args_list) == 3
-        
+
         # Verify document counts for each call
         expected_counts = [3, 4, 5]  # 3, 4, 5 documents respectively
         for i, call_args in enumerate(call_args_list):
@@ -936,10 +936,10 @@ class TestDocumentIndexingTask:
         dataset, documents = self._create_test_dataset_with_billing_features(
             db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
         )
-        
+
         # Configure sandbox plan with batch limit
         mock_external_service_dependencies["features"].billing.subscription.plan = "sandbox"
-        
+
         # Create more documents than sandbox plan allows (limit is 1)
         fake = Faker()
         extra_documents = []
@@ -959,7 +959,7 @@ class TestDocumentIndexingTask:
             )
             db.session.add(document)
             extra_documents.append(document)
-        
+
         db.session.commit()
         all_documents = documents + extra_documents
         document_ids = [doc.id for doc in all_documents]
@@ -994,11 +994,11 @@ class TestDocumentIndexingTask:
         dataset, documents = self._create_test_dataset_with_billing_features(
             db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
         )
-        
+
         # Configure vector space limit exceeded
         mock_external_service_dependencies["features"].vector_space.limit = 10
         mock_external_service_dependencies["features"].vector_space.size = 10  # At limit
-        
+
         document_ids = [doc.id for doc in documents]
 
         # Act: Execute the task when vector space limit is exceeded
@@ -1031,7 +1031,7 @@ class TestDocumentIndexingTask:
         dataset, documents = self._create_test_dataset_with_billing_features(
             db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
         )
-        
+
         # Configure batch upload limit
         with patch("configs.dify_config.BATCH_UPLOAD_LIMIT", "2"):
             # Create more documents than batch limit allows
@@ -1053,7 +1053,7 @@ class TestDocumentIndexingTask:
                 )
                 db.session.add(document)
                 extra_documents.append(document)
-            
+
             db.session.commit()
             all_documents = documents + extra_documents
             document_ids = [doc.id for doc in all_documents]
@@ -1088,7 +1088,7 @@ class TestDocumentIndexingTask:
         dataset, documents = self._create_test_dataset_with_billing_features(
             db_session_with_containers, mock_external_service_dependencies, billing_enabled=False
         )
-        
+
         document_ids = [doc.id for doc in documents]
 
         # Act: Execute the task with billing disabled
@@ -1124,6 +1124,7 @@ class TestDocumentIndexingTask:
 
         # Mock IndexingRunner to raise DocumentIsPausedError
         from core.indexing_runner import DocumentIsPausedError
+
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError(
             "Document indexing is paused"
         )
@@ -1261,11 +1262,11 @@ class TestDocumentIndexingTask:
         dataset, base_documents = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=2
         )
-        
+
         # Create additional documents with different states
         fake = Faker()
         extra_documents = []
-        
+
         # Document with different indexing status
         doc1 = Document(
             id=fake.uuid4(),
@@ -1282,7 +1283,7 @@ class TestDocumentIndexingTask:
         )
         db.session.add(doc1)
         extra_documents.append(doc1)
-        
+
         # Document with disabled status
         doc2 = Document(
             id=fake.uuid4(),
@@ -1299,9 +1300,9 @@ class TestDocumentIndexingTask:
         )
         db.session.add(doc2)
         extra_documents.append(doc2)
-        
+
         db.session.commit()
-        
+
         all_documents = base_documents + extra_documents
         document_ids = [doc.id for doc in all_documents]
 
@@ -1350,12 +1351,9 @@ class TestDocumentIndexingTask:
             # Assert: Verify performance logging
             # Check that info logging was called
             assert mock_logger.info.called
-            
+
             # Check for performance log with latency information
-            performance_log_calls = [
-                call for call in mock_logger.info.call_args_list
-                if "latency:" in str(call)
-            ]
+            performance_log_calls = [call for call in mock_logger.info.call_args_list if "latency:" in str(call)]
             assert len(performance_log_calls) == 1
 
             # Verify the log contains expected information
@@ -1386,7 +1384,7 @@ class TestDocumentIndexingTask:
         dataset2, documents2 = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=2
         )
-        
+
         document_ids1 = [doc.id for doc in documents1]
         document_ids2 = [doc.id for doc in documents2]
 
@@ -1407,11 +1405,11 @@ class TestDocumentIndexingTask:
         # Verify each task processed its own documents
         call_args_list = mock_external_service_dependencies["indexing_runner_instance"].run.call_args_list
         assert len(call_args_list) == 2
-        
+
         # First call should have documents1
         first_call_documents = call_args_list[0][0][0]
         assert len(first_call_documents) == 2
-        
+
         # Second call should have documents2
         second_call_documents = call_args_list[1][0][0]
         assert len(second_call_documents) == 2
@@ -1435,14 +1433,15 @@ class TestDocumentIndexingTask:
         document_ids = [doc.id for doc in documents]
 
         # Act: Execute the task with large batch
-        import psutil
         import os
-        
+
+        import psutil
+
         process = psutil.Process(os.getpid())
         memory_before = process.memory_info().rss
-        
+
         document_indexing_task(dataset.id, document_ids)
-        
+
         memory_after = process.memory_info().rss
         memory_increase = memory_after - memory_before
 
@@ -1480,6 +1479,7 @@ class TestDocumentIndexingTask:
 
         # Mock IndexingRunner to fail after some processing
         call_count = 0
+
         def side_effect(docs):
             nonlocal call_count
             call_count += 1
@@ -1538,7 +1538,7 @@ class TestDocumentIndexingTask:
 
         # Simulate retry scenario - reset mocks and execute again
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = None
-        
+
         # Reset document states for retry
         for document in documents:
             document.indexing_status = "waiting"
@@ -1574,12 +1574,13 @@ class TestDocumentIndexingTask:
         dataset, documents = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=5
         )
-        
+
         # Create additional related data to test database integrity
         fake = Faker()
-        
+
         # Create some document segments to test relationships
         from models.dataset import DocumentSegment
+
         segments = []
         for i, document in enumerate(documents):
             segment = DocumentSegment(
@@ -1599,7 +1600,7 @@ class TestDocumentIndexingTask:
             )
             db.session.add(segment)
             segments.append(segment)
-        
+
         db.session.commit()
         document_ids = [doc.id for doc in documents]
 
@@ -1643,7 +1644,7 @@ class TestDocumentIndexingTask:
         # Arrange: Create multiple datasets with different configurations
         datasets = []
         all_documents = []
-        
+
         # Create 3 datasets with different document counts
         for i in range(3):
             dataset, documents = self._create_test_dataset_and_documents(
@@ -1672,7 +1673,7 @@ class TestDocumentIndexingTask:
         # Verify each dataset's documents were processed correctly
         call_args_list = mock_external_service_dependencies["indexing_runner_instance"].run.call_args_list
         assert len(call_args_list) == 3
-        
+
         # Verify document counts for each call
         expected_counts = [3, 4, 5]  # 3, 4, 5 documents respectively
         for i, call_args in enumerate(call_args_list):
