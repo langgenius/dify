@@ -239,7 +239,8 @@ class ToolTransformService:
             server_identifier=db_provider.server_identifier,
             timeout=db_provider.timeout,
             sse_read_timeout=db_provider.sse_read_timeout,
-            headers=db_provider.decrypted_headers,
+            masked_headers=db_provider.masked_headers,
+            original_headers=db_provider.decrypted_headers,
         )
 
     @staticmethod

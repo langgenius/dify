@@ -313,7 +313,7 @@ class MCPToolProvider(Base):
         return encrypter.decrypt_token(self.tenant_id, self.server_url)
 
     @property
-    def decrypted_headers(self) -> dict:
+    def decrypted_headers(self) -> dict[str, Any]:
         """Get decrypted headers for MCP server requests."""
         from core.entities.provider_entities import BasicProviderConfig
         from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -326,9 +326,7 @@ class MCPToolProvider(Base):
             headers_data = cast(dict, json.loads(self.encrypted_headers))
 
             # Create dynamic config for all headers as SECRET_INPUT
-            config = [
-                BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data.keys()
-            ]
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
 
             encrypter_instance, _ = create_provider_encrypter(
                 tenant_id=self.tenant_id,
@@ -336,12 +334,13 @@ class MCPToolProvider(Base):
                 cache=NoOpProviderCredentialCache(),
             )
 
-            return encrypter_instance.decrypt(headers_data)
+            result = encrypter_instance.decrypt(headers_data)
+            return cast(dict[str, Any], result)
         except Exception:
             return {}
 
     @property
-    def masked_headers(self) -> dict:
+    def masked_headers(self) -> dict[str, Any]:
         """Get masked headers for frontend display."""
         from core.entities.provider_entities import BasicProviderConfig
         from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -354,9 +353,7 @@ class MCPToolProvider(Base):
             headers_data = cast(dict, json.loads(self.encrypted_headers))
 
             # Create dynamic config for all headers as SECRET_INPUT
-            config = [
-                BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data.keys()
-            ]
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
 
             encrypter_instance, _ = create_provider_encrypter(
                 tenant_id=self.tenant_id,
@@ -366,7 +363,8 @@ class MCPToolProvider(Base):
 
             # First decrypt, then mask
             decrypted_headers = encrypter_instance.decrypt(headers_data)
-            return encrypter_instance.mask_tool_credentials(decrypted_headers)
+            result = encrypter_instance.mask_tool_credentials(decrypted_headers)
+            return cast(dict[str, Any], result)
         except Exception:
             return {}
 
