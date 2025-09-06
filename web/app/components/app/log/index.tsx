@@ -60,6 +60,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   })
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
+  const [selectedItems, setSelectedItems] = React.useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   // Get the app type first
@@ -101,15 +102,40 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 
+  // Clear selected items when data refreshes or conversation IDs are removed
+  const handleClearSelected = (conversationIds?: string[]) => {
+    if (conversationIds) {
+      // Remove specific conversation IDs from selection
+      setSelectedItems(prev => prev.filter(id => !conversationIds.includes(id)))
+    } else {
+      // Clear all selections
+      setSelectedItems([])
+    }
+  }
+
   return (
     <div className='flex h-full grow flex-col'>
       <p className='system-sm-regular shrink-0 text-text-tertiary'>{t('appLog.description')}</p>
       <div className='flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4'>
-        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter
+          isChatMode={isChatMode}
+          appId={appDetail.id}
+          queryParams={queryParams}
+          setQueryParams={setQueryParams}
+          onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
+          selectedItems={selectedItems}
+          onClearSelected={handleClearSelected}
+        />
         {total === undefined
           ? <Loading type='app' />
           : total > 0
-            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
+            ? <List 
+                logs={isChatMode ? chatConversations : completionConversations} 
+                appDetail={appDetail} 
+                onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
+                selectedItems={selectedItems}
+                onSelectionChange={setSelectedItems}
+              />
             : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}

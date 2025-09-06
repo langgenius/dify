@@ -20,6 +20,8 @@ const translation = {
       tokens: 'TOKENS',
       user: 'End User or Account',
       version: 'VERSION',
+      selectAllConversations: 'Select all conversations',
+      selectConversation: 'Select conversation',
     },
     pagination: {
       previous: 'Prev',
@@ -75,6 +77,19 @@ const translation = {
     sortBy: 'Sort by:',
     descending: 'descending',
     ascending: 'ascending',
+    clearAll: 'Clear All Logs',
+    clearSelected: 'Clear Selected ({{count}})',
+    clearSuccess: 'Logs cleared successfully',
+    clearSelectedSuccess: 'Selected logs cleared successfully',
+    clearFailed: 'Failed to clear logs',
+    clearConfirm: {
+      title: 'Clear All Logs',
+      content: 'Are you sure you want to clear all conversation logs? This action cannot be undone.',
+    },
+    clearSelectedConfirm: {
+      title: 'Clear Selected Logs',
+      content: 'Are you sure you want to clear {{count}} selected conversation logs? This action cannot be undone.',
+    },
   },
   workflowTitle: 'Workflow Logs',
   workflowSubtitle: 'The log recorded the operation of Automate.',
