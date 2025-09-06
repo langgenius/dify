@@ -324,6 +324,7 @@ const translation = {
     subtitle: 'Please tell us what went wrong with this response',
     content: 'Feedback Content',
     placeholder: 'Please describe what went wrong or how we can improve...',
+    userVote: 'user vote',
   },
   integrations: {
     connected: 'Connected',
