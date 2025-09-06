@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 class ModelLoadBalancingService:
-    def __init__(self) -> None:
+    def __init__(self):
         self.provider_manager = ProviderManager()
 
-    def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+    def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
         enable model load balancing.
 
@@ -49,7 +49,7 @@ class ModelLoadBalancingService:
         # Enable model load balancing
         provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
 
-    def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+    def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
         disable model load balancing.
 
@@ -295,7 +295,7 @@ class ModelLoadBalancingService:
 
     def update_load_balancing_configs(
         self, tenant_id: str, provider: str, model: str, model_type: str, configs: list[dict], config_from: str
-    ) -> None:
+    ):
         """
         Update load balancing configurations.
         :param tenant_id: workspace id
@@ -476,7 +476,7 @@ class ModelLoadBalancingService:
         model_type: str,
         credentials: dict,
         config_id: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Validate load balancing credentials.
         :param tenant_id: workspace id
@@ -535,7 +535,7 @@ class ModelLoadBalancingService:
         credentials: dict,
         load_balancing_model_config: Optional[LoadBalancingModelConfig] = None,
         validate: bool = True,
-    ) -> dict:
+    ):
         """
         Validate custom credentials.
         :param tenant_id: workspace id
@@ -603,7 +603,7 @@ class ModelLoadBalancingService:
         else:
             raise ValueError("No credential schema found")
 
-    def _clear_credentials_cache(self, tenant_id: str, config_id: str) -> None:
+    def _clear_credentials_cache(self, tenant_id: str, config_id: str):
         """
         Clear credentials cache.
         :param tenant_id: workspace id

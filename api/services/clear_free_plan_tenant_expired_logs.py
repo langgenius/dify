@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class ClearFreePlanTenantExpiredLogs:
     @classmethod
-    def _clear_message_related_tables(cls, session: Session, tenant_id: str, batch_message_ids: list[str]) -> None:
+    def _clear_message_related_tables(cls, session: Session, tenant_id: str, batch_message_ids: list[str]):
         """
         Clean up message-related tables to avoid data redundancy.
         This method cleans up tables that have foreign key relationships with Message.
@@ -354,7 +354,7 @@ class ClearFreePlanTenantExpiredLogs:
 
         thread_pool = ThreadPoolExecutor(max_workers=10)
 
-        def process_tenant(flask_app: Flask, tenant_id: str) -> None:
+        def process_tenant(flask_app: Flask, tenant_id: str):
             try:
                 if (
                     not dify_config.BILLING_ENABLED

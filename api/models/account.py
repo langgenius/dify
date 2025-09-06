@@ -227,7 +227,7 @@ class Tenant(Base):
         )
 
     @property
-    def custom_config_dict(self) -> dict:
+    def custom_config_dict(self):
         return json.loads(self.custom_config) if self.custom_config else {}
 
     @custom_config_dict.setter

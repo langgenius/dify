@@ -15,7 +15,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
     Retrieval recommended app from database
     """
 
-    def get_recommended_apps_and_categories(self, language: str) -> dict:
+    def get_recommended_apps_and_categories(self, language: str):
         result = self.fetch_recommended_apps_from_db(language)
         return result
 
@@ -27,7 +27,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         return RecommendAppType.DATABASE
 
     @classmethod
-    def fetch_recommended_apps_from_db(cls, language: str) -> dict:
+    def fetch_recommended_apps_from_db(cls, language: str):
         """
         Fetch recommended apps from db.
         :param language: language
