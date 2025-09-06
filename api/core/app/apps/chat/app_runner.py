@@ -33,7 +33,7 @@ class ChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-    ) -> None:
+    ):
         """
         Run application
         :param application_generate_entity: application generate entity

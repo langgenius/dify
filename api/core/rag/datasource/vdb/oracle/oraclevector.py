@@ -33,7 +33,7 @@ class OracleVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["user"]:
             raise ValueError("config ORACLE_USER is required")
         if not values["password"]:
@@ -206,7 +206,7 @@ class OracleVector(BaseVector):
             conn.close()
         return docs
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         with self._get_connection() as conn:
@@ -216,7 +216,7 @@ class OracleVector(BaseVector):
             conn.commit()
             conn.close()
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_VALUE(meta, '$." + key + "') = :1", (value,))
@@ -336,7 +336,7 @@ class OracleVector(BaseVector):
         else:
             return [Document(page_content="", metadata={})]
 
-    def delete(self) -> None:
+    def delete(self):
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f"DROP TABLE IF EXISTS {self.table_name} cascade constraints")

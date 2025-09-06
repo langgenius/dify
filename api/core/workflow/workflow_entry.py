@@ -48,7 +48,7 @@ class WorkflowEntry:
         call_depth: int,
         variable_pool: VariablePool,
         thread_pool_id: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Init workflow entry
         :param tenant_id: tenant id
@@ -320,7 +320,7 @@ class WorkflowEntry:
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
     @staticmethod
-    def _handle_special_values(value: Any) -> Any:
+    def _handle_special_values(value: Any):
         if value is None:
             return value
         if isinstance(value, dict):
@@ -345,7 +345,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         tenant_id: str,
-    ) -> None:
+    ):
         # NOTE(QuantumGhost): This logic should remain synchronized with
         # the implementation of `load_into_variable_pool`, specifically the logic about
         # variable existence checking.

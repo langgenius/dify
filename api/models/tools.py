@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Any, cast
+from typing import Optional, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
@@ -22,15 +22,15 @@ from .types import StringUUID
 
 
 # system level tool oauth client params (client_id, client_secret, etc.)
-class ToolOAuthSystemClient(Base):
+class ToolOAuthSystemClient(TypeBase):
     __tablename__ = "tool_oauth_system_clients"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tool_oauth_system_client_pkey"),
         sa.UniqueConstraint("plugin_id", "provider", name="tool_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    plugin_id = mapped_column(String(512), nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -408,11 +408,11 @@ class ToolConversationVariables(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def variables(self) -> Any:
+    def variables(self):
         return json.loads(self.variables_str)
 
 
-class ToolFile(Base):
+class ToolFile(TypeBase):
     """This table stores file metadata generated in workflows,
     not only files created by agent.
     """
@@ -423,19 +423,19 @@ class ToolFile(Base):
         sa.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     # file key
     file_key: Mapped[str] = mapped_column(String(255), nullable=False)
     # mime type
     mimetype: Mapped[str] = mapped_column(String(255), nullable=False)
     # original url
-    original_url: Mapped[str] = mapped_column(String(2048), nullable=True)
+    original_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True, default=None)
     # name
     name: Mapped[str] = mapped_column(default="")
     # size

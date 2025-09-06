@@ -33,7 +33,7 @@ class HitTestingService:
         retrieval_model: Any,  # FIXME drop this any
         external_retrieval_model: dict,
         limit: int = 10,
-    ) -> dict:
+    ):
         start = time.perf_counter()
 
         # get retrieval model , if the model is not setting , using default
@@ -98,7 +98,7 @@ class HitTestingService:
         account: Account,
         external_retrieval_model: dict,
         metadata_filtering_conditions: dict,
-    ) -> dict:
+    ):
         if dataset.provider != "external":
             return {
                 "query": {"content": query},

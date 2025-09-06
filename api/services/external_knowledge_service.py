@@ -278,7 +278,7 @@ class ExternalDatasetService:
         query: str,
         external_retrieval_parameters: dict,
         metadata_condition: Optional[MetadataCondition] = None,
-    ) -> list:
+    ):
         external_knowledge_binding = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )
