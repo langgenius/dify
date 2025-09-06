@@ -1,6 +1,6 @@
 import hashlib
 from io import BytesIO
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
@@ -417,11 +417,12 @@ class TestFileService:
         text = "This is a test text content"
         text_name = "test_text.txt"
 
-        # Mock current_user
-        with patch("services.file_service.current_user") as mock_current_user:
-            mock_current_user.current_tenant_id = str(fake.uuid4())
-            mock_current_user.id = str(fake.uuid4())
+        # Mock current_user using create_autospec
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.current_tenant_id = str(fake.uuid4())
+        mock_current_user.id = str(fake.uuid4())
 
+        with patch("services.file_service.current_user", mock_current_user):
             upload_file = FileService.upload_text(text=text, text_name=text_name)
 
             assert upload_file is not None
@@ -443,11 +444,12 @@ class TestFileService:
         text = "test content"
         long_name = "a" * 250  # Longer than 200 characters
 
-        # Mock current_user
-        with patch("services.file_service.current_user") as mock_current_user:
-            mock_current_user.current_tenant_id = str(fake.uuid4())
-            mock_current_user.id = str(fake.uuid4())
+        # Mock current_user using create_autospec
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.current_tenant_id = str(fake.uuid4())
+        mock_current_user.id = str(fake.uuid4())
 
+        with patch("services.file_service.current_user", mock_current_user):
             upload_file = FileService.upload_text(text=text, text_name=long_name)
 
             # Verify name was truncated
@@ -846,11 +848,12 @@ class TestFileService:
         text = ""
         text_name = "empty.txt"
 
-        # Mock current_user
-        with patch("services.file_service.current_user") as mock_current_user:
-            mock_current_user.current_tenant_id = str(fake.uuid4())
-            mock_current_user.id = str(fake.uuid4())
+        # Mock current_user using create_autospec
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.current_tenant_id = str(fake.uuid4())
+        mock_current_user.id = str(fake.uuid4())
 
+        with patch("services.file_service.current_user", mock_current_user):
             upload_file = FileService.upload_text(text=text, text_name=text_name)
 
             assert upload_file is not None

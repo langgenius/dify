@@ -1,9 +1,9 @@
-from flask_login import current_user
 from flask_restx import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models.model import Account
 from services.billing_service import BillingService
 
 
@@ -17,9 +17,10 @@ class Subscription(Resource):
         parser.add_argument("plan", type=str, required=True, location="args", choices=["professional", "team"])
         parser.add_argument("interval", type=str, required=True, location="args", choices=["month", "year"])
         args = parser.parse_args()
+        assert isinstance(current_user, Account)
 
         BillingService.is_tenant_owner_or_admin(current_user)
-
+        assert current_user.current_tenant_id is not None
         return BillingService.get_subscription(
             args["plan"], args["interval"], current_user.email, current_user.current_tenant_id
         )
@@ -31,7 +32,9 @@ class Invoices(Resource):
     @account_initialization_required
     @only_edition_cloud
     def get(self):
+        assert isinstance(current_user, Account)
         BillingService.is_tenant_owner_or_admin(current_user)
+        assert current_user.current_tenant_id is not None
         return BillingService.get_invoices(current_user.email, current_user.current_tenant_id)
 
 
