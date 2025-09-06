@@ -14,7 +14,9 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
 
   // Find the current trigger provider and specific trigger
   const currentProvider = triggerPlugins.find(provider =>
-    provider.name === data.provider_name || provider.id === data.provider_id,
+    provider.name === data.provider_name
+    || provider.id === data.provider_id
+    || (data.provider_id && provider.plugin_id === data.provider_id),
   )
 
   const currentTrigger = currentProvider?.tools.find(tool =>

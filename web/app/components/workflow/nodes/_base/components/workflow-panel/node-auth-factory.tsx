@@ -20,7 +20,20 @@ type NodeAuthProps = {
 
 const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
   const buildInTools = useStore(s => s.buildInTools)
-  const provider = data.provider_id || ''
+
+  // Construct the correct provider path for trigger plugins
+  // Format should be: plugin_id/provider_name (e.g., "langgenius/github_trigger/github_trigger")
+  const provider = useMemo(() => {
+    if (data.type === BlockEnum.TriggerPlugin) {
+      // If we have both plugin_id and provider_name, construct the full path
+      if (data.provider_id && data.provider_name)
+        return `${data.provider_id}/${data.provider_name}`
+
+      // Otherwise use provider_id as fallback (might be already complete)
+      return data.provider_id || ''
+    }
+    return data.provider_id || ''
+  }, [data.type, data.provider_id, data.provider_name])
 
   // Always call hooks at the top level
   const { data: subscriptions = [] } = useTriggerSubscriptions(
