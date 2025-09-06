@@ -300,6 +300,12 @@ const useLastRun = <T>({
     if(!isValid)
       return
     const vars = singleRunParams?.getDependentVars?.()
+    // TODO human input
+    if (singleRunParams?.generatedFormContentData) {
+      singleRunParams?.handleShowGeneratedForm()
+      showSingleRun()
+      return
+    }
     // no need to input params
     if (isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)) {
       callRunApi({}, async () => {

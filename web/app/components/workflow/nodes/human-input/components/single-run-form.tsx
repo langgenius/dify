@@ -14,6 +14,7 @@ type Props = {
   formContent: string
   inputFields: GeneratedFormInputItem[]
   userActions: UserAction[]
+  showBackButton?: boolean
   handleBack?: () => void
 }
 
@@ -22,6 +23,7 @@ const FormContent = ({
   formContent,
   inputFields,
   userActions,
+  showBackButton,
   handleBack,
 }: Props) => {
   const { t } = useTranslation()
@@ -72,7 +74,7 @@ const FormContent = ({
 
   return (
     <>
-      {inputFields.length > 0 && (
+      {showBackButton && (
         <div className='flex items-center p-4 pb-1'>
           <div className='system-sm-semibold-uppercase flex cursor-pointer items-center text-text-accent' onClick={handleBack}>
             <RiArrowLeftLine className='mr-1 h-4 w-4' />

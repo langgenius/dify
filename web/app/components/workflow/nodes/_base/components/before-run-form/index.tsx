@@ -158,11 +158,11 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     if(hasRun.current)
       return
     hasRun.current = true
-    if(filteredExistVarForms.length === 0)
+    if(filteredExistVarForms.length === 0 && !isHumanInput)
       onRun({})
   }, [filteredExistVarForms, onRun])
 
-  if(filteredExistVarForms.length === 0)
+  if(filteredExistVarForms.length === 0 && !isHumanInput)
     return null
 
   return (
@@ -189,6 +189,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           <SingleRunForm
             nodeName={nodeName}
             handleBack={handleHideGeneratedForm}
+            showBackButton={generatedFormContentData.showBackButton}
             formContent={generatedFormContentData.formContent}
             inputFields={generatedFormContentData.inputFields}
             userActions={generatedFormContentData.userActions}

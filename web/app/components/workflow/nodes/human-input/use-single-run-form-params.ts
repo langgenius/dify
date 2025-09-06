@@ -75,6 +75,7 @@ const useSingleRunFormParams = ({
         formContent: inputs.form_content,
         inputFields: formContentOutputFields,
         userActions: inputs.user_actions,
+        showBackButton: false,
       }
     }
     else {
@@ -89,6 +90,7 @@ const useSingleRunFormParams = ({
         formContent: newContent,
         inputFields: formContentOutputFields,
         userActions: inputs.user_actions,
+        showBackButton: true,
       }
     }
   }, [inputs.form_content, inputs.user_actions, submittedData, formContentOutputFields])
