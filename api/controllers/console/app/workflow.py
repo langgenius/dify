@@ -11,11 +11,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from configs import dify_config
 from controllers.console import api
-from controllers.console.app.error import (
-    ConversationCompletedError,
-    DraftWorkflowNotExist,
-    DraftWorkflowNotSync,
-)
+from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
