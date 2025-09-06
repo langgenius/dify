@@ -649,8 +649,6 @@ class Conversation(Base):
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
 
-    is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-
     @property
     def inputs(self):
         inputs = self._inputs.copy()
