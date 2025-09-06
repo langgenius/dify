@@ -1,5 +1,4 @@
 'use client'
-import type { ForwardRefRenderFunction } from 'react'
 import { useImperativeHandle } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '../../../types'
@@ -21,6 +20,7 @@ type Props = {
   onDeSelectAll: () => void
   onLoadedAllPlugin: (installedInfo: Record<string, VersionInfo>) => void
   isFromMarketPlace?: boolean
+  ref?: React.Ref<ExposeRefs>
 }
 
 export type ExposeRefs = {
@@ -28,7 +28,7 @@ export type ExposeRefs = {
   deSelectAllPlugins: () => void
 }
 
-const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
+const InstallByDSLList = ({
   allPlugins,
   selectedPlugins,
   onSelect,
@@ -36,7 +36,8 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
   onDeSelectAll,
   onLoadedAllPlugin,
   isFromMarketPlace,
-}, ref) => {
+  ref,
+}: Props) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   // DSL has id, to get plugin info to show more info
   const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map((d) => {
@@ -268,4 +269,4 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
     </>
   )
 }
-export default React.forwardRef(InstallByDSLList)
+export default InstallByDSLList
