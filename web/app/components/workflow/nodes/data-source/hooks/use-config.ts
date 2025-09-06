@@ -9,7 +9,6 @@ import type {
   DataSourceNodeType,
   ToolVarInputs,
 } from '../types'
-import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from '../constants'
 
 export const useConfig = (id: string, dataSourceList?: any[]) => {
   const store = useStoreApi()
@@ -36,7 +35,6 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
       handleNodeDataUpdate({
         ...nodeData.data,
         _dataSourceStartToAdd: false,
-        fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE,
       })
     }
   }, [getNodeData, handleNodeDataUpdate])
