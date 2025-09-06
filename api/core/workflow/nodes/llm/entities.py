@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal, Optional
 from numbers import Number
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -116,7 +116,9 @@ class LLMNodeData(BaseNodeData):
             raise ValueError("structured_output.schema must be an object")
 
         def is_enum_list(x: Any) -> bool:
-            return isinstance(x, list) and all((isinstance(i, str) or (isinstance(i, Number) and not isinstance(i, bool))) for i in x)
+            return isinstance(x, list) and all(
+                (isinstance(i, str) or (isinstance(i, Number) and not isinstance(i, bool))) for i in x
+            )
 
         allowed_types = {"string", "number", "boolean", "object", "array"}
         allowed_item_types = {"string", "number", "boolean", "object"}
