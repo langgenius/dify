@@ -8,6 +8,7 @@ import {
 } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
+import type { WorkflowHistoryEventMeta } from '../workflow-history-store'
 
 /**
  * All supported Events that create a new history state.
@@ -64,20 +65,21 @@ export const useWorkflowHistory = () => {
   // Some events may be triggered multiple times in a short period of time.
   // We debounce the history state update to avoid creating multiple history states
   // with minimal changes.
-  const saveStateToHistoryRef = useRef(debounce((event: WorkflowHistoryEvent) => {
+  const saveStateToHistoryRef = useRef(debounce((event: WorkflowHistoryEvent, meta?: WorkflowHistoryEventMeta) => {
     workflowHistoryStore.setState({
       workflowHistoryEvent: event,
+      workflowHistoryEventMeta: meta,
       nodes: store.getState().getNodes(),
       edges: store.getState().edges,
     })
   }, 500))
 
-  const saveStateToHistory = useCallback((event: WorkflowHistoryEvent) => {
+  const saveStateToHistory = useCallback((event: WorkflowHistoryEvent, meta?: WorkflowHistoryEventMeta) => {
     switch (event) {
       case WorkflowHistoryEvent.NoteChange:
         // Hint: Note change does not trigger when note text changes,
         // because the note editors have their own history states.
-        saveStateToHistoryRef.current(event)
+        saveStateToHistoryRef.current(event, meta)
         break
       case WorkflowHistoryEvent.NodeTitleChange:
       case WorkflowHistoryEvent.NodeDescriptionChange:
@@ -93,7 +95,7 @@ export const useWorkflowHistory = () => {
       case WorkflowHistoryEvent.NoteAdd:
       case WorkflowHistoryEvent.LayoutOrganize:
       case WorkflowHistoryEvent.NoteDelete:
-        saveStateToHistoryRef.current(event)
+        saveStateToHistoryRef.current(event, meta)
         break
       default:
         // We do not create a history state for every event.
