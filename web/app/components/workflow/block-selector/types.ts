@@ -61,12 +61,36 @@ export type TriggerParameter = {
   type: string
   required?: boolean
   default?: any
+  options?: Array<{
+    value: string
+    label: TypeWithI18N
+    icon?: string
+  }>
+  min?: number
+  max?: number
+  precision?: number
+}
+
+export type TriggerCredentialField = {
+  type: string
+  name: string
+  required: boolean
+  label: TypeWithI18N
+  help?: TypeWithI18N
+  url?: string
+  placeholder?: TypeWithI18N
+}
+
+export type TriggerSubscriptionSchema = {
+  parameters_schema: TriggerParameter[]
+  properties_schema: TriggerCredentialField[]
 }
 
 export type TriggerIdentity = {
   author: string
   name: string
-  version: string
+  label: TypeWithI18N
+  provider: string
 }
 
 export type TriggerDescription = {
@@ -92,6 +116,9 @@ export type TriggerProviderApiEntity = {
   tags: string[]
   plugin_id?: string
   plugin_unique_identifier?: string
+  credentials_schema: TriggerCredentialField[]
+  oauth_client_schema: TriggerCredentialField[]
+  subscription_schema: TriggerSubscriptionSchema
   triggers: TriggerApiEntity[]
 }
 
@@ -99,4 +126,56 @@ export type TriggerProviderApiEntity = {
 export type TriggerWithProvider = Collection & {
   tools: Tool[] // Use existing Tool type for compatibility
   meta: PluginMeta
+  credentials_schema?: TriggerCredentialField[]
+  oauth_client_schema?: TriggerCredentialField[]
+  subscription_schema?: TriggerSubscriptionSchema
+}
+
+// ===== API Service Types =====
+
+// Trigger subscription instance types
+export type TriggerSubscription = {
+  id: string
+  name: string
+  provider: string
+  credential_type: 'api_key' | 'oauth2' | 'unauthorized'
+  credentials: Record<string, any>
+  endpoint: string
+  parameters: Record<string, any>
+  properties: Record<string, any>
+}
+
+export type TriggerSubscriptionBuilder = {
+  id: string
+  name: string
+  provider: string
+  endpoint: string
+  parameters: Record<string, any>
+  properties: Record<string, any>
+  credentials: Record<string, any>
+  credential_type: 'api_key' | 'oauth2' | 'unauthorized'
+}
+
+// OAuth configuration types
+export type TriggerOAuthConfig = {
+  configured: boolean
+  custom_configured: boolean
+  custom_enabled: boolean
+  params: {
+    client_id: string
+    client_secret: string
+  }
+}
+
+export type TriggerOAuthClientParams = {
+  client_id: string
+  client_secret: string
+  authorization_url?: string
+  token_url?: string
+  scope?: string
+}
+
+export type TriggerOAuthResponse = {
+  authorization_url: string
+  subscription_builder: TriggerSubscriptionBuilder
 }
