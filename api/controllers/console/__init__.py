@@ -26,7 +26,7 @@ from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
+api: ExternalApi = ExternalApi(bp)
 
 # File
 api.add_resource(FileApi, "/files/upload")
@@ -63,6 +63,7 @@ from .app import (
     site,
     statistic,
     workflow,
+    workflow_alias,
     workflow_app_log,
     workflow_draft_variable,
     workflow_run,
@@ -167,6 +168,10 @@ api.add_resource(
 )
 
 # Import tag controllers
+# Register workflow alias routes
+from .app.workflow_alias import (
+    WorkflowAliasApi,
+)
 from .tag import tags
 
 # Import workspace controllers
@@ -182,3 +187,5 @@ from .workspace import (
     tool_providers,
     workspace,
 )
+
+api.add_resource(WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases")
