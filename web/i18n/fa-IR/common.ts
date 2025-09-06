@@ -494,6 +494,7 @@ const translation = {
       specifyModelCredentialTip: 'از اعتبارنامه مدل پیکربندی شده استفاده کنید.',
       providerManagedTip: 'تنظیمات فعلی توسط ارائه‌دهنده میزبانی می‌شود.',
       modelCredentials: 'مدل اعتبارنامه',
+      manageCredentials: 'مدیریت اعتبارنامه ها',
     },
   },
   dataSource: {
@@ -741,6 +742,12 @@ const translation = {
   avatar: {
     deleteTitle: 'حذف آواتار',
     deleteDescription: 'آیا مطمئن هستید که می‌خواهید تصویر پروفایل خود را حذف کنید؟ حساب شما از آواتار اولیه پیش‌فرض استفاده خواهد کرد.',
+  },
+  feedback: {
+    title: 'بازخورد ارائه دهید',
+    subtitle: 'لطفاً به ما بگویید که چه مشکلی در این پاسخ پیش آمده است.',
+    content: 'محتوای بازخورد',
+    placeholder: 'لطفاً توضیح دهید که چه مشکلی پیش آمد یا چگونه می‌توانیم بهبود پیدا کنیم...',
   },
 }
 

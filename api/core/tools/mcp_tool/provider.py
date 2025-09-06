@@ -28,7 +28,7 @@ class MCPToolProviderController(ToolProviderController):
         headers: Optional[dict[str, str]] = None,
         timeout: Optional[float] = None,
         sse_read_timeout: Optional[float] = None,
-    ) -> None:
+    ):
         super().__init__(entity)
         self.entity: ToolProviderEntityWithPlugin = entity
         self.tenant_id = tenant_id
@@ -99,7 +99,7 @@ class MCPToolProviderController(ToolProviderController):
             sse_read_timeout=db_provider.sse_read_timeout,
         )
 
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
         """

@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
+from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
@@ -127,7 +128,8 @@ class RetrievalService:
         external_retrieval_model: Optional[dict] = None,
         metadata_filtering_conditions: Optional[dict] = None,
     ):
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        stmt = select(Dataset).where(Dataset.id == dataset_id)
+        dataset = db.session.scalar(stmt)
         if not dataset:
             return []
         metadata_condition = (
@@ -316,10 +318,8 @@ class RetrievalService:
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # Handle parent-child documents
                     child_index_node_id = document.metadata.get("doc_id")
-
-                    child_chunk = (
-                        db.session.query(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id).first()
-                    )
+                    child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id)
+                    child_chunk = db.session.scalar(child_chunk_stmt)
 
                     if not child_chunk:
                         continue
@@ -378,17 +378,13 @@ class RetrievalService:
                     index_node_id = document.metadata.get("doc_id")
                     if not index_node_id:
                         continue
-
-                    segment = (
-                        db.session.query(DocumentSegment)
-                        .where(
-                            DocumentSegment.dataset_id == dataset_document.dataset_id,
-                            DocumentSegment.enabled == True,
-                            DocumentSegment.status == "completed",
-                            DocumentSegment.index_node_id == index_node_id,
-                        )
-                        .first()
+                    document_segment_stmt = select(DocumentSegment).where(
+                        DocumentSegment.dataset_id == dataset_document.dataset_id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.index_node_id == index_node_id,
                     )
+                    segment = db.session.scalar(document_segment_stmt)
 
                     if not segment:
                         continue

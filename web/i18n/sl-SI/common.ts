@@ -823,6 +823,12 @@ const translation = {
     deleteTitle: 'Odstrani avatar',
     deleteDescription: 'Ali ste prepričani, da želite odstraniti svojo profilno sliko? Vaš račun bo uporabljal privzeti začetni avatar.',
   },
+  feedback: {
+    title: 'Posreduj povratne informacije',
+    content: 'Vsebina povratnih informacij',
+    placeholder: 'Prosimo, opišite, kaj je šlo narobe ali kako lahko izboljšamo ...',
+    subtitle: 'Prosim, povejte nam, kaj je šlo narobe s tem odzivom.',
+  },
 }
 
 export default translation

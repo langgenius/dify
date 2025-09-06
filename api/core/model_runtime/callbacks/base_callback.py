@@ -35,7 +35,7 @@ class Callback(ABC):
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Before invoke callback
 
@@ -94,7 +94,7 @@ class Callback(ABC):
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-    ) -> None:
+    ):
         """
         After invoke callback
 
@@ -124,7 +124,7 @@ class Callback(ABC):
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Invoke error callback
 
@@ -141,7 +141,7 @@ class Callback(ABC):
         """
         raise NotImplementedError()
 
-    def print_text(self, text: str, color: Optional[str] = None, end: str = "") -> None:
+    def print_text(self, text: str, color: Optional[str] = None, end: str = ""):
         """Print text with highlighting and no end characters."""
         text_to_print = self._get_colored_text(text, color) if color else text
         print(text_to_print, end=end)

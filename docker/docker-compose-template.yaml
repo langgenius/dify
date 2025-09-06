@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.8.0
+    image: langgenius/dify-api:1.8.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -31,7 +31,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.8.0
+    image: langgenius/dify-api:1.8.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -58,7 +58,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.8.0
+    image: langgenius/dify-api:1.8.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -76,7 +76,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.8.0
+    image: langgenius/dify-web:1.8.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -118,7 +118,17 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ 'CMD', 'pg_isready', '-h', 'db', '-U', '${PGUSER:-postgres}', '-d', '${POSTGRES_DB:-dify}' ]
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-h",
+          "db",
+          "-U",
+          "${PGUSER:-postgres}",
+          "-d",
+          "${POSTGRES_DB:-dify}",
+        ]
       interval: 1s
       timeout: 3s
       retries: 60
@@ -135,7 +145,11 @@ services:
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
-      test: [ 'CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD:-difyai123456} ping | grep -q PONG' ]
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a ${REDIS_PASSWORD:-difyai123456} ping | grep -q PONG",
+        ]
 
   # The DifySandbox
   sandbox:
@@ -157,7 +171,7 @@ services:
       - ./volumes/sandbox/dependencies:/dependencies
       - ./volumes/sandbox/conf:/conf
     healthcheck:
-      test: [ 'CMD', 'curl', '-f', 'http://localhost:8194/health' ]
+      test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
     networks:
       - ssrf_proxy_network
 
@@ -231,7 +245,12 @@ services:
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-    entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
@@ -260,8 +279,8 @@ services:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
       - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
-    entrypoint: [ '/docker-entrypoint.sh' ]
-    command: [ 'tail', '-f', '/dev/null' ]
+    entrypoint: ["/docker-entrypoint.sh"]
+    command: ["tail", "-f", "/dev/null"]
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -278,7 +297,12 @@ services:
       - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
       - ./volumes/certbot/conf:/etc/letsencrypt
       - ./volumes/certbot/www:/var/www/html
-    entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
       NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
@@ -300,14 +324,14 @@ services:
       - api
       - web
     ports:
-      - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
-      - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
+      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
 
   # The Weaviate vector store.
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
-      - ''
+      - ""
       - weaviate
     restart: always
     volumes:
@@ -360,13 +384,17 @@ services:
     working_dir: /opt/couchbase
     stdin_open: true
     tty: true
-    entrypoint: [ "" ]
+    entrypoint: [""]
     command: sh -c "/opt/couchbase/init/init-cbserver.sh"
     volumes:
       - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
     healthcheck:
       # ensure bucket was created before proceeding
-      test: [ "CMD-SHELL", "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1" ]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1",
+        ]
       interval: 10s
       retries: 10
       start_period: 30s
@@ -392,9 +420,9 @@ services:
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
       - ./pgvector/docker-entrypoint.sh:/docker-entrypoint.sh
-    entrypoint: [ '/docker-entrypoint.sh' ]
+    entrypoint: ["/docker-entrypoint.sh"]
     healthcheck:
-      test: [ 'CMD', 'pg_isready' ]
+      test: ["CMD", "pg_isready"]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -411,14 +439,14 @@ services:
       - VB_USERNAME=dify
       - VB_PASSWORD=Difyai123456
     ports:
-      - '5434:5432'
+      - "5434:5432"
     volumes:
       - ./vastbase/lic:/home/vastbase/vastbase/lic
       - ./vastbase/data:/home/vastbase/data
       - ./vastbase/backup:/home/vastbase/backup
       - ./vastbase/backup_log:/home/vastbase/backup_log
     healthcheck:
-      test: [ 'CMD', 'pg_isready' ]
+      test: ["CMD", "pg_isready"]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -440,7 +468,7 @@ services:
     volumes:
       - ./volumes/pgvecto_rs/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ 'CMD', 'pg_isready' ]
+      test: ["CMD", "pg_isready"]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -479,7 +507,11 @@ services:
     ports:
       - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
     healthcheck:
-      test: [ 'CMD-SHELL', 'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"' ]
+      test:
+        [
+          "CMD-SHELL",
+          'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
+        ]
       interval: 10s
       retries: 30
       start_period: 30s
@@ -515,7 +547,7 @@ services:
       - ./volumes/milvus/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
-      test: [ 'CMD', 'etcdctl', 'endpoint', 'health' ]
+      test: ["CMD", "etcdctl", "endpoint", "health"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -534,7 +566,7 @@ services:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: [ 'CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live' ]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -546,7 +578,7 @@ services:
     image: milvusdb/milvus:v2.5.15
     profiles:
       - milvus
-    command: [ 'milvus', 'run', 'standalone' ]
+    command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
       MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
@@ -554,7 +586,7 @@ services:
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
     healthcheck:
-      test: [ 'CMD', 'curl', '-f', 'http://localhost:9091/healthz' ]
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 30s
       start_period: 90s
       timeout: 20s
@@ -620,7 +652,7 @@ services:
     volumes:
       - ./volumes/opengauss/data:/var/lib/opengauss/data
     healthcheck:
-      test: [ "CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1" ]
+      test: ["CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1"]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -673,18 +705,19 @@ services:
       node.name: dify-es0
       discovery.type: single-node
       xpack.license.self_generated.type: basic
-      xpack.security.enabled: 'true'
-      xpack.security.enrollment.enabled: 'false'
-      xpack.security.http.ssl.enabled: 'false'
+      xpack.security.enabled: "true"
+      xpack.security.enrollment.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
     deploy:
       resources:
         limits:
           memory: 2g
-    entrypoint: [ 'sh', '-c', "sh /docker-entrypoint-mount.sh" ]
+    entrypoint: ["sh", "-c", "sh /docker-entrypoint-mount.sh"]
     healthcheck:
-      test: [ 'CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty' ]
+      test:
+        ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
       interval: 30s
       timeout: 10s
       retries: 50
@@ -702,17 +735,17 @@ services:
     environment:
       XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
       NO_PROXY: localhost,127.0.0.1,elasticsearch,kibana
-      XPACK_SECURITY_ENABLED: 'true'
-      XPACK_SECURITY_ENROLLMENT_ENABLED: 'false'
-      XPACK_SECURITY_HTTP_SSL_ENABLED: 'false'
-      XPACK_FLEET_ISAIRGAPPED: 'true'
+      XPACK_SECURITY_ENABLED: "true"
+      XPACK_SECURITY_ENROLLMENT_ENABLED: "false"
+      XPACK_SECURITY_HTTP_SSL_ENABLED: "false"
+      XPACK_FLEET_ISAIRGAPPED: "true"
       I18N_LOCALE: zh-CN
-      SERVER_PORT: '5601'
+      SERVER_PORT: "5601"
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     ports:
       - ${KIBANA_PORT:-5601}:5601
     healthcheck:
-      test: [ 'CMD-SHELL', 'curl -s http://localhost:5601 >/dev/null || exit 1' ]
+      test: ["CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

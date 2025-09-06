@@ -470,6 +470,12 @@ const translation = {
         back: 'Tył',
         addField: 'Dodaj pole',
       },
+      reasoningFormat: {
+        tooltip: 'Wyodrębnij treść z tagów think i przechowaj ją w polu reasoning_content.',
+        separated: 'Oddziel tagi myślenia',
+        tagged: 'Zachowaj myśl tagi',
+        title: 'Włącz separację tagów uzasadnienia',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Zmienna zapytania',

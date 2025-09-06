@@ -2,8 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiDeleteBinLine,
-  RiEqualizer2Line,
+  RiIndeterminateCircleLine,
 } from '@remixicon/react'
 import type {
   Credential,
@@ -28,7 +27,6 @@ import GridMask from '@/app/components/base/grid-mask'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { IS_CE_EDITION } from '@/config'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useModelModalHandler } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Badge from '@/app/components/base/badge/index'
 
 export type ModelLoadBalancingConfigsProps = {
@@ -40,7 +38,8 @@ export type ModelLoadBalancingConfigsProps = {
   withSwitch?: boolean
   className?: string
   modelCredential: ModelCredential
-  onUpdate?: () => void
+  onUpdate?: (payload?: any, formValues?: Record<string, any>) => void
+  onRemove?: (credentialId: string) => void
   model: CustomModelCredential
 }
 
@@ -55,11 +54,11 @@ const ModelLoadBalancingConfigs = ({
   className,
   modelCredential,
   onUpdate,
+  onRemove,
 }: ModelLoadBalancingConfigsProps) => {
   const { t } = useTranslation()
   const providerFormSchemaPredefined = configurationMethod === ConfigurationMethodEnum.predefinedModel
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
-  const handleOpenModal = useModelModalHandler()
 
   const updateConfigEntry = useCallback(
     (
@@ -130,6 +129,17 @@ const ModelLoadBalancingConfigs = ({
     return draftConfig.configs
   }, [draftConfig])
 
+  const handleUpdate = useCallback((payload?: any, formValues?: Record<string, any>) => {
+    onUpdate?.(payload, formValues)
+  }, [onUpdate])
+
+  const handleRemove = useCallback((credentialId: string) => {
+    const index = draftConfig?.configs.findIndex(item => item.credential_id === credentialId && item.name !== '__inherit__')
+    if (index && index > -1)
+      updateConfigEntry(index, () => undefined)
+    onRemove?.(credentialId)
+  }, [draftConfig?.configs, updateConfigEntry, onRemove])
+
   if (!draftConfig)
     return null
 
@@ -190,7 +200,7 @@ const ModelLoadBalancingConfigs = ({
                           </Tooltip>
                         )}
                     </div>
-                    <div className='mr-1 text-[13px]'>
+                    <div className='mr-1 text-[13px] text-text-secondary'>
                       {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
                     </div>
                     {isProviderManaged && providerFormSchemaPredefined && (
@@ -206,34 +216,14 @@ const ModelLoadBalancingConfigs = ({
                     {!isProviderManaged && (
                       <>
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
-                          {
-                            config.credential_id && !credential?.not_allowed_to_use && !credential?.from_enterprise && (
-                              <span
-                                className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
-                                onClick={() => {
-                                  handleOpenModal(
-                                    provider,
-                                    configurationMethod,
-                                    currentCustomConfigurationModelFixedFields,
-                                    configurationMethod === ConfigurationMethodEnum.customizableModel,
-                                    (config.credential_id && config.name) ? {
-                                      credential_id: config.credential_id,
-                                      credential_name: config.name,
-                                    } : undefined,
-                                    model,
-                                  )
-                                }}
-                              >
-                                <RiEqualizer2Line className='h-4 w-4' />
-                              </span>
-                            )
-                          }
-                          <span
-                            className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
-                            onClick={() => updateConfigEntry(index, () => undefined)}
-                          >
-                            <RiDeleteBinLine className='h-4 w-4' />
-                          </span>
+                          <Tooltip popupContent={t('common.operation.remove')}>
+                            <span
+                              className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover'
+                              onClick={() => updateConfigEntry(index, () => undefined)}
+                            >
+                              <RiIndeterminateCircleLine className='h-4 w-4' />
+                            </span>
+                          </Tooltip>
                         </div>
                       </>
                     )}
@@ -261,7 +251,8 @@ const ModelLoadBalancingConfigs = ({
               configurationMethod={configurationMethod}
               modelCredential={modelCredential}
               onSelectCredential={addConfigEntry}
-              onUpdate={onUpdate}
+              onUpdate={handleUpdate}
+              onRemove={handleRemove}
             />
           </div>
         )}

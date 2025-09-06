@@ -90,8 +90,8 @@ const FormInputItem: FC<Props> = ({
     //   return VarType.appSelector
     // else if (isModelSelector)
     //   return VarType.modelSelector
-    // else if (isBoolean)
-    //   return VarType.boolean
+    else if (isBoolean)
+      return VarType.boolean
     else if (isObject)
       return VarType.object
     else if (isArray)
@@ -183,7 +183,7 @@ const FormInputItem: FC<Props> = ({
   return (
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
-        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange}/>
+        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange} />
       )}
       {isString && (
         <MixedVariableTextInput
@@ -203,7 +203,7 @@ const FormInputItem: FC<Props> = ({
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
       )}
-      {isBoolean && (
+      {isBoolean && isConstant && (
         <FormInputBoolean
           value={varInput?.value as boolean}
           onChange={handleValueChange}

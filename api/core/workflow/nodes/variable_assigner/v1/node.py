@@ -30,7 +30,7 @@ class VariableAssignerNode(BaseNode):
 
     _node_data: VariableAssignerData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = VariableAssignerData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -61,7 +61,7 @@ class VariableAssignerNode(BaseNode):
         previous_node_id: Optional[str] = None,
         thread_pool_id: Optional[str] = None,
         conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY = conversation_variable_updater_factory,
-    ) -> None:
+    ):
         super().__init__(
             id=id,
             config=config,

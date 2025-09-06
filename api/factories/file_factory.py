@@ -403,7 +403,7 @@ class StorageKeyLoader:
     This loader is batched, the database query count is constant regardless of the input size.
     """
 
-    def __init__(self, session: Session, tenant_id: str) -> None:
+    def __init__(self, session: Session, tenant_id: str):
         self._session = session
         self._tenant_id = tenant_id
 
