@@ -250,7 +250,7 @@ class ConversationService:
         variable_id: str,
         user: Optional[Union[Account, EndUser]],
         new_value: Any,
-    ) -> dict:
+    ):
         """
         Update a conversation variable's value.
 

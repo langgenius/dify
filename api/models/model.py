@@ -162,7 +162,7 @@ class App(Base):
         return str(self.mode)
 
     @property
-    def deleted_tools(self) -> list:
+    def deleted_tools(self):
         from core.tools.tool_manager import ToolManager
         from services.plugin.plugin_service import PluginService
 
@@ -339,15 +339,15 @@ class AppModelConfig(Base):
         return app
 
     @property
-    def model_dict(self) -> dict:
+    def model_dict(self):
         return json.loads(self.model) if self.model else {}
 
     @property
-    def suggested_questions_list(self) -> list:
+    def suggested_questions_list(self):
         return json.loads(self.suggested_questions) if self.suggested_questions else []
 
     @property
-    def suggested_questions_after_answer_dict(self) -> dict:
+    def suggested_questions_after_answer_dict(self):
         return (
             json.loads(self.suggested_questions_after_answer)
             if self.suggested_questions_after_answer
@@ -355,19 +355,19 @@ class AppModelConfig(Base):
         )
 
     @property
-    def speech_to_text_dict(self) -> dict:
+    def speech_to_text_dict(self):
         return json.loads(self.speech_to_text) if self.speech_to_text else {"enabled": False}
 
     @property
-    def text_to_speech_dict(self) -> dict:
+    def text_to_speech_dict(self):
         return json.loads(self.text_to_speech) if self.text_to_speech else {"enabled": False}
 
     @property
-    def retriever_resource_dict(self) -> dict:
+    def retriever_resource_dict(self):
         return json.loads(self.retriever_resource) if self.retriever_resource else {"enabled": True}
 
     @property
-    def annotation_reply_dict(self) -> dict:
+    def annotation_reply_dict(self):
         annotation_setting = (
             db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).first()
         )
@@ -390,11 +390,11 @@ class AppModelConfig(Base):
             return {"enabled": False}
 
     @property
-    def more_like_this_dict(self) -> dict:
+    def more_like_this_dict(self):
         return json.loads(self.more_like_this) if self.more_like_this else {"enabled": False}
 
     @property
-    def sensitive_word_avoidance_dict(self) -> dict:
+    def sensitive_word_avoidance_dict(self):
         return (
             json.loads(self.sensitive_word_avoidance)
             if self.sensitive_word_avoidance
@@ -410,7 +410,7 @@ class AppModelConfig(Base):
         return json.loads(self.user_input_form) if self.user_input_form else []
 
     @property
-    def agent_mode_dict(self) -> dict:
+    def agent_mode_dict(self):
         return (
             json.loads(self.agent_mode)
             if self.agent_mode
@@ -418,15 +418,15 @@ class AppModelConfig(Base):
         )
 
     @property
-    def chat_prompt_config_dict(self) -> dict:
+    def chat_prompt_config_dict(self):
         return json.loads(self.chat_prompt_config) if self.chat_prompt_config else {}
 
     @property
-    def completion_prompt_config_dict(self) -> dict:
+    def completion_prompt_config_dict(self):
         return json.loads(self.completion_prompt_config) if self.completion_prompt_config else {}
 
     @property
-    def dataset_configs_dict(self) -> dict:
+    def dataset_configs_dict(self):
         if self.dataset_configs:
             dataset_configs: dict = json.loads(self.dataset_configs)
             if "retrieval_model" not in dataset_configs:
@@ -438,7 +438,7 @@ class AppModelConfig(Base):
         }
 
     @property
-    def file_upload_dict(self) -> dict:
+    def file_upload_dict(self):
         return (
             json.loads(self.file_upload)
             if self.file_upload
@@ -452,7 +452,7 @@ class AppModelConfig(Base):
             }
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "opening_statement": self.opening_statement,
             "suggested_questions": self.suggested_questions_list,
@@ -1087,7 +1087,7 @@ class Message(Base):
         return self.override_model_configs is not None
 
     @property
-    def message_metadata_dict(self) -> dict:
+    def message_metadata_dict(self):
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
@@ -1176,7 +1176,7 @@ class Message(Base):
 
         return None
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "id": self.id,
             "app_id": self.app_id,
@@ -1689,7 +1689,7 @@ class MessageAgentThought(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
     @property
-    def files(self) -> list:
+    def files(self):
         if self.message_files:
             return cast(list[Any], json.loads(self.message_files))
         else:
@@ -1700,7 +1700,7 @@ class MessageAgentThought(Base):
         return self.tool.split(";") if self.tool else []
 
     @property
-    def tool_labels(self) -> dict:
+    def tool_labels(self):
         try:
             if self.tool_labels_str:
                 return cast(dict, json.loads(self.tool_labels_str))
@@ -1710,7 +1710,7 @@ class MessageAgentThought(Base):
             return {}
 
     @property
-    def tool_meta(self) -> dict:
+    def tool_meta(self):
         try:
             if self.tool_meta_str:
                 return cast(dict, json.loads(self.tool_meta_str))
@@ -1720,7 +1720,7 @@ class MessageAgentThought(Base):
             return {}
 
     @property
-    def tool_inputs_dict(self) -> dict:
+    def tool_inputs_dict(self):
         tools = self.tools
         try:
             if self.tool_input:

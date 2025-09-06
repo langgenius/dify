@@ -14,7 +14,7 @@ from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
 class WeightRerankRunner(BaseRerankRunner):
-    def __init__(self, tenant_id: str, weights: Weights) -> None:
+    def __init__(self, tenant_id: str, weights: Weights):
         self.tenant_id = tenant_id
         self.weights = weights
 

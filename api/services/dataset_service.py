@@ -727,10 +727,9 @@ class DatasetService:
         )
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
+    def get_dataset_auto_disable_logs(dataset_id: str):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-
         features = FeatureService.get_features(current_user.current_tenant_id)
         if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
             return {
