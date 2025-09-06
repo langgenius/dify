@@ -293,13 +293,14 @@ class TriggerOAuthAuthorizeApi(Resource):
                 credential_type=CredentialType.OAUTH2,
                 credential_expires_at=0,
                 expires_at=0,
+                name=f"{provider_name} OAuth Authentication",
             )
 
             # Create response with cookie
             response = make_response(
                 jsonable_encoder(
                     {
-                        "authorization_url": authorization_url_response,
+                        "authorization_url": authorization_url_response.authorization_url,
                         "subscription_builder": subscription_builder,
                     }
                 )
@@ -377,6 +378,7 @@ class TriggerOAuthCallbackApi(Resource):
             credential_type=CredentialType.OAUTH2,
             credential_expires_at=expires_at,
             expires_at=expires_at,
+            name=f"{provider_name} OAuth Authentication",
         )
         # Redirect to OAuth callback page
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback?subscription_id={subscription_builder.id}")

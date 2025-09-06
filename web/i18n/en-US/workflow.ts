@@ -724,6 +724,13 @@ const translation = {
         json: 'tool generated json',
       },
     },
+    triggerPlugin: {
+      authorized: 'Authorized',
+      notConfigured: 'Not Configured',
+      error: 'Error',
+      configuration: 'Configuration',
+      remove: 'Remove',
+    },
     questionClassifiers: {
       model: 'model',
       inputVars: 'Input Variables',

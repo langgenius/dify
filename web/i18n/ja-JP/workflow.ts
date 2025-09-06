@@ -1034,6 +1034,13 @@ const translation = {
         invalidParameterType: 'パラメータ"{{name}}"の無効なパラメータタイプ"{{type}}"です',
       },
     },
+    triggerPlugin: {
+      authorized: '認可された',
+      notConfigured: '設定されていません',
+      error: 'エラー',
+      configuration: '構成',
+      remove: '削除する',
+    },
   },
   tracing: {
     stopBy: '{{user}}によって停止',
