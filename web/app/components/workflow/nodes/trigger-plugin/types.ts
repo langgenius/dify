@@ -3,7 +3,7 @@ import type { CollectionType } from '@/app/components/tools/types'
 
 export type PluginTriggerNodeType = CommonNodeType & {
   plugin_id?: string
-  plugin_name?: string
+  tool_name?: string
   event_type?: string
   config?: Record<string, any>
   provider_id?: string

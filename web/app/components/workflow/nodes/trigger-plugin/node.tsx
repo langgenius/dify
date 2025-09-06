@@ -9,14 +9,14 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   const { config = {} } = data
   const configKeys = Object.keys(config)
 
-  if (!data.plugin_name && configKeys.length === 0)
+  if (!data.tool_name && configKeys.length === 0)
     return null
 
   return (
     <div className="mb-1 px-3 py-1">
-      {data.plugin_name && (
+      {data.tool_name && (
         <div className="mb-1 text-xs font-medium text-gray-700">
-          {data.plugin_name}
+          {data.tool_name}
           {data.event_type && (
             <div className="text-xs text-gray-500">
               {data.event_type}

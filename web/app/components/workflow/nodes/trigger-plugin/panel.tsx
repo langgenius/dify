@@ -5,26 +5,23 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import useConfig from './use-config'
+import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
+import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
+import { Type } from '../llm/types'
 
 const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
+  id,
   data,
 }) => {
-  const { data: triggerPlugins = [] } = useAllTriggerPlugins()
-
-  // Find the current trigger provider and specific trigger
-  const currentProvider = triggerPlugins.find(provider =>
-    provider.name === data.provider_name
-    || provider.id === data.provider_id
-    || (data.provider_id && provider.plugin_id === data.provider_id),
-  )
-
-  const currentTrigger = currentProvider?.tools.find(tool =>
-    tool.name === data.plugin_name,
-  )
-
-  // Get output schema from the trigger
-  const outputSchema = currentTrigger?.output_schema || {}
+  const {
+    readOnly,
+    triggerParameterSchema,
+    triggerParameterValue,
+    setTriggerParameterValue,
+    outputSchema,
+    hasObjectOutput,
+  } = useConfig(id, data)
 
   // Convert output schema to VarItem format
   const outputVars = Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => ({
@@ -35,29 +32,23 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-2'>
-        <Field title="Plugin Trigger">
-          {data.plugin_name ? (
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">{data.plugin_name}</span>
-                {data.event_type && (
-                  <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">
-                    {data.event_type}
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-gray-500">
-                Plugin trigger configured
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-gray-500">
-              No plugin selected. Configure this trigger in the workflow canvas.
-            </div>
-          )}
-        </Field>
-      </div>
+      {/* Dynamic Parameters Form */}
+
+      {triggerParameterSchema.length > 0 && (
+        <>
+          <div className='px-4 pb-4'>
+            <Field title="Parameters">
+              <ToolForm
+                readOnly={readOnly}
+                nodeId={id}
+                schema={triggerParameterSchema as any}
+                value={triggerParameterValue}
+                onChange={setTriggerParameterValue}
+              />
+            </Field>
+          </div>
+        </>
+      )}
 
       <Split />
 
@@ -69,7 +60,26 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
               name={varItem.name}
               type={varItem.type}
               description={varItem.description}
+              isIndent={hasObjectOutput}
             />
+          ))}
+          {Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => (
+            <div key={name}>
+              {schema.type === 'object' ? (
+                <StructureOutputItem
+                  rootClassName='code-sm-semibold text-text-secondary'
+                  payload={{
+                    schema: {
+                      type: Type.object,
+                      properties: {
+                        [name]: schema,
+                      },
+                      additionalProperties: false,
+                    },
+                  }}
+                />
+              ) : null}
+            </div>
           ))}
         </>
       </OutputVars>
