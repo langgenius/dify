@@ -512,9 +512,10 @@ class TestBatchCreateSegmentToIndexTask:
         segments = db.session.query(DocumentSegment).all()
         assert len(segments) == 0
 
-        # Verify dataset remains unchanged
+        # Verify dataset remains unchanged (no segments were added to the dataset)
         db.session.refresh(dataset)
-        assert dataset.id == dataset.id
+        segments_for_dataset = db.session.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        assert len(segments_for_dataset) == 0
 
     def test_batch_create_segment_to_index_task_document_not_available(
         self, db_session_with_containers, mock_external_service_dependencies
