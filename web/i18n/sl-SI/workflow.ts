@@ -477,6 +477,12 @@ const translation = {
       context: 'kontekst',
       addMessage: 'Dodaj sporočilo',
       vision: 'vizija',
+      reasoningFormat: {
+        tagged: 'Ohranite oznake za razmišljanje',
+        title: 'Omogoči ločevanje oznak za razsojanje',
+        tooltip: 'Izvleći vsebino iz miselnih oznak in jo shraniti v polje reasoning_content.',
+        separated: 'Ločite oznake za razmišljanje',
+      },
     },
     knowledgeRetrieval: {
       outputVars: {

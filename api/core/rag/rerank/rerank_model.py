@@ -6,7 +6,7 @@ from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
 class RerankModelRunner(BaseRerankRunner):
-    def __init__(self, rerank_model_instance: ModelInstance) -> None:
+    def __init__(self, rerank_model_instance: ModelInstance):
         self.rerank_model_instance = rerank_model_instance
 
     def run(

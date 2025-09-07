@@ -270,7 +270,9 @@ class IndexingRunner:
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
-        preview_texts = []  # type: ignore
+        # keep separate, avoid union-list ambiguity
+        preview_texts: list[PreviewDetail] = []
+        qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
         index_type = doc_form
@@ -293,14 +295,14 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 10:
                     if doc_form and doc_form == "qa_model":
-                        preview_detail = QAPreviewDetail(
+                        qa_detail = QAPreviewDetail(
                             question=document.page_content, answer=document.metadata.get("answer") or ""
                         )
-                        preview_texts.append(preview_detail)
+                        qa_preview_texts.append(qa_detail)
                     else:
-                        preview_detail = PreviewDetail(content=document.page_content)  # type: ignore
+                        preview_detail = PreviewDetail(content=document.page_content)
                         if document.children:
-                            preview_detail.child_chunks = [child.page_content for child in document.children]  # type: ignore
+                            preview_detail.child_chunks = [child.page_content for child in document.children]
                         preview_texts.append(preview_detail)
 
                 # delete image files and related db records
@@ -321,8 +323,8 @@ class IndexingRunner:
                     db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
-            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=preview_texts, preview=[])
-        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)  # type: ignore
+            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
+        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
@@ -424,6 +426,7 @@ class IndexingRunner:
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
@@ -450,7 +453,7 @@ class IndexingRunner:
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter
 
     def _split_to_documents_for_estimate(
         self, text_docs: list[Document], splitter: TextSplitter, processing_rule: DatasetProcessRule
@@ -509,7 +512,7 @@ class IndexingRunner:
         dataset: Dataset,
         dataset_document: DatasetDocument,
         documents: list[Document],
-    ) -> None:
+    ):
         """
         insert index and update document/segment status to completed
         """
@@ -648,7 +651,7 @@ class IndexingRunner:
     @staticmethod
     def _update_document_index_status(
         document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
-    ) -> None:
+    ):
         """
         Update the document indexing status.
         """
@@ -667,7 +670,7 @@ class IndexingRunner:
         db.session.commit()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: dict) -> None:
+    def _update_segments_by_document(dataset_document_id: str, update_params: dict):
         """
         Update the document segment by document id.
         """

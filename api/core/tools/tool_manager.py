@@ -642,7 +642,7 @@ class ToolManager:
                         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
                         exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
-                        name_func=lambda x: x.identity.name,
+                        name_func=lambda x: x.entity.identity.name,
                     ):
                         continue
                     user_provider = ToolTransformService.builtin_provider_to_user_provider(
@@ -778,7 +778,7 @@ class ToolManager:
         return controller
 
     @classmethod
-    def user_get_api_provider(cls, provider: str, tenant_id: str) -> dict:
+    def user_get_api_provider(cls, provider: str, tenant_id: str):
         """
         get api provider
         """
@@ -873,7 +873,7 @@ class ToolManager:
         )
 
     @classmethod
-    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
@@ -890,7 +890,7 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)
