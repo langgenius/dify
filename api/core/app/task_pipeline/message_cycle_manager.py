@@ -2,7 +2,7 @@ import logging
 from threading import Thread
 from typing import Optional, Union
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

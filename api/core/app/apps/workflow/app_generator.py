@@ -3,9 +3,9 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Literal, Optional, Union, overload
+from typing import Any, Literal, Optional, overload, Union
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -19,24 +19,40 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
-from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from core.app.apps.workflow.generate_response_converter import (
+    WorkflowAppGenerateResponseConverter,
+)
+from core.app.apps.workflow.generate_task_pipeline import (
+    WorkflowAppGenerateTaskPipeline,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repositories.draft_variable_repository import (
+    DraftVariableSaverFactory,
+)
+from core.workflow.repositories.workflow_execution_repository import (
+    WorkflowExecutionRepository,
+)
+from core.workflow.repositories.workflow_node_execution_repository import (
+    WorkflowNodeExecutionRepository,
+)
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
-from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
+from services.workflow_draft_variable_service import (
+    DraftVarLoader,
+    WorkflowDraftVariableService,
+)
 
 logger = logging.getLogger(__name__)
 

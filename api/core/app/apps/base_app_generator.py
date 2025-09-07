@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union, final
+from typing import Any, final, Optional, TYPE_CHECKING, Union
 
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,9 @@ from core.workflow.repositories.draft_variable_repository import (
 )
 from factories import file_factory
 from libs.orjson import orjson_dumps
-from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
+from services.workflow_draft_variable_service import (
+    DraftVariableSaver as DraftVariableSaverImpl,
+)
 
 if TYPE_CHECKING:
     from core.app.app_config.entities import VariableEntity

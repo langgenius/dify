@@ -1,9 +1,9 @@
 import logging
 from collections.abc import Mapping
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed, Future, ThreadPoolExecutor
 from typing import Any, Optional
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 
 from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory

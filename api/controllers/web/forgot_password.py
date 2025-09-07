@@ -2,7 +2,7 @@ import base64
 import secrets
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,11 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from controllers.console.error import EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
+from controllers.console.wraps import (
+    email_password_login_enabled,
+    only_edition_enterprise,
+    setup_required,
+)
 from controllers.web import web_ns
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip

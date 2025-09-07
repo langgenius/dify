@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Union, cast
+from typing import cast, Union
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS  # type: ignore

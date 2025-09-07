@@ -406,7 +406,10 @@ class TestModelProviderService:
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
 
         # Create mock models
-        from core.entities.model_entities import ModelWithProviderEntity, SimpleModelProviderEntity
+        from core.entities.model_entities import (
+            ModelWithProviderEntity,
+            SimpleModelProviderEntity,
+        )
         from core.model_runtime.entities.common_entities import I18nObject
         from core.model_runtime.entities.provider_entities import ProviderEntity
 
@@ -642,7 +645,10 @@ class TestModelProviderService:
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
 
         # Create mock default model response
-        from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
+        from core.entities.model_entities import (
+            DefaultModelEntity,
+            DefaultModelProviderEntity,
+        )
         from core.model_runtime.entities.common_entities import I18nObject
 
         mock_default_model = DefaultModelEntity(

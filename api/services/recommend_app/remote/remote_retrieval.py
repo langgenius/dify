@@ -4,7 +4,9 @@ from typing import Optional
 import requests
 
 from configs import dify_config
-from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
+from services.recommend_app.buildin.buildin_retrieval import (
+    BuildInRecommendAppRetrieval,
+)
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType
 

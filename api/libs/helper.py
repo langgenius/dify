@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import Any, cast, Optional, TYPE_CHECKING, Union
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context

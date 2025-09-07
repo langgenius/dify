@@ -9,7 +9,12 @@ from werkzeug.exceptions import Unauthorized
 from configs import dify_config
 from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
 from models.account import AccountStatus, TenantAccountJoin
-from services.account_service import AccountService, RegisterService, TenantService, TokenPair
+from services.account_service import (
+    AccountService,
+    RegisterService,
+    TenantService,
+    TokenPair,
+)
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -18,7 +23,10 @@ from services.errors.account import (
     AccountRegisterError,
     CurrentPasswordIncorrectError,
 )
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspacesLimitExceededError,
+)
 
 
 class TestAccountService:

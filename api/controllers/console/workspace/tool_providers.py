@@ -4,8 +4,8 @@ from urllib.parse import urlparse
 from flask import make_response, redirect, request, send_file
 from flask_login import current_user
 from flask_restx import (
-    Resource,
     reqparse,
+    Resource,
 )
 from werkzeug.exceptions import Forbidden
 
@@ -24,7 +24,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import CredentialType
-from libs.helper import StrLen, alphanumeric, uuid_value
+from libs.helper import alphanumeric, StrLen, uuid_value
 from libs.login import login_required
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService

@@ -1,20 +1,39 @@
 from typing import Optional
 
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
-from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
+from core.app.app_config.common.sensitive_word_avoidance.manager import (
+    SensitiveWordAvoidanceConfigManager,
+)
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
-from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConfigManager
-from core.app.app_config.easy_ui_based_app.prompt_template.manager import PromptTemplateConfigManager
-from core.app.app_config.easy_ui_based_app.variables.manager import BasicVariablesConfigManager
-from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
+from core.app.app_config.easy_ui_based_app.model_config.manager import (
+    ModelConfigManager,
+)
+from core.app.app_config.easy_ui_based_app.prompt_template.manager import (
+    PromptTemplateConfigManager,
+)
+from core.app.app_config.easy_ui_based_app.variables.manager import (
+    BasicVariablesConfigManager,
+)
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+)
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
-from core.app.app_config.features.retrieval_resource.manager import RetrievalResourceConfigManager
-from core.app.app_config.features.speech_to_text.manager import SpeechToTextConfigManager
+from core.app.app_config.features.opening_statement.manager import (
+    OpeningStatementConfigManager,
+)
+from core.app.app_config.features.retrieval_resource.manager import (
+    RetrievalResourceConfigManager,
+)
+from core.app.app_config.features.speech_to_text.manager import (
+    SpeechToTextConfigManager,
+)
 from core.app.app_config.features.suggested_questions_after_answer.manager import (
     SuggestedQuestionsAfterAnswerConfigManager,
 )
-from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
+from core.app.app_config.features.text_to_speech.manager import (
+    TextToSpeechConfigManager,
+)
 from models.model import App, AppMode, AppModelConfig, Conversation
 
 

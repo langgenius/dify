@@ -21,7 +21,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from configs import dify_config
-from core.file import File, FileTransferMethod, file_manager
+from core.file import File, file_manager, FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayStringSegment, FileSegment
@@ -32,7 +32,12 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
 
 from .entities import DocumentExtractorNodeData
-from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
+from .exc import (
+    DocumentExtractorError,
+    FileDownloadError,
+    TextExtractionError,
+    UnsupportedFileTypeError,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from typing import Any, Optional
 
 from pytz import timezone as pytz_timezone

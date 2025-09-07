@@ -2,13 +2,13 @@ from typing import Literal, Optional
 
 from pydantic import (
     AliasChoices,
+    computed_field,
     Field,
     HttpUrl,
     NegativeInt,
     NonNegativeInt,
     PositiveFloat,
     PositiveInt,
-    computed_field,
 )
 from pydantic_settings import BaseSettings
 

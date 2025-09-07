@@ -7,9 +7,21 @@ from requests.adapters import HTTPAdapter
 from tcvectordb import RPCVectorDBClient  # type: ignore
 from tcvectordb.model import enum
 from tcvectordb.model.collection import FilterIndexConfig
-from tcvectordb.model.document import AnnSearch, Document, Filter, KeywordSearch, Rerank  # type: ignore
+from tcvectordb.model.document import (  # type: ignore
+    AnnSearch,
+    Document,
+    Filter,
+    KeywordSearch,
+    Rerank,
+)
 from tcvectordb.model.enum import ReadConsistency  # type: ignore
-from tcvectordb.model.index import FilterIndex, HNSWParams, Index, IndexField, VectorIndex  # type: ignore
+from tcvectordb.model.index import (  # type: ignore
+    FilterIndex,
+    HNSWParams,
+    Index,
+    IndexField,
+    VectorIndex,
+)
 from tcvectordb.rpc.model.collection import RPCCollection
 from tcvectordb.rpc.model.database import RPCDatabase
 from xinference_client.types import Embedding  # type: ignore

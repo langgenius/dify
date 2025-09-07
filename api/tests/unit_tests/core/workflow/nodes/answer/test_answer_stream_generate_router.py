@@ -1,5 +1,7 @@
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
+from core.workflow.nodes.answer.answer_stream_generate_router import (
+    AnswerStreamGeneratorRouter,
+)
 
 
 def test_init():

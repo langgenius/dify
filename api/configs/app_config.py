@@ -3,7 +3,12 @@ from pathlib import Path
 from typing import Any
 
 from pydantic.fields import FieldInfo
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
+)
 
 from libs.file_utils import search_file_upwards
 
@@ -14,7 +19,11 @@ from .feature import FeatureConfig
 from .middleware import MiddlewareConfig
 from .observability import ObservabilityConfig
 from .packaging import PackagingInfo
-from .remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName
+from .remote_settings_sources import (
+    RemoteSettingsSource,
+    RemoteSettingsSourceConfig,
+    RemoteSettingsSourceName,
+)
 from .remote_settings_sources.apollo import ApolloSettingsSource
 from .remote_settings_sources.nacos import NacosSettingsSource
 

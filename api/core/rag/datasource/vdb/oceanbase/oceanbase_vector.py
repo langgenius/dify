@@ -4,8 +4,14 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient, l2_distance  # type: ignore
-from sqlalchemy import JSON, Column, String
+from pyobvector import (  # type: ignore
+    FtsIndexParam,
+    FtsParser,
+    l2_distance,
+    ObVecClient,
+    VECTOR,
+)
+from sqlalchemy import Column, JSON, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 from configs import dify_config

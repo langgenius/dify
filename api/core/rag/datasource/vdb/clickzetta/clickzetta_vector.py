@@ -6,7 +6,7 @@ import re
 import threading
 import time
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator

@@ -1,7 +1,13 @@
 import environs
 
-from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStore, LindormVectorStoreConfig
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
+from core.rag.datasource.vdb.lindorm.lindorm_vector import (
+    LindormVectorStore,
+    LindormVectorStoreConfig,
+)
+from tests.integration_tests.vdb.test_vector_store import (
+    AbstractVectorTest,
+    setup_mock_redis,
+)
 
 env = environs.Env()
 

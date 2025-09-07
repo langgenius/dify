@@ -12,7 +12,11 @@ from core.workflow.graph_engine.entities.event import (
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes.answer.base_stream_processor import StreamProcessor
-from core.workflow.nodes.answer.entities import GenerateRouteChunk, TextGenerateRouteChunk, VarGenerateRouteChunk
+from core.workflow.nodes.answer.entities import (
+    GenerateRouteChunk,
+    TextGenerateRouteChunk,
+    VarGenerateRouteChunk,
+)
 
 logger = logging.getLogger(__name__)
 

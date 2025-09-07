@@ -1,7 +1,7 @@
 from functools import wraps
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized

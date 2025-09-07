@@ -9,7 +9,10 @@ from core.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from core.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessageContentUnionTypes,
+)
 from core.model_runtime.utils.encoders import jsonable_encoder
 
 

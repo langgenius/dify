@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.llm_generator.output_parser.structured_output import (
+    invoke_llm_with_structured_output,
+)
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,

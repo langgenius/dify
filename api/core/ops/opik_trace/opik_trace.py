@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import cast, Optional
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
@@ -22,7 +22,9 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+)
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom

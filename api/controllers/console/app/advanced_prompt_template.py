@@ -1,4 +1,4 @@
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required

@@ -64,15 +64,21 @@ class Vector:
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         match vector_type:
             case VectorType.CHROMA:
-                from core.rag.datasource.vdb.chroma.chroma_vector import ChromaVectorFactory
+                from core.rag.datasource.vdb.chroma.chroma_vector import (
+                    ChromaVectorFactory,
+                )
 
                 return ChromaVectorFactory
             case VectorType.MILVUS:
-                from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
+                from core.rag.datasource.vdb.milvus.milvus_vector import (
+                    MilvusVectorFactory,
+                )
 
                 return MilvusVectorFactory
             case VectorType.MYSCALE:
-                from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
+                from core.rag.datasource.vdb.myscale.myscale_vector import (
+                    MyScaleVectorFactory,
+                )
 
                 return MyScaleVectorFactory
             case VectorType.PGVECTOR:
@@ -80,23 +86,33 @@ class Vector:
 
                 return PGVectorFactory
             case VectorType.VASTBASE:
-                from core.rag.datasource.vdb.pyvastbase.vastbase_vector import VastbaseVectorFactory
+                from core.rag.datasource.vdb.pyvastbase.vastbase_vector import (
+                    VastbaseVectorFactory,
+                )
 
                 return VastbaseVectorFactory
             case VectorType.PGVECTO_RS:
-                from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
+                from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import (
+                    PGVectoRSFactory,
+                )
 
                 return PGVectoRSFactory
             case VectorType.QDRANT:
-                from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
+                from core.rag.datasource.vdb.qdrant.qdrant_vector import (
+                    QdrantVectorFactory,
+                )
 
                 return QdrantVectorFactory
             case VectorType.RELYT:
-                from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
+                from core.rag.datasource.vdb.relyt.relyt_vector import (
+                    RelytVectorFactory,
+                )
 
                 return RelytVectorFactory
             case VectorType.ELASTICSEARCH:
-                from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchVectorFactory
+                from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import (
+                    ElasticSearchVectorFactory,
+                )
 
                 return ElasticSearchVectorFactory
             case VectorType.ELASTICSEARCH_JA:
@@ -106,55 +122,81 @@ class Vector:
 
                 return ElasticSearchJaVectorFactory
             case VectorType.TIDB_VECTOR:
-                from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
+                from core.rag.datasource.vdb.tidb_vector.tidb_vector import (
+                    TiDBVectorFactory,
+                )
 
                 return TiDBVectorFactory
             case VectorType.WEAVIATE:
-                from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
+                from core.rag.datasource.vdb.weaviate.weaviate_vector import (
+                    WeaviateVectorFactory,
+                )
 
                 return WeaviateVectorFactory
             case VectorType.TENCENT:
-                from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
+                from core.rag.datasource.vdb.tencent.tencent_vector import (
+                    TencentVectorFactory,
+                )
 
                 return TencentVectorFactory
             case VectorType.ORACLE:
-                from core.rag.datasource.vdb.oracle.oraclevector import OracleVectorFactory
+                from core.rag.datasource.vdb.oracle.oraclevector import (
+                    OracleVectorFactory,
+                )
 
                 return OracleVectorFactory
             case VectorType.OPENSEARCH:
-                from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
+                from core.rag.datasource.vdb.opensearch.opensearch_vector import (
+                    OpenSearchVectorFactory,
+                )
 
                 return OpenSearchVectorFactory
             case VectorType.ANALYTICDB:
-                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
+                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import (
+                    AnalyticdbVectorFactory,
+                )
 
                 return AnalyticdbVectorFactory
             case VectorType.COUCHBASE:
-                from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
+                from core.rag.datasource.vdb.couchbase.couchbase_vector import (
+                    CouchbaseVectorFactory,
+                )
 
                 return CouchbaseVectorFactory
             case VectorType.BAIDU:
-                from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
+                from core.rag.datasource.vdb.baidu.baidu_vector import (
+                    BaiduVectorFactory,
+                )
 
                 return BaiduVectorFactory
             case VectorType.VIKINGDB:
-                from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
+                from core.rag.datasource.vdb.vikingdb.vikingdb_vector import (
+                    VikingDBVectorFactory,
+                )
 
                 return VikingDBVectorFactory
             case VectorType.UPSTASH:
-                from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
+                from core.rag.datasource.vdb.upstash.upstash_vector import (
+                    UpstashVectorFactory,
+                )
 
                 return UpstashVectorFactory
             case VectorType.TIDB_ON_QDRANT:
-                from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
+                from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import (
+                    TidbOnQdrantVectorFactory,
+                )
 
                 return TidbOnQdrantVectorFactory
             case VectorType.LINDORM:
-                from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
+                from core.rag.datasource.vdb.lindorm.lindorm_vector import (
+                    LindormVectorStoreFactory,
+                )
 
                 return LindormVectorStoreFactory
             case VectorType.OCEANBASE:
-                from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
+                from core.rag.datasource.vdb.oceanbase.oceanbase_vector import (
+                    OceanBaseVectorFactory,
+                )
 
                 return OceanBaseVectorFactory
             case VectorType.OPENGAUSS:
@@ -162,19 +204,27 @@ class Vector:
 
                 return OpenGaussFactory
             case VectorType.TABLESTORE:
-                from core.rag.datasource.vdb.tablestore.tablestore_vector import TableStoreVectorFactory
+                from core.rag.datasource.vdb.tablestore.tablestore_vector import (
+                    TableStoreVectorFactory,
+                )
 
                 return TableStoreVectorFactory
             case VectorType.HUAWEI_CLOUD:
-                from core.rag.datasource.vdb.huawei.huawei_cloud_vector import HuaweiCloudVectorFactory
+                from core.rag.datasource.vdb.huawei.huawei_cloud_vector import (
+                    HuaweiCloudVectorFactory,
+                )
 
                 return HuaweiCloudVectorFactory
             case VectorType.MATRIXONE:
-                from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
+                from core.rag.datasource.vdb.matrixone.matrixone_vector import (
+                    MatrixoneVectorFactory,
+                )
 
                 return MatrixoneVectorFactory
             case VectorType.CLICKZETTA:
-                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
+                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import (
+                    ClickzettaVectorFactory,
+                )
 
                 return ClickzettaVectorFactory
             case _:

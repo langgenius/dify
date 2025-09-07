@@ -74,7 +74,9 @@ from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
-from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
+from tasks.sync_website_document_indexing_task import (
+    sync_website_document_indexing_task,
+)
 
 logger = logging.getLogger(__name__)
 

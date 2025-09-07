@@ -1,14 +1,16 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import marshal_with, reqparse, Resource
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common import fields
 from controllers.web import web_ns
 from controllers.web.error import AppUnavailableError
 from controllers.web.wraps import WebApiResource
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.app_config.common.parameters_mapping import (
+    get_parameters_from_feature_dict,
+)
 from libs.passport import PassportService
 from models.model import App, AppMode
 from services.app_service import AppService

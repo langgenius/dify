@@ -1,4 +1,4 @@
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -10,10 +10,11 @@ from core.rag.entities.context_entities import DocumentContext
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import (
+    DatasetRetrieverBaseTool,
+)
 from extensions.ext_database import db
-from models.dataset import Dataset
-from models.dataset import Document as DatasetDocument
+from models.dataset import Dataset, Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {

@@ -10,7 +10,9 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from core.repositories import DifyCoreRepositoryFactory, RepositoryImportError
 from libs.module_loading import import_string
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.api_workflow_node_execution_repository import (
+    DifyAPIWorkflowNodeExecutionRepository,
+)
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 
 

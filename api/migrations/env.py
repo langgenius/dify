@@ -39,6 +39,7 @@ config.set_main_option('sqlalchemy.url', get_engine_url())
 
 from models.base import Base
 
+
 def get_metadata():
     return Base.metadata
 

@@ -29,7 +29,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+)
 from core.workflow.graph_engine.entities.event import (
     AgentLogEvent,
     GraphEngineEvent,
@@ -62,7 +64,11 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from core.workflow.variable_loader import (
+    DUMMY_VARIABLE_LOADER,
+    load_into_variable_pool,
+    VariableLoader,
+)
 from core.workflow.workflow_entry import WorkflowEntry
 from models.workflow import Workflow
 

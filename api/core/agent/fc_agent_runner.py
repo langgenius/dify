@@ -6,7 +6,11 @@ from typing import Any, Optional, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
+from core.app.entities.queue_entities import (
+    QueueAgentThoughtEvent,
+    QueueMessageEndEvent,
+    QueueMessageFileEvent,
+)
 from core.file import file_manager
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -21,7 +25,10 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from core.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessageContentUnionTypes,
+)
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine

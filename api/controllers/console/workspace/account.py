@@ -3,7 +3,7 @@ from datetime import datetime
 import pytz
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx import fields, marshal_with, reqparse, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,11 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AccountNotFound,
+    EmailSendIpLimitError,
+)
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -36,13 +40,15 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
-from libs.helper import TimestampField, email, extract_remote_ip, timezone
+from libs.helper import email, extract_remote_ip, TimestampField, timezone
 from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
+from services.errors.account import (
+    CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError,
+)
 
 
 class AccountInitApi(Resource):

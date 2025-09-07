@@ -1,6 +1,11 @@
 from configs import dify_config
 from core.helper import marketplace
-from core.plugin.entities.plugin import ModelProviderID, PluginDependency, PluginInstallationSource, ToolProviderID
+from core.plugin.entities.plugin import (
+    ModelProviderID,
+    PluginDependency,
+    PluginInstallationSource,
+    ToolProviderID,
+)
 from core.plugin.impl.plugin import PluginInstaller
 
 

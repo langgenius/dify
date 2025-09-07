@@ -9,9 +9,21 @@ from pymochow import MochowClient  # type: ignore
 from pymochow.auth.bce_credentials import BceCredentials  # type: ignore
 from pymochow.configuration import Configuration  # type: ignore
 from pymochow.exception import ServerError  # type: ignore
-from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, ServerErrCode, TableState  # type: ignore
+from pymochow.model.enum import (  # type: ignore
+    FieldType,
+    IndexState,
+    IndexType,
+    MetricType,
+    ServerErrCode,
+    TableState,
+)
 from pymochow.model.schema import Field, HNSWParams, Schema, VectorIndex  # type: ignore
-from pymochow.model.table import AnnSearch, HNSWSearchParams, Partition, Row  # type: ignore
+from pymochow.model.table import (  # type: ignore
+    AnnSearch,
+    HNSWSearchParams,
+    Partition,
+    Row,
+)
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector

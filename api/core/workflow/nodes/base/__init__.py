@@ -1,4 +1,10 @@
-from .entities import BaseIterationNodeData, BaseIterationState, BaseLoopNodeData, BaseLoopState, BaseNodeData
+from .entities import (
+    BaseIterationNodeData,
+    BaseIterationState,
+    BaseLoopNodeData,
+    BaseLoopState,
+    BaseNodeData,
+)
 from .node import BaseNode
 
 __all__ = [

@@ -1,7 +1,9 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
-from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import (
+    DifyWorkflowCallbackHandler,
+)
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.tool_engine import ToolEngine

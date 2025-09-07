@@ -10,8 +10,11 @@ from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from models.dataset import DatasetAutoDisableLog, DocumentSegment
-from models.dataset import Document as DatasetDocument
+from models.dataset import (
+    DatasetAutoDisableLog,
+    Document as DatasetDocument,
+    DocumentSegment,
+)
 
 logger = logging.getLogger(__name__)
 

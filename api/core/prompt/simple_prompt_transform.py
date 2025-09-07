@@ -2,7 +2,7 @@ import enum
 import json
 import os
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import Any, cast, Optional, TYPE_CHECKING
 
 from core.app.app_config.entities import PromptTemplateEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity

@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 import wandb
 import weave
@@ -23,7 +23,9 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+)
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom

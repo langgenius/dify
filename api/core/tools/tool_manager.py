@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
+from typing import Any, cast, Literal, Optional, TYPE_CHECKING, Union
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -44,7 +44,10 @@ from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.custom_tool.tool import ApiTool
-from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProviderTypeApiLiteral
+from core.tools.entities.api_entities import (
+    ToolProviderApiEntity,
+    ToolProviderTypeApiLiteral,
+)
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
@@ -58,10 +61,18 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import (
     ToolParameterConfigurationManager,
 )
-from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
+from core.tools.utils.encryption import (
+    create_provider_encrypter,
+    create_tool_provider_encrypter,
+)
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from models.tools import (
+    ApiToolProvider,
+    BuiltinToolProvider,
+    MCPToolProvider,
+    WorkflowToolProvider,
+)
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -254,7 +265,9 @@ class ToolManager:
             # check if the credentials is expired
             if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
                 # TODO: circular import
-                from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+                from services.tools.builtin_tools_manage_service import (
+                    BuiltinToolManageService,
+                )
 
                 # refresh the credentials
                 tool_provider = ToolProviderID(provider_id)

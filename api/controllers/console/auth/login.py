@@ -2,7 +2,7 @@ from typing import cast
 
 import flask_login
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 import services
 from configs import dify_config
@@ -31,7 +31,10 @@ from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspacesLimitExceededError,
+)
 from services.feature_service import FeatureService
 
 

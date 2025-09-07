@@ -3,7 +3,7 @@ import logging
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -13,9 +13,12 @@ from core.file.constants import maybe_file_object
 from core.file.models import File
 from core.variables import utils as variable_utils
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.nodes.enums import NodeType
-from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from factories.variable_factory import build_segment_with_type, TypeMismatchError
 from libs.datetime_utils import naive_utc_now
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
@@ -23,8 +26,8 @@ from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 if TYPE_CHECKING:
     from models.model import AppMode
 
-from sqlalchemy import Index, PrimaryKeyConstraint, String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column
+from sqlalchemy import func, Index, PrimaryKeyConstraint, String, UniqueConstraint
+from sqlalchemy.orm import declared_attr, Mapped, mapped_column
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter

@@ -1,7 +1,7 @@
 from urllib.parse import quote
 
 from flask import Response
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError

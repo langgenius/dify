@@ -1,6 +1,10 @@
 import pytest
 
-from core.helper.trace_id_helper import extract_external_trace_id_from_args, get_external_trace_id, is_valid_trace_id
+from core.helper.trace_id_helper import (
+    extract_external_trace_id_from_args,
+    get_external_trace_id,
+    is_valid_trace_id,
+)
 
 
 class DummyRequest:

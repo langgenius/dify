@@ -2,7 +2,7 @@ import base64
 import secrets
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,11 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AccountNotFound,
+    EmailSendIpLimitError,
+)
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -24,7 +28,10 @@ from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspacesLimitExceededError,
+)
 from services.feature_service import FeatureService
 
 

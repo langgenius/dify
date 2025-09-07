@@ -12,7 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
-from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
+from core.entities.knowledge_entities import (
+    IndexingEstimate,
+    PreviewDetail,
+    QAPreviewDetail,
+)
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -36,8 +40,13 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
-from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
-from models.dataset import Document as DatasetDocument
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DatasetProcessRule,
+    Document as DatasetDocument,
+    DocumentSegment,
+)
 from models.model import UploadFile
 from services.feature_service import FeatureService
 

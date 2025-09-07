@@ -2,14 +2,18 @@ import logging
 from urllib.parse import quote
 
 from flask import Response
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
     FileNotFoundError,
 )
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import (
+    FetchUserArg,
+    validate_app_token,
+    WhereisUserArg,
+)
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, EndUser, Message, MessageFile, UploadFile

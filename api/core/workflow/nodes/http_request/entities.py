@@ -4,7 +4,7 @@ from email.message import Message
 from typing import Any, Literal, Optional
 
 import httpx
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 from configs import dify_config
 from core.workflow.nodes.base import BaseNodeData

@@ -9,7 +9,10 @@ from typing import Any, Optional, Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
+from constants.tts_auto_play_timeout import (
+    TTS_AUTO_PLAY_TIMEOUT,
+    TTS_AUTO_PLAY_YIELD_CPU_TIME,
+)
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import (
@@ -60,19 +63,33 @@ from core.app.entities.task_entities import (
     StreamResponse,
     WorkflowTaskState,
 )
-from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
+from core.app.task_pipeline.based_generate_task_pipeline import (
+    BasedGenerateTaskPipeline,
+)
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, WorkflowType
+from core.workflow.entities.workflow_execution import (
+    WorkflowExecutionStatus,
+    WorkflowType,
+)
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repositories.draft_variable_repository import (
+    DraftVariableSaverFactory,
+)
+from core.workflow.repositories.workflow_execution_repository import (
+    WorkflowExecutionRepository,
+)
+from core.workflow.repositories.workflow_node_execution_repository import (
+    WorkflowNodeExecutionRepository,
+)
 from core.workflow.system_variable import SystemVariable
-from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
+from core.workflow.workflow_cycle_manager import (
+    CycleManagerWorkflowInfo,
+    WorkflowCycleManager,
+)
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Conversation, EndUser, Message, MessageFile

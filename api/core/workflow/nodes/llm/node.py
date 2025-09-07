@@ -4,13 +4,15 @@ import json
 import logging
 import re
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, TYPE_CHECKING, Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import FileType, file_manager
+from core.file import file_manager, FileType
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.llm_generator.output_parser.structured_output import (
+    invoke_llm_with_structured_output,
+)
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
@@ -39,7 +41,10 @@ from core.model_runtime.entities.model_entities import (
     ModelType,
 )
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
+from core.prompt.entities.advanced_prompt_entities import (
+    CompletionModelPromptTemplate,
+    MemoryConfig,
+)
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.variables import (
@@ -54,7 +59,10 @@ from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig

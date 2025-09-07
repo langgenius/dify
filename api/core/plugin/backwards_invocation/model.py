@@ -2,7 +2,9 @@ import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
 
-from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.llm_generator.output_parser.structured_output import (
+    invoke_llm_with_structured_output,
+)
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import (
     LLMResult,

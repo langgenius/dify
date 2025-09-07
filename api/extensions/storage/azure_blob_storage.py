@@ -3,7 +3,12 @@ from datetime import timedelta
 from typing import Optional
 
 from azure.identity import ChainedTokenCredential, DefaultAzureCredential
-from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
+from azure.storage.blob import (
+    AccountSasPermissions,
+    BlobServiceClient,
+    generate_account_sas,
+    ResourceTypes,
+)
 
 from configs import dify_config
 from extensions.ext_redis import redis_client

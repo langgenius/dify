@@ -5,7 +5,13 @@ import pytest
 from faker import Faker
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
+from models.model import (
+    AppModelConfig,
+    Conversation,
+    EndUser,
+    Message,
+    MessageAgentThought,
+)
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
 from services.app_service import AppService

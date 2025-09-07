@@ -69,7 +69,7 @@ def get_trace_id_from_otel_context() -> Optional[str]:
     2. There is no active span or trace context.
     """
     try:
-        from opentelemetry.trace import SpanContext, get_current_span
+        from opentelemetry.trace import get_current_span, SpanContext
         from opentelemetry.trace.span import INVALID_TRACE_ID
 
         span = get_current_span()

@@ -2,12 +2,16 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast, Optional
 
 import json_repair
 
-from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
-from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
+from core.llm_generator.output_parser.rule_config_generator import (
+    RuleConfigGeneratorOutputParser,
+)
+from core.llm_generator.output_parser.suggested_questions_after_answer import (
+    SuggestedQuestionsAfterAnswerOutputParser,
+)
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
@@ -20,16 +24,21 @@ from core.llm_generator.prompts import (
 )
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+from core.model_runtime.entities.message_entities import (
+    SystemPromptMessage,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+)
 from core.workflow.graph_engine.entities.event import AgentLogEvent
-from models import App, Message, WorkflowNodeExecutionModel, db
+from models import App, db, Message, WorkflowNodeExecutionModel
 
 logger = logging.getLogger(__name__)
 

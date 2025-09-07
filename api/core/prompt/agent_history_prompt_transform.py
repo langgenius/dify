@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import cast, Optional
 
 from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
@@ -9,7 +9,9 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.__base.large_language_model import (
+    LargeLanguageModel,
+)
 from core.prompt.prompt_transform import PromptTransform
 
 

@@ -3,7 +3,7 @@ import threading
 import time
 from typing import Any, Optional
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 from pydantic import BaseModel, ConfigDict
 
 from configs import dify_config

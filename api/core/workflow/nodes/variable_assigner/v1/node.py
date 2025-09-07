@@ -1,5 +1,5 @@
 from collections.abc import Callable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, TypeAlias
+from typing import Any, Optional, TYPE_CHECKING, TypeAlias
 
 from core.variables import SegmentType, Variable
 from core.variables.segments import BooleanSegment

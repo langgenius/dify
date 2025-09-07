@@ -3,7 +3,11 @@ from typing import Any, Optional
 
 from pydantic import Field
 
-from core.workflow.nodes.base import BaseIterationNodeData, BaseIterationState, BaseNodeData
+from core.workflow.nodes.base import (
+    BaseIterationNodeData,
+    BaseIterationState,
+    BaseNodeData,
+)
 
 
 class ErrorHandleMode(StrEnum):

@@ -41,9 +41,15 @@ class TestAppDescriptionValidationUnit:
 
     def test_validation_consistency_with_dataset(self):
         """Test that App and Dataset validation functions are consistent"""
-        from controllers.console.app.app import _validate_description_length as app_validate
-        from controllers.console.datasets.datasets import _validate_description_length as dataset_validate
-        from controllers.service_api.dataset.dataset import _validate_description_length as service_dataset_validate
+        from controllers.console.app.app import (
+            _validate_description_length as app_validate,
+        )
+        from controllers.console.datasets.datasets import (
+            _validate_description_length as dataset_validate,
+        )
+        from controllers.service_api.dataset.dataset import (
+            _validate_description_length as service_dataset_validate,
+        )
 
         # Test same valid inputs
         valid_desc = "x" * 400

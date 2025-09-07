@@ -5,8 +5,8 @@ from typing import Optional
 
 import sqlalchemy as sa
 from flask_login import UserMixin
-from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column, reconstructor
+from sqlalchemy import DateTime, func, select, String
+from sqlalchemy.orm import Mapped, mapped_column, reconstructor, Session
 
 from models.base import Base
 

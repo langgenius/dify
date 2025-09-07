@@ -4,7 +4,10 @@ from typing import Any
 
 from werkzeug import Request
 
-from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse, PluginOAuthCredentialsResponse
+from core.plugin.entities.plugin_daemon import (
+    PluginOAuthAuthorizationUrlResponse,
+    PluginOAuthCredentialsResponse,
+)
 from core.plugin.impl.base import BasePluginClient
 
 

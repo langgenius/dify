@@ -6,7 +6,10 @@ from core.rag.datasource.vdb.analyticdb.analyticdb_vector_openapi import (
     AnalyticdbVectorOpenAPI,
     AnalyticdbVectorOpenAPIConfig,
 )
-from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySql, AnalyticdbVectorBySqlConfig
+from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import (
+    AnalyticdbVectorBySql,
+    AnalyticdbVectorBySqlConfig,
+)
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType

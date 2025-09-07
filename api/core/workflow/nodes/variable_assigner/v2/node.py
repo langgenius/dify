@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
@@ -14,7 +14,9 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
+from core.workflow.nodes.variable_assigner.common.impl import (
+    conversation_variable_updater_factory,
+)
 
 from . import helpers
 from .constants import EMPTY_VALUE_MAPPING

@@ -1,7 +1,7 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -15,7 +15,11 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import (
+    FetchUserArg,
+    validate_app_token,
+    WhereisUserArg,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -30,7 +34,11 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
-from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    WorkflowIdFormatError,
+    WorkflowNotFoundError,
+)
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)

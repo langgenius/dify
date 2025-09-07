@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional, Union, cast
+from typing import Any, cast, Optional, Union
 
 from yarl import URL
 
@@ -11,7 +11,11 @@ from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.custom_tool.provider import ApiToolProviderController
-from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
+from core.tools.entities.api_entities import (
+    ToolApiEntity,
+    ToolProviderApiEntity,
+    ToolProviderCredentialApiEntity,
+)
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
@@ -21,10 +25,18 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
+from core.tools.utils.encryption import (
+    create_provider_encrypter,
+    create_tool_provider_encrypter,
+)
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from models.tools import (
+    ApiToolProvider,
+    BuiltinToolProvider,
+    MCPToolProvider,
+    WorkflowToolProvider,
+)
 
 logger = logging.getLogger(__name__)
 

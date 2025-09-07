@@ -1,7 +1,12 @@
 from collections.abc import Sequence
 from typing import Any
 
-from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.base import (
+    Moderation,
+    ModerationAction,
+    ModerationInputsResult,
+    ModerationOutputsResult,
+)
 
 
 class KeywordsModeration(Moderation):

@@ -1,6 +1,6 @@
 import json
 
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns

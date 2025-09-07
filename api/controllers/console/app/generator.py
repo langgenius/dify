@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from flask_login import current_user
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from controllers.console import api
 from controllers.console.app.error import (
@@ -11,8 +11,14 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
+from core.errors.error import (
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
+from core.helper.code_executor.javascript.javascript_code_provider import (
+    JavascriptCodeProvider,
+)
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
@@ -213,11 +219,15 @@ class InstructionGenerationTemplateApi(Resource):
         args = parser.parse_args()
         match args["type"]:
             case "prompt":
-                from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_PROMPT
+                from core.llm_generator.prompts import (
+                    INSTRUCTION_GENERATE_TEMPLATE_PROMPT,
+                )
 
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_PROMPT}
             case "code":
-                from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_CODE
+                from core.llm_generator.prompts import (
+                    INSTRUCTION_GENERATE_TEMPLATE_CODE,
+                )
 
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:

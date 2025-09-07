@@ -17,10 +17,18 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.errors.error import (
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
+from fields.message_fields import (
+    agent_thought_fields,
+    feedback_fields,
+    retriever_resource_fields,
+)
 from fields.raws import FilesContainedField
 from libs import helper
 from libs.helper import TimestampField, uuid_value

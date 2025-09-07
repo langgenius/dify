@@ -18,7 +18,11 @@ from controllers.web.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.web.wraps import WebApiResource
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.errors.error import (
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from models.model import App
 from services.audio_service import AudioService

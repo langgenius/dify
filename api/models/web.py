@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, func, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base

@@ -6,8 +6,14 @@ from unittest import mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.app.entities.app_invoke_entities import (
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+)
+from core.entities.provider_configuration import (
+    ProviderConfiguration,
+    ProviderModelBundle,
+)
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.file import File, FileTransferMethod, FileType
 from core.model_runtime.entities.common_entities import I18nObject
@@ -18,8 +24,14 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from core.model_runtime.entities.model_entities import (
+    AIModelEntity,
+    FetchFrom,
+    ModelType,
+)
+from core.model_runtime.model_providers.model_provider_factory import (
+    ModelProviderFactory,
+)
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState

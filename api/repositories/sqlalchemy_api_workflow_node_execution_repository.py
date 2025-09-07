@@ -13,7 +13,9 @@ from sqlalchemy import delete, desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.workflow import WorkflowNodeExecutionModel
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.api_workflow_node_execution_repository import (
+    DifyAPIWorkflowNodeExecutionRepository,
+)
 
 
 class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRepository):

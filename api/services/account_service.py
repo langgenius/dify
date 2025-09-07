@@ -3,9 +3,9 @@ import json
 import logging
 import secrets
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from hashlib import sha256
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -50,7 +50,10 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspacesLimitExceededError,
+)
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -292,7 +295,9 @@ class AccountService:
     def send_account_deletion_verification_email(cls, account: Account, code: str):
         email = account.email
         if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
+            from controllers.console.auth.error import (
+                EmailCodeAccountDeletionRateLimitExceededError,
+            )
 
             raise EmailCodeAccountDeletionRateLimitExceededError()
 
@@ -439,7 +444,9 @@ class AccountService:
             raise ValueError("Email must be provided.")
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
-            from controllers.console.auth.error import PasswordResetRateLimitExceededError
+            from controllers.console.auth.error import (
+                PasswordResetRateLimitExceededError,
+            )
 
             raise PasswordResetRateLimitExceededError()
 
@@ -513,7 +520,9 @@ class AccountService:
             raise ValueError("Email must be provided.")
 
         if cls.owner_transfer_rate_limiter.is_rate_limited(account_email):
-            from controllers.console.auth.error import OwnerTransferRateLimitExceededError
+            from controllers.console.auth.error import (
+                OwnerTransferRateLimitExceededError,
+            )
 
             raise OwnerTransferRateLimitExceededError()
 
@@ -654,7 +663,9 @@ class AccountService:
         if email is None:
             raise ValueError("Email must be provided.")
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
+            from controllers.console.auth.error import (
+                EmailCodeLoginRateLimitExceededError,
+            )
 
             raise EmailCodeLoginRateLimitExceededError()
 

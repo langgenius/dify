@@ -16,7 +16,11 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.errors.error import (
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from services.audio_service import AudioService
 from services.errors.audio import (

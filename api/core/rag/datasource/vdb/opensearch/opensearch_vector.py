@@ -3,7 +3,12 @@ import logging
 from typing import Any, Literal, Optional
 from uuid import uuid4
 
-from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
+from opensearchpy import (
+    helpers,
+    OpenSearch,
+    Urllib3AWSV4SignerAuth,
+    Urllib3HttpConnection,
+)
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 

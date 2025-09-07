@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

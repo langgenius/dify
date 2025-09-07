@@ -3,7 +3,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.helper.ssrf_proxy import SSRF_DEFAULT_MAX_RETRIES, STATUS_FORCELIST, make_request
+from core.helper.ssrf_proxy import (
+    make_request,
+    SSRF_DEFAULT_MAX_RETRIES,
+    STATUS_FORCELIST,
+)
 
 
 @patch("httpx.Client.request")

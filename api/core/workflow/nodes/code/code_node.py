@@ -3,9 +3,15 @@ from decimal import Decimal
 from typing import Any, Optional
 
 from configs import dify_config
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
+from core.helper.code_executor.code_executor import (
+    CodeExecutionError,
+    CodeExecutor,
+    CodeLanguage,
+)
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
-from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
+from core.helper.code_executor.javascript.javascript_code_provider import (
+    JavascriptCodeProvider,
+)
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.variables.segments import ArrayFileSegment
 from core.variables.types import SegmentType

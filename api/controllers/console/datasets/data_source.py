@@ -2,7 +2,7 @@ import json
 
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import marshal_with, reqparse, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -14,7 +14,10 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
-from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
+from fields.data_source_fields import (
+    integrate_list_fields,
+    integrate_notion_info_list_fields,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import DataSourceOauthBinding, Document

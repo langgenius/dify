@@ -2,7 +2,7 @@ import io
 
 from flask import request, send_file
 from flask_login import current_user
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config

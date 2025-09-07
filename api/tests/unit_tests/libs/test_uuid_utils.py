@@ -4,10 +4,14 @@ import uuid
 from unittest import mock
 
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
+from hypothesis import given, strategies as st
 
-from libs.uuid_utils import _create_uuidv7_bytes, uuidv7, uuidv7_boundary, uuidv7_timestamp
+from libs.uuid_utils import (
+    _create_uuidv7_bytes,
+    uuidv7,
+    uuidv7_boundary,
+    uuidv7_timestamp,
+)
 
 
 # Tests for private helper function _create_uuidv7_bytes

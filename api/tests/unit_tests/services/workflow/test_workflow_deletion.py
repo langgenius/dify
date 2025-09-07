@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 
 from models.model import App
 from models.workflow import Workflow
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_service import (
+    DraftWorkflowDeletionError,
+    WorkflowInUseError,
+    WorkflowService,
+)
 
 
 @pytest.fixture

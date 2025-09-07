@@ -1,11 +1,11 @@
 import json
 from datetime import datetime
-from typing import Optional, cast
+from typing import cast, Optional
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
 from deprecated import deprecated
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import ForeignKey, func, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.file import helpers as file_helpers
@@ -13,7 +13,10 @@ from core.helper import encrypter
 from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
-from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType,
+    WorkflowToolParameterConfiguration,
+)
 from models.base import Base, TypeBase
 
 from .engine import db

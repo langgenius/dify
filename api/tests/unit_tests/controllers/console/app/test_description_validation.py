@@ -1,8 +1,12 @@
 import pytest
 
 from controllers.console.app.app import _validate_description_length as app_validate
-from controllers.console.datasets.datasets import _validate_description_length as dataset_validate
-from controllers.service_api.dataset.dataset import _validate_description_length as service_dataset_validate
+from controllers.console.datasets.datasets import (
+    _validate_description_length as dataset_validate,
+)
+from controllers.service_api.dataset.dataset import (
+    _validate_description_length as service_dataset_validate,
+)
 
 
 class TestDescriptionValidationUnit:

@@ -3,9 +3,16 @@ import os
 
 import pytest
 
-from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaConfig, ClickzettaVector
+from core.rag.datasource.vdb.clickzetta.clickzetta_vector import (
+    ClickzettaConfig,
+    ClickzettaVector,
+)
 from core.rag.models.document import Document
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
+from tests.integration_tests.vdb.test_vector_store import (
+    AbstractVectorTest,
+    get_example_text,
+    setup_mock_redis,
+)
 
 
 class TestClickzettaVector(AbstractVectorTest):

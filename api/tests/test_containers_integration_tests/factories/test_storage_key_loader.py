@@ -1,5 +1,5 @@
 import unittest
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from typing import Optional
 from unittest.mock import patch
 from uuid import uuid4

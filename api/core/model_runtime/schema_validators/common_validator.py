@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import cast, Union
 
 from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType
 

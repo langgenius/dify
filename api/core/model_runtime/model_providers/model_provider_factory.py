@@ -8,18 +8,33 @@ from typing import Optional
 from pydantic import BaseModel
 
 import contexts
-from core.helper.position_helper import get_provider_position_map, sort_to_dict_by_position_map
+from core.helper.position_helper import (
+    get_provider_position_map,
+    sort_to_dict_by_position_map,
+)
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
-from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
+from core.model_runtime.entities.provider_entities import (
+    ProviderConfig,
+    ProviderEntity,
+    SimpleProviderEntity,
+)
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.__base.large_language_model import (
+    LargeLanguageModel,
+)
 from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.model_providers.__base.text_embedding_model import (
+    TextEmbeddingModel,
+)
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
-from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
-from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
+from core.model_runtime.schema_validators.model_credential_schema_validator import (
+    ModelCredentialSchemaValidator,
+)
+from core.model_runtime.schema_validators.provider_credential_schema_validator import (
+    ProviderCredentialSchemaValidator,
+)
 from core.plugin.entities.plugin import ModelProviderID
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl.asset import PluginAssetManager

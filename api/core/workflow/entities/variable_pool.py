@@ -1,16 +1,20 @@
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Any, Union, cast
+from typing import Annotated, Any, cast, Union
 
 from pydantic import BaseModel, Field
 
-from core.file import File, FileAttribute, file_manager
+from core.file import File, file_manager, FileAttribute
 from core.variables import Segment, SegmentGroup, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import FileSegment, ObjectSegment
 from core.variables.variables import VariableUnion
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
 

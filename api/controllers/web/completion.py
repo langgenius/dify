@@ -9,13 +9,13 @@ from controllers.web.error import (
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
+    InvokeRateLimitError as InvokeRateLimitHttpError,
     NotChatAppError,
     NotCompletionAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom

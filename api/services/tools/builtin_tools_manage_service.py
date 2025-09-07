@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.position_helper import is_filtered
-from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
+from core.helper.provider_cache import (
+    NoOpProviderCredentialCache,
+    ToolProviderCredentialsCache,
+)
 from core.plugin.entities.plugin import ToolProviderID
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -30,7 +33,11 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from models.tools import (
+    BuiltinToolProvider,
+    ToolOAuthSystemClient,
+    ToolOAuthTenantClient,
+)
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
 

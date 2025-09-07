@@ -9,8 +9,20 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
-from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
+from constants import (
+    AUDIO_EXTENSIONS,
+    DOCUMENT_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+    VIDEO_EXTENSIONS,
+)
+from core.file import (
+    File,
+    FileBelongsTo,
+    FileTransferMethod,
+    FileType,
+    FileUploadConfig,
+    helpers,
+)
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile

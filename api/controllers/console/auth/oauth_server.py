@@ -3,7 +3,7 @@ from typing import cast
 
 import flask_login
 from flask import jsonify, request
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -11,7 +11,11 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from models.account import Account
 from models.model import OAuthProviderApp
-from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
+from services.oauth_server import (
+    OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    OAuthGrantType,
+    OAuthServerService,
+)
 
 from .. import api
 

@@ -11,8 +11,10 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
-from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+from services.errors.file import (
+    FileTooLargeError as ServiceFileTooLargeError,
+    UnsupportedFileTypeError as ServiceUnsupportedFileTypeError,
+)
 
 
 class TestFileUploadSecurity:

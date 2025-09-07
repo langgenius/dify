@@ -1,7 +1,7 @@
 from typing import cast
 
 from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import marshal_with, reqparse, Resource
 from flask_restx.inputs import int_range
 
 from controllers.console import api

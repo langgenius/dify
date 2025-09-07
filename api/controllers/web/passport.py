@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from flask import request
 from flask_restx import Resource

@@ -11,7 +11,11 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import (
+    FetchUserArg,
+    validate_app_token,
+    WhereisUserArg,
+)
 from fields.file_fields import build_file_model
 from models.model import App, EndUser
 from services.file_service import FileService

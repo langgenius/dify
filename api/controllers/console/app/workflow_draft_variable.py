@@ -2,7 +2,7 @@ import logging
 from typing import NoReturn
 
 from flask import Response
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_restx import fields, inputs, marshal, marshal_with, reqparse, Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -16,14 +16,20 @@ from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import App, AppMode, db
 from models.account import Account
 from models.workflow import WorkflowDraftVariable
-from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
+from services.workflow_draft_variable_service import (
+    WorkflowDraftVariableList,
+    WorkflowDraftVariableService,
+)
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)

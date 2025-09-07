@@ -6,10 +6,14 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
 from controllers.service_api import service_api_ns
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from controllers.service_api.dataset.error import (
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    InvalidActionError,
+)
 from controllers.service_api.wraps import (
-    DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
+    DatasetApiResource,
     validate_dataset_token,
 )
 from core.model_runtime.entities.model_entities import ModelType
@@ -20,7 +24,11 @@ from fields.tag_fields import build_dataset_tag_fields
 from libs.login import current_user
 from models.account import Account
 from models.dataset import Dataset, DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.dataset_service import (
+    DatasetPermissionService,
+    DatasetService,
+    DocumentService,
+)
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService
 

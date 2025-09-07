@@ -5,11 +5,12 @@ Revises: 8bcc02c9bd07
 Create Date: 2025-08-09 15:53:54.341341
 
 """
-from alembic import op, context
-from libs.uuid_utils import uuidv7
-import models as models
 import sqlalchemy as sa
-from sqlalchemy.sql import table, column
+from alembic import context, op
+from sqlalchemy.sql import column, table
+
+import models as models
+from libs.uuid_utils import uuidv7
 
 # revision identifiers, used by Alembic.
 revision = 'e8446f481c1e'

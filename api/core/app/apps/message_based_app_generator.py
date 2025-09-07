@@ -1,12 +1,15 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import cast, Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+)
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -24,13 +27,23 @@ from core.app.entities.task_entities import (
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
 )
-from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import (
+    EasyUIBasedGenerateTaskPipeline,
+)
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
-from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from models.model import (
+    App,
+    AppMode,
+    AppModelConfig,
+    Conversation,
+    EndUser,
+    Message,
+    MessageFile,
+)
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError

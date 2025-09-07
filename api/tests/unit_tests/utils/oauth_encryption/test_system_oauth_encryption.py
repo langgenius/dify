@@ -8,12 +8,12 @@ from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
 
 from core.tools.utils.system_oauth_encryption import (
-    OAuthEncryptionError,
-    SystemOAuthEncrypter,
     create_system_oauth_encrypter,
     decrypt_system_oauth_params,
     encrypt_system_oauth_params,
     get_system_oauth_encrypter,
+    OAuthEncryptionError,
+    SystemOAuthEncrypter,
 )
 
 

@@ -5,13 +5,15 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from core.model_manager import ModelInstance
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
+from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import (
+    GPT2Tokenizer,
+)
 from core.rag.splitter.text_splitter import (
-    TS,
     Collection,
     Literal,
     RecursiveCharacterTextSplitter,
     Set,
+    TS,
     Union,
 )
 

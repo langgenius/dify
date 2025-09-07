@@ -1422,7 +1422,9 @@ class TestWorkflowService:
         # Mock successful node execution
         def mock_successful_invoke():
             from core.workflow.entities.node_entities import NodeRunResult
-            from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+            from core.workflow.entities.workflow_node_execution import (
+                WorkflowNodeExecutionStatus,
+            )
             from core.workflow.nodes.base.node import BaseNode
             from core.workflow.nodes.event import RunCompletedEvent
 
@@ -1459,7 +1461,9 @@ class TestWorkflowService:
         assert result.node_type == "start"  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+        from core.workflow.entities.workflow_node_execution import (
+            WorkflowNodeExecutionStatus,
+        )
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1482,7 +1486,9 @@ class TestWorkflowService:
         # Mock failed node execution
         def mock_failed_invoke():
             from core.workflow.entities.node_entities import NodeRunResult
-            from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+            from core.workflow.entities.workflow_node_execution import (
+                WorkflowNodeExecutionStatus,
+            )
             from core.workflow.nodes.base.node import BaseNode
             from core.workflow.nodes.event import RunCompletedEvent
 
@@ -1516,7 +1522,9 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+        from core.workflow.entities.workflow_node_execution import (
+            WorkflowNodeExecutionStatus,
+        )
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1538,7 +1546,9 @@ class TestWorkflowService:
         # Mock node execution with continue_on_error
         def mock_continue_on_error_invoke():
             from core.workflow.entities.node_entities import NodeRunResult
-            from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+            from core.workflow.entities.workflow_node_execution import (
+                WorkflowNodeExecutionStatus,
+            )
             from core.workflow.nodes.base.node import BaseNode
             from core.workflow.nodes.enums import ErrorStrategy
             from core.workflow.nodes.event import RunCompletedEvent
@@ -1575,7 +1585,9 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+        from core.workflow.entities.workflow_node_execution import (
+            WorkflowNodeExecutionStatus,
+        )
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

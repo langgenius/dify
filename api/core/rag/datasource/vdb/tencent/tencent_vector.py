@@ -6,9 +6,13 @@ from typing import Any, Optional
 from pydantic import BaseModel
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
 from tcvectordb import RPCVectorDBClient, VectorDBException  # type: ignore
-from tcvectordb.model import document, enum  # type: ignore
-from tcvectordb.model import index as vdb_index  # type: ignore
-from tcvectordb.model.document import AnnSearch, Filter, KeywordSearch, WeightedRerank  # type: ignore
+from tcvectordb.model import document, enum, index as vdb_index  # type: ignore
+from tcvectordb.model.document import (  # type: ignore
+    AnnSearch,
+    Filter,
+    KeywordSearch,
+    WeightedRerank,
+)
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector

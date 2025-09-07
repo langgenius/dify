@@ -3,7 +3,10 @@ from collections.abc import Sequence
 from typing import Optional
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.message_entities import (
+    PromptMessage,
+    PromptMessageTool,
+)
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 _TEXT_COLOR_MAPPING = {

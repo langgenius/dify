@@ -4,7 +4,9 @@ from controllers.common import fields
 from controllers.console import api
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.wraps import InstalledAppResource
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.app_config.common.parameters_mapping import (
+    get_parameters_from_feature_dict,
+)
 from models.model import AppMode, InstalledApp
 from services.app_service import AppService
 

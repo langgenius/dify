@@ -1,4 +1,4 @@
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -6,7 +6,11 @@ from werkzeug.exceptions import BadRequest, NotFound
 import services
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import (
+    FetchUserArg,
+    validate_app_token,
+    WhereisUserArg,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (

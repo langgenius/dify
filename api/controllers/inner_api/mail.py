@@ -1,8 +1,11 @@
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import billing_inner_api_only, enterprise_inner_api_only
+from controllers.inner_api.wraps import (
+    billing_inner_api_only,
+    enterprise_inner_api_only,
+)
 from tasks.mail_inner_task import send_inner_email_task
 
 _mail_parser = reqparse.RequestParser()

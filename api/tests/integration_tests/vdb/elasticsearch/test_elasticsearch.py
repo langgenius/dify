@@ -1,4 +1,7 @@
-from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchConfig, ElasticSearchVector
+from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import (
+    ElasticSearchConfig,
+    ElasticSearchVector,
+)
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
     setup_mock_redis,

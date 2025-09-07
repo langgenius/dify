@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 import flask_restx
 from flask_login import current_user
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import fields, marshal_with, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden

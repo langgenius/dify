@@ -3,7 +3,9 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunPartialSucceededEvent,
     NodeRunRetryEvent,
 )
-from tests.unit_tests.core.workflow.nodes.test_continue_on_error import ContinueOnErrorTestHelper
+from tests.unit_tests.core.workflow.nodes.test_continue_on_error import (
+    ContinueOnErrorTestHelper,
+)
 
 DEFAULT_VALUE_EDGE = [
     {

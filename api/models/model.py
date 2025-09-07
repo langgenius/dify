@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import Any, cast, Literal, Optional, TYPE_CHECKING
 
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
@@ -17,13 +17,27 @@ if TYPE_CHECKING:
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy import (
+    exists,
+    Float,
+    func,
+    Index,
+    PrimaryKeyConstraint,
+    select,
+    String,
+    text,
+)
+from sqlalchemy.orm import Mapped, mapped_column, Session
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from core.file import helpers as file_helpers
+from core.file import (
+    File,
+    FILE_MODEL_IDENTITY,
+    FileTransferMethod,
+    FileType,
+    helpers as file_helpers,
+)
 from libs.helper import generate_string
 
 from .account import Account, Tenant

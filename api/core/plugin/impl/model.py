@@ -3,7 +3,10 @@ from collections.abc import Generator, Sequence
 from typing import IO, Optional
 
 from core.model_runtime.entities.llm_entities import LLMResultChunk
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.message_entities import (
+    PromptMessage,
+    PromptMessageTool,
+)
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult

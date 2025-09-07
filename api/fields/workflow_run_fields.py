@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Api, fields, Namespace
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields

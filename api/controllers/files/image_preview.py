@@ -1,7 +1,7 @@
 from urllib.parse import quote
 
-from flask import Response, request
-from flask_restx import Resource, reqparse
+from flask import request, Response
+from flask_restx import reqparse, Resource
 from werkzeug.exceptions import NotFound
 
 import services

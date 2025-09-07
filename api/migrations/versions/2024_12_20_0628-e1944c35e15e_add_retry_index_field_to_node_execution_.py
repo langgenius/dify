@@ -4,10 +4,10 @@ Revision ID: e1944c35e15e
 Revises: 11b07f66c737
 Create Date: 2024-12-20 06:28:30.287197
 """
-from alembic import op
-import models as models
 import sqlalchemy as sa
+from alembic import op
 
+import models as models
 
 # revision identifiers, used by Alembic.
 revision = 'e1944c35e15e'

@@ -2,7 +2,14 @@ import os
 from typing import Any, Literal, Optional
 from urllib.parse import parse_qsl, quote_plus
 
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
+from pydantic import (
+    computed_field,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+)
 from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig

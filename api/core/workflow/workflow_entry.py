@@ -12,7 +12,11 @@ from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
+from core.workflow.graph_engine.entities.event import (
+    GraphEngineEvent,
+    GraphRunFailedEvent,
+    InNodeEvent,
+)
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
@@ -22,7 +26,11 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from core.workflow.variable_loader import (
+    DUMMY_VARIABLE_LOADER,
+    load_into_variable_pool,
+    VariableLoader,
+)
 from factories import file_factory
 from models.enums import UserFrom
 from models.workflow import (

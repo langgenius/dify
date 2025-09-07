@@ -12,7 +12,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import (
+    WorkflowExecutionRepository,
+)
 from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.enums import WorkflowRunTriggeredFrom

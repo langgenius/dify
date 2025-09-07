@@ -2,7 +2,7 @@ import uuid
 
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, reqparse
+from flask_restx import marshal, reqparse, Resource
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -31,9 +31,14 @@ from libs.login import login_required
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
-from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
-from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.entities.knowledge_entities.knowledge_entities import (
+    ChildChunkUpdateArgs,
+    SegmentUpdateArgs,
+)
+from services.errors.chunk import (
+    ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError,
+    ChildChunkIndexingError as ChildChunkIndexingServiceError,
+)
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 

@@ -9,8 +9,13 @@ from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
-from models.dataset import Document as DatasetDocument
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DatasetProcessRule,
+    Document as DatasetDocument,
+    DocumentSegment,
+)
 from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 logger = logging.getLogger(__name__)

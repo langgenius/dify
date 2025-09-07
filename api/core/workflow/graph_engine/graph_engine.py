@@ -6,17 +6,22 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from core.workflow.graph_engine.condition_handlers.condition_manager import (
+    ConditionManager,
+)
 from core.workflow.graph_engine.entities.event import (
     BaseAgentEvent,
     BaseIterationEvent,
@@ -49,7 +54,11 @@ from core.workflow.nodes.answer.base_stream_processor import StreamProcessor
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
-from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from core.workflow.nodes.event import (
+    RunCompletedEvent,
+    RunRetrieverResourceEvent,
+    RunStreamChunkEvent,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom

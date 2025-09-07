@@ -13,7 +13,9 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional, Protocol
 
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import (
+    WorkflowNodeExecutionRepository,
+)
 from models.workflow import WorkflowNodeExecutionModel
 
 

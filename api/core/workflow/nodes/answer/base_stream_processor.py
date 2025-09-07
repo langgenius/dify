@@ -4,7 +4,11 @@ from collections.abc import Generator
 from typing import Optional
 
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunExceptionEvent, NodeRunSucceededEvent
+from core.workflow.graph_engine.entities.event import (
+    GraphEngineEvent,
+    NodeRunExceptionEvent,
+    NodeRunSucceededEvent,
+)
 from core.workflow.graph_engine.entities.graph import Graph
 
 logger = logging.getLogger(__name__)

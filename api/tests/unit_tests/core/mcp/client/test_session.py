@@ -5,9 +5,8 @@ from typing import Any
 from core.mcp import types
 from core.mcp.entities import RequestContext
 from core.mcp.session.base_session import RequestResponder
-from core.mcp.session.client_session import DEFAULT_CLIENT_INFO, ClientSession
+from core.mcp.session.client_session import ClientSession, DEFAULT_CLIENT_INFO
 from core.mcp.types import (
-    LATEST_PROTOCOL_VERSION,
     ClientNotification,
     ClientRequest,
     Implementation,
@@ -18,6 +17,7 @@ from core.mcp.types import (
     JSONRPCNotification,
     JSONRPCRequest,
     JSONRPCResponse,
+    LATEST_PROTOCOL_VERSION,
     ServerCapabilities,
     ServerResult,
     SessionMessage,

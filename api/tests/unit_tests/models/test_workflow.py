@@ -6,10 +6,20 @@ from uuid import uuid4
 from constants import HIDDEN_VALUE
 from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
-from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
+from core.variables import (
+    FloatVariable,
+    IntegerVariable,
+    SecretVariable,
+    StringVariable,
+)
 from core.variables.segments import IntegerSegment, Segment
 from factories.variable_factory import build_segment
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from models.workflow import (
+    is_system_variable_editable,
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowNodeExecutionModel,
+)
 
 
 def test_environment_variables():

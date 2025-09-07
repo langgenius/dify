@@ -1,9 +1,12 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 
-from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
+from core.app.app_config.entities import (
+    ExternalDataVariableEntity,
+    PromptTemplateEntity,
+)
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
@@ -11,13 +14,24 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     ModelConfigWithCredentialsEntity,
 )
-from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+)
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
+from core.app.features.hosting_moderation.hosting_moderation import (
+    HostingModerationFeature,
+)
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMUsage,
+)
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -27,7 +41,11 @@ from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.prompt.entities.advanced_prompt_entities import (
+    ChatModelMessage,
+    CompletionModelPromptTemplate,
+    MemoryConfig,
+)
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from models.model import App, AppMode, Message, MessageAnnotation
 

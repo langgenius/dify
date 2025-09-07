@@ -27,9 +27,22 @@ from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Tenant
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
-from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
+from models.dataset import (
+    Dataset,
+    DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
+    Document as DatasetDocument,
+    DocumentSegment,
+)
+from models.model import (
+    Account,
+    App,
+    AppAnnotationSetting,
+    AppMode,
+    Conversation,
+    MessageAnnotation,
+)
 from models.provider import Provider, ProviderModel
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService

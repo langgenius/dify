@@ -10,15 +10,18 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, select
+from sqlalchemy import DateTime, func, select, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
-from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.built_in_field import (
+    BuiltInField,
+    MetadataDataSource,
+)
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_storage import storage
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule

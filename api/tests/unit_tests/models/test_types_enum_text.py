@@ -4,9 +4,8 @@ from typing import Any, NamedTuple, TypeVar
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import insert
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy import exc as sa_exc, insert
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 from sqlalchemy.sql.sqltypes import VARCHAR
 
 from models.types import EnumText

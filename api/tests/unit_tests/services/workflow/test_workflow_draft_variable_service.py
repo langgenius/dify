@@ -10,7 +10,12 @@ from core.variables import StringSegment
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes.enums import NodeType
 from models.enums import DraftVariableType
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from models.workflow import (
+    is_system_variable_editable,
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowNodeExecutionModel,
+)
 from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     VariableResetError,

@@ -304,7 +304,13 @@ class MilvusVector(BaseVector):
                 return
             # Grab the existing collection if it exists
             if not self._client.has_collection(self._collection_name):
-                from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType  # type: ignore
+                from pymilvus import (  # type: ignore
+                    CollectionSchema,
+                    DataType,
+                    FieldSchema,
+                    Function,
+                    FunctionType,
+                )
                 from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
                 # Determine embedding dim

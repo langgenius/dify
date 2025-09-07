@@ -13,7 +13,9 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode
 from core.workflow.nodes.iteration.iteration_node import IterationNode
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
+from core.workflow.nodes.template_transform.template_transform_node import (
+    TemplateTransformNode,
+)
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType

@@ -1,7 +1,7 @@
 import flask_restx
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, marshal_with, reqparse
+from flask_restx import marshal, marshal_with, reqparse, Resource
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -9,7 +9,11 @@ from configs import dify_config
 from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.datasets.error import (
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    IndexingEstimateError,
+)
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
@@ -32,7 +36,11 @@ from fields.document_fields import document_status_fields
 from libs.login import login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.dataset_service import (
+    DatasetPermissionService,
+    DatasetService,
+    DocumentService,
+)
 
 
 def _validate_name(name):

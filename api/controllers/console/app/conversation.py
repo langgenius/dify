@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytz  # pip install pytz
 from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import marshal_with, reqparse, Resource
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload

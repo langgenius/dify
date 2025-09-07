@@ -2,7 +2,11 @@ import os
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
+from core.helper.code_executor.code_executor import (
+    CodeExecutionError,
+    CodeExecutor,
+    CodeLanguage,
+)
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode

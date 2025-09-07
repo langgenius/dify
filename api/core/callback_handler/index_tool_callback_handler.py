@@ -10,8 +10,12 @@ from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
-from models.dataset import Document as DatasetDocument
+from models.dataset import (
+    ChildChunk,
+    DatasetQuery,
+    Document as DatasetDocument,
+    DocumentSegment,
+)
 
 _logger = logging.getLogger(__name__)
 

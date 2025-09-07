@@ -1,4 +1,4 @@
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import marshal_with, reqparse, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

@@ -11,7 +11,10 @@ from core.variables.segments import ArrayStringSegment
 from core.variables.variables import StringVariable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from core.workflow.nodes.document_extractor import (
+    DocumentExtractorNode,
+    DocumentExtractorNodeData,
+)
 from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_excel,

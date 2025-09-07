@@ -1,10 +1,14 @@
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from controllers.console import api
 from controllers.console.datasets.error import WebsiteCrawlError
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
-from services.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
+from services.website_service import (
+    WebsiteCrawlApiRequest,
+    WebsiteCrawlStatusApiRequest,
+    WebsiteService,
+)
 
 
 class WebsiteCrawlApi(Resource):

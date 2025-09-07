@@ -3,7 +3,7 @@ import queue
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any, TypeAlias, final
+from typing import Any, final, TypeAlias
 from urllib.parse import urljoin, urlparse
 
 import httpx

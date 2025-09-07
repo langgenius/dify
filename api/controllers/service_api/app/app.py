@@ -4,7 +4,9 @@ from controllers.common.fields import build_parameters_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.app_config.common.parameters_mapping import (
+    get_parameters_from_feature_dict,
+)
 from models.model import App, AppMode
 from services.app_service import AppService
 

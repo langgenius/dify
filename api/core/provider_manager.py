@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +11,11 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
-from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
+from core.entities.provider_configuration import (
+    ProviderConfiguration,
+    ProviderConfigurations,
+    ProviderModelBundle,
+)
 from core.entities.provider_entities import (
     CredentialConfiguration,
     CustomConfiguration,
@@ -26,7 +30,10 @@ from core.entities.provider_entities import (
     UnaddedModelConfiguration,
 )
 from core.helper import encrypter
-from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.helper.model_provider_cache import (
+    ProviderCredentialsCache,
+    ProviderCredentialsCacheType,
+)
 from core.helper.position_helper import is_filtered
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import (
@@ -35,7 +42,9 @@ from core.model_runtime.entities.provider_entities import (
     FormType,
     ProviderEntity,
 )
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from core.model_runtime.model_providers.model_provider_factory import (
+    ModelProviderFactory,
+)
 from core.plugin.entities.plugin import ModelProviderID
 from extensions import ext_hosting_provider
 from extensions.ext_database import db

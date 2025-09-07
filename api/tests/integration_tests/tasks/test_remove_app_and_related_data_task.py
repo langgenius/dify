@@ -4,10 +4,13 @@ import pytest
 from sqlalchemy import delete
 
 from core.variables.segments import StringSegment
-from models import Tenant, db
+from models import db, Tenant
 from models.model import App
 from models.workflow import WorkflowDraftVariable
-from tasks.remove_app_and_related_data_task import _delete_draft_variables, delete_draft_variables_batch
+from tasks.remove_app_and_related_data_task import (
+    _delete_draft_variables,
+    delete_draft_variables_batch,
+)
 
 
 @pytest.fixture

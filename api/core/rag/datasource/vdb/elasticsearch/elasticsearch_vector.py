@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 from urllib.parse import urlparse
 
 import requests

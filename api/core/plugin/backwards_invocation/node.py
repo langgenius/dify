@@ -2,17 +2,13 @@ from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.parameter_extractor.entities import (
     ModelConfig as ParameterExtractorModelConfig,
-)
-from core.workflow.nodes.parameter_extractor.entities import (
     ParameterConfig,
     ParameterExtractorNodeData,
 )
 from core.workflow.nodes.question_classifier.entities import (
     ClassConfig,
-    QuestionClassifierNodeData,
-)
-from core.workflow.nodes.question_classifier.entities import (
     ModelConfig as QuestionClassifierModelConfig,
+    QuestionClassifierNodeData,
 )
 from services.workflow_service import WorkflowService
 

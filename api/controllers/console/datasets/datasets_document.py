@@ -1,10 +1,10 @@
 import logging
 from argparse import ArgumentTypeError
-from typing import Literal, cast
+from typing import cast, Literal
 
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, marshal_with, reqparse
+from flask_restx import marshal, marshal_with, reqparse, Resource
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 

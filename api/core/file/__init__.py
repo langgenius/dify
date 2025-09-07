@@ -1,5 +1,11 @@
 from .constants import FILE_MODEL_IDENTITY
-from .enums import ArrayFileAttribute, FileAttribute, FileBelongsTo, FileTransferMethod, FileType
+from .enums import (
+    ArrayFileAttribute,
+    FileAttribute,
+    FileBelongsTo,
+    FileTransferMethod,
+    FileType,
+)
 from .models import (
     File,
     FileUploadConfig,

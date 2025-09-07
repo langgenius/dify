@@ -7,7 +7,10 @@ from typing import Any, Optional, TypedDict, Union
 
 from pydantic import BaseModel, Field
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+)
 from core.model_runtime.entities.model_entities import ModelUsage, PriceInfo
 
 

@@ -17,12 +17,12 @@ from .segments import (
     BooleanSegment,
     FileSegment,
     FloatSegment,
+    get_segment_discriminator,
     IntegerSegment,
     NoneSegment,
     ObjectSegment,
     Segment,
     StringSegment,
-    get_segment_discriminator,
 )
 from .types import SegmentType
 

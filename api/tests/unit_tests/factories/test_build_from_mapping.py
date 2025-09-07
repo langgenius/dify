@@ -5,11 +5,11 @@ import pytest
 from httpx import Response
 
 from factories.file_factory import (
+    build_from_mapping,
     File,
     FileTransferMethod,
     FileType,
     FileUploadConfig,
-    build_from_mapping,
 )
 from models import ToolFile, UploadFile
 

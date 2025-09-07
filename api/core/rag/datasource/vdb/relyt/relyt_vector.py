@@ -3,8 +3,7 @@ import uuid
 from typing import Any, Optional
 
 from pydantic import BaseModel, model_validator
-from sqlalchemy import Column, String, Table, create_engine, insert
-from sqlalchemy import text as sql_text
+from sqlalchemy import Column, create_engine, insert, String, Table, text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
 from sqlalchemy.orm import Session
 

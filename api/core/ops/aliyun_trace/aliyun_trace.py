@@ -9,12 +9,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
-    TraceClient,
     convert_datetime_to_nanoseconds,
     convert_to_span_id,
     convert_to_trace_id,
     create_link,
     generate_span_id,
+    TraceClient,
 )
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
 from core.ops.aliyun_trace.entities.semconv import (
@@ -32,6 +32,7 @@ from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_USAGE_OUTPUT_TOKENS,
     GEN_AI_USAGE_TOTAL_TOKENS,
     GEN_AI_USER_ID,
+    GenAISpanKind,
     INPUT_VALUE,
     OUTPUT_VALUE,
     RETRIEVAL_DOCUMENT,
@@ -39,7 +40,6 @@ from core.ops.aliyun_trace.entities.semconv import (
     TOOL_DESCRIPTION,
     TOOL_NAME,
     TOOL_PARAMETERS,
-    GenAISpanKind,
 )
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import AliyunConfig
@@ -61,7 +61,14 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes import NodeType
-from models import Account, App, EndUser, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom, db
+from models import (
+    Account,
+    App,
+    db,
+    EndUser,
+    TenantAccountJoin,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 
 logger = logging.getLogger(__name__)
 

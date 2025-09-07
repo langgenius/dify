@@ -1,7 +1,7 @@
 from typing import Optional, Union
 
 from flask import Response
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 

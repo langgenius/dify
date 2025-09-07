@@ -1,7 +1,7 @@
 import logging
 
 from flask_login import current_user
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx import fields, marshal_with, reqparse, Resource
 from flask_restx.inputs import int_range
 from sqlalchemy import exists, select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -14,24 +14,39 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
+from controllers.console.explore.error import (
+    AppSuggestedQuestionsAfterAnswerDisabledError,
+)
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     setup_required,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.errors.error import (
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import (
+    AppMode,
+    Conversation,
+    Message,
+    MessageAnnotation,
+    MessageFeedback,
+)
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)

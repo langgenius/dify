@@ -2,7 +2,12 @@ from textwrap import dedent
 
 import pytest
 
-from core.helper.position_helper import get_position_map, is_filtered, pin_position_map, sort_by_position_map
+from core.helper.position_helper import (
+    get_position_map,
+    is_filtered,
+    pin_position_map,
+    sort_by_position_map,
+)
 
 
 @pytest.fixture

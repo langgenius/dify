@@ -6,7 +6,9 @@ import numpy as np
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
+from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import (
+    JiebaKeywordTableHandler,
+)
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights

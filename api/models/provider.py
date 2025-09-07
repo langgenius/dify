@@ -4,7 +4,7 @@ from functools import cached_property
 from typing import Optional
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, text
+from sqlalchemy import DateTime, func, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base

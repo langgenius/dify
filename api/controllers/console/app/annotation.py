@@ -2,7 +2,7 @@ from typing import Literal
 
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, marshal_with, reqparse
+from flask_restx import marshal, marshal_with, reqparse, Resource
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError

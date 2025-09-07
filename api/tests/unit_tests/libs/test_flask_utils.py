@@ -4,7 +4,7 @@ from typing import Optional
 
 import pytest
 from flask import Flask
-from flask_login import LoginManager, UserMixin, current_user, login_user
+from flask_login import current_user, login_user, LoginManager, UserMixin
 
 from libs.flask_utils import preserve_flask_contexts
 

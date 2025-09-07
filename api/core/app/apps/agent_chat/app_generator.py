@@ -3,18 +3,22 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, overload, Union
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 from pydantic import ValidationError
 
 from configs import dify_config
 from constants import UUID_NIL
-from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
+from core.app.app_config.easy_ui_based_app.model_config.converter import (
+    ModelConfigConverter,
+)
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
-from core.app.apps.agent_chat.generate_response_converter import AgentChatAppGenerateResponseConverter
+from core.app.apps.agent_chat.generate_response_converter import (
+    AgentChatAppGenerateResponseConverter,
+)
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator

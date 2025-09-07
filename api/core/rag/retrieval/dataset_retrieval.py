@@ -4,11 +4,10 @@ import re
 import threading
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Optional, Union, cast
+from typing import Any, cast, Optional, Union
 
-from flask import Flask, current_app
-from sqlalchemy import Float, and_, or_, select, text
-from sqlalchemy import cast as sqlalchemy_cast
+from flask import current_app, Flask
+from sqlalchemy import and_, cast as sqlalchemy_cast, Float, or_, select, text
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -16,24 +15,40 @@ from core.app.app_config.entities import (
     MetadataFilteringCondition,
     ModelConfig,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.app.entities.app_invoke_entities import (
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+)
+from core.callback_handler.index_tool_callback_handler import (
+    DatasetIndexToolCallbackHandler,
+)
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from core.model_runtime.entities.message_entities import (
+    PromptMessage,
+    PromptMessageRole,
+    PromptMessageTool,
+)
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.__base.large_language_model import (
+    LargeLanguageModel,
+)
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
+from core.prompt.entities.advanced_prompt_entities import (
+    ChatModelMessage,
+    CompletionModelPromptTemplate,
+)
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
-from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
+from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import (
+    JiebaKeywordTableHandler,
+)
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.entities.context_entities import DocumentContext
@@ -42,7 +57,9 @@ from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
+from core.rag.retrieval.router.multi_dataset_function_call_router import (
+    FunctionCallMultiDatasetRouter,
+)
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
 from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_ASSISTANT_PROMPT_1,
@@ -53,11 +70,19 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import (
+    DatasetRetrieverBaseTool,
+)
 from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment
-from models.dataset import Document as DatasetDocument
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DatasetMetadata,
+    DatasetQuery,
+    Document as DatasetDocument,
+    DocumentSegment,
+)
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {
@@ -713,7 +738,9 @@ class DatasetRetrieval:
                 if score_threshold_enabled:
                     score_threshold = retrieval_model_config.get("score_threshold")
 
-                from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
+                from core.tools.utils.dataset_retriever.dataset_retriever_tool import (
+                    DatasetRetrieverTool,
+                )
 
                 tool = DatasetRetrieverTool.from_dataset(
                     dataset=dataset,
@@ -729,7 +756,9 @@ class DatasetRetrieval:
 
                 tools.append(tool)
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
-            from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
+            from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import (
+                DatasetMultiRetrieverTool,
+            )
 
             if retrieve_config.reranking_model is None:
                 raise ValueError("Reranking model is required for multiple retrieval")

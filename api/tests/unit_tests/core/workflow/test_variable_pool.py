@@ -26,7 +26,11 @@ from core.variables.variables import (
     StringVariable,
     VariableUnion,
 )
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.system_variable import SystemVariable
 from factories.variable_factory import build_segment, segment_to_variable

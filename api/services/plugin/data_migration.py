@@ -4,7 +4,11 @@ import logging
 import click
 import sqlalchemy as sa
 
-from core.plugin.entities.plugin import GenericProviderID, ModelProviderID, ToolProviderID
+from core.plugin.entities.plugin import (
+    GenericProviderID,
+    ModelProviderID,
+    ToolProviderID,
+)
 from models.engine import db
 
 logger = logging.getLogger(__name__)

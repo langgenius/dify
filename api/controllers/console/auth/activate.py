@@ -1,12 +1,12 @@
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import StrLen, email, extract_remote_ip, timezone
+from libs.helper import email, extract_remote_ip, StrLen, timezone
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService
 

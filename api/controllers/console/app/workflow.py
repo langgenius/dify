@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import cast
 
 from flask import abort, request
-from flask_restx import Resource, inputs, marshal_with, reqparse
+from flask_restx import inputs, marshal_with, reqparse, Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -38,7 +38,11 @@ from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_service import (
+    DraftWorkflowDeletionError,
+    WorkflowInUseError,
+    WorkflowService,
+)
 
 logger = logging.getLogger(__name__)
 

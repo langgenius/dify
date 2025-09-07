@@ -4,9 +4,18 @@ from typing import Any
 
 import sqlalchemy
 from pydantic import BaseModel, model_validator
-from sqlalchemy import JSON, TEXT, Column, DateTime, String, Table, create_engine, insert
-from sqlalchemy import text as sql_text
-from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy import (
+    Column,
+    create_engine,
+    DateTime,
+    insert,
+    JSON,
+    String,
+    Table,
+    TEXT,
+    text as sql_text,
+)
+from sqlalchemy.orm import declarative_base, Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field

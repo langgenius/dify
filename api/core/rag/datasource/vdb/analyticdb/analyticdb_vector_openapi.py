@@ -56,7 +56,9 @@ class AnalyticdbVectorOpenAPI:
     def __init__(self, collection_name: str, config: AnalyticdbVectorOpenAPIConfig):
         try:
             from alibabacloud_gpdb20160503.client import Client  # type: ignore
-            from alibabacloud_tea_openapi import models as open_api_models  # type: ignore
+            from alibabacloud_tea_openapi import (  # type: ignore
+                models as open_api_models,
+            )
         except:
             raise ImportError(_import_err_msg)
         self._collection_name = collection_name.lower()
@@ -77,7 +79,9 @@ class AnalyticdbVectorOpenAPI:
             redis_client.set(database_exist_cache_key, 1, ex=3600)
 
     def _initialize_vector_database(self):
-        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models  # type: ignore
+        from alibabacloud_gpdb20160503 import (  # type: ignore
+            models as gpdb_20160503_models,
+        )
 
         request = gpdb_20160503_models.InitVectorDatabaseRequest(
             dbinstance_id=self.config.instance_id,

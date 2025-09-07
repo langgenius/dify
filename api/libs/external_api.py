@@ -3,7 +3,7 @@ import sys
 from collections.abc import Mapping
 from typing import Any
 
-from flask import Blueprint, Flask, current_app, got_request_exception
+from flask import Blueprint, current_app, Flask, got_request_exception
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES

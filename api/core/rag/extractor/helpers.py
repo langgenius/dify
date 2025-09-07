@@ -1,7 +1,7 @@
 """Document loader helpers."""
 
 import concurrent.futures
-from typing import NamedTuple, Optional, cast
+from typing import cast, NamedTuple, Optional
 
 
 class FileEncoding(NamedTuple):

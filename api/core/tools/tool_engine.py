@@ -2,15 +2,17 @@ import contextlib
 import json
 from collections.abc import Generator, Iterable
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from mimetypes import guess_type
-from typing import Any, Optional, Union, cast
+from typing import Any, cast, Optional, Union
 
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import (
+    DifyWorkflowCallbackHandler,
+)
 from core.file import FileType
 from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -30,7 +32,10 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
-from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
+from core.tools.utils.message_transformer import (
+    safe_json_value,
+    ToolFileMessageTransformer,
+)
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.enums import CreatorUserRole

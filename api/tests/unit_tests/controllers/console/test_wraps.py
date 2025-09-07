@@ -4,7 +4,11 @@ import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin
 
-from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from controllers.console.error import (
+    NotInitValidateError,
+    NotSetupError,
+    UnauthorizedAndForceLogout,
+)
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     account_initialization_required,

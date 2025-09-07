@@ -5,7 +5,10 @@ from flask_restx import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
+from controllers.service_api.wraps import (
+    cloud_edition_billing_rate_limit_check,
+    DatasetApiResource,
+)
 from fields.dataset_fields import dataset_metadata_fields
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (

@@ -14,7 +14,9 @@ from core.workflow.entities.workflow_execution import (
     WorkflowExecutionStatus,
     WorkflowType,
 )
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import (
+    WorkflowExecutionRepository,
+)
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
 from models import (

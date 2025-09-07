@@ -1,7 +1,7 @@
 import time
 from collections.abc import Callable
 from datetime import timedelta
-from enum import StrEnum, auto
+from enum import auto, StrEnum
 from functools import wraps
 from typing import Optional
 

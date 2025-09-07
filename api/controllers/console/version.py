@@ -2,7 +2,7 @@ import json
 import logging
 
 import requests
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from packaging import version
 
 from configs import dify_config

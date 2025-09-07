@@ -1,4 +1,7 @@
-from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
+from core.rag.datasource.vdb.weaviate.weaviate_vector import (
+    WeaviateConfig,
+    WeaviateVector,
+)
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
     setup_mock_redis,

@@ -6,10 +6,9 @@ from uuid import UUID, uuid4
 from numpy import ndarray
 from pgvecto_rs.sqlalchemy import VECTOR  # type: ignore
 from pydantic import BaseModel, model_validator
-from sqlalchemy import Float, create_engine, insert, select, text
-from sqlalchemy import text as sql_text
+from sqlalchemy import create_engine, Float, insert, select, text, text as sql_text
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM

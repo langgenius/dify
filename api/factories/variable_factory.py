@@ -40,7 +40,10 @@ from core.variables.variables import (
     StringVariable,
     Variable,
 )
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+)
 
 
 class UnsupportedSegmentTypeError(Exception):

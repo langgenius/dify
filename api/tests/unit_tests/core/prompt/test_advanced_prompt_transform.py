@@ -13,7 +13,11 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.prompt.entities.advanced_prompt_entities import (
+    ChatModelMessage,
+    CompletionModelPromptTemplate,
+    MemoryConfig,
+)
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import Conversation
 

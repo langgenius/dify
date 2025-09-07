@@ -5,11 +5,11 @@ Revises: 33f5fac87f29
 Create Date: 2024-10-09 13:29:23.548498
 
 """
-from alembic import op
-from constants import UUID_NIL
-import models as models
 import sqlalchemy as sa
+from alembic import op
 
+import models as models
+from constants import UUID_NIL
 
 # revision identifiers, used by Alembic.
 revision = 'd8e744d88ed6'

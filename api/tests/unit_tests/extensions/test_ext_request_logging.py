@@ -7,7 +7,11 @@ from flask import Flask, Response
 
 from configs import dify_config
 from extensions import ext_request_logging
-from extensions.ext_request_logging import _is_content_type_json, _log_request_finished, init_app
+from extensions.ext_request_logging import (
+    _is_content_type_json,
+    _log_request_finished,
+    init_app,
+)
 
 
 def test_is_content_type_json():

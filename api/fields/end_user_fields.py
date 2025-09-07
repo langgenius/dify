@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Api, fields, Namespace
 
 simple_end_user_fields = {
     "id": fields.String,

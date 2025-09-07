@@ -3,7 +3,11 @@ from collections.abc import Generator
 
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
-from core.model_runtime.entities.llm_entities import AssistantPromptMessage, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import (
+    AssistantPromptMessage,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+)
 
 
 def mock_llm_response(text) -> Generator[LLMResultChunk, None, None]:

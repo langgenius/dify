@@ -5,17 +5,25 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+    ValidationInfo,
+)
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import (
+    as_normal_type,
+    cast_parameter_value,
+    init_frontend_parameter,
     MCPServerParameterType,
     PluginParameter,
     PluginParameterOption,
     PluginParameterType,
-    as_normal_type,
-    cast_parameter_value,
-    init_frontend_parameter,
 )
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject

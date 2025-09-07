@@ -3,7 +3,12 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
-from services.feature_service import FeatureModel, FeatureService, KnowledgeRateLimitModel, SystemFeatureModel
+from services.feature_service import (
+    FeatureModel,
+    FeatureService,
+    KnowledgeRateLimitModel,
+    SystemFeatureModel,
+)
 
 
 class TestFeatureService:

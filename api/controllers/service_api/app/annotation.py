@@ -1,7 +1,7 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Api, Namespace, Resource, fields, reqparse
+from flask_restx import Api, fields, Namespace, reqparse, Resource
 from flask_restx.api import HTTPStatus
 from werkzeug.exceptions import Forbidden
 

@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Api, fields, Namespace
 
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField

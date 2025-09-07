@@ -1,12 +1,14 @@
 import uuid
 from unittest import mock
 
-from controllers.console.app import workflow_draft_variable as draft_variable_api
-from controllers.console.app import wraps
+from controllers.console.app import workflow_draft_variable as draft_variable_api, wraps
 from factories.variable_factory import build_segment
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
-from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
+from services.workflow_draft_variable_service import (
+    WorkflowDraftVariableList,
+    WorkflowDraftVariableService,
+)
 
 
 def _get_mock_srv_class() -> type[WorkflowDraftVariableService]:

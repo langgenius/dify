@@ -7,8 +7,7 @@ from celery import shared_task
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, DocumentSegment
-from models.dataset import Document as DatasetDocument
+from models.dataset import Dataset, Document as DatasetDocument, DocumentSegment
 
 logger = logging.getLogger(__name__)
 

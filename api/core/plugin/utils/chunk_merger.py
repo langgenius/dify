@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import TypeVar, Union, cast
+from typing import cast, TypeVar, Union
 
 from core.agent.entities import AgentInvokeMessage
 from core.tools.entities.tool_entities import ToolInvokeMessage

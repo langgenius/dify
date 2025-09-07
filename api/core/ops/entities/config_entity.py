@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ValidationInfo, field_validator
+from pydantic import BaseModel, field_validator, ValidationInfo
 
 from core.ops.utils import validate_project_name, validate_url, validate_url_with_path
 

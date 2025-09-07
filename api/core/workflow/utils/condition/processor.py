@@ -2,7 +2,7 @@ import json
 from collections.abc import Sequence
 from typing import Any, Literal, Union
 
-from core.file import FileAttribute, file_manager
+from core.file import file_manager, FileAttribute
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayBooleanSegment, BooleanSegment
 from core.workflow.entities.variable_pool import VariablePool

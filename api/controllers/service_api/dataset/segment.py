@@ -6,10 +6,10 @@ from werkzeug.exceptions import NotFound
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.wraps import (
-    DatasetApiResource,
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
+    DatasetApiResource,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -19,9 +19,12 @@ from fields.segment_fields import child_chunk_fields, segment_fields
 from models.dataset import Dataset
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
-from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
-from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
-from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.errors.chunk import (
+    ChildChunkDeleteIndexError,
+    ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError,
+    ChildChunkIndexingError,
+    ChildChunkIndexingError as ChildChunkIndexingServiceError,
+)
 
 # Define parsers for segment operations
 segment_create_parser = reqparse.RequestParser()

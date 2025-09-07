@@ -1,6 +1,10 @@
 import re
 
-from core.app.app_config.entities import ExternalDataVariableEntity, VariableEntity, VariableEntityType
+from core.app.app_config.entities import (
+    ExternalDataVariableEntity,
+    VariableEntity,
+    VariableEntityType,
+)
 from core.external_data_tool.factory import ExternalDataToolFactory
 
 _ALLOWED_VARIABLE_ENTITY_TYPE = frozenset(

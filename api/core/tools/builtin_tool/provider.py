@@ -14,7 +14,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderEntity,
     ToolProviderType,
 )
-from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
+from core.tools.entities.values import default_tool_label_dict, ToolLabelEnum
 from core.tools.errors import (
     ToolProviderNotFoundError,
 )

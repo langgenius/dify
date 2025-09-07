@@ -11,7 +11,12 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
 
 from .entities import FilterOperator, ListOperatorNodeData, Order
-from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError, ListOperatorError
+from .exc import (
+    InvalidConditionError,
+    InvalidFilterValueError,
+    InvalidKeyError,
+    ListOperatorError,
+)
 
 _SUPPORTED_TYPES_TUPLE = (
     ArrayFileSegment,

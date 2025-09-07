@@ -2,7 +2,7 @@ from typing import Literal
 
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal_with
+from flask_restx import marshal_with, Resource
 from werkzeug.exceptions import Forbidden
 
 import services

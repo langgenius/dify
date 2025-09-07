@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Api, fields, Namespace
 
 from libs.helper import AppIconUrlField
 

@@ -1,6 +1,6 @@
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, reqparse
+from flask_restx import marshal, reqparse, Resource
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services

@@ -17,7 +17,12 @@ from models.model import (
     MessageFeedback,
     MessageFile,
 )
-from models.workflow import ConversationVariable, WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import (
+    ConversationVariable,
+    WorkflowAppLog,
+    WorkflowNodeExecutionModel,
+    WorkflowRun,
+)
 
 logger = logging.getLogger(__name__)
 

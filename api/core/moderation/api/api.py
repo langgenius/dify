@@ -3,9 +3,17 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
+from core.extension.api_based_extension_requestor import (
+    APIBasedExtensionPoint,
+    APIBasedExtensionRequestor,
+)
 from core.helper.encrypter import decrypt_token
-from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.base import (
+    Moderation,
+    ModerationAction,
+    ModerationInputsResult,
+    ModerationOutputsResult,
+)
 from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension
 

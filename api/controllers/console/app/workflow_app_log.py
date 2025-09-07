@@ -1,5 +1,5 @@
 from dateutil.parser import isoparse
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import marshal_with, reqparse, Resource
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 

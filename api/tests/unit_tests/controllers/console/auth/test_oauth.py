@@ -4,11 +4,11 @@ import pytest
 from flask import Flask
 
 from controllers.console.auth.oauth import (
-    OAuthCallback,
-    OAuthLogin,
     _generate_account,
     _get_account_by_openid_or_email,
     get_oauth_providers,
+    OAuthCallback,
+    OAuthLogin,
 )
 from libs.oauth import OAuthUserInfo
 from models.account import AccountStatus

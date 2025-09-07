@@ -1,11 +1,13 @@
 import threading
 from typing import Any
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.callback_handler.index_tool_callback_handler import (
+    DatasetIndexToolCallbackHandler,
+)
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -13,7 +15,9 @@ from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import (
+    DatasetRetrieverBaseTool,
+)
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 

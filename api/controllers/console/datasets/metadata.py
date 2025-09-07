@@ -1,11 +1,15 @@
 from typing import Literal
 
 from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import marshal_with, reqparse, Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enterprise_license_required,
+    setup_required,
+)
 from fields.dataset_fields import dataset_metadata_fields
 from libs.login import login_required
 from services.dataset_service import DatasetService

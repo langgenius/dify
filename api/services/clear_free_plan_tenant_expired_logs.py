@@ -5,7 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import click
-from flask import Flask, current_app
+from flask import current_app, Flask
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config

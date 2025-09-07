@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
-from typing import Literal, Union, overload
+from typing import Literal, overload, Union
 
 from flask import Flask
 
@@ -62,7 +62,9 @@ class Storage:
 
                 return BaiduObsStorage
             case StorageType.VOLCENGINE_TOS:
-                from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
+                from extensions.storage.volcengine_tos_storage import (
+                    VolcengineTosStorage,
+                )
 
                 return VolcengineTosStorage
             case StorageType.SUPABASE:

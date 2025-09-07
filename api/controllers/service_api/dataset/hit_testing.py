@@ -1,6 +1,9 @@
 from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
+from controllers.service_api.wraps import (
+    cloud_edition_billing_rate_limit_check,
+    DatasetApiResource,
+)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/hit-testing", "/datasets/<uuid:dataset_id>/retrieve")

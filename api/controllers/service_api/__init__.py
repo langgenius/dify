@@ -16,7 +16,18 @@ api = ExternalApi(
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 
 from . import index
-from .app import annotation, app, audio, completion, conversation, file, file_preview, message, site, workflow
+from .app import (
+    annotation,
+    app,
+    audio,
+    completion,
+    conversation,
+    file,
+    file_preview,
+    message,
+    site,
+    workflow,
+)
 from .dataset import dataset, document, hit_testing, metadata, segment, upload_file
 from .workspace import models
 

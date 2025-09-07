@@ -11,11 +11,15 @@ from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.nodes.parameter_extractor.parameter_extractor_node import (
+    ParameterExtractorNode,
+)
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
-from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
+from tests.integration_tests.workflow.nodes.__mock.model import (
+    get_mocked_fetch_model_config,
+)
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
 from models.workflow import WorkflowType

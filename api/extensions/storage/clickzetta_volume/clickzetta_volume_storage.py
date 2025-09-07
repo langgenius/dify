@@ -17,7 +17,7 @@ from pydantic import BaseModel, model_validator
 
 from extensions.storage.base_storage import BaseStorage
 
-from .volume_permissions import VolumePermissionManager, check_volume_permission
+from .volume_permissions import check_volume_permission, VolumePermissionManager
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api

@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import Any, cast, Literal, Optional, TYPE_CHECKING
 
 from configs import dify_config
 from core.variables import (
@@ -12,7 +12,10 @@ from core.variables import (
     SegmentType,
 )
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
     BaseNodeEvent,
@@ -35,7 +38,7 @@ from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
-from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from factories.variable_factory import build_segment_with_type, TypeMismatchError
 from libs.datetime_utils import naive_utc_now
 
 if TYPE_CHECKING:
@@ -122,7 +125,9 @@ class LoopNode(BaseNode):
                 loop_variable_selectors[loop_variable.label] = variable_selector
                 inputs[loop_variable.label] = processed_segment.value
 
-        from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+        from core.workflow.graph_engine.entities.graph_runtime_state import (
+            GraphRuntimeState,
+        )
         from core.workflow.graph_engine.graph_engine import GraphEngine
 
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())

@@ -4,8 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
+from hypothesis import given, strategies as st
 
 from core.file import File, FileTransferMethod, FileType
 from core.variables import (
@@ -35,7 +34,11 @@ from core.variables.segments import (
 )
 from core.variables.types import SegmentType
 from factories import variable_factory
-from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
+from factories.variable_factory import (
+    build_segment,
+    build_segment_with_type,
+    TypeMismatchError,
+)
 
 
 def test_string_variable():

@@ -1,7 +1,7 @@
 import enum
 from typing import Generic, TypeVar
 
-from sqlalchemy import CHAR, VARCHAR, TypeDecorator
+from sqlalchemy import CHAR, TypeDecorator, VARCHAR
 from sqlalchemy.dialects.postgresql import UUID
 
 

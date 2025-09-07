@@ -15,7 +15,10 @@ from core.workflow.nodes.list_operator.entities import (
     OrderByConfig,
 )
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
-from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
+from core.workflow.nodes.list_operator.node import (
+    _get_file_extract_string_func,
+    ListOperatorNode,
+)
 
 
 @pytest.fixture

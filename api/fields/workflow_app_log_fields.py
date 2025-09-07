@@ -1,8 +1,11 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Api, fields, Namespace
 
 from fields.end_user_fields import build_simple_end_user_model, simple_end_user_fields
 from fields.member_fields import build_simple_account_model, simple_account_fields
-from fields.workflow_run_fields import build_workflow_run_for_log_model, workflow_run_for_log_fields
+from fields.workflow_run_fields import (
+    build_workflow_run_for_log_model,
+    workflow_run_for_log_fields,
+)
 from libs.helper import TimestampField
 
 workflow_app_log_partial_fields = {

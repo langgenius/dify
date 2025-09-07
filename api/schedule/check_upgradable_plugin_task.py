@@ -5,7 +5,9 @@ import click
 import app
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
-from tasks.process_tenant_plugin_autoupgrade_check_task import process_tenant_plugin_autoupgrade_check_task
+from tasks.process_tenant_plugin_autoupgrade_check_task import (
+    process_tenant_plugin_autoupgrade_check_task,
+)
 
 AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL = 15 * 60  # 15 minutes
 

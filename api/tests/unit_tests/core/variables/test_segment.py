@@ -12,13 +12,13 @@ from core.variables.segments import (
     ArrayStringSegment,
     FileSegment,
     FloatSegment,
+    get_segment_discriminator,
     IntegerSegment,
     NoneSegment,
     ObjectSegment,
     Segment,
     SegmentUnion,
     StringSegment,
-    get_segment_discriminator,
 )
 from core.variables.types import SegmentType
 from core.variables.variables import (

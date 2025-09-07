@@ -6,9 +6,9 @@ from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, wait
 from datetime import datetime
 from queue import Empty, Queue
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import Any, cast, Optional, TYPE_CHECKING
 
-from flask import Flask, current_app
+from flask import current_app, Flask
 
 from configs import dify_config
 from core.variables import IntegerVariable, NoneSegment
@@ -17,7 +17,10 @@ from core.workflow.entities.node_entities import (
     NodeRunResult,
 )
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
     BaseNodeEvent,
@@ -158,8 +161,13 @@ class IterationNode(BaseNode):
         variable_pool.add([self.node_id, "item"], iterator_list_value[0])
 
         # init graph engine
-        from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-        from core.workflow.graph_engine.graph_engine import GraphEngine, GraphEngineThreadPool
+        from core.workflow.graph_engine.entities.graph_runtime_state import (
+            GraphRuntimeState,
+        )
+        from core.workflow.graph_engine.graph_engine import (
+            GraphEngine,
+            GraphEngineThreadPool,
+        )
 
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 

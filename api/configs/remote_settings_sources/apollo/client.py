@@ -11,11 +11,11 @@ from typing import Any
 from .python_3x import http_request, makedirs_wrapper
 from .utils import (
     CONFIGURATIONS,
-    NAMESPACE_NAME,
-    NOTIFICATION_ID,
     get_value_from_dict,
     init_ip,
+    NAMESPACE_NAME,
     no_key_cache_key,
+    NOTIFICATION_ID,
     signature,
     url_encode_wrapper,
 )

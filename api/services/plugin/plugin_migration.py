@@ -11,12 +11,16 @@ from uuid import uuid4
 import click
 import sqlalchemy as sa
 import tqdm
-from flask import Flask, current_app
+from flask import current_app, Flask
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
-from core.plugin.entities.plugin import ModelProviderID, PluginInstallationSource, ToolProviderID
+from core.plugin.entities.plugin import (
+    ModelProviderID,
+    PluginInstallationSource,
+    ToolProviderID,
+)
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolProviderType

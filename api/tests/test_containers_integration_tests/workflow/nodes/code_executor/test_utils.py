@@ -48,8 +48,12 @@ def get_javascript_imports():
     Returns:
         tuple: (JavascriptCodeProvider, NodeJsTemplateTransformer) classes
     """
-    from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
-    from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
+    from core.helper.code_executor.javascript.javascript_code_provider import (
+        JavascriptCodeProvider,
+    )
+    from core.helper.code_executor.javascript.javascript_transformer import (
+        NodeJsTemplateTransformer,
+    )
 
     return JavascriptCodeProvider, NodeJsTemplateTransformer
 
@@ -61,8 +65,12 @@ def get_python3_imports():
     Returns:
         tuple: (Python3CodeProvider, Python3TemplateTransformer) classes
     """
-    from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
-    from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
+    from core.helper.code_executor.python3.python3_code_provider import (
+        Python3CodeProvider,
+    )
+    from core.helper.code_executor.python3.python3_transformer import (
+        Python3TemplateTransformer,
+    )
 
     return Python3CodeProvider, Python3TemplateTransformer
 
@@ -74,7 +82,9 @@ def get_jinja2_imports():
     Returns:
         tuple: (None, Jinja2TemplateTransformer) classes
     """
-    from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
+    from core.helper.code_executor.jinja2.jinja2_transformer import (
+        Jinja2TemplateTransformer,
+    )
 
     return None, Jinja2TemplateTransformer
 

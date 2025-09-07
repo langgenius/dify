@@ -33,7 +33,14 @@ from core.ops.utils import get_message_data
 from core.workflow.entities.workflow_execution import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
+from models.model import (
+    App,
+    AppModelConfig,
+    Conversation,
+    Message,
+    MessageFile,
+    TraceAppConfig,
+)
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -87,7 +94,9 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                     "trace_instance": WeaveDataTrace,
                 }
             case TracingProviderEnum.ARIZE:
-                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+                from core.ops.arize_phoenix_trace.arize_phoenix_trace import (
+                    ArizePhoenixDataTrace,
+                )
                 from core.ops.entities.config_entity import ArizeConfig
 
                 return {
@@ -97,7 +106,9 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                     "trace_instance": ArizePhoenixDataTrace,
                 }
             case TracingProviderEnum.PHOENIX:
-                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+                from core.ops.arize_phoenix_trace.arize_phoenix_trace import (
+                    ArizePhoenixDataTrace,
+                )
                 from core.ops.entities.config_entity import PhoenixConfig
 
                 return {

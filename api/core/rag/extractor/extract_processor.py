@@ -18,14 +18,30 @@ from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
-from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
-from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
-from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
-from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
-from core.rag.extractor.unstructured.unstructured_msg_extractor import UnstructuredMsgExtractor
-from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
-from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
-from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
+from core.rag.extractor.unstructured.unstructured_doc_extractor import (
+    UnstructuredWordExtractor,
+)
+from core.rag.extractor.unstructured.unstructured_eml_extractor import (
+    UnstructuredEmailExtractor,
+)
+from core.rag.extractor.unstructured.unstructured_epub_extractor import (
+    UnstructuredEpubExtractor,
+)
+from core.rag.extractor.unstructured.unstructured_markdown_extractor import (
+    UnstructuredMarkdownExtractor,
+)
+from core.rag.extractor.unstructured.unstructured_msg_extractor import (
+    UnstructuredMsgExtractor,
+)
+from core.rag.extractor.unstructured.unstructured_ppt_extractor import (
+    UnstructuredPPTExtractor,
+)
+from core.rag.extractor.unstructured.unstructured_pptx_extractor import (
+    UnstructuredPPTXExtractor,
+)
+from core.rag.extractor.unstructured.unstructured_xml_extractor import (
+    UnstructuredXmlExtractor,
+)
 from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document

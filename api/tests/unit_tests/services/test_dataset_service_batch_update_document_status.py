@@ -2,7 +2,7 @@ import datetime
 from typing import Optional
 
 # Mock redis_client before importing dataset_service
-from unittest.mock import Mock, call, patch
+from unittest.mock import call, Mock, patch
 
 import pytest
 

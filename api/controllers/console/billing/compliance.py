@@ -1,6 +1,6 @@
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 
 from libs.helper import extract_remote_ip
 from libs.login import login_required

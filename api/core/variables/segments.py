@@ -3,7 +3,7 @@ import sys
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Any, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, field_validator, Tag
 
 from core.file import File
 

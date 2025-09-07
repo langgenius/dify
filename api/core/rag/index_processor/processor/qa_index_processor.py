@@ -7,7 +7,7 @@ import uuid
 from typing import Optional
 
 import pandas as pd
-from flask import Flask, current_app
+from flask import current_app, Flask
 from werkzeug.datastructures import FileStorage
 
 from core.llm_generator.llm_generator import LLMGenerator

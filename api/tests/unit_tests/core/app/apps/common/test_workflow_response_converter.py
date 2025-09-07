@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from core.file import File, FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 from core.variables.segments import ArrayFileSegment, FileSegment
 
 

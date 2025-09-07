@@ -10,7 +10,9 @@ from uuid import uuid4
 
 import pytest
 
-from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
+from core.repositories.celery_workflow_node_execution_repository import (
+    CeleryWorkflowNodeExecutionRepository,
+)
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,

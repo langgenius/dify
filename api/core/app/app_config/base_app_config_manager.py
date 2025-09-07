@@ -3,14 +3,24 @@ from typing import Any
 
 from core.app.app_config.entities import AppAdditionalFeatures
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.app_config.features.more_like_this.manager import MoreLikeThisConfigManager
-from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
-from core.app.app_config.features.retrieval_resource.manager import RetrievalResourceConfigManager
-from core.app.app_config.features.speech_to_text.manager import SpeechToTextConfigManager
+from core.app.app_config.features.more_like_this.manager import (
+    MoreLikeThisConfigManager,
+)
+from core.app.app_config.features.opening_statement.manager import (
+    OpeningStatementConfigManager,
+)
+from core.app.app_config.features.retrieval_resource.manager import (
+    RetrievalResourceConfigManager,
+)
+from core.app.app_config.features.speech_to_text.manager import (
+    SpeechToTextConfigManager,
+)
 from core.app.app_config.features.suggested_questions_after_answer.manager import (
     SuggestedQuestionsAfterAnswerConfigManager,
 )
-from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
+from core.app.app_config.features.text_to_speech.manager import (
+    TextToSpeechConfigManager,
+)
 from models.model import AppMode
 
 

@@ -15,7 +15,11 @@ from core.variables import Segment, StringSegment, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.variables.types import SegmentType
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
@@ -25,7 +29,7 @@ from factories.variable_factory import build_segment, segment_to_variable
 from libs.datetime_utils import naive_utc_now
 from models import App, Conversation
 from models.enums import DraftVariableType
-from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
+from models.workflow import is_system_variable_editable, Workflow, WorkflowDraftVariable
 from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)

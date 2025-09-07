@@ -4,7 +4,10 @@ from typing import Optional
 
 from flask_login import current_user
 
-from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.built_in_field import (
+    BuiltInField,
+    MetadataDataSource,
+)
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now

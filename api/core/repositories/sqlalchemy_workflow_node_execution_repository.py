@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from typing import Optional, Union
 
 import psycopg2.errors
-from sqlalchemy import UnaryExpression, asc, desc, select
+from sqlalchemy import asc, desc, select, UnaryExpression
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -21,7 +21,10 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import (
+    OrderConfig,
+    WorkflowNodeExecutionRepository,
+)
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
 from libs.uuid_utils import uuidv7

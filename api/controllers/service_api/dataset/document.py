@@ -21,9 +21,9 @@ from controllers.service_api.dataset.error import (
     InvalidMetadataError,
 )
 from controllers.service_api.wraps import (
-    DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
+    DatasetApiResource,
 )
 from core.errors.error import ProviderTokenNotInitError
 from extensions.ext_database import db

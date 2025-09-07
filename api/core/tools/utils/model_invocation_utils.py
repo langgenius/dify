@@ -5,7 +5,7 @@ Therefore, a model manager is needed to list/invoke/validate models.
 """
 
 import json
-from typing import Optional, cast
+from typing import cast, Optional
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
@@ -18,7 +18,9 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.__base.large_language_model import (
+    LargeLanguageModel,
+)
 from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from models.tools import ToolModelInvoke

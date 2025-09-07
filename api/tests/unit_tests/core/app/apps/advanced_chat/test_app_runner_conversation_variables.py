@@ -6,7 +6,10 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+)
 from core.variables import SegmentType
 from factories import variable_factory
 from models import ConversationVariable, Workflow

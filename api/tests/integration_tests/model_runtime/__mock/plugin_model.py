@@ -8,8 +8,18 @@ from json import dumps
 from typing import Optional
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
+from core.model_runtime.entities.llm_entities import (
+    LLMMode,
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMUsage,
+)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+)
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
@@ -17,7 +27,10 @@ from core.model_runtime.entities.model_entities import (
     ModelPropertyKey,
     ModelType,
 )
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from core.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    ProviderEntity,
+)
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl.model import PluginModelClient
 

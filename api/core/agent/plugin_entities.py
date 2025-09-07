@@ -1,14 +1,14 @@
 import enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, ValidationInfo
 
 from core.entities.parameter_entities import CommonParameterType
 from core.plugin.entities.parameters import (
-    PluginParameter,
     as_normal_type,
     cast_parameter_value,
     init_frontend_parameter,
+    PluginParameter,
 )
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (

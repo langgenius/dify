@@ -2,10 +2,10 @@ import uuid
 from typing import cast
 
 from flask_login import current_user
-from flask_restx import Resource, inputs, marshal, marshal_with, reqparse
+from flask_restx import inputs, marshal, marshal_with, reqparse, Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, Forbidden, abort
+from werkzeug.exceptions import abort, BadRequest, Forbidden
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -17,7 +17,11 @@ from controllers.console.wraps import (
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from extensions.ext_database import db
-from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
+from fields.app_fields import (
+    app_detail_fields,
+    app_detail_fields_with_site,
+    app_pagination_fields,
+)
 from libs.login import login_required
 from models import Account, App
 from services.app_dsl_service import AppDslService, ImportMode

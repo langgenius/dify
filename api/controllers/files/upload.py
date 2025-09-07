@@ -1,7 +1,7 @@
 from mimetypes import guess_extension
 from typing import Optional
 
-from flask_restx import Resource, reqparse
+from flask_restx import reqparse, Resource
 from flask_restx.api import HTTPStatus
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden

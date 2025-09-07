@@ -2,7 +2,7 @@ from urllib import parse
 
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, abort, marshal_with, reqparse
+from flask_restx import abort, marshal_with, reqparse, Resource
 
 import services
 from configs import dify_config
@@ -16,7 +16,10 @@ from controllers.console.auth.error import (
     NotOwnerError,
     OwnerTransferLimitError,
 )
-from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
+from controllers.console.error import (
+    EmailSendIpLimitError,
+    WorkspaceMembersLimitExceeded,
+)
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,

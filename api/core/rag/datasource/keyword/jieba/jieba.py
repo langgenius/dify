@@ -6,7 +6,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from configs import dify_config
-from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
+from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import (
+    JiebaKeywordTableHandler,
+)
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from extensions.ext_database import db

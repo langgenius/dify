@@ -1,14 +1,18 @@
 import json
 import logging
 
-from flask_restx import Api, Namespace, Resource, fields, reqparse
+from flask_restx import Api, fields, Namespace, reqparse, Resource
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import (
+    FetchUserArg,
+    validate_app_token,
+    WhereisUserArg,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import build_message_file_model
 from fields.message_fields import build_agent_thought_model, build_feedback_model
