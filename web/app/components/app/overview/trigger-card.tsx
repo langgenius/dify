@@ -2,7 +2,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import { Schedule, TriggerAll, WebhookLine } from '@/app/components/base/icons/src/vender/workflow'
+import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import Switch from '@/app/components/base/switch'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
@@ -13,14 +13,18 @@ import {
   useInvalidateAppTriggers,
   useUpdateTriggerStatus,
 } from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { canFindTool } from '@/utils'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
 }
 
-const getTriggerIcon = (trigger: AppTrigger) => {
-  const { trigger_type, icon, status } = trigger
+const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
+  const { trigger_type, status, provider_name } = trigger
 
   // Status dot styling based on trigger status
   const getStatusDot = () => {
@@ -36,45 +40,43 @@ const getTriggerIcon = (trigger: AppTrigger) => {
     }
   }
 
-  const baseIconClasses = 'relative flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-white/2 shadow-xs'
-
+  // Get BlockEnum type from trigger_type
+  let blockType: BlockEnum
   switch (trigger_type) {
     case 'trigger-webhook':
-      return (
-        <div className={`${baseIconClasses} bg-util-colors-blue-blue-500 text-white`}>
-          <WebhookLine className="h-4 w-4" />
-          {getStatusDot()}
-        </div>
-      )
+      blockType = BlockEnum.TriggerWebhook
+      break
     case 'trigger-schedule':
-      return (
-        <div className={`${baseIconClasses} bg-util-colors-violet-violet-500 text-white`}>
-          <Schedule className="h-4 w-4" />
-          {getStatusDot()}
-        </div>
-      )
+      blockType = BlockEnum.TriggerSchedule
+      break
     case 'trigger-plugin':
-      return (
-        <div className={`${baseIconClasses} bg-util-colors-white-white-500`}>
-          {icon ? (
-            <div
-              className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
-              style={{ backgroundImage: `url(${icon})` }}
-            />
-          ) : (
-            <WebhookLine className="h-4 w-4 text-text-secondary" />
-          )}
-          {getStatusDot()}
-        </div>
-      )
+      blockType = BlockEnum.TriggerPlugin
+      break
     default:
-      return (
-        <div className={`${baseIconClasses} bg-util-colors-blue-blue-500 text-white`}>
-          <WebhookLine className="h-4 w-4" />
-          {getStatusDot()}
-        </div>
-      )
+      blockType = BlockEnum.TriggerWebhook
   }
+
+  let toolIcon: string | undefined
+  if (trigger_type === 'trigger-plugin' && provider_name) {
+    const targetTools = triggerPlugins || []
+    const foundTool = targetTools.find(toolWithProvider =>
+      canFindTool(toolWithProvider.id, provider_name)
+      || toolWithProvider.id.includes(provider_name)
+      || toolWithProvider.name === provider_name,
+    )
+    toolIcon = foundTool?.icon
+  }
+
+  return (
+    <div className="relative">
+      <BlockIcon
+        type={blockType}
+        size="md"
+        toolIcon={toolIcon}
+      />
+      {getStatusDot()}
+    </div>
+  )
 }
 
 function TriggerCard({ appInfo }: ITriggerCardProps) {
@@ -84,6 +86,7 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
   const { data: triggersResponse, isLoading } = useAppTriggers(appId)
   const { mutateAsync: updateTriggerStatus } = useUpdateTriggerStatus()
   const invalidateAppTriggers = useInvalidateAppTriggers()
+  const { data: triggerPlugins } = useAllTriggerPlugins()
 
   // Zustand store for trigger status sync
   const { setTriggerStatus, setTriggerStatuses } = useTriggerStatusStore()
@@ -167,24 +170,28 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
           <div className="flex flex-col gap-2 p-3">
             {triggers.map(trigger => (
               <div key={trigger.id} className="flex w-full items-center gap-3">
-                <div className="flex grow items-center gap-2">
-                  {getTriggerIcon(trigger)}
-                  <div className="system-sm-medium text-text-secondary">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <div className="shrink-0">
+                    {getTriggerIcon(trigger, triggerPlugins || [])}
+                  </div>
+                  <div className="system-sm-medium min-w-0 flex-1 truncate text-text-secondary">
                     {trigger.title}
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
+                <div className="flex shrink-0 items-center">
+                  <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}>
                     {trigger.status === 'enabled'
                       ? t('appOverview.overview.status.running')
                       : t('appOverview.overview.status.disable')}
                   </div>
                 </div>
-                <Switch
-                  defaultValue={trigger.status === 'enabled'}
-                  onChange={enabled => onToggleTrigger(trigger, enabled)}
-                  disabled={!isCurrentWorkspaceEditor}
-                />
+                <div className="shrink-0">
+                  <Switch
+                    defaultValue={trigger.status === 'enabled'}
+                    onChange={enabled => onToggleTrigger(trigger, enabled)}
+                    disabled={!isCurrentWorkspaceEditor}
+                  />
+                </div>
               </div>
             ))}
           </div>
