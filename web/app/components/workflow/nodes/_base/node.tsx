@@ -49,6 +49,8 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { ToolTypeEnum } from '../../block-selector/types'
+import { useTriggerStatusStore } from '../../store/trigger-status'
+import { isTriggerNode } from '../../types'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -64,6 +66,11 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { t } = useTranslation()
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
+
+  // Subscribe to trigger status for this specific node ID (reactive)
+  const triggerStatus = useTriggerStatusStore(state =>
+    isTriggerNode(data.type) ? (state.triggerStatuses[id] || 'disabled') : 'enabled',
+  )
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
@@ -338,9 +345,14 @@ const BaseNode: FC<BaseNodeProps> = ({
   const isEntryNode = TRIGGER_NODE_TYPES.includes(data.type as any) || data.type === BlockEnum.Start
   const isStartNode = data.type === BlockEnum.Start
 
+  // Determine node status dynamically
+  const nodeStatus = isStartNode
+    ? 'enabled' // Start nodes are always enabled (green)
+    : triggerStatus // Use reactive trigger status
+
   return isEntryNode ? (
     <EntryNodeContainer
-      status="enabled"
+      status={nodeStatus}
       showIndicator={!isStartNode}
       nodeType={isStartNode ? 'start' : 'trigger'}
     >

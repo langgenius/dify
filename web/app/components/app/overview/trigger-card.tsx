@@ -13,6 +13,7 @@ import {
   useInvalidateAppTriggers,
   useUpdateTriggerStatus,
 } from '@/service/use-tools'
+import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 
 export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
@@ -84,11 +85,32 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
   const { mutateAsync: updateTriggerStatus } = useUpdateTriggerStatus()
   const invalidateAppTriggers = useInvalidateAppTriggers()
 
+  // Zustand store for trigger status sync
+  const { setTriggerStatus, setTriggerStatuses } = useTriggerStatusStore()
+
   const triggers = triggersResponse?.data || []
   const triggerCount = triggers.length
 
+  // Sync trigger statuses to Zustand store when data loads initially or after API calls
+  React.useEffect(() => {
+    if (triggers.length > 0) {
+      const statusMap = triggers.reduce((acc, trigger) => {
+        // Map API status to EntryNodeStatus: only 'enabled' shows green, others show gray
+        acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
+        return acc
+      }, {} as Record<string, 'enabled' | 'disabled'>)
+
+      // Only update if there are actual changes to prevent overriding optimistic updates
+      setTriggerStatuses(statusMap)
+    }
+  }, [triggers, setTriggerStatuses])
+
   const onToggleTrigger = async (trigger: AppTrigger, enabled: boolean) => {
     try {
+      // Immediately update Zustand store for real-time UI sync
+      const newStatus = enabled ? 'enabled' : 'disabled'
+      setTriggerStatus(trigger.node_id, newStatus)
+
       await updateTriggerStatus({
         appId,
         triggerId: trigger.id,
@@ -97,6 +119,9 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
       invalidateAppTriggers(appId)
     }
     catch (error) {
+      // Rollback Zustand store state on error
+      const rollbackStatus = enabled ? 'disabled' : 'enabled'
+      setTriggerStatus(trigger.node_id, rollbackStatus)
       console.error('Failed to update trigger status:', error)
     }
   }
