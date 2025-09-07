@@ -275,6 +275,13 @@ const BasePanel: FC<BasePanelProps> = ({
     return data.type === BlockEnum.TriggerPlugin ? triggerSubscriptions.length > 0 : true
   }, [data.type, triggerSubscriptions.length])
 
+  const shouldShowAuthSelector = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin
+           && !isTriggerAuthenticated
+           && supportedAuthMethods.length > 0
+           && !!currentTriggerProvider
+  }, [data.type, isTriggerAuthenticated, supportedAuthMethods.length, currentTriggerProvider])
+
   // Unified check for any node that needs authentication UI
   const needsAuth = useMemo(() => {
     return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
@@ -458,9 +465,9 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            data.type === BlockEnum.TriggerPlugin && !isTriggerAuthenticated && supportedAuthMethods.length > 0 && currentTriggerProvider && (
+            shouldShowAuthSelector && (
               <AuthMethodSelector
-                provider={currentTriggerProvider}
+                provider={currentTriggerProvider!}
                 supportedMethods={supportedAuthMethods}
               />
             )

@@ -15,6 +15,7 @@ import {
   useTriggerSubscriptions,
 } from '@/service/use-triggers'
 import { useToastContext } from '@/app/components/base/toast'
+import { openOAuthPopup } from '@/hooks/use-oauth'
 
 type NodeAuthProps = {
   data: Node['data']
@@ -93,7 +94,6 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
     try {
       const response = await initiateTriggerOAuth.mutateAsync(provider)
       if (response.authorization_url) {
-        const { openOAuthPopup } = await import('@/hooks/use-oauth')
         openOAuthPopup(response.authorization_url, (callbackData) => {
           invalidateSubscriptions(provider)
 
