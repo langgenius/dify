@@ -268,7 +268,7 @@ class AppTriggersApi(Resource):
                         AppTrigger.tenant_id == current_user.current_tenant_id,
                         AppTrigger.app_id == app_model.id,
                     )
-                    .order_by(AppTrigger.created_at.desc())
+                    .order_by(AppTrigger.created_at.desc(), AppTrigger.id.desc())
                 )
                 .scalars()
                 .all()
