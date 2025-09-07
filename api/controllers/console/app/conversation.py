@@ -24,6 +24,8 @@ from libs.helper import DatetimeString
 from libs.login import login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
+from services.conversation_service import ConversationService
+from services.errors.conversation import ConversationNotExistsError
 
 
 class CompletionConversationApi(Resource):
@@ -46,7 +48,9 @@ class CompletionConversationApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion")
+        query = db.select(Conversation).where(
+            Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
+        )
 
         if args["keyword"]:
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
@@ -113,23 +117,16 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, app_model, conversation_id):
         if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
-        conversation = (
-            db.session.query(Conversation)
-            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-            .first()
-        )
-
-        if not conversation:
+        try:
+            ConversationService.delete(app_model, conversation_id, current_user)
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-        conversation.is_deleted = True
-        db.session.commit()
 
         return {"result": "success"}, 204
 
@@ -171,7 +168,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id)
+        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args["keyword"]:
             keyword_filter = f"%{args['keyword']}%"
@@ -284,17 +281,10 @@ class ChatConversationDetailApi(Resource):
             raise Forbidden()
         conversation_id = str(conversation_id)
 
-        conversation = (
-            db.session.query(Conversation)
-            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-            .first()
-        )
-
-        if not conversation:
+        try:
+            ConversationService.delete(app_model, conversation_id, current_user)
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-        conversation.is_deleted = True
-        db.session.commit()
 
         return {"result": "success"}, 204
 

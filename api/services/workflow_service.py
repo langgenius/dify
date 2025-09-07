@@ -5,7 +5,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import VariableEntityType
@@ -87,20 +87,21 @@ class WorkflowService:
         )
 
     def is_workflow_exist(self, app_model: App) -> bool:
-        return (
-            db.session.query(Workflow)
-            .where(
+        stmt = select(
+            exists().where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
-            .count()
-        ) > 0
+        )
+        return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App) -> Optional[Workflow]:
+    def get_draft_workflow(self, app_model: App, workflow_id: Optional[str] = None) -> Optional[Workflow]:
         """
         Get draft workflow
         """
+        if workflow_id:
+            return self.get_published_workflow_by_id(app_model, workflow_id)
         # fetch draft workflow by app_model
         workflow = (
             db.session.query(Workflow)
@@ -116,7 +117,9 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
-        # fetch published workflow by workflow_id
+        """
+        fetch published workflow by workflow_id
+        """
         workflow = (
             db.session.query(Workflow)
             .where(
@@ -588,7 +591,7 @@ class WorkflowService:
 
         return new_app
 
-    def validate_features_structure(self, app_model: App, features: dict) -> dict:
+    def validate_features_structure(self, app_model: App, features: dict):
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             return AdvancedChatAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id, config=features, only_structure_validate=True

@@ -4,7 +4,7 @@ from libs.helper import TimestampField
 
 
 class HiddenAPIKey(fields.Raw):
-    def output(self, key, obj):
+    def output(self, key, obj, **kwargs):
         api_key = obj.api_key
         # If the length of the api_key is less than 8 characters, show the first and last characters
         if len(api_key) <= 8:

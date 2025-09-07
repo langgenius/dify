@@ -31,6 +31,9 @@ from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
+logger = logging.getLogger(__name__)
+
+
 provider_fields = {
     "provider_name": fields.String,
     "provider_type": fields.String,
@@ -120,7 +123,7 @@ class TenantApi(Resource):
     @marshal_with(tenant_fields)
     def get(self):
         if request.path == "/info":
-            logging.warning("Deprecated URL /info was used.")
+            logger.warning("Deprecated URL /info was used.")
 
         tenant = current_user.current_tenant
 

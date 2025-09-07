@@ -70,7 +70,7 @@ from .app import (
 )
 
 # Import auth controllers
-from .auth import activate, data_source_bearer_auth, data_source_oauth, forgot_password, login, oauth
+from .auth import activate, data_source_bearer_auth, data_source_oauth, forgot_password, login, oauth, oauth_server
 
 # Import billing controllers
 from .billing import billing, compliance
@@ -84,7 +84,6 @@ from .datasets import (
     external,
     hit_testing,
     metadata,
-    upload_file,
     website,
 )
 

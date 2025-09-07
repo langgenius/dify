@@ -64,7 +64,7 @@ class BasePluginClient:
             response = requests.request(
                 method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
             )
-        except requests.exceptions.ConnectionError:
+        except requests.ConnectionError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
@@ -141,11 +141,11 @@ class BasePluginClient:
             response.raise_for_status()
         except HTTPError as e:
             msg = f"Failed to request plugin daemon, status: {e.response.status_code}, url: {path}"
-            logging.exception(msg)
+            logger.exception(msg)
             raise e
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
-            logging.exception(msg)
+            logger.exception(msg)
             raise ValueError(msg) from e
 
         try:
@@ -158,7 +158,7 @@ class BasePluginClient:
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
                 f" url: {path}"
             )
-            logging.exception(msg)
+            logger.exception(msg)
             raise ValueError(msg)
 
         if rep.code != 0:

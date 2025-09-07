@@ -97,7 +97,8 @@ const ExportImage: FC = () => {
           style: {
             width: `${contentWidth}px`,
             height: `${contentHeight}px`,
-            transform: `translate(${padding - nodesBounds.x}px, ${padding - nodesBounds.y}px) scale(${zoom})`,
+            transform: `translate(${padding - nodesBounds.x}px, ${padding - nodesBounds.y}px)`,
+            transformOrigin: 'top left',
           },
         }
 
@@ -122,7 +123,7 @@ const ExportImage: FC = () => {
           reactFlow.setViewport(currentViewport)
         }, 500)
       }
- else {
+      else {
         // Current viewport export (existing functionality)
         switch (type) {
           case 'png':
@@ -152,7 +153,7 @@ const ExportImage: FC = () => {
         link.click()
         document.body.removeChild(link)
       }
- else {
+      else {
         // For current view, just download
         const link = document.createElement('a')
         link.href = dataUrl

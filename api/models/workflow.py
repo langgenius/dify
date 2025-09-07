@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, orm
+from sqlalchemy import DateTime, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -38,7 +38,7 @@ from .engine import db
 from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class WorkflowType(Enum):
@@ -282,14 +282,14 @@ class Workflow(Base):
         return self._features
 
     @features.setter
-    def features(self, value: str) -> None:
+    def features(self, value: str):
         self._features = value
 
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
 
-    def user_input_form(self, to_old_structure: bool = False) -> list:
+    def user_input_form(self, to_old_structure: bool = False):
         # get start node from graph
         if not self.graph:
             return []
@@ -336,12 +336,13 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return (
-            db.session.query(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
-            .count()
-            > 0
+        stmt = select(
+            exists().where(
+                WorkflowToolProvider.tenant_id == self.tenant_id,
+                WorkflowToolProvider.app_id == self.app_id,
+            )
         )
+        return db.session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
@@ -438,7 +439,7 @@ class Workflow(Base):
         return results
 
     @conversation_variables.setter
-    def conversation_variables(self, value: Sequence[Variable]) -> None:
+    def conversation_variables(self, value: Sequence[Variable]):
         self._conversation_variables = json.dumps(
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
@@ -834,6 +835,7 @@ class WorkflowAppLog(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
         sa.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
+        sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
@@ -890,7 +892,7 @@ class ConversationVariable(Base):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str) -> None:
+    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str):
         self.id = id
         self.app_id = app_id
         self.conversation_id = conversation_id
@@ -921,7 +923,7 @@ def _naive_utc_datetime():
 
 class WorkflowDraftVariable(Base):
     """`WorkflowDraftVariable` record variables and outputs generated during
-    debugging worfklow or chatflow.
+    debugging workflow or chatflow.
 
     IMPORTANT: This model maintains multiple invariant rules that must be preserved.
     Do not instantiate this class directly with the constructor.
@@ -1055,7 +1057,7 @@ class WorkflowDraftVariable(Base):
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
         if not isinstance(selector, list):
-            _logger.error(
+            logger.error(
                 "invalid selector loaded from database, type=%s, value=%s",
                 type(selector),
                 self.selector,
@@ -1071,7 +1073,7 @@ class WorkflowDraftVariable(Base):
         return self.build_segment_with_type(self.value_type, value)
 
     @staticmethod
-    def rebuild_file_types(value: Any) -> Any:
+    def rebuild_file_types(value: Any):
         # NOTE(QuantumGhost): Temporary workaround for structured data handling.
         # By this point, `output` has been converted to dict by
         # `WorkflowEntry.handle_special_values`, so we need to

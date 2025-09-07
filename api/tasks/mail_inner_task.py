@@ -3,11 +3,13 @@ import time
 from collections.abc import Mapping
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from flask import render_template_string
 
 from extensions.ext_mail import mail
 from libs.email_i18n import get_email_i18n_service
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="mail")
@@ -15,7 +17,7 @@ def send_inner_email_task(to: list[str], subject: str, body: str, substitutions:
     if not mail.is_inited():
         return
 
-    logging.info(click.style(f"Start enterprise mail to {to} with subject {subject}", fg="green"))
+    logger.info(click.style(f"Start enterprise mail to {to} with subject {subject}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -25,6 +27,6 @@ def send_inner_email_task(to: list[str], subject: str, body: str, substitutions:
         email_service.send_raw_email(to=to, subject=subject, html_content=html_content)
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"Send enterprise mail to {to} succeeded: latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Send enterprise mail to {to} succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("Send enterprise mail to %s failed", to)
+        logger.exception("Send enterprise mail to %s failed", to)
