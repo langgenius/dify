@@ -49,6 +49,8 @@ import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workfl
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
+import { useAllTriggerPlugins, useTriggerSubscriptions } from '@/service/use-triggers'
+import AuthMethodSelector from '@/app/components/workflow/nodes/trigger-plugin/components/auth-method-selector'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import BeforeRunForm from '../before-run-form'
@@ -236,11 +238,48 @@ const BasePanel: FC<BasePanelProps> = ({
     return buildInTools.find(item => canFindTool(item.id, data.provider_id))
   }, [buildInTools, data.provider_id])
 
+  // For trigger plugins, check if they have existing subscriptions (authenticated)
+  const triggerProvider = useMemo(() => {
+    if (data.type === BlockEnum.TriggerPlugin) {
+      if (data.provider_id && data.provider_name)
+        return `${data.provider_id}/${data.provider_name}`
+      return data.provider_id || ''
+    }
+    return ''
+  }, [data.type, data.provider_id, data.provider_name])
+
+  const { data: triggerSubscriptions = [] } = useTriggerSubscriptions(
+    triggerProvider,
+    data.type === BlockEnum.TriggerPlugin && !!triggerProvider,
+  )
+
+  const { data: triggerProviders = [] } = useAllTriggerPlugins()
+
+  const currentTriggerProvider = useMemo(() => {
+    if (data.type !== BlockEnum.TriggerPlugin || !data.provider_id || !data.provider_name)
+      return undefined
+    return triggerProviders.find(p => p.plugin_id === data.provider_id && p.name === data.provider_name)
+  }, [data.type, data.provider_id, data.provider_name, triggerProviders])
+
+  const supportedAuthMethods = useMemo(() => {
+    if (!currentTriggerProvider) return []
+    const methods = []
+    if (currentTriggerProvider.oauth_client_schema && currentTriggerProvider.oauth_client_schema.length > 0)
+      methods.push('oauth')
+    if (currentTriggerProvider.credentials_schema && currentTriggerProvider.credentials_schema.length > 0)
+      methods.push('api_key')
+    return methods
+  }, [currentTriggerProvider])
+
+  const isTriggerAuthenticated = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin ? triggerSubscriptions.length > 0 : true
+  }, [data.type, triggerSubscriptions.length])
+
   // Unified check for any node that needs authentication UI
   const needsAuth = useMemo(() => {
     return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
-           || (data.type === BlockEnum.TriggerPlugin)
-  }, [data.type, currCollection?.allow_delete])
+           || (data.type === BlockEnum.TriggerPlugin && isTriggerAuthenticated)
+  }, [data.type, currCollection?.allow_delete, isTriggerAuthenticated])
 
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
@@ -419,7 +458,15 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            !needsAuth && (
+            data.type === BlockEnum.TriggerPlugin && !isTriggerAuthenticated && supportedAuthMethods.length > 0 && currentTriggerProvider && (
+              <AuthMethodSelector
+                provider={currentTriggerProvider}
+                supportedMethods={supportedAuthMethods}
+              />
+            )
+          }
+          {
+            !needsAuth && data.type !== BlockEnum.TriggerPlugin && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}

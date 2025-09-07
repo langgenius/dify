@@ -103,6 +103,21 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   const showAuthRequired = !isAuthenticated && !!currentProvider
 
+  // Check supported authentication methods
+  const supportedAuthMethods = useMemo(() => {
+    if (!currentProvider) return []
+
+    const methods = []
+
+    if (currentProvider.oauth_client_schema && currentProvider.oauth_client_schema.length > 0)
+      methods.push('oauth')
+
+    if (currentProvider.credentials_schema && currentProvider.credentials_schema.length > 0)
+      methods.push('api_key')
+
+    return methods
+  }, [currentProvider])
+
   return {
     readOnly,
     inputs,
@@ -116,6 +131,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     hasObjectOutput,
     isAuthenticated,
     showAuthRequired,
+    supportedAuthMethods,
   }
 }
 
