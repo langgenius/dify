@@ -54,6 +54,7 @@ const WorkflowAppWithAdditionalContext = () => {
   // Sync trigger statuses to store when data loads
   useEffect(() => {
     if (triggersResponse?.data) {
+      // Map API status to EntryNodeStatus: 'enabled' stays 'enabled', all others become 'disabled'
       const statusMap = triggersResponse.data.reduce((acc, trigger) => {
         acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
         return acc
