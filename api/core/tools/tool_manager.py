@@ -311,7 +311,7 @@ class ToolManager:
                     tool_invoke_from=tool_invoke_from,
                 )
             )
-        elif provider_type == ToolProviderType.WORKFLOW:
+        elif provider_type in (ToolProviderType.WORKFLOW, ToolProviderType.STREAM_WORKFLOW):
             workflow_provider_stmt = select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
@@ -324,14 +324,19 @@ class ToolManager:
             controller_tools: list[WorkflowTool] = controller.get_tools(tenant_id=workflow_provider.tenant_id)
             if controller_tools is None or len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
-
-            return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+            variables = controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
                     credentials={},
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
                 )
+            )
+            if provider_type == ToolProviderType.STREAM_WORKFLOW:
+                variables.streaming = True
+            return cast(
+                WorkflowTool,
+                variables,
             )
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
@@ -949,7 +954,7 @@ class ToolManager:
             return cls.generate_builtin_tool_icon_url(provider_id)
         elif provider_type == ToolProviderType.API:
             return cls.generate_api_tool_icon_url(tenant_id, provider_id)
-        elif provider_type == ToolProviderType.WORKFLOW:
+        elif provider_type in (ToolProviderType.WORKFLOW, ToolProviderType.STREAM_WORKFLOW):
             return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.PLUGIN:
             provider = ToolManager.get_plugin_provider(provider_id, tenant_id)

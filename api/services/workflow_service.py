@@ -681,6 +681,31 @@ class WorkflowService:
         session.delete(workflow)
         return True
 
+    def update_draft_workflow_node(self, draft_workflow: Workflow, node_id: str, provider_type: str) -> None:
+        """
+        Update a node provider_type in the draft workflow
+
+        :param draft_workflow: Draft workflow instance
+        :param node_id: Node ID to update
+        :param provider_type: New provider type
+        """
+        # Parse the graph
+        graph_dict = draft_workflow.graph_dict
+
+        # Find and update the node provider_type
+        nodes = graph_dict.get("nodes", [])
+        node_to_update = next((n for n in nodes if n.get("id") == node_id), None)
+        if not node_to_update:
+            raise ValueError(f"Node with ID {node_id} not found in workflow")
+        # The controller has already verified this is a tool node.
+        node_to_update.get("data", {})["provider_type"] = provider_type
+
+        # Update the workflow in database
+        draft_workflow.graph = json.dumps(graph_dict)
+        draft_workflow.updated_at = naive_utc_now()
+
+        db.session.commit()
+
 
 def _setup_variable_pool(
     query: str,

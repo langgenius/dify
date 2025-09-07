@@ -692,6 +692,11 @@ const translation = {
       settings: '设置',
       insertPlaceholder1: '键入',
       insertPlaceholder2: '插入变量',
+      streaming: '流式',
+      streamingMode: '已启用流式模式',
+      nonStreamingMode: '未启用流式模式',
+      switchToStream: '切换到流式模式',
+      switchToWorkflow: '切换到工作流模式',
       outputVars: {
         text: '工具生成的内容',
         files: {

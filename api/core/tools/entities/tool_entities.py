@@ -53,6 +53,7 @@ class ToolProviderType(enum.StrEnum):
     APP = "app"
     DATASET_RETRIEVAL = "dataset-retrieval"
     MCP = "mcp"
+    STREAM_WORKFLOW = "stream-workflow"
 
     @classmethod
     def value_of(cls, value: str) -> "ToolProviderType":

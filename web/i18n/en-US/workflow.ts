@@ -692,6 +692,11 @@ const translation = {
       settings: 'Settings',
       insertPlaceholder1: 'Type or press',
       insertPlaceholder2: 'insert variable',
+      streaming: 'Streaming',
+      streamingMode: 'Streaming mode enabled',
+      nonStreamingMode: 'Non-streaming mode',
+      switchToStream: 'Switch to Stream Mode',
+      switchToWorkflow: 'Switch to Workflow Mode',
       outputVars: {
         text: 'tool generated content',
         files: {

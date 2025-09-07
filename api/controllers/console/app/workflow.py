@@ -466,6 +466,56 @@ class DraftWorkflowNodeRunApi(Resource):
         return workflow_node_execution
 
 
+class DraftWorkflowNodeStreamToggleApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App, node_id: str):
+        """
+        Toggle draft workflow node stream mode between WORKFLOW and STREAM_WORKFLOW
+        """
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        workflow_srv = WorkflowService()
+        # fetch draft workflow by app_model
+        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+
+        # Get node config
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        if not node_config:
+            raise ValueError("Node not found")
+
+        node_data = node_config.get("data", {})
+        node_type = node_data.get("type")
+
+        # Only process tool nodes
+        if node_type != "tool":
+            raise ValueError("Only tool nodes can be toggled for stream mode")
+
+        # Check if provider_type is one of our target types
+        provider_type = node_data.get("provider_type")
+        if provider_type not in ("workflow", "stream-workflow"):
+            raise ValueError("Node provider type must be 'workflow' or 'stream-workflow'")
+
+        # Toggle provider_type between 'workflow' and 'stream-workflow'
+        new_provider_type = "stream-workflow" if provider_type == "workflow" else "workflow"
+
+        # Update the node in the draft workflow
+        workflow_srv.update_draft_workflow_node(
+            draft_workflow=draft_workflow, node_id=node_id, provider_type=new_provider_type
+        )
+
+        return {"result": "success", "provider_type": new_provider_type}
+
+
 class PublishedWorkflowApi(Resource):
     @setup_required
     @login_required
@@ -873,4 +923,8 @@ api.add_resource(
 api.add_resource(
     DraftWorkflowNodeLastRunApi,
     "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run",
+)
+api.add_resource(
+    DraftWorkflowNodeStreamToggleApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/stream-toggle",
 )
