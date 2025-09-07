@@ -6,7 +6,7 @@ from typing import cast
 from flask import abort, request
 from flask_restx import Resource, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from configs import dify_config
@@ -486,24 +486,24 @@ class DraftWorkflowNodeStreamToggleApi(Resource):
         # fetch draft workflow by app_model
         draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model)
         if not draft_workflow:
-            raise ValueError("Workflow not initialized")
+            raise NotFound("Workflow not initialized")
 
         # Get node config
         node_config = draft_workflow.get_node_config_by_id(node_id)
         if not node_config:
-            raise ValueError("Node not found")
+            raise NotFound("Node not found")
 
         node_data = node_config.get("data", {})
         node_type = node_data.get("type")
 
         # Only process tool nodes
         if node_type != "tool":
-            raise ValueError("Only tool nodes can be toggled for stream mode")
+            raise BadRequest("Only tool nodes can be toggled for stream mode")
 
         # Check if provider_type is one of our target types
         provider_type = node_data.get("provider_type")
         if provider_type not in ("workflow", "stream-workflow"):
-            raise ValueError("Node provider type must be 'workflow' or 'stream-workflow'")
+            raise BadRequest("Node provider type must be 'workflow' or 'stream-workflow'")
 
         # Toggle provider_type between 'workflow' and 'stream-workflow'
         new_provider_type = "stream-workflow" if provider_type == "workflow" else "workflow"
