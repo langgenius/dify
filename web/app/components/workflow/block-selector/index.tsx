@@ -43,6 +43,7 @@ type NodeSelectorProps = {
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   noBlocks?: boolean
+  isInLoop?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -59,6 +60,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   availableBlocksTypes,
   disabled,
   noBlocks = false,
+  isInLoop = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -163,6 +165,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
+            isInLoop={isInLoop}
           />
         </div>
       </PortalToFollowElemContent>

@@ -64,6 +64,7 @@ const ChangeBlock = ({
       trigger={renderTrigger}
       popupClassName='min-w-[240px]'
       availableBlocksTypes={availableNodes}
+      isInLoop={nodeData.isInLoop}
     />
   )
 }

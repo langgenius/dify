@@ -1,9 +1,8 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
-import type { BlockEnum } from '../types'
+import type { BlockEnum, OnSelectBlock } from '../types'
 import { useTabs } from './hooks'
-import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllTools from './all-tools'
@@ -11,13 +10,14 @@ import cn from '@/utils/classnames'
 
 export type TabsProps = {
   activeTab: TabsEnum
-  onActiveTabChange: (activeTab: TabsEnum) => void
+  onActiveTabChange: (tab: TabsEnum) => void
   searchText: string
   tags: string[]
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
-  filterElem: React.ReactNode
+  filterElem?: React.ReactNode
   noBlocks?: boolean
+  isInLoop?: boolean
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -28,6 +28,7 @@ const Tabs: FC<TabsProps> = ({
   availableBlocksTypes,
   filterElem,
   noBlocks,
+  isInLoop = false,
 }) => {
   const tabs = useTabs()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -67,6 +68,7 @@ const Tabs: FC<TabsProps> = ({
               searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
+              isInLoop={isInLoop}
             />
           </div>
         )

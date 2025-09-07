@@ -61,6 +61,7 @@ const ChangeItem = ({
       trigger={renderTrigger}
       popupClassName='!w-[328px]'
       availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== data.type)}
+      isInLoop={data.isInLoop}
     />
   )
 }

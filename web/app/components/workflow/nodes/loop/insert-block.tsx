@@ -53,6 +53,7 @@ const InsertBlock = ({
         onSelect={handleInsert}
         availableBlocksTypes={availableBlocksTypes}
         triggerClassName={() => 'hover:scale-125 transition-all'}
+        isInLoop={true}
       />
     </div>
   )

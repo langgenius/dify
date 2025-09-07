@@ -21,11 +21,13 @@ type BlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
+  isInLoop?: boolean
 }
 const Blocks = ({
   searchText,
   onSelect,
   availableBlocksTypes = [],
+  isInLoop = false,
 }: BlocksProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
@@ -38,6 +40,9 @@ const Blocks = ({
         if (block.type === BlockEnum.Answer && !isChatMode)
           return false
 
+        if (block.type === BlockEnum.Assigner && !isChatMode && !isInLoop)
+          return false
+
         return block.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.type)
       })
 
@@ -46,7 +51,7 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, isChatMode, searchText, availableBlocksTypes])
+  }, [blocks, isChatMode, searchText, availableBlocksTypes, isInLoop])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: string) => {
