@@ -5,6 +5,7 @@ import type {
 import {
   cloneElement,
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -68,9 +69,12 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { nodesReadOnly } = useNodesReadOnly()
 
   // Subscribe to trigger status for this specific node ID (reactive)
-  const triggerStatus = useTriggerStatusStore(state =>
+  // Use useCallback to optimize selector and prevent unnecessary re-renders
+  const triggerStatusSelector = useCallback((state: any) =>
     isTriggerNode(data.type) ? (state.triggerStatuses[id] || 'disabled') : 'enabled',
+  [id, data.type],
   )
+  const triggerStatus = useTriggerStatusStore(triggerStatusSelector)
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)

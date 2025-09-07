@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { act, render } from '@testing-library/react'
 import { useTriggerStatusStore } from '../store/trigger-status'
 import { isTriggerNode } from '../types'
@@ -261,6 +261,79 @@ describe('Trigger Status Synchronization Integration', () => {
       // Store should still maintain the state
       const store = useTriggerStatusStore.getState()
       expect(store.triggerStatuses['node-1']).toBe('enabled')
+    })
+  })
+
+  describe('Performance Optimization', () => {
+    // Component that uses optimized selector with useCallback
+    const OptimizedTriggerNode: React.FC<{
+      nodeId: string
+      nodeType: string
+    }> = ({ nodeId, nodeType }) => {
+      const triggerStatusSelector = useCallback((state: any) =>
+        mockIsTriggerNode(nodeType) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled',
+      [nodeId, nodeType],
+      )
+      const triggerStatus = useTriggerStatusStore(triggerStatusSelector)
+
+      return (
+        <div data-testid={`optimized-node-${nodeId}`} data-status={triggerStatus}>
+          Status: {triggerStatus}
+        </div>
+      )
+    }
+
+    it('should work correctly with optimized selector using useCallback', () => {
+      mockIsTriggerNode.mockImplementation(nodeType => nodeType === 'trigger-webhook')
+
+      const { getByTestId } = render(
+        <>
+          <OptimizedTriggerNode nodeId="node-1" nodeType="trigger-webhook" />
+          <OptimizedTriggerNode nodeId="node-2" nodeType="start" />
+          <TestTriggerController />
+        </>,
+      )
+
+      // Initial state
+      expect(getByTestId('optimized-node-node-1')).toHaveAttribute('data-status', 'disabled')
+      expect(getByTestId('optimized-node-node-2')).toHaveAttribute('data-status', 'enabled')
+
+      // Update status via controller
+      act(() => {
+        getByTestId('toggle-node-1').click()
+      })
+
+      // Verify optimized component updates correctly
+      expect(getByTestId('optimized-node-node-1')).toHaveAttribute('data-status', 'enabled')
+      expect(getByTestId('optimized-node-node-2')).toHaveAttribute('data-status', 'enabled')
+    })
+
+    it('should handle selector dependency changes correctly', () => {
+      mockIsTriggerNode.mockImplementation(nodeType => nodeType === 'trigger-webhook')
+
+      const TestComponent: React.FC<{ nodeType: string }> = ({ nodeType }) => {
+        const triggerStatusSelector = useCallback((state: any) =>
+          mockIsTriggerNode(nodeType) ? (state.triggerStatuses['test-node'] || 'disabled') : 'enabled',
+        ['test-node', nodeType], // Dependencies should match implementation
+        )
+        const status = useTriggerStatusStore(triggerStatusSelector)
+        return <div data-testid="test-component" data-status={status} />
+      }
+
+      const { getByTestId, rerender } = render(<TestComponent nodeType="trigger-webhook" />)
+
+      // Initial trigger node
+      expect(getByTestId('test-component')).toHaveAttribute('data-status', 'disabled')
+
+      // Set status for the node
+      act(() => {
+        useTriggerStatusStore.getState().setTriggerStatus('test-node', 'enabled')
+      })
+      expect(getByTestId('test-component')).toHaveAttribute('data-status', 'enabled')
+
+      // Change node type to non-trigger - should return 'enabled' regardless of store
+      rerender(<TestComponent nodeType="start" />)
+      expect(getByTestId('test-component')).toHaveAttribute('data-status', 'enabled')
     })
   })
 })
