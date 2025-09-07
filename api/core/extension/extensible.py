@@ -34,7 +34,7 @@ class Extensible:
     tenant_id: str
     config: Optional[dict] = None
 
-    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+    def __init__(self, tenant_id: str, config: Optional[dict] = None):
         self.tenant_id = tenant_id
         self.config = config
 

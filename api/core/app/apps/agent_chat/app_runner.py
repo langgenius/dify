@@ -35,7 +35,7 @@ class AgentChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-    ) -> None:
+    ):
         """
         Run assistant application
         :param application_generate_entity: application generate entity

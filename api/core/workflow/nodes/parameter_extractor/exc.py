@@ -63,7 +63,7 @@ class InvalidValueTypeError(ParameterExtractorNodeError):
         expected_type: SegmentType,
         actual_type: SegmentType | None,
         value: Any,
-    ) -> None:
+    ):
         message = (
             f"Invalid value for parameter {parameter_name}, expected segment type: {expected_type}, "
             f"actual_type: {actual_type}, python_type: {type(value)}, value: {value}"

@@ -8,7 +8,7 @@ from extensions.ext_logging import get_request_id
 class PluginDaemonError(Exception):
     """Base class for all plugin daemon errors."""
 
-    def __init__(self, description: str) -> None:
+    def __init__(self, description: str):
         self.description = description
 
     def __str__(self) -> str:

@@ -47,7 +47,7 @@ class RouteNodeState(BaseModel):
 
     index: int = 1
 
-    def set_finished(self, run_result: NodeRunResult) -> None:
+    def set_finished(self, run_result: NodeRunResult):
         """
         Node finished
 
@@ -94,7 +94,7 @@ class RuntimeRouteState(BaseModel):
         self.node_state_mapping[state.id] = state
         return state
 
-    def add_route(self, source_node_state_id: str, target_node_state_id: str) -> None:
+    def add_route(self, source_node_state_id: str, target_node_state_id: str):
         """
         Add route to the graph state
 
