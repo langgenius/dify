@@ -324,7 +324,7 @@ class ToolManager:
             controller_tools: list[WorkflowTool] = controller.get_tools(tenant_id=workflow_provider.tenant_id)
             if controller_tools is None or len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
-            variables = controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+            variables = controller_tools[0].fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
                     credentials={},
