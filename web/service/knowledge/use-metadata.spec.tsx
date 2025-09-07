@@ -66,7 +66,6 @@ describe('useBatchUpdateDocMetadata', () => {
     // Document list cache invalidation
     expect(invalidateSpy).toHaveBeenNthCalledWith(2, {
       queryKey: [NAME_SPACE, 'document', 'dataset-1'],
-      exact: false,
     })
 
     // useDocumentListKey cache invalidation
@@ -75,7 +74,7 @@ describe('useBatchUpdateDocMetadata', () => {
     })
 
     // Single document cache invalidation
-    expect(invalidateSpy.mock.calls.slice(2)).toEqual(
+    expect(invalidateSpy.mock.calls.slice(3)).toEqual(
       expect.arrayContaining([
         [{ queryKey: [NAME_SPACE, 'document', 'dataset-1', 'doc-1'] }],
         [{ queryKey: [NAME_SPACE, 'document', 'dataset-1', 'doc-2'] }],
