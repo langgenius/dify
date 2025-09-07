@@ -325,11 +325,12 @@ export type AppTrigger = {
   updated_at: string
 }
 
-export const useAppTriggers = (appId: string) => {
+export const useAppTriggers = (appId: string | undefined, options?: any) => {
   return useQuery<{ data: AppTrigger[] }>({
     queryKey: [NAME_SPACE, 'app-triggers', appId],
     queryFn: () => get<{ data: AppTrigger[] }>(`/apps/${appId}/triggers`),
     enabled: !!appId,
+    ...options, // Merge additional options while maintaining backward compatibility
   })
 }
 
