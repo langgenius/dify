@@ -167,11 +167,11 @@ class TokenBufferMemory:
             else:
                 prompt_messages.append(AssistantPromptMessage(content=message.answer))
 
-            if not prompt_messages:
-                return []
+        if not prompt_messages:
+            return []
 
-            # prune the chat message if it exceeds the max token limit
-            curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
+        # prune the chat message if it exceeds the max token limit
+        curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         if curr_message_tokens > max_token_limit:
             while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
