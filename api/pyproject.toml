@@ -89,6 +89,7 @@ dependencies = [
     "sendgrid~=6.12.3",
     "flask-restx~=1.3.0",
     "packaging~=23.2",
+    "isort>=6.0.1",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -220,3 +221,12 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]
+
+[tool.isort]
+profile = "black"                   # Use Black-compatible import formatting
+combine_as_imports = true           # Combine imports from the same module
+force_sort_within_sections = false  # Preserve the original order within sections
+multi_line_output = 3               # Keep the parenthesized multiline style
+include_trailing_comma = true       # Keep the trailing comma inside parentheses
+line_length = 88                    # Default line length per PEP8
+order_by_type = false               # Do not reorder imports by type
