@@ -23,6 +23,8 @@ jobs:
           uv run ruff check --fix-only .
           # Format code
           uv run ruff format .
+      - name: isort-autofix
+        run: uv run --project api isort api/
       - name: ast-grep
         run: |
           uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
