@@ -17,6 +17,7 @@ import Toast from '@/app/components/base/toast'
 import { uploadRemoteFileInfo } from '@/service/common'
 import cn from '@/utils/classnames'
 import { useHover } from 'ahooks'
+import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -180,7 +181,7 @@ const MCPModal = ({
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                innerIcon={appIcon.type === 'emoji' && appIcon.icon === '🔗' ? <Mcp className='h-full w-full text-text-primary-on-surface' /> : undefined}
+                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className='h-full w-full text-text-primary-on-surface' /> : undefined}
                 size='xxl'
                 className='relative cursor-pointer rounded-2xl'
                 coverElement={
