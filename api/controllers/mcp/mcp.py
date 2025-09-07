@@ -99,7 +99,7 @@ class MCPAppApi(Resource):
 
         return mcp_server, app
 
-    def _validate_server_status(self, mcp_server: AppMCPServer) -> None:
+    def _validate_server_status(self, mcp_server: AppMCPServer):
         """Validate MCP server status"""
         if mcp_server.status != AppMCPServerStatus.ACTIVE:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Server is not active")

@@ -82,7 +82,7 @@ class ChromaVector(BaseVector):
     def delete(self):
         self._client.delete_collection(self._collection_name)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         collection = self._client.get_or_create_collection(self._collection_name)

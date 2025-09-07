@@ -17,7 +17,7 @@ class PluginAgentClient(BasePluginClient):
         Fetch agent providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]):
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
                 provider_name = declaration.get("identity", {}).get("name")
@@ -49,7 +49,7 @@ class PluginAgentClient(BasePluginClient):
         """
         agent_provider_id = GenericProviderID(provider)
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]):
             # skip if error occurs
             if json_response.get("data") is None or json_response.get("data", {}).get("declaration") is None:
                 return json_response

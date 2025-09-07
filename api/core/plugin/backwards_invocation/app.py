@@ -2,6 +2,7 @@ from collections.abc import Generator, Mapping
 from typing import Optional, Union
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from controllers.service_api.wraps import create_or_update_end_user_for_user_id
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
@@ -194,11 +195,12 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         get the user by user id
         """
-        stmt = select(EndUser).where(EndUser.id == user_id)
-        user = db.session.scalar(stmt)
-        if not user:
-            stmt = select(Account).where(Account.id == user_id)
-            user = db.session.scalar(stmt)
+        with Session(db.engine, expire_on_commit=False) as session:
+            stmt = select(EndUser).where(EndUser.id == user_id)
+            user = session.scalar(stmt)
+            if not user:
+                stmt = select(Account).where(Account.id == user_id)
+                user = session.scalar(stmt)
 
         if not user:
             raise ValueError("user not found")

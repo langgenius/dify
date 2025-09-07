@@ -17,7 +17,7 @@ from models.model import AppMode
 
 class AdvancedPromptTemplateService:
     @classmethod
-    def get_prompt(cls, args: dict) -> dict:
+    def get_prompt(cls, args: dict):
         app_mode = args["app_mode"]
         model_mode = args["model_mode"]
         model_name = args["model_name"]
@@ -29,7 +29,7 @@ class AdvancedPromptTemplateService:
             return cls.get_common_prompt(app_mode, model_mode, has_context)
 
     @classmethod
-    def get_common_prompt(cls, app_mode: str, model_mode: str, has_context: str) -> dict:
+    def get_common_prompt(cls, app_mode: str, model_mode: str, has_context: str):
         context_prompt = copy.deepcopy(CONTEXT)
 
         if app_mode == AppMode.CHAT:
@@ -52,7 +52,7 @@ class AdvancedPromptTemplateService:
         return {}
 
     @classmethod
-    def get_completion_prompt(cls, prompt_template: dict, has_context: str, context: str) -> dict:
+    def get_completion_prompt(cls, prompt_template: dict, has_context: str, context: str):
         if has_context == "true":
             prompt_template["completion_prompt_config"]["prompt"]["text"] = (
                 context + prompt_template["completion_prompt_config"]["prompt"]["text"]
@@ -61,7 +61,7 @@ class AdvancedPromptTemplateService:
         return prompt_template
 
     @classmethod
-    def get_chat_prompt(cls, prompt_template: dict, has_context: str, context: str) -> dict:
+    def get_chat_prompt(cls, prompt_template: dict, has_context: str, context: str):
         if has_context == "true":
             prompt_template["chat_prompt_config"]["prompt"][0]["text"] = (
                 context + prompt_template["chat_prompt_config"]["prompt"][0]["text"]
@@ -70,7 +70,7 @@ class AdvancedPromptTemplateService:
         return prompt_template
 
     @classmethod
-    def get_baichuan_prompt(cls, app_mode: str, model_mode: str, has_context: str) -> dict:
+    def get_baichuan_prompt(cls, app_mode: str, model_mode: str, has_context: str):
         baichuan_context_prompt = copy.deepcopy(BAICHUAN_CONTEXT)
 
         if app_mode == AppMode.CHAT:

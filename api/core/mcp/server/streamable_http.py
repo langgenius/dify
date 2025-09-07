@@ -258,5 +258,5 @@ def convert_input_form_to_parameters(
             parameters[item.variable]["type"] = "string"
             parameters[item.variable]["enum"] = item.options
         elif item.type == VariableEntityType.NUMBER:
-            parameters[item.variable]["type"] = "float"
+            parameters[item.variable]["type"] = "number"
     return parameters, required
