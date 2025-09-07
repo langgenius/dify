@@ -140,6 +140,10 @@ const translation = {
       export: '导出包含 Secret 值的 DSL',
     },
   },
+  sidebar: {
+    exportWarning: '导出当前已保存版本',
+    exportWarningDesc: '这将导出您工作流的当前已保存版本。如果您在编辑器中有未保存的更改，请先使用工作流画布中的导出选项保存它们。',
+  },
   chatVariable: {
     panelTitle: '会话变量',
     panelDescription: '会话变量用于存储 LLM 需要的上下文信息，如用户偏好、对话历史等。它是可读写的。',
