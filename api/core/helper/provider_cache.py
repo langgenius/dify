@@ -28,11 +28,11 @@ class ProviderCredentialsCache(ABC):
                 return None
         return None
 
-    def set(self, config: dict[str, Any]) -> None:
+    def set(self, config: dict[str, Any]):
         """Cache provider credentials"""
         redis_client.setex(self.cache_key, 86400, json.dumps(config))
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete cached provider credentials"""
         redis_client.delete(self.cache_key)
 
@@ -75,10 +75,10 @@ class NoOpProviderCredentialCache:
         """Get cached provider credentials"""
         return None
 
-    def set(self, config: dict[str, Any]) -> None:
+    def set(self, config: dict[str, Any]):
         """Cache provider credentials"""
         pass
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete cached provider credentials"""
         pass

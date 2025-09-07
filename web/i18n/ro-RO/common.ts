@@ -490,6 +490,7 @@ const translation = {
       providerManagedTip: 'Configurarea curentă este găzduită de furnizor.',
       modelCredentials: 'Credențiale model',
       specifyModelCredentialTip: 'Utilizați un acreditiv de model configurat.',
+      addNewModelCredential: 'Adăugați acreditive noi pentru model',
     },
   },
   dataSource: {
@@ -741,6 +742,12 @@ const translation = {
   avatar: {
     deleteDescription: 'Ești sigur că vrei să îți ștergi fotografia de profil? Contul tău va folosi avatarul inițial implicit.',
     deleteTitle: 'Îndepărtează avatarul',
+  },
+  feedback: {
+    content: 'Conținut de feedback',
+    subtitle: 'Te rog să ne spui ce a mers prost cu acest răspuns',
+    placeholder: 'Vă rugăm să descrieți ce a mers prost sau cum putem îmbunătăți...',
+    title: 'Oferiți feedback',
   },
 }
 

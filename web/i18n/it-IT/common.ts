@@ -772,6 +772,12 @@ const translation = {
     deleteTitle: 'Rimuovi avatar',
     deleteDescription: 'Sei sicuro di voler rimuovere la tua immagine del profilo? Il tuo account utilizzerà l\'avatar iniziale predefinito.',
   },
+  feedback: {
+    title: 'Fornire feedback',
+    content: 'Contenuto del feedback',
+    subtitle: 'Per favore, dicci cosa è andato storto con questa risposta.',
+    placeholder: 'Per favore descrivi cosa è andato storto o come possiamo migliorare...',
+  },
 }
 
 export default translation

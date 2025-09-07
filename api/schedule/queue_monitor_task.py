@@ -63,10 +63,10 @@ def queue_monitor_task():
                                 "alert_time": current_time,
                             },
                         )
-                    except Exception as e:
+                    except Exception:
                         logger.exception(click.style("Exception occurred during sending email", fg="red"))
 
-    except Exception as e:
+    except Exception:
         logger.exception(click.style("Exception occurred during queue monitoring", fg="red"))
     finally:
         if db.session.is_active:

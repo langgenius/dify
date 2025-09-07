@@ -86,11 +86,10 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
     def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:
         if conversation:
-            app_model_config = (
-                db.session.query(AppModelConfig)
-                .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
-                .first()
+            stmt = select(AppModelConfig).where(
+                AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
+            app_model_config = db.session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()

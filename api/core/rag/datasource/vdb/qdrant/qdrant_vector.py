@@ -18,6 +18,7 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
+from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -80,7 +81,7 @@ class QdrantVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.QDRANT
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -291,7 +292,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
@@ -369,7 +370,7 @@ class QdrantVector(BaseVector):
                 continue
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
                     page_content=result.payload.get(Field.CONTENT_KEY.value, ""),
@@ -445,11 +446,8 @@ class QdrantVector(BaseVector):
 class QdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
         if dataset.collection_binding_id:
-            dataset_collection_binding = (
-                db.session.query(DatasetCollectionBinding)
-                .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-                .one_or_none()
-            )
+            stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)
+            dataset_collection_binding = db.session.scalars(stmt).one_or_none()
             if dataset_collection_binding:
                 collection_name = dataset_collection_binding.collection_name
             else:

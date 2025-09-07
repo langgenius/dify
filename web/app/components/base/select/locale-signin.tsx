@@ -36,7 +36,7 @@ export default function LocaleSigninSelect({
           leaveTo="transform opacity-0 scale-95"
         >
           <MenuItems className="absolute right-0 z-10 mt-2 w-[200px] origin-top-right divide-y divide-divider-regular rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg focus:outline-none">
-            <div className="px-1 py-1 ">
+            <div className="max-h-96 overflow-y-auto px-1 py-1 [mask-image:linear-gradient(to_bottom,transparent_0px,black_8px,black_calc(100%-8px),transparent_100%)]">
               {items.map((item) => {
                 return <MenuItem key={item.value}>
                   <button

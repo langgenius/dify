@@ -51,7 +51,7 @@ class Segment(BaseModel):
         """
         return sys.getsizeof(self.value)
 
-    def to_object(self) -> Any:
+    def to_object(self):
         return self.value
 
 

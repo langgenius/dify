@@ -35,7 +35,7 @@ class BasedGenerateTaskPipeline:
         application_generate_entity: AppGenerateEntity,
         queue_manager: AppQueueManager,
         stream: bool,
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self.queue_manager = queue_manager
         self._start_at = time.perf_counter()
@@ -50,7 +50,7 @@ class BasedGenerateTaskPipeline:
         if isinstance(e, InvokeAuthorizationError):
             err = InvokeAuthorizationError("Incorrect API key provided")
         elif isinstance(e, InvokeError | ValueError):
-            err = e
+            err = e  # ty: ignore [invalid-assignment]
         else:
             description = getattr(e, "description", None)
             err = Exception(description if description is not None else str(e))

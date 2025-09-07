@@ -453,7 +453,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # release database connection, because the following new thread operations may take a long time
         db.session.refresh(workflow)
         db.session.refresh(message)
-        db.session.refresh(user)
+        # db.session.refresh(user)
         db.session.close()
 
         # return response or stream generator
@@ -481,7 +481,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         message_id: str,
         context: contextvars.Context,
         variable_loader: VariableLoader,
-    ) -> None:
+    ):
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
