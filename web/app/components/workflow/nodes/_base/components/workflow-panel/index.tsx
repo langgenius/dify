@@ -272,8 +272,12 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [currentTriggerProvider])
 
   const isTriggerAuthenticated = useMemo(() => {
-    return data.type === BlockEnum.TriggerPlugin ? triggerSubscriptions.length > 0 : true
-  }, [data.type, triggerSubscriptions.length])
+    if (data.type !== BlockEnum.TriggerPlugin) return true
+    if (!triggerSubscriptions.length) return false
+
+    const subscription = triggerSubscriptions[0]
+    return subscription.credential_type !== 'unauthorized'
+  }, [data.type, triggerSubscriptions])
 
   const shouldShowAuthSelector = useMemo(() => {
     return data.type === BlockEnum.TriggerPlugin
