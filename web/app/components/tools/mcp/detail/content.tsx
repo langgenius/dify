@@ -10,6 +10,7 @@ import {
   RiLoader2Line,
   RiLoopLeftLine,
 } from '@remixicon/react'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import type { ToolWithProvider } from '../../../workflow/types'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import ActionButton from '@/app/components/base/action-button'
@@ -49,6 +50,10 @@ const MCPDetailContent: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
+
+  const shouldUseMcpIcon = (icon: any) => {
+    return typeof icon === 'object' && icon.content === '🔗'
+  }
 
   const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
@@ -151,7 +156,13 @@ const MCPDetailContent: FC<Props> = ({
       <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3')}>
         <div className='flex'>
           <div className='shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle'>
-            <Icon src={detail.icon} />
+            {shouldUseMcpIcon(detail.icon) ? (
+              <div className='flex h-10 w-10 items-center justify-center rounded-md' style={{ background: (detail.icon as any).background }}>
+                <Mcp className='h-6 w-6 text-text-primary-on-surface' />
+              </div>
+            ) : (
+              <Icon src={detail.icon} />
+            )}
           </div>
           <div className='ml-3 w-0 grow'>
             <div className='flex h-5 items-center'>

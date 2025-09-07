@@ -1,4 +1,5 @@
 import { RiCheckLine, RiCloseLine } from '@remixicon/react'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import AppIcon from '@/app/components/base/app-icon'
 import cn from '@/utils/classnames'
 
@@ -26,6 +27,11 @@ const Icon = ({
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large'
 }) => {
   const iconClassName = 'flex justify-center items-center gap-2 absolute bottom-[-4px] right-[-4px] w-[18px] h-[18px] rounded-full border-2 border-components-panel-bg'
+
+  const shouldUseMcpIcon = (src: any) => {
+    return typeof src === 'object' && src.content === '🔗'
+  }
+
   if (typeof src === 'object') {
     return (
       <div className={cn('relative', className)}>
@@ -35,6 +41,7 @@ const Icon = ({
           icon={src.content}
           background={src.background}
           className='rounded-md'
+          innerIcon={shouldUseMcpIcon(src) ? <Mcp className='h-full w-full text-text-primary-on-surface' /> : undefined}
         />
       </div>
     )
