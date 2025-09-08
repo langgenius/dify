@@ -31,6 +31,12 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     code = 429
 
 
+class EmailRegisterRateLimitExceededError(BaseHTTPException):
+    error_code = "email_register_rate_limit_exceeded"
+    description = "Too many email register emails have been sent. Please try again in 1 minute."
+    code = 429
+
+
 class EmailChangeRateLimitExceededError(BaseHTTPException):
     error_code = "email_change_rate_limit_exceeded"
     description = "Too many email change emails have been sent. Please try again in 1 minute."
@@ -82,6 +88,12 @@ class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
 class EmailPasswordResetLimitError(BaseHTTPException):
     error_code = "email_password_reset_limit"
     description = "Too many failed password reset attempts. Please try again in 24 hours."
+    code = 429
+
+
+class EmailRegisterLimitError(BaseHTTPException):
+    error_code = "email_register_limit"
+    description = "Too many failed email register attempts. Please try again in 24 hours."
     code = 429
 
 

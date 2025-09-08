@@ -1,33 +1,33 @@
-import base64
-import secrets
-
 from flask import request
 from flask_restx import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
+    EmailAlreadyInUseError,
     EmailCodeError,
-    EmailPasswordResetLimitError,
+    EmailRegisterLimitError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, setup_required
-from events.tenant_event import tenant_was_created
+from controllers.console.error import AccountInFreezeError, EmailSendIpLimitError
+from controllers.console.wraps import email_password_login_enabled, email_register_enabled, setup_required
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
-from libs.password import hash_password, valid_password
+from libs.password import valid_password
 from models.account import Account
-from services.account_service import AccountService, TenantService
-from services.feature_service import FeatureService
+from services.account_service import AccountService
+from services.errors.account import AccountRegisterError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 
 
-class ForgotPasswordSendEmailApi(Resource):
+class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
+    @email_register_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -45,20 +45,15 @@ class ForgotPasswordSendEmailApi(Resource):
 
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
-
-        token = AccountService.send_reset_password_email(
-            account=account,
-            email=args["email"],
-            language=language,
-            is_allow_register=FeatureService.get_system_features().is_allow_register,
-        )
-
+        token = None
+        token = AccountService.send_email_register_email(email=args["email"], account=account, language=language)
         return {"result": "success", "data": token}
 
 
-class ForgotPasswordCheckApi(Resource):
+class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
+    @email_register_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=str, required=True, location="json")
@@ -68,11 +63,11 @@ class ForgotPasswordCheckApi(Resource):
 
         user_email = args["email"]
 
-        is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(args["email"])
-        if is_forgot_password_error_rate_limit:
-            raise EmailPasswordResetLimitError()
+        is_email_register_error_rate_limit = AccountService.is_email_register_error_rate_limit(args["email"])
+        if is_email_register_error_rate_limit:
+            raise EmailRegisterLimitError()
 
-        token_data = AccountService.get_reset_password_data(args["token"])
+        token_data = AccountService.get_email_register_data(args["token"])
         if token_data is None:
             raise InvalidTokenError()
 
@@ -80,24 +75,25 @@ class ForgotPasswordCheckApi(Resource):
             raise InvalidEmailError()
 
         if args["code"] != token_data.get("code"):
-            AccountService.add_forgot_password_error_rate_limit(args["email"])
+            AccountService.add_email_register_error_rate_limit(args["email"])
             raise EmailCodeError()
 
         # Verified, revoke the first token
-        AccountService.revoke_reset_password_token(args["token"])
+        AccountService.revoke_email_register_token(args["token"])
 
         # Refresh token data by generating a new token
-        _, new_token = AccountService.generate_reset_password_token(
-            user_email, code=args["code"], additional_data={"phase": "reset"}
+        _, new_token = AccountService.generate_email_register_token(
+            user_email, code=args["code"], additional_data={"phase": "register"}
         )
 
-        AccountService.reset_forgot_password_error_rate_limit(args["email"])
+        AccountService.reset_email_register_error_rate_limit(args["email"])
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
-class ForgotPasswordResetApi(Resource):
+class EmailRegisterResetApi(Resource):
     @setup_required
     @email_password_login_enabled
+    @email_register_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
@@ -109,50 +105,50 @@ class ForgotPasswordResetApi(Resource):
         if args["new_password"] != args["password_confirm"]:
             raise PasswordMismatchError()
 
-        # Validate token and get reset data
-        reset_data = AccountService.get_reset_password_data(args["token"])
-        if not reset_data:
+        # Validate token and get register data
+        register_data = AccountService.get_email_register_data(args["token"])
+        if not register_data:
             raise InvalidTokenError()
         # Must use token in reset phase
-        if reset_data.get("phase", "") != "reset":
+        if register_data.get("phase", "") != "register":
             raise InvalidTokenError()
 
         # Revoke token to prevent reuse
-        AccountService.revoke_reset_password_token(args["token"])
+        AccountService.revoke_email_register_token(args["token"])
 
-        # Generate secure salt and hash password
-        salt = secrets.token_bytes(16)
-        password_hashed = hash_password(args["new_password"], salt)
-
-        email = reset_data.get("email", "")
+        email = register_data.get("email", "")
 
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
 
             if account:
-                self._update_existing_account(account, password_hashed, salt, session)
+                raise EmailAlreadyInUseError()
             else:
-                raise AccountNotFound()
+                account = self._create_new_account(email, args["password_confirm"])
+                token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+                AccountService.reset_login_error_rate_limit(email)
 
-        return {"result": "success"}
+        return {"result": "success", "data": token_pair.model_dump()}
 
-    def _update_existing_account(self, account, password_hashed, salt, session):
-        # Update existing account credentials
-        account.password = base64.b64encode(password_hashed).decode()
-        account.password_salt = base64.b64encode(salt).decode()
-        session.commit()
+    def _create_new_account(self, email, password):
+        # Create new account if allowed
+        try:
+            account = AccountService.create_account_and_tenant(
+                email=email,
+                name=email,
+                password=password,
+                interface_language=languages[0],
+            )
+        except WorkSpaceNotAllowedCreateError:
+            pass
+        except WorkspacesLimitExceededError:
+            pass
+        except AccountRegisterError:
+            raise AccountInFreezeError()
 
-        # Create workspace if needed
-        if (
-            not TenantService.get_join_tenants(account)
-            and FeatureService.get_system_features().is_allow_create_workspace
-        ):
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-            TenantService.create_tenant_member(tenant, account, role="owner")
-            account.current_tenant = tenant
-            tenant_was_created.send(tenant)
+        return account
 
 
-api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")
-api.add_resource(ForgotPasswordCheckApi, "/forgot-password/validity")
-api.add_resource(ForgotPasswordResetApi, "/forgot-password/resets")
+api.add_resource(EmailRegisterSendEmailApi, "/email-register/send-email")
+api.add_resource(EmailRegisterCheckApi, "/email-register/validity")
+api.add_resource(EmailRegisterResetApi, "/email-register")
