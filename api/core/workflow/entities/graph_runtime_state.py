@@ -25,7 +25,7 @@ class GraphRuntimeState(BaseModel):
         llm_usage: LLMUsage | None = None,
         outputs: dict[str, Any] | None = None,
         node_run_steps: int = 0,
-        **kwargs,
+        **kwargs: object,
     ):
         """Initialize the GraphRuntimeState with validation."""
         super().__init__(**kwargs)

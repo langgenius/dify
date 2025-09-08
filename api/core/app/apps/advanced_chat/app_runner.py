@@ -55,7 +55,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         app: App,
-    ) -> None:
+    ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
@@ -69,7 +69,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self.system_user_id = system_user_id
         self._app = app
 
-    def run(self) -> None:
+    def run(self):
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
@@ -184,6 +184,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ),
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
+            variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
         )
@@ -238,7 +239,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         return False
 
-    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy) -> None:
+    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy):
         """
         Direct output
         """

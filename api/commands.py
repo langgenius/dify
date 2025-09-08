@@ -14,7 +14,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from configs import dify_config
 from constants.languages import languages
 from core.helper import encrypter
-from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -1494,7 +1493,7 @@ def transform_datasource_credentials():
                 for credential in credentials:
                     auth_count += 1
                     # get credential api key
-                    credentials_json =json.loads(credential.credentials)
+                    credentials_json = json.loads(credential.credentials)
                     api_key = credentials_json.get("config", {}).get("api_key")
                     base_url = credentials_json.get("config", {}).get("base_url")
                     new_credentials = {

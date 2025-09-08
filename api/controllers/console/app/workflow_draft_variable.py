@@ -1,5 +1,5 @@
 import logging
-from typing import Any, NoReturn
+from typing import NoReturn
 
 from flask import Response
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
@@ -31,7 +31,7 @@ from services.workflow_service import WorkflowService
 logger = logging.getLogger(__name__)
 
 
-def _convert_values_to_json_serializable_object(value: Segment) -> Any:
+def _convert_values_to_json_serializable_object(value: Segment):
     if isinstance(value, FileSegment):
         return value.value.model_dump()
     elif isinstance(value, ArrayFileSegment):
@@ -42,8 +42,7 @@ def _convert_values_to_json_serializable_object(value: Segment) -> Any:
         return value.value
 
 
-def _serialize_var_value(variable: WorkflowDraftVariable) -> Any:
-    """Serialize variable value. If variable is truncated, return the truncated value."""
+def _serialize_var_value(variable: WorkflowDraftVariable):
     value = variable.get_value()
     # create a copy of the value to avoid affecting the model cache.
     value = value.model_copy(deep=True)

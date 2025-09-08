@@ -16,14 +16,14 @@ class ExternalDataTool(Extensible, ABC):
     variable: str
     """the tool variable name of app tool"""
 
-    def __init__(self, tenant_id: str, app_id: str, variable: str, config: Optional[dict] = None) -> None:
+    def __init__(self, tenant_id: str, app_id: str, variable: str, config: Optional[dict] = None):
         super().__init__(tenant_id, config)
         self.app_id = app_id
         self.variable = variable
 
     @classmethod
     @abstractmethod
-    def validate_config(cls, tenant_id: str, config: dict) -> None:
+    def validate_config(cls, tenant_id: str, config: dict):
         """
         Validate the incoming form config data.
 

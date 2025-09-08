@@ -421,7 +421,10 @@ class Executor:
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
-                body_string = self.content.decode("utf-8", errors="replace")
+                if isinstance(self.content, bytes):
+                    body_string = self.content.decode("utf-8", errors="replace")
+                else:
+                    body_string = self.content
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
                 body_string = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":

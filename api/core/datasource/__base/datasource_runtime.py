@@ -30,8 +30,6 @@ class FakeDatasourceRuntime(DatasourceRuntime):
     """
 
     def __init__(self):
-
-
         super().__init__(
             tenant_id="fake_tenant_id",
             datasource_id="fake_datasource_id",

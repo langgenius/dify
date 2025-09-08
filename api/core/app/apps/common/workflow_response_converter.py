@@ -56,7 +56,7 @@ class WorkflowResponseConverter:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         user: Union[Account, EndUser],
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self._user = user
         self._truncator = VariableTruncator.default()

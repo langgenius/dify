@@ -1,7 +1,9 @@
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.variables.segments import Segment
 from core.workflow.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.entities.variable_pool import VariablePool
 
@@ -12,19 +14,18 @@ class ReadOnlyVariablePoolWrapper:
     def __init__(self, variable_pool: VariablePool):
         self._variable_pool = variable_pool
 
-    def get(self, node_id: str, variable_key: str) -> Any:
+    def get(self, node_id: str, variable_key: str) -> Segment | None:
         """Get a variable value (returns a defensive copy)."""
-        value = self._variable_pool.get(node_id, variable_key)
+        value = self._variable_pool.get([node_id, variable_key])
         return deepcopy(value) if value is not None else None
 
-    def get_all_by_node(self, node_id: str) -> dict[str, Any]:
+    def get_all_by_node(self, node_id: str) -> Mapping[str, object]:
         """Get all variables for a node (returns defensive copies)."""
-        variables = {}
+        variables: dict[str, object] = {}
         if node_id in self._variable_pool.variable_dictionary:
             for key, var in self._variable_pool.variable_dictionary[node_id].items():
-                # FIXME(-LAN-): Handle the actual Variable object structure
-                value = var.value if hasattr(var, "value") else var
-                variables[key] = deepcopy(value)
+                # Variables have a value property that contains the actual data
+                variables[key] = deepcopy(var.value)
         return variables
 
 

@@ -470,6 +470,12 @@ const translation = {
       contextTooltip: 'Anda dapat mengimpor Pengetahuan sebagai konteks',
       notSetContextInPromptTip: 'Untuk mengaktifkan fitur konteks, silakan isi variabel konteks di PROMPT.',
       context: 'konteks',
+      reasoningFormat: {
+        tagged: 'Tetap pikirkan tag',
+        title: 'Aktifkan pemisahan tag penalaran',
+        separated: 'Pisahkan tag pemikiran',
+        tooltip: 'Ekstrak konten dari tag pikir dan simpan di field reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       outputVars: {
@@ -992,6 +998,10 @@ const translation = {
     relationsTab: 'Hubungan',
     lastOutput: 'Keluaran Terakhir',
     noLastRunFound: 'Tidak ada eksekusi sebelumnya ditemukan',
+  },
+  sidebar: {
+    exportWarning: 'Ekspor Versi Tersimpan Saat Ini',
+    exportWarningDesc: 'Ini akan mengekspor versi terkini dari alur kerja Anda yang telah disimpan. Jika Anda memiliki perubahan yang belum disimpan di editor, harap simpan terlebih dahulu dengan menggunakan opsi ekspor di kanvas alur kerja.',
   },
 }
 

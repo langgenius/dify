@@ -3,7 +3,6 @@ import os
 import uuid
 from typing import Any, Literal, Union
 
-from flask_login import current_user
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
@@ -20,6 +19,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
+from libs.login import current_user
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
@@ -120,7 +120,11 @@ class FileService:
 
         return file_size <= file_size_limit
 
-    def upload_text(self, text: str, text_name: str) -> UploadFile:
+    @staticmethod
+    def upload_text(text: str, text_name: str) -> UploadFile:
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         if len(text_name) > 200:
             text_name = text_name[:200]
         # user uuid as file name

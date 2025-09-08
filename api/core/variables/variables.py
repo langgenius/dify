@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, Any, TypeAlias, cast
+from typing import Annotated, Any, TypeAlias
 from uuid import uuid4
 
 from pydantic import BaseModel, Discriminator, Field, Tag
