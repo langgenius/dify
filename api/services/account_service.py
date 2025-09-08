@@ -246,6 +246,8 @@ class AccountService:
         account.name = name
 
         if password:
+            valid_password(password)
+
             # generate password salt
             salt = secrets.token_bytes(16)
             base64_salt = base64.b64encode(salt).decode()
