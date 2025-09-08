@@ -91,6 +91,28 @@ class TestAccountService:
         assert account.password is None
         assert account.password_salt is None
 
+    def test_create_account_password_invalid_new_password(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test account create with invalid new password format.
+        """
+        fake = Faker()
+        email = fake.email()
+        name = fake.name()
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Test with too short password (assuming minimum length validation)
+        with pytest.raises(ValueError):  # Password validation error
+            AccountService.create_account(
+                email=email,
+                name=name,
+                interface_language="en-US",
+                password="my_strong_and_secure_password",
+            )
+
     def test_create_account_registration_disabled(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test account creation when registration is disabled.
