@@ -83,7 +83,7 @@ class ProviderResponse(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -113,7 +113,7 @@ class ProviderWithModelsResponse(BaseModel):
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -137,7 +137,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
 
     tenant_id: str
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -174,7 +174,7 @@ class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
 
     provider: SimpleProviderEntityResponse
 
-    def __init__(self, tenant_id: str, model: ModelWithProviderEntity) -> None:
+    def __init__(self, tenant_id: str, model: ModelWithProviderEntity):
         dump_model = model.model_dump()
         dump_model["provider"]["tenant_id"] = tenant_id
         super().__init__(**dump_model)

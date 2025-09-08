@@ -23,7 +23,7 @@ class MCPTool(Tool):
         headers: Optional[dict[str, str]] = None,
         timeout: Optional[float] = None,
         sse_read_timeout: Optional[float] = None,
-    ) -> None:
+    ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
         self.icon = icon
