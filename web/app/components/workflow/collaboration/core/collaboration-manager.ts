@@ -144,6 +144,24 @@ export class CollaborationManager {
     }
   }
 
+  emitSyncRequest(): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+
+    const socket = webSocketClient.getSocket(this.currentAppId)
+    if (socket) {
+      console.log('Emitting sync request to leader')
+      socket.emit('collaboration_event', {
+        type: 'syncRequest',
+        data: { timestamp: Date.now() },
+        timestamp: Date.now(),
+      })
+    }
+  }
+
+  onSyncRequest(callback: () => void): () => void {
+    return this.eventEmitter.on('syncRequest', callback)
+  }
+
   onStateChange(callback: (state: Partial<CollaborationState>) => void): () => void {
     return this.eventEmitter.on('stateChange', callback)
   }
@@ -284,6 +302,14 @@ export class CollaborationManager {
       else if (update.type === 'varsAndFeaturesUpdate') {
         console.log('Processing varsAndFeaturesUpdate event:', update)
         this.eventEmitter.emit('varsAndFeaturesUpdate', update)
+      }
+      else if (update.type === 'syncRequest') {
+        console.log('Received sync request from another user')
+        // Only process if we are the leader
+        if (this.isLeader) {
+          console.log('Leader received sync request, triggering sync')
+          this.eventEmitter.emit('syncRequest', {})
+        }
       }
     })
 

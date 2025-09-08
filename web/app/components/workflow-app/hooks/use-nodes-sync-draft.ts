@@ -129,9 +129,10 @@ export const useNodesSyncDraft = () => {
     // Check leader status at sync time
     const currentIsLeader = collaborationManager.getIsLeader()
 
-    // Only allow leader to sync data
+    // If not leader, request the leader to sync
     if (!currentIsLeader) {
-      console.log('Not leader, skipping workflow draft sync')
+      console.log('Not leader, requesting leader to sync workflow draft')
+      collaborationManager.emitSyncRequest()
       callback?.onSettled?.()
       return
     }
@@ -155,10 +156,10 @@ export const useNodesSyncDraft = () => {
         console.error('Leader failed to sync workflow draft:', error)
         if (error && error.json && !error.bodyUsed) {
           error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              // TODO: hjlarry test collaboration
-              // handleRefreshWorkflowDraft()
+            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError) {
               console.error('draft_workflow_not_sync', err)
+              handleRefreshWorkflowDraft()
+            }
           })
         }
         callback?.onError && callback.onError()

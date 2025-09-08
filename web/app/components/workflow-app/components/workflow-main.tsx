@@ -109,6 +109,19 @@ const WorkflowMain = ({
     }
   }, [featuresStore, workflowStore])
 
+  const {
+    doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose,
+  } = useNodesSyncDraft()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const {
+    handleBackupDraft,
+    handleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow,
+    handleRun,
+    handleStopRun,
+  } = useWorkflowRun()
+
   useEffect(() => {
     if (!appId) return
 
@@ -125,18 +138,17 @@ const WorkflowMain = ({
     return unsubscribe
   }, [appId, handleWorkflowDataUpdate])
 
-  const {
-    doSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft()
-  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const {
-    handleBackupDraft,
-    handleLoadBackupDraft,
-    handleRestoreFromPublishedWorkflow,
-    handleRun,
-    handleStopRun,
-  } = useWorkflowRun()
+  // Listen for sync requests from other users (only processed by leader)
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onSyncRequest(() => {
+      console.log('Leader received sync request, performing sync')
+      doSyncWorkflowDraft()
+    })
+
+    return unsubscribe
+  }, [appId, doSyncWorkflowDraft])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
