@@ -1020,6 +1020,8 @@ const translation = {
       errorMsg: {
         noDeliveryMethod: '请至少选择一种提交方式',
         noDeliveryMethodEnabled: '请至少启用一种提交方式',
+        noFormContent: '请添加表单内容',
+        noFormInputField: '请至少添加一个表单输入字段',
         noUserActions: '请添加至少一个用户操作',
       },
       log: {

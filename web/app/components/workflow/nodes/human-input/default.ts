@@ -60,7 +60,14 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
       if (!errorMessages && payload.delivery_methods.length > 0 && !payload.delivery_methods.some(method => method.enabled))
         errorMessages = t(`${i18nPrefix}.noDeliveryMethodEnabled`)
 
-      // TODO : Add more validation for form content
+      if (!errorMessages && !payload.form_content)
+        errorMessages = t(`${i18nPrefix}.noFormContent`)
+
+      if (!errorMessages && payload.form_content) {
+        const regex = /\{\{#\$output\.[^#]+#\}\}/
+        if (!regex.test(payload.form_content))
+          errorMessages = t(`${i18nPrefix}.noFormInputField`)
+      }
 
       if (!errorMessages && !payload.user_actions.length)
         errorMessages = t(`${i18nPrefix}.noUserActions`)

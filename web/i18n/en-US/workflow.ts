@@ -1020,6 +1020,8 @@ const translation = {
       errorMsg: {
         noDeliveryMethod: 'Please select at least one delivery method',
         noDeliveryMethodEnabled: 'Please enable at least one delivery method',
+        noFormContent: 'Please add form content',
+        noFormInputField: 'Please add at least one form input field',
         noUserActions: 'Please add at least one user action',
       },
       log: {
