@@ -13,24 +13,37 @@ export const useOAuthCallback = () => {
 }
 
 export const openOAuthPopup = (url: string, callback: () => void) => {
-  const width = 600
-  const height = 600
-  const left = window.screenX + (window.outerWidth - width) / 2
-  const top = window.screenY + (window.outerHeight - height) / 2
+  try {
+    const parsedUrl = new URL(url)
 
-  const popup = window.open(
-    url,
-    'OAuth',
-    `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`,
-  )
-
-  const handleMessage = (event: MessageEvent) => {
-    if (event.data?.type === 'oauth_callback') {
-      window.removeEventListener('message', handleMessage)
-      callback()
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      console.error('Invalid URL protocol, only http: and https: are allowed')
+      return null
     }
-  }
 
-  window.addEventListener('message', handleMessage)
-  return popup
+    const width = 600
+    const height = 600
+    const left = window.screenX + (window.outerWidth - width) / 2
+    const top = window.screenY + (window.outerHeight - height) / 2
+
+    const popup = window.open(
+      parsedUrl.toString(), // 使用解析和验证后的 URL
+      'OAuth',
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`,
+    )
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'oauth_callback') {
+        window.removeEventListener('message', handleMessage)
+        callback()
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return popup
+  }
+  catch (error) {
+    console.error('Invalid URL:', error)
+    return null
+  }
 }
