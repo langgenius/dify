@@ -925,6 +925,7 @@ class DocumentService:
 
     @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> Sequence[Document]:
+        assert isinstance(current_user, Account)
         documents = db.session.scalars(
             select(Document).where(
                 Document.batch == batch,
