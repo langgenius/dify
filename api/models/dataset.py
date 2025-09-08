@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, Optional, cast
-
+import uuid
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -49,7 +49,7 @@ class Dataset(Base):
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description = mapped_column(sa.Text, nullable=True)
