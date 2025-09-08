@@ -34,6 +34,7 @@ type Props = {
   currentTool?: Tool
   currentProvider?: ToolWithProvider
   extraParams?: Record<string, any>
+  providerType?: 'tool' | 'trigger'
 }
 
 const FormInputItem: FC<Props> = ({
@@ -46,6 +47,7 @@ const FormInputItem: FC<Props> = ({
   currentTool,
   currentProvider,
   extraParams,
+  providerType = 'tool',
 }) => {
   const language = useLanguage()
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
@@ -138,7 +140,7 @@ const FormInputItem: FC<Props> = ({
     currentProvider?.name || '',
     currentTool?.name || '',
     variable || '',
-    'tool',
+    providerType,
     extraParams,
   )
 

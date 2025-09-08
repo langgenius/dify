@@ -42,6 +42,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
               schema={triggerParameterSchema as any}
               value={triggerParameterValue}
               onChange={setTriggerParameterValue}
+              providerType="trigger"
             />
           </div>
           <Split />
