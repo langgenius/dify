@@ -29,19 +29,6 @@ class ModelMode(enum.StrEnum):
     COMPLETION = "completion"
     CHAT = "chat"
 
-    @classmethod
-    def value_of(cls, value: str) -> "ModelMode":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid mode value {value}")
-
 
 prompt_file_contents: dict[str, Any] = {}
 
@@ -65,7 +52,7 @@ class SimplePromptTransform(PromptTransform):
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
         inputs = {key: str(value) for key, value in inputs.items()}
 
-        model_mode = ModelMode.value_of(model_config.mode)
+        model_mode = ModelMode(model_config.mode)
         if model_mode == ModelMode.CHAT:
             prompt_messages, stops = self._get_chat_model_prompt_messages(
                 app_mode=app_mode,
@@ -139,7 +126,7 @@ class SimplePromptTransform(PromptTransform):
         has_context: bool,
         query_in_prompt: bool,
         with_memory_prompt: bool = False,
-    ) -> dict:
+    ):
         prompt_rules = self._get_prompt_rule(app_mode=app_mode, provider=provider, model=model)
 
         custom_variable_keys = []
@@ -278,11 +265,11 @@ class SimplePromptTransform(PromptTransform):
     ) -> UserPromptMessage:
         if files:
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
             prompt_message = UserPromptMessage(content=prompt_message_contents)
         else:
@@ -290,7 +277,7 @@ class SimplePromptTransform(PromptTransform):
 
         return prompt_message
 
-    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str) -> dict:
+    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str):
         """
         Get simple prompt rule.
         :param app_mode: app mode

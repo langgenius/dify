@@ -36,7 +36,7 @@ class LindormVectorStoreConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["hosts"]:
             raise ValueError("config URL is required")
         if not values["username"]:
@@ -89,7 +89,7 @@ class LindormVectorStore(BaseVector):
         timeout: int = 60,
         **kwargs,
     ):
-        logger.info(f"Total documents to add: {len(documents)}")
+        logger.info("Total documents to add: %s", len(documents))
         uuids = self._get_uuids(documents)
 
         total_docs = len(documents)
@@ -147,7 +147,7 @@ class LindormVectorStore(BaseVector):
                     time.sleep(0.5)
 
             except Exception:
-                logger.exception(f"Failed to process batch {batch_num + 1}")
+                logger.exception("Failed to process batch %s", batch_num + 1)
                 raise
 
     def get_ids_by_metadata_field(self, key: str, value: str):
@@ -167,7 +167,7 @@ class LindormVectorStore(BaseVector):
         if ids:
             self.delete_by_ids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """Delete documents by their IDs in batch.
 
         Args:
@@ -180,7 +180,7 @@ class LindormVectorStore(BaseVector):
 
         # 1. First check if collection exists
         if not self._client.indices.exists(index=self._collection_name):
-            logger.warning(f"Collection {self._collection_name} does not exist")
+            logger.warning("Collection %s does not exist", self._collection_name)
             return
 
         # 2. Batch process deletions
@@ -196,7 +196,7 @@ class LindormVectorStore(BaseVector):
                     }
                 )
             else:
-                logger.warning(f"DELETE BY ID: ID {id} does not exist in the index.")
+                logger.warning("DELETE BY ID: ID %s does not exist in the index.", id)
 
         # 3. Perform bulk deletion if there are valid documents to delete
         if actions:
@@ -209,11 +209,11 @@ class LindormVectorStore(BaseVector):
                     doc_id = delete_error.get("_id")
 
                     if status == 404:
-                        logger.warning(f"Document not found for deletion: {doc_id}")
+                        logger.warning("Document not found for deletion: %s", doc_id)
                     else:
-                        logger.exception(f"Error deleting document: {error}")
+                        logger.exception("Error deleting document: %s", error)
 
-    def delete(self) -> None:
+    def delete(self):
         if self._using_ugc:
             routing_filter_query = {
                 "query": {"bool": {"must": [{"term": {f"{self._routing_field}.keyword": self._routing}}]}}
@@ -225,7 +225,7 @@ class LindormVectorStore(BaseVector):
                 self._client.indices.delete(index=self._collection_name, params={"timeout": 60})
                 logger.info("Delete index success")
             else:
-                logger.warning(f"Index '{self._collection_name}' does not exist. No deletion performed.")
+                logger.warning("Index '%s' does not exist. No deletion performed.", self._collection_name)
 
     def text_exists(self, id: str) -> bool:
         try:
@@ -257,7 +257,7 @@ class LindormVectorStore(BaseVector):
                 params["routing"] = self._routing  # type: ignore
             response = self._client.search(index=self._collection_name, body=query, params=params)
         except Exception:
-            logger.exception(f"Error executing vector search, query: {query}")
+            logger.exception("Error executing vector search, query: %s", query)
             raise
 
         docs_and_scores = []
@@ -275,7 +275,7 @@ class LindormVectorStore(BaseVector):
         docs = []
         for doc, score in docs_and_scores:
             score_threshold = kwargs.get("score_threshold", 0.0) or 0.0
-            if score > score_threshold:
+            if score >= score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
                 docs.append(doc)
@@ -324,10 +324,10 @@ class LindormVectorStore(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name} already exists.")
+                logger.info("Collection %s already exists.", self._collection_name)
                 return
             if self._client.indices.exists(index=self._collection_name):
-                logger.info(f"{self._collection_name.lower()} already exists.")
+                logger.info("%s already exists.", self._collection_name.lower())
                 redis_client.set(collection_exist_cache_key, 1, ex=3600)
                 return
             if len(self.kwargs) == 0 and len(kwargs) != 0:
@@ -372,7 +372,7 @@ class LindormVectorStore(BaseVector):
             # logger.info(f"create index success: {self._collection_name}")
 
 
-def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dict:
+def default_text_mapping(dimension: int, method_name: str, **kwargs: Any):
     excludes_from_source = kwargs.get("excludes_from_source", False)
     analyzer = kwargs.get("analyzer", "ik_max_word")
     text_field = kwargs.get("text_field", Field.CONTENT_KEY.value)
@@ -456,7 +456,7 @@ def default_text_search_query(
     routing: Optional[str] = None,
     routing_field: Optional[str] = None,
     **kwargs,
-) -> dict:
+):
     query_clause: dict[str, Any] = {}
     if routing is not None:
         query_clause = {
@@ -513,7 +513,7 @@ def default_vector_search_query(
     filters: Optional[list[dict]] = None,
     filter_type: Optional[str] = None,
     **kwargs,
-) -> dict:
+):
     if filters is not None:
         filter_type = "pre_filter" if filter_type is None else filter_type
         if not isinstance(filters, list):

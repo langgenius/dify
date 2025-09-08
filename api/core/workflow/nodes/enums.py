@@ -35,7 +35,3 @@ class ErrorStrategy(StrEnum):
 class FailBranchSourceHandle(StrEnum):
     FAILED = "fail-branch"
     SUCCESS = "success-branch"
-
-
-CONTINUE_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST]
-RETRY_ON_ERROR_NODE_TYPE = CONTINUE_ON_ERROR_NODE_TYPE

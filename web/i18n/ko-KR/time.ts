@@ -32,6 +32,13 @@ const translation = {
     pickTime: '시간 선택',
   },
   defaultPlaceholder: '시간을 선택하세요...',
+  dateFormats: {
+    input: 'YYYY-MM-DD',
+    display: 'MMMM D, YYYY',
+    outputWithTime: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+    displayWithTime: 'MMMM D, YYYY hh:mm A',
+    output: 'YYYY-MM-DD',
+  },
 }
 
 export default translation

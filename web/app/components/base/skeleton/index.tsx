@@ -24,7 +24,7 @@ export const SkeletonRow: FC<SkeletonProps> = (props) => {
 export const SkeletonRectangle: FC<SkeletonProps> = (props) => {
   const { className, children, ...rest } = props
   return (
-    <div className={classNames('h-2 rounded-sm opacity-20 bg-text-quaternary my-1', className)} {...rest}>
+    <div className={classNames('my-1 h-2 rounded-sm bg-text-quaternary opacity-20', className)} {...rest}>
       {children}
     </div>
   )
@@ -33,7 +33,7 @@ export const SkeletonRectangle: FC<SkeletonProps> = (props) => {
 export const SkeletonPoint: FC<SkeletonProps> = (props) => {
   const { className, ...rest } = props
   return (
-    <div className={classNames('text-text-quaternary text-xs font-medium', className)} {...rest}>·</div>
+    <div className={classNames('text-xs font-medium text-text-quaternary', className)} {...rest}>·</div>
   )
 }
 /** Usage

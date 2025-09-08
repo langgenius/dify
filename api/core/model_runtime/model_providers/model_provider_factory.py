@@ -36,7 +36,7 @@ class ModelProviderExtension(BaseModel):
 class ModelProviderFactory:
     provider_position_map: dict[str, int]
 
-    def __init__(self, tenant_id: str) -> None:
+    def __init__(self, tenant_id: str):
         self.provider_position_map = {}
 
         self.tenant_id = tenant_id
@@ -132,7 +132,7 @@ class ModelProviderFactory:
 
         return plugin_model_provider_entity
 
-    def provider_credentials_validate(self, *, provider: str, credentials: dict) -> dict:
+    def provider_credentials_validate(self, *, provider: str, credentials: dict):
         """
         Validate provider credentials
 
@@ -163,9 +163,7 @@ class ModelProviderFactory:
 
         return filtered_credentials
 
-    def model_credentials_validate(
-        self, *, provider: str, model_type: ModelType, model: str, credentials: dict
-    ) -> dict:
+    def model_credentials_validate(self, *, provider: str, model_type: ModelType, model: str, credentials: dict):
         """
         Validate model credentials
 
@@ -201,7 +199,7 @@ class ModelProviderFactory:
         return filtered_credentials
 
     def get_model_schema(
-        self, *, provider: str, model_type: ModelType, model: str, credentials: dict
+        self, *, provider: str, model_type: ModelType, model: str, credentials: dict | None
     ) -> AIModelEntity | None:
         """
         Get model schema
@@ -256,11 +254,6 @@ class ModelProviderFactory:
 
         # scan all providers
         plugin_model_provider_entities = self.get_plugin_model_providers()
-
-        # convert provider_configs to dict
-        provider_credentials_dict = {}
-        for provider_config in provider_configs:
-            provider_credentials_dict[provider_config.provider] = provider_config.credentials
 
         # traverse all model_provider_extensions
         providers = []

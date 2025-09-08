@@ -1,13 +1,13 @@
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
-from enum import Enum
+from datetime import timedelta
+from enum import StrEnum, auto
 from functools import wraps
 from typing import Optional
 
 from flask import current_app, request
-from flask_login import user_logged_in  # type: ignore
-from flask_restful import Resource
+from flask_login import user_logged_in
+from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -15,6 +15,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
@@ -22,14 +23,14 @@ from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
 
-class WhereisUserArg(Enum):
+class WhereisUserArg(StrEnum):
     """
     Enum for whereis_user_arg.
     """
 
-    QUERY = "query"
-    JSON = "json"
-    FORM = "form"
+    QUERY = auto()
+    JSON = auto()
+    FORM = auto()
 
 
 class FetchUserArg(BaseModel):
@@ -43,7 +44,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
         def decorated_view(*args, **kwargs):
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.query(App).filter(App.id == api_token.app_id).first()
+            app_model = db.session.query(App).where(App.id == api_token.app_id).first()
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -53,7 +54,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
+            tenant = db.session.query(Tenant).where(Tenant.id == app_model.tenant_id).first()
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
@@ -191,15 +192,15 @@ def validate_dataset_token(view=None):
             api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
-                .filter(Tenant.id == api_token.tenant_id)
-                .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                .filter(TenantAccountJoin.role.in_(["owner"]))
-                .filter(Tenant.status == TenantStatus.NORMAL)
+                .where(Tenant.id == api_token.tenant_id)
+                .where(TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.role.in_(["owner"]))
+                .where(Tenant.status == TenantStatus.NORMAL)
                 .one_or_none()
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
-                account = db.session.query(Account).filter(Account.id == ta.account_id).first()
+                account = db.session.query(Account).where(Account.id == ta.account_id).first()
                 # Login admin
                 if account:
                     account.current_tenant = tenant
@@ -235,7 +236,7 @@ def validate_and_get_api_token(scope: str | None = None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    current_time = datetime.now(UTC).replace(tzinfo=None)
+    current_time = naive_utc_now()
     cutoff_time = current_time - timedelta(minutes=1)
     with Session(db.engine, expire_on_commit=False) as session:
         update_stmt = (
@@ -269,27 +270,28 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     if not user_id:
         user_id = "DEFAULT-USER"
 
-    end_user = (
-        db.session.query(EndUser)
-        .filter(
-            EndUser.tenant_id == app_model.tenant_id,
-            EndUser.app_id == app_model.id,
-            EndUser.session_id == user_id,
-            EndUser.type == "service_api",
+    with Session(db.engine, expire_on_commit=False) as session:
+        end_user = (
+            session.query(EndUser)
+            .where(
+                EndUser.tenant_id == app_model.tenant_id,
+                EndUser.app_id == app_model.id,
+                EndUser.session_id == user_id,
+                EndUser.type == "service_api",
+            )
+            .first()
         )
-        .first()
-    )
 
-    if end_user is None:
-        end_user = EndUser(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type="service_api",
-            is_anonymous=user_id == "DEFAULT-USER",
-            session_id=user_id,
-        )
-        db.session.add(end_user)
-        db.session.commit()
+        if end_user is None:
+            end_user = EndUser(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type="service_api",
+                is_anonymous=user_id == "DEFAULT-USER",
+                session_id=user_id,
+            )
+            session.add(end_user)
+            session.commit()
 
     return end_user
 
@@ -298,7 +300,7 @@ class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
 
         if not dataset:
             raise NotFound("Dataset not found.")

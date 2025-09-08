@@ -16,6 +16,7 @@ class AgentToolEntity(BaseModel):
     tool_name: str
     tool_parameters: dict[str, Any] = Field(default_factory=dict)
     plugin_unique_identifier: str | None = None
+    credential_id: str | None = None
 
 
 class AgentPromptEntity(BaseModel):
@@ -40,7 +41,7 @@ class AgentScratchpadUnit(BaseModel):
         action_name: str
         action_input: Union[dict, str]
 
-        def to_dict(self) -> dict:
+        def to_dict(self):
             """
             Convert to dictionary.
             """

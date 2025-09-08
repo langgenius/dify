@@ -17,6 +17,7 @@ const translation = {
       bulkImport: '일괄 가져오기',
       bulkExport: '일괄 내보내기',
       clearAll: '모든 어노테이션 지우기',
+      clearAllConfirm: '모든 주석을 삭제하시겠습니까?',
     },
   },
   editModal: {
@@ -82,6 +83,16 @@ const translation = {
     configConfirmBtn: '저장',
   },
   embeddingModelSwitchTip: '어노테이션 텍스트의 임베딩 모델입니다. 모델을 변경하면 다시 임베딩되며 추가 비용이 발생합니다.',
+  list: {
+    delete: {
+      title: '삭제할 것인지 확실합니까?',
+    },
+  },
+  batchAction: {
+    cancel: '취소',
+    delete: '삭제',
+    selected: '선택됨',
+  },
 }
 
 export default translation

@@ -13,7 +13,7 @@ const ErrorMessage: FC<ErrorMessageProps> = ({
 }) => {
   return (
     <div className={classNames(
-      'flex gap-x-1 mt-1 p-2 rounded-lg border-[0.5px] border-components-panel-border bg-toast-error-bg',
+      'mt-1 flex gap-x-1 rounded-lg border-[0.5px] border-components-panel-border bg-toast-error-bg p-2',
       className,
     )}>
       <RiErrorWarningFill className='h-4 w-4 shrink-0 text-text-destructive' />

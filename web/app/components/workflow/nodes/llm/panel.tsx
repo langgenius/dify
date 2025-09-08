@@ -17,6 +17,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import StructureOutput from './components/structure-output'
+import ReasoningFormatConfig from './components/reasoning-format-config'
 import Switch from '@/app/components/base/switch'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
@@ -60,7 +61,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
-    filterJinjia2InputVar,
+    filterJinja2InputVar,
+    handleReasoningFormatChange,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -82,7 +84,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}` })
         handleCompletionParamsChange(filtered)
       }
-      catch (e) {
+      catch {
         Toast.notify({ type: 'error', message: t('common.error') })
         handleCompletionParamsChange({})
       }
@@ -140,7 +142,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <ConfigPrompt
             readOnly={readOnly}
             nodeId={id}
-            filterVar={filterInputVar}
+            filterVar={isShowVars ? filterJinja2InputVar : filterInputVar}
             isChatModel={isChatModel}
             isChatApp={isChatMode}
             isShowContext
@@ -166,7 +168,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               list={inputs.prompt_config?.jinja2_variables || []}
               onChange={handleVarListChange}
               onVarNameChange={handleVarNameChange}
-              filterVar={filterJinjia2InputVar}
+              filterVar={filterJinja2InputVar}
               isSupportFileVar={false}
             />
           </Field>
@@ -238,6 +240,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           onEnabledChange={handleVisionResolutionEnabledChange}
           config={inputs.vision?.configs}
           onConfigChange={handleVisionResolutionChange}
+        />
+
+        {/* Reasoning Format */}
+        <ReasoningFormatConfig
+          // Default to tagged for backward compatibility
+          value={inputs.reasoning_format || 'tagged'}
+          onChange={handleReasoningFormatChange}
+          readonly={readOnly}
         />
       </div>
       <Split />

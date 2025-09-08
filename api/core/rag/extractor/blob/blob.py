@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import mimetypes
-from abc import ABC, abstractmethod
-from collections.abc import Generator, Iterable, Mapping
+from collections.abc import Generator, Mapping
 from io import BufferedReader, BytesIO
 from pathlib import Path, PurePath
 from typing import Any, Optional, Union
@@ -108,7 +107,7 @@ class Blob(BaseModel):
             Blob instance
         """
         if mime_type is None and guess_type:
-            _mimetype = mimetypes.guess_type(path)[0] if guess_type else None
+            _mimetype = mimetypes.guess_type(path)[0]
         else:
             _mimetype = mime_type
         # We do not load the data immediately, instead we treat the blob as a
@@ -143,21 +142,3 @@ class Blob(BaseModel):
         if self.source:
             str_repr += f" {self.source}"
         return str_repr
-
-
-class BlobLoader(ABC):
-    """Abstract interface for blob loaders implementation.
-
-    Implementer should be able to load raw content from a datasource system according
-    to some criteria and return the raw content lazily as a stream of blobs.
-    """
-
-    @abstractmethod
-    def yield_blobs(
-        self,
-    ) -> Iterable[Blob]:
-        """A lazy loader for raw data represented by Blob object.
-
-        Returns:
-            A generator over blobs
-        """

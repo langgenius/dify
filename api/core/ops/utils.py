@@ -3,6 +3,8 @@ from datetime import datetime
 from typing import Optional, Union
 from urllib.parse import urlparse
 
+from sqlalchemy import select
+
 from extensions.ext_database import db
 from models.model import Message
 
@@ -20,7 +22,7 @@ def filter_none_values(data: dict):
 
 
 def get_message_data(message_id: str):
-    return db.session.query(Message).filter(Message.id == message_id).first()
+    return db.session.scalar(select(Message).where(Message.id == message_id))
 
 
 @contextmanager
@@ -65,7 +67,13 @@ def generate_dotted_order(
 
 def validate_url(url: str, default_url: str, allowed_schemes: tuple = ("https", "http")) -> str:
     """
-    Validate and normalize URL with proper error handling
+    Validate and normalize URL with proper error handling.
+
+    NOTE: This function does not retain the `path` component of the provided URL.
+    In most cases, it is recommended to use `validate_url_with_path` instead.
+
+    This function is deprecated and retained only for compatibility purposes.
+    New implementations should use `validate_url_with_path`.
 
     Args:
         url: The URL to validate

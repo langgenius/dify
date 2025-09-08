@@ -16,10 +16,11 @@ import {
 const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
-export const useAllToolProviders = () => {
+export const useAllToolProviders = (enabled = true) => {
   return useQuery<Collection[]>({
     queryKey: useAllToolProvidersKey,
     queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
+    enabled,
   })
 }
 
@@ -84,6 +85,8 @@ export const useCreateMCP = () => {
       icon_type: AppIconType
       icon: string
       icon_background?: string | null
+      timeout?: number
+      sse_read_timeout?: number
     }) => {
       return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
         body: {
@@ -108,6 +111,8 @@ export const useUpdateMCP = ({
       icon: string
       icon_background?: string | null
       provider_id: string
+      timeout?: number
+      sse_read_timeout?: number
     }) => {
       return put('workspaces/current/tool-provider/mcp', {
         body: {
@@ -206,7 +211,7 @@ export const useCreateMCPServer = () => {
     mutationKey: [NAME_SPACE, 'create-mcp-server'],
     mutationFn: (payload: {
       appID: string
-      description: string
+      description?: string
       parameters?: Record<string, string>
     }) => {
       const { appID, ...rest } = payload

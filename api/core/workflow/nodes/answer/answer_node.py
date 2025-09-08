@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from core.variables import ArrayFileSegment, FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
@@ -12,13 +12,36 @@ from core.workflow.nodes.answer.entities import (
     VarGenerateRouteChunk,
 )
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 
-class AnswerNode(BaseNode[AnswerNodeData]):
-    _node_data_cls = AnswerNodeData
+class AnswerNode(BaseNode):
     _node_type = NodeType.ANSWER
+
+    _node_data: AnswerNodeData
+
+    def init_node_data(self, data: Mapping[str, Any]):
+        self._node_data = AnswerNodeData.model_validate(data)
+
+    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self) -> Optional[str]:
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -30,7 +53,7 @@ class AnswerNode(BaseNode[AnswerNodeData]):
         :return:
         """
         # generate routes
-        generate_routes = AnswerStreamGeneratorRouter.extract_generate_route_from_node_data(self.node_data)
+        generate_routes = AnswerStreamGeneratorRouter.extract_generate_route_from_node_data(self._node_data)
 
         answer = ""
         files = []
@@ -60,16 +83,12 @@ class AnswerNode(BaseNode[AnswerNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: AnswerNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        variable_template_parser = VariableTemplateParser(template=node_data.answer)
+        # Create typed NodeData from dict
+        typed_node_data = AnswerNodeData.model_validate(node_data)
+
+        variable_template_parser = VariableTemplateParser(template=typed_node_data.answer)
         variable_selectors = variable_template_parser.extract_variable_selectors()
 
         variable_mapping = {}

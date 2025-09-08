@@ -10,7 +10,6 @@ import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
 import TagInput from '@/app/components/base/tag-input'
-import { useTranslation } from 'react-i18next'
 
 export type ParameterValue = number | string | string[] | boolean | undefined
 
@@ -28,7 +27,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onSwitch,
   isInWorkflow,
 }) => {
-  const { t } = useTranslation()
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
@@ -93,8 +91,8 @@ const ParameterItem: FC<ParameterItemProps> = ({
     numberInputRef.current!.value = `${num}`
   }
 
-  const handleRadioChange = (v: number) => {
-    handleInputChange(v === 1)
+  const handleRadioChange = (v: boolean) => {
+    handleInputChange(v)
   }
 
   const handleStringInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -189,11 +187,11 @@ const ParameterItem: FC<ParameterItemProps> = ({
       return (
         <Radio.Group
           className='flex w-[178px] items-center'
-          value={renderValue ? 1 : 0}
+          value={renderValue as boolean}
           onChange={handleRadioChange}
         >
-          <Radio value={1} className='w-[83px]'>True</Radio>
-          <Radio value={0} className='w-[83px]'>False</Radio>
+          <Radio value={true} className='w-[83px]'>True</Radio>
+          <Radio value={false} className='w-[83px]'>False</Radio>
         </Radio.Group>
       )
     }
@@ -238,6 +236,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
             onChange={handleTagChange}
             customizedConfirmKey='Tab'
             isInWorkflow={isInWorkflow}
+            required={parameterRule.required}
           />
         </div>
       )

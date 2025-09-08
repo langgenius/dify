@@ -1,9 +1,7 @@
 import json
 import logging
-from datetime import UTC, datetime
-from typing import Optional, cast
+from typing import Optional, TypedDict, cast
 
-from flask_login import current_user
 from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config
@@ -17,6 +15,8 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
+from libs.login import current_user
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
@@ -24,6 +24,8 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
+
+logger = logging.getLogger(__name__)
 
 
 class AppService:
@@ -47,17 +49,16 @@ class AppService:
             filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
-        elif args["mode"] == "channel":
-            filters.append(App.mode == AppMode.CHANNEL.value)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
         if args.get("name"):
             name = args["name"][:30]
             filters.append(App.name.ilike(f"%{name}%"))
-        if args.get("tag_ids"):
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if args.get("tag_ids") and len(args["tag_ids"]) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
-            if target_ids:
+            if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None
@@ -95,8 +96,8 @@ class AppService:
                 )
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
-            except Exception as e:
-                logging.exception(f"Get default model instance failed, tenant_id: {tenant_id}")
+            except Exception:
+                logger.exception("Get default model instance failed, tenant_id: %s", tenant_id)
                 model_instance = None
 
             if model_instance:
@@ -167,9 +168,13 @@ class AppService:
         """
         Get App
         """
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # get original app model config
         if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
             model_config = app.app_model_config
+            if not model_config:
+                return app
             agent_mode = model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             for tool in agent_mode.get("tools") or []:
@@ -200,11 +205,12 @@ class AppService:
 
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
-                except Exception as e:
+                except Exception:
                     pass
 
             # override agent mode
-            model_config.agent_mode = json.dumps(agent_mode)
+            if model_config:
+                model_config.agent_mode = json.dumps(agent_mode)
 
             class ModifiedApp(App):
                 """
@@ -222,21 +228,32 @@ class AppService:
 
         return app
 
-    def update_app(self, app: App, args: dict) -> App:
+    class ArgsDict(TypedDict):
+        name: str
+        description: str
+        icon_type: str
+        icon: str
+        icon_background: str
+        use_icon_as_answer_icon: bool
+        max_active_requests: int
+
+    def update_app(self, app: App, args: ArgsDict) -> App:
         """
         Update app
         :param app: App instance
         :param args: request args
         :return: App instance
         """
-        app.name = args.get("name")
-        app.description = args.get("description", "")
-        app.icon_type = args.get("icon_type", "emoji")
-        app.icon = args.get("icon")
-        app.icon_background = args.get("icon_background")
+        assert current_user is not None
+        app.name = args["name"]
+        app.description = args["description"]
+        app.icon_type = args["icon_type"]
+        app.icon = args["icon"]
+        app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
+        app.max_active_requests = args.get("max_active_requests")
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -248,9 +265,10 @@ class AppService:
         :param name: new name
         :return: App instance
         """
+        assert current_user is not None
         app.name = name
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -263,10 +281,11 @@ class AppService:
         :param icon_background: new icon_background
         :return: App instance
         """
+        assert current_user is not None
         app.icon = icon
         app.icon_background = icon_background
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -280,10 +299,10 @@ class AppService:
         """
         if enable_site == app.enable_site:
             return app
-
+        assert current_user is not None
         app.enable_site = enable_site
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -297,15 +316,16 @@ class AppService:
         """
         if enable_api == app.enable_api:
             return app
+        assert current_user is not None
 
         app.enable_api = enable_api
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
 
-    def delete_app(self, app: App) -> None:
+    def delete_app(self, app: App):
         """
         Delete app
         :param app: App instance
@@ -320,7 +340,7 @@ class AppService:
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
-    def get_app_meta(self, app_model: App) -> dict:
+    def get_app_meta(self, app_model: App):
         """
         Get app meta info
         :param app_model: app model
@@ -374,7 +394,7 @@ class AppService:
                 elif provider_type == "api":
                     try:
                         provider: Optional[ApiToolProvider] = (
-                            db.session.query(ApiToolProvider).filter(ApiToolProvider.id == provider_id).first()
+                            db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
                         )
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
@@ -391,7 +411,7 @@ class AppService:
         :param app_id: app id
         :return: app code
         """
-        site = db.session.query(Site).filter(Site.app_id == app_id).first()
+        site = db.session.query(Site).where(Site.app_id == app_id).first()
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
@@ -403,7 +423,7 @@ class AppService:
         :param app_code: app code
         :return: app id
         """
-        site = db.session.query(Site).filter(Site.code == app_code).first()
+        site = db.session.query(Site).where(Site.code == app_code).first()
         if not site:
             raise ValueError(f"App with code {app_code} not found")
         return str(site.app_id)

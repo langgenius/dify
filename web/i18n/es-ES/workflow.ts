@@ -108,13 +108,14 @@ const translation = {
     exitVersions: 'Versiones de salida',
     exportJPEG: 'Exportar como JPEG',
     exportPNG: 'Exportar como PNG',
-    referenceVar: 'Variable de referencia',
     publishUpdate: 'Publicar actualización',
-    noExist: 'No existe tal variable',
     exportImage: 'Exportar imagen',
     needAnswerNode: 'Se debe agregar el nodo de respuesta',
     needEndNode: 'Se debe agregar el nodo Final',
     addBlock: 'Agregar nodo',
+    tagBound: 'Número de aplicaciones que utilizan esta etiqueta',
+    currentView: 'Vista actual',
+    currentWorkflow: 'Flujo de trabajo actual',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -221,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Herramientas',
     'allTool': 'Todos',
-    'builtInTool': 'Incorporadas',
     'customTool': 'Personalizadas',
     'workflowTool': 'Flujo de trabajo',
     'question-understand': 'Entender pregunta',
@@ -234,6 +234,8 @@ const translation = {
     'plugin': 'Plugin',
     'searchBlock': 'Buscar nodo',
     'blocks': 'Nodos',
+    'addAll': 'Agregar todo',
+    'allAdded': 'Todo añadido',
   },
   blocks: {
     'start': 'Inicio',
@@ -287,6 +289,18 @@ const translation = {
     zoomTo50: 'Zoom al 50%',
     zoomTo100: 'Zoom al 100%',
     zoomToFit: 'Ajustar al tamaño',
+    alignTop: 'Arriba',
+    alignBottom: 'Abajo',
+    alignNodes: 'Alinear nodos',
+    alignCenter: 'Centro',
+    selectionAlignment: 'Alineación de selección',
+    horizontal: 'Horizontal',
+    distributeHorizontal: 'Espaciar horizontalmente',
+    vertical: 'Vertical',
+    distributeVertical: 'Espaciar verticalmente',
+    alignMiddle: 'Centro',
+    alignLeft: 'Izquierda',
+    alignRight: 'Derecha',
   },
   panel: {
     userInputField: 'Campo de entrada del usuario',
@@ -364,7 +378,10 @@ const translation = {
         retries: '{{num}} Reintentos',
         retry: 'Reintentar',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Valor de entrada',
+        variable: 'Usa la variable',
+      },
     },
     start: {
       required: 'requerido',
@@ -453,6 +470,12 @@ const translation = {
         import: 'Importar desde JSON',
         resetDefaults: 'Restablecer',
       },
+      reasoningFormat: {
+        tagged: 'Mantén las etiquetas de pensamiento',
+        separated: 'Separar etiquetas de pensamiento',
+        title: 'Habilitar la separación de etiquetas de razonamiento',
+        tooltip: 'Extraer contenido de las etiquetas de pensamiento y almacenarlo en el campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variable de consulta',
@@ -469,10 +492,12 @@ const translation = {
         options: {
           disabled: {
             subTitle: 'No habilitar el filtrado de metadatos',
+            title: 'Deshabilitado',
           },
           automatic: {
             subTitle: 'Generar automáticamente condiciones de filtrado de metadatos basadas en la consulta del usuario',
             desc: 'Generar automáticamente condiciones de filtrado de metadatos basadas en la variable de consulta',
+            title: 'Automático',
           },
           manual: {
             title: 'Manual',
@@ -489,6 +514,7 @@ const translation = {
           search: 'Buscar metadatos',
         },
         title: 'Filtrado de Metadatos',
+        tip: 'El filtrado de metadatos es el proceso de utilizar atributos de metadatos (como etiquetas, categorías o permisos de acceso) para refinar y controlar la recuperación de información relevante dentro de un sistema.',
       },
     },
     http: {
@@ -549,6 +575,7 @@ const translation = {
       advancedDependencies: 'Dependencias avanzadas',
       advancedDependenciesTip: 'Agrega algunas dependencias precargadas que consumen más tiempo o no son incorporadas por defecto aquí',
       searchDependencies: 'Buscar dependencias',
+      syncFunctionSignature: 'Sincronizar la firma de la función con el código',
     },
     templateTransform: {
       inputVars: 'Variables de entrada',
@@ -577,7 +604,6 @@ const translation = {
         'not empty': 'no está vacío',
         'null': 'es nulo',
         'not null': 'no es nulo',
-        'regex match': 'Coincidencia de expresiones regulares',
         'not in': 'no en',
         'in': 'en',
         'exists': 'Existe',
@@ -600,7 +626,6 @@ const translation = {
       },
       select: 'Escoger',
       addSubVariable: 'Sub Variable',
-      condition: 'Condición',
     },
     variableAssigner: {
       title: 'Asignar variables',
@@ -668,6 +693,9 @@ const translation = {
         json: 'JSON generado por la herramienta',
       },
       authorize: 'autorizar',
+      insertPlaceholder2: 'insertar variable',
+      settings: 'Ajustes',
+      insertPlaceholder1: 'Escribe o presiona',
     },
     questionClassifiers: {
       model: 'modelo',
@@ -758,9 +786,6 @@ const translation = {
         showAuthor: 'Mostrar autor',
       },
     },
-    tracing: {
-      stopBy: 'Detenido por {{user}}',
-    },
     docExtractor: {
       outputVars: {
         text: 'Texto extraído',
@@ -824,6 +849,7 @@ const translation = {
         },
         json: 'JSON generado por el agente',
         text: 'Contenido generado por el agente',
+        usage: 'Información de uso del modelo',
       },
       checkList: {
         strategyNotSelected: 'Estrategia no seleccionada',
@@ -855,6 +881,8 @@ const translation = {
       strategyNotFoundDescAndSwitchVersion: 'La versión del plugin instalado no proporciona esta estrategia. Haga clic para cambiar de versión.',
       toolNotAuthorizedTooltip: '{{herramienta}} No autorizado',
       modelNotSelected: 'Modelo no seleccionado',
+      clickToViewParameterSchema: 'Haga clic para ver el esquema de parámetros',
+      parameterSchema: 'Esquema de Parámetros',
     },
     loop: {
       ErrorMethod: {
@@ -886,10 +914,11 @@ const translation = {
       error_other: '{{count}} Errores',
       loopVariables: 'Variables de bucle',
       variableName: 'Nombre de Variable',
+      input: 'Entrada',
     },
   },
   tracing: {
-    stopBy: 'Pásate por {{usuario}}',
+    stopBy: 'Pásate por {{user}}',
   },
   variableReference: {
     noAvailableVars: 'No hay variables disponibles',
@@ -904,6 +933,7 @@ const translation = {
       onlyShowNamedVersions: 'Solo muestra versiones nombradas',
       empty: 'No se encontró un historial de versiones coincidente.',
       reset: 'Restablecer filtro',
+      all: 'Todo',
     },
     editField: {
       titleLengthLimit: 'El título no puede exceder {{limit}} caracteres',
@@ -918,6 +948,7 @@ const translation = {
       deleteFailure: 'Error al eliminar la versión',
       updateFailure: 'Error al actualizar la versión',
       restoreSuccess: 'Versión restaurada',
+      copyIdSuccess: 'ID copiado en el portapapeles',
     },
     releaseNotesPlaceholder: 'Describe lo que cambió',
     restorationTip: 'Después de la restauración de la versión, el borrador actual será sobrescrito.',
@@ -927,6 +958,8 @@ const translation = {
     deletionTip: 'La eliminación es irreversible, por favor confirma.',
     currentDraft: 'Borrador Actual',
     editVersionInfo: 'Editar información de la versión',
+    latest: 'Último',
+    copyId: 'Copiar ID',
   },
   debug: {
     noData: {
@@ -939,6 +972,7 @@ const translation = {
         stop: 'Detén la carrera',
         normal: 'Inspeccionar Variable',
         cached: 'Ver variables en caché',
+        clear: 'Claro',
       },
       envNode: 'Medio ambiente',
       chatNode: 'Conversación',
@@ -951,9 +985,28 @@ const translation = {
       resetConversationVar: 'Restablecer la variable de conversación al valor predeterminado',
       clearNode: 'Limpiar variable en caché',
       emptyTip: 'Después de recorrer un nodo en el lienzo o ejecutar un nodo paso a paso, puedes ver el valor actual de la variable del nodo en Inspección de Variables.',
+      edited: 'Editado',
     },
     lastRunTab: 'Última ejecución',
     settingsTab: 'Ajustes',
+    relations: {
+      dependents: 'Dependientes',
+      dependenciesDescription: 'Nodos en los que se basa este nodo',
+      dependentsDescription: 'Nodos que dependen de este nodo',
+      noDependencies: 'Sin dependencias',
+      noDependents: 'Sin dependientes',
+      dependencies: 'Dependencias',
+    },
+    relationsTab: 'Relaciones',
+    noLastRunFound: 'No se encontró ninguna ejecución anterior',
+    copyLastRunError: 'No se pudo copiar las entradas de la última ejecución',
+    copyLastRun: 'Copiar última ejecución',
+    noMatchingInputsFound: 'No se encontraron entradas coincidentes de la última ejecución.',
+    lastOutput: 'Última salida',
+  },
+  sidebar: {
+    exportWarning: 'Exportar la versión guardada actual',
+    exportWarningDesc: 'Esto exportará la versión guardada actual de tu flujo de trabajo. Si tienes cambios no guardados en el editor, guárdalos primero utilizando la opción de exportar en el lienzo del flujo de trabajo.',
   },
 }
 

@@ -408,7 +408,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger before invoke callbacks
 
@@ -440,7 +440,9 @@ class LargeLanguageModel(AIModel):
                     if callback.raise_error:
                         raise e
                     else:
-                        logger.warning(f"Callback {callback.__class__.__name__} on_before_invoke failed with error {e}")
+                        logger.warning(
+                            "Callback %s on_before_invoke failed with error %s", callback.__class__.__name__, e
+                        )
 
     def _trigger_new_chunk_callbacks(
         self,
@@ -454,7 +456,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger new chunk callbacks
 
@@ -487,7 +489,7 @@ class LargeLanguageModel(AIModel):
                     if callback.raise_error:
                         raise e
                     else:
-                        logger.warning(f"Callback {callback.__class__.__name__} on_new_chunk failed with error {e}")
+                        logger.warning("Callback %s on_new_chunk failed with error %s", callback.__class__.__name__, e)
 
     def _trigger_after_invoke_callbacks(
         self,
@@ -501,7 +503,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger after invoke callbacks
 
@@ -535,7 +537,9 @@ class LargeLanguageModel(AIModel):
                     if callback.raise_error:
                         raise e
                     else:
-                        logger.warning(f"Callback {callback.__class__.__name__} on_after_invoke failed with error {e}")
+                        logger.warning(
+                            "Callback %s on_after_invoke failed with error %s", callback.__class__.__name__, e
+                        )
 
     def _trigger_invoke_error_callbacks(
         self,
@@ -549,7 +553,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger invoke error callbacks
 
@@ -583,4 +587,6 @@ class LargeLanguageModel(AIModel):
                     if callback.raise_error:
                         raise e
                     else:
-                        logger.warning(f"Callback {callback.__class__.__name__} on_invoke_error failed with error {e}")
+                        logger.warning(
+                            "Callback %s on_invoke_error failed with error %s", callback.__class__.__name__, e
+                        )

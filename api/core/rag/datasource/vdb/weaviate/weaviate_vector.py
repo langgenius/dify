@@ -24,7 +24,7 @@ class WeaviateConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")
         return values
@@ -37,22 +37,15 @@ class WeaviateVector(BaseVector):
         self._attributes = attributes
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
-        auth_config = weaviate.auth.AuthApiKey(api_key=config.api_key)
+        auth_config = weaviate.AuthApiKey(api_key=config.api_key or "")
 
-        weaviate.connect.connection.has_grpc = False
-
-        # Fix to minimize the performance impact of the deprecation check in weaviate-client 3.24.0,
-        # by changing the connection timeout to pypi.org from 1 second to 0.001 seconds.
-        # TODO: This can be removed once weaviate-client is updated to 3.26.7 or higher,
-        #       which does not contain the deprecation check.
-        if hasattr(weaviate.connect.connection, "PYPI_TIMEOUT"):
-            weaviate.connect.connection.PYPI_TIMEOUT = 0.001
+        weaviate.connect.connection.has_grpc = False  # ty: ignore [unresolved-attribute]
 
         try:
             client = weaviate.Client(
                 url=config.endpoint, auth_client_secret=auth_config, timeout_config=(5, 60), startup_period=None
             )
-        except requests.exceptions.ConnectionError:
+        except requests.ConnectionError:
             raise ConnectionError("Vector database connection error")
 
         client.batch.configure(
@@ -82,7 +75,7 @@ class WeaviateVector(BaseVector):
         dataset_id = dataset.id
         return Dataset.gen_collection_name_by_id(dataset_id)
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -92,9 +85,9 @@ class WeaviateVector(BaseVector):
         self.add_texts(texts, embeddings)
 
     def _create_collection(self):
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             schema = self._default_schema(self._collection_name)
@@ -171,7 +164,7 @@ class WeaviateVector(BaseVector):
 
         return True
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         # check whether the index already exists
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):
@@ -220,7 +213,7 @@ class WeaviateVector(BaseVector):
         for doc, score in docs_and_scores:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
             # check score threshold
-            if score > score_threshold:
+            if score >= score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
                     docs.append(doc)
@@ -263,7 +256,7 @@ class WeaviateVector(BaseVector):
             docs.append(Document(page_content=text, vector=additional["vector"], metadata=res))
         return docs
 
-    def _default_schema(self, index_name: str) -> dict:
+    def _default_schema(self, index_name: str):
         return {
             "class": index_name,
             "properties": [
@@ -274,7 +267,7 @@ class WeaviateVector(BaseVector):
             ],
         }
 
-    def _json_serializable(self, value: Any) -> Any:
+    def _json_serializable(self, value: Any):
         if isinstance(value, datetime.datetime):
             return value.isoformat()
         return value

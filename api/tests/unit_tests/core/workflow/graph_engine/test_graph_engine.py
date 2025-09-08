@@ -8,7 +8,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     BaseNodeEvent,
     GraphRunFailedEvent,
@@ -27,6 +26,7 @@ from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -171,7 +171,8 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
     graph = Graph.init(graph_config=graph_config)
 
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"}, user_inputs={"query": "hi"}
+        system_variables=SystemVariable(user_id="aaa", app_id="1", workflow_id="1", files=[]),
+        user_inputs={"query": "hi"},
     )
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
@@ -293,12 +294,12 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
     graph = Graph.init(graph_config=graph_config)
 
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather in SF",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa",
+            files=[],
+            query="what's the weather in SF",
+            conversation_id="abababa",
+        ),
         user_inputs={},
     )
 
@@ -474,12 +475,12 @@ def test_run_branch(mock_close, mock_remove):
     graph = Graph.init(graph_config=graph_config)
 
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "hi",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa",
+            files=[],
+            query="hi",
+            conversation_id="abababa",
+        ),
         user_inputs={"uid": "takato"},
     )
 
@@ -776,7 +777,7 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
             },
             {
                 "data": {
-                    "code": '\ndef main(arg1: str, arg2: str) -> dict:\n    return {\n        "result": arg1 + arg2,\n    }\n',  # noqa: E501
+                    "code": '\ndef main(arg1: str, arg2: str):\n    return {\n        "result": arg1 + arg2,\n    }\n',
                     "code_language": "python3",
                     "desc": "",
                     "outputs": {"result": {"children": None, "type": "string"}},
@@ -804,18 +805,22 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
 
     # construct variable pool
     pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "dify",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "1",
-        },
+        system_variables=SystemVariable(
+            user_id="1",
+            files=[],
+            query="dify",
+            conversation_id="abababa",
+        ),
         user_inputs={},
         environment_variables=[],
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"}, user_inputs={"query": "hi"}
+        system_variables=SystemVariable(
+            user_id="aaa",
+            files=[],
+        ),
+        user_inputs={"query": "hi"},
     )
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())

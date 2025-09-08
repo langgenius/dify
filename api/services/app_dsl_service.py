@@ -12,6 +12,7 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging import version
+from packaging.version import parse as parse_version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -41,7 +42,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.3.0"
+CURRENT_DSL_VERSION = "0.4.0"
 
 
 class ImportMode(StrEnum):
@@ -269,7 +270,7 @@ class AppDslService:
             check_dependencies_pending_data = None
             if dependencies:
                 check_dependencies_pending_data = [PluginDependency.model_validate(d) for d in dependencies]
-            elif imported_version <= "0.1.5":
+            elif parse_version(imported_version) <= parse_version("0.1.5"):
                 if "workflow" in data:
                     graph = data.get("workflow", {}).get("graph", {})
                     dependencies_list = self._extract_dependencies_from_workflow_graph(graph)
@@ -531,7 +532,7 @@ class AppDslService:
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False) -> str:
+    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: Optional[str] = None) -> str:
         """
         Export app
         :param app_model: App instance
@@ -555,7 +556,7 @@ class AppDslService:
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
-                export_data=export_data, app_model=app_model, include_secret=include_secret
+                export_data=export_data, app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
             )
         else:
             cls._append_model_config_export_data(export_data, app_model)
@@ -563,25 +564,40 @@ class AppDslService:
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
-    def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:
+    def _append_workflow_export_data(
+        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: Optional[str] = None
+    ):
         """
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
         """
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model)
+        workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
+        # TODO: refactor: we need a better way to filter workspace related data from nodes
         for node in workflow_dict.get("graph", {}).get("nodes", []):
-            if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL.value:
-                dataset_ids = node["data"].get("dataset_ids", [])
-                node["data"]["dataset_ids"] = [
+            node_data = node.get("data", {})
+            if not node_data:
+                continue
+            data_type = node_data.get("type", "")
+            if data_type == NodeType.KNOWLEDGE_RETRIEVAL.value:
+                dataset_ids = node_data.get("dataset_ids", [])
+                node_data["dataset_ids"] = [
                     cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)
                     for dataset_id in dataset_ids
                 ]
+            # filter credential id from tool node
+            if not include_secret and data_type == NodeType.TOOL.value:
+                node_data.pop("credential_id", None)
+            # filter credential id from agent node
+            if not include_secret and data_type == NodeType.AGENT.value:
+                for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
+                    tool.pop("credential_id", None)
+
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
         export_data["dependencies"] = [
@@ -592,7 +608,7 @@ class AppDslService:
         ]
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, app_model: App) -> None:
+    def _append_model_config_export_data(cls, export_data: dict, app_model: App):
         """
         Append model config export data
         :param export_data: export data
@@ -602,7 +618,15 @@ class AppDslService:
         if not app_model_config:
             raise ValueError("Missing app configuration, please check.")
 
-        export_data["model_config"] = app_model_config.to_dict()
+        model_config = app_model_config.to_dict()
+
+        # TODO: refactor: we need a better way to filter workspace related data from model config
+        # filter credential id from model config
+        for tool in model_config.get("agent_mode", {}).get("tools", []):
+            tool.pop("credential_id", None)
+
+        export_data["model_config"] = model_config
+
         dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())

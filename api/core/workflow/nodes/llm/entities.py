@@ -1,5 +1,5 @@
-from collections.abc import Sequence
-from typing import Any, Optional
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -13,7 +13,7 @@ class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
-    completion_params: dict[str, Any] = {}
+    completion_params: dict[str, Any] = Field(default_factory=dict)
 
 
 class ContextConfig(BaseModel):
@@ -65,9 +65,26 @@ class LLMNodeData(BaseNodeData):
     memory: Optional[MemoryConfig] = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
-    structured_output: dict | None = None
+    structured_output: Mapping[str, Any] | None = None
     # We used 'structured_output_enabled' in the past, but it's not a good name.
     structured_output_switch_on: bool = Field(False, alias="structured_output_enabled")
+    reasoning_format: Literal["separated", "tagged"] = Field(
+        # Keep tagged as default for backward compatibility
+        default="tagged",
+        description=(
+            """
+            Strategy for handling model reasoning output.
+
+            separated: Return clean text (without <think> tags) + reasoning_content field.
+                      Recommended for new workflows. Enables safe downstream parsing and 
+                      workflow variable access: {{#node_id.reasoning_content#}}
+
+            tagged   : Return original text (with <think> tags) + reasoning_content field.
+                      Maintains full backward compatibility while still providing reasoning_content
+                      for workflow automation. Frontend thinking panels work as before.
+            """
+        ),
+    )
 
     @field_validator("prompt_config", mode="before")
     @classmethod

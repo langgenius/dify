@@ -1,8 +1,7 @@
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -62,20 +61,23 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
-from models.model import App
 from models.workflow import Workflow
 
 
-class WorkflowBasedAppRunner(AppRunner):
-    def __init__(self, queue_manager: AppQueueManager, variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER) -> None:
-        self.queue_manager = queue_manager
+class WorkflowBasedAppRunner:
+    def __init__(
+        self,
+        *,
+        queue_manager: AppQueueManager,
+        variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        app_id: str,
+    ):
+        self._queue_manager = queue_manager
         self._variable_loader = variable_loader
-
-    def _get_app_id(self) -> str:
-        raise NotImplementedError("not implemented")
+        self._app_id = app_id
 
     def _init_graph(self, graph_config: Mapping[str, Any]) -> Graph:
         """
@@ -166,7 +168,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=workflow.environment_variables,
         )
@@ -263,7 +265,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=workflow.environment_variables,
         )
@@ -290,7 +292,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         return graph, variable_pool
 
-    def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent) -> None:
+    def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
         """
         Handle event
         :param workflow_entry: workflow entry
@@ -692,21 +694,5 @@ class WorkflowBasedAppRunner(AppRunner):
                 )
             )
 
-    def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
-        """
-        Get workflow
-        """
-        # fetch workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
-            .filter(
-                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.id == workflow_id
-            )
-            .first()
-        )
-
-        # return workflow
-        return workflow
-
-    def _publish_event(self, event: AppQueueEvent) -> None:
-        self.queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
+    def _publish_event(self, event: AppQueueEvent):
+        self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)

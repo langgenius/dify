@@ -74,6 +74,8 @@ const translation = {
     exportPNG: 'PNG で出力',
     exportJPEG: 'JPEG で出力',
     exportSVG: 'SVG で出力',
+    currentView: '現在のビュー',
+    currentWorkflow: '現在のワークフロー',
     model: 'モデル',
     workflowAsTool: 'ワークフローをツールとして公開する',
     configureRequired: '設定が必要',
@@ -113,6 +115,7 @@ const translation = {
     addFailureBranch: '失敗ブランチを追加',
     loadMore: 'さらに読み込む',
     noHistory: '履歴がありません',
+    tagBound: 'このタグを使用しているアプリの数',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -136,6 +139,10 @@ const translation = {
       ignore: 'DSL をエクスポート',
       export: 'シークレット値付きでエクスポート',
     },
+  },
+  sidebar: {
+    exportWarning: '現在保存されているバージョンをエクスポート',
+    exportWarningDesc: 'これは現在保存されているワークフローのバージョンをエクスポートします。エディターで未保存の変更がある場合は、まずワークフローキャンバスのエクスポートオプションを使用して保存してください。',
   },
   chatVariable: {
     panelTitle: '会話変数',
@@ -212,7 +219,6 @@ const translation = {
     startRun: '実行開始',
     running: '実行中',
     testRunIteration: 'テスト実行（イテレーション）',
-    testRunLoop: 'テスト実行（ループ）',
     back: '戻る',
     iteration: 'イテレーション',
     loop: 'ループ',
@@ -232,6 +238,8 @@ const translation = {
     'noResult': '該当なし',
     'plugin': 'プラグイン',
     'agent': 'エージェント戦略',
+    'addAll': 'すべてを追加する',
+    'allAdded': 'すべて追加されました',
   },
   blocks: {
     'start': '開始',
@@ -285,6 +293,18 @@ const translation = {
     zoomTo50: '50% サイズ',
     zoomTo100: '等倍表示',
     zoomToFit: '画面に合わせる',
+    horizontal: '水平',
+    alignBottom: '下',
+    alignNodes: 'ノードを整列',
+    vertical: '垂直',
+    alignLeft: '左',
+    alignTop: '上',
+    alignRight: '右',
+    alignMiddle: '中央',
+    distributeVertical: '垂直方向に等間隔配置',
+    alignCenter: '中央',
+    selectionAlignment: '選択の整列',
+    distributeHorizontal: '水平方向に等間隔配置',
   },
   variableReference: {
     noAvailableVars: '利用可能な変数がありません',
@@ -369,7 +389,10 @@ const translation = {
         ms: 'ミリ秒',
         retries: '再試行回数：{{num}}',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: '入力値',
+        variable: '変数を使用する',
+      },
     },
     start: {
       required: '必須',
@@ -457,6 +480,12 @@ const translation = {
         warningTips: {
           saveSchema: '編集中のフィールドを確定してから保存してください。',
         },
+      },
+      reasoningFormat: {
+        tagged: 'タグを考え続けてください',
+        separated: '思考タグを分ける',
+        title: '推論タグの分離を有効にする',
+        tooltip: 'thinkタグから内容を抽出し、それをreasoning_contentフィールドに保存します。',
       },
     },
     knowledgeRetrieval: {
@@ -586,7 +615,6 @@ const translation = {
         'not empty': '空でない',
         'null': 'null',
         'not null': 'null でない',
-        'regex match': '正規表現マッチ',
         'in': '含まれている',
         'not in': '含まれていない',
         'all of': 'すべての',
@@ -613,7 +641,6 @@ const translation = {
     variableAssigner: {
       title: '変数を代入する',
       outputType: '出力タイプ',
-      outputVarType: '出力変数のタイプ',
       varNotSet: '変数が設定されていません',
       noVarTip: '代入された変数を追加してください',
       type: {
@@ -677,6 +704,9 @@ const translation = {
         json: 'ツールで生成された JSON',
       },
       authorize: '認証する',
+      settings: '設定',
+      insertPlaceholder1: 'タイプするか押してください',
+      insertPlaceholder2: '変数を挿入する',
     },
     questionClassifiers: {
       model: 'モデル',
@@ -862,6 +892,7 @@ const translation = {
         },
         text: 'エージェント生成コンテンツ',
         json: 'エージェント生成の JSON',
+        usage: 'モデル使用量',
       },
       checkList: {
         strategyNotSelected: '戦略が選択されていません',
@@ -878,7 +909,7 @@ const translation = {
       modelNotSelected: 'モデルが選択されていません',
       toolNotAuthorizedTooltip: '{{tool}} 認可されていません',
       toolNotInstallTooltip: '{{tool}}はインストールされていません',
-      tools: '道具',
+      tools: 'ツール',
       learnMore: 'もっと学ぶ',
       configureModel: 'モデルを設定する',
       model: 'モデル',
@@ -893,6 +924,8 @@ const translation = {
       unsupportedStrategy: 'サポートされていない戦略',
       pluginNotFoundDesc: 'このプラグインは GitHub からインストールされています。再インストールするにはプラグインに移動してください。',
       strategyNotFoundDesc: 'インストールされたプラグインのバージョンは、この戦略を提供していません。',
+      parameterSchema: 'パラメータスキーマ',
+      clickToViewParameterSchema: 'パラメータースキーマを見るにはクリックしてください',
     },
   },
   tracing: {
@@ -928,7 +961,9 @@ const translation = {
       deleteFailure: '削除に失敗しました',
       updateSuccess: '更新が完了しました',
       updateFailure: '更新に失敗しました',
+      copyIdSuccess: 'IDがクリップボードにコピーされました',
     },
+    copyId: 'IDをコピー',
   },
   debug: {
     noData: {
@@ -958,6 +993,21 @@ const translation = {
     },
     settingsTab: '設定',
     lastRunTab: '最後の実行',
+    relationsTab: '関係',
+    relations: {
+      dependencies: '依存元',
+      dependents: '依存先',
+      dependenciesDescription: 'このノードが依存している他のノード',
+      dependentsDescription: 'このノードに依存している他のノード',
+      noDependencies: '依存元なし',
+      noDependents: '依存先なし',
+    },
+    copyLastRun: '最後の実行をコピー',
+    noLastRunFound: '以前の実行が見つかりませんでした。',
+    copyLastRunError: '最後の実行の入力をコピーできませんでした',
+    noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
+    lastRunInputsCopied: '前回の実行から{{count}}個の入力をコピーしました',
+    lastOutput: '最後の出力',
   },
 }
 

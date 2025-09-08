@@ -9,7 +9,7 @@ import VoiceSettings from '@/app/components/base/features/new-feature-panel/text
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { languages } from '@/i18n/language'
+import { languages } from '@/i18n-config/language'
 import { TtsAutoPlay } from '@/types/app'
 
 type Props = {

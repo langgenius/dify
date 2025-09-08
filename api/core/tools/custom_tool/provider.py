@@ -24,7 +24,7 @@ class ApiToolProviderController(ToolProviderController):
     tenant_id: str
     tools: list[ApiTool] = Field(default_factory=list)
 
-    def __init__(self, entity: ToolProviderEntity, provider_id: str, tenant_id: str) -> None:
+    def __init__(self, entity: ToolProviderEntity, provider_id: str, tenant_id: str):
         super().__init__(entity)
         self.provider_id = provider_id
         self.tenant_id = tenant_id
@@ -178,7 +178,7 @@ class ApiToolProviderController(ToolProviderController):
         # get tenant api providers
         db_providers: list[ApiToolProvider] = (
             db.session.query(ApiToolProvider)
-            .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
             .all()
         )
 
@@ -191,7 +191,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_tool(self, tool_name: str):
+    def get_tool(self, tool_name: str) -> ApiTool:
         """
         get tool by name
 

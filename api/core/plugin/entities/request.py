@@ -27,6 +27,20 @@ from core.workflow.nodes.question_classifier.entities import (
 )
 
 
+class InvokeCredentials(BaseModel):
+    tool_credentials: dict[str, str] = Field(
+        default_factory=dict,
+        description="Map of tool provider to credential id, used to store the credential id for the tool provider.",
+    )
+
+
+class PluginInvokeContext(BaseModel):
+    credentials: Optional[InvokeCredentials] = Field(
+        default_factory=InvokeCredentials,
+        description="Credentials context for the plugin invocation or backward invocation.",
+    )
+
+
 class RequestInvokeTool(BaseModel):
     """
     Request to invoke a tool
@@ -36,6 +50,7 @@ class RequestInvokeTool(BaseModel):
     provider: str
     tool: str
     tool_parameters: dict
+    credential_id: Optional[str] = None
 
 
 class BaseRequestInvokeModel(BaseModel):

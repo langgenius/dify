@@ -1,9 +1,11 @@
-from flask_restful import fields
+from flask_restx import fields
 
 from core.helper import encrypter
 from core.variables import SecretVariable, SegmentType, Variable
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
+
+from ._value_type_serializer import serialize_value_type
 
 ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
 
@@ -15,7 +17,7 @@ class EnvironmentVariableField(fields.Raw):
             return {
                 "id": value.id,
                 "name": value.name,
-                "value": encrypter.obfuscated_token(value.value),
+                "value": encrypter.full_mask_token(),
                 "value_type": value.value_type.value,
                 "description": value.description,
             }
@@ -24,11 +26,16 @@ class EnvironmentVariableField(fields.Raw):
                 "id": value.id,
                 "name": value.name,
                 "value": value.value,
-                "value_type": value.value_type.value,
+                "value_type": value.value_type.exposed_type().value,
                 "description": value.description,
             }
         if isinstance(value, dict):
-            value_type = value.get("value_type")
+            value_type_str = value.get("value_type")
+            if not isinstance(value_type_str, str):
+                raise TypeError(
+                    f"unexpected type for value_type field, value={value_type_str}, type={type(value_type_str)}"
+                )
+            value_type = SegmentType(value_type_str).exposed_type()
             if value_type not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
                 raise ValueError(f"Unsupported environment variable value type: {value_type}")
             return value
@@ -37,7 +44,7 @@ class EnvironmentVariableField(fields.Raw):
 conversation_variable_fields = {
     "id": fields.String,
     "name": fields.String,
-    "value_type": fields.String(attribute="value_type.value"),
+    "value_type": fields.String(attribute=serialize_value_type),
     "value": fields.Raw,
     "description": fields.String,
 }

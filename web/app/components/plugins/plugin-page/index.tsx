@@ -17,14 +17,14 @@ import {
 } from './context'
 import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
-import usePermission from './use-permission'
+import useReferenceSetting from './use-reference-setting'
 import DebugInfo from './debug-info'
 import PluginTasks from './plugin-tasks'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
-import PermissionSetModal from '@/app/components/plugins/permission-setting-modal/modal'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import {
   useRouter,
@@ -117,20 +117,19 @@ const PluginPage = ({
         showInstallFromMarketplace()
       }
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageId, bundleInfo])
 
   const {
+    referenceSetting,
     canManagement,
     canDebugger,
     canSetPermissions,
-    permissions,
-    setPermissions,
-  } = usePermission()
+    setReferenceSettings,
+  } = useReferenceSetting()
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
-  }] = useBoolean()
+  }] = useBoolean(false)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
   const options = usePluginPageContext(v => v.options)
@@ -276,10 +275,10 @@ const PluginPage = ({
       }
 
       {showPluginSettingModal && (
-        <PermissionSetModal
-          payload={permissions!}
+        <ReferenceSettingModal
+          payload={referenceSetting!}
           onHide={setHidePluginSettingModal}
-          onSave={setPermissions}
+          onSave={setReferenceSettings}
         />
       )}
 

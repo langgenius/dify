@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import type { FC } from 'react'
 import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
@@ -71,4 +72,4 @@ const AppIcon: FC<AppIconProps> = ({
   </span>
 }
 
-export default AppIcon
+export default React.memo(AppIcon)

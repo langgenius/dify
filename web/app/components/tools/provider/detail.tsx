@@ -11,7 +11,7 @@ import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderReq
 import ToolItem from './tool-item'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'

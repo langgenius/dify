@@ -113,6 +113,9 @@ const translation = {
     autoSaved: 'Samodejno shranjeno',
     configure: 'Konfiguriraj',
     inRunMode: 'V načinu izvajanja',
+    tagBound: 'Število aplikacij, ki uporabljajo to oznako',
+    currentView: 'Trenutni pogled',
+    currentWorkflow: 'Trenutni potek dela',
   },
   env: {
     modal: {
@@ -231,6 +234,8 @@ const translation = {
     'blocks': 'Vozlišča',
     'question-understand': 'Vprašanje Razumevanje',
     'agent': 'Agentska strategija',
+    'addAll': 'Dodaj vse',
+    'allAdded': 'Vse dodano',
   },
   blocks: {
     'iteration': 'Iteracija',
@@ -276,6 +281,7 @@ const translation = {
     'start': 'Določite začetne parametre za zagon delovnega toka',
     'variable-assigner': 'Združite večpodružinske spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
     'variable-aggregator': 'Združite večpodružnične spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
+    'assigner': 'Vožnji vozlišča za dodelitev spremenljivk se uporablja za dodeljevanje vrednosti spremenljivkam, ki jih je mogoče zapisati (kot so spremenljivke za pogovor).',
   },
   operator: {
     zoomOut: 'Zoomirati ven',
@@ -283,6 +289,18 @@ const translation = {
     zoomIn: 'Zoom in',
     zoomTo50: 'Povečaj na 50%',
     zoomTo100: 'Povečaj na 100%',
+    alignMiddle: 'Sredina',
+    alignBottom: 'Spodaj',
+    alignCenter: 'Center',
+    distributeVertical: 'Razporedi navpično',
+    alignRight: 'Desno',
+    alignTop: 'Vrh',
+    vertical: 'Navpičen',
+    distributeHorizontal: 'Razporedi vodoravno',
+    selectionAlignment: 'Poravnava izbora',
+    alignNodes: 'Poravnava vozlišč',
+    horizontal: 'Vodoraven',
+    alignLeft: 'Levo',
   },
   variableReference: {
     conversationVars: 'pogovorne spremenljivke',
@@ -309,6 +327,7 @@ const translation = {
     organizeBlocks: 'Organizirajte vozlišča',
     minimize: 'Izhod iz celotnega zaslona',
     maximize: 'Maksimiziraj platno',
+    optional: '(neobvezno)',
   },
   nodes: {
     common: {
@@ -366,7 +385,10 @@ const translation = {
       },
       insertVarTip: 'Vstavite spremenljivko',
       outputVars: 'Izhodne spremenljivke',
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Uporabi spremenljivko',
+        input: 'Vhodna vrednost',
+      },
     },
     start: {
       outputVars: {
@@ -455,6 +477,12 @@ const translation = {
       context: 'kontekst',
       addMessage: 'Dodaj sporočilo',
       vision: 'vizija',
+      reasoningFormat: {
+        tagged: 'Ohranite oznake za razmišljanje',
+        title: 'Omogoči ločevanje oznak za razsojanje',
+        tooltip: 'Izvleći vsebino iz miselnih oznak in jo shraniti v polje reasoning_content.',
+        separated: 'Ločite oznake za razmišljanje',
+      },
     },
     knowledgeRetrieval: {
       outputVars: {
@@ -491,6 +519,7 @@ const translation = {
           add: 'Dodaj pogoj',
         },
         title: 'Filtriranje metapodatkov',
+        tip: 'Filtriranje metapodatkov je postopek uporabe metapodatkovnih atributov (kot so oznake, kategorije ali dovoljenja za dostop) za natančnejše določanje in nadzorovanje pridobivanja relevantnih informacij znotraj sistema.',
       },
       queryVariable: 'Vprašanje spremenljivka',
       knowledge: 'Znanje',
@@ -553,6 +582,7 @@ const translation = {
       outputVars: 'Izhodne spremenljivke',
       inputVars: 'Vhodne spremenljivke',
       advancedDependenciesTip: 'Dodajte nekaj vnaprej naloženih odvisnosti, ki potrebujejo več časa za obdelavo ali niso privzete vgrajene.',
+      syncFunctionSignature: 'Sinhronizirajte podpis funkcije s kodo',
     },
     templateTransform: {
       outputVars: {
@@ -670,6 +700,9 @@ const translation = {
       },
       inputVars: 'Vhodne spremenljivke',
       authorize: 'Pooblasti',
+      insertPlaceholder2: 'vstavite spremenljivko',
+      insertPlaceholder1: 'Vnesite ali pritisnite',
+      settings: 'Nastavitve',
     },
     questionClassifiers: {
       outputVars: {
@@ -855,6 +888,7 @@ const translation = {
         },
         json: 'agent generiran json',
         text: 'vsebina, ki jo je ustvaril agent',
+        usage: 'informacije o uporabi modela',
       },
       checkList: {
         strategyNotSelected: 'Strategija ni izbrana',
@@ -886,6 +920,8 @@ const translation = {
       toolNotAuthorizedTooltip: '{{tool}} Ni pooblaščen',
       strategyNotFoundDescAndSwitchVersion: 'Nameščena različica vtičnika ne podpira te strategije. Kliknite za preklop na drugo različico.',
       pluginNotInstalledDesc: 'Ta vtičnik je nameščen iz GitHuba. Prosimo, da greste v vtičnike in ga ponovo namestite.',
+      parameterSchema: 'Parametrska shema',
+      clickToViewParameterSchema: 'Kliknite za prikaz sheme parametrov',
     },
   },
   tracing: {
@@ -912,6 +948,7 @@ const translation = {
       restoreSuccess: 'Obnovljena različica',
       restoreFailure: 'Obnavljanje različice ni uspelo',
       updateSuccess: 'Različica posodobljena',
+      copyIdSuccess: 'ID kopiran v odložišče',
     },
     defaultName: 'Nepodpisana različica',
     deletionTip: 'Izbris je nepovraten, prosim potrdite.',
@@ -922,6 +959,7 @@ const translation = {
     nameThisVersion: 'Poimenujte to različico',
     releaseNotesPlaceholder: 'Opisujte, kaj se je spremenilo',
     restorationTip: 'Po obnovitvi različice bo trenutni osnutek prepisan.',
+    copyId: 'Kopiraj ID',
   },
   debug: {
     noData: {
@@ -951,6 +989,24 @@ const translation = {
     },
     settingsTab: 'Nastavitve',
     lastRunTab: 'Zadnji zagon',
+    relations: {
+      dependencies: 'Odvisnosti',
+      dependents: 'Odvisnim',
+      noDependents: 'Brez vzdrževanih oseb',
+      dependentsDescription: 'Vozlišča, ki se zanašajo na to vozlišče',
+      dependenciesDescription: 'Vozlišča, na katera se zanaša to vozlišče',
+      noDependencies: 'Brez odvisnosti',
+    },
+    relationsTab: 'Odnose',
+    copyLastRun: 'Kopiraj zadnji zagon',
+    copyLastRunError: 'Kopiranje vhodov zadnjega zagona ni uspelo',
+    noLastRunFound: 'Nobenega prejšnjega zagona ni bilo najdenega.',
+    noMatchingInputsFound: 'Ni podatkov, ki bi ustrezali prejšnjemu zagonu',
+    lastOutput: 'Nazadnje izhod',
+  },
+  sidebar: {
+    exportWarning: 'Izvozi trenutna shranjena različica',
+    exportWarningDesc: 'To bo izvozilo trenutno shranjeno različico vašega delovnega toka. Če imate neshranjene spremembe v urejevalniku, jih najprej shranite z uporabo možnosti izvoza na platnu delovnega toka.',
   },
 }
 

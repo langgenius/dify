@@ -74,6 +74,8 @@ const translation = {
     exportPNG: 'Export as PNG',
     exportJPEG: 'Export as JPEG',
     exportSVG: 'Export as SVG',
+    currentView: 'Current View',
+    currentWorkflow: 'Current Workflow',
     model: 'Model',
     workflowAsTool: 'Workflow as Tool',
     configureRequired: 'Configure Required',
@@ -113,6 +115,7 @@ const translation = {
     addFailureBranch: 'Add Fail Branch',
     loadMore: 'Load More',
     noHistory: 'No History',
+    tagBound: 'Number of apps using this tag',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -136,6 +139,10 @@ const translation = {
       ignore: 'Export DSL',
       export: 'Export DSL with secret values ',
     },
+  },
+  sidebar: {
+    exportWarning: 'Export Current Saved Version',
+    exportWarningDesc: 'This will export the current saved version of your workflow. If you have unsaved changes in the editor, please save them first by using the export option in the workflow canvas.',
   },
   chatVariable: {
     panelTitle: 'Conversation Variables',
@@ -286,6 +293,18 @@ const translation = {
     zoomTo50: 'Zoom to 50%',
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
+    alignNodes: 'Align Nodes',
+    alignLeft: 'Left',
+    alignCenter: 'Center',
+    alignRight: 'Right',
+    alignTop: 'Top',
+    alignMiddle: 'Middle',
+    alignBottom: 'Bottom',
+    vertical: 'Vertical',
+    horizontal: 'Horizontal',
+    distributeHorizontal: 'Space Horizontally',
+    distributeVertical: 'Space Vertically',
+    selectionAlignment: 'Selection Alignment',
   },
   variableReference: {
     noAvailableVars: 'No available variables',
@@ -434,6 +453,12 @@ const translation = {
         variable: 'Variable',
       },
       sysQueryInUser: 'sys.query in user message is required',
+      reasoningFormat: {
+        title: 'Enable reasoning tag separation',
+        tagged: 'Keep think tags',
+        separated: 'Separate think tags',
+        tooltip: 'Extract content from think tags and store it in the reasoning_content field.',
+      },
       jsonSchema: {
         title: 'Structured Output Schema',
         instruction: 'Instruction',
@@ -879,6 +904,7 @@ const translation = {
       },
       outputVars: {
         text: 'agent generated content',
+        usage: 'Model Usage Information',
         files: {
           title: 'agent generated files',
           type: 'Support type. Now only support image',
@@ -919,6 +945,7 @@ const translation = {
     defaultName: 'Untitled Version',
     nameThisVersion: 'Name this version',
     editVersionInfo: 'Edit version info',
+    copyId: 'Copy ID',
     editField: {
       title: 'Title',
       releaseNotes: 'Release Notes',
@@ -935,11 +962,18 @@ const translation = {
       deleteFailure: 'Failed to delete version',
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
+      copyIdSuccess: 'ID copied to clipboard',
     },
   },
   debug: {
     settingsTab: 'Settings',
     lastRunTab: 'Last Run',
+    relationsTab: 'Relations',
+    copyLastRun: 'Copy Last Run',
+    noLastRunFound: 'No previous run found',
+    noMatchingInputsFound: 'No matching inputs found from last run',
+    lastRunInputsCopied: '{{count}} input(s) copied from last run',
+    copyLastRunError: 'Failed to copy last run inputs',
     noData: {
       description: 'The results of the last run will be displayed here',
       runThisNode: 'Run this node',
@@ -964,6 +998,15 @@ const translation = {
       envNode: 'Environment',
       chatNode: 'Conversation',
       systemNode: 'System',
+    },
+    lastOutput: 'Last Output',
+    relations: {
+      dependencies: 'Dependencies',
+      dependents: 'Dependents',
+      dependenciesDescription: 'Nodes that this node relies on',
+      dependentsDescription: 'Nodes that rely on this node',
+      noDependencies: 'No dependencies',
+      noDependents: 'No dependents',
     },
   },
 }

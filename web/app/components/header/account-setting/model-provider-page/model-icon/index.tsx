@@ -7,18 +7,20 @@ import { useLanguage } from '../hooks'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { OpenaiBlue, OpenaiTeal, OpenaiViolet, OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import cn from '@/utils/classnames'
-import { renderI18nObject } from '@/i18n'
+import { renderI18nObject } from '@/i18n-config'
 
 type ModelIconProps = {
   provider?: Model | ModelProvider
   modelName?: string
   className?: string
+  iconClassName?: string
   isDeprecated?: boolean
 }
 const ModelIcon: FC<ModelIconProps> = ({
   provider,
   className,
   modelName,
+  iconClassName,
   isDeprecated = false,
 }) => {
   const language = useLanguage()
@@ -34,7 +36,7 @@ const ModelIcon: FC<ModelIconProps> = ({
   if (provider?.icon_small) {
     return (
       <div className={cn('flex h-5 w-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
-        <img alt='model-icon' src={renderI18nObject(provider.icon_small, language)}/>
+        <img alt='model-icon' src={renderI18nObject(provider.icon_small, language)} className={iconClassName} />
       </div>
     )
   }
@@ -44,7 +46,7 @@ const ModelIcon: FC<ModelIconProps> = ({
       'flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
       className,
     )}>
-      <div className='flex h-5 w-5 items-center justify-center opacity-35'>
+      <div className={cn('flex h-5 w-5 items-center justify-center opacity-35', iconClassName)}>
         <Group className='h-3 w-3 text-text-tertiary' />
       </div>
     </div>

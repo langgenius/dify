@@ -1,8 +1,10 @@
 import json
 import logging
+import operator
 from typing import Any, Optional, cast
 
 import requests
+from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -130,13 +132,15 @@ class NotionExtractor(BaseExtractor):
                     data[property_name] = value
                 row_dict = {k: v for k, v in data.items() if v}
                 row_content = ""
-                for key, value in row_dict.items():
+                for key, value in sorted(row_dict.items(), key=operator.itemgetter(0)):
                     if isinstance(value, dict):
                         value_dict = {k: v for k, v in value.items() if v}
                         value_content = "".join(f"{k}:{v} " for k, v in value_dict.items())
                         row_content = row_content + f"{key}:{value_content}\n"
                     else:
                         row_content = row_content + f"{key}:{value}\n"
+                if "url" in result:
+                    row_content = row_content + f"Row Page URL:{result.get('url', '')}\n"
                 database_content.append(row_content)
 
             has_more = response_data.get("has_more", False)
@@ -330,10 +334,12 @@ class NotionExtractor(BaseExtractor):
 
         last_edited_time = self.get_notion_last_edited_time()
         data_source_info = document_model.data_source_info_dict
-        data_source_info["last_edited_time"] = last_edited_time
-        update_params = {DocumentModel.data_source_info: json.dumps(data_source_info)}
+        if data_source_info:
+            data_source_info["last_edited_time"] = last_edited_time
 
-        db.session.query(DocumentModel).filter_by(id=document_model.id).update(update_params)
+        db.session.query(DocumentModel).filter_by(id=document_model.id).update(
+            {DocumentModel.data_source_info: json.dumps(data_source_info)}
+        )  # type: ignore
         db.session.commit()
 
     def get_notion_last_edited_time(self) -> str:
@@ -363,22 +369,17 @@ class NotionExtractor(BaseExtractor):
 
     @classmethod
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
-            .filter(
-                db.and_(
-                    DataSourceOauthBinding.tenant_id == tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.disabled == False,
-                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
-                )
-            )
-            .first()
+        stmt = select(DataSourceOauthBinding).where(
+            DataSourceOauthBinding.tenant_id == tenant_id,
+            DataSourceOauthBinding.provider == "notion",
+            DataSourceOauthBinding.disabled == False,
+            DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
         )
+        data_source_binding = db.session.scalar(stmt)
 
         if not data_source_binding:
             raise Exception(
                 f"No notion data source binding found for tenant {tenant_id} and notion workspace {notion_workspace_id}"
             )
 
-        return cast(str, data_source_binding.access_token)
+        return data_source_binding.access_token

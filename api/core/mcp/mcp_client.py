@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
-from typing import Any, Optional, cast
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from core.mcp.client.sse_client import sse_client
@@ -23,12 +23,18 @@ class MCPClient:
         authed: bool = True,
         authorization_code: Optional[str] = None,
         for_list: bool = False,
+        headers: Optional[dict[str, str]] = None,
+        timeout: Optional[float] = None,
+        sse_read_timeout: Optional[float] = None,
     ):
         # Initialize info
         self.provider_id = provider_id
         self.tenant_id = tenant_id
         self.client_type = "streamable"
         self.server_url = server_url
+        self.headers = headers or {}
+        self.timeout = timeout
+        self.sse_read_timeout = sse_read_timeout
 
         # Authentication info
         self.authed = authed
@@ -43,7 +49,7 @@ class MCPClient:
         self._session: Optional[ClientSession] = None
         self._streams_context: Optional[AbstractContextManager[Any]] = None
         self._session_context: Optional[ClientSession] = None
-        self.exit_stack = ExitStack()
+        self._exit_stack = ExitStack()
 
         # Whether the client has been initialized
         self._initialized = False
@@ -68,15 +74,17 @@ class MCPClient:
         }
 
         parsed_url = urlparse(self.server_url)
-        path = parsed_url.path
+        path = parsed_url.path or ""
         method_name = path.rstrip("/").split("/")[-1] if path else ""
-        try:
+        if method_name in connection_methods:
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
-        except KeyError:
+        else:
             try:
+                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
                 self.connect_server(sse_client, "sse")
             except MCPConnectionError:
+                logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
                 self.connect_server(streamablehttp_client, "mcp")
 
     def connect_server(
@@ -88,23 +96,27 @@ class MCPClient:
             headers = (
                 {"Authorization": f"{self.token.token_type.capitalize()} {self.token.access_token}"}
                 if self.authed and self.token
-                else {}
+                else self.headers
             )
-            self._streams_context = client_factory(url=self.server_url, headers=headers)
-            if self._streams_context is None:
+            self._streams_context = client_factory(
+                url=self.server_url,
+                headers=headers,
+                timeout=self.timeout,
+                sse_read_timeout=self.sse_read_timeout,
+            )
+            if not self._streams_context:
                 raise MCPConnectionError("Failed to create connection context")
 
             # Use exit_stack to manage context managers properly
             if method_name == "mcp":
-                read_stream, write_stream, _ = self.exit_stack.enter_context(self._streams_context)
+                read_stream, write_stream, _ = self._exit_stack.enter_context(self._streams_context)
                 streams = (read_stream, write_stream)
             else:  # sse_client
-                streams = self.exit_stack.enter_context(self._streams_context)
+                streams = self._exit_stack.enter_context(self._streams_context)
 
             self._session_context = ClientSession(*streams)
-            self._session = self.exit_stack.enter_context(self._session_context)
-            session = cast(ClientSession, self._session)
-            session.initialize()
+            self._session = self._exit_stack.enter_context(self._session_context)
+            self._session.initialize()
             return
 
         except MCPAuthError:
@@ -117,9 +129,6 @@ class MCPClient:
             self.token = self.provider.tokens()
             if first_try:
                 return self.connect_server(client_factory, method_name, first_try=False)
-
-        except MCPConnectionError:
-            raise
 
     def list_tools(self) -> list[Tool]:
         """Connect to an MCP server running with SSE transport"""
@@ -140,11 +149,12 @@ class MCPClient:
         """Clean up resources"""
         try:
             # ExitStack will handle proper cleanup of all managed context managers
-            self.exit_stack.close()
+            self._exit_stack.close()
+        except Exception as e:
+            logger.exception("Error during cleanup")
+            raise ValueError(f"Error during cleanup: {e}")
+        finally:
             self._session = None
             self._session_context = None
             self._streams_context = None
             self._initialized = False
-        except Exception as e:
-            logging.exception("Error during cleanup")
-            raise ValueError(f"Error during cleanup: {e}")

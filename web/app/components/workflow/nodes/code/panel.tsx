@@ -89,6 +89,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         </Field>
         <Split />
         <CodeEditor
+          nodeId={id}
           isInNode
           readOnly={readOnly}
           title={

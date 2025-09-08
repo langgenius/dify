@@ -50,8 +50,7 @@ const HeaderInNormal = ({
     setShowDebugAndPreviewPanel(false)
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
-  }, [handleBackupDraft, workflowStore, handleNodeSelect, selectedNode,
-    setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel])
+  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel])
 
   return (
     <>

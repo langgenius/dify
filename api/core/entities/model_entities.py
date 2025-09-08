@@ -19,6 +19,7 @@ class ModelStatus(Enum):
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
     DISABLED = "disabled"
+    CREDENTIAL_REMOVED = "credential-removed"
 
 
 class SimpleModelProviderEntity(BaseModel):
@@ -32,7 +33,7 @@ class SimpleModelProviderEntity(BaseModel):
     icon_large: Optional[I18nObject] = None
     supported_model_types: list[ModelType]
 
-    def __init__(self, provider_entity: ProviderEntity) -> None:
+    def __init__(self, provider_entity: ProviderEntity):
         """
         Init simple provider.
 
@@ -54,8 +55,9 @@ class ProviderModelWithStatusEntity(ProviderModel):
 
     status: ModelStatus
     load_balancing_enabled: bool = False
+    has_invalid_load_balancing_configs: bool = False
 
-    def raise_for_status(self) -> None:
+    def raise_for_status(self):
         """
         Check model status and raise ValueError if not active.
 

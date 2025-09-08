@@ -1,10 +1,10 @@
 'use client'
 import React from 'react'
 import { useContext } from 'use-context-selector'
-import Select from '@/app/components/base/select/locale'
+import LocaleSigninSelect from '@/app/components/base/select/locale-signin'
 import Divider from '@/app/components/base/divider'
-import { languages } from '@/i18n/language'
-import type { Locale } from '@/i18n'
+import { languages } from '@/i18n-config/language'
+import type { Locale } from '@/i18n-config'
 import I18n from '@/context/i18n'
 import dynamic from 'next/dynamic'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -33,7 +33,7 @@ const Header = () => {
         />
         : <DifyLogo size='large' />}
       <div className='flex items-center gap-1'>
-        <Select
+        <LocaleSigninSelect
           value={locale}
           items={languages.filter(item => item.supported)}
           onChange={(value) => {

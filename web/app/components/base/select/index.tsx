@@ -77,7 +77,6 @@ const Select: FC<ISelectProps> = ({
       defaultSelect = existed
 
     setSelectedItem(defaultSelect)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue])
 
   const filteredItems: Item[]
@@ -201,7 +200,6 @@ const SimpleSelect: FC<ISelectProps> = ({
       defaultSelect = existed
 
     setSelectedItem(defaultSelect)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue])
 
   const listboxRef = useRef<HTMLDivElement>(null)
@@ -216,78 +214,83 @@ const SimpleSelect: FC<ISelectProps> = ({
         }
       }}
     >
-      <div className={classNames('group/simple-select relative h-9', wrapperClassName)}>
-        {renderTrigger && <ListboxButton className='w-full'>{renderTrigger(selectedItem)}</ListboxButton>}
-        {!renderTrigger && (
-          <ListboxButton onClick={() => {
-              // get data-open, use setTimeout to ensure the attribute is set
-              setTimeout(() => {
-                if (listboxRef.current)
-                  onOpenChange?.(listboxRef.current.getAttribute('data-open') !== null)
-              })
-          }} className={classNames(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
-            <span className={classNames('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
-            <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-              {isLoading ? <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />
-              : (selectedItem && !notClearable)
-                ? (
-                  <XMarkIcon
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedItem(null)
-                      onSelect({ name: '', value: '' })
-                    }}
-                    className="h-4 w-4 cursor-pointer text-text-quaternary"
-                    aria-hidden="false"
-                  />
-                )
-                : (
-                  <ChevronDownIcon
-                    className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
-                    aria-hidden="true"
-                  />
-                )}
-            </span>
-          </ListboxButton>
-        )}
+      {({ open }) => (
+        <div className={classNames('group/simple-select relative h-9', wrapperClassName)}>
+          {renderTrigger && <ListboxButton className='w-full'>{renderTrigger(selectedItem)}</ListboxButton>}
+          {!renderTrigger && (
+            <ListboxButton onClick={() => {
+              onOpenChange?.(open)
+            }} className={classNames(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
+              <span className={classNames('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
+              <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+                {isLoading ? <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />
+                  : (selectedItem && !notClearable)
+                    ? (
+                      <XMarkIcon
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedItem(null)
+                          onSelect({ name: '', value: '' })
+                        }}
+                        className="h-4 w-4 cursor-pointer text-text-quaternary"
+                        aria-hidden="false"
+                      />
+                    )
+                    : (
+                      open ? (
+                        <ChevronUpIcon
+                          className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <ChevronDownIcon
+                          className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                          aria-hidden="true"
+                        />
+                      )
+                    )}
+              </span>
+            </ListboxButton>
+          )}
 
-        {(!disabled) && (
-          <ListboxOptions className={classNames('absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm', optionWrapClassName)}>
-            {items.map((item: Item) => (
-              <ListboxOption
-                key={item.value}
-                className={
-                  classNames(
-                    'relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                    optionClassName,
-                  )
-                }
-                value={item}
-                disabled={disabled}
-              >
-                {({ /* active, */ selected }) => (
-                  <>
-                    {renderOption
-                      ? renderOption({ item, selected })
-                      : (<>
-                        <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
-                        {selected && !hideChecked && (
-                          <span
-                            className={classNames(
-                              'absolute inset-y-0 right-0 flex items-center pr-4 text-text-accent',
-                            )}
-                          >
-                            <RiCheckLine className="h-4 w-4" aria-hidden="true" />
-                          </span>
-                        )}
-                      </>)}
-                  </>
-                )}
-              </ListboxOption>
-            ))}
-          </ListboxOptions>
-        )}
-      </div>
+          {(!disabled) && (
+            <ListboxOptions className={classNames('absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm', optionWrapClassName)}>
+              {items.map((item: Item) => (
+                <ListboxOption
+                  key={item.value}
+                  className={
+                    classNames(
+                      'relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
+                      optionClassName,
+                    )
+                  }
+                  value={item}
+                  disabled={disabled}
+                >
+                  {({ /* active, */ selected }) => (
+                    <>
+                      {renderOption
+                        ? renderOption({ item, selected })
+                        : (<>
+                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                          {selected && !hideChecked && (
+                            <span
+                              className={classNames(
+                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-accent',
+                              )}
+                            >
+                              <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                          )}
+                        </>)}
+                    </>
+                  )}
+                </ListboxOption>
+              ))}
+            </ListboxOptions>
+          )}
+        </div>
+      )}
     </Listbox>
   )
 }
@@ -344,7 +347,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
             >
               <span
                 className={`
-              grow truncate
+              grow truncate text-text-secondary
               ${!selectedItem?.name && 'text-components-input-text-placeholder'}
             `}
               >

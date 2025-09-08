@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Locale } from '@/i18n'
+import type { Locale } from '@/i18n-config'
 import DevelopMain from '@/app/components/develop'
 
 export type IDevelopProps = {

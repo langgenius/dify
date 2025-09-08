@@ -76,30 +76,6 @@ class EmailSendIpLimitError(BaseHTTPException):
     code = 429
 
 
-class FileTooLargeError(BaseHTTPException):
-    error_code = "file_too_large"
-    description = "File size exceeded. {message}"
-    code = 413
-
-
-class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = "unsupported_file_type"
-    description = "File type not allowed."
-    code = 415
-
-
-class TooManyFilesError(BaseHTTPException):
-    error_code = "too_many_files"
-    description = "Only one file is allowed."
-    code = 400
-
-
-class NoFileUploadedError(BaseHTTPException):
-    error_code = "no_file_uploaded"
-    description = "Please upload your file."
-    code = 400
-
-
 class UnauthorizedAndForceLogout(BaseHTTPException):
     error_code = "unauthorized_and_force_logout"
     description = "Unauthorized and force logout."
@@ -127,7 +103,7 @@ class EducationActivateLimitError(BaseHTTPException):
     code = 429
 
 
-class CompilanceRateLimitError(BaseHTTPException):
-    error_code = "compilance_rate_limit"
+class ComplianceRateLimitError(BaseHTTPException):
+    error_code = "compliance_rate_limit"
     description = "Rate limit exceeded for downloading compliance report."
     code = 429

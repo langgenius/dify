@@ -109,12 +109,13 @@ const translation = {
     exitVersions: 'Phiên bản thoát',
     exportImage: 'Xuất hình ảnh',
     exportPNG: 'Xuất dưới dạng PNG',
-    noExist: 'Không có biến như vậy',
     exportJPEG: 'Xuất dưới dạng JPEG',
-    referenceVar: 'Biến tham chiếu',
     needAnswerNode: 'Nút Trả lời phải được thêm vào',
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
+    tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
+    currentWorkflow: 'Quy trình làm việc hiện tại',
+    currentView: 'Hiện tại View',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',
@@ -221,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Công cụ',
     'allTool': 'Tất cả',
-    'builtInTool': 'Tích hợp sẵn',
     'customTool': 'Tùy chỉnh',
     'workflowTool': 'Quy trình làm việc',
     'question-understand': 'Hiểu câu hỏi',
@@ -234,6 +234,8 @@ const translation = {
     'plugin': 'Plugin',
     'blocks': 'Nút',
     'searchBlock': 'Tìm kiếm nút',
+    'allAdded': 'Tất cả đã được thêm vào',
+    'addAll': 'Thêm tất cả',
   },
   blocks: {
     'start': 'Bắt đầu',
@@ -287,6 +289,18 @@ const translation = {
     zoomTo50: 'Phóng to 50%',
     zoomTo100: 'Phóng to 100%',
     zoomToFit: 'Phóng to vừa màn hình',
+    alignBottom: 'Dưới',
+    alignMiddle: 'Giữa',
+    alignRight: 'Phải',
+    alignNodes: 'Căn chỉnh các nút',
+    alignLeft: 'Trái',
+    horizontal: 'Ngang',
+    alignCenter: 'Giữa',
+    alignTop: 'Trên',
+    distributeVertical: 'Phân bố theo chiều dọc',
+    selectionAlignment: 'Căn chỉnh lựa chọn',
+    distributeHorizontal: 'Phân bố theo chiều ngang',
+    vertical: 'Dọc',
   },
   panel: {
     userInputField: 'Trường đầu vào của người dùng',
@@ -364,7 +378,10 @@ const translation = {
         times: 'lần',
         ms: 'Ms',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Giá trị đầu vào',
+        variable: 'Sử dụng biến',
+      },
     },
     start: {
       required: 'bắt buộc',
@@ -453,6 +470,12 @@ const translation = {
         addChildField: 'Thêm trường trẻ em',
         title: 'Sơ đồ đầu ra có cấu trúc',
       },
+      reasoningFormat: {
+        tagged: 'Giữ lại thẻ suy nghĩ',
+        tooltip: 'Trích xuất nội dung từ các thẻ think và lưu nó vào trường reasoning_content.',
+        separated: 'Tách biệt các thẻ suy nghĩ',
+        title: 'Bật chế độ phân tách nhãn lý luận',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Biến truy vấn',
@@ -491,6 +514,7 @@ const translation = {
           search: 'Tìm kiếm siêu dữ liệu',
         },
         title: 'Lọc siêu dữ liệu',
+        tip: 'Lọc siêu dữ liệu là quá trình sử dụng các thuộc tính siêu dữ liệu (chẳng hạn như thẻ, danh mục hoặc quyền truy cập) để tinh chỉnh và kiểm soát việc truy xuất thông tin liên quan trong một hệ thống.',
       },
     },
     http: {
@@ -551,6 +575,7 @@ const translation = {
       advancedDependencies: 'Phụ thuộc nâng cao',
       advancedDependenciesTip: 'Thêm một số phụ thuộc được tải trước mà tốn nhiều thời gian hoặc không phải là mặc định tại đây',
       searchDependencies: 'Tìm kiếm phụ thuộc',
+      syncFunctionSignature: 'Đồng bộ chữ ký hàm với mã',
     },
     templateTransform: {
       inputVars: 'Biến đầu vào',
@@ -579,7 +604,6 @@ const translation = {
         'not empty': 'không trống',
         'null': 'là null',
         'not null': 'không là null',
-        'regex match': 'Trận đấu Regex',
         'exists': 'Tồn tại',
         'not exists': 'không tồn tại',
         'not in': 'không có trong',
@@ -602,7 +626,6 @@ const translation = {
       },
       addSubVariable: 'Biến phụ',
       select: 'Lựa',
-      condition: 'Điều kiện',
     },
     variableAssigner: {
       title: 'Gán biến',
@@ -670,6 +693,9 @@ const translation = {
         json: 'JSON được tạo bởi công cụ',
       },
       authorize: 'Ủy quyền',
+      settings: 'Cài đặt',
+      insertPlaceholder2: 'Chèn biến vào',
+      insertPlaceholder1: 'Gõ hoặc nhấn',
     },
     questionClassifiers: {
       model: 'mô hình',
@@ -823,6 +849,7 @@ const translation = {
         },
         json: 'JSON do tác nhân tạo',
         text: 'Nội dung do tác nhân tạo',
+        usage: 'Thông tin sử dụng mô hình',
       },
       checkList: {
         strategyNotSelected: 'Chiến lược không được chọn',
@@ -854,6 +881,8 @@ const translation = {
       notAuthorized: 'Không được ủy quyền',
       strategyNotFoundDesc: 'Phiên bản plugin đã cài đặt không cung cấp chiến lược này.',
       toolbox: 'hộp công cụ',
+      clickToViewParameterSchema: 'Nhấp để xem sơ đồ tham số',
+      parameterSchema: 'Sơ đồ Tham số',
     },
     loop: {
       ErrorMethod: {
@@ -919,6 +948,7 @@ const translation = {
       updateSuccess: 'Phiên bản đã được cập nhật',
       restoreSuccess: 'Phiên bản đã được khôi phục',
       restoreFailure: 'Không thể khôi phục phiên bản',
+      copyIdSuccess: 'ID được sao chép vào khay nhớ tạm',
     },
     defaultName: 'Phiên bản không được đặt tên',
     releaseNotesPlaceholder: 'Mô tả những gì đã thay đổi',
@@ -929,6 +959,7 @@ const translation = {
     nameThisVersion: 'Đặt tên cho phiên bản này',
     restorationTip: 'Sau khi phục hồi phiên bản, bản nháp hiện tại sẽ bị ghi đè.',
     title: 'Các phiên bản',
+    copyId: 'Sao chép ID',
   },
   debug: {
     noData: {
@@ -958,6 +989,24 @@ const translation = {
     },
     settingsTab: 'Cài đặt',
     lastRunTab: 'Chạy Lần Cuối',
+    relations: {
+      noDependencies: 'Không phụ thuộc',
+      dependenciesDescription: 'Các nút mà nút này dựa vào',
+      dependents: 'Người phụ thuộc',
+      dependencies: 'Phụ thuộc',
+      noDependents: 'Không có người phụ thuộc',
+      dependentsDescription: 'Các nút dựa vào nút này',
+    },
+    relationsTab: 'Mối quan hệ',
+    noLastRunFound: 'Không tìm thấy lần chạy trước',
+    noMatchingInputsFound: 'Không tìm thấy đầu vào nào khớp từ lần chạy trước',
+    copyLastRun: 'Sao chép lần chạy cuối',
+    copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
+    lastOutput: 'Đầu ra cuối cùng',
+  },
+  sidebar: {
+    exportWarning: 'Xuất Phiên Bản Đã Lưu Hiện Tại',
+    exportWarningDesc: 'Điều này sẽ xuất phiên bản hiện tại đã được lưu của quy trình làm việc của bạn. Nếu bạn có những thay đổi chưa được lưu trong trình soạn thảo, vui lòng lưu chúng trước bằng cách sử dụng tùy chọn xuất trong bản vẽ quy trình.',
   },
 }
 

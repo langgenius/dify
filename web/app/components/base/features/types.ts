@@ -35,6 +35,22 @@ export type FileUpload = {
     number_limits?: number
     transfer_methods?: TransferMethod[]
   }
+  document?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
+  audio?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
+  video?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
+  custom?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
   allowed_file_types?: string[]
   allowed_file_extensions?: string[]
   allowed_file_upload_methods?: TransferMethod[]

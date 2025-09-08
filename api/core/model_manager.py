@@ -32,7 +32,7 @@ class ModelInstance:
     Model instance class
     """
 
-    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str) -> None:
+    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
         self.provider_model_bundle = provider_model_bundle
         self.model = model
         self.provider = provider_model_bundle.configuration.provider.provider
@@ -46,7 +46,7 @@ class ModelInstance:
         )
 
     @staticmethod
-    def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str) -> dict:
+    def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str):
         """
         Fetch credentials from provider model bundle
         :param provider_model_bundle: provider model bundle
@@ -158,8 +158,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
-
-        self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
         return cast(
             Union[LLMResult, Generator],
             self._round_robin_invoke(
@@ -188,8 +186,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
-
-        self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
         return cast(
             int,
             self._round_robin_invoke(
@@ -214,8 +210,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
-
-        self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
         return cast(
             TextEmbeddingResult,
             self._round_robin_invoke(
@@ -237,8 +231,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
-
-        self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
         return cast(
             list[int],
             self._round_robin_invoke(
@@ -269,8 +261,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, RerankModel):
             raise Exception("Model type instance is not RerankModel")
-
-        self.model_type_instance = cast(RerankModel, self.model_type_instance)
         return cast(
             RerankResult,
             self._round_robin_invoke(
@@ -295,8 +285,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, ModerationModel):
             raise Exception("Model type instance is not ModerationModel")
-
-        self.model_type_instance = cast(ModerationModel, self.model_type_instance)
         return cast(
             bool,
             self._round_robin_invoke(
@@ -318,8 +306,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, Speech2TextModel):
             raise Exception("Model type instance is not Speech2TextModel")
-
-        self.model_type_instance = cast(Speech2TextModel, self.model_type_instance)
         return cast(
             str,
             self._round_robin_invoke(
@@ -343,8 +329,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
-
-        self.model_type_instance = cast(TTSModel, self.model_type_instance)
         return cast(
             Iterable[bytes],
             self._round_robin_invoke(
@@ -358,7 +342,7 @@ class ModelInstance:
             ),
         )
 
-    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs) -> Any:
+    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
         """
         Round-robin invoke
         :param function: function to invoke
@@ -395,7 +379,7 @@ class ModelInstance:
             except Exception as e:
                 raise e
 
-    def get_tts_voices(self, language: Optional[str] = None) -> list:
+    def get_tts_voices(self, language: Optional[str] = None):
         """
         Invoke large language tts model voices
 
@@ -404,15 +388,13 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
-
-        self.model_type_instance = cast(TTSModel, self.model_type_instance)
         return self.model_type_instance.get_tts_model_voices(
             model=self.model, credentials=self.credentials, language=language
         )
 
 
 class ModelManager:
-    def __init__(self) -> None:
+    def __init__(self):
         self._provider_manager = ProviderManager()
 
     def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
@@ -471,7 +453,7 @@ class LBModelManager:
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
         managed_credentials: Optional[dict] = None,
-    ) -> None:
+    ):
         """
         Load balancing model manager
         :param tenant_id: tenant_id
@@ -535,14 +517,24 @@ class LBModelManager:
 
             if dify_config.DEBUG:
                 logger.info(
-                    f"Model LB\nid: {config.id}\nname:{config.name}\n"
-                    f"tenant_id: {self._tenant_id}\nprovider: {self._provider}\n"
-                    f"model_type: {self._model_type.value}\nmodel: {self._model}"
+                    """Model LB
+id: %s
+name:%s
+tenant_id: %s
+provider: %s
+model_type: %s
+model: %s""",
+                    config.id,
+                    config.name,
+                    self._tenant_id,
+                    self._provider,
+                    self._model_type.value,
+                    self._model,
                 )
 
             return config
 
-    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60) -> None:
+    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60):
         """
         Cooldown model load balancing config
         :param config: model load balancing config

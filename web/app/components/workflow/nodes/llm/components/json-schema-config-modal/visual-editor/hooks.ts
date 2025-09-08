@@ -6,7 +6,7 @@ import type { EditData } from './edit-card'
 import { ArrayType, type Field, Type } from '../../../types'
 import Toast from '@/app/components/base/toast'
 import { findPropertyWithPath } from '../../../utils'
-import _ from 'lodash'
+import { noop } from 'lodash-es'
 
 type ChangeEventParams = {
   path: string[],
@@ -21,7 +21,7 @@ type AddEventParams = {
 
 export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange: doOnChange } = props
-  const onChange = doOnChange || _.noop
+  const onChange = doOnChange || noop
   const backupSchema = useVisualEditorStore(state => state.backupSchema)
   const setBackupSchema = useVisualEditorStore(state => state.setBackupSchema)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)

@@ -11,12 +11,12 @@ import {
   RiErrorWarningLine,
 } from '@remixicon/react'
 import {
-  useFormatTimeFromNow,
   useIsChatMode,
   useNodesInteractions,
   useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { ControlMode, WorkflowRunningStatus } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
 import cn from '@/utils/classnames'

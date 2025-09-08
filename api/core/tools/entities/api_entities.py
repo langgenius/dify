@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import CredentialType, ToolProviderType
 
 
 class ToolApiEntity(BaseModel):
@@ -49,7 +49,7 @@ class ToolProviderApiEntity(BaseModel):
     def convert_none_to_empty_list(cls, v):
         return v if v is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         # -------------
         # overwrite tool parameter types for temp fix
         tools = jsonable_encoder(self.tools)
@@ -62,7 +62,7 @@ class ToolProviderApiEntity(BaseModel):
                         parameter.pop("input_schema", None)
         # -------------
         optional_fields = self.optional_field("server_url", self.server_url)
-        if self.type == ToolProviderType.MCP.value:
+        if self.type == ToolProviderType.MCP:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
             optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
         return {
@@ -84,6 +84,25 @@ class ToolProviderApiEntity(BaseModel):
             **optional_fields,
         }
 
-    def optional_field(self, key: str, value: Any) -> dict:
+    def optional_field(self, key: str, value: Any):
         """Return dict with key-value if value is truthy, empty dict otherwise."""
         return {key: value} if value else {}
+
+
+class ToolProviderCredentialApiEntity(BaseModel):
+    id: str = Field(description="The unique id of the credential")
+    name: str = Field(description="The name of the credential")
+    provider: str = Field(description="The provider of the credential")
+    credential_type: CredentialType = Field(description="The type of the credential")
+    is_default: bool = Field(
+        default=False, description="Whether the credential is the default credential for the provider in the workspace"
+    )
+    credentials: dict = Field(description="The credentials of the provider")
+
+
+class ToolProviderCredentialInfoApiEntity(BaseModel):
+    supported_credential_types: list[str] = Field(description="The supported credential types of the provider")
+    is_oauth_custom_client_enabled: bool = Field(
+        default=False, description="Whether the OAuth custom client is enabled for the provider"
+    )
+    credentials: list[ToolProviderCredentialApiEntity] = Field(description="The credentials of the provider")

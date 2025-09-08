@@ -33,7 +33,7 @@ class OpenSearchConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values.get("host"):
             raise ValueError("config OPENSEARCH_HOST is required")
         if not values.get("port"):
@@ -48,7 +48,7 @@ class OpenSearchConfig(BaseModel):
         return values
 
     def create_aws_managed_iam_auth(self) -> Urllib3AWSV4SignerAuth:
-        import boto3  # type: ignore
+        import boto3
 
         return Urllib3AWSV4SignerAuth(
             credentials=boto3.Session().get_credentials(),
@@ -128,10 +128,10 @@ class OpenSearchVector(BaseVector):
         if ids:
             self.delete_by_ids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         index_name = self._collection_name.lower()
         if not self._client.indices.exists(index=index_name):
-            logger.warning(f"Index {index_name} does not exist")
+            logger.warning("Index %s does not exist", index_name)
             return
 
         # Obtaining All Actual Documents_ID
@@ -142,7 +142,7 @@ class OpenSearchVector(BaseVector):
             if es_ids:
                 actual_ids.extend(es_ids)
             else:
-                logger.warning(f"Document with metadata doc_id {doc_id} not found for deletion")
+                logger.warning("Document with metadata doc_id %s not found for deletion", doc_id)
 
         if actual_ids:
             actions = [{"_op_type": "delete", "_index": index_name, "_id": es_id} for es_id in actual_ids]
@@ -155,11 +155,11 @@ class OpenSearchVector(BaseVector):
                     doc_id = delete_error.get("_id")
 
                     if status == 404:
-                        logger.warning(f"Document not found for deletion: {doc_id}")
+                        logger.warning("Document not found for deletion: %s", doc_id)
                     else:
-                        logger.exception(f"Error deleting document: {error}")
+                        logger.exception("Error deleting document: %s", error)
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.indices.delete(index=self._collection_name.lower())
 
     def text_exists(self, id: str) -> bool:
@@ -197,8 +197,8 @@ class OpenSearchVector(BaseVector):
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
-        except Exception as e:
-            logger.exception(f"Error executing vector search, query: {query}")
+        except Exception:
+            logger.exception("Error executing vector search, query: %s", query)
             raise
 
         docs = []
@@ -211,7 +211,7 @@ class OpenSearchVector(BaseVector):
 
             metadata["score"] = hit["_score"]
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if hit["_score"] > score_threshold:
+            if hit["_score"] >= score_threshold:
                 doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)
 
@@ -242,7 +242,7 @@ class OpenSearchVector(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name.lower()}"
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name.lower()} already exists.")
+                logger.info("Collection %s already exists.", self._collection_name.lower())
                 return
 
             if not self._client.indices.exists(index=self._collection_name.lower()):
@@ -272,7 +272,7 @@ class OpenSearchVector(BaseVector):
                     },
                 }
 
-                logger.info(f"Creating OpenSearch index {self._collection_name.lower()}")
+                logger.info("Creating OpenSearch index %s", self._collection_name.lower())
                 self._client.indices.create(index=self._collection_name.lower(), body=index_body)
 
             redis_client.set(collection_exist_cache_key, 1, ex=3600)

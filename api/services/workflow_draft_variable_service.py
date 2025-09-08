@@ -1,19 +1,18 @@
 import dataclasses
-import datetime
 import logging
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, ClassVar
 
-from sqlalchemy import Engine, orm, select
+from sqlalchemy import Engine, orm
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.expression import and_, or_
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.variables import Segment, StringSegment, Variable
-from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -23,11 +22,13 @@ from core.workflow.nodes.variable_assigner.common.helpers import get_updated_var
 from core.workflow.variable_loader import VariableLoader
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
+from libs.datetime_utils import naive_utc_now
 from models import App, Conversation
 from models.enums import DraftVariableType
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
+from repositories.factory import DifyAPIRepositoryFactory
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -66,7 +67,7 @@ class DraftVarLoader(VariableLoader):
         app_id: str,
         tenant_id: str,
         fallback_variables: Sequence[Variable] | None = None,
-    ) -> None:
+    ):
         self._engine = engine
         self._app_id = app_id
         self._tenant_id = tenant_id
@@ -116,11 +117,28 @@ class DraftVarLoader(VariableLoader):
 class WorkflowDraftVariableService:
     _session: Session
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session):
+        """
+        Initialize the WorkflowDraftVariableService with a SQLAlchemy session.
+
+        Args:
+            session (Session): The SQLAlchemy session used to execute database queries.
+            The provided session must be bound to an `Engine` object, not a specific `Connection`.
+
+        Raises:
+            AssertionError: If the provided session is not bound to an `Engine` object.
+        """
         self._session = session
+        engine = session.get_bind()
+        # Ensure the session is bound to a engine.
+        assert isinstance(engine, Engine)
+        session_maker = sessionmaker(bind=engine, expire_on_commit=False)
+        self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker
+        )
 
     def get_variable(self, variable_id: str) -> WorkflowDraftVariable | None:
-        return self._session.query(WorkflowDraftVariable).filter(WorkflowDraftVariable.id == variable_id).first()
+        return self._session.query(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable_id).first()
 
     def get_draft_variables_by_selectors(
         self,
@@ -129,7 +147,7 @@ class WorkflowDraftVariableService:
     ) -> list[WorkflowDraftVariable]:
         ors = []
         for selector in selectors:
-            assert len(selector) >= MIN_SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
+            assert len(selector) >= SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
             node_id, name = selector[:2]
             ors.append(and_(WorkflowDraftVariable.node_id == node_id, WorkflowDraftVariable.name == name))
 
@@ -148,7 +166,7 @@ class WorkflowDraftVariableService:
     def list_variables_without_values(self, app_id: str, page: int, limit: int) -> WorkflowDraftVariableList:
         criteria = WorkflowDraftVariable.app_id == app_id
         total = None
-        query = self._session.query(WorkflowDraftVariable).filter(criteria)
+        query = self._session.query(WorkflowDraftVariable).where(criteria)
         if page == 1:
             total = query.count()
         variables = (
@@ -167,7 +185,7 @@ class WorkflowDraftVariableService:
             WorkflowDraftVariable.app_id == app_id,
             WorkflowDraftVariable.node_id == node_id,
         )
-        query = self._session.query(WorkflowDraftVariable).filter(*criteria)
+        query = self._session.query(WorkflowDraftVariable).where(*criteria)
         variables = query.order_by(WorkflowDraftVariable.created_at.desc()).all()
         return WorkflowDraftVariableList(variables=variables)
 
@@ -213,7 +231,7 @@ class WorkflowDraftVariableService:
             variable.set_name(name)
         if value is not None:
             variable.set_value(value)
-        variable.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        variable.last_edited_at = naive_utc_now()
         self._session.flush()
         return variable
 
@@ -224,7 +242,7 @@ class WorkflowDraftVariableService:
         if conv_var is None:
             self._session.delete(instance=variable)
             self._session.flush()
-            _logger.warning(
+            logger.warning(
                 "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
             )
             return None
@@ -238,20 +256,19 @@ class WorkflowDraftVariableService:
     def _reset_node_var_or_sys_var(
         self, workflow: Workflow, variable: WorkflowDraftVariable
     ) -> WorkflowDraftVariable | None:
-        # If a variable does not allow updating, it makes no sence to resetting it.
+        # If a variable does not allow updating, it makes no sense to reset it.
         if not variable.editable:
             return variable
         # No execution record for this variable, delete the variable instead.
         if variable.node_execution_id is None:
             self._session.delete(instance=variable)
             self._session.flush()
-            _logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
+            logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
-        query = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == variable.node_execution_id)
-        node_exec = self._session.scalars(query).first()
+        node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
         if node_exec is None:
-            _logger.warning(
+            logger.warning(
                 "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
                 variable.id,
                 variable.name,
@@ -298,6 +315,8 @@ class WorkflowDraftVariableService:
 
     def reset_variable(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
         variable_type = variable.get_variable_type()
+        if variable_type == DraftVariableType.SYS and not is_system_variable_editable(variable.name):
+            raise VariableResetError(f"cannot reset system variable, variable_id={variable.id}")
         if variable_type == DraftVariableType.CONVERSATION:
             return self._reset_conv_var(workflow, variable)
         else:
@@ -309,7 +328,7 @@ class WorkflowDraftVariableService:
     def delete_workflow_variables(self, app_id: str):
         (
             self._session.query(WorkflowDraftVariable)
-            .filter(WorkflowDraftVariable.app_id == app_id)
+            .where(WorkflowDraftVariable.app_id == app_id)
             .delete(synchronize_session=False)
         )
 
@@ -332,7 +351,7 @@ class WorkflowDraftVariableService:
             return None
         segment = draft_var.get_value()
         if not isinstance(segment, StringSegment):
-            _logger.warning(
+            logger.warning(
                 "sys.conversation_id variable is not a string: app_id=%s, id=%s",
                 app_id,
                 draft_var.id,
@@ -360,7 +379,7 @@ class WorkflowDraftVariableService:
         if conv_id is not None:
             conversation = (
                 self._session.query(Conversation)
-                .filter(
+                .where(
                     Conversation.id == conv_id,
                     Conversation.app_id == workflow.app_id,
                 )
@@ -403,7 +422,7 @@ class WorkflowDraftVariableService:
                 description=conv_var.description,
             )
             draft_conv_vars.append(draft_var)
-        _batch_upsert_draft_varaible(
+        _batch_upsert_draft_variable(
             self._session,
             draft_conv_vars,
             policy=_UpsertPolicy.IGNORE,
@@ -415,11 +434,11 @@ class _UpsertPolicy(StrEnum):
     OVERWRITE = "overwrite"
 
 
-def _batch_upsert_draft_varaible(
+def _batch_upsert_draft_variable(
     session: Session,
     draft_vars: Sequence[WorkflowDraftVariable],
     policy: _UpsertPolicy = _UpsertPolicy.OVERWRITE,
-) -> None:
+):
     if not draft_vars:
         return None
     # Although we could use SQLAlchemy ORM operations here, we choose not to for several reasons:
@@ -459,7 +478,7 @@ def _batch_upsert_draft_varaible(
                 "node_execution_id": stmt.excluded.node_execution_id,
             },
         )
-    elif _UpsertPolicy.IGNORE:
+    elif policy == _UpsertPolicy.IGNORE:
         stmt = stmt.on_conflict_do_nothing(index_elements=WorkflowDraftVariable.unique_app_id_node_id_name())
     else:
         raise Exception("Invalid value for update policy.")
@@ -589,7 +608,7 @@ class DraftVariableSaver:
 
         for item in updated_variables:
             selector = item.selector
-            if len(selector) < MIN_SELECTORS_LENGTH:
+            if len(selector) < SELECTORS_LENGTH:
                 raise Exception("selector too short")
             # NOTE(QuantumGhost): only the following two kinds of variable could be updated by
             # VariableAssigner: ConversationVariable and iteration variable.
@@ -662,7 +681,7 @@ class DraftVariableSaver:
         draft_vars = []
         for name, value in output.items():
             if not self._should_variable_be_saved(name):
-                _logger.debug(
+                logger.debug(
                     "Skip saving variable as it has been excluded by its node_type, name=%s, node_type=%s",
                     name,
                     self._node_type,
@@ -702,7 +721,7 @@ class DraftVariableSaver:
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)
-        _batch_upsert_draft_varaible(self._session, draft_vars)
+        _batch_upsert_draft_variable(self._session, draft_vars)
 
     @staticmethod
     def _should_variable_be_editable(node_id: str, name: str) -> bool:

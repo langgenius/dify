@@ -1,7 +1,7 @@
 import json
 import logging
 
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from flask import current_app
 
 from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
@@ -11,6 +11,8 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.model import Message
 from models.workflow import WorkflowRun
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="ops_trace")
@@ -43,13 +45,11 @@ def process_trace_tasks(file_info):
                 if trace_type:
                     trace_info = trace_type(**trace_info)
                 trace_instance.trace(trace_info)
-        logging.info(f"Processing trace tasks success, app_id: {app_id}")
+        logger.info("Processing trace tasks success, app_id: %s", app_id)
     except Exception as e:
-        logging.info(
-            f"error:\n\n\n{e}\n\n\n\n",
-        )
+        logger.info("error:\n\n\n%s\n\n\n\n", e)
         failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
         redis_client.incr(failed_key)
-        logging.info(f"Processing trace tasks failed, app_id: {app_id}")
+        logger.info("Processing trace tasks failed, app_id: %s", app_id)
     finally:
         storage.delete(file_path)

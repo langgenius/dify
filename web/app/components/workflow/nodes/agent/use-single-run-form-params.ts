@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -13,7 +13,7 @@ type Params = {
   id: string,
   payload: AgentNodeType,
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
@@ -76,8 +76,14 @@ const useSingleRunFormParams = ({
     return formatTracing([runResult], t)[0]
   }, [runResult, t])
 
-    const getDependentVars = () => {
-    return varInputs.map(item => item.variable.slice(1, -1).split('.'))
+  const getDependentVars = () => {
+    return varInputs.map((item) => {
+      // Guard against null/undefined variable to prevent app crash
+      if (!item.variable || typeof item.variable !== 'string')
+        return []
+
+      return item.variable.slice(1, -1).split('.')
+    }).filter(arr => arr.length > 0)
   }
 
   return {

@@ -3,7 +3,7 @@ import base64
 from libs import rsa
 
 
-def obfuscated_token(token: str):
+def obfuscated_token(token: str) -> str:
     if not token:
         return token
     if len(token) <= 8:
@@ -11,17 +11,22 @@ def obfuscated_token(token: str):
     return token[:6] + "*" * 12 + token[-2:]
 
 
+def full_mask_token(token_length=20):
+    return "*" * token_length
+
+
 def encrypt_token(tenant_id: str, token: str):
     from models.account import Tenant
     from models.engine import db
 
-    if not (tenant := db.session.query(Tenant).filter(Tenant.id == tenant_id).first()):
+    if not (tenant := db.session.query(Tenant).where(Tenant.id == tenant_id).first()):
         raise ValueError(f"Tenant with id {tenant_id} not found")
+    assert tenant.encrypt_public_key is not None
     encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)
     return base64.b64encode(encrypted_token).decode()
 
 
-def decrypt_token(tenant_id: str, token: str):
+def decrypt_token(tenant_id: str, token: str) -> str:
     return rsa.decrypt(base64.b64decode(token), tenant_id)
 
 

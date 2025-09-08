@@ -34,11 +34,11 @@ No olvides vincular un issue existente o abrir uno nuevo en la descripción del 
 
 Cómo priorizamos:
 
-  | Tipo de Issue                                                | Prioridad       |
-  | ------------------------------------------------------------ | --------------- |
-  | Errores en funciones principales (servicio en la nube, no poder iniciar sesión, aplicaciones que no funcionan, fallos de seguridad) | Crítica         |
-  | Errores no críticos, mejoras de rendimiento                 | Prioridad Media |
-  | Correcciones menores (errores tipográficos, UI confusa pero funcional) | Prioridad Baja  |
+| Tipo de Issue | Prioridad |
+| ------------------------------------------------------------ | --------------- |
+| Errores en funciones principales (servicio en la nube, no poder iniciar sesión, aplicaciones que no funcionan, fallos de seguridad) | Crítica |
+| Errores no críticos, mejoras de rendimiento | Prioridad Media |
+| Correcciones menores (errores tipográficos, UI confusa pero funcional) | Prioridad Baja |
 
 ### Solicitudes de funcionalidades
 
@@ -52,23 +52,25 @@ Cómo priorizamos:
 
 Cómo priorizamos:
 
-  | Tipo de Funcionalidad                                        | Prioridad       |
-  | ------------------------------------------------------------ | --------------- |
-  | Funcionalidades de alta prioridad etiquetadas por un miembro del equipo | Prioridad Alta  |
-  | Solicitudes populares de funcionalidades de nuestro [tablero de comentarios de la comunidad](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Prioridad Media |
-  | Funcionalidades no principales y mejoras menores            | Prioridad Baja  |
-  | Valiosas pero no inmediatas                                 | Futura-Funcionalidad |
+| Tipo de Funcionalidad | Prioridad |
+| ------------------------------------------------------------ | --------------- |
+| Funcionalidades de alta prioridad etiquetadas por un miembro del equipo | Prioridad Alta |
+| Solicitudes populares de funcionalidades de nuestro [tablero de comentarios de la comunidad](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Prioridad Media |
+| Funcionalidades no principales y mejoras menores | Prioridad Baja |
+| Valiosas pero no inmediatas | Futura-Funcionalidad |
+
 ## Enviando tu PR
 
 ### Proceso de Pull Request
 
 1. Haz un fork del repositorio
-2. Antes de redactar un PR, por favor crea un issue para discutir los cambios que quieres hacer
-3. Crea una nueva rama para tus cambios
-4. Por favor añade pruebas para tus cambios en consecuencia
-5. Asegúrate de que tu código pasa las pruebas existentes
-6. Por favor vincula el issue en la descripción del PR, `fixes #<número_del_issue>`
-7. ¡Fusiona tu código!
+1. Antes de redactar un PR, por favor crea un issue para discutir los cambios que quieres hacer
+1. Crea una nueva rama para tus cambios
+1. Por favor añade pruebas para tus cambios en consecuencia
+1. Asegúrate de que tu código pasa las pruebas existentes
+1. Por favor vincula el issue en la descripción del PR, `fixes #<número_del_issue>`
+1. ¡Fusiona tu código!
+
 ### Configuración del proyecto
 
 #### Frontend
@@ -82,12 +84,14 @@ Para configurar el servicio backend, por favor consulta nuestras [instrucciones 
 #### Otras cosas a tener en cuenta
 
 Recomendamos revisar este documento cuidadosamente antes de proceder con la configuración, ya que contiene información esencial sobre:
+
 - Requisitos previos y dependencias
 - Pasos de instalación
 - Detalles de configuración
 - Consejos comunes de solución de problemas
 
 No dudes en contactarnos si encuentras algún problema durante el proceso de configuración.
+
 ## Obteniendo Ayuda
 
-Si alguna vez te quedas atascado o tienes una pregunta urgente mientras contribuyes, simplemente envíanos tus consultas a través del issue relacionado de GitHub, o únete a nuestro [Discord](https://discord.gg/8Tpq4AcN9c) para una charla rápida. 
+Si alguna vez te quedas atascado o tienes una pregunta urgente mientras contribuyes, simplemente envíanos tus consultas a través del issue relacionado de GitHub, o únete a nuestro [Discord](https://discord.gg/8Tpq4AcN9c) para una charla rápida.

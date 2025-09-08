@@ -23,18 +23,13 @@ const translation = {
     contractOwner: '聯絡團隊管理員',
     free: '免費',
     startForFree: '免費開始',
-    getStartedWith: '開始使用',
     contactSales: '聯絡銷售',
     talkToSales: '聯絡銷售',
     modelProviders: '支援的模型提供商',
-    teamMembers: '團隊成員',
     buildApps: '構建應用程式數',
     vectorSpace: '向量空間',
     vectorSpaceTooltip: '向量空間是 LLMs 理解您的資料所需的長期記憶系統。',
-    vectorSpaceBillingTooltip: '向量儲存是將知識庫向量化處理後為讓 LLMs 理解資料而使用的長期記憶儲存，1MB 大約能滿足 1.2 million character 的向量化後資料儲存（以 OpenAI Embedding 模型估算，不同模型計算方式有差異）。在向量化過程中，實際的壓縮或尺寸減小取決於內容的複雜性和冗餘性。',
-    documentsUploadQuota: '文件上傳配額',
     documentProcessingPriority: '文件處理優先順序',
-    documentProcessingPriorityTip: '如需更高的文件處理優先順序，請升級您的套餐',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度處理更多的資料。',
     priority: {
       'standard': '標準',
@@ -103,19 +98,16 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       description: '200 次 GPT 免費試用',
-      includesTitle: '包括：',
       for: '核心功能免費試用',
     },
     professional: {
       name: 'Professional',
       description: '讓個人和小團隊能夠以經濟實惠的方式釋放更多能力。',
-      includesTitle: 'Sandbox 計劃中的一切，加上：',
       for: '適合獨立開發者/小型團隊',
     },
     team: {
       name: 'Team',
       description: '協作無限制並享受頂級效能。',
-      includesTitle: 'Professional 計劃中的一切，加上：',
       for: '適用於中型團隊',
     },
     enterprise: {
@@ -123,15 +115,6 @@ const translation = {
       description: '獲得大規模關鍵任務系統的完整功能和支援。',
       includesTitle: 'Team 計劃中的一切，加上：',
       features: {
-        1: '商業許可證授權',
-        6: '先進安全與控制',
-        3: '多個工作區及企業管理',
-        2: '專屬企業功能',
-        4: '單一登入',
-        8: '專業技術支援',
-        0: '企業級可擴展部署解決方案',
-        7: 'Dify 官方的更新和維護',
-        5: '由 Dify 合作夥伴協商的服務水平協議',
       },
       price: '自訂',
       btnText: '聯繫銷售',
@@ -140,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        0: '所有核心功能均在公共存儲庫下釋出',
-        2: '遵循 Dify 開源許可證',
-        1: '單一工作區域',
       },
       includesTitle: '免費功能：',
       btnText: '開始使用社區',
@@ -153,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        2: '網頁應用程序標誌及品牌自定義',
-        0: '各種雲端服務提供商的自我管理可靠性',
-        1: '單一工作區域',
-        3: '優先電子郵件及聊天支持',
       },
       for: '適用於中型組織和團隊',
       comingSoon: '微軟 Azure 與 Google Cloud 支持即將推出',
@@ -173,8 +149,6 @@ const translation = {
     fullSolution: '升級您的套餐以獲得更多空間。',
   },
   apps: {
-    fullTipLine1: '升級您的套餐以',
-    fullTipLine2: '構建更多的程式。',
     fullTip1: '升級以創建更多應用程序',
     fullTip2des: '建議清除不活躍的應用程式以釋放使用空間，或聯繫我們。',
     contactUs: '聯繫我們',

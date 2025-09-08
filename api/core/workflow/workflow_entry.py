@@ -2,10 +2,10 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from configs import dify_config
-from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
@@ -21,6 +21,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
 from models.enums import UserFrom
@@ -47,7 +48,7 @@ class WorkflowEntry:
         call_depth: int,
         variable_pool: VariablePool,
         thread_pool_id: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Init workflow entry
         :param tenant_id: tenant id
@@ -66,7 +67,7 @@ class WorkflowEntry:
         # check call depth
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
-            raise ValueError("Max workflow call depth {} reached.".format(workflow_call_max_depth))
+            raise ValueError(f"Max workflow call depth {workflow_call_max_depth} reached.")
 
         # init workflow run state
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
@@ -145,7 +146,7 @@ class WorkflowEntry:
         graph = Graph.init(graph_config=workflow.graph_dict)
 
         # init workflow run state
-        node_instance = node_cls(
+        node = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
             graph_init_params=GraphInitParams(
@@ -162,6 +163,7 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         )
+        node.init_node_data(node_config_data)
 
         try:
             # variable selector to variable mapping
@@ -189,17 +191,17 @@ class WorkflowEntry:
 
         try:
             # run node
-            generator = node_instance.run()
+            generator = node.run()
         except Exception as e:
             logger.exception(
-                "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
+                "error while running node, workflow_id=%s, node_id=%s, node_type=%s, node_version=%s",
                 workflow.id,
-                node_instance.id,
-                node_instance.node_type,
-                node_instance.version(),
+                node.id,
+                node.type_,
+                node.version(),
             )
-            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
-        return node_instance, generator
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
+        return node, generator
 
     @classmethod
     def run_free_node(
@@ -254,14 +256,13 @@ class WorkflowEntry:
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=[],
         )
 
-        node_cls = cast(type[BaseNode], node_cls)
         # init workflow run state
-        node_instance: BaseNode = node_cls(
+        node: BaseNode = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
             graph_init_params=GraphInitParams(
@@ -278,6 +279,7 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         )
+        node.init_node_data(node_data)
 
         try:
             # variable selector to variable mapping
@@ -296,17 +298,17 @@ class WorkflowEntry:
             )
 
             # run node
-            generator = node_instance.run()
+            generator = node.run()
 
-            return node_instance, generator
+            return node, generator
         except Exception as e:
             logger.exception(
-                "error while running node_instance, node_id=%s, type=%s, version=%s",
-                node_instance.id,
-                node_instance.node_type,
-                node_instance.version(),
+                "error while running node, node_id=%s, node_type=%s, node_version=%s",
+                node.id,
+                node.type_,
+                node.version(),
             )
-            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
@@ -318,7 +320,7 @@ class WorkflowEntry:
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
     @staticmethod
-    def _handle_special_values(value: Any) -> Any:
+    def _handle_special_values(value: Any):
         if value is None:
             return value
         if isinstance(value, dict):
@@ -343,7 +345,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         tenant_id: str,
-    ) -> None:
+    ):
         # NOTE(QuantumGhost): This logic should remain synchronized with
         # the implementation of `load_into_variable_pool`, specifically the logic about
         # variable existence checking.

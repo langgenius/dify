@@ -30,7 +30,7 @@ const TagsFilter = ({
   const { t } = useMixedTranslation(locale)
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const { tags: options, tagsMap } = useTags(t)
+  const { tags: options } = useTags(t)
   const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (tags.includes(id))
@@ -38,7 +38,6 @@ const TagsFilter = ({
     else
       onTagsChange([...tags, id])
   }
-  const selectedTagsLength = tags.length
 
   return (
     <PortalToFollowElem
@@ -55,7 +54,7 @@ const TagsFilter = ({
         onClick={() => setOpen(v => !v)}
       >
         <div className={cn(
-          'ml-0.5 mr-1.5 flex  items-center text-text-tertiary ',
+          'ml-0.5 mr-1.5 flex  select-none items-center text-text-tertiary',
           size === 'large' && 'h-8 py-1',
           size === 'small' && 'h-7 py-0.5 ',
           // selectedTagsLength && 'text-text-secondary',
@@ -67,7 +66,7 @@ const TagsFilter = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+        <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
           <div className='p-2 pb-1'>
             <Input
               showLeftIcon
@@ -81,7 +80,7 @@ const TagsFilter = ({
               filteredOptions.map(option => (
                 <div
                   key={option.name}
-                  className='flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
+                  className='flex h-7 cursor-pointer select-none items-center rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
                   onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox

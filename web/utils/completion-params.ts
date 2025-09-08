@@ -7,7 +7,6 @@ export const mergeValidCompletionParams = (
   if (!oldParams || Object.keys(oldParams).length === 0)
     return { params: {}, removedDetails: {} }
 
-  const acceptedKeys = new Set(rules.map(r => r.name))
   const ruleMap: Record<string, ModelParameterRule> = {}
   rules.forEach((r) => {
     ruleMap[r.name] = r
@@ -17,11 +16,6 @@ export const mergeValidCompletionParams = (
   const removedDetails: Record<string, string> = {}
 
   Object.entries(oldParams).forEach(([key, value]) => {
-    if (!acceptedKeys.has(key)) {
-      removedDetails[key] = 'unsupported'
-      return
-    }
-
     const rule = ruleMap[key]
     if (!rule) {
       removedDetails[key] = 'unsupported'

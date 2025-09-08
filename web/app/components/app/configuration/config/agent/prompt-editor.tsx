@@ -6,8 +6,8 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import {
-  Clipboard,
-  ClipboardCheck,
+  Copy,
+  CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import type { ExternalDataTool } from '@/models/common'
@@ -81,13 +81,13 @@ const Editor: FC<Props> = ({
           <div className={cn(s.optionWrap, 'items-center space-x-1')}>
             {!isCopied
               ? (
-                <Clipboard className='h-6 w-6 cursor-pointer p-1 text-gray-500' onClick={() => {
+                <Copy className='h-6 w-6 cursor-pointer p-1 text-gray-500' onClick={() => {
                   copy(value)
                   setIsCopied(true)
                 }} />
               )
               : (
-                <ClipboardCheck className='h-6 w-6 p-1 text-gray-500' />
+                <CopyCheck className='h-6 w-6 p-1 text-gray-500' />
               )}
           </div>
         </div>

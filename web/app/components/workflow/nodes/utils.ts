@@ -28,3 +28,13 @@ export const findVariableWhenOnLLMVision = (valueSelector: ValueSelector, availa
     formType,
   }
 }
+
+export const getConditionValueAsString = (condition: { value: any }) => {
+  if (Array.isArray(condition.value))
+    return condition.value[0] ?? ''
+
+  if (typeof condition.value === 'number')
+    return String(condition.value)
+
+  return condition.value ?? ''
+}

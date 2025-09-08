@@ -36,7 +36,7 @@ class MilvusConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         Raises ValueError if required fields are missing.
@@ -79,7 +79,7 @@ class MilvusVector(BaseVector):
             self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
 
-    def _load_collection_fields(self, fields: Optional[list[str]] = None) -> None:
+    def _load_collection_fields(self, fields: Optional[list[str]] = None):
         if fields is None:
             # Load collection fields from remote server
             collection_info = self._client.describe_collection(self._collection_name)
@@ -101,9 +101,9 @@ class MilvusVector(BaseVector):
             if "Zilliz Cloud" in milvus_version:
                 return True
             # For standard Milvus installations, check version number
-            return version.parse(milvus_version).base_version >= version.parse("2.5.0").base_version
+            return version.parse(milvus_version) >= version.parse("2.5.0")
         except Exception as e:
-            logger.warning(f"Failed to check Milvus version: {str(e)}. Disabling hybrid search.")
+            logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))
             return False
 
     def get_type(self) -> str:
@@ -171,7 +171,7 @@ class MilvusVector(BaseVector):
             if ids:
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """
         Delete documents by their IDs.
         """
@@ -183,7 +183,7 @@ class MilvusVector(BaseVector):
                 ids = [item["id"] for item in result]
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete(self) -> None:
+    def delete(self):
         """
         Delete the entire collection.
         """
@@ -259,8 +259,16 @@ class MilvusVector(BaseVector):
         """
         Search for documents by full-text search (if hybrid search is enabled).
         """
-        if not self._hybrid_search_enabled or not self.field_exists(Field.SPARSE_VECTOR.value):
-            logger.warning("Full-text search is not supported in current Milvus version (requires >= 2.5.0)")
+        if not self._hybrid_search_enabled:
+            logger.warning(
+                "Full-text search is disabled: set MILVUS_ENABLE_HYBRID_SEARCH=true (requires Milvus >= 2.5.0)."
+            )
+            return []
+        if not self.field_exists(Field.SPARSE_VECTOR.value):
+            logger.warning(
+                "Full-text search unavailable: collection missing 'sparse_vector' field; "
+                "recreate the collection after enabling MILVUS_ENABLE_HYBRID_SEARCH to add BM25 sparse index."
+            )
             return []
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = ""
@@ -289,9 +297,9 @@ class MilvusVector(BaseVector):
         """
         Create a new collection in Milvus with the specified schema and index parameters.
         """
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             # Grab the existing collection if it exists
@@ -368,7 +376,12 @@ class MilvusVector(BaseVector):
         if config.token:
             client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
         else:
-            client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
+            client = MilvusClient(
+                uri=config.uri,
+                user=config.user or "",
+                password=config.password or "",
+                db_name=config.database,
+            )
         return client
 
 

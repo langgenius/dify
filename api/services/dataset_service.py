@@ -6,10 +6,10 @@ import secrets
 import time
 import uuid
 from collections import Counter
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
-from flask_login import current_user
-from sqlalchemy import func, select
+import sqlalchemy as sa
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -26,6 +26,8 @@ from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
+from libs.datetime_utils import naive_utc_now
+from libs.login import current_user
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -50,7 +52,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     RetrievalModel,
     SegmentUpdateArgs,
 )
-from services.errors.account import InvalidActionError, NoPermissionError
+from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -75,11 +77,13 @@ from tasks.remove_document_from_index_task import remove_document_from_index_tas
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
+logger = logging.getLogger(__name__)
+
 
 class DatasetService:
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
-        query = select(Dataset).filter(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
+        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
 
         if user:
             # get permitted dataset ids
@@ -90,15 +94,17 @@ class DatasetService:
 
             if user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
-                if permitted_dataset_ids:
-                    query = query.filter(Dataset.id.in_(permitted_dataset_ids))
+                # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
+                if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                    query = query.where(Dataset.id.in_(permitted_dataset_ids))
                 else:
                     return [], 0
             else:
                 if user.current_role != TenantAccountRole.OWNER or not include_all:
                     # show all datasets that the user has permission to access
-                    if permitted_dataset_ids:
-                        query = query.filter(
+                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
+                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                        query = query.where(
                             db.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                                 db.and_(
@@ -111,7 +117,7 @@ class DatasetService:
                             )
                         )
                     else:
-                        query = query.filter(
+                        query = query.where(
                             db.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                                 db.and_(
@@ -121,15 +127,20 @@ class DatasetService:
                         )
         else:
             # if no user, only show datasets that are shared with all team members
-            query = query.filter(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
+            query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
-            query = query.filter(Dataset.name.ilike(f"%{search}%"))
+            query = query.where(Dataset.name.ilike(f"%{search}%"))
 
-        if tag_ids:
-            target_ids = TagService.get_target_ids_by_tag_ids("knowledge", tenant_id, tag_ids)
-            if target_ids:
-                query = query.filter(Dataset.id.in_(target_ids))
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if tag_ids and len(tag_ids) > 0:
+            target_ids = TagService.get_target_ids_by_tag_ids(
+                "knowledge",
+                tenant_id,  # ty: ignore [invalid-argument-type]
+                tag_ids,
+            )
+            if target_ids and len(target_ids) > 0:
+                query = query.where(Dataset.id.in_(target_ids))
             else:
                 return [], 0
 
@@ -142,7 +153,7 @@ class DatasetService:
         # get the latest process rule
         dataset_process_rule = (
             db.session.query(DatasetProcessRule)
-            .filter(DatasetProcessRule.dataset_id == dataset_id)
+            .where(DatasetProcessRule.dataset_id == dataset_id)
             .order_by(DatasetProcessRule.created_at.desc())
             .limit(1)
             .one_or_none()
@@ -157,7 +168,10 @@ class DatasetService:
 
     @staticmethod
     def get_datasets_by_ids(ids, tenant_id):
-        stmt = select(Dataset).filter(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
+        # Check if ids is not empty to avoid WHERE false condition
+        if not ids or len(ids) == 0:
+            return [], 0
+        stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
 
@@ -214,9 +228,9 @@ class DatasetService:
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
-        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        dataset.embedding_model = embedding_model.model if embedding_model else None
-        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
+        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None  # type: ignore
+        dataset.embedding_model = embedding_model.model if embedding_model else None  # type: ignore
+        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None  # type: ignore
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         db.session.add(dataset)
@@ -244,6 +258,11 @@ class DatasetService:
         return dataset
 
     @staticmethod
+    def check_doc_form(dataset: Dataset, doc_form: str):
+        if dataset.doc_form and doc_form != dataset.doc_form:
+            raise ValueError("doc_form is different from the dataset doc_form.")
+
+    @staticmethod
     def check_dataset_model_setting(dataset):
         if dataset.indexing_technique == "high_quality":
             try:
@@ -259,7 +278,7 @@ class DatasetService:
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -363,7 +382,7 @@ class DatasetService:
             raise ValueError("External knowledge api id is required.")
         # Update metadata fields
         dataset.updated_by = user.id if user else None
-        dataset.updated_at = datetime.datetime.utcnow()
+        dataset.updated_at = naive_utc_now()
         db.session.add(dataset)
 
         # Update external knowledge binding
@@ -428,7 +447,7 @@ class DatasetService:
 
         # Add metadata fields
         filtered_data["updated_by"] = user.id
-        filtered_data["updated_at"] = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        filtered_data["updated_at"] = naive_utc_now()
         # update Retrieval model
         filtered_data["retrieval_model"] = data["retrieval_model"]
 
@@ -480,8 +499,11 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
+        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
         try:
             model_manager = ModelManager()
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
                 tenant_id=current_user.current_tenant_id,
                 provider=data["embedding_model_provider"],
@@ -593,8 +615,12 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
+        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+
         model_manager = ModelManager()
         try:
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
                 tenant_id=current_user.current_tenant_id,
                 provider=data["embedding_model_provider"],
@@ -603,9 +629,10 @@ class DatasetService:
             )
         except ProviderTokenNotInitError:
             # If we can't get the embedding model, preserve existing settings
-            logging.warning(
-                f"Failed to initialize embedding model {data['embedding_model_provider']}/{data['embedding_model']}, "
-                f"preserving existing settings"
+            logger.warning(
+                "Failed to initialize embedding model %s/%s, preserving existing settings",
+                data["embedding_model_provider"],
+                data["embedding_model"],
             )
             if dataset.embedding_model_provider and dataset.embedding_model:
                 filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
@@ -640,19 +667,17 @@ class DatasetService:
 
     @staticmethod
     def dataset_use_check(dataset_id) -> bool:
-        count = db.session.query(AppDatasetJoin).filter_by(dataset_id=dataset_id).count()
-        if count > 0:
-            return True
-        return False
+        stmt = select(exists().where(AppDatasetJoin.dataset_id == dataset_id))
+        return db.session.execute(stmt).scalar_one()
 
     @staticmethod
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
-            logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+            logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
-                logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
@@ -661,7 +686,7 @@ class DatasetService:
                         db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
                     )
                     if not user_permission:
-                        logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                        logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                         raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
@@ -696,13 +721,15 @@ class DatasetService:
     def get_related_apps(dataset_id: str):
         return (
             db.session.query(AppDatasetJoin)
-            .filter(AppDatasetJoin.dataset_id == dataset_id)
+            .where(AppDatasetJoin.dataset_id == dataset_id)
             .order_by(db.desc(AppDatasetJoin.created_at))
             .all()
         )
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
+    def get_dataset_auto_disable_logs(dataset_id: str):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         features = FeatureService.get_features(current_user.current_tenant_id)
         if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
             return {
@@ -713,7 +740,7 @@ class DatasetService:
         start_date = datetime.datetime.now() - datetime.timedelta(days=30)
         dataset_auto_disable_logs = (
             db.session.query(DatasetAutoDisableLog)
-            .filter(
+            .where(
                 DatasetAutoDisableLog.dataset_id == dataset_id,
                 DatasetAutoDisableLog.created_at >= start_date,
             )
@@ -842,7 +869,7 @@ class DocumentService:
     def get_document(dataset_id: str, document_id: Optional[str] = None) -> Optional[Document]:
         if document_id:
             document = (
-                db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
             )
             return document
         else:
@@ -850,7 +877,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Optional[Document]:
-        document = db.session.query(Document).filter(Document.id == document_id).first()
+        document = db.session.query(Document).where(Document.id == document_id).first()
 
         return document
 
@@ -858,7 +885,7 @@ class DocumentService:
     def get_document_by_ids(document_ids: list[str]) -> list[Document]:
         documents = (
             db.session.query(Document)
-            .filter(
+            .where(
                 Document.id.in_(document_ids),
                 Document.enabled == True,
                 Document.indexing_status == "completed",
@@ -872,7 +899,7 @@ class DocumentService:
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
         documents = (
             db.session.query(Document)
-            .filter(
+            .where(
                 Document.dataset_id == dataset_id,
                 Document.enabled == True,
             )
@@ -885,7 +912,7 @@ class DocumentService:
     def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
         documents = (
             db.session.query(Document)
-            .filter(
+            .where(
                 Document.dataset_id == dataset_id,
                 Document.enabled == True,
                 Document.indexing_status == "completed",
@@ -900,16 +927,18 @@ class DocumentService:
     def get_error_documents_by_dataset_id(dataset_id: str) -> list[Document]:
         documents = (
             db.session.query(Document)
-            .filter(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
+            .where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
             .all()
         )
         return documents
 
     @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:
+        assert isinstance(current_user, Account)
+
         documents = (
             db.session.query(Document)
-            .filter(
+            .where(
                 Document.batch == batch,
                 Document.dataset_id == dataset_id,
                 Document.tenant_id == current_user.current_tenant_id,
@@ -921,7 +950,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_file_detail(file_id: str):
-        file_detail = db.session.query(UploadFile).filter(UploadFile.id == file_id).one_or_none()
+        file_detail = db.session.query(UploadFile).where(UploadFile.id == file_id).one_or_none()
         return file_detail
 
     @staticmethod
@@ -949,11 +978,14 @@ class DocumentService:
 
     @staticmethod
     def delete_documents(dataset: Dataset, document_ids: list[str]):
-        documents = db.session.query(Document).filter(Document.id.in_(document_ids)).all()
+        # Check if document_ids is not empty to avoid WHERE false condition
+        if not document_ids or len(document_ids) == 0:
+            return
+        documents = db.session.query(Document).where(Document.id.in_(document_ids)).all()
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
             for document in documents
-            if document.data_source_type == "upload_file"
+            if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
         batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
@@ -963,6 +995,8 @@ class DocumentService:
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:
+        assert isinstance(current_user, Account)
+
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise ValueError("Dataset not found.")
@@ -992,14 +1026,15 @@ class DocumentService:
         if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
             raise DocumentIndexingError()
         # update document to be paused
+        assert current_user is not None
         document.is_paused = True
         document.paused_by = current_user.id
-        document.paused_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.paused_at = naive_utc_now()
 
         db.session.add(document)
         db.session.commit()
         # set document paused flag
-        indexing_cache_key = "document_{}_is_paused".format(document.id)
+        indexing_cache_key = f"document_{document.id}_is_paused"
         redis_client.setnx(indexing_cache_key, "True")
 
     @staticmethod
@@ -1014,7 +1049,7 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # delete paused flag
-        indexing_cache_key = "document_{}_is_paused".format(document.id)
+        indexing_cache_key = f"document_{document.id}_is_paused"
         redis_client.delete(indexing_cache_key)
         # trigger async task
         recover_document_indexing_task.delay(document.dataset_id, document.id)
@@ -1023,7 +1058,7 @@ class DocumentService:
     def retry_document(dataset_id: str, documents: list[Document]):
         for document in documents:
             # add retry flag
-            retry_indexing_cache_key = "document_{}_is_retried".format(document.id)
+            retry_indexing_cache_key = f"document_{document.id}_is_retried"
             cache_result = redis_client.get(retry_indexing_cache_key)
             if cache_result is not None:
                 raise ValueError("Document is being retried, please try again later")
@@ -1040,15 +1075,16 @@ class DocumentService:
     @staticmethod
     def sync_website_document(dataset_id: str, document: Document):
         # add sync flag
-        sync_indexing_cache_key = "document_{}_is_sync".format(document.id)
+        sync_indexing_cache_key = f"document_{document.id}_is_sync"
         cache_result = redis_client.get(sync_indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Document is being synced, please try again later")
         # sync document indexing
         document.indexing_status = "waiting"
         data_source_info = document.data_source_info_dict
-        data_source_info["mode"] = "scrape"
-        document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
+        if data_source_info:
+            data_source_info["mode"] = "scrape"
+            document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
         db.session.add(document)
         db.session.commit()
 
@@ -1073,8 +1109,13 @@ class DocumentService:
         account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
-    ):
+    ) -> tuple[list[Document], str]:
+        # check doc_form
+        DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
@@ -1131,7 +1172,7 @@ class DocumentService:
                         "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-                        "top_k": 2,
+                        "top_k": 4,
                         "score_threshold_enabled": False,
                     }
 
@@ -1172,13 +1213,14 @@ class DocumentService:
                             created_by=account.id,
                         )
                     else:
-                        logging.warning(
-                            f"Invalid process rule mode: {process_rule.mode}, can not find dataset process rule"
+                        logger.warning(
+                            "Invalid process rule mode: %s, can not find dataset process rule",
+                            process_rule.mode,
                         )
-                        return
+                        return [], ""
                     db.session.add(dataset_process_rule)
                     db.session.commit()
-            lock_name = "add_document_lock_dataset_id_{}".format(dataset.id)
+            lock_name = f"add_document_lock_dataset_id_{dataset.id}"
             with redis_client.lock(lock_name, timeout=600):
                 position = DocumentService.get_documents_position(dataset.id)
                 document_ids = []
@@ -1188,7 +1230,7 @@ class DocumentService:
                     for file_id in upload_file_list:
                         file = (
                             db.session.query(UploadFile)
-                            .filter(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
+                            .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
                             .first()
                         )
 
@@ -1215,7 +1257,7 @@ class DocumentService:
                             )
                             if document:
                                 document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
-                                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                                document.updated_at = naive_utc_now()
                                 document.created_from = created_from
                                 document.doc_form = knowledge_config.doc_form
                                 document.doc_language = knowledge_config.doc_language
@@ -1269,7 +1311,7 @@ class DocumentService:
                         workspace_id = notion_info.workspace_id
                         data_source_binding = (
                             db.session.query(DataSourceOauthBinding)
-                            .filter(
+                            .where(
                                 db.and_(
                                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                                     DataSourceOauthBinding.provider == "notion",
@@ -1410,9 +1452,11 @@ class DocumentService:
 
     @staticmethod
     def get_tenant_documents_count():
+        assert isinstance(current_user, Account)
+
         documents_count = (
             db.session.query(Document)
-            .filter(
+            .where(
                 Document.completed_at.isnot(None),
                 Document.enabled == True,
                 Document.archived == False,
@@ -1430,6 +1474,8 @@ class DocumentService:
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
+        assert isinstance(current_user, Account)
+
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data.original_document_id)
         if document is None:
@@ -1468,7 +1514,7 @@ class DocumentService:
                 for file_id in upload_file_list:
                     file = (
                         db.session.query(UploadFile)
-                        .filter(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
+                        .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
                         .first()
                     )
 
@@ -1488,8 +1534,8 @@ class DocumentService:
                     workspace_id = notion_info.workspace_id
                     data_source_binding = (
                         db.session.query(DataSourceOauthBinding)
-                        .filter(
-                            db.and_(
+                        .where(
+                            sa.and_(
                                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
                                 DataSourceOauthBinding.disabled == False,
@@ -1533,14 +1579,16 @@ class DocumentService:
         document.parsing_completed_at = None
         document.cleaning_completed_at = None
         document.splitting_completed_at = None
-        document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.updated_at = naive_utc_now()
         document.created_from = created_from
         document.doc_form = document_data.doc_form
         db.session.add(document)
         db.session.commit()
         # update document segment
-        update_params = {DocumentSegment.status: "re_segment"}
-        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(update_params)
+
+        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
+            {DocumentSegment.status: "re_segment"}
+        )  # type: ignore
         db.session.commit()
         # trigger async task
         document_indexing_update_task.delay(document.dataset_id, document.id)
@@ -1548,6 +1596,9 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
@@ -1591,7 +1642,7 @@ class DocumentService:
                 search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
-                top_k=2,
+                top_k=4,
                 score_threshold_enabled=False,
             )
         # save dataset
@@ -1786,14 +1837,16 @@ class DocumentService:
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @staticmethod
-    def batch_update_document_status(dataset: Dataset, document_ids: list[str], action: str, user):
+    def batch_update_document_status(
+        dataset: Dataset, document_ids: list[str], action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
         """
         Batch update document status.
 
         Args:
             dataset (Dataset): The dataset object
             document_ids (list[str]): List of document IDs to update
-            action (str): Action to perform (enable, disable, archive, un_archive)
+            action (Literal["enable", "disable", "archive", "un_archive"]): Action to perform
             user: Current user performing the action
 
         Raises:
@@ -1859,7 +1912,7 @@ class DocumentService:
                         task_func.delay(*task_args)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception(f"Error executing async task for document {update_info['document'].id}")
+                    logger.exception("Error executing async task for document %s", update_info["document"].id)
                     # don't raise the error immediately, but capture it for later
                     propagation_error = e
                 try:
@@ -1870,15 +1923,16 @@ class DocumentService:
                         redis_client.setex(indexing_cache_key, 600, 1)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception(f"Error setting cache for document {update_info['document'].id}")
+                    logger.exception("Error setting cache for document %s", update_info["document"].id)
             # Raise any propagation error after all updates
             if propagation_error:
                 raise propagation_error
 
     @staticmethod
-    def _prepare_document_status_update(document, action: str, user):
-        """
-        Prepare document status update information.
+    def _prepare_document_status_update(
+        document: Document, action: Literal["enable", "disable", "archive", "un_archive"], user
+    ):
+        """Prepare document status update information.
 
         Args:
             document: Document object to update
@@ -1888,7 +1942,7 @@ class DocumentService:
         Returns:
             dict: Update information or None if no update needed
         """
-        now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        now = naive_utc_now()
 
         if action == "enable":
             return DocumentService._prepare_enable_update(document, now)
@@ -1984,6 +2038,9 @@ class SegmentService:
 
     @classmethod
     def create_segment(cls, args: dict, document: Document, dataset: Dataset):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         content = args["content"]
         doc_id = str(uuid.uuid4())
         segment_hash = helper.generate_text_hash(content)
@@ -1998,11 +2055,11 @@ class SegmentService:
             )
             # calc embedding use tokens
             tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
-        lock_name = "add_segment_lock_document_id_{}".format(document.id)
+        lock_name = f"add_segment_lock_document_id_{document.id}"
         with redis_client.lock(lock_name, timeout=600):
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
-                .filter(DocumentSegment.document_id == document.id)
+                .where(DocumentSegment.document_id == document.id)
                 .scalar()
             )
             segment_document = DocumentSegment(
@@ -2016,8 +2073,8 @@ class SegmentService:
                 word_count=len(content),
                 tokens=tokens,
                 status="completed",
-                indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                indexing_at=naive_utc_now(),
+                completed_at=naive_utc_now(),
                 created_by=current_user.id,
             )
             if document.doc_form == "qa_model":
@@ -2026,6 +2083,7 @@ class SegmentService:
 
             db.session.add(segment_document)
             # update document word count
+            assert document.word_count is not None
             document.word_count += segment_document.word_count
             db.session.add(document)
             db.session.commit()
@@ -2034,18 +2092,21 @@ class SegmentService:
             try:
                 VectorService.create_segments_vector([args["keywords"]], [segment_document], dataset, document.doc_form)
             except Exception as e:
-                logging.exception("create segment index failed")
+                logger.exception("create segment index failed")
                 segment_document.enabled = False
-                segment_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment_document.disabled_at = naive_utc_now()
                 segment_document.status = "error"
                 segment_document.error = str(e)
                 db.session.commit()
-            segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_document.id).first()
+            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
             return segment
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
-        lock_name = "multi_add_segment_lock_document_id_{}".format(document.id)
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
+        lock_name = f"multi_add_segment_lock_document_id_{document.id}"
         increment_word_count = 0
         with redis_client.lock(lock_name, timeout=600):
             embedding_model = None
@@ -2059,7 +2120,7 @@ class SegmentService:
                 )
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
-                .filter(DocumentSegment.document_id == document.id)
+                .where(DocumentSegment.document_id == document.id)
                 .scalar()
             )
             pre_segment_data_list = []
@@ -2092,8 +2153,8 @@ class SegmentService:
                     tokens=tokens,
                     keywords=segment_item.get("keywords", []),
                     status="completed",
-                    indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                    completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    indexing_at=naive_utc_now(),
+                    completed_at=naive_utc_now(),
                     created_by=current_user.id,
                 )
                 if document.doc_form == "qa_model":
@@ -2110,16 +2171,17 @@ class SegmentService:
                 else:
                     keywords_list.append(None)
             # update document word count
+            assert document.word_count is not None
             document.word_count += increment_word_count
             db.session.add(document)
             try:
                 # save vector index
                 VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset, document.doc_form)
             except Exception as e:
-                logging.exception("create segment index failed")
+                logger.exception("create segment index failed")
                 for segment_document in segment_data_list:
                     segment_document.enabled = False
-                    segment_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    segment_document.disabled_at = naive_utc_now()
                     segment_document.status = "error"
                     segment_document.error = str(e)
             db.session.commit()
@@ -2127,7 +2189,10 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = "segment_{}_indexing".format(segment.id)
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
+        indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
@@ -2136,7 +2201,7 @@ class SegmentService:
             if segment.enabled != action:
                 if not action:
                     segment.enabled = action
-                    segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    segment.disabled_at = naive_utc_now()
                     segment.disabled_by = current_user.id
                     db.session.add(segment)
                     db.session.commit()
@@ -2171,6 +2236,7 @@ class SegmentService:
                 db.session.commit()
                 # update document word count
                 if word_count_change != 0:
+                    assert document.word_count is not None
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
@@ -2198,7 +2264,7 @@ class SegmentService:
                     # get the process rule
                     processing_rule = (
                         db.session.query(DatasetProcessRule)
-                        .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                        .where(DatasetProcessRule.id == document.dataset_process_rule_id)
                         .first()
                     )
                     if not processing_rule:
@@ -2225,7 +2291,7 @@ class SegmentService:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
                         segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
@@ -2233,10 +2299,10 @@ class SegmentService:
                 segment.word_count = len(content)
                 segment.tokens = tokens
                 segment.status = "completed"
-                segment.indexing_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-                segment.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment.indexing_at = naive_utc_now()
+                segment.completed_at = naive_utc_now()
                 segment.updated_by = current_user.id
-                segment.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment.updated_at = naive_utc_now()
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -2246,6 +2312,7 @@ class SegmentService:
                 word_count_change = segment.word_count - word_count_change
                 # update document word count
                 if word_count_change != 0:
+                    assert document.word_count is not None
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 db.session.add(segment)
@@ -2273,7 +2340,7 @@ class SegmentService:
                     # get the process rule
                     processing_rule = (
                         db.session.query(DatasetProcessRule)
-                        .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                        .where(DatasetProcessRule.id == document.dataset_process_rule_id)
                         .first()
                     )
                     if not processing_rule:
@@ -2286,18 +2353,18 @@ class SegmentService:
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
 
         except Exception as e:
-            logging.exception("update segment index failed")
+            logger.exception("update segment index failed")
             segment.enabled = False
-            segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            segment.disabled_at = naive_utc_now()
             segment.status = "error"
             segment.error = str(e)
             db.session.commit()
-        new_segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment.id).first()
+        new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
         return new_segment
 
     @classmethod
     def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = "segment_{}_delete_indexing".format(segment.id)
+        indexing_cache_key = f"segment_{segment.id}_delete_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
@@ -2309,16 +2376,17 @@ class SegmentService:
             delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id)
         db.session.delete(segment)
         # update document word count
+        assert document.word_count is not None
         document.word_count -= segment.word_count
         db.session.add(document)
         db.session.commit()
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
-        index_node_ids = (
-            db.session.query(DocumentSegment)
-            .with_entities(DocumentSegment.index_node_id)
-            .filter(
+        assert isinstance(current_user, Account)
+        segments = (
+            db.session.query(DocumentSegment.index_node_id, DocumentSegment.word_count)
+            .where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
@@ -2326,18 +2394,35 @@ class SegmentService:
             )
             .all()
         )
-        index_node_ids = [index_node_id[0] for index_node_id in index_node_ids]
+
+        if not segments:
+            return
+
+        index_node_ids = [seg.index_node_id for seg in segments]
+        total_words = sum(seg.word_count for seg in segments)
+
+        document.word_count = (
+            document.word_count - total_words if document.word_count and document.word_count > total_words else 0
+        )
+        db.session.add(document)
 
         delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
-        db.session.query(DocumentSegment).filter(DocumentSegment.id.in_(segment_ids)).delete()
+        db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).delete()
         db.session.commit()
 
     @classmethod
-    def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
+    def update_segments_status(
+        cls, segment_ids: list, action: Literal["enable", "disable"], dataset: Dataset, document: Document
+    ):
+        assert current_user is not None
+
+        # Check if segment_ids is not empty to avoid WHERE false condition
+        if not segment_ids or len(segment_ids) == 0:
+            return
         if action == "enable":
             segments = (
                 db.session.query(DocumentSegment)
-                .filter(
+                .where(
                     DocumentSegment.id.in_(segment_ids),
                     DocumentSegment.dataset_id == dataset.id,
                     DocumentSegment.document_id == document.id,
@@ -2347,9 +2432,9 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
-                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
                 if cache_result is not None:
                     continue
@@ -2357,14 +2442,14 @@ class SegmentService:
                 segment.disabled_at = None
                 segment.disabled_by = None
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            enable_segments_to_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+            enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         elif action == "disable":
             segments = (
                 db.session.query(DocumentSegment)
-                .filter(
+                .where(
                     DocumentSegment.id.in_(segment_ids),
                     DocumentSegment.dataset_id == dataset.id,
                     DocumentSegment.document_id == document.id,
@@ -2374,44 +2459,34 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
-                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
                 if cache_result is not None:
                     continue
                 segment.enabled = False
-                segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment.disabled_at = naive_utc_now()
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            disable_segments_from_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
-        else:
-            raise InvalidActionError()
+            disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
 
     @classmethod
     def create_child_chunk(
         cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset
     ) -> ChildChunk:
-        lock_name = "add_child_lock_{}".format(segment.id)
+        assert isinstance(current_user, Account)
+
+        lock_name = f"add_child_lock_{segment.id}"
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)
-            child_chunk_count = (
-                db.session.query(ChildChunk)
-                .filter(
-                    ChildChunk.tenant_id == current_user.current_tenant_id,
-                    ChildChunk.dataset_id == dataset.id,
-                    ChildChunk.document_id == document.id,
-                    ChildChunk.segment_id == segment.id,
-                )
-                .count()
-            )
             max_position = (
                 db.session.query(func.max(ChildChunk.position))
-                .filter(
+                .where(
                     ChildChunk.tenant_id == current_user.current_tenant_id,
                     ChildChunk.dataset_id == dataset.id,
                     ChildChunk.document_id == document.id,
@@ -2437,7 +2512,7 @@ class SegmentService:
             try:
                 VectorService.create_child_chunk_vector(child_chunk, dataset)
             except Exception as e:
-                logging.exception("create child chunk index failed")
+                logger.exception("create child chunk index failed")
                 db.session.rollback()
                 raise ChildChunkIndexingError(str(e))
             db.session.commit()
@@ -2452,9 +2527,11 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
     ) -> list[ChildChunk]:
+        assert isinstance(current_user, Account)
+
         child_chunks = (
             db.session.query(ChildChunk)
-            .filter(
+            .where(
                 ChildChunk.dataset_id == dataset.id,
                 ChildChunk.document_id == document.id,
                 ChildChunk.segment_id == segment.id,
@@ -2473,7 +2550,7 @@ class SegmentService:
                         child_chunk.content = child_chunk_update_args.content
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
-                        child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                        child_chunk.updated_at = naive_utc_now()
                         child_chunk.type = "customized"
                         update_child_chunks.append(child_chunk)
             else:
@@ -2512,7 +2589,7 @@ class SegmentService:
             VectorService.update_child_chunk_vector(new_child_chunks, update_child_chunks, delete_child_chunks, dataset)
             db.session.commit()
         except Exception as e:
-            logging.exception("update child chunk index failed")
+            logger.exception("update child chunk index failed")
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
         return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
@@ -2526,17 +2603,19 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
     ) -> ChildChunk:
+        assert current_user is not None
+
         try:
             child_chunk.content = content
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
-            child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            child_chunk.updated_at = naive_utc_now()
             child_chunk.type = "customized"
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)
             db.session.commit()
         except Exception as e:
-            logging.exception("update child chunk index failed")
+            logger.exception("update child chunk index failed")
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
         return child_chunk
@@ -2547,7 +2626,7 @@ class SegmentService:
         try:
             VectorService.delete_child_chunk_vector(child_chunk, dataset)
         except Exception as e:
-            logging.exception("delete child chunk index failed")
+            logger.exception("delete child chunk index failed")
             db.session.rollback()
             raise ChildChunkDeleteIndexError(str(e))
         db.session.commit()
@@ -2556,6 +2635,8 @@ class SegmentService:
     def get_child_chunks(
         cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: Optional[str] = None
     ):
+        assert isinstance(current_user, Account)
+
         query = (
             select(ChildChunk)
             .filter_by(
@@ -2575,7 +2656,7 @@ class SegmentService:
         """Get a child chunk by its ID."""
         result = (
             db.session.query(ChildChunk)
-            .filter(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
+            .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
             .first()
         )
         return result if isinstance(result, ChildChunk) else None
@@ -2591,15 +2672,16 @@ class SegmentService:
         limit: int = 20,
     ):
         """Get segments for a document with optional filtering."""
-        query = select(DocumentSegment).filter(
+        query = select(DocumentSegment).where(
             DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
         )
 
-        if status_list:
-            query = query.filter(DocumentSegment.status.in_(status_list))
+        # Check if status_list is not empty to avoid WHERE false condition
+        if status_list and len(status_list) > 0:
+            query = query.where(DocumentSegment.status.in_(status_list))
 
         if keyword:
-            query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
+            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
         query = query.order_by(DocumentSegment.position.asc())
         paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
@@ -2612,7 +2694,7 @@ class SegmentService:
     ) -> tuple[DocumentSegment, Document]:
         """Update a segment by its ID with validation and checks."""
         # check dataset
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -2644,7 +2726,7 @@ class SegmentService:
         # check segment
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == user_id)
+            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
             .first()
         )
         if not segment:
@@ -2661,7 +2743,7 @@ class SegmentService:
         """Get a segment by its ID."""
         result = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
+            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
             .first()
         )
         return result if isinstance(result, DocumentSegment) else None
@@ -2674,7 +2756,7 @@ class DatasetCollectionBindingService:
     ) -> DatasetCollectionBinding:
         dataset_collection_binding = (
             db.session.query(DatasetCollectionBinding)
-            .filter(
+            .where(
                 DatasetCollectionBinding.provider_name == provider_name,
                 DatasetCollectionBinding.model_name == model_name,
                 DatasetCollectionBinding.type == collection_type,
@@ -2700,7 +2782,7 @@ class DatasetCollectionBindingService:
     ) -> DatasetCollectionBinding:
         dataset_collection_binding = (
             db.session.query(DatasetCollectionBinding)
-            .filter(
+            .where(
                 DatasetCollectionBinding.id == collection_binding_id, DatasetCollectionBinding.type == collection_type
             )
             .order_by(DatasetCollectionBinding.created_at)
@@ -2719,7 +2801,7 @@ class DatasetPermissionService:
             db.session.query(
                 DatasetPermission.account_id,
             )
-            .filter(DatasetPermission.dataset_id == dataset_id)
+            .where(DatasetPermission.dataset_id == dataset_id)
             .all()
         )
 
@@ -2732,7 +2814,7 @@ class DatasetPermissionService:
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
         try:
-            db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []
             for user in user_list:
                 permission = DatasetPermission(
@@ -2768,7 +2850,7 @@ class DatasetPermissionService:
     @classmethod
     def clear_partial_member_list(cls, dataset_id):
         try:
-            db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
             db.session.commit()
         except Exception as e:
             db.session.rollback()

@@ -87,6 +87,7 @@ class MultiModalPromptMessageContent(PromptMessageContent):
     base64_data: str = Field(default="", description="the base64 data of multi-modal file")
     url: str = Field(default="", description="the url of multi-modal file")
     mime_type: str = Field(default=..., description="the mime type of multi-modal file")
+    filename: str = Field(default="", description="the filename of multi-modal file")
 
     @property
     def data(self):
@@ -155,6 +156,23 @@ class PromptMessage(ABC, BaseModel):
         :return: True if prompt message is empty, False otherwise
         """
         return not self.content
+
+    def get_text_content(self) -> str:
+        """
+        Get text content from prompt message.
+
+        :return: Text content as string, empty string if no text content
+        """
+        if isinstance(self.content, str):
+            return self.content
+        elif isinstance(self.content, list):
+            text_parts = []
+            for item in self.content:
+                if isinstance(item, TextPromptMessageContent):
+                    text_parts.append(item.data)
+            return "".join(text_parts)
+        else:
+            return ""
 
     @field_validator("content", mode="before")
     @classmethod

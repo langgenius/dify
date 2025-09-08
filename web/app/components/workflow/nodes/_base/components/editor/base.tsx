@@ -9,15 +9,17 @@ import Wrap from './wrap'
 import cn from '@/utils/classnames'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import {
-  Clipboard,
-  ClipboardCheck,
+  Copy,
+  CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 import ActionButton from '@/app/components/base/action-button'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 
 type Props = {
+  nodeId?: string
   className?: string
   title: React.JSX.Element | string
   headerRight?: React.JSX.Element
@@ -35,9 +37,12 @@ type Props = {
   showFileList?: boolean
   showCodeGenerator?: boolean
   tip?: React.JSX.Element
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const Base: FC<Props> = ({
+  nodeId,
   className,
   title,
   headerRight,
@@ -86,16 +91,21 @@ const Base: FC<Props> = ({
             {headerRight}
             {showCodeGenerator && codeLanguages && (
               <div className='ml-1'>
-                <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages} />
+                <CodeGeneratorButton
+                  onGenerated={onGenerated}
+                  codeLanguages={codeLanguages}
+                  currentCode={value}
+                  nodeId={nodeId!}
+                />
               </div>
             )}
             <ActionButton className='ml-1' onClick={handleCopy}>
               {!isCopied
                 ? (
-                  <Clipboard className='h-4 w-4 cursor-pointer' />
+                  <Copy className='h-4 w-4 cursor-pointer' />
                 )
                 : (
-                  <ClipboardCheck className='h-4 w-4' />
+                  <CopyCheck className='h-4 w-4' />
                 )
               }
             </ActionButton>

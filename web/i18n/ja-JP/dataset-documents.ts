@@ -388,6 +388,7 @@ const translation = {
     regenerationSuccessMessage: 'ウィンドウを閉じても大丈夫です',
     edited: '編集済み',
     editedAt: '編集日時',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     expandChunks: 'チャンクを展開',
     collapseChunks: 'チャンクを折りたたむ',
     keywordDuplicate: 'そのキーワードは既に存在しています',

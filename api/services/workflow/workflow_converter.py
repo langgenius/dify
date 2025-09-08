@@ -185,7 +185,7 @@ class WorkflowConverter:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=WorkflowType.from_app_mode(new_app_mode).value,
-            version="draft",
+            version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),
             features=json.dumps(features),
             created_by=account_id,
@@ -217,7 +217,7 @@ class WorkflowConverter:
 
         return app_config
 
-    def _convert_to_start_node(self, variables: list[VariableEntity]) -> dict:
+    def _convert_to_start_node(self, variables: list[VariableEntity]):
         """
         Convert to Start Node
         :param variables: list of variables
@@ -384,7 +384,7 @@ class WorkflowConverter:
         prompt_template: PromptTemplateEntity,
         file_upload: Optional[FileUploadConfig] = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
-    ) -> dict:
+    ):
         """
         Convert to LLM Node
         :param original_app_mode: original app mode
@@ -402,7 +402,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
-        prompts: Any = None
+        prompts: Optional[Any] = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT.value:
@@ -550,7 +550,7 @@ class WorkflowConverter:
 
         return template
 
-    def _convert_to_end_node(self) -> dict:
+    def _convert_to_end_node(self):
         """
         Convert to End Node
         :return:
@@ -566,7 +566,7 @@ class WorkflowConverter:
             },
         }
 
-    def _convert_to_answer_node(self) -> dict:
+    def _convert_to_answer_node(self):
         """
         Convert to Answer Node
         :return:
@@ -578,7 +578,7 @@ class WorkflowConverter:
             "data": {"title": "ANSWER", "type": NodeType.ANSWER.value, "answer": "{{#llm.text#}}"},
         }
 
-    def _create_edge(self, source: str, target: str) -> dict:
+    def _create_edge(self, source: str, target: str):
         """
         Create Edge
         :param source: source node id
@@ -587,7 +587,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: dict, node: dict) -> dict:
+    def _append_node(self, graph: dict, node: dict):
         """
         Append Node to Graph
 
@@ -620,7 +620,7 @@ class WorkflowConverter:
         """
         api_based_extension = (
             db.session.query(APIBasedExtension)
-            .filter(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
+            .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
             .first()
         )
 

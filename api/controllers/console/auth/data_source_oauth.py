@@ -3,7 +3,7 @@ import logging
 import requests
 from flask import current_app, redirect, request
 from flask_login import current_user
-from flask_restful import Resource
+from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -12,6 +12,8 @@ from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
 from ..wraps import account_initialization_required, setup_required
+
+logger = logging.getLogger(__name__)
 
 
 def get_oauth_providers():
@@ -79,9 +81,9 @@ class OAuthDataSourceBinding(Resource):
                 return {"error": "Invalid code"}, 400
             try:
                 oauth_provider.get_access_token(code)
-            except requests.exceptions.HTTPError as e:
-                logging.exception(
-                    f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}"
+            except requests.HTTPError as e:
+                logger.exception(
+                    "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
                 )
                 return {"error": "OAuth data source process failed"}, 400
 
@@ -102,8 +104,10 @@ class OAuthDataSourceSync(Resource):
             return {"error": "Invalid provider"}, 400
         try:
             oauth_provider.sync_data_source(binding_id)
-        except requests.exceptions.HTTPError as e:
-            logging.exception(f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
+        except requests.HTTPError as e:
+            logger.exception(
+                "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
+            )
             return {"error": "OAuth data source process failed"}, 400
 
         return {"result": "success"}, 200

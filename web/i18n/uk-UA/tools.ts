@@ -54,12 +54,16 @@ const translation = {
       keyTooltip: 'Ключ HTTP-заголовка. Якщо ви не знаєте, залиште його як "Authorization" або встановіть власне значення',
       types: {
         none: 'Відсутня',
-        api_key: 'API-ключ',
         apiKeyPlaceholder: 'Назва HTTP-заголовка для API-ключа',
         apiValuePlaceholder: 'Введіть API-ключ',
+        api_key_header: 'Заголовок',
+        queryParamPlaceholder: 'Назва параметра запиту для API Ключа',
+        api_key_query: 'Параметр запиту',
       },
       key: 'Ключ',
       value: 'Значення',
+      queryParam: 'Параметр запиту',
+      queryParamTooltip: 'Ім\'я параметра запиту для ключа API, який потрібно передати, наприклад, "key" в "https://example.com/test?key=API_KEY".',
     },
     authHeaderPrefix: {
       types: {
@@ -187,6 +191,8 @@ const translation = {
       cancel: 'Скасувати',
       save: 'Зберегти',
       confirm: 'Додати та Авторизувати',
+      timeout: 'Час вичерпано',
+      sseReadTimeout: 'Тайм-аут читання SSE',
     },
     delete: 'Видалити сервер MCP',
     deleteConfirmTitle: 'Видалити {mcp}?',

@@ -18,8 +18,8 @@ import {
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
+import { useWebAppStore } from '@/context/web-app-context'
 
 type Props = {
   data?: SiteInfo
@@ -32,7 +32,7 @@ const MenuDropdown: FC<Props> = ({
   placement,
   hideLogout,
 }) => {
-  const webAppAccessMode = useGlobalPublicStore(s => s.webAppAccessMode)
+  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()

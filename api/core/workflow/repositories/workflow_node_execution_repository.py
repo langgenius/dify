@@ -26,7 +26,7 @@ class WorkflowNodeExecutionRepository(Protocol):
     application domains or deployment scenarios.
     """
 
-    def save(self, execution: WorkflowNodeExecution) -> None:
+    def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a NodeExecution instance.
 
@@ -36,18 +36,6 @@ class WorkflowNodeExecutionRepository(Protocol):
 
         Args:
             execution: The NodeExecution instance to save or update
-        """
-        ...
-
-    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
-        """
-        Retrieve a NodeExecution by its node_execution_id.
-
-        Args:
-            node_execution_id: The node execution ID
-
-        Returns:
-            The NodeExecution instance if found, None otherwise
         """
         ...
 
@@ -67,26 +55,5 @@ class WorkflowNodeExecutionRepository(Protocol):
 
         Returns:
             A list of NodeExecution instances
-        """
-        ...
-
-    def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
-        """
-        Retrieve all running NodeExecution instances for a specific workflow run.
-
-        Args:
-            workflow_run_id: The workflow run ID
-
-        Returns:
-            A list of running NodeExecution instances
-        """
-        ...
-
-    def clear(self) -> None:
-        """
-        Clear all NodeExecution records based on implementation-specific criteria.
-
-        This method is intended to be used for bulk deletion operations, such as removing
-        all records associated with a specific app_id and tenant_id in multi-tenant implementations.
         """
         ...

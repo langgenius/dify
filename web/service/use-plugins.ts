@@ -13,7 +13,6 @@ import type {
   InstalledLatestVersionResponse,
   InstalledPluginListWithTotalResponse,
   PackageDependency,
-  Permissions,
   Plugin,
   PluginDeclaration,
   PluginDetail,
@@ -22,6 +21,7 @@ import type {
   PluginType,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
+  ReferenceSetting,
   VersionInfo,
   VersionListResponse,
   uploadGitHubResponse,
@@ -40,7 +40,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useInvalidateAllBuiltInTools } from './use-tools'
-import usePermission from '@/app/components/plugins/plugin-page/use-permission'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { uninstallPlugin } from '@/service/plugins'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { cloneDeep } from 'lodash-es'
@@ -350,34 +350,42 @@ export const useDebugKey = () => {
   })
 }
 
-const usePermissionsKey = [NAME_SPACE, 'permissions']
-export const usePermissions = () => {
+const useReferenceSettingKey = [NAME_SPACE, 'referenceSettings']
+export const useReferenceSettings = () => {
   return useQuery({
-    queryKey: usePermissionsKey,
-    queryFn: () => get<Permissions>('/workspaces/current/plugin/permission/fetch'),
+    queryKey: useReferenceSettingKey,
+    queryFn: () => get<ReferenceSetting>('/workspaces/current/plugin/preferences/fetch'),
   })
 }
 
-export const useInvalidatePermissions = () => {
+export const useInvalidateReferenceSettings = () => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries(
       {
-        queryKey: usePermissionsKey,
+        queryKey: useReferenceSettingKey,
       })
   }
 }
 
-export const useMutationPermissions = ({
+export const useMutationReferenceSettings = ({
   onSuccess,
 }: {
   onSuccess?: () => void
 }) => {
   return useMutation({
-    mutationFn: (payload: Permissions) => {
-      return post('/workspaces/current/plugin/permission/change', { body: payload })
+    mutationFn: (payload: ReferenceSetting) => {
+      return post('/workspaces/current/plugin/preferences/change', { body: payload })
     },
     onSuccess,
+  })
+}
+
+export const useRemoveAutoUpgrade = () => {
+  return useMutation({
+    mutationFn: (payload: { plugin_id: string }) => {
+      return post('/workspaces/current/plugin/preferences/autoupgrade/exclude', { body: payload })
+    },
   })
 }
 
@@ -427,6 +435,39 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
   })
 }
 
+export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearchParams) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'fetchPluginListOrBundleList', pluginsSearchParams],
+    queryFn: () => {
+      const {
+        query,
+        sortBy,
+        sortOrder,
+        category,
+        tags,
+        exclude,
+        type,
+        page = 1,
+        pageSize = 40,
+      } = pluginsSearchParams
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+        body: {
+          page,
+          page_size: pageSize,
+          query,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          category: category !== 'all' ? category : '',
+          tags,
+          exclude,
+          type,
+        },
+      })
+    },
+  })
+}
+
 export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
@@ -448,7 +489,7 @@ const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = (category?: PluginType) => {
   const {
     canManagement,
-  } = usePermission()
+  } = useReferenceSetting()
   const { refreshPluginList } = useRefreshPluginList()
   const {
     data,
@@ -478,7 +519,6 @@ export const usePluginTaskList = (category?: PluginType) => {
           refreshPluginList(category ? { category } as any : undefined, !category)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRefetching])
 
   const handleRefetch = useCallback(() => {

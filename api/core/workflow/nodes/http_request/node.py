@@ -11,7 +11,8 @@ from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.utils import variable_template_parser
 from factories import file_factory
@@ -32,12 +33,34 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
 logger = logging.getLogger(__name__)
 
 
-class HttpRequestNode(BaseNode[HttpRequestNodeData]):
-    _node_data_cls = HttpRequestNodeData
+class HttpRequestNode(BaseNode):
     _node_type = NodeType.HTTP_REQUEST
 
+    _node_data: HttpRequestNodeData
+
+    def init_node_data(self, data: Mapping[str, Any]):
+        self._node_data = HttpRequestNodeData.model_validate(data)
+
+    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self) -> Optional[str]:
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
+
     @classmethod
-    def get_default_config(cls, filters: Optional[dict[str, Any]] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict[str, Any]] = None):
         return {
             "type": "http-request",
             "config": {
@@ -69,8 +92,8 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         process_data = {}
         try:
             http_executor = Executor(
-                node_data=self.node_data,
-                timeout=self._get_request_timeout(self.node_data),
+                node_data=self._node_data,
+                timeout=self._get_request_timeout(self._node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
                 max_retries=0,
             )
@@ -78,7 +101,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
 
             response = http_executor.invoke()
             files = self.extract_files(url=http_executor.url, response=response)
-            if not response.response.is_success and (self.should_continue_on_error or self.should_retry):
+            if not response.response.is_success and (self.continue_on_error or self.retry):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     outputs={
@@ -106,7 +129,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                 },
             )
         except HttpRequestNodeError as e:
-            logger.warning(f"http request node {self.node_id} failed to run: {e}")
+            logger.warning("http request node %s failed to run: %s", self.node_id, e)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
@@ -131,15 +154,18 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: HttpRequestNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # Create typed NodeData from dict
+        typed_node_data = HttpRequestNodeData.model_validate(node_data)
+
         selectors: list[VariableSelector] = []
-        selectors += variable_template_parser.extract_selectors_from_template(node_data.url)
-        selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
-        selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
-        if node_data.body:
-            body_type = node_data.body.type
-            data = node_data.body.data
+        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.url)
+        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.headers)
+        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.params)
+        if typed_node_data.body:
+            body_type = typed_node_data.body.type
+            data = typed_node_data.body.data
             match body_type:
                 case "binary":
                     if len(data) != 1:
@@ -217,3 +243,11 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         files.append(file)
 
         return ArrayFileSegment(value=files)
+
+    @property
+    def continue_on_error(self) -> bool:
+        return self._node_data.error_strategy is not None
+
+    @property
+    def retry(self) -> bool:
+        return self._node_data.retry_config.retry_enabled

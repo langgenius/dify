@@ -48,11 +48,10 @@
   <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
-
 Dify, açık kaynaklı bir LLM uygulama geliştirme platformudur. Sezgisel arayüzü, AI iş akışı, RAG pipeline'ı, ajan yetenekleri, model yönetimi, gözlemlenebilirlik özellikleri ve daha fazlasını birleştirerek, prototipten üretime hızlıca geçmenizi sağlar. İşte temel özelliklerin bir listesi:
 </br> </br>
 
-**1. Workflow**: 
+**1. Workflow**:
 Görsel bir arayüz üzerinde güçlü AI iş akışları oluşturun ve test edin, aşağıdaki tüm özellikleri ve daha fazlasını kullanarak.
 
 **2. Kapsamlı model desteği**:
@@ -60,101 +59,33 @@ Görsel bir arayüz üzerinde güçlü AI iş akışları oluşturun ve test edi
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
+**3. Prompt IDE**:
+Komut istemlerini oluşturmak, model performansını karşılaştırmak ve sohbet tabanlı uygulamalara metin-konuşma gibi ek özellikler eklemek için kullanıcı dostu bir arayüz.
 
-**3. Prompt IDE**: 
-  Komut istemlerini oluşturmak, model performansını karşılaştırmak ve sohbet tabanlı uygulamalara metin-konuşma gibi ek özellikler eklemek için kullanıcı dostu bir arayüz.
+**4. RAG Pipeline**:
+Belge alımından bilgi çekmeye kadar geniş kapsamlı RAG yetenekleri. PDF'ler, PPT'ler ve diğer yaygın belge formatlarından metin çıkarma için hazır destek sunar.
 
-**4. RAG Pipeline**: 
-  Belge alımından bilgi çekmeye kadar geniş kapsamlı RAG yetenekleri. PDF'ler, PPT'ler ve diğer yaygın belge formatlarından metin çıkarma için hazır destek sunar.
+**5. Ajan yetenekleri**:
+LLM Fonksiyon Çağırma veya ReAct'a dayalı ajanlar tanımlayabilir ve bu ajanlara önceden hazırlanmış veya özel araçlar ekleyebilirsiniz. Dify, AI ajanları için Google Arama, DALL·E, Stable Diffusion ve WolframAlpha gibi 50'den fazla yerleşik araç sağlar.
 
-**5. Ajan yetenekleri**: 
-  LLM Fonksiyon Çağırma veya ReAct'a dayalı ajanlar tanımlayabilir ve bu ajanlara önceden hazırlanmış veya özel araçlar ekleyebilirsiniz. Dify, AI ajanları için Google Arama, DALL·E, Stable Diffusion ve WolframAlpha gibi 50'den fazla yerleşik araç sağlar.
+**6. LLMOps**:
+Uygulama loglarını ve performans metriklerini zaman içinde izleme ve analiz etme imkanı. Üretim ortamından elde edilen verilere ve kullanıcı geri bildirimlerine dayanarak, prompt'ları, veri setlerini ve modelleri sürekli olarak optimize edebilirsiniz. Bu sayede, AI uygulamanızın performansını ve doğruluğunu sürekli olarak artırabilirsiniz.
 
-**6. LLMOps**: 
-  Uygulama loglarını ve performans metriklerini zaman içinde izleme ve analiz etme imkanı. Üretim ortamından elde edilen verilere ve kullanıcı geri bildirimlerine dayanarak, prompt'ları, veri setlerini ve modelleri sürekli olarak optimize edebilirsiniz. Bu sayede, AI uygulamanızın performansını ve doğruluğunu sürekli olarak artırabilirsiniz.
-
-**7. Hizmet Olarak Backend**: 
-  Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı kendi iş mantığınıza kolayca entegre edebilirsiniz.
-
-
-## Özellik karşılaştırması
-<table style="width: 100%;">
-  <tr>
-    <th align="center">Özellik</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">OpenAI Assistants API</th>
-  </tr>
-  <tr>
-    <td align="center">Programlama Yaklaşımı</td>
-    <td align="center">API + Uygulama odaklı</td>
-    <td align="center">Python Kodu</td>
-    <td align="center">Uygulama odaklı</td>
-    <td align="center">API odaklı</td>
-  </tr>
-  <tr>
-    <td align="center">Desteklenen LLM'ler</td>
-    <td align="center">Zengin Çeşitlilik</td>
-    <td align="center">Zengin Çeşitlilik</td>
-    <td align="center">Zengin Çeşitlilik</td>
-    <td align="center">Yalnızca OpenAI</td>
-  </tr>
-  <tr>
-    <td align="center">RAG Motoru</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Ajan</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">İş Akışı</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Gözlemlenebilirlik</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Kurumsal Özellikler (SSO/Erişim kontrolü)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Yerel Dağıtım</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
+**7. Hizmet Olarak Backend**:
+Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı kendi iş mantığınıza kolayca entegre edebilirsiniz.
 
 ## Dify'ı Kullanma
 
 - **Cloud </br>**
-Herkesin sıfır kurulumla denemesi için bir [Dify Cloud](https://dify.ai) hizmeti sunuyoruz. Bu hizmet, kendi kendine dağıtılan versiyonun tüm yeteneklerini sağlar ve sandbox planında 200 ücretsiz GPT-4 çağrısı içerir.
+  Herkesin sıfır kurulumla denemesi için bir [Dify Cloud](https://dify.ai) hizmeti sunuyoruz. Bu hizmet, kendi kendine dağıtılan versiyonun tüm yeteneklerini sağlar ve sandbox planında 200 ücretsiz GPT-4 çağrısı içerir.
 
 - **Dify Topluluk Sürümünü Kendi Sunucunuzda Barındırma</br>**
-Bu [başlangıç kılavuzu](#quick-start) ile Dify'ı kendi ortamınızda hızlıca çalıştırın.
-Daha fazla referans ve detaylı talimatlar için [dokümantasyonumuzu](https://docs.dify.ai) kullanın.
+  Bu [başlangıç kılavuzu](#quick-start) ile Dify'ı kendi ortamınızda hızlıca çalıştırın.
+  Daha fazla referans ve detaylı talimatlar için [dokümantasyonumuzu](https://docs.dify.ai) kullanın.
 
 - **Kurumlar / organizasyonlar için Dify</br>**
-Ek kurumsal odaklı özellikler sunuyoruz. Kurumsal ihtiyaçları görüşmek için [bize bir e-posta gönderin](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry). </br>
+  Ek kurumsal odaklı özellikler sunuyoruz. Kurumsal ihtiyaçları görüşmek için [bize bir e-posta gönderin](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry). </br>
+
   > AWS kullanan startuplar ve küçük işletmeler için, [AWS Marketplace'deki Dify Premium'a](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) göz atın ve tek tıklamayla kendi AWS VPC'nize dağıtın. Bu, özel logo ve marka ile uygulamalar oluşturma seçeneğine sahip uygun fiyatlı bir AMI teklifdir.
 
 ## Güncel Kalma
@@ -163,13 +94,12 @@ GitHub'da Dify'a yıldız verin ve yeni sürümlerden anında haberdar olun.
 
 ![bizi-yıldızlayın](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
 
-
-
 ## Hızlı başlangıç
+
 > Dify'ı kurmadan önce, makinenizin aşağıdaki minimum sistem gereksinimlerini karşıladığından emin olun:
-> 
->- CPU >= 2 Çekirdek
->- RAM >= 4GB
+>
+> - CPU >= 2 Çekirdek
+> - RAM >= 4GB
 
 </br>
 Dify sunucusunu başlatmanın en kolay yolu, [docker-compose.yml](docker/docker-compose.yaml) dosyamızı çalıştırmaktır. Kurulum komutunu çalıştırmadan önce, makinenizde [Docker](https://docs.docker.com/get-docker/) ve [Docker Compose](https://docs.docker.com/compose/install/)'un kurulu olduğundan emin olun:
@@ -194,23 +124,28 @@ Yüksek kullanılabilirliğe sahip bir kurulum yapılandırmak isterseniz, Dify'
 - [@BorisPolonsky tarafından Helm Chart](https://github.com/BorisPolonsky/dify-helm)
 - [@Winson-030 tarafından YAML dosyası](https://github.com/Winson-030/dify-kubernetes)
 - [@wyy-holding tarafından YAML dosyası](https://github.com/wyy-holding/dify-k8s)
+- [🚀 YENİ! YAML dosyaları (Dify v1.6.0 destekli) @Zhoneym tarafından](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Dağıtım için Terraform Kullanımı
 
 Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.terraform.io/) kullanarak
 
 ##### Azure Global
+
 - [Azure Terraform tarafından @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 ##### Google Cloud
+
 - [Google Cloud Terraform tarafından @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### AWS CDK ile Dağıtım
 
 [CDK](https://aws.amazon.com/cdk/) kullanarak Dify'ı AWS'ye dağıtın
 
-##### AWS 
-- [AWS CDK tarafından @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+##### AWS
+
+- [AWS CDK tarafından @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK tarafından @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
 
@@ -220,13 +155,16 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 
 [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) kullanarak Dify'ı tek tıkla Alibaba Cloud'a dağıtın
 
+#### AKS'ye Dağıtım için Azure Devops Pipeline Kullanımı
+
+[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) kullanarak Dify'ı tek tıkla AKS'ye dağıtın
 
 ## Katkıda Bulunma
 
-Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) bakabilirsiniz.
+Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](https://github.com/langgenius/dify/blob/main/CONTRIBUTING_TR.md) bakabilirsiniz.
 Aynı zamanda, lütfen Dify'ı sosyal medyada, etkinliklerde ve konferanslarda paylaşarak desteklemeyi düşünün.
 
-> Dify'ı Mandarin veya İngilizce dışındaki dillere çevirmemize yardımcı olacak katkıda bulunanlara ihtiyacımız var. Yardımcı olmakla ilgileniyorsanız, lütfen daha fazla bilgi için [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) dosyasına bakın ve [Discord Topluluk Sunucumuzdaki](https://discord.gg/8Tpq4AcN9c) `global-users` kanalında bize bir yorum bırakın.
+> Dify'ı Mandarin veya İngilizce dışındaki dillere çevirmemize yardımcı olacak katkıda bulunanlara ihtiyacımız var. Yardımcı olmakla ilgileniyorsanız, lütfen daha fazla bilgi için [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) dosyasına bakın ve [Discord Topluluk Sunucumuzdaki](https://discord.gg/8Tpq4AcN9c) `global-users` kanalında bize bir yorum bırakın.
 
 **Katkıda Bulunanlar**
 
@@ -236,10 +174,10 @@ Aynı zamanda, lütfen Dify'ı sosyal medyada, etkinliklerde ve konferanslarda p
 
 ## Topluluk & iletişim
 
-* [GitHub Tartışmaları](https://github.com/langgenius/dify/discussions). En uygun: geri bildirim paylaşmak ve soru sormak için.
-* [GitHub Sorunları](https://github.com/langgenius/dify/issues). En uygun: Dify.AI kullanırken karşılaştığınız hatalar ve özellik önerileri için. [Katkı Kılavuzumuza](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) bakın.
-* [Discord](https://discord.gg/FngNHpbcY7). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
-* [X(Twitter)](https://twitter.com/dify_ai). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
+- [GitHub Tartışmaları](https://github.com/langgenius/dify/discussions). En uygun: geri bildirim paylaşmak ve soru sormak için.
+- [GitHub Sorunları](https://github.com/langgenius/dify/issues). En uygun: Dify.AI kullanırken karşılaştığınız hatalar ve özellik önerileri için. [Katkı Kılavuzumuza](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) bakın.
+- [Discord](https://discord.gg/FngNHpbcY7). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
+- [X(Twitter)](https://twitter.com/dify_ai). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
 
 ## Star history
 

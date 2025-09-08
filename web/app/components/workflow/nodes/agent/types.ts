@@ -12,6 +12,7 @@ export type AgentNodeType = CommonNodeType & {
   plugin_unique_identifier?: string
   memory?: Memory
   version?: string
+  tool_node_version?: string
 }
 
 export enum AgentFeature {

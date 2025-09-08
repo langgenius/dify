@@ -214,7 +214,7 @@ class TestDraftVariableLoader(unittest.TestCase):
 
     def tearDown(self):
         with Session(bind=db.engine, expire_on_commit=False) as session:
-            session.query(WorkflowDraftVariable).filter(WorkflowDraftVariable.app_id == self._test_app_id).delete(
+            session.query(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == self._test_app_id).delete(
                 synchronize_session=False
             )
             session.commit()

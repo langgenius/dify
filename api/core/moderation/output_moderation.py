@@ -40,7 +40,7 @@ class OutputModeration(BaseModel):
     def get_final_output(self) -> str:
         return self.final_output or ""
 
-    def append_new_token(self, token: str) -> None:
+    def append_new_token(self, token: str):
         self.buffer += token
 
         if not self.thread:
@@ -135,7 +135,7 @@ class OutputModeration(BaseModel):
 
             result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)
             return result
-        except Exception as e:
-            logger.exception(f"Moderation Output error, app_id: {app_id}")
+        except Exception:
+            logger.exception("Moderation Output error, app_id: %s", app_id)
 
         return None

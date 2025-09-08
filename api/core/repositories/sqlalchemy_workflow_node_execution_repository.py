@@ -7,9 +7,12 @@ import logging
 from collections.abc import Sequence
 from typing import Optional, Union
 
-from sqlalchemy import UnaryExpression, asc, delete, desc, select
+import psycopg2.errors
+from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
+from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.workflow_node_execution import (
@@ -21,6 +24,7 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
+from libs.uuid_utils import uuidv7
 from models import (
     Account,
     CreatorUserRole,
@@ -186,18 +190,29 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.finished_at = domain_model.finished_at
         return db_model
 
-    def save(self, execution: WorkflowNodeExecution) -> None:
+    def _is_duplicate_key_error(self, exception: BaseException) -> bool:
+        """Check if the exception is a duplicate key constraint violation."""
+        return isinstance(exception, IntegrityError) and isinstance(exception.orig, psycopg2.errors.UniqueViolation)
+
+    def _regenerate_id_on_duplicate(self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel):
+        """Regenerate UUID v7 for both domain and database models when duplicate key detected."""
+        new_id = str(uuidv7())
+        logger.warning(
+            "Duplicate key conflict for workflow node execution ID %s, generating new UUID v7: %s", db_model.id, new_id
+        )
+        db_model.id = new_id
+        execution.id = new_id
+
+    def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a NodeExecution domain entity to the database.
 
         This method serves as a domain-to-database adapter that:
         1. Converts the domain entity to its database representation
-        2. Persists the database model using SQLAlchemy's merge operation
+        2. Checks for existing records and updates or inserts accordingly
         3. Maintains proper multi-tenancy by including tenant context during conversion
         4. Updates the in-memory cache for faster subsequent lookups
-
-        The method handles both creating new records and updating existing ones through
-        SQLAlchemy's merge operation.
+        5. Handles duplicate key conflicts by retrying with a new UUID v7
 
         Args:
             execution: The NodeExecution domain entity to persist
@@ -205,59 +220,61 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Convert domain model to database model using tenant context and other attributes
         db_model = self.to_db_model(execution)
 
-        # Create a new database session
-        with self._session_factory() as session:
-            # SQLAlchemy merge intelligently handles both insert and update operations
-            # based on the presence of the primary key
-            session.merge(db_model)
-            session.commit()
+        # Use tenacity for retry logic with duplicate key handling
+        @retry(
+            stop=stop_after_attempt(3),
+            retry=retry_if_exception(self._is_duplicate_key_error),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            reraise=True,
+        )
+        def _save_with_retry():
+            try:
+                self._persist_to_database(db_model)
+            except IntegrityError as e:
+                if self._is_duplicate_key_error(e):
+                    # Generate new UUID and retry
+                    self._regenerate_id_on_duplicate(execution, db_model)
+                    raise  # Let tenacity handle the retry
+                else:
+                    # Different integrity error, don't retry
+                    logger.exception("Non-duplicate key integrity error while saving workflow node execution")
+                    raise
 
-            # Update the in-memory cache for faster subsequent lookups
-            # Only cache if we have a node_execution_id to use as the cache key
+        try:
+            _save_with_retry()
+
+            # Update the in-memory cache after successful save
             if db_model.node_execution_id:
-                logger.debug(f"Updating cache for node_execution_id: {db_model.node_execution_id}")
+                logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
-    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
-        """
-        Retrieve a NodeExecution by its node_execution_id.
+        except Exception:
+            logger.exception("Failed to save workflow node execution after all retries")
+            raise
 
-        First checks the in-memory cache, and if not found, queries the database.
-        If found in the database, adds it to the cache for future lookups.
+    def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
+        """
+        Persist the database model to the database.
+
+        Checks if a record with the same ID exists and either updates it or creates a new one.
 
         Args:
-            node_execution_id: The node execution ID
-
-        Returns:
-            The NodeExecution instance if found, None otherwise
+            db_model: The database model to persist
         """
-        # First check the cache
-        if node_execution_id in self._node_execution_cache:
-            logger.debug(f"Cache hit for node_execution_id: {node_execution_id}")
-            # Convert cached DB model to domain model
-            cached_db_model = self._node_execution_cache[node_execution_id]
-            return self._to_domain_model(cached_db_model)
-
-        # If not in cache, query the database
-        logger.debug(f"Cache miss for node_execution_id: {node_execution_id}, querying database")
         with self._session_factory() as session:
-            stmt = select(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.node_execution_id == node_execution_id,
-                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-            )
+            # Check if record already exists
+            existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
+            if existing:
+                # Update existing record by copying all non-private attributes
+                for key, value in db_model.__dict__.items():
+                    if not key.startswith("_"):
+                        setattr(existing, key, value)
+            else:
+                # Add new record
+                session.add(db_model)
 
-            db_model = session.scalar(stmt)
-            if db_model:
-                # Add DB model to cache
-                self._node_execution_cache[node_execution_id] = db_model
-
-                # Convert to domain model and return
-                return self._to_domain_model(db_model)
-
-            return None
+            session.commit()
 
     def get_db_models_by_workflow_run(
         self,
@@ -344,68 +361,3 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             domain_models.append(domain_model)
 
         return domain_models
-
-    def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
-        """
-        Retrieve all running NodeExecution instances for a specific workflow run.
-
-        This method queries the database directly and updates the cache with any
-        retrieved executions that have a node_execution_id.
-
-        Args:
-            workflow_run_id: The workflow run ID
-
-        Returns:
-            A list of running NodeExecution instances
-        """
-        with self._session_factory() as session:
-            stmt = select(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.status == WorkflowNodeExecutionStatus.RUNNING,
-                WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            )
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
-
-            db_models = session.scalars(stmt).all()
-            domain_models = []
-
-            for model in db_models:
-                # Update cache if node_execution_id is present
-                if model.node_execution_id:
-                    self._node_execution_cache[model.node_execution_id] = model
-
-                # Convert to domain model
-                domain_model = self._to_domain_model(model)
-                domain_models.append(domain_model)
-
-            return domain_models
-
-    def clear(self) -> None:
-        """
-        Clear all WorkflowNodeExecution records for the current tenant_id and app_id.
-
-        This method deletes all WorkflowNodeExecution records that match the tenant_id
-        and app_id (if provided) associated with this repository instance.
-        It also clears the in-memory cache.
-        """
-        with self._session_factory() as session:
-            stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.tenant_id == self._tenant_id)
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
-
-            result = session.execute(stmt)
-            session.commit()
-
-            deleted_count = result.rowcount
-            logger.info(
-                f"Cleared {deleted_count} workflow node execution records for tenant {self._tenant_id}"
-                + (f" and app {self._app_id}" if self._app_id else "")
-            )
-
-            # Clear the in-memory cache
-            self._node_execution_cache.clear()
-            logger.info("Cleared in-memory node execution cache")

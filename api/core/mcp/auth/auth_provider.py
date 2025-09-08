@@ -8,9 +8,7 @@ from core.mcp.types import (
     OAuthTokens,
 )
 from models.tools import MCPToolProvider
-from services.tools.mcp_tools_mange_service import MCPToolManageService
-
-LATEST_PROTOCOL_VERSION = "1.0"
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 
 class OAuthClientProvider:
@@ -46,7 +44,7 @@ class OAuthClientProvider:
             return None
         return OAuthClientInformation.model_validate(client_information)
 
-    def save_client_information(self, client_information: OAuthClientInformationFull) -> None:
+    def save_client_information(self, client_information: OAuthClientInformationFull):
         """Saves client information after dynamic registration."""
         MCPToolManageService.update_mcp_provider_credentials(
             self.mcp_provider,
@@ -65,13 +63,13 @@ class OAuthClientProvider:
             refresh_token=credentials.get("refresh_token", ""),
         )
 
-    def save_tokens(self, tokens: OAuthTokens) -> None:
+    def save_tokens(self, tokens: OAuthTokens):
         """Stores new OAuth tokens for the current session."""
         # update mcp provider credentials
         token_dict = tokens.model_dump()
         MCPToolManageService.update_mcp_provider_credentials(self.mcp_provider, token_dict, authed=True)
 
-    def save_code_verifier(self, code_verifier: str) -> None:
+    def save_code_verifier(self, code_verifier: str):
         """Saves a PKCE code verifier for the current session."""
         MCPToolManageService.update_mcp_provider_credentials(self.mcp_provider, {"code_verifier": code_verifier})
 

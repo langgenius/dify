@@ -90,6 +90,9 @@ const config = {
       fontSize: {
         '2xs': '0.625rem',
       },
+      backgroundColor: {
+        'background-gradient-bg-fill-chat-bubble-bg-3': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-3)',
+      },
       backgroundImage: {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',

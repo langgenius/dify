@@ -68,7 +68,6 @@ const EndpointList = ({ detail }: Props) => {
           {t('plugin.detailPanel.endpoints')}
           <Tooltip
             position='right'
-            needsDelay
             popupClassName='w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border'
             popupContent={
               <div className='flex flex-col gap-2'>

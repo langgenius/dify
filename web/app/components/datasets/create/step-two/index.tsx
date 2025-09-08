@@ -47,7 +47,7 @@ import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -405,7 +405,6 @@ const StepTwo = ({
       score_threshold_enabled: false,
       score_threshold: 0.5,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rerankDefaultModel, isRerankDefaultModelValid])
 
   const getCreationParams = () => {
@@ -596,7 +595,6 @@ const StepTwo = ({
       getRulesFromDetail()
       getDefaultMode()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
