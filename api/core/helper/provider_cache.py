@@ -87,7 +87,7 @@ class NoOpProviderCredentialCache:
         pass
 
 
-provider_configurations_cache: dict[str, 'ProviderConfigurations'] = {}
+provider_configurations_cache: dict[str, "ProviderConfigurations"] = {}
 
 
 class ProviderConfigurationsCache:
