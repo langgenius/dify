@@ -88,7 +88,7 @@ const MCPModal = ({
       setHeaders(data.masked_headers || {})
       setAppIcon(getIcon(data))
     }
- else {
+    else {
       // Reset for create mode
       setUrl('')
       setName('')
