@@ -1003,6 +1003,10 @@ const translation = {
     noMatchingInputsFound: 'Ni podatkov, ki bi ustrezali prejšnjemu zagonu',
     lastOutput: 'Nazadnje izhod',
   },
+  sidebar: {
+    exportWarning: 'Izvozi trenutna shranjena različica',
+    exportWarningDesc: 'To bo izvozilo trenutno shranjeno različico vašega delovnega toka. Če imate neshranjene spremembe v urejevalniku, jih najprej shranite z uporabo možnosti izvoza na platnu delovnega toka.',
+  },
 }
 
 export default translation

@@ -1004,6 +1004,10 @@ const translation = {
     copyLastRunError: 'Son çalışma girdilerini kopyalamak başarısız oldu.',
     lastOutput: 'Son Çıktı',
   },
+  sidebar: {
+    exportWarning: 'Mevcut Kaydedilmiş Versiyonu Dışa Aktar',
+    exportWarningDesc: 'Bu, çalışma akışınızın mevcut kaydedilmiş sürümünü dışa aktaracaktır. Editörde kaydedilmemiş değişiklikleriniz varsa, lütfen önce bunları çalışma akışı alanındaki dışa aktarma seçeneğini kullanarak kaydedin.',
+  },
 }
 
 export default translation

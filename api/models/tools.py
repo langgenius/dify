@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
@@ -58,8 +58,8 @@ class ToolOAuthTenantClient(Base):
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     @property
-    def oauth_params(self):
-        return cast(dict, json.loads(self.encrypted_oauth_params or "{}"))
+    def oauth_params(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class BuiltinToolProvider(Base):
@@ -100,8 +100,8 @@ class BuiltinToolProvider(Base):
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"))
 
     @property
-    def credentials(self):
-        return cast(dict, json.loads(self.encrypted_credentials))
+    def credentials(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_credentials))
 
 
 class ApiToolProvider(Base):
@@ -154,8 +154,8 @@ class ApiToolProvider(Base):
         return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
 
     @property
-    def credentials(self):
-        return dict(json.loads(self.credentials_str))
+    def credentials(self) -> dict[str, Any]:
+        return dict[str, Any](json.loads(self.credentials_str))
 
     @property
     def user(self) -> Account | None:
@@ -299,9 +299,9 @@ class MCPToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def credentials(self):
+    def credentials(self) -> dict[str, Any]:
         try:
-            return cast(dict, json.loads(self.encrypted_credentials)) or {}
+            return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
         except Exception:
             return {}
 
@@ -341,12 +341,12 @@ class MCPToolProvider(Base):
         return mask_url(self.decrypted_server_url)
 
     @property
-    def decrypted_credentials(self):
+    def decrypted_credentials(self) -> dict[str, Any]:
         from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
         from core.tools.utils.encryption import create_provider_encrypter
 
-        provider_controller = MCPToolProviderController._from_db(self)
+        provider_controller = MCPToolProviderController.from_db(self)
 
         encrypter, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,
@@ -354,7 +354,7 @@ class MCPToolProvider(Base):
             cache=NoOpProviderCredentialCache(),
         )
 
-        return encrypter.decrypt(self.credentials)  # type: ignore
+        return encrypter.decrypt(self.credentials)
 
 
 class ToolModelInvoke(Base):

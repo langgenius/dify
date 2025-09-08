@@ -139,6 +139,10 @@ const translation = {
       export: 'Export DSL with secret values ',
     },
   },
+  sidebar: {
+    exportWarning: 'Export Current Saved Version',
+    exportWarningDesc: 'This will export the current saved version of your workflow. If you have unsaved changes in the editor, please save them first by using the export option in the workflow canvas.',
+  },
   chatVariable: {
     panelTitle: 'Conversation Variables',
     panelDescription: 'Conversation Variables are used to store interactive information that LLM needs to remember, including conversation history, uploaded files, user preferences. They are read-write. ',

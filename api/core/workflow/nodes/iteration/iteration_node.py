@@ -3,7 +3,7 @@ from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
-from core.variables import ArrayVariable, IntegerVariable, NoneVariable
+from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.workflow.entities import VariablePool
 from core.workflow.enums import (
@@ -97,10 +97,10 @@ class IterationNode(Node):
         if not variable:
             raise IteratorVariableNotFoundError(f"iterator variable {self._node_data.iterator_selector} not found")
 
-        if not isinstance(variable, ArrayVariable) and not isinstance(variable, NoneVariable):
+        if not isinstance(variable, ArraySegment) and not isinstance(variable, NoneSegment):
             raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
 
-        if isinstance(variable, NoneVariable) or len(variable.value) == 0:
+        if isinstance(variable, NoneSegment) or len(variable.value) == 0:
             # Try our best to preserve the type informat.
             if isinstance(variable, ArraySegment):
                 output = variable.model_copy(update={"value": []})

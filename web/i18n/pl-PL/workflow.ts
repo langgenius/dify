@@ -1003,6 +1003,10 @@ const translation = {
     copyLastRunError: 'Nie udało się skopiować danych wejściowych z ostatniego uruchomienia',
     lastOutput: 'Ostatni wynik',
   },
+  sidebar: {
+    exportWarning: 'Eksportuj obecną zapisaną wersję',
+    exportWarningDesc: 'To wyeksportuje aktualnie zapisaną wersję twojego przepływu pracy. Jeśli masz niesave\'owane zmiany w edytorze, najpierw je zapisz, korzystając z opcji eksportu w kanwie przepływu pracy.',
+  },
 }
 
 export default translation

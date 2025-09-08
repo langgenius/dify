@@ -1,10 +1,11 @@
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from faker import Faker
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from models.account import Account
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -21,7 +22,7 @@ class TestAgentService:
             patch("services.agent_service.PluginAgentClient") as mock_plugin_agent_client,
             patch("services.agent_service.ToolManager") as mock_tool_manager,
             patch("services.agent_service.AgentConfigManager") as mock_agent_config_manager,
-            patch("services.agent_service.current_user") as mock_current_user,
+            patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager") as mock_model_manager,

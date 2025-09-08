@@ -1003,6 +1003,10 @@ const translation = {
     copyLastRunError: 'Échec de la copie des entrées de la dernière exécution',
     lastOutput: 'Dernière sortie',
   },
+  sidebar: {
+    exportWarning: 'Exporter la version enregistrée actuelle',
+    exportWarningDesc: 'Cela exportera la version actuelle enregistrée de votre flux de travail. Si vous avez des modifications non enregistrées dans l\'éditeur, veuillez d\'abord les enregistrer en utilisant l\'option d\'exportation dans le canevas du flux de travail.',
+  },
 }
 
 export default translation

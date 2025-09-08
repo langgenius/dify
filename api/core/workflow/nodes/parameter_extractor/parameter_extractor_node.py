@@ -50,6 +50,7 @@ from .exc import (
 )
 from .prompts import (
     CHAT_EXAMPLE,
+    CHAT_GENERATE_JSON_PROMPT,
     CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE,
     COMPLETION_GENERATE_JSON_PROMPT,
     FUNCTION_CALLING_EXTRACTOR_EXAMPLE,
@@ -746,7 +747,7 @@ class ParameterExtractorNode(Node):
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
                 role=PromptMessageRole.SYSTEM,
-                text=FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT.format(histories=memory_str, instruction=instruction),
+                text=CHAT_GENERATE_JSON_PROMPT.format(histories=memory_str).replace("{{instructions}}", instruction),
             )
             user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
             return [system_prompt_messages, user_prompt_message]

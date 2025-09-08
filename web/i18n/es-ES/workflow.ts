@@ -1003,6 +1003,10 @@ const translation = {
     noMatchingInputsFound: 'No se encontraron entradas coincidentes de la última ejecución.',
     lastOutput: 'Última salida',
   },
+  sidebar: {
+    exportWarning: 'Exportar la versión guardada actual',
+    exportWarningDesc: 'Esto exportará la versión guardada actual de tu flujo de trabajo. Si tienes cambios no guardados en el editor, guárdalos primero utilizando la opción de exportar en el lienzo del flujo de trabajo.',
+  },
 }
 
 export default translation
