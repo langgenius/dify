@@ -82,7 +82,7 @@ class ChromaVector(BaseVector):
     def delete(self):
         self._client.delete_collection(self._collection_name)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         collection = self._client.get_or_create_collection(self._collection_name)
@@ -120,7 +120,7 @@ class ChromaVector(BaseVector):
             distance = distances[index]
             metadata = dict(metadatas[index])
             score = 1 - distance
-            if score > score_threshold:
+            if score >= score_threshold:
                 metadata["score"] = score
                 doc = Document(
                     page_content=documents[index],

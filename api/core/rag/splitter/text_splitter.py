@@ -47,7 +47,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         length_function: Callable[[list[str]], list[int]] = lambda x: [len(x) for x in x],
         keep_separator: bool = False,
         add_start_index: bool = False,
-    ) -> None:
+    ):
         """Create a new TextSplitter.
 
         Args:
@@ -201,7 +201,7 @@ class TokenTextSplitter(TextSplitter):
         allowed_special: Union[Literal["all"], Set[str]] = set(),
         disallowed_special: Union[Literal["all"], Collection[str]] = "all",
         **kwargs: Any,
-    ) -> None:
+    ):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
         try:
@@ -251,7 +251,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         separators: Optional[list[str]] = None,
         keep_separator: bool = True,
         **kwargs: Any,
-    ) -> None:
+    ):
         """Create a new TextSplitter."""
         super().__init__(keep_separator=keep_separator, **kwargs)
         self._separators = separators or ["\n\n", "\n", " ", ""]

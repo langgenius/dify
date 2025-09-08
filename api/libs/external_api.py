@@ -16,7 +16,7 @@ def http_status_message(code):
     return HTTP_STATUS_CODES.get(code, "")
 
 
-def register_external_error_handlers(api: Api) -> None:
+def register_external_error_handlers(api: Api):
     @api.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
@@ -101,7 +101,7 @@ def register_external_error_handlers(api: Api) -> None:
         exc_info: Any = sys.exc_info()
         if exc_info[1] is None:
             exc_info = None
-        current_app.log_exception(exc_info)
+        current_app.log_exception(exc_info)  # ty: ignore [invalid-argument-type]
 
         return data, status_code
 

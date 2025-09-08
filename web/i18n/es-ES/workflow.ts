@@ -470,6 +470,12 @@ const translation = {
         import: 'Importar desde JSON',
         resetDefaults: 'Restablecer',
       },
+      reasoningFormat: {
+        tagged: 'Mantén las etiquetas de pensamiento',
+        separated: 'Separar etiquetas de pensamiento',
+        title: 'Habilitar la separación de etiquetas de razonamiento',
+        tooltip: 'Extraer contenido de las etiquetas de pensamiento y almacenarlo en el campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variable de consulta',
@@ -997,6 +1003,10 @@ const translation = {
     copyLastRun: 'Copiar última ejecución',
     noMatchingInputsFound: 'No se encontraron entradas coincidentes de la última ejecución.',
     lastOutput: 'Última salida',
+  },
+  sidebar: {
+    exportWarning: 'Exportar la versión guardada actual',
+    exportWarningDesc: 'Esto exportará la versión guardada actual de tu flujo de trabajo. Si tienes cambios no guardados en el editor, guárdalos primero utilizando la opción de exportar en el lienzo del flujo de trabajo.',
   },
 }
 

@@ -155,9 +155,9 @@ const Authorized = ({
   }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
-      credential_id: string
-      name: string
-    }) => {
+    credential_id: string
+    name: string
+  }) => {
     if (doingActionRef.current)
       return
     try {
@@ -306,17 +306,17 @@ const Authorized = ({
               !notAllowCustomCredential && (
                 <>
                   <div className='h-[1px] bg-divider-subtle'></div>
-                    <div className='p-2'>
-                      <Authorize
-                        pluginPayload={pluginPayload}
-                        theme='secondary'
-                        showDivider={false}
-                        canOAuth={canOAuth}
-                        canApiKey={canApiKey}
-                        disabled={disabled}
-                        onUpdate={onUpdate}
-                      />
-                    </div>
+                  <div className='p-2'>
+                    <Authorize
+                      pluginPayload={pluginPayload}
+                      theme='secondary'
+                      showDivider={false}
+                      canOAuth={canOAuth}
+                      canApiKey={canApiKey}
+                      disabled={disabled}
+                      onUpdate={onUpdate}
+                    />
+                  </div>
                 </>
               )
             }

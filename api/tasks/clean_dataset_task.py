@@ -75,7 +75,7 @@ def clean_dataset_task(
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
             logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))
-        except Exception as index_cleanup_error:
+        except Exception:
             logger.exception(click.style(f"Failed to clean vector database for dataset {dataset_id}", fg="red"))
             # Continue with document and segment deletion even if vector cleanup fails
             logger.info(
@@ -145,7 +145,7 @@ def clean_dataset_task(
         try:
             db.session.rollback()
             logger.info(click.style(f"Rolled back database session for dataset: {dataset_id}", fg="yellow"))
-        except Exception as rollback_error:
+        except Exception:
             logger.exception("Failed to rollback database session")
 
         logger.exception("Cleaned dataset when dataset deleted failed")

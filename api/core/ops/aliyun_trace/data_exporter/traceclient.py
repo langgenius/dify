@@ -72,7 +72,7 @@ class TraceClient:
             else:
                 logger.debug("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
-        except requests.exceptions.RequestException as e:
+        except requests.RequestException as e:
             logger.debug("AliyunTrace API check failed: %s", str(e))
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 

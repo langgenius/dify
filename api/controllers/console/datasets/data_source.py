@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.indexing_runner import IndexingRunner
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
@@ -214,7 +215,7 @@ class DataSourceNotionApi(Resource):
             workspace_id = notion_info["workspace_id"]
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
-                    datasource_type="notion_import",
+                    datasource_type=DatasourceType.NOTION.value,
                     notion_info={
                         "notion_workspace_id": workspace_id,
                         "notion_obj_id": page["page_id"],

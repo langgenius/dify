@@ -128,7 +128,7 @@ class FeatureBrandingService:
 class EmailSender(Protocol):
     """Protocol for email sending abstraction."""
 
-    def send_email(self, to: str, subject: str, html_content: str) -> None:
+    def send_email(self, to: str, subject: str, html_content: str):
         """Send email with given parameters."""
         ...
 
@@ -136,7 +136,7 @@ class EmailSender(Protocol):
 class FlaskMailSender:
     """Flask-Mail based email sender."""
 
-    def send_email(self, to: str, subject: str, html_content: str) -> None:
+    def send_email(self, to: str, subject: str, html_content: str):
         """Send email using Flask-Mail."""
         if mail.is_inited():
             mail.send(to=to, subject=subject, html=html_content)
@@ -156,7 +156,7 @@ class EmailI18nService:
         renderer: EmailRenderer,
         branding_service: BrandingService,
         sender: EmailSender,
-    ) -> None:
+    ):
         self._config = config
         self._renderer = renderer
         self._branding_service = branding_service
@@ -168,7 +168,7 @@ class EmailI18nService:
         language_code: str,
         to: str,
         template_context: Optional[dict[str, Any]] = None,
-    ) -> None:
+    ):
         """
         Send internationalized email with branding support.
 
@@ -192,7 +192,7 @@ class EmailI18nService:
         to: str,
         code: str,
         phase: str,
-    ) -> None:
+    ):
         """
         Send change email notification with phase-specific handling.
 
@@ -224,7 +224,7 @@ class EmailI18nService:
         to: str | list[str],
         subject: str,
         html_content: str,
-    ) -> None:
+    ):
         """
         Send a raw email directly without template processing.
 
