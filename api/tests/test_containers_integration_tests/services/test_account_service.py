@@ -13,7 +13,6 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFoundError,
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
