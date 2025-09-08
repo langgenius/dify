@@ -117,13 +117,12 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
                     credentials=args.get("credentials", None),
                 ),
             )
-            TriggerSubscriptionBuilderService.verify_trigger_subscription_builder(
+            return TriggerSubscriptionBuilderService.verify_trigger_subscription_builder(
                 tenant_id=user.current_tenant_id,
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
             )
-            return 200
         except Exception as e:
             logger.exception("Error verifying provider credential", exc_info=e)
             raise

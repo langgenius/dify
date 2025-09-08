@@ -56,41 +56,10 @@ class TriggerPluginNode(BaseNode):
     def _run(self) -> NodeRunResult:
         """
         Run the plugin trigger node.
-
-        Like the webhook node, this takes the trigger data from the variable pool
-        and makes it available to downstream nodes. The actual trigger invocation
-        happens in the async task executor.
         """
-        # Get trigger data from variable pool (injected by async task)
-        trigger_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
-
-        # Extract trigger-specific outputs
-        outputs = self._extract_trigger_outputs(trigger_inputs)
+        node_data = self._node_data
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=trigger_inputs,
-            outputs=outputs,
+            outputs={},
         )
-
-    def _extract_trigger_outputs(self, trigger_inputs: dict[str, Any]) -> dict[str, Any]:
-        """Extract outputs from trigger invocation response."""
-        outputs = {}
-
-        # Get the trigger data (should be injected by async task)
-        trigger_data = trigger_inputs.get("trigger_data", {})
-        trigger_metadata = trigger_inputs.get("trigger_metadata", {})
-
-        # Make trigger data available as outputs
-        outputs["data"] = trigger_data
-        outputs["trigger_name"] = trigger_metadata.get("trigger_name", "")
-        outputs["provider_id"] = trigger_metadata.get("provider_id", "")
-        outputs["subscription_id"] = self._node_data.subscription_id
-
-        # Include raw trigger data for debugging/advanced use
-        outputs["_trigger_raw"] = {
-            "data": trigger_data,
-            "metadata": trigger_metadata,
-        }
-
-        return outputs
