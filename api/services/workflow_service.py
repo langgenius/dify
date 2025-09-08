@@ -419,8 +419,6 @@ class WorkflowService:
         :raises ValueError: If no default credential exists or if it fails policy compliance
         """
         try:
-            from sqlalchemy import select
-
             from models.tools import BuiltinToolProvider
 
             # Use the same fallback logic as runtime: get the first available credential
@@ -442,7 +440,10 @@ class WorkflowService:
             from core.helper.credential_utils import check_credential_policy_compliance
 
             check_credential_policy_compliance(
-                credential_id=default_provider.id, provider=provider, credential_type=PluginCredentialType.TOOL, check_existence=False
+                credential_id=default_provider.id,
+                provider=provider,
+                credential_type=PluginCredentialType.TOOL,
+                check_existence=False,
             )
 
         except Exception as e:
