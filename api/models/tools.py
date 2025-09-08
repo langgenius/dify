@@ -290,6 +290,8 @@ class MCPToolProvider(Base):
     )
     timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"))
     sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("300"))
+    # encrypted headers for MCP server requests
+    encrypted_headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()
@@ -323,6 +325,62 @@ class MCPToolProvider(Base):
     @property
     def decrypted_server_url(self) -> str:
         return encrypter.decrypt_token(self.tenant_id, self.server_url)
+
+    @property
+    def decrypted_headers(self) -> dict[str, Any]:
+        """Get decrypted headers for MCP server requests."""
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        try:
+            if not self.encrypted_headers:
+                return {}
+
+            headers_data = json.loads(self.encrypted_headers)
+
+            # Create dynamic config for all headers as SECRET_INPUT
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
+
+            encrypter_instance, _ = create_provider_encrypter(
+                tenant_id=self.tenant_id,
+                config=config,
+                cache=NoOpProviderCredentialCache(),
+            )
+
+            result = encrypter_instance.decrypt(headers_data)
+            return result
+        except Exception:
+            return {}
+
+    @property
+    def masked_headers(self) -> dict[str, Any]:
+        """Get masked headers for frontend display."""
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        try:
+            if not self.encrypted_headers:
+                return {}
+
+            headers_data = json.loads(self.encrypted_headers)
+
+            # Create dynamic config for all headers as SECRET_INPUT
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
+
+            encrypter_instance, _ = create_provider_encrypter(
+                tenant_id=self.tenant_id,
+                config=config,
+                cache=NoOpProviderCredentialCache(),
+            )
+
+            # First decrypt, then mask
+            decrypted_headers = encrypter_instance.decrypt(headers_data)
+            result = encrypter_instance.mask_tool_credentials(decrypted_headers)
+            return result
+        except Exception:
+            return {}
 
     @property
     def masked_server_url(self) -> str:
