@@ -4,10 +4,12 @@ Trigger Manager for loading and managing trigger providers and triggers
 
 import logging
 from collections.abc import Mapping
+from threading import Lock
 from typing import Any, Optional
 
 from flask import Request
 
+import contexts
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeResponse
@@ -46,11 +48,12 @@ class TriggerManager:
                     entity=provider.declaration,
                     plugin_id=provider.plugin_id,
                     plugin_unique_identifier=provider.plugin_unique_identifier,
+                    provider_id=TriggerProviderID(provider.provider),
                     tenant_id=tenant_id,
                 )
                 controllers.append(controller)
-            except Exception as e:
-                logger.exception("Failed to load trigger provider {provider.plugin_id}")
+            except Exception:
+                logger.exception("Failed to load trigger provider %s", provider.plugin_id)
                 continue
 
         return controllers
@@ -64,22 +67,43 @@ class TriggerManager:
         :param provider_id: Provider ID
         :return: Trigger provider controller or None
         """
-        manager = PluginTriggerManager()
-        provider = manager.fetch_trigger_provider(tenant_id, provider_id)
-
-        if not provider:
-            raise ValueError(f"Trigger provider {provider_id} not found")
-
+        # check if context is set
         try:
-            return PluginTriggerProviderController(
-                entity=provider.declaration,
-                plugin_id=provider.plugin_id,
-                plugin_unique_identifier=provider.plugin_unique_identifier,
-                tenant_id=tenant_id,
-            )
-        except Exception as e:
-            logger.exception("Failed to load trigger provider")
-            raise e
+            contexts.plugin_trigger_providers.get()
+        except LookupError:
+            contexts.plugin_trigger_providers.set({})
+            contexts.plugin_trigger_providers_lock.set(Lock())
+
+        plugin_trigger_providers = contexts.plugin_trigger_providers.get()
+        provider_id_str = str(provider_id)
+        if provider_id_str in plugin_trigger_providers:
+            return plugin_trigger_providers[provider_id_str]
+
+        with contexts.plugin_trigger_providers_lock.get():
+            # double check
+            plugin_trigger_providers = contexts.plugin_trigger_providers.get()
+            if provider_id_str in plugin_trigger_providers:
+                return plugin_trigger_providers[provider_id_str]
+
+            manager = PluginTriggerManager()
+            provider = manager.fetch_trigger_provider(tenant_id, provider_id)
+
+            if not provider:
+                raise ValueError(f"Trigger provider {provider_id} not found")
+
+            try:
+                controller = PluginTriggerProviderController(
+                    entity=provider.declaration,
+                    plugin_id=provider.plugin_id,
+                    plugin_unique_identifier=provider.plugin_unique_identifier,
+                    provider_id=provider_id,
+                    tenant_id=tenant_id,
+                )
+                plugin_trigger_providers[provider_id_str] = controller
+                return controller
+            except Exception as e:
+                logger.exception("Failed to load trigger provider")
+                raise e
 
     @classmethod
     def list_all_trigger_providers(cls, tenant_id: str) -> list[PluginTriggerProviderController]:
@@ -114,26 +138,6 @@ class TriggerManager:
         :return: Trigger entity or None
         """
         return cls.get_trigger_provider(tenant_id, provider_id).get_trigger(trigger_name)
-
-    @classmethod
-    def validate_trigger_credentials(
-        cls, tenant_id: str, provider_id: TriggerProviderID, user_id: str, credentials: Mapping[str, str]
-    ) -> tuple[bool, str]:
-        """
-        Validate trigger provider credentials
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider ID
-        :param user_id: User ID
-        :param credentials: Credentials to validate
-        :return: Tuple of (is_valid, error_message)
-        """
-        try:
-            provider = cls.get_trigger_provider(tenant_id, provider_id)
-            validation_result = provider.validate_credentials(user_id, credentials)
-            return validation_result.valid, validation_result.message if not validation_result.valid else ""
-        except Exception as e:
-            return False, str(e)
 
     @classmethod
     def invoke_trigger(

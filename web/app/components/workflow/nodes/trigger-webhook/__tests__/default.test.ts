@@ -10,8 +10,13 @@ import type { WebhookTriggerNodeType } from '../types'
 
 // Simple mock translation function
 const mockT = (key: string, params?: any) => {
+  const translations: Record<string, string> = {
+    'workflow.nodes.triggerWebhook.validation.webhookUrlRequired': 'Webhook URL is required',
+    'workflow.nodes.triggerWebhook.validation.invalidParameterType': `Invalid parameter type ${params?.type} for ${params?.name}`,
+  }
+
   if (key.includes('fieldRequired')) return `${params?.field} is required`
-  return key
+  return translations[key] || key
 }
 
 describe('Webhook Trigger Node Default', () => {
@@ -53,17 +58,29 @@ describe('Webhook Trigger Node Default', () => {
   })
 
   describe('Validation - checkValid', () => {
-    it('should validate successfully with default configuration', () => {
+    it('should require webhook_url to be configured', () => {
       const payload = nodeDefault.defaultValue as WebhookTriggerNodeType
+
+      const result = nodeDefault.checkValid(payload, mockT)
+      expect(result.isValid).toBe(false)
+      expect(result.errorMessage).toContain('required')
+    })
+
+    it('should validate successfully when webhook_url is provided', () => {
+      const payload = {
+        ...nodeDefault.defaultValue,
+        webhook_url: 'https://example.com/webhook',
+      } as WebhookTriggerNodeType
 
       const result = nodeDefault.checkValid(payload, mockT)
       expect(result.isValid).toBe(true)
       expect(result.errorMessage).toBe('')
     })
 
-    it('should handle response configuration fields', () => {
+    it('should handle response configuration fields when webhook_url is provided', () => {
       const payload = {
         ...nodeDefault.defaultValue,
+        webhook_url: 'https://example.com/webhook',
         status_code: 404,
         response_body: '{"error": "Not found"}',
       } as WebhookTriggerNodeType
@@ -72,9 +89,10 @@ describe('Webhook Trigger Node Default', () => {
       expect(result.isValid).toBe(true)
     })
 
-    it('should handle async_mode field correctly', () => {
+    it('should handle async_mode field correctly when webhook_url is provided', () => {
       const payload = {
         ...nodeDefault.defaultValue,
+        webhook_url: 'https://example.com/webhook',
         async_mode: false,
       } as WebhookTriggerNodeType
 

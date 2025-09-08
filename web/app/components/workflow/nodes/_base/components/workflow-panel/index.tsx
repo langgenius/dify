@@ -49,6 +49,8 @@ import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workfl
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
+import { useAllTriggerPlugins, useTriggerSubscriptions } from '@/service/use-triggers'
+import AuthMethodSelector from '@/app/components/workflow/nodes/trigger-plugin/components/auth-method-selector'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import BeforeRunForm from '../before-run-form'
@@ -59,11 +61,11 @@ import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import {
-  AuthorizedInNode,
   PluginAuth,
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
+import NodeAuth from './node-auth-factory'
 
 type BasePanelProps = {
   children: ReactNode
@@ -235,9 +237,61 @@ const BasePanel: FC<BasePanelProps> = ({
   const currCollection = useMemo(() => {
     return buildInTools.find(item => canFindTool(item.id, data.provider_id))
   }, [buildInTools, data.provider_id])
-  const showPluginAuth = useMemo(() => {
-    return data.type === BlockEnum.Tool && currCollection?.allow_delete
-  }, [currCollection, data.type])
+
+  // For trigger plugins, check if they have existing subscriptions (authenticated)
+  const triggerProvider = useMemo(() => {
+    if (data.type === BlockEnum.TriggerPlugin) {
+      if (data.provider_name)
+        return data.provider_name
+      return data.provider_id || ''
+    }
+    return ''
+  }, [data.type, data.provider_id, data.provider_name])
+
+  const { data: triggerSubscriptions = [] } = useTriggerSubscriptions(
+    triggerProvider,
+    data.type === BlockEnum.TriggerPlugin && !!triggerProvider,
+  )
+
+  const { data: triggerProviders = [] } = useAllTriggerPlugins()
+
+  const currentTriggerProvider = useMemo(() => {
+    if (data.type !== BlockEnum.TriggerPlugin || !data.provider_id || !data.provider_name)
+      return undefined
+    return triggerProviders.find(p => p.plugin_id === data.provider_id && p.name === data.provider_name)
+  }, [data.type, data.provider_id, data.provider_name, triggerProviders])
+
+  const supportedAuthMethods = useMemo(() => {
+    if (!currentTriggerProvider) return []
+    const methods = []
+    if (currentTriggerProvider.oauth_client_schema && currentTriggerProvider.oauth_client_schema.length > 0)
+      methods.push('oauth')
+    if (currentTriggerProvider.credentials_schema && currentTriggerProvider.credentials_schema.length > 0)
+      methods.push('api_key')
+    return methods
+  }, [currentTriggerProvider])
+
+  const isTriggerAuthenticated = useMemo(() => {
+    if (data.type !== BlockEnum.TriggerPlugin) return true
+    if (!triggerSubscriptions.length) return false
+
+    const subscription = triggerSubscriptions[0]
+    return subscription.credential_type !== 'unauthorized'
+  }, [data.type, triggerSubscriptions])
+
+  const shouldShowAuthSelector = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin
+           && !isTriggerAuthenticated
+           && supportedAuthMethods.length > 0
+           && !!currentTriggerProvider
+  }, [data.type, isTriggerAuthenticated, supportedAuthMethods.length, currentTriggerProvider])
+
+  // Unified check for any node that needs authentication UI
+  const needsAuth = useMemo(() => {
+    return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
+           || (data.type === BlockEnum.TriggerPlugin && isTriggerAuthenticated)
+  }, [data.type, currCollection?.allow_delete, isTriggerAuthenticated])
+
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
       id,
@@ -379,7 +433,7 @@ const BasePanel: FC<BasePanelProps> = ({
             />
           </div>
           {
-            showPluginAuth && (
+            needsAuth && data.type === BlockEnum.Tool && currCollection?.allow_delete && (
               <PluginAuth
                 className='px-4 pb-2'
                 pluginPayload={{
@@ -392,20 +446,38 @@ const BasePanel: FC<BasePanelProps> = ({
                     value={tabType}
                     onChange={setTabType}
                   />
-                  <AuthorizedInNode
-                    pluginPayload={{
-                      provider: currCollection?.name || '',
-                      category: AuthCategory.tool,
-                    }}
-                    onAuthorizationItemClick={handleAuthorizationItemClick}
-                    credentialId={data.credential_id}
+                  <NodeAuth
+                    data={data}
+                    onAuthorizationChange={handleAuthorizationItemClick}
                   />
                 </div>
               </PluginAuth>
             )
           }
           {
-            !showPluginAuth && (
+            needsAuth && data.type !== BlockEnum.Tool && (
+              <div className='flex items-center justify-between pl-4 pr-3'>
+                <Tab
+                  value={tabType}
+                  onChange={setTabType}
+                />
+                <NodeAuth
+                  data={data}
+                  onAuthorizationChange={handleAuthorizationItemClick}
+                />
+              </div>
+            )
+          }
+          {
+            shouldShowAuthSelector && (
+              <AuthMethodSelector
+                provider={currentTriggerProvider!}
+                supportedMethods={supportedAuthMethods}
+              />
+            )
+          }
+          {
+            !needsAuth && data.type !== BlockEnum.TriggerPlugin && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}

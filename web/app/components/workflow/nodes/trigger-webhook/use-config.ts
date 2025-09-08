@@ -1,15 +1,14 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
-import type { HttpMethod, ParameterType, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
-import { getArrayElementType, isArrayType } from './types'
+import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
 
 import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchWebhookUrl } from '@/service/apps'
-import type { InputVar } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
+import type { Variable } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 import { hasDuplicateStr } from '@/utils/var'
 
@@ -28,39 +27,25 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
   const handleContentTypeChange = useCallback((contentType: string) => {
     setInputs(produce(inputs, (draft) => {
+      const previousContentType = draft.content_type
       draft.content_type = contentType
-    }))
-  }, [inputs, setInputs])
 
-  // Helper function to convert ParameterType to InputVarType
-  const toInputVarType = useCallback((type: ParameterType): InputVarType => {
-    // Handle specific array types
-    if (isArrayType(type)) {
-      const elementType = getArrayElementType(type)
-      switch (elementType) {
-        case 'string':
-          return InputVarType.textInput
-        case 'number':
-          return InputVarType.number
-        case 'boolean':
-          return InputVarType.checkbox
-        case 'object':
-          return InputVarType.jsonObject
-        default:
-          return InputVarType.textInput
+      // If the content type changes, reset body parameters and their variables, as the variable types might differ.
+      // However, we could consider retaining variables that are compatible with the new content type later.
+      if (previousContentType !== contentType) {
+        draft.body = []
+        if (draft.variables) {
+          const bodyVariables = draft.variables.filter(v => v.label === 'body')
+          bodyVariables.forEach((v) => {
+            if (isVarUsedInNodes([id, v.variable]))
+              removeUsedVarInNodes([id, v.variable])
+          })
+
+          draft.variables = draft.variables.filter(v => v.label !== 'body')
+        }
       }
-    }
-
-    // Handle non-array types
-    const typeMap: Record<string, InputVarType> = {
-      string: InputVarType.textInput,
-      number: InputVarType.number,
-      boolean: InputVarType.checkbox,
-      object: InputVarType.jsonObject,
-      file: InputVarType.singleFile,
-    }
-    return typeMap[type] || InputVarType.textInput
-  }, [])
+    }))
+  }, [inputs, setInputs, id, isVarUsedInNodes, removeUsedVarInNodes])
 
   const syncVariablesInDraft = useCallback((
     draft: WebhookTriggerNodeType,
@@ -105,13 +90,14 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       const existingVarIndex = draft.variables.findIndex(v => v.variable === varName)
 
       const inputVarType = 'type' in item
-        ? toInputVarType(item.type)
-        : InputVarType.textInput
+        ? item.type
+        : VarType.string // Default to string for headers
 
-      const newVar: InputVar = {
-        type: inputVarType,
+      const newVar: Variable = {
+        value_type: inputVarType,
         label: sourceType, // Use sourceType as label to identify source
         variable: varName,
+        value_selector: [],
         required: item.required,
       }
 
@@ -122,7 +108,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     })
 
     return true
-  }, [toInputVarType, t, id, isVarUsedInNodes, removeUsedVarInNodes])
+  }, [t, id, isVarUsedInNodes, removeUsedVarInNodes])
 
   const handleParamsChange = useCallback((params: WebhookParameter[]) => {
     setInputs(produce(inputs, (draft) => {

@@ -27,9 +27,9 @@ class PluginTriggerManager(BasePluginClient):
         def transformer(json_response: dict[str, Any]) -> dict:
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
-                provider_name = declaration.get("identity", {}).get("name")
+                provider_id = provider.get("plugin_id") + "/" + provider.get("provider")
                 for trigger in declaration.get("triggers", []):
-                    trigger["identity"]["provider"] = provider_name
+                    trigger["identity"]["provider"] = provider_id
 
             return json_response
 
@@ -59,7 +59,7 @@ class PluginTriggerManager(BasePluginClient):
             data = json_response.get("data")
             if data:
                 for trigger in data.get("declaration", {}).get("triggers", []):
-                    trigger["identity"]["provider"] = provider_id.provider_name
+                    trigger["identity"]["provider"] = str(provider_id)
 
             return json_response
 
@@ -71,11 +71,11 @@ class PluginTriggerManager(BasePluginClient):
             transformer=transformer,
         )
 
-        response.declaration.identity.name = f"{response.plugin_id}/{response.declaration.identity.name}"
+        response.declaration.identity.name = str(provider_id)
 
         # override the provider name for each trigger to plugin_id/provider_name
         for trigger in response.declaration.triggers:
-            trigger.identity.provider = response.declaration.identity.name
+            trigger.identity.provider = str(provider_id)
 
         return response
 
@@ -123,7 +123,7 @@ class PluginTriggerManager(BasePluginClient):
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, credentials: Mapping[str, str]
-    ) -> TriggerValidateProviderCredentialsResponse:
+    ) -> bool:
         """
         Validate the credentials of the trigger provider.
         """
@@ -147,9 +147,9 @@ class PluginTriggerManager(BasePluginClient):
         )
 
         for resp in response:
-            return resp
+            return resp.result
 
-        return TriggerValidateProviderCredentialsResponse(valid=False, message="No response", error="No response")
+        raise ValueError("No response received from plugin daemon for validate provider credentials")
 
     def dispatch_event(
         self,

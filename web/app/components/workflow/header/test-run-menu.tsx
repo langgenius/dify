@@ -22,17 +22,17 @@ export type TestRunOptions = {
   runAll?: TriggerOption
 }
 
-type TestRunDropdownProps = {
+type TestRunMenuProps = {
   options: TestRunOptions
   onSelect: (option: TriggerOption) => void
   children: React.ReactNode
 }
 
-export type TestRunDropdownRef = {
+export type TestRunMenuRef = {
   toggle: () => void
 }
 
-const TestRunDropdown = forwardRef<TestRunDropdownRef, TestRunDropdownProps>(({
+const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
   options,
   onSelect,
   children,
@@ -107,6 +107,6 @@ const TestRunDropdown = forwardRef<TestRunDropdownRef, TestRunDropdownProps>(({
   )
 })
 
-TestRunDropdown.displayName = 'TestRunDropdown'
+TestRunMenu.displayName = 'TestRunMenu'
 
-export default TestRunDropdown
+export default TestRunMenu

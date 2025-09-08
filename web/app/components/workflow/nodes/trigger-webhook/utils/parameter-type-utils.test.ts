@@ -1,10 +1,8 @@
 import {
   createParameterTypeOptions,
   getAvailableParameterTypes,
-  getParameterTypeDisplayName,
   isValidParameterType,
   normalizeParameterType,
-  validateParameterValue,
 } from './parameter-type-utils'
 
 describe('Parameter Type Utils', () => {
@@ -43,72 +41,6 @@ describe('Parameter Type Utils', () => {
 
     it('should default to string for invalid types', () => {
       expect(normalizeParameterType('invalid')).toBe('string')
-    })
-  })
-
-  describe('getParameterTypeDisplayName', () => {
-    it('should return correct display names for array types', () => {
-      expect(getParameterTypeDisplayName('array[string]')).toBe('Array[String]')
-      expect(getParameterTypeDisplayName('array[number]')).toBe('Array[Number]')
-      expect(getParameterTypeDisplayName('array[boolean]')).toBe('Array[Boolean]')
-      expect(getParameterTypeDisplayName('array[object]')).toBe('Array[Object]')
-    })
-
-    it('should return correct display names for basic types', () => {
-      expect(getParameterTypeDisplayName('string')).toBe('String')
-      expect(getParameterTypeDisplayName('number')).toBe('Number')
-      expect(getParameterTypeDisplayName('boolean')).toBe('Boolean')
-      expect(getParameterTypeDisplayName('object')).toBe('Object')
-      expect(getParameterTypeDisplayName('file')).toBe('File')
-    })
-  })
-
-  describe('validateParameterValue', () => {
-    it('should validate string values', () => {
-      expect(validateParameterValue('test', 'string')).toBe(true)
-      expect(validateParameterValue('', 'string')).toBe(true)
-      expect(validateParameterValue(123, 'string')).toBe(false)
-    })
-
-    it('should validate number values', () => {
-      expect(validateParameterValue(123, 'number')).toBe(true)
-      expect(validateParameterValue(123.45, 'number')).toBe(true)
-      expect(validateParameterValue('abc', 'number')).toBe(false)
-      expect(validateParameterValue(Number.NaN, 'number')).toBe(false)
-    })
-
-    it('should validate boolean values', () => {
-      expect(validateParameterValue(true, 'boolean')).toBe(true)
-      expect(validateParameterValue(false, 'boolean')).toBe(true)
-      expect(validateParameterValue('true', 'boolean')).toBe(false)
-    })
-
-    it('should validate array values', () => {
-      expect(validateParameterValue(['a', 'b'], 'array[string]')).toBe(true)
-      expect(validateParameterValue([1, 2, 3], 'array[number]')).toBe(true)
-      expect(validateParameterValue([true, false], 'array[boolean]')).toBe(true)
-      expect(validateParameterValue([{ key: 'value' }], 'array[object]')).toBe(true)
-      expect(validateParameterValue(['a', 1], 'array[string]')).toBe(false)
-      expect(validateParameterValue('not an array', 'array[string]')).toBe(false)
-    })
-
-    it('should validate object values', () => {
-      expect(validateParameterValue({ key: 'value' }, 'object')).toBe(true)
-      expect(validateParameterValue({}, 'object')).toBe(true)
-      expect(validateParameterValue(null, 'object')).toBe(false)
-      expect(validateParameterValue([], 'object')).toBe(false)
-      expect(validateParameterValue('string', 'object')).toBe(false)
-    })
-
-    it('should validate file values', () => {
-      const mockFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      expect(validateParameterValue(mockFile, 'file')).toBe(true)
-      expect(validateParameterValue({ name: 'file.txt' }, 'file')).toBe(true)
-      expect(validateParameterValue('not a file', 'file')).toBe(false)
-    })
-
-    it('should return false for invalid types', () => {
-      expect(validateParameterValue('test', 'invalid' as any)).toBe(false)
     })
   })
 

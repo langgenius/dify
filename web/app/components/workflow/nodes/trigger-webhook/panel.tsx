@@ -32,7 +32,7 @@ const CONTENT_TYPES = [
   { name: 'application/json', value: 'application/json' },
   { name: 'application/x-www-form-urlencoded', value: 'application/x-www-form-urlencoded' },
   { name: 'text/plain', value: 'text/plain' },
-  { name: 'forms', value: 'forms' },
+  { name: 'application/octet-stream', value: 'application/octet-stream' },
   { name: 'multipart/form-data', value: 'multipart/form-data' },
 ]
 

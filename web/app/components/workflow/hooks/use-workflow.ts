@@ -46,6 +46,7 @@ import {
   fetchAllMCPTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
@@ -502,11 +503,18 @@ export const useToolIcon = (data: Node['data']) => {
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const mcpTools = useStore(s => s.mcpTools)
+  const { data: triggerPlugins } = useAllTriggerPlugins()
 
   const toolIcon = useMemo(() => {
     if (!data)
       return ''
-    if (data.type === BlockEnum.Tool || data.type === BlockEnum.TriggerPlugin) {
+
+    if (data.type === BlockEnum.TriggerPlugin) {
+      const targetTools = triggerPlugins || []
+      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
+    }
+
+    if (data.type === BlockEnum.Tool) {
       let targetTools = workflowTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools
@@ -517,7 +525,7 @@ export const useToolIcon = (data: Node['data']) => {
 
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
-  }, [data, buildInTools, customTools, mcpTools, workflowTools])
+  }, [data, buildInTools, customTools, mcpTools, triggerPlugins, workflowTools])
 
   return toolIcon
 }

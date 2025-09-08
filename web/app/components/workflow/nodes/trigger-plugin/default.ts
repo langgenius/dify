@@ -6,11 +6,11 @@ import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/block
 const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   defaultValue: {
     plugin_id: '',
-    plugin_name: '',
+    trigger_name: '',
     event_type: '',
     config: {},
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
+  getAvailablePrevNodes(_isChatMode: boolean) {
     return []
   },
   getAvailableNextNodes(isChatMode: boolean) {
@@ -19,7 +19,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
       : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes.filter(type => type !== BlockEnum.Start)
   },
-  checkValid(payload: PluginTriggerNodeType, t: any) {
+  checkValid(_payload: PluginTriggerNodeType, _t: any) {
     return {
       isValid: true,
       errorMessage: '',

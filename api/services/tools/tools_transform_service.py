@@ -25,18 +25,12 @@ from core.tools.utils.encryption import create_provider_encrypter, create_tool_p
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
 
 class ToolTransformService:
-    @classmethod
-    def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
-        url_prefix = (
-            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
-        )
-        return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
-
     @classmethod
     def get_tool_provider_icon_url(cls, provider_type: str, provider_name: str, icon: str | dict) -> Union[str, dict]:
         """
@@ -74,11 +68,9 @@ class ToolTransformService:
         elif isinstance(provider, ToolProviderApiEntity):
             if provider.plugin_id:
                 if isinstance(provider.icon, str):
-                    provider.icon = ToolTransformService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.icon
-                    )
+                    provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
                 if isinstance(provider.icon_dark, str) and provider.icon_dark:
-                    provider.icon_dark = ToolTransformService.get_plugin_icon_url(
+                    provider.icon_dark = PluginService.get_plugin_icon_url(
                         tenant_id=tenant_id, filename=provider.icon_dark
                     )
             else:

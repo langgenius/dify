@@ -66,9 +66,9 @@ class ProviderConfigEncrypter:
 
         return data
 
-    def mask_tool_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
+    def mask_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
         """
-        mask tool credentials
+        mask credentials
 
         return a deep copy of credentials with masked values
         """
@@ -90,6 +90,10 @@ class ProviderConfigEncrypter:
                         data[field_name] = "*" * len(data[field_name])
 
         return data
+
+
+    def mask_tool_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
+        return self.mask_credentials(data)
 
     def decrypt(self, data: dict[str, str]) -> dict[str, Any]:
         """

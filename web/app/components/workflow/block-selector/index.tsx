@@ -86,9 +86,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     e.stopPropagation()
     handleOpenChange(!open)
   }, [handleOpenChange, open, disabled])
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleOpenChange(false)
-    onSelect(type, toolDefaultValue)
+    onSelect(type, pluginDefaultValue)
   }, [handleOpenChange, onSelect])
 
   const [activeTab, setActiveTab] = useState(
@@ -137,7 +137,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
+        <div className={`rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
           <Tabs
             activeTab={activeTab}
             onActiveTabChange={handleActiveTabChange}

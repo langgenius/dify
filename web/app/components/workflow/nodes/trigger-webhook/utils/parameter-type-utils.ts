@@ -1,48 +1,53 @@
-import type { ArrayElementType, ParameterType } from '../types'
+import { VarType } from '@/app/components/workflow/types'
 
 // Constants for better maintainability and reusability
-const BASIC_TYPES = ['string', 'number', 'boolean', 'object', 'file'] as const
-const ARRAY_ELEMENT_TYPES = ['string', 'number', 'boolean', 'object'] as const
+const BASIC_TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.object, VarType.file] as const
+const ARRAY_ELEMENT_TYPES = [VarType.arrayString, VarType.arrayNumber, VarType.arrayBoolean, VarType.arrayObject] as const
 
 // Generate all valid parameter types programmatically
-const VALID_PARAMETER_TYPES: readonly ParameterType[] = [
+const VALID_PARAMETER_TYPES: readonly VarType[] = [
   ...BASIC_TYPES,
-  ...ARRAY_ELEMENT_TYPES.map(type => `array[${type}]` as const),
+  ...ARRAY_ELEMENT_TYPES,
 ] as const
 
 // Type display name mappings
-const TYPE_DISPLAY_NAMES: Record<ParameterType, string> = {
-  'string': 'String',
-  'number': 'Number',
-  'boolean': 'Boolean',
-  'object': 'Object',
-  'file': 'File',
-  'array[string]': 'Array[String]',
-  'array[number]': 'Array[Number]',
-  'array[boolean]': 'Array[Boolean]',
-  'array[object]': 'Array[Object]',
+const TYPE_DISPLAY_NAMES: Record<VarType, string> = {
+  [VarType.string]: 'String',
+  [VarType.number]: 'Number',
+  [VarType.boolean]: 'Boolean',
+  [VarType.object]: 'Object',
+  [VarType.file]: 'File',
+  [VarType.arrayString]: 'Array[String]',
+  [VarType.arrayNumber]: 'Array[Number]',
+  [VarType.arrayBoolean]: 'Array[Boolean]',
+  [VarType.arrayObject]: 'Array[Object]',
+  [VarType.secret]: 'Secret',
+  [VarType.array]: 'Array',
+  'array[file]': 'Array[File]',
+  [VarType.any]: 'Any',
+  'array[any]': 'Array[Any]',
 } as const
 
 // Content type configurations
 const CONTENT_TYPE_CONFIGS = {
   'application/json': {
-    supportedTypes: [...BASIC_TYPES.filter(t => t !== 'file'), ...ARRAY_ELEMENT_TYPES.map(t => `array[${t}]` as const)],
+    supportedTypes: [...BASIC_TYPES.filter(t => t !== 'file'), ...ARRAY_ELEMENT_TYPES],
     description: 'JSON supports all types including arrays',
   },
   'text/plain': {
-    supportedTypes: ['string'] as const,
+    supportedTypes: [VarType.string] as const,
     description: 'Plain text only supports string',
   },
   'application/x-www-form-urlencoded': {
-    supportedTypes: ['string', 'number', 'boolean'] as const,
+    supportedTypes: [VarType.string, VarType.number, VarType.boolean] as const,
     description: 'Form data supports basic types',
   },
-  'forms': {
-    supportedTypes: ['string', 'number', 'boolean'] as const,
-    description: 'Form data supports basic types',
+  'application/octet-stream': {
+    supportedTypes: [VarType.file] as const,
+    description: 'octet-stream supports only binary data',
   },
   'multipart/form-data': {
-    supportedTypes: ['string', 'number', 'boolean', 'file'] as const,
+    supportedTypes: [VarType.string, VarType.number, VarType.boolean, VarType.file] as const,
     description: 'Multipart supports basic types plus files',
   },
 } as const
@@ -50,113 +55,53 @@ const CONTENT_TYPE_CONFIGS = {
 /**
  * Type guard to check if a string is a valid parameter type
  */
-export const isValidParameterType = (type: string): type is ParameterType => {
+export const isValidParameterType = (type: string): type is VarType => {
   return (VALID_PARAMETER_TYPES as readonly string[]).includes(type)
 }
 
-/**
- * Type-safe helper to check if a string is a valid array element type
- */
-const isValidArrayElementType = (type: string): type is ArrayElementType => {
-  return (ARRAY_ELEMENT_TYPES as readonly string[]).includes(type)
-}
-
-/**
- * Type-safe helper to check if a string is a valid basic type
- */
-const isValidBasicType = (type: string): type is Exclude<ParameterType, `array[${ArrayElementType}]`> => {
-  return (BASIC_TYPES as readonly string[]).includes(type)
-}
-
-/**
- * Normalizes parameter type from various input formats to the new type system
- * Handles legacy 'array' type and malformed inputs gracefully
- */
-export const normalizeParameterType = (input: string | undefined | null): ParameterType => {
+export const normalizeParameterType = (input: string | undefined | null): VarType => {
   if (!input || typeof input !== 'string')
-    return 'string'
+    return VarType.string
 
   const trimmed = input.trim().toLowerCase()
+  if (trimmed === 'array[string]')
+    return VarType.arrayString
+  else if (trimmed === 'array[number]')
+    return VarType.arrayNumber
+  else if (trimmed === 'array[boolean]')
+    return VarType.arrayBoolean
+  else if (trimmed === 'array[object]')
+    return VarType.arrayObject
+  else if (trimmed === 'array')
+    // Migrate legacy 'array' type to 'array[string]'
+    return VarType.arrayString
+  else if (trimmed === 'number')
+    return VarType.number
+  else if (trimmed === 'boolean')
+    return VarType.boolean
+  else if (trimmed === 'object')
+    return VarType.object
+  else if (trimmed === 'file')
+    return VarType.file
 
-  // Handle legacy array type
-  if (trimmed === 'array')
-    return 'array[string]' // Default to string array for backward compatibility
-
-  // Handle specific array types
-  if (trimmed.startsWith('array[') && trimmed.endsWith(']')) {
-    const elementType = trimmed.slice(6, -1) // Extract content between 'array[' and ']'
-
-    if (isValidArrayElementType(elementType))
-      return `array[${elementType}]`
-
-    // Invalid array element type, default to string array
-    return 'array[string]'
-  }
-
-  // Handle basic types
-  if (isValidBasicType(trimmed))
-    return trimmed
-
-  // Fallback to string for unknown types
-  return 'string'
+  return VarType.string
 }
 
 /**
  * Gets display name for parameter types in UI components
  */
-export const getParameterTypeDisplayName = (type: ParameterType): string => {
+export const getParameterTypeDisplayName = (type: VarType): string => {
   return TYPE_DISPLAY_NAMES[type]
-}
-
-// Type validation functions for better reusability
-const validators = {
-  string: (value: unknown): value is string => typeof value === 'string',
-  number: (value: unknown): value is number => typeof value === 'number' && !isNaN(value),
-  boolean: (value: unknown): value is boolean => typeof value === 'boolean',
-  object: (value: unknown): value is object =>
-    typeof value === 'object' && value !== null && !Array.isArray(value),
-  file: (value: unknown): value is File =>
-    value instanceof File || (typeof value === 'object' && value !== null),
-} as const
-
-/**
- * Validates array elements based on element type
- */
-const validateArrayElements = (value: unknown[], elementType: ArrayElementType): boolean => {
-  const validator = validators[elementType]
-  return value.every(item => validator(item))
-}
-
-/**
- * Validates parameter value against its declared type
- * Provides runtime type checking for webhook parameters
- */
-export const validateParameterValue = (value: unknown, type: ParameterType): boolean => {
-  // Handle basic types
-  if (type in validators) {
-    const validator = validators[type as keyof typeof validators]
-    return validator(value)
-  }
-
-  // Handle array types
-  if (type.startsWith('array[') && type.endsWith(']')) {
-    if (!Array.isArray(value)) return false
-
-    const elementType = type.slice(6, -1)
-    return isValidArrayElementType(elementType) && validateArrayElements(value, elementType)
-  }
-
-  return false
 }
 
 /**
  * Gets available parameter types based on content type
  * Provides context-aware type filtering for different webhook content types
  */
-export const getAvailableParameterTypes = (contentType?: string, isRequestBody = false): ParameterType[] => {
+export const getAvailableParameterTypes = (contentType?: string, isRequestBody = false): VarType[] => {
   if (!isRequestBody) {
     // Query parameters and headers are always strings
-    return ['string']
+    return [VarType.string]
   }
 
   const normalizedContentType = (contentType || '').toLowerCase()

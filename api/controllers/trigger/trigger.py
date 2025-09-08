@@ -14,9 +14,7 @@ UUID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 UUID_MATCHER = re.compile(UUID_PATTERN)
 
 
-@bp.route(
-    "/trigger/endpoint/<string:endpoint_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
-)
+@bp.route("/plugin/<string:endpoint_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 def trigger_endpoint(endpoint_id: str):
     """
     Handle endpoint trigger calls.

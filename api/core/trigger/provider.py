@@ -14,10 +14,9 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import (
     TriggerDispatchResponse,
     TriggerInvokeResponse,
-    TriggerValidateProviderCredentialsResponse,
 )
 from core.plugin.impl.trigger import PluginTriggerManager
-from core.trigger.entities.api_entities import TriggerProviderApiEntity
+from core.trigger.entities.api_entities import TriggerApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     ProviderConfig,
     Subscription,
@@ -27,6 +26,8 @@ from core.trigger.entities.entities import (
     TriggerProviderIdentity,
     Unsubscription,
 )
+from core.trigger.errors import TriggerProviderCredentialValidationError
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class PluginTriggerProviderController:
         entity: TriggerProviderEntity,
         plugin_id: str,
         plugin_unique_identifier: str,
+        provider_id: TriggerProviderID,
         tenant_id: str,
     ):
         """
@@ -49,24 +51,59 @@ class PluginTriggerProviderController:
         :param entity: Trigger provider entity
         :param plugin_id: Plugin ID
         :param plugin_unique_identifier: Plugin unique identifier
+        :param provider_id: Provider ID
         :param tenant_id: Tenant ID
         """
         self.entity = entity
         self.tenant_id = tenant_id
         self.plugin_id = plugin_id
+        self.provider_id = provider_id
         self.plugin_unique_identifier = plugin_unique_identifier
 
     def get_provider_id(self) -> TriggerProviderID:
         """
         Get provider ID
         """
-        return TriggerProviderID(f"{self.plugin_id}/{self.entity.identity.name}")
+        return self.provider_id
 
     def to_api_entity(self) -> TriggerProviderApiEntity:
         """
         Convert to API entity
         """
-        return TriggerProviderApiEntity(**self.entity.model_dump())
+        icon = (
+            PluginService.get_plugin_icon_url(self.tenant_id, self.entity.identity.icon)
+            if self.entity.identity.icon
+            else None
+        )
+        icon_dark = (
+            PluginService.get_plugin_icon_url(self.tenant_id, self.entity.identity.icon_dark)
+            if self.entity.identity.icon_dark
+            else None
+        )
+        return TriggerProviderApiEntity(
+            author=self.entity.identity.author,
+            name=self.entity.identity.name,
+            label=self.entity.identity.label,
+            description=self.entity.identity.description,
+            icon=icon,
+            icon_dark=icon_dark,
+            tags=self.entity.identity.tags,
+            plugin_id=self.plugin_id,
+            plugin_unique_identifier=self.plugin_unique_identifier,
+            credentials_schema=self.entity.credentials_schema,
+            oauth_client_schema=self.entity.oauth_schema.client_schema if self.entity.oauth_schema else [],
+            subscription_schema=self.entity.subscription_schema,
+            triggers=[
+                TriggerApiEntity(
+                    name=trigger.identity.name,
+                    identity=trigger.identity,
+                    description=trigger.description,
+                    parameters=trigger.parameters,
+                    output_schema=trigger.output_schema,
+                )
+                for trigger in self.entity.triggers
+            ],
+        )
 
     @property
     def identity(self) -> TriggerProviderIdentity:
@@ -101,9 +138,7 @@ class PluginTriggerProviderController:
         """
         return self.entity.subscription_schema
 
-    def validate_credentials(
-        self, user_id: str, credentials: Mapping[str, str]
-    ) -> TriggerValidateProviderCredentialsResponse:
+    def validate_credentials(self, user_id: str, credentials: Mapping[str, str]) -> None:
         """
         Validate credentials against schema
 
@@ -113,21 +148,21 @@ class PluginTriggerProviderController:
         # First validate against schema
         for config in self.entity.credentials_schema:
             if config.required and config.name not in credentials:
-                return TriggerValidateProviderCredentialsResponse(
-                    valid=False,
-                    message=f"Missing required credential field: {config.name}",
-                    error=f"Missing required credential field: {config.name}",
-                )
+                raise TriggerProviderCredentialValidationError(f"Missing required credential field: {config.name}")
 
         # Then validate with the plugin daemon
         manager = PluginTriggerManager()
         provider_id = self.get_provider_id()
-        return manager.validate_provider_credentials(
+        response = manager.validate_provider_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,
             provider=str(provider_id),
             credentials=credentials,
         )
+        if not response:
+            raise TriggerProviderCredentialValidationError(
+                "Invalid credentials",
+            )
 
     def get_supported_credential_types(self) -> list[CredentialType]:
         """
@@ -154,6 +189,8 @@ class PluginTriggerProviderController:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
         if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+        if credential_type == CredentialType.UNAUTHORIZED:
+            return []
         raise ValueError(f"Invalid credential type: {credential_type}")
 
     def get_credential_schema_config(self, credential_type: CredentialType | str) -> list[BasicProviderConfig]:
@@ -169,6 +206,18 @@ class PluginTriggerProviderController:
         :return: List of OAuth client config schemas
         """
         return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
+
+    def get_properties_schema(self) -> list[BasicProviderConfig]:
+        """
+        Get properties schema for this provider
+
+        :return: List of properties config schemas
+        """
+        return (
+            [x.to_basic_provider_config() for x in self.entity.subscription_schema.properties_schema.copy()]
+            if self.entity.subscription_schema.properties_schema
+            else []
+        )
 
     def dispatch(self, user_id: str, request: Request, subscription: Subscription) -> TriggerDispatchResponse:
         """

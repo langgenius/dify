@@ -4,8 +4,9 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import GenericTable from './generic-table'
 import type { ColumnConfig, GenericTableRow } from './generic-table'
-import type { ParameterType, WebhookParameter } from '../types'
+import type { WebhookParameter } from '../types'
 import { createParameterTypeOptions, normalizeParameterType } from '../utils/parameter-type-utils'
+import { VarType } from '@/app/components/workflow/types'
 
 type ParameterTableProps = {
   title: string
@@ -46,7 +47,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
         key: 'type',
         title: 'Type',
         type: (isRequestBody ? 'select' : 'input') as ColumnConfig['type'],
-        width: 'w-[78px]',
+        width: 'w-[120px]',
         placeholder: 'Type',
         options: isRequestBody ? typeOptions : undefined,
       }]
@@ -60,7 +61,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   ]
 
   // Choose sensible default type for new rows according to content type
-  const defaultTypeValue: ParameterType = typeOptions[0]?.value || 'string'
+  const defaultTypeValue: VarType = typeOptions[0]?.value || 'string'
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
@@ -77,17 +78,19 @@ const ParameterTable: FC<ParameterTableProps> = ({
 
   const handleDataChange = (data: GenericTableRow[]) => {
     // For text/plain, enforce single text body semantics: keep only first non-empty row and force string type
+    // For application/octet-stream, enforce single file body semantics: keep only first non-empty row and force file type
     const isTextPlain = isRequestBody && (contentType || '').toLowerCase() === 'text/plain'
+    const isOctetStream = isRequestBody && (contentType || '').toLowerCase() === 'application/octet-stream'
 
     const normalized = data
       .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
       .map(row => ({
         name: String(row.key),
-        type: isTextPlain ? 'string' : normalizeParameterType((row.type as string) || 'string'),
+        type: isTextPlain ? VarType.string : isOctetStream ? VarType.file : normalizeParameterType((row.type as string)),
         required: Boolean(row.required),
       }))
 
-    const newParams: WebhookParameter[] = isTextPlain
+    const newParams: WebhookParameter[] = (isTextPlain || isOctetStream)
       ? normalized.slice(0, 1)
       : normalized
 

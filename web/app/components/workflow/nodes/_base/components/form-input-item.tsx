@@ -1,20 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import { type BaseResource, type BaseResourceProvider, type ResourceVarInputs, VarKindType } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 
-import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import FormInputTypeSwitch from './form-input-type-switch'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import MixedVariableTextInput from './mixed-variable-text-input'
 import FormInputBoolean from './form-input-boolean'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
@@ -22,18 +21,20 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import cn from '@/utils/classnames'
-import type { Tool } from '@/app/components/tools/types'
-
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 type Props = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
-  value: ToolVarInputs
+  value: ResourceVarInputs
   onChange: (value: any) => void
   inPanel?: boolean
-  currentTool?: Tool
-  currentProvider?: ToolWithProvider
+  currentResource?: BaseResource
+  currentProvider?: BaseResourceProvider
   extraParams?: Record<string, any>
+  providerType?: string
 }
 
 const FormInputItem: FC<Props> = ({
@@ -43,9 +44,10 @@ const FormInputItem: FC<Props> = ({
   value,
   onChange,
   inPanel,
-  currentTool,
+  currentResource,
   currentProvider,
   extraParams,
+  providerType,
 }) => {
   const language = useLanguage()
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
@@ -57,6 +59,7 @@ const FormInputItem: FC<Props> = ({
     type,
     default: defaultValue,
     options,
+    multiple,
     scope,
   } = schema as any
   const varInput = value[variable]
@@ -74,6 +77,7 @@ const FormInputItem: FC<Props> = ({
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
+  const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -136,16 +140,16 @@ const FormInputItem: FC<Props> = ({
   const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
     currentProvider?.plugin_id || '',
     currentProvider?.name || '',
-    currentTool?.name || '',
+    currentResource?.name || '',
     variable || '',
-    'tool',
+    providerType,
     extraParams,
   )
 
   // Fetch dynamic options when component mounts or dependencies change
   useEffect(() => {
     const fetchOptions = async () => {
-      if (isDynamicSelect && currentTool && currentProvider) {
+      if (isDynamicSelect && currentResource && currentProvider) {
         setIsLoadingOptions(true)
         try {
           const data = await fetchDynamicOptions()
@@ -162,7 +166,7 @@ const FormInputItem: FC<Props> = ({
     }
 
     fetchOptions()
-  }, [isDynamicSelect, currentTool?.name, currentProvider?.name, variable, extraParams])
+  }, [isDynamicSelect, currentResource?.name, currentProvider?.name, variable, extraParams])
 
   const handleTypeChange = (newType: string) => {
     if (newType === VarKindType.variable) {
@@ -196,6 +200,24 @@ const FormInputItem: FC<Props> = ({
         value: isNumber ? Number.parseFloat(newValue) : newValue,
       },
     })
+  }
+
+  const getSelectedLabels = (selectedValues: any[]) => {
+    if (!selectedValues || selectedValues.length === 0)
+      return ''
+
+    const optionsList = isDynamicSelect ? (dynamicOptions || options || []) : (options || [])
+    const selectedOptions = optionsList.filter((opt: any) =>
+      selectedValues.includes(opt.value),
+    )
+
+    if (selectedOptions.length <= 2) {
+      return selectedOptions
+        .map((opt: any) => opt.label?.[language] || opt.label?.en_US || opt.value)
+        .join(', ')
+    }
+
+    return `${selectedOptions.length} selected`
   }
 
   const handleAppOrModelSelect = (newValue: any) => {
@@ -248,7 +270,7 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
         />
       )}
-      {isSelect && (
+      {isSelect && !isMultipleSelect && (
         <SimpleSelect
           wrapperClassName='h-8 grow'
           disabled={readOnly}
@@ -275,7 +297,66 @@ const FormInputItem: FC<Props> = ({
           ) : undefined}
         />
       )}
-      {isDynamicSelect && (
+      {isSelect && isMultipleSelect && (
+        <Listbox
+          multiple
+          value={varInput?.value || []}
+          onChange={handleValueChange}
+          disabled={readOnly}
+        >
+          <div className="group/simple-select relative h-8 grow">
+            <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
+              <span className={cn('system-sm-regular block truncate text-left',
+                varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
+              )}>
+                {getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
+              </span>
+              <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+                <ChevronDownIcon
+                  className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                  aria-hidden="true"
+                />
+              </span>
+            </ListboxButton>
+            <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
+              {options.filter((option: { show_on: any[] }) => {
+                if (option.show_on?.length)
+                  return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+                return true
+              }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => (
+                <ListboxOption
+                  key={option.value}
+                  value={option.value}
+                  className={({ focus }) =>
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
+                      focus && 'bg-state-base-hover',
+                    )
+                  }
+                >
+                  {({ selected }) => (
+                    <>
+                      <div className="flex items-center">
+                        {option.icon && (
+                          <img src={option.icon} alt="" className="mr-2 h-4 w-4" />
+                        )}
+                        <span className={cn('block truncate', selected && 'font-normal')}>
+                          {option.label[language] || option.label.en_US}
+                        </span>
+                      </div>
+                      {selected && (
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent">
+                          <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                      )}
+                    </>
+                  )}
+                </ListboxOption>
+              ))}
+            </ListboxOptions>
+          </div>
+        </Listbox>
+      )}
+      {isDynamicSelect && !isMultipleSelect && (
         <SimpleSelect
           wrapperClassName='h-8 grow'
           disabled={readOnly || isLoadingOptions}
@@ -301,6 +382,72 @@ const FormInputItem: FC<Props> = ({
             </div>
           )}
         />
+      )}
+      {isDynamicSelect && isMultipleSelect && (
+        <Listbox
+          multiple
+          value={varInput?.value || []}
+          onChange={handleValueChange}
+          disabled={readOnly || isLoadingOptions}
+        >
+          <div className="group/simple-select relative h-8 grow">
+            <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
+              <span className={cn('system-sm-regular block truncate text-left',
+                isLoadingOptions ? 'text-components-input-text-placeholder'
+                  : varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
+              )}>
+                {isLoadingOptions
+                  ? 'Loading...'
+                  : getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
+              </span>
+              <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+                {isLoadingOptions ? (
+                  <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />
+                ) : (
+                  <ChevronDownIcon
+                    className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                    aria-hidden="true"
+                  />
+                )}
+              </span>
+            </ListboxButton>
+            <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
+              {(dynamicOptions || options || []).filter((option: { show_on?: any[] }) => {
+                if (option.show_on?.length)
+                  return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+                return true
+              }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => (
+                <ListboxOption
+                  key={option.value}
+                  value={option.value}
+                  className={({ focus }) =>
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
+                      focus && 'bg-state-base-hover',
+                    )
+                  }
+                >
+                  {({ selected }) => (
+                    <>
+                      <div className="flex items-center">
+                        {option.icon && (
+                          <img src={option.icon} alt="" className="mr-2 h-4 w-4" />
+                        )}
+                        <span className={cn('block truncate', selected && 'font-normal')}>
+                          {option.label[language] || option.label.en_US}
+                        </span>
+                      </div>
+                      {selected && (
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent">
+                          <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                      )}
+                    </>
+                  )}
+                </ListboxOption>
+              ))}
+            </ListboxOptions>
+          </div>
+        </Listbox>
       )}
       {isShowJSONEditor && isConstant && (
         <div className='mt-1 w-full'>
@@ -347,7 +494,7 @@ const FormInputItem: FC<Props> = ({
           filterVar={getFilterVar()}
           schema={schema}
           valueTypePlaceHolder={targetVarType()}
-          currentTool={currentTool}
+          currentResource={currentResource}
           currentProvider={currentProvider}
         />
       )}

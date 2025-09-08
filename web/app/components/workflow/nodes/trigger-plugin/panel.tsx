@@ -1,37 +1,89 @@
 import type { FC } from 'react'
 import React from 'react'
 import type { PluginTriggerNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import useConfig from './use-config'
+import TriggerForm from './trigger-form'
+import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
+import { Type } from '../llm/types'
 
 const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
+  id,
   data,
 }) => {
+  const {
+    readOnly,
+    triggerParameterSchema,
+    triggerParameterValue,
+    setTriggerParameterValue,
+    outputSchema,
+    hasObjectOutput,
+    isAuthenticated,
+    currentProvider,
+    currentTrigger,
+  } = useConfig(id, data)
+
+  // Convert output schema to VarItem format
+  const outputVars = Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => ({
+    name,
+    type: schema.type || 'string',
+    description: schema.description || '',
+  }))
+
   return (
     <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-2'>
-        <Field title="Plugin Trigger">
-          {data.plugin_name ? (
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">{data.plugin_name}</span>
-                {data.event_type && (
-                  <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">
-                    {data.event_type}
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-gray-500">
-                Plugin trigger configured
-              </div>
+      {/* Dynamic Parameters Form - Only show when authenticated */}
+      {isAuthenticated && triggerParameterSchema.length > 0 && (
+        <>
+          <div className='px-4 pb-4'>
+            <TriggerForm
+              readOnly={readOnly}
+              nodeId={id}
+              schema={triggerParameterSchema as any}
+              value={triggerParameterValue}
+              onChange={setTriggerParameterValue}
+              currentProvider={currentProvider}
+              currentTrigger={currentTrigger}
+            />
+          </div>
+          <Split />
+        </>
+      )}
+
+      {/* Output Variables - Always show */}
+      <OutputVars>
+        <>
+          {outputVars.map(varItem => (
+            <VarItem
+              key={varItem.name}
+              name={varItem.name}
+              type={varItem.type}
+              description={varItem.description}
+              isIndent={hasObjectOutput}
+            />
+          ))}
+          {Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => (
+            <div key={name}>
+              {schema.type === 'object' ? (
+                <StructureOutputItem
+                  rootClassName='code-sm-semibold text-text-secondary'
+                  payload={{
+                    schema: {
+                      type: Type.object,
+                      properties: {
+                        [name]: schema,
+                      },
+                      additionalProperties: false,
+                    },
+                  }}
+                />
+              ) : null}
             </div>
-          ) : (
-            <div className="text-sm text-gray-500">
-              No plugin selected. Configure this trigger in the workflow canvas.
-            </div>
-          )}
-        </Field>
-      </div>
+          ))}
+        </>
+      </OutputVars>
     </div>
   )
 }

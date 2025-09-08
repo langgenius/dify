@@ -1,13 +1,13 @@
 'use client'
 import { memo, useEffect, useMemo } from 'react'
-import { useAllBuiltInTools } from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 import TriggerPluginItem from './item'
 import type { BlockEnum } from '../../types'
-import type { ToolDefaultValue } from '../types'
+import type { TriggerDefaultValue } from '../types'
 import { useGetLanguage } from '@/context/i18n'
 
 type TriggerPluginListProps = {
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
   searchText: string
   onContentStateChange?: (hasContent: boolean) => void
   tags?: string[]
@@ -19,17 +19,18 @@ const TriggerPluginList = ({
   onContentStateChange,
   tags = [],
 }: TriggerPluginListProps) => {
-  const { data: buildInTools = [] } = useAllBuiltInTools()
+  const { data: triggerPluginsData } = useAllTriggerPlugins()
   const language = useGetLanguage()
 
   const triggerPlugins = useMemo(() => {
-    return buildInTools.filter((toolWithProvider) => {
-      if (toolWithProvider.tools.length === 0) return false
+    // Follow exact same pattern as tools
+    return (triggerPluginsData || []).filter((triggerWithProvider) => {
+      if (triggerWithProvider.triggers.length === 0) return false
 
       // Filter by search text
       if (searchText) {
-        const matchesSearch = toolWithProvider.name.toLowerCase().includes(searchText.toLowerCase())
-          || toolWithProvider.tools.some(tool =>
+        const matchesSearch = triggerWithProvider.name.toLowerCase().includes(searchText.toLowerCase())
+          || triggerWithProvider.triggers.some(tool =>
             tool.label[language].toLowerCase().includes(searchText.toLowerCase()),
           )
         if (!matchesSearch) return false
@@ -37,7 +38,7 @@ const TriggerPluginList = ({
 
       return true
     })
-  }, [buildInTools, searchText, language])
+  }, [triggerPluginsData, searchText, language])
 
   const hasContent = triggerPlugins.length > 0
 

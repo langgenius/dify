@@ -7,10 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
+from core.plugin.utils.http_parser import serialize_request
 from core.trigger.entities.entities import TriggerEntity
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.trigger import TriggerSubscription
@@ -32,11 +34,9 @@ class TriggerService:
         cls, subscription: TriggerSubscription, trigger: TriggerEntity, request: Request
     ) -> None:
         """Process triggered workflows."""
-        # 1. Find associated WorkflowPluginTriggers
-        trigger_id = f"{subscription.provider_id}:{trigger.identity.name}"
-        plugin_triggers = cls._get_plugin_triggers(trigger_id)
 
-        if not plugin_triggers:
+        subscribers = cls._get_subscriber_triggers(subscription=subscription, trigger=trigger)
+        if not subscribers:
             logger.warning(
                 "No workflows found for trigger '%s' in subscription '%s'",
                 trigger.identity.name,
@@ -59,7 +59,7 @@ class TriggerService:
                 logger.error("Tenant owner not found for tenant %s", subscription.tenant_id)
                 return
 
-            for plugin_trigger in plugin_triggers:
+            for plugin_trigger in subscribers:
                 # 2. Get workflow
                 workflow = session.scalar(
                     select(Workflow)
@@ -143,26 +143,43 @@ class TriggerService:
         )
 
         if dispatch_response.triggers:
-            triggers = cls.select_triggers(controller, dispatch_response, provider_id, subscription)
-            for trigger in triggers:
-                cls.process_triggered_workflows(
-                    subscription=subscription,
-                    trigger=trigger,
-                    request=request,
-                )
+            request_id = f"trigger_request_{uuid.uuid4().hex}"
+            serialized_request = serialize_request(request)
+            storage.save(f"triggers/{request_id}", serialized_request)
+
+            from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
+
+            dispatch_triggered_workflows_async(
+                endpoint_id=endpoint_id,
+                provider_id=subscription.provider_id,
+                subscription_id=subscription.id,
+                triggers=list(dispatch_response.triggers),
+                request_id=request_id,
+            )
+
+            logger.info(
+                "Queued async dispatching for %d triggers on endpoint %s with request_id %s",
+                len(dispatch_response.triggers),
+                endpoint_id,
+                request_id,
+            )
+
         return dispatch_response.response
 
     @classmethod
-    def _get_plugin_triggers(cls, trigger_id: str) -> list[WorkflowPluginTrigger]:
-        """Get WorkflowPluginTriggers for a trigger_id."""
-        with Session(db.engine) as session:
-            triggers = session.scalars(
+    def _get_subscriber_triggers(
+        cls, subscription: TriggerSubscription, trigger: TriggerEntity
+    ) -> list[WorkflowPluginTrigger]:
+        """Get WorkflowPluginTriggers for a subscription and trigger."""
+        with Session(db.engine, expire_on_commit=False) as session:
+            subscribers = session.scalars(
                 select(WorkflowPluginTrigger).where(
-                    WorkflowPluginTrigger.trigger_id == trigger_id,
-                    WorkflowPluginTrigger.triggered_by == "production",  # Only production triggers for now
+                    WorkflowPluginTrigger.tenant_id == subscription.tenant_id,
+                    WorkflowPluginTrigger.subscription_id == subscription.id,
+                    WorkflowPluginTrigger.trigger_name == trigger.identity.name,
                 )
             ).all()
-            return list(triggers)
+            return list(subscribers)
 
     @classmethod
     def _store_trigger_data(
