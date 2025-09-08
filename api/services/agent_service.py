@@ -2,7 +2,6 @@ import threading
 from typing import Any, Optional
 
 import pytz
-from flask_login import current_user
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
@@ -10,6 +9,7 @@ from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
+from libs.login import current_user
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message, MessageAgentThought
 
@@ -61,7 +61,8 @@ class AgentService:
             executor = executor.name
         else:
             executor = "Unknown"
-
+        assert isinstance(current_user, Account)
+        assert current_user.timezone is not None
         timezone = pytz.timezone(current_user.timezone)
 
         app_model_config = app_model.app_model_config
