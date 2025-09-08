@@ -487,6 +487,12 @@ const translation = {
         generating: 'Generazione dello schema JSON...',
         generatedResult: 'Risultato generato',
       },
+      reasoningFormat: {
+        title: 'Abilita la separazione dei tag di ragionamento',
+        tagged: 'Continua a pensare ai tag',
+        separated: 'Tag di pensiero separati',
+        tooltip: 'Estrai il contenuto dai tag think e conservalo nel campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variabile Query',
@@ -1023,6 +1029,10 @@ const translation = {
     copyLastRunError: 'Impossibile copiare gli input dell\'ultima esecuzione',
     noLastRunFound: 'Nessuna esecuzione precedente trovata',
     lastOutput: 'Ultimo output',
+  },
+  sidebar: {
+    exportWarning: 'Esporta la versione salvata corrente',
+    exportWarningDesc: 'Questo exporterà l\'attuale versione salvata del tuo flusso di lavoro. Se hai modifiche non salvate nell\'editor, ti preghiamo di salvarle prima utilizzando l\'opzione di esportazione nel canvas del flusso di lavoro.',
   },
 }
 

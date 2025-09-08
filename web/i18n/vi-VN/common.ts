@@ -198,7 +198,6 @@ const translation = {
     showAppLength: 'Hiển thị {{length}} ứng dụng',
     delete: 'Xóa tài khoản',
     deleteTip: 'Xóa tài khoản của bạn sẽ xóa vĩnh viễn tất cả dữ liệu của bạn và không thể khôi phục được.',
-    deleteConfirmTip: 'Để xác nhận, vui lòng gửi thông tin sau từ email đã đăng ký của bạn tới ',
     studio: 'Dify Studio',
     myAccount: 'Tài khoản của tôi',
     account: 'Tài khoản',
@@ -742,6 +741,12 @@ const translation = {
   avatar: {
     deleteTitle: 'Xóa Ảnh Đại Diện',
     deleteDescription: 'Bạn có chắc chắn muốn xóa ảnh đại diện của mình không? Tài khoản của bạn sẽ sử dụng avatar mặc định.',
+  },
+  feedback: {
+    content: 'Nội dung phản hồi',
+    title: 'Cung cấp phản hồi',
+    placeholder: 'Xin vui lòng miêu tả những gì đã xảy ra không đúng hoặc chúng tôi có thể cải thiện như thế nào...',
+    subtitle: 'Xin vui lòng cho chúng tôi biết điều gì đã sai với phản hồi này',
   },
 }
 

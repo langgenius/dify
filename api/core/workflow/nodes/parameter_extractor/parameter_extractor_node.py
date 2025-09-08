@@ -94,7 +94,7 @@ class ParameterExtractorNode(BaseNode):
 
     _node_data: ParameterExtractorNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = ParameterExtractorNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -119,7 +119,7 @@ class ParameterExtractorNode(BaseNode):
     _model_config: Optional[ModelConfigWithCredentialsEntity] = None
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         return {
             "model": {
                 "prompt_templates": {
@@ -139,7 +139,7 @@ class ParameterExtractorNode(BaseNode):
         """
         Run the node.
         """
-        node_data = cast(ParameterExtractorNodeData, self._node_data)
+        node_data = self._node_data
         variable = self.graph_runtime_state.variable_pool.get(node_data.query)
         query = variable.text if variable else ""
 
@@ -545,7 +545,7 @@ class ParameterExtractorNode(BaseNode):
 
         return prompt_messages
 
-    def _validate_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
+    def _validate_result(self, data: ParameterExtractorNodeData, result: dict):
         if len(data.parameters) != len(result):
             raise InvalidNumberOfParametersError("Invalid number of parameters")
 
@@ -597,7 +597,7 @@ class ParameterExtractorNode(BaseNode):
             except ValueError:
                 return None
 
-    def _transform_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
+    def _transform_result(self, data: ParameterExtractorNodeData, result: dict):
         """
         Transform result into standard format.
         """
@@ -690,7 +690,7 @@ class ParameterExtractorNode(BaseNode):
         logger.info("extra error: %s", result)
         return None
 
-    def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:
+    def _generate_default_result(self, data: ParameterExtractorNodeData):
         """
         Generate default result.
         """

@@ -202,7 +202,6 @@ const translation = {
     showAppLength: '{{length}} uygulamayı göster',
     delete: 'Hesabı Sil',
     deleteTip: 'Hesabınızı silmek tüm verilerinizi kalıcı olarak siler ve geri alınamaz.',
-    deleteConfirmTip: 'Onaylamak için, kayıtlı e-postanızdan şu adrese e-posta gönderin: ',
     account: 'Hesap',
     myAccount: 'Hesabım',
     studio: 'Dify Stüdyo',
@@ -742,6 +741,12 @@ const translation = {
   avatar: {
     deleteTitle: 'Avatarı kaldır',
     deleteDescription: 'Profil resminizi kaldırmak istediğinize emin misiniz? Hesabınız varsayılan başlangıç avatarını kullanacaktır.',
+  },
+  feedback: {
+    content: 'Geri Bildirim İçeriği',
+    subtitle: 'Lütfen bu yanıtla ilgili neyin yanlış gittiğini bize bildirin',
+    title: 'Geri Bildirim Sağla',
+    placeholder: 'Lütfen neyin yanlış gittiğini veya nasıl iyileşebileceğimizi açıklayın...',
   },
 }
 

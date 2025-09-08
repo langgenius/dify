@@ -15,7 +15,7 @@ def delete_account_task(account_id):
     account = db.session.query(Account).where(Account.id == account_id).first()
     try:
         BillingService.delete_account(account_id)
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to delete account %s from billing service.", account_id)
         raise
 

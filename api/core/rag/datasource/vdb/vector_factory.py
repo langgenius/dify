@@ -3,6 +3,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
+from sqlalchemy import select
+
 from configs import dify_config
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -24,7 +26,7 @@ class AbstractVectorFactory(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
         index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
         return index_struct_dict
 
@@ -166,11 +168,10 @@ class Vector:
             vector_type = self._dataset.index_struct_dict["type"]
         else:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
-                whitelist = (
-                    db.session.query(Whitelist)
-                    .where(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
-                    .one_or_none()
+                stmt = select(Whitelist).where(
+                    Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
                 )
+                whitelist = db.session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
@@ -206,10 +207,10 @@ class Vector:
     def text_exists(self, id: str) -> bool:
         return self._vector_processor.text_exists(id)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         self._vector_processor.delete_by_ids(ids)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         self._vector_processor.delete_by_metadata_field(key, value)
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
@@ -219,7 +220,7 @@ class Vector:
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
 
-    def delete(self) -> None:
+    def delete(self):
         self._vector_processor.delete()
         # delete collection redis cache
         if self._vector_processor.collection_name:

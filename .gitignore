@@ -123,10 +123,12 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
+# type checking
 .mypy_cache/
 .dmypy.json
 dmypy.json
+pyrightconfig.json
+!api/pyrightconfig.json
 
 # Pyre type checker
 .pyre/
@@ -195,7 +197,6 @@ sdks/python-client/dify_client.egg-info
 .vscode/*
 !.vscode/launch.json.template
 !.vscode/README.md
-pyrightconfig.json
 api/.vscode
 # vscode Code History Extension
 .history
@@ -213,6 +214,13 @@ mise.toml
 
 # Next.js build output
 .next/
+
+# PWA generated files
+web/public/sw.js
+web/public/sw.js.map
+web/public/workbox-*.js
+web/public/workbox-*.js.map
+web/public/fallback-*.js
 
 # AI Assistant
 .roo/

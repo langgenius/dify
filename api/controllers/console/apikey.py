@@ -84,10 +84,10 @@ class BaseApiKeyListResource(Resource):
             flask_restx.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                code="max_keys_exceeded",
+                custom="max_keys_exceeded",
             )
 
-        key = ApiToken.generate_api_key(self.token_prefix, 24)
+        key = ApiToken.generate_api_key(self.token_prefix or "", 24)
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
         api_token.tenant_id = current_user.current_tenant_id

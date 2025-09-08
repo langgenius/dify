@@ -47,7 +47,7 @@ class VariablePool(BaseModel):
         default_factory=list,
     )
 
-    def model_post_init(self, context: Any, /) -> None:
+    def model_post_init(self, context: Any, /):
         # Create a mapping from field names to SystemVariableKey enum values
         self._add_system_variables(self.system_variables)
         # Add environment variables to the variable pool
@@ -57,7 +57,7 @@ class VariablePool(BaseModel):
         for var in self.conversation_variables:
             self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
 
-    def add(self, selector: Sequence[str], value: Any, /) -> None:
+    def add(self, selector: Sequence[str], value: Any, /):
         """
         Add a variable to the variable pool.
 
@@ -161,11 +161,11 @@ class VariablePool(BaseModel):
         # Return result as Segment
         return result if isinstance(result, Segment) else variable_factory.build_segment(result)
 
-    def _extract_value(self, obj: Any) -> Any:
+    def _extract_value(self, obj: Any):
         """Extract the actual value from an ObjectSegment."""
         return obj.value if isinstance(obj, ObjectSegment) else obj
 
-    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str) -> Any:
+    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str):
         """Get a nested attribute from a dictionary-like object."""
         if not isinstance(obj, dict):
             return None
