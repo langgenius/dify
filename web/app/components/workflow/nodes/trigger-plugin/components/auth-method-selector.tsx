@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { RiEqualizer2Line } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { Tool } from '@/app/components/tools/types'
 import {
   useInitiateTriggerOAuth,
   useInvalidateTriggerSubscriptions,
@@ -12,17 +13,19 @@ import {
 } from '@/service/use-triggers'
 import { useToastContext } from '@/app/components/base/toast'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import ApiKeyConfigModal from './api-key-config-modal'
+import UnifiedApiKeyConfigModal from './unified-api-key-config-modal'
 import OAuthClientConfigModal from './oauth-client-config-modal'
 
 type AuthMethodSelectorProps = {
   provider: TriggerWithProvider
   supportedMethods: string[]
+  trigger?: Tool
 }
 
 const AuthMethodSelector: FC<AuthMethodSelectorProps> = ({
   provider,
   supportedMethods,
+  trigger,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -130,8 +133,9 @@ const AuthMethodSelector: FC<AuthMethodSelectorProps> = ({
 
       {/* API Key Configuration Modal */}
       {showApiKeyModal && (
-        <ApiKeyConfigModal
+        <UnifiedApiKeyConfigModal
           provider={provider}
+          trigger={trigger}
           onCancel={() => setShowApiKeyModal(false)}
           onSuccess={() => {
             setShowApiKeyModal(false)

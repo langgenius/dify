@@ -261,6 +261,11 @@ const BasePanel: FC<BasePanelProps> = ({
     return triggerProviders.find(p => p.plugin_id === data.provider_id && p.name === data.provider_name)
   }, [data.type, data.provider_id, data.provider_name, triggerProviders])
 
+  const currentTrigger = useMemo(() => {
+    if (!currentTriggerProvider || !data.tool_name) return undefined
+    return currentTriggerProvider.tools.find(tool => tool.name === data.tool_name)
+  }, [currentTriggerProvider, data.tool_name])
+
   const supportedAuthMethods = useMemo(() => {
     if (!currentTriggerProvider) return []
     const methods = []
@@ -473,6 +478,7 @@ const BasePanel: FC<BasePanelProps> = ({
               <AuthMethodSelector
                 provider={currentTriggerProvider!}
                 supportedMethods={supportedAuthMethods}
+                trigger={currentTrigger}
               />
             )
           }

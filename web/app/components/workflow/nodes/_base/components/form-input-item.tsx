@@ -8,6 +8,7 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
+import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import FormInputTypeSwitch from './form-input-type-switch'
@@ -34,6 +35,7 @@ type Props = {
   currentTool?: Tool
   currentProvider?: ToolWithProvider
   extraParams?: Record<string, any>
+  isTrigger?: boolean
 }
 
 const FormInputItem: FC<Props> = ({
@@ -46,6 +48,7 @@ const FormInputItem: FC<Props> = ({
   currentTool,
   currentProvider,
   extraParams,
+  isTrigger = false,
 }) => {
   const language = useLanguage()
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
@@ -132,7 +135,7 @@ const FormInputItem: FC<Props> = ({
       return VarKindType.mixed
   }
 
-  // Fetch dynamic options hook
+  // Fetch dynamic options hook for Tool
   const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
     currentProvider?.plugin_id || '',
     currentProvider?.name || '',
@@ -142,10 +145,27 @@ const FormInputItem: FC<Props> = ({
     extraParams,
   )
 
-  // Fetch dynamic options when component mounts or dependencies change
+  // Fetch dynamic options for Trigger
+  const { data: triggerDynamicOptions, isLoading: isLoadingTriggerOptions } = useTriggerPluginDynamicOptions({
+    plugin_id: currentProvider?.plugin_id || '',
+    provider: currentProvider?.name || '',
+    action: currentTool?.name || '',
+    parameter: variable || '',
+    extra: extraParams || {},
+  }, isTrigger && isDynamicSelect && !!currentTool && !!currentProvider)
+
+  // Handle Trigger dynamic options
+  useEffect(() => {
+    if (isTrigger && isDynamicSelect && triggerDynamicOptions) {
+      setDynamicOptions(triggerDynamicOptions.options || [])
+      setIsLoadingOptions(isLoadingTriggerOptions)
+    }
+  }, [isTrigger, isDynamicSelect, triggerDynamicOptions, isLoadingTriggerOptions])
+
+  // Fetch dynamic options when component mounts or dependencies change (for Tool)
   useEffect(() => {
     const fetchOptions = async () => {
-      if (isDynamicSelect && currentTool && currentProvider) {
+      if (!isTrigger && isDynamicSelect && currentTool && currentProvider) {
         setIsLoadingOptions(true)
         try {
           const data = await fetchDynamicOptions()
@@ -162,7 +182,7 @@ const FormInputItem: FC<Props> = ({
     }
 
     fetchOptions()
-  }, [isDynamicSelect, currentTool?.name, currentProvider?.name, variable, extraParams])
+  }, [isTrigger, isDynamicSelect, currentTool?.name, currentProvider?.name, variable, extraParams])
 
   const handleTypeChange = (newType: string) => {
     if (newType === VarKindType.variable) {

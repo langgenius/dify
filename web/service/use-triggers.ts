@@ -116,8 +116,7 @@ export const useCreateTriggerSubscriptionBuilder = () => {
     mutationKey: [NAME_SPACE, 'create-subscription-builder'],
     mutationFn: (payload: {
       provider: string
-      name?: string
-      credentials?: Record<string, any>
+      credential_type?: 'api-key' | 'oauth2'
     }) => {
       const { provider, ...body } = payload
       return post<{ subscription_builder: TriggerSubscriptionBuilder }>(
@@ -154,10 +153,12 @@ export const useVerifyTriggerSubscriptionBuilder = () => {
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
+      credentials?: Record<string, any>
     }) => {
-      const { provider, subscriptionBuilderId } = payload
+      const { provider, subscriptionBuilderId, credentials } = payload
       return post(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify/${subscriptionBuilderId}`,
+        { body: credentials ? { credentials } : {} },
       )
     },
   })
@@ -169,10 +170,15 @@ export const useBuildTriggerSubscription = () => {
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
+      name?: string
+      parameters?: Record<string, any>
+      properties?: Record<string, any>
+      credentials?: Record<string, any>
     }) => {
-      const { provider, subscriptionBuilderId } = payload
+      const { provider, subscriptionBuilderId, ...body } = payload
       return post(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/build/${subscriptionBuilderId}`,
+        { body },
       )
     },
   })
@@ -265,11 +271,13 @@ export const useTriggerPluginDynamicOptions = (payload: {
   parameter: string
   extra?: Record<string, any>
 }, enabled = true) => {
+  const providerPath = `${payload.plugin_id}/${payload.provider}`
+
   return useQuery<{ options: Array<{ value: string; label: any }> }>({
     queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.extra],
     queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
-      '/workspaces/current/plugin/parameters/dynamic-options',
-      { params: payload },
+      `/workspaces/current/trigger-provider/${providerPath}/parameters/dynamic-options`,
+      { params: { action: payload.action, parameter: payload.parameter, ...(payload.extra && { extra: JSON.stringify(payload.extra) }) } },
     ),
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter,
   })
