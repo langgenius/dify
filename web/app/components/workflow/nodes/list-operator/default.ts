@@ -51,7 +51,7 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       if (!errorMessages && !filter_by.conditions[0]?.comparison_operator)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonOperator') })
 
-      if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) && (item_var_type === VarType.boolean ? !filter_by.conditions[0]?.value === undefined : !filter_by.conditions[0]?.value))
+      if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) && (item_var_type === VarType.boolean ? filter_by.conditions[0]?.value === undefined : !filter_by.conditions[0]?.value))
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonValue') })
     }
 
