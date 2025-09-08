@@ -97,6 +97,8 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
         ComparisonOperator.notEmpty,
       ]
     case VarType.number:
+    case VarType.integer:
+    case VarType.float:
       return [
         ComparisonOperator.equal,
         ComparisonOperator.notEqual,
