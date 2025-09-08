@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import I18NContext from '@/context/i18n'
-import type { MailSendResponse } from '@/service/use-common'
+import type { MailSendResponse, MailValidityResponse } from '@/service/use-common'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 
 export default function CheckCode() {
@@ -43,6 +43,17 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await verifyCode({ email, code, token })
       console.log(res)
+      if ((res as MailValidityResponse).is_valid) {
+        const params = new URLSearchParams(searchParams)
+        params.set('token', encodeURIComponent((res as MailValidityResponse).token))
+        router.push(`/signup/check-code?${params.toString()}`)
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: t('login.checkCode.invalidCode'),
+        })
+      }
     }
     catch (error) { console.error(error) }
     finally {

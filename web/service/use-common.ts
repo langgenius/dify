@@ -37,20 +37,24 @@ export const useSendMail = () => {
   })
 }
 
+export type MailValidityResponse = { is_valid: boolean, token: string }
+
 export const useMailValidity = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-validity'],
     mutationFn: (body: { email: string, code: string, token: string }) => {
-      return post<{ data: string, result: string }>('/email-register/validity', { body })
+      return post<MailValidityResponse>('/email-register/validity', { body })
     },
   })
 }
+
+export type MailRegisterResponse = { result: string }
 
 export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
     mutationFn: (body: { token: string, password: string }) => {
-      return post<{ data: string, result: string }>('/email-register', { body })
+      return post<MailRegisterResponse>('/email-register', { body })
     },
   })
 }
