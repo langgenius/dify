@@ -144,8 +144,6 @@ class ScheduleService:
         if result:
             return session.get(Account, result.account_id)
 
-        return None
-
     @staticmethod
     def update_next_run_at(
         session: Session,
@@ -224,8 +222,6 @@ class ScheduleService:
 
             return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
 
-        return None
-
     @staticmethod
     def visual_to_cron(frequency: str, visual_config: VisualConfig) -> str:
         """
@@ -267,7 +263,7 @@ class ScheduleService:
                     has_last = True
                 else:
                     numeric_days.append(day)
-            
+
             result_days = [str(d) for d in sorted(set(numeric_days))]
             if has_last:
                 result_days.append("L")
