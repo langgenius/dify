@@ -47,7 +47,6 @@ class LoginApi(Resource):
         parser.add_argument("password", type=valid_password, required=True, location="json")
         parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
         parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
-        parser.add_argument("language", type=str, required=False, default="en-US", location="json")
         args = parser.parse_args()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
@@ -60,11 +59,6 @@ class LoginApi(Resource):
         invitation = args["invite_token"]
         if invitation:
             invitation = RegisterService.get_invitation_if_token_valid(None, args["email"], invitation)
-
-        if args["language"] is not None and args["language"] == "zh-Hans":
-            language = "zh-Hans"
-        else:
-            language = "en-US"
 
         try:
             if invitation:
@@ -80,12 +74,6 @@ class LoginApi(Resource):
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
             raise AuthenticationFailedError()
-        except services.errors.account.AccountNotFoundError:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_reset_password_email(email=args["email"], language=language)
-                return {"result": "fail", "data": token, "code": "account_not_found"}
-            else:
-                raise AccountNotFound()
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
@@ -133,13 +121,12 @@ class ResetPasswordSendEmailApi(Resource):
         except AccountRegisterError:
             raise AccountInFreezeError()
 
-        if account is None:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_reset_password_email(email=args["email"], language=language)
-            else:
-                raise AccountNotFound()
-        else:
-            token = AccountService.send_reset_password_email(account=account, language=language)
+        token = AccountService.send_reset_password_email(
+            email=args["email"],
+            account=account,
+            language=language,
+            is_allow_register=FeatureService.get_system_features().is_allow_register,
+        )
 
         return {"result": "success", "data": token}
 
