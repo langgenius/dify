@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Optional, cast
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
@@ -54,8 +54,8 @@ class ToolOAuthTenantClient(Base):
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     @property
-    def oauth_params(self):
-        return cast(dict[str, any], json.loads(self.encrypted_oauth_params or "{}"))
+    def oauth_params(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class BuiltinToolProvider(Base):
@@ -96,8 +96,8 @@ class BuiltinToolProvider(Base):
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"))
 
     @property
-    def credentials(self):
-        return cast(dict, json.loads(self.encrypted_credentials))
+    def credentials(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_credentials))
 
 
 class ApiToolProvider(Base):
@@ -146,8 +146,8 @@ class ApiToolProvider(Base):
         return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
 
     @property
-    def credentials(self):
-        return dict(json.loads(self.credentials_str))
+    def credentials(self) -> dict[str, Any]:
+        return dict[str, Any](json.loads(self.credentials_str))
 
     @property
     def user(self) -> Account | None:
@@ -291,9 +291,9 @@ class MCPToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def credentials(self):
+    def credentials(self) -> dict[str, Any]:
         try:
-            return cast(dict, json.loads(self.encrypted_credentials)) or {}
+            return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
         except Exception:
             return {}
 
@@ -313,7 +313,7 @@ class MCPToolProvider(Base):
         return encrypter.decrypt_token(self.tenant_id, self.server_url)
 
     @property
-    def decrypted_headers(self) -> dict[str, any]:
+    def decrypted_headers(self) -> dict[str, Any]:
         """Get decrypted headers for MCP server requests."""
         from core.entities.provider_entities import BasicProviderConfig
         from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -323,7 +323,7 @@ class MCPToolProvider(Base):
             if not self.encrypted_headers:
                 return {}
 
-            headers_data = cast(dict, json.loads(self.encrypted_headers))
+            headers_data = json.loads(self.encrypted_headers)
 
             # Create dynamic config for all headers as SECRET_INPUT
             config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
@@ -335,12 +335,12 @@ class MCPToolProvider(Base):
             )
 
             result = encrypter_instance.decrypt(headers_data)
-            return cast(dict[str, any], result)
+            return result
         except Exception:
             return {}
 
     @property
-    def masked_headers(self) -> dict[str, any]:
+    def masked_headers(self) -> dict[str, Any]:
         """Get masked headers for frontend display."""
         from core.entities.provider_entities import BasicProviderConfig
         from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -350,7 +350,7 @@ class MCPToolProvider(Base):
             if not self.encrypted_headers:
                 return {}
 
-            headers_data = cast(dict, json.loads(self.encrypted_headers))
+            headers_data = json.loads(self.encrypted_headers)
 
             # Create dynamic config for all headers as SECRET_INPUT
             config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
@@ -364,7 +364,7 @@ class MCPToolProvider(Base):
             # First decrypt, then mask
             decrypted_headers = encrypter_instance.decrypt(headers_data)
             result = encrypter_instance.mask_tool_credentials(decrypted_headers)
-            return cast(dict[str, any], result)
+            return result
         except Exception:
             return {}
 
@@ -385,12 +385,12 @@ class MCPToolProvider(Base):
         return mask_url(self.decrypted_server_url)
 
     @property
-    def decrypted_credentials(self):
+    def decrypted_credentials(self) -> dict[str, Any]:
         from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
         from core.tools.utils.encryption import create_provider_encrypter
 
-        provider_controller = MCPToolProviderController._from_db(self)
+        provider_controller = MCPToolProviderController.from_db(self)
 
         encrypter, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,
@@ -398,7 +398,7 @@ class MCPToolProvider(Base):
             cache=NoOpProviderCredentialCache(),
         )
 
-        return encrypter.decrypt(self.credentials)  # type: ignore
+        return encrypter.decrypt(self.credentials)
 
 
 class ToolModelInvoke(Base):

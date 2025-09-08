@@ -1,9 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
 from werkzeug.exceptions import NotFound
 
+from models.account import Account
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService
@@ -24,7 +25,9 @@ class TestAnnotationService:
             patch("services.annotation_service.enable_annotation_reply_task") as mock_enable_task,
             patch("services.annotation_service.disable_annotation_reply_task") as mock_disable_task,
             patch("services.annotation_service.batch_import_annotations_task") as mock_batch_import_task,
-            patch("services.annotation_service.current_user") as mock_current_user,
+            patch(
+                "services.annotation_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
         ):
             # Setup default mock returns
             mock_account_feature_service.get_features.return_value.billing.enabled = False
