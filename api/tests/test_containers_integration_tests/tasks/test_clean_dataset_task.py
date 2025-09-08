@@ -376,8 +376,10 @@ class TestCleanDatasetTask:
 
             # Update document with file reference
             import json
+
             document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
             from extensions.ext_database import db
+
             db.session.commit()
 
         # Create dataset metadata and bindings
@@ -427,9 +429,7 @@ class TestCleanDatasetTask:
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db.session.query(UploadFile).filter(
-            UploadFile.id.in_(upload_file_ids)
-        ).all()
+        remaining_files = db.session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).all()
         assert len(remaining_files) == 0
 
         # Check that metadata and bindings were cleaned up
@@ -590,7 +590,7 @@ class TestCleanDatasetTask:
         <img src="file://{image_files[1].id}" alt="Image 2">
         <img src="file://{image_files[2].id}" alt="Image 3">
         """
-        
+
         segment = DocumentSegment(
             id=str(uuid.uuid4()),
             tenant_id=tenant.id,
@@ -609,6 +609,7 @@ class TestCleanDatasetTask:
         )
 
         from extensions.ext_database import db
+
         db.session.add(segment)
         db.session.commit()
 
@@ -637,9 +638,7 @@ class TestCleanDatasetTask:
 
         # Check that all image files were deleted from database
         image_file_ids = [f.id for f in image_files]
-        remaining_image_files = db.session.query(UploadFile).filter(
-            UploadFile.id.in_(image_file_ids)
-        ).all()
+        remaining_image_files = db.session.query(UploadFile).where(UploadFile.id.in_(image_file_ids)).all()
         assert len(remaining_image_files) == 0
 
         # Verify that storage.delete was called for each image file
@@ -671,7 +670,7 @@ class TestCleanDatasetTask:
         segments = []
         upload_files = []
         upload_file_ids = []
-        
+
         # Create 50 documents with segments and upload files
         for i in range(50):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
@@ -689,12 +688,13 @@ class TestCleanDatasetTask:
 
             # Update document with file reference
             import json
+
             document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
 
         # Create dataset metadata and bindings
         metadata_items = []
         bindings = []
-        
+
         for i in range(10):  # Create 10 metadata items
             metadata = DatasetMetadata(
                 id=str(uuid.uuid4()),
@@ -720,12 +720,14 @@ class TestCleanDatasetTask:
             bindings.append(binding)
 
         from extensions.ext_database import db
+
         db.session.add_all(metadata_items)
         db.session.add_all(bindings)
         db.session.commit()
 
         # Measure cleanup performance
         import time
+
         start_time = time.time()
 
         # Execute the task
@@ -751,9 +753,7 @@ class TestCleanDatasetTask:
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db.session.query(UploadFile).filter(
-            UploadFile.id.in_(upload_file_ids)
-        ).all()
+        remaining_files = db.session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).all()
         assert len(remaining_files) == 0
 
         # Check that all metadata and bindings were deleted
@@ -782,7 +782,7 @@ class TestCleanDatasetTask:
         print(f"Upload files processed: {len(upload_files)}")
         print(f"Metadata items processed: {len(metadata_items)}")
         print(f"Total cleanup time: {cleanup_duration:.3f} seconds")
-        print(f"Average time per document: {cleanup_duration/len(documents):.3f} seconds")
+        print(f"Average time per document: {cleanup_duration / len(documents):.3f} seconds")
 
     def test_clean_dataset_task_concurrent_cleanup_scenarios(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -806,8 +806,10 @@ class TestCleanDatasetTask:
 
         # Update document with file reference
         import json
+
         document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
         from extensions.ext_database import db
+
         db.session.commit()
 
         # Save IDs for verification
@@ -818,20 +820,21 @@ class TestCleanDatasetTask:
         # Mock storage to simulate slow operations
         mock_storage = mock_external_service_dependencies["storage"]
         original_delete = mock_storage.delete
-        
+
         def slow_delete(key):
             import time
+
             time.sleep(0.1)  # Simulate slow storage operation
             return original_delete(key)
-        
+
         mock_storage.delete.side_effect = slow_delete
 
         # Execute multiple cleanup operations concurrently
         import threading
-        
+
         cleanup_results = []
         cleanup_errors = []
-        
+
         def run_cleanup():
             try:
                 clean_dataset_task(
@@ -930,8 +933,10 @@ class TestCleanDatasetTask:
 
         # Update document with file reference
         import json
+
         document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
         from extensions.ext_database import db
+
         db.session.commit()
 
         # Mock storage to raise exceptions
@@ -994,11 +999,11 @@ class TestCleanDatasetTask:
         """
         # Create test data with edge cases
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        
+
         # Create dataset with long name and description (within database limits)
         long_name = "a" * 250  # Long name within varchar(255) limit
         long_description = "b" * 500  # Long description within database limits
-        
+
         dataset = Dataset(
             id=str(uuid.uuid4()),
             tenant_id=tenant.id,
@@ -1013,12 +1018,13 @@ class TestCleanDatasetTask:
         )
 
         from extensions.ext_database import db
+
         db.session.add(dataset)
         db.session.commit()
 
         # Create document with special characters in name
         special_content = "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?`~"
-        
+
         document = Document(
             id=str(uuid.uuid4()),
             tenant_id=tenant.id,
@@ -1078,6 +1084,7 @@ class TestCleanDatasetTask:
 
         # Update document with file reference
         import json
+
         document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
         db.session.commit()
 
