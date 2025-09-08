@@ -454,7 +454,7 @@ def create_default_email_config() -> EmailI18nConfig:
             EmailLanguage.ZH_HANS: EmailTemplate(
                 subject="注册您的 {application_title} 账户",
                 template_path="register_email_template_zh-CN.html",
-                branded_template_path="without-brand/register_email_template_zh-CN-CN.html",
+                branded_template_path="without-brand/register_email_template_zh-CN.html",
             ),
         },
         EmailType.EMAIL_REGISTER_WHEN_ACCOUNT_EXIST: {

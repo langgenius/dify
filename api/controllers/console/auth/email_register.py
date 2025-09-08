@@ -46,13 +46,10 @@ class EmailRegisterSendEmailApi(Resource):
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
         token = None
-        if account is None:
-            token = AccountService.send_email_register_email(email=args["email"], language=language)
-            return {"result": "success", "data": token}
+        token = AccountService.send_email_register_email(email=args["email"], account=account, language=language)
+        return {"result": "success", "data": token}
 
-        else:
-            token = AccountService.send_email_register_email(account=account, email=args["email"], language=language)
-            return {"result": "success", "data": token}
+        
 
 
 class EmailRegisterCheckApi(Resource):
