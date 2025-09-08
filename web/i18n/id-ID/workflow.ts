@@ -967,6 +967,10 @@ const translation = {
     lastOutput: 'Keluaran Terakhir',
     noLastRunFound: 'Tidak ada eksekusi sebelumnya ditemukan',
   },
+  sidebar: {
+    exportWarning: 'Ekspor Versi Tersimpan Saat Ini',
+    exportWarningDesc: 'Ini akan mengekspor versi terkini dari alur kerja Anda yang telah disimpan. Jika Anda memiliki perubahan yang belum disimpan di editor, harap simpan terlebih dahulu dengan menggunakan opsi ekspor di kanvas alur kerja.',
+  },
 }
 
 export default translation
