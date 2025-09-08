@@ -114,9 +114,11 @@ const DatasetCard = ({
       })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
+      const url = URL.createObjectURL(file)
+      a.href = url
       a.download = `${name}.pipeline`
       a.click()
+      URL.revokeObjectURL(url)
     }
     catch {
       Toast.notify({ type: 'error', message: t('app.exportFailed') })
@@ -274,6 +276,7 @@ const DatasetCard = ({
             htmlContent={
               <Operations
                 showDelete={!isCurrentWorkspaceDatasetOperator}
+                showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
                 openRenameModal={openRenameModal}
                 handleExportPipeline={handleExportPipeline}
                 detectIsUsedByApp={detectIsUsedByApp}

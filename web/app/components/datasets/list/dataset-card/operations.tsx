@@ -6,6 +6,7 @@ import OperationItem from './operation-item'
 
 type OperationsProps = {
   showDelete: boolean
+  showExportPipeline: boolean
   openRenameModal: () => void
   handleExportPipeline: () => void
   detectIsUsedByApp: () => void
@@ -13,6 +14,7 @@ type OperationsProps = {
 
 const Operations = ({
   showDelete,
+  showExportPipeline,
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
@@ -27,11 +29,13 @@ const Operations = ({
           name={t('common.operation.edit')}
           handleClick={openRenameModal}
         />
-        <OperationItem
-          Icon={RiFileDownloadLine}
-          name={t('datasetPipeline.operations.exportPipeline')}
-          handleClick={handleExportPipeline}
-        />
+        {showExportPipeline && (
+          <OperationItem
+            Icon={RiFileDownloadLine}
+            name={t('datasetPipeline.operations.exportPipeline')}
+            handleClick={handleExportPipeline}
+          />
+        )}
       </div>
       {showDelete && (
         <>
