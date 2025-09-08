@@ -62,6 +62,7 @@ const translation = {
     passwordInvalid: '密码必须包含字母和数字，且长度不小于 8 位',
     passwordLengthInValid: '密码必须至少为 8 个字符',
     registrationNotAllowed: '账户不存在，请联系系统管理员注册账户',
+    invalidEmailOrPassword: '邮箱或密码错误',
   },
   license: {
     tip: '启动 Dify 社区版之前，请阅读 GitHub 上的',
