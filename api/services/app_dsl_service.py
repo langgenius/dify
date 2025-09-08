@@ -566,7 +566,7 @@ class AppDslService:
     @classmethod
     def _append_workflow_export_data(
         cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: Optional[str] = None
-    ) -> None:
+    ):
         """
         Append workflow export data
         :param export_data: export data
@@ -608,7 +608,7 @@ class AppDslService:
         ]
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, app_model: App) -> None:
+    def _append_model_config_export_data(cls, export_data: dict, app_model: App):
         """
         Append model config export data
         :param export_data: export data

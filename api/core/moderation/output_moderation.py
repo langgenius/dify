@@ -40,7 +40,7 @@ class OutputModeration(BaseModel):
     def get_final_output(self) -> str:
         return self.final_output or ""
 
-    def append_new_token(self, token: str) -> None:
+    def append_new_token(self, token: str):
         self.buffer += token
 
         if not self.thread:

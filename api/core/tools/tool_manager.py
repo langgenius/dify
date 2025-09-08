@@ -773,12 +773,12 @@ class ToolManager:
         if provider is None:
             raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
 
-        controller = MCPToolProviderController._from_db(provider)
+        controller = MCPToolProviderController.from_db(provider)
 
         return controller
 
     @classmethod
-    def user_get_api_provider(cls, provider: str, tenant_id: str) -> dict:
+    def user_get_api_provider(cls, provider: str, tenant_id: str):
         """
         get api provider
         """
@@ -873,7 +873,7 @@ class ToolManager:
         )
 
     @classmethod
-    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
@@ -890,7 +890,7 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)
@@ -928,7 +928,7 @@ class ToolManager:
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
-    ) -> Union[str, dict]:
+    ) -> Union[str, dict[str, Any]]:
         """
         get the tool icon
 

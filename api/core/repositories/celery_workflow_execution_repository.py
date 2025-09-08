@@ -93,7 +93,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             self._triggered_from,
         )
 
-    def save(self, execution: WorkflowExecution) -> None:
+    def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution instance asynchronously using Celery.
 

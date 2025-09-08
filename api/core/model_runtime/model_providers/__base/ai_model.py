@@ -239,7 +239,7 @@ class AIModel(BaseModel):
         """
         return None
 
-    def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName) -> dict:
+    def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName):
         """
         Get default parameter rule for given name
 
