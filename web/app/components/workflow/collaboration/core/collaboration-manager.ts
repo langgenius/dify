@@ -202,29 +202,107 @@ export class CollaborationManager {
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
-    if (!this.nodesMap) return
+    if (!this.nodesMap || !this.doc) return
 
     const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
     const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
 
+    // Delete removed nodes
     oldNodes.forEach((oldNode) => {
       if (!newNodesMap.has(oldNode.id))
         this.nodesMap.delete(oldNode.id)
     })
 
+    // Add or update nodes with fine-grained sync for data properties
     newNodes.forEach((newNode) => {
       const oldNode = oldNodesMap.get(newNode.id)
+
       if (!oldNode) {
-        const persistentData = this.getPersistentNodeData(newNode)
-        const clonedData = JSON.parse(JSON.stringify(persistentData))
-        this.nodesMap.set(newNode.id, clonedData)
+        // New node - create as nested structure
+        const nodeData: any = {
+          id: newNode.id,
+          type: newNode.type,
+          position: { ...newNode.position },
+          width: newNode.width,
+          height: newNode.height,
+          sourcePosition: newNode.sourcePosition,
+          targetPosition: newNode.targetPosition,
+          data: {},
+        }
+
+        // Clone data properties, excluding private ones
+        Object.entries(newNode.data).forEach(([key, value]) => {
+          if (!key.startsWith('_') && value !== undefined)
+            nodeData.data[key] = JSON.parse(JSON.stringify(value))
+        })
+
+        this.nodesMap.set(newNode.id, nodeData)
       }
       else {
-        const oldPersistentData = this.getPersistentNodeData(oldNode)
-        const newPersistentData = this.getPersistentNodeData(newNode)
-        if (!isEqual(oldPersistentData, newPersistentData)) {
-          const clonedData = JSON.parse(JSON.stringify(newPersistentData))
-          this.nodesMap.set(newNode.id, clonedData)
+        // Get existing node from CRDT
+        const existingNode = this.nodesMap.get(newNode.id)
+
+        if (existingNode) {
+          // Create a deep copy to modify
+          const updatedNode = JSON.parse(JSON.stringify(existingNode))
+
+          // Update position only if changed
+          if (oldNode.position.x !== newNode.position.x || oldNode.position.y !== newNode.position.y)
+            updatedNode.position = { ...newNode.position }
+
+          // Update dimensions only if changed
+          if (oldNode.width !== newNode.width)
+            updatedNode.width = newNode.width
+
+          if (oldNode.height !== newNode.height)
+            updatedNode.height = newNode.height
+
+          // Ensure data object exists
+          if (!updatedNode.data)
+            updatedNode.data = {}
+
+          // Fine-grained update of data properties
+          const oldData = oldNode.data || {}
+          const newData = newNode.data || {}
+
+          // Only update changed properties in data
+          Object.entries(newData).forEach(([key, value]) => {
+            if (!key.startsWith('_')) {
+              const oldValue = (oldData as any)[key]
+              if (!isEqual(oldValue, value))
+                updatedNode.data[key] = JSON.parse(JSON.stringify(value))
+            }
+          })
+
+          // Remove deleted properties from data
+          Object.keys(oldData).forEach((key) => {
+            if (!key.startsWith('_') && !(key in newData))
+              delete updatedNode.data[key]
+          })
+
+          // Only update in CRDT if something actually changed
+          if (!isEqual(existingNode, updatedNode))
+            this.nodesMap.set(newNode.id, updatedNode)
+        }
+        else {
+          // Node exists locally but not in CRDT yet
+          const nodeData: any = {
+            id: newNode.id,
+            type: newNode.type,
+            position: { ...newNode.position },
+            width: newNode.width,
+            height: newNode.height,
+            sourcePosition: newNode.sourcePosition,
+            targetPosition: newNode.targetPosition,
+            data: {},
+          }
+
+          Object.entries(newNode.data).forEach(([key, value]) => {
+            if (!key.startsWith('_') && value !== undefined)
+              nodeData.data[key] = JSON.parse(JSON.stringify(value))
+          })
+
+          this.nodesMap.set(newNode.id, nodeData)
         }
       }
     })
@@ -252,14 +330,6 @@ export class CollaborationManager {
         this.edgesMap.set(newEdge.id, clonedEdge)
       }
     })
-  }
-
-  private getPersistentNodeData(node: Node): any {
-    const { data, ...rest } = node
-    const filteredData = Object.fromEntries(
-      Object.entries(data).filter(([key]) => !key.startsWith('_')),
-    )
-    return { ...rest, data: filteredData }
   }
 
   private setupSubscriptions(): void {
