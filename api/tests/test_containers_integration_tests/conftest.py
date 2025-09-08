@@ -27,12 +27,7 @@ from testcontainers.redis import RedisContainer
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 
-
-# Getting the absolute path of the project's root directory
-PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
-
-
-load_dotenv(os.path.normpath(os.path.join(PROJECT_DIR, ".env")), override=True)
+load_dotenv(os.path.normpath(os.path.join(ABS_PATH, ".env")), override=True)
 
 from app_factory import create_app
 from models import db

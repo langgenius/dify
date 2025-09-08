@@ -94,5 +94,5 @@ jobs:
 
       - name: Run TestContainers
         run: |
-          cp docker/.env.example docker/.env
+          cp docker/.env.example api/tests/test_containers_integration_tests/.env
           uv run --project api bash dev/pytest/pytest_testcontainers.sh
