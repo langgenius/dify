@@ -29,7 +29,7 @@ const ResultPreview = ({
     <>
       {isRunning && !outputs && (
         <div className='flex grow flex-col items-center justify-center gap-y-2 pb-20'>
-          <RiLoader2Line className='size-4 animate-spin' />
+          <RiLoader2Line className='size-4 animate-spin text-text-tertiary' />
           <div className='system-sm-regular text-text-tertiary'>{t('pipeline.result.resultPreview.loading')}</div>
         </div>
       )}

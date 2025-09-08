@@ -101,7 +101,7 @@ const DisplayContent = (props: DisplayContentProps) => {
         )}
         {viewMode === ViewMode.Preview && (
           previewType === PreviewType.Markdown
-            ? <Markdown className='grow overflow-auto rounded-lg !bg-white px-4 py-3' content={(mdString ?? '') as string} />
+            ? <Markdown className='grow overflow-auto rounded-lg px-4 py-3' content={(mdString ?? '') as string} />
             : <ChunkCardList
               chunkType={chunkType!}
               parentMode={parentMode}
