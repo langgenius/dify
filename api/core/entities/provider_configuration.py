@@ -43,11 +43,8 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from services.enterprise.plugin_manager_service import (
-    CheckCredentialPolicyComplianceRequest,
     PluginCredentialType,
-    PluginManagerService,
 )
-from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -149,29 +146,26 @@ class ProviderConfiguration(BaseModel):
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
             if current_credential_id:
-                self._check_credential_policy_compliance(current_credential_id)
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                check_credential_policy_compliance(
+                    credential_id=current_credential_id,
+                    provider=self.provider.provider,
+                    credential_type=PluginCredentialType.MODEL,
+                )
             else:
                 # no current credential id, check all available credentials
                 if self.custom_configuration.provider:
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
-                        self._check_credential_policy_compliance(credential_configuration.credential_id)
+                        from core.helper.credential_utils import check_credential_policy_compliance
+
+                        check_credential_policy_compliance(
+                            credential_id=credential_configuration.credential_id,
+                            provider=self.provider.provider,
+                            credential_type=PluginCredentialType.MODEL,
+                        )
 
             return credentials
-
-    def _check_credential_policy_compliance(self, credential_id: str) -> None:
-        """
-        Check credential policy compliance for the given credential ID.
-
-        :param credential_id: The credential ID to check
-        """
-        if FeatureService.get_system_features().plugin_manager.enabled and credential_id:
-            PluginManagerService.check_credential_policy_compliance(
-                CheckCredentialPolicyComplianceRequest(
-                    dify_credential_id=credential_id,
-                    provider=self.provider.provider,
-                    credential_type=PluginCredentialType.MODEL,
-                )
-            )
 
     def get_system_configuration_status(self) -> Optional[SystemConfigurationStatus]:
         """

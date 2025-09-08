@@ -316,7 +316,13 @@ class WorkflowService:
                     if provider:
                         if credential_id:
                             # Check specific credential
-                            self._check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
+                            from core.helper.credential_utils import check_credential_policy_compliance
+
+                            check_credential_policy_compliance(
+                                credential_id=credential_id,
+                                provider=provider,
+                                credential_type=PluginCredentialType.TOOL,
+                            )
                         else:
                             # Check default workspace credential for this provider
                             self._check_default_tool_credential(workflow.tenant_id, provider)
@@ -342,9 +348,9 @@ class WorkflowService:
                         credential_id = tool.get("credential_id")
                         if provider:
                             if credential_id:
-                                self._check_credential_policy_compliance(
-                                    credential_id, provider, PluginCredentialType.TOOL
-                                )
+                                from core.helper.credential_utils import check_credential_policy_compliance
+
+                                check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
                             else:
                                 self._check_default_tool_credential(workflow.tenant_id, provider)
 
@@ -366,33 +372,6 @@ class WorkflowService:
                     raise e
                 else:
                     raise ValueError(f"Node {node_id} ({node_type}): {str(e)}")
-
-    def _check_credential_policy_compliance(
-        self, credential_id: str, provider: str, credential_type: PluginCredentialType
-    ) -> None:
-        """
-        Check credential policy compliance for the given credential ID.
-
-        :param credential_id: The credential ID to check
-        :raises ValueError: If credential policy compliance check fails
-        """
-        try:
-            from services.enterprise.plugin_manager_service import (
-                CheckCredentialPolicyComplianceRequest,
-                PluginManagerService,
-            )
-            from services.feature_service import FeatureService
-
-            if FeatureService.get_system_features().plugin_manager.enabled and credential_id:
-                PluginManagerService.check_credential_policy_compliance(
-                    CheckCredentialPolicyComplianceRequest(
-                        dify_credential_id=credential_id,
-                        provider=provider,
-                        credential_type=credential_type,
-                    )
-                )
-        except Exception as e:
-            raise e
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
@@ -456,7 +435,11 @@ class WorkflowService:
                 raise ValueError("No default credential found")
 
             # Check credential policy compliance using the default credential ID
-            self._check_credential_policy_compliance(default_provider.id, provider, PluginCredentialType.TOOL)
+            from core.helper.credential_utils import check_credential_policy_compliance
+
+            check_credential_policy_compliance(
+                credential_id=default_provider.id, provider=provider, credential_type=PluginCredentialType.TOOL
+            )
 
         except Exception as e:
             raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
@@ -486,7 +469,9 @@ class WorkflowService:
             try:
                 for config in load_balancing_configs:
                     if config.get("credential_id"):
-                        self._check_credential_policy_compliance(
+                        from core.helper.credential_utils import check_credential_policy_compliance
+
+                        check_credential_policy_compliance(
                             config["credential_id"], provider, PluginCredentialType.MODEL
                         )
             except Exception as e:
