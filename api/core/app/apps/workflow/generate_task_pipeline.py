@@ -88,7 +88,7 @@ class WorkflowAppGenerateTaskPipeline:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
-    ) -> None:
+    ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -259,7 +259,7 @@ class WorkflowAppGenerateTaskPipeline:
                 session.rollback()
                 raise
 
-    def _ensure_workflow_initialized(self) -> None:
+    def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
         if not self._workflow_run_id:
             raise ValueError("workflow run not initialized.")
@@ -697,7 +697,7 @@ class WorkflowAppGenerateTaskPipeline:
         if tts_publisher:
             tts_publisher.publish(None)
 
-    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution) -> None:
+    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution):
         invoke_from = self._application_generate_entity.invoke_from
         if invoke_from == InvokeFrom.SERVICE_API:
             created_from = WorkflowAppLogCreatedFrom.SERVICE_API

@@ -19,7 +19,7 @@ from core.workflow.constants import (
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
 
-VariableValue = Union[str, int, float, dict, list, File]
+VariableValue = Union[str, int, float, dict[str, object], list[object], File]
 
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
@@ -45,18 +45,18 @@ class VariablePool(BaseModel):
     )
     environment_variables: Sequence[VariableUnion] = Field(
         description="Environment variables.",
-        default_factory=list,
+        default_factory=list[VariableUnion],
     )
     conversation_variables: Sequence[VariableUnion] = Field(
         description="Conversation variables.",
-        default_factory=list,
+        default_factory=list[VariableUnion],
     )
     rag_pipeline_variables: list[RAGPipelineVariableInput] = Field(
         description="RAG pipeline variables.",
         default_factory=list,
     )
 
-    def model_post_init(self, context: Any, /) -> None:
+    def model_post_init(self, context: Any, /):
         # Create a mapping from field names to SystemVariableKey enum values
         self._add_system_variables(self.system_variables)
         # Add environment variables to the variable pool
@@ -76,7 +76,7 @@ class VariablePool(BaseModel):
             for key, value in rag_pipeline_variables_map.items():
                 self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
 
-    def add(self, selector: Sequence[str], value: Any, /) -> None:
+    def add(self, selector: Sequence[str], value: Any, /):
         """
         Add a variable to the variable pool.
 
@@ -180,11 +180,11 @@ class VariablePool(BaseModel):
         # Return result as Segment
         return result if isinstance(result, Segment) else variable_factory.build_segment(result)
 
-    def _extract_value(self, obj: Any) -> Any:
+    def _extract_value(self, obj: Any):
         """Extract the actual value from an ObjectSegment."""
         return obj.value if isinstance(obj, ObjectSegment) else obj
 
-    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str) -> Any:
+    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str):
         """Get a nested attribute from a dictionary-like object."""
         if not isinstance(obj, dict):
             return None
@@ -210,7 +210,7 @@ class VariablePool(BaseModel):
 
     def convert_template(self, template: str, /):
         parts = VARIABLE_PATTERN.split(template)
-        segments = []
+        segments: list[Segment] = []
         for part in filter(lambda x: x, parts):
             if "." in part and (variable := self.get(part.split("."))):
                 segments.append(variable)

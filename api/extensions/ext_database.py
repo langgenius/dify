@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 _GEVENT_COMPATIBILITY_SETUP: bool = False
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection):
     """Safely rollback database connection.
 
     Args:
@@ -25,7 +25,7 @@ def _safe_rollback(connection) -> None:
         logger.exception("Failed to rollback connection")
 
 
-def _setup_gevent_compatibility() -> None:
+def _setup_gevent_compatibility():
     global _GEVENT_COMPATIBILITY_SETUP  # pylint: disable=global-statement
 
     # Avoid duplicate registration
@@ -33,7 +33,7 @@ def _setup_gevent_compatibility() -> None:
         return
 
     @event.listens_for(Pool, "reset")
-    def _safe_reset(dbapi_connection, connection_record, reset_state) -> None:  # pylint: disable=unused-argument
+    def _safe_reset(dbapi_connection, connection_record, reset_state):  # pylint: disable=unused-argument
         if reset_state.terminate_only:
             return
 

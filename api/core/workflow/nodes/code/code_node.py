@@ -27,7 +27,7 @@ class CodeNode(Node):
 
     _node_data: CodeNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = CodeNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -49,7 +49,7 @@ class CodeNode(Node):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         """
         Get default config of node.
         :param filters: filter by node config parameters.

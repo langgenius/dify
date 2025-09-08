@@ -210,7 +210,7 @@ def _handle_native_json_schema(
     structured_output_schema: Mapping,
     model_parameters: dict,
     rules: list[ParameterRule],
-) -> dict:
+):
     """
     Handle structured output for models with native JSON schema support.
 
@@ -232,7 +232,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict, rules: list) -> None:
+def _set_response_format(model_parameters: dict, rules: list):
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -306,7 +306,7 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
     return structured_output
 
 
-def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema: Mapping) -> dict:
+def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema: Mapping):
     """
     Prepare JSON schema based on model requirements.
 
@@ -334,7 +334,7 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
         return {"schema": processed_schema, "name": "llm_response"}
 
 
-def remove_additional_properties(schema: dict) -> None:
+def remove_additional_properties(schema: dict):
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
@@ -357,7 +357,7 @@ def remove_additional_properties(schema: dict) -> None:
                     remove_additional_properties(item)
 
 
-def convert_boolean_to_string(schema: dict) -> None:
+def convert_boolean_to_string(schema: dict):
     """
     Convert boolean type specifications to string in JSON schema.
 

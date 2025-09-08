@@ -158,7 +158,7 @@ class BaseAppGenerator:
 
         return value
 
-    def _sanitize_value(self, value: Any) -> Any:
+    def _sanitize_value(self, value: Any):
         if isinstance(value, str):
             return value.replace("\x00", "")
         return value

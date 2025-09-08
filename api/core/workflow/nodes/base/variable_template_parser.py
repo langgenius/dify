@@ -57,7 +57,7 @@ class VariableTemplateParser:
         self.template = template
         self.variable_keys = self.extract()
 
-    def extract(self) -> list:
+    def extract(self):
         """
         Extracts all the template variable keys from the template string.
 

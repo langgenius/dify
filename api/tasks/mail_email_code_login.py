@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="mail")
-def send_email_code_login_mail_task(language: str, to: str, code: str) -> None:
+def send_email_code_login_mail_task(language: str, to: str, code: str):
     """
     Send email code login email with internationalization support.
 

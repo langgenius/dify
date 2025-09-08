@@ -27,7 +27,7 @@ class CompletionAppRunner(AppRunner):
 
     def run(
         self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
-    ) -> None:
+    ):
         """
         Run application
         :param application_generate_entity: application generate entity

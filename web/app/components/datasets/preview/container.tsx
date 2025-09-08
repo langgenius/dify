@@ -26,7 +26,6 @@ const PreviewContainer: FC<PreviewContainerProps> = (props) => {
     </div>
   </div>
 }
-
 PreviewContainer.displayName = 'PreviewContainer'
 
 export default PreviewContainer

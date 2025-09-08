@@ -72,6 +72,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [showExportWarning, setShowExportWarning] = useState(false)
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -159,6 +160,14 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       onExport()
       return
     }
+
+    setShowExportWarning(true)
+  }
+
+  const handleConfirmExport = async () => {
+    if (!appDetail)
+      return
+    setShowExportWarning(false)
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
@@ -405,6 +414,16 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {showExportWarning && (
+        <Confirm
+          type="info"
+          isShow={showExportWarning}
+          title={t('workflow.sidebar.exportWarning')}
+          content={t('workflow.sidebar.exportWarningDesc')}
+          onConfirm={handleConfirmExport}
+          onCancel={() => setShowExportWarning(false)}
         />
       )}
     </div>

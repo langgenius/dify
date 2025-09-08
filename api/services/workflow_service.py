@@ -619,7 +619,7 @@ class WorkflowService:
 
         return new_app
 
-    def validate_features_structure(self, app_model: App, features: dict) -> dict:
+    def validate_features_structure(self, app_model: App, features: dict):
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             return AdvancedChatAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
