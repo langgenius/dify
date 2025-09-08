@@ -18,7 +18,7 @@ class ApiExternalDataTool(ExternalDataTool):
     """the unique name of external data tool"""
 
     @classmethod
-    def validate_config(cls, tenant_id: str, config: dict) -> None:
+    def validate_config(cls, tenant_id: str, config: dict):
         """
         Validate the incoming form config data.
 

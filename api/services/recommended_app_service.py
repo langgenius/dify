@@ -6,7 +6,7 @@ from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFa
 
 class RecommendedAppService:
     @classmethod
-    def get_recommended_apps_and_categories(cls, language: str) -> dict:
+    def get_recommended_apps_and_categories(cls, language: str):
         """
         Get recommended apps and categories.
         :param language: language
@@ -15,7 +15,7 @@ class RecommendedAppService:
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
         result = retrieval_instance.get_recommended_apps_and_categories(language)
-        if not result.get("recommended_apps") and language != "en-US":
+        if not result.get("recommended_apps"):
             result = (
                 RecommendAppRetrievalFactory.get_buildin_recommend_app_retrieval().fetch_recommended_apps_from_builtin(
                     "en-US"

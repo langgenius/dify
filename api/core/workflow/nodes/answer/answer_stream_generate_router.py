@@ -134,7 +134,7 @@ class AnswerStreamGeneratorRouter:
         node_id_config_mapping: dict[str, dict],
         reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
         answer_dependencies: dict[str, list[str]],
-    ) -> None:
+    ):
         """
         Recursive fetch answer dependencies
         :param current_node_id: current node id

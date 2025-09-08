@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="mail")
-def send_reset_password_mail_task(language: str, to: str, code: str) -> None:
+def send_reset_password_mail_task(language: str, to: str, code: str):
     """
     Send reset password email with internationalization support.
 

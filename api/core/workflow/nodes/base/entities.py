@@ -28,7 +28,7 @@ class DefaultValue(BaseModel):
     key: str
 
     @staticmethod
-    def _parse_json(value: str) -> Any:
+    def _parse_json(value: str):
         """Unified JSON parsing handler"""
         try:
             return json.loads(value)
