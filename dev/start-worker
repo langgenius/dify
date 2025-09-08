@@ -24,7 +24,8 @@ show_help() {
   echo "  workflow_professional  - Professional tier workflows (cloud edition)"
   echo "  workflow_team         - Team tier workflows (cloud edition)"
   echo "  workflow_sandbox      - Sandbox tier workflows (cloud edition)"
-  echo "  schedule              - Scheduled workflow executions"
+  echo "  schedule_poller       - Schedule polling tasks"
+  echo "  schedule_executor     - Schedule execution tasks"
   echo "  generation            - Content generation tasks"
   echo "  mail                  - Email notifications"
   echo "  ops_trace             - Operations tracing"
@@ -80,10 +81,10 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on edition
   if [[ "${EDITION}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule"
+    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor"
   else
     # Community edition (SELF_HOSTED): dataset and workflow have separate queues
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule"
+    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor"
   fi
   
   echo "No queues specified, using edition-based defaults: ${QUEUES}"

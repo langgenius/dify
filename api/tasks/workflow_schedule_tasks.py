@@ -20,7 +20,7 @@ from services.workflow.entities import TriggerData
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="schedule")
+@shared_task(queue="schedule_executor")
 def run_schedule_trigger(schedule_id: str) -> None:
     """
     Execute a scheduled workflow trigger.

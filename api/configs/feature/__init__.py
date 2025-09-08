@@ -894,6 +894,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Maximum number of schedules to process in each poll batch",
         default=100,
     )
+    WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
+        description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
+        default=0,
+    )
 
 
 class PositionConfig(BaseSettings):
