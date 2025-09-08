@@ -55,7 +55,7 @@ class ToolOAuthTenantClient(Base):
 
     @property
     def oauth_params(self):
-        return cast(dict, json.loads(self.encrypted_oauth_params or "{}"))
+        return cast(dict[str, any], json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class BuiltinToolProvider(Base):
@@ -313,7 +313,7 @@ class MCPToolProvider(Base):
         return encrypter.decrypt_token(self.tenant_id, self.server_url)
 
     @property
-    def decrypted_headers(self) -> dict[str, Any]:
+    def decrypted_headers(self) -> dict[str, any]:
         """Get decrypted headers for MCP server requests."""
         from core.entities.provider_entities import BasicProviderConfig
         from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -335,12 +335,12 @@ class MCPToolProvider(Base):
             )
 
             result = encrypter_instance.decrypt(headers_data)
-            return cast(dict[str, Any], result)
+            return cast(dict[str, any], result)
         except Exception:
             return {}
 
     @property
-    def masked_headers(self) -> dict[str, Any]:
+    def masked_headers(self) -> dict[str, any]:
         """Get masked headers for frontend display."""
         from core.entities.provider_entities import BasicProviderConfig
         from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -364,7 +364,7 @@ class MCPToolProvider(Base):
             # First decrypt, then mask
             decrypted_headers = encrypter_instance.decrypt(headers_data)
             result = encrypter_instance.mask_tool_credentials(decrypted_headers)
-            return cast(dict[str, Any], result)
+            return cast(dict[str, any], result)
         except Exception:
             return {}
 
