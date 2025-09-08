@@ -111,7 +111,7 @@ const translation = {
     noLoginMethodTip: 'Please contact the system admin to add an authentication method.',
     disabled: 'Webapp authentication is disabled. Please contact the system admin to enable it. You can try to use the app directly.',
   },
-  register: {
+  signup: {
     noAccount: 'Don’t have an account? ',
     signUp: 'Sign Up',
   },

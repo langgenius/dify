@@ -173,11 +173,11 @@ const NormalForm = () => {
 
           {systemFeatures.is_allow_register && (
             <div className='mb-3 mt-5  text-[13px] font-medium leading-4 text-text-secondary'>
-              <span>{t('login.register.noAccount')}</span>
+              <span>{t('login.signup.noAccount')}</span>
               <Link
                 className='text-text-accent'
-                href='/register'
-              >{t('login.register.signUp')}</Link>
+                href='/signup'
+              >{t('login.signup.signUp')}</Link>
             </div>
           )}
           {allMethodsAreDisabled && <>
