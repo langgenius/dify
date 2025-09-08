@@ -111,6 +111,10 @@ const translation = {
     noLoginMethodTip: '请联系系统管理员添加身份认证方式',
     disabled: 'Web 应用身份认证已禁用，请联系系统管理员启用。您也可以尝试直接使用应用。',
   },
+  register: {
+    noAccount: '还没有账户？',
+    signUp: '注册',
+  },
 }
 
 export default translation
