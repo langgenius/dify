@@ -4,14 +4,14 @@ import React, { useEffect, useRef, useState } from 'react'
 import {
   RiDeleteBinLine,
   RiNodeTree,
+  RiUploadCloud2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { formatFileSize } from '@/utils/format'
 import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
-import { UploadCloud01 } from '@/app/components/base/icons/src/vender/line/general'
-import Button from '@/app/components/base/button'
+import ActionButton from '@/app/components/base/action-button'
 
 export type Props = {
   file: File | undefined
@@ -103,16 +103,20 @@ const Uploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-12 items-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm font-normal', dragging && 'border border-[#B2CCFF] bg-[#F5F8FF]')}>
+          <div
+            className={cn(
+              'flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
+              dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
+            )}>
             <div className='flex w-full items-center justify-center space-x-2'>
-              <UploadCloud01 className='mr-2 h-6 w-6' />
+              <RiUploadCloud2Line className='h-6 w-6 text-text-tertiary' />
               <div className='text-text-tertiary'>
-                {t('datasetCreation.stepOne.uploader.button')}
+                {t('app.dslUploader.button')}
                 <span
                   className='cursor-pointer pl-1 text-text-accent'
                   onClick={selectHandle}
                 >
-                  {t('datasetDocuments.list.batchModal.browse')}
+                  {t('app.dslUploader.browse')}
                 </span>
               </div>
             </div>
@@ -120,24 +124,24 @@ const Uploader: FC<Props> = ({
           </div>
         )}
         {file && (
-          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', 'hover:border-[#B2CCFF] hover:bg-[#F5F8FF]')}>
+          <div className='group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover'>
             <div className='flex items-center justify-center p-3'>
-              <RiNodeTree className='h-6 w-6 shrink-0' />
+              <RiNodeTree className='h-6 w-6 shrink-0 text-text-secondary' />
             </div>
             <div className='flex grow flex-col items-start gap-0.5 py-1 pr-2'>
-              <span className='font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary'>{file.name}</span>
+              <span className='font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary'>
+                {file.name}
+              </span>
               <div className='font-inter flex h-3 items-center gap-1 self-stretch text-[10px] font-medium uppercase leading-3 text-text-tertiary'>
                 <span>PIPELINE</span>
                 <span className='text-text-quaternary'>·</span>
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
-            <div className='hidden items-center group-hover:flex'>
-              <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-              <div className='mx-2 h-4 w-px bg-gray-200' />
-              <div className='cursor-pointer p-2' onClick={removeFile}>
+            <div className='hidden items-center pr-3 group-hover:flex'>
+              <ActionButton onClick={removeFile}>
                 <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
-              </div>
+              </ActionButton>
             </div>
           </div>
         )}
