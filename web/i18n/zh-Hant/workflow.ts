@@ -1004,6 +1004,10 @@ const translation = {
     noLastRunFound: '沒有找到之前的運行',
     lastOutput: '最後的輸出',
   },
+  sidebar: {
+    exportWarning: '導出當前保存的版本',
+    exportWarningDesc: '這將導出當前保存的工作流程版本。如果您在編輯器中有未保存的更改，請先通過使用工作流程畫布中的導出選項來保存它們。',
+  },
 }
 
 export default translation
