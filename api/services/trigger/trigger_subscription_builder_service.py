@@ -14,6 +14,7 @@ from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
 from core.trigger.entities.entities import (
     RequestLog,
     SubscriptionBuilder,
+    SubscriptionBuilderUpdater,
 )
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
@@ -64,21 +65,18 @@ class TriggerSubscriptionBuilderService:
             return {"verified": bool(subscription_builder.credentials)}
 
         if subscription_builder.credential_type == CredentialType.API_KEY:
+            credentials_to_validate = subscription_builder.credentials
             try:
-                provider_controller.validate_credentials(user_id, subscription_builder.credentials)
-                return {"verified": True}
+                provider_controller.validate_credentials(user_id, credentials_to_validate)
             except ToolProviderCredentialValidationError as e:
                 raise ValueError(f"Invalid credentials: {e}")
+            return {"verified": True}
 
         return {"verified": True}
 
     @classmethod
     def build_trigger_subscription_builder(
-        cls,
-        tenant_id: str,
-        user_id: str,
-        provider_id: TriggerProviderID,
-        subscription_builder_id: str,
+        cls, tenant_id: str, user_id: str, provider_id: TriggerProviderID, subscription_builder_id: str
     ) -> None:
         """Build a trigger subscription builder"""
         provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
@@ -143,11 +141,7 @@ class TriggerSubscriptionBuilderService:
         tenant_id: str,
         user_id: str,
         provider_id: TriggerProviderID,
-        credentials: Mapping[str, str],
         credential_type: CredentialType,
-        credential_expires_at: int,
-        expires_at: int,
-        name: str | None,
     ) -> SubscriptionBuilder:
         """
         Add a new trigger subscription validation.
@@ -160,17 +154,17 @@ class TriggerSubscriptionBuilderService:
         subscription_id = str(uuid.uuid4())
         subscription_builder = SubscriptionBuilder(
             id=subscription_id,
-            name=name or "",
+            name=None,
             endpoint_id=subscription_id,
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=str(provider_id),
             parameters=subscription_schema.get_default_parameters(),
             properties=subscription_schema.get_default_properties(),
-            credentials=credentials,
+            credentials={},
             credential_type=credential_type,
-            credential_expires_at=credential_expires_at,
-            expires_at=expires_at,
+            credential_expires_at=-1,
+            expires_at=-1,
         )
         cache_key = cls.encode_cache_key(subscription_id)
         redis_client.setex(
@@ -184,10 +178,7 @@ class TriggerSubscriptionBuilderService:
         tenant_id: str,
         provider_id: TriggerProviderID,
         subscription_builder_id: str,
-        name: str | None,
-        parameters: Mapping[str, Any] | None,
-        properties: Mapping[str, Any] | None,
-        credentials: Mapping[str, str] | None,
+        subscription_builder_updater: SubscriptionBuilderUpdater,
     ) -> SubscriptionBuilderApiEntity:
         """
         Update a trigger subscription validation.
@@ -198,23 +189,16 @@ class TriggerSubscriptionBuilderService:
             raise ValueError(f"Provider {provider_id} not found")
 
         cache_key = cls.encode_cache_key(subscription_id)
-        subscription_builder = cls.get_subscription_builder(subscription_id)
-        if not subscription_builder or subscription_builder.tenant_id != tenant_id:
+        subscription_builder_cache = cls.get_subscription_builder(subscription_builder_id)
+        if not subscription_builder_cache or subscription_builder_cache.tenant_id != tenant_id:
             raise ValueError(f"Subscription {subscription_id} expired or not found")
 
-        if name:
-            subscription_builder.name = name
-        if parameters:
-            subscription_builder.parameters = parameters
-        if properties:
-            subscription_builder.properties = properties
-        if credentials:
-            subscription_builder.credentials = credentials
+        subscription_builder_updater.update(subscription_builder_cache)
 
         redis_client.setex(
-            cache_key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_MS__, subscription_builder.model_dump_json()
+            cache_key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_MS__, subscription_builder_cache.model_dump_json()
         )
-        return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder)
+        return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder_cache)
 
     @classmethod
     def builder_to_api_entity(

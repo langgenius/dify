@@ -217,6 +217,35 @@ class SubscriptionBuilder(BaseModel):
         )
 
 
+class SubscriptionBuilderUpdater(BaseModel):
+    name: str | None = Field(default=None, description="The name of the subscription builder")
+    parameters: Mapping[str, Any] | None = Field(default=None, description="The parameters of the subscription builder")
+    properties: Mapping[str, Any] | None = Field(default=None, description="The properties of the subscription builder")
+    credentials: Mapping[str, str] | None = Field(
+        default=None, description="The credentials of the subscription builder"
+    )
+    credential_type: str | None = Field(default=None, description="The credential type of the subscription builder")
+    credential_expires_at: int | None = Field(
+        default=None, description="The credential expires at of the subscription builder"
+    )
+    expires_at: int | None = Field(default=None, description="The expires at of the subscription builder")
+
+    def update(self, subscription_builder: SubscriptionBuilder) -> None:
+        if self.name:
+            subscription_builder.name = self.name
+        if self.parameters:
+            subscription_builder.parameters = self.parameters
+        if self.properties:
+            subscription_builder.properties = self.properties
+        if self.credentials:
+            subscription_builder.credentials = self.credentials
+        if self.credential_type:
+            subscription_builder.credential_type = self.credential_type
+        if self.credential_expires_at:
+            subscription_builder.credential_expires_at = self.credential_expires_at
+        if self.expires_at:
+            subscription_builder.expires_at = self.expires_at
+
 # Export all entities
 __all__ = [
     "OAuthSchema",
