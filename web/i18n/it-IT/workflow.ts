@@ -1030,6 +1030,10 @@ const translation = {
     noLastRunFound: 'Nessuna esecuzione precedente trovata',
     lastOutput: 'Ultimo output',
   },
+  sidebar: {
+    exportWarning: 'Esporta la versione salvata corrente',
+    exportWarningDesc: 'Questo exporterà l\'attuale versione salvata del tuo flusso di lavoro. Se hai modifiche non salvate nell\'editor, ti preghiamo di salvarle prima utilizzando l\'opzione di esportazione nel canvas del flusso di lavoro.',
+  },
 }
 
 export default translation

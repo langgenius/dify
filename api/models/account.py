@@ -1,10 +1,10 @@
 import enum
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 import sqlalchemy as sa
-from flask_login import UserMixin
+from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, reconstructor
 
@@ -227,11 +227,11 @@ class Tenant(Base):
         )
 
     @property
-    def custom_config_dict(self):
+    def custom_config_dict(self) -> dict[str, Any]:
         return json.loads(self.custom_config) if self.custom_config else {}
 
     @custom_config_dict.setter
-    def custom_config_dict(self, value: dict):
+    def custom_config_dict(self, value: dict[str, Any]) -> None:
         self.custom_config = json.dumps(value)
 
 

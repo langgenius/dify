@@ -476,6 +476,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             data_source_info = document.data_source_info_dict
 
             if document.data_source_type == "upload_file":
+                if not data_source_info:
+                    continue
                 file_id = data_source_info["upload_file_id"]
                 file_detail = (
                     db.session.query(UploadFile)
@@ -492,6 +494,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 extract_settings.append(extract_setting)
 
             elif document.data_source_type == "notion_import":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION.value,
                     notion_info={
@@ -504,6 +508,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 )
                 extract_settings.append(extract_setting)
             elif document.data_source_type == "website_crawl":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.WEBSITE.value,
                     website_info={
