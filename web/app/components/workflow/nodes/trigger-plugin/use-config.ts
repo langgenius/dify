@@ -68,8 +68,14 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   // Combined parameter schema (subscription + trigger specific)
   const triggerParameterSchema = useMemo(() => {
-    return [...subscriptionParameterSchema, ...triggerSpecificParameterSchema]
-  }, [subscriptionParameterSchema, triggerSpecificParameterSchema])
+    const schemaMap = new Map()
+
+    triggerSpecificParameterSchema.forEach((schema) => {
+      schemaMap.set(schema.variable || schema.name, schema)
+    })
+
+    return Array.from(schemaMap.values())
+  }, [triggerSpecificParameterSchema])
 
   const triggerParameterValue = useMemo(() => {
     if (!triggerParameterSchema.length) return {}
@@ -149,6 +155,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     currentTrigger,
     triggerParameterSchema,
     triggerParameterValue,
+    subscriptionParameterSchema,
     setTriggerParameterValue,
     setInputVar,
     outputSchema,
