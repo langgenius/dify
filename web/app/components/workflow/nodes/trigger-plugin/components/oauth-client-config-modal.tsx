@@ -59,9 +59,7 @@ const OAuthClientConfigModal: FC<OAuthClientConfigModalProps> = ({
   const [tempCredential, setTempCredential] = useState<Record<string, any>>({})
   const [isLoading, setIsLoading] = useState(false)
 
-  const providerPath = `${provider.plugin_id}/${provider.name}`
-
-  const { data: oauthConfig, isLoading: isLoadingConfig } = useTriggerOAuthConfig(providerPath)
+  const { data: oauthConfig, isLoading: isLoadingConfig } = useTriggerOAuthConfig(provider.name)
   const configureTriggerOAuth = useConfigureTriggerOAuth()
   const invalidateOAuthConfig = useInvalidateTriggerOAuthConfig()
 
@@ -103,13 +101,13 @@ const OAuthClientConfigModal: FC<OAuthClientConfigModalProps> = ({
 
     try {
       await configureTriggerOAuth.mutateAsync({
-        provider: providerPath,
+        provider: provider.name,
         client_params: convertToOAuthClientParams(tempCredential),
         enabled: true,
       })
 
       // Invalidate cache
-      invalidateOAuthConfig(providerPath)
+      invalidateOAuthConfig(provider.name)
 
       notify({
         type: 'success',
