@@ -335,7 +335,8 @@ class NotionExtractor(BaseExtractor):
 
         last_edited_time = self.get_notion_last_edited_time()
         data_source_info = document_model.data_source_info_dict
-        data_source_info["last_edited_time"] = last_edited_time
+        if data_source_info:
+            data_source_info["last_edited_time"] = last_edited_time
 
         db.session.query(DocumentModel).filter_by(id=document_model.id).update(
             {DocumentModel.data_source_info: json.dumps(data_source_info)}

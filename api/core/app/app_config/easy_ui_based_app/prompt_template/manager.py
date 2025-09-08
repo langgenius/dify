@@ -122,7 +122,7 @@ class PromptTemplateConfigManager:
         return config, ["prompt_type", "pre_prompt", "chat_prompt_config", "completion_prompt_config"]
 
     @classmethod
-    def validate_post_prompt_and_set_defaults(cls, config: dict) -> dict:
+    def validate_post_prompt_and_set_defaults(cls, config: dict):
         """
         Validate post_prompt and set defaults for prompt feature
 

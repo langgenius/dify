@@ -159,7 +159,7 @@ class SegmentType(StrEnum):
             raise AssertionError("this statement should be unreachable.")
 
     @staticmethod
-    def cast_value(value: Any, type_: "SegmentType") -> Any:
+    def cast_value(value: Any, type_: "SegmentType"):
         # Cast Python's `bool` type to `int` when the runtime type requires
         # an integer or number.
         #

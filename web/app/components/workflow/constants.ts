@@ -78,6 +78,10 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
     type: VarType.string,
   },
   {
+    variable: 'reasoning_content',
+    type: VarType.string,
+  },
+  {
     variable: 'usage',
     type: VarType.object,
   },

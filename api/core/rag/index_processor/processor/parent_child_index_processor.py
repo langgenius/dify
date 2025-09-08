@@ -41,7 +41,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
         rules = Rule(**process_rule.get("rules"))
-        all_documents = []  # type: ignore
+        all_documents: list[Document] = []
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
             if not rules.segmentation:

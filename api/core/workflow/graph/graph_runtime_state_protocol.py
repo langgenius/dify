@@ -1,16 +1,18 @@
+from collections.abc import Mapping
 from typing import Any, Protocol
 
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.variables.segments import Segment
 
 
 class ReadOnlyVariablePool(Protocol):
     """Read-only interface for VariablePool."""
 
-    def get(self, node_id: str, variable_key: str) -> Any:
+    def get(self, node_id: str, variable_key: str) -> Segment | None:
         """Get a variable value (read-only)."""
         ...
 
-    def get_all_by_node(self, node_id: str) -> dict[str, Any]:
+    def get_all_by_node(self, node_id: str) -> Mapping[str, object]:
         """Get all variables for a node (read-only)."""
         ...
 

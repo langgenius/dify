@@ -41,6 +41,7 @@ class TestWorkflowEntryRedisChannel:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
+                variable_pool=mock_variable_pool,
                 graph_runtime_state=mock_graph_runtime_state,
                 command_channel=redis_channel,  # Provide Redis channel
             )
@@ -81,6 +82,7 @@ class TestWorkflowEntryRedisChannel:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
+                variable_pool=mock_variable_pool,
                 graph_runtime_state=mock_graph_runtime_state,
                 command_channel=None,  # No channel provided
             )
@@ -128,6 +130,7 @@ class TestWorkflowEntryRedisChannel:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
+                variable_pool=mock_variable_pool,
                 graph_runtime_state=mock_graph_runtime_state,
                 command_channel=redis_channel,
             )

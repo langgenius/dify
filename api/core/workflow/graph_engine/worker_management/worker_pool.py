@@ -217,7 +217,7 @@ class WorkerPool:
             return False
 
         # Find and remove idle workers that have been idle long enough
-        workers_to_remove = []
+        workers_to_remove: list[tuple[Worker, int]] = []
 
         for worker in self._workers:
             # Check if worker is idle and has exceeded idle time threshold

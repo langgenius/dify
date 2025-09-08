@@ -50,6 +50,7 @@ from .exc import (
 )
 from .prompts import (
     CHAT_EXAMPLE,
+    CHAT_GENERATE_JSON_PROMPT,
     CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE,
     COMPLETION_GENERATE_JSON_PROMPT,
     FUNCTION_CALLING_EXTRACTOR_EXAMPLE,
@@ -92,7 +93,7 @@ class ParameterExtractorNode(Node):
 
     _node_data: ParameterExtractorNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = ParameterExtractorNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -117,7 +118,7 @@ class ParameterExtractorNode(Node):
     _model_config: Optional[ModelConfigWithCredentialsEntity] = None
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         return {
             "model": {
                 "prompt_templates": {
@@ -538,7 +539,7 @@ class ParameterExtractorNode(Node):
 
         return prompt_messages
 
-    def _validate_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
+    def _validate_result(self, data: ParameterExtractorNodeData, result: dict):
         if len(data.parameters) != len(result):
             raise InvalidNumberOfParametersError("Invalid number of parameters")
 
@@ -591,7 +592,7 @@ class ParameterExtractorNode(Node):
         else:
             return None
 
-    def _transform_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
+    def _transform_result(self, data: ParameterExtractorNodeData, result: dict):
         """
         Transform result into standard format.
         """
@@ -684,7 +685,7 @@ class ParameterExtractorNode(Node):
         logger.info("extra error: %s", result)
         return None
 
-    def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:
+    def _generate_default_result(self, data: ParameterExtractorNodeData):
         """
         Generate default result.
         """
@@ -746,7 +747,7 @@ class ParameterExtractorNode(Node):
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
                 role=PromptMessageRole.SYSTEM,
-                text=FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT.format(histories=memory_str, instruction=instruction),
+                text=CHAT_GENERATE_JSON_PROMPT.format(histories=memory_str).replace("{{instructions}}", instruction),
             )
             user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
             return [system_prompt_messages, user_prompt_message]

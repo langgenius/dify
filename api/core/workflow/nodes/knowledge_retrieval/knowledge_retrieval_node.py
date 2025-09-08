@@ -99,7 +99,7 @@ class KnowledgeRetrievalNode(Node):
         graph_runtime_state: "GraphRuntimeState",
         *,
         llm_file_saver: LLMFileSaver | None = None,
-    ) -> None:
+    ):
         super().__init__(
             id=id,
             config=config,
@@ -116,7 +116,7 @@ class KnowledgeRetrievalNode(Node):
             )
         self._llm_file_saver = llm_file_saver
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = KnowledgeRetrievalNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
