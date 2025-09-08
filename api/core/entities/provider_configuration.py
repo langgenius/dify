@@ -42,9 +42,7 @@ from models.provider import (
     ProviderType,
     TenantPreferredModelProvider,
 )
-from services.enterprise.plugin_manager_service import (
-    PluginCredentialType,
-)
+from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
