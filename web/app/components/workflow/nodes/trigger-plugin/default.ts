@@ -6,7 +6,7 @@ import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/block
 const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   defaultValue: {
     plugin_id: '',
-    tool_name: '',
+    trigger_name: '',
     event_type: '',
     config: {},
   },

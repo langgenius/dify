@@ -69,7 +69,7 @@ class TriggerProviderService:
                 controller=provider_controller,
                 subscription=subscription,
             )
-            subscription.credentials = encrypter.decrypt(subscription.credentials)
+            subscription.credentials = encrypter.mask_credentials(subscription.credentials)
         return subscriptions
 
     @classmethod
@@ -164,6 +164,34 @@ class TriggerProviderService:
         except Exception as e:
             logger.exception("Failed to add trigger provider")
             raise ValueError(str(e))
+
+    @classmethod
+    def get_subscription_by_id(
+        cls, tenant_id: str, subscription_id: str | None = None
+    ) -> TriggerProviderSubscriptionApiEntity | None:
+        """
+        Get a trigger subscription by the ID.
+        """
+        with Session(db.engine, expire_on_commit=False) as session:
+            subscription: TriggerSubscription | None = None
+            if subscription_id:
+                subscription = (
+                    session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
+                )
+            else:
+                subscription = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id).first()
+            if subscription:
+                provider_controller = TriggerManager.get_trigger_provider(
+                    tenant_id, TriggerProviderID(subscription.provider_id)
+                )
+                encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+                    tenant_id=tenant_id,
+                    controller=provider_controller,
+                    subscription=subscription,
+                )
+                subscription.credentials = encrypter.decrypt(subscription.credentials)
+                return subscription.to_api_entity()
+            return None
 
     @classmethod
     def delete_trigger_provider(cls, session: Session, tenant_id: str, subscription_id: str):

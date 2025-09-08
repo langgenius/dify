@@ -1,32 +1,32 @@
 'use client'
-import type { FC } from 'react'
-import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ToolFormItem from './item'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { Tool } from '@/app/components/tools/types'
+import type { Trigger } from '@/app/components/tools/types'
+import type { FC } from 'react'
+import type { PluginTriggerVarInputs } from '../types'
+import TriggerFormItem from './item'
+import type { TriggerWithProvider } from '../../../block-selector/types'
 
 type Props = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
-  value: ToolVarInputs
-  onChange: (value: ToolVarInputs) => void
+  value: PluginTriggerVarInputs
+  onChange: (value: PluginTriggerVarInputs) => void
   onOpen?: (index: number) => void
   inPanel?: boolean
-  currentTool?: Tool
-  currentProvider?: ToolWithProvider
+  currentTrigger?: Trigger
+  currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
 }
 
-const ToolForm: FC<Props> = ({
+const TriggerForm: FC<Props> = ({
   readOnly,
   nodeId,
   schema,
   value,
   onChange,
   inPanel,
-  currentTool,
+  currentTrigger,
   currentProvider,
   extraParams,
 }) => {
@@ -34,7 +34,7 @@ const ToolForm: FC<Props> = ({
     <div className='space-y-1'>
       {
         schema.map((schema, index) => (
-          <ToolFormItem
+          <TriggerFormItem
             key={index}
             readOnly={readOnly}
             nodeId={nodeId}
@@ -42,14 +42,13 @@ const ToolForm: FC<Props> = ({
             value={value}
             onChange={onChange}
             inPanel={inPanel}
-            currentTool={currentTool}
+            currentTrigger={currentTrigger}
             currentProvider={currentProvider}
             extraParams={extraParams}
-            providerType='tool'
           />
         ))
       }
     </div>
   )
 }
-export default ToolForm
+export default TriggerForm

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiBracesLine,
 } from '@remixicon/react'
-import type { ToolVarInputs } from '../../types'
+import type { PluginTriggerVarInputs } from '../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -12,33 +12,31 @@ import Tooltip from '@/app/components/base/tooltip'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 import { useBoolean } from 'ahooks'
 import SchemaModal from '@/app/components/plugins/plugin-detail-panel/tool-selector/schema-modal'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { Tool } from '@/app/components/tools/types'
+import type { Trigger } from '@/app/components/tools/types'
+import type { TriggerWithProvider } from '../../../block-selector/types'
 
 type Props = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
-  value: ToolVarInputs
-  onChange: (value: ToolVarInputs) => void
+  value: PluginTriggerVarInputs
+  onChange: (value: PluginTriggerVarInputs) => void
   inPanel?: boolean
-  currentTool?: Tool
-  currentProvider?: ToolWithProvider
+  currentTrigger?: Trigger
+  currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
-  providerType?: 'tool' | 'trigger'
 }
 
-const ToolFormItem: FC<Props> = ({
+const TriggerFormItem: FC<Props> = ({
   readOnly,
   nodeId,
   schema,
   value,
   onChange,
   inPanel,
-  currentTool,
+  currentTrigger,
   currentProvider,
   extraParams,
-  providerType = 'tool',
 }) => {
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -91,10 +89,10 @@ const ToolFormItem: FC<Props> = ({
         value={value}
         onChange={onChange}
         inPanel={inPanel}
-        currentResource={currentTool}
+        currentResource={currentTrigger}
         currentProvider={currentProvider}
+        providerType='trigger'
         extraParams={extraParams}
-        providerType={providerType}
       />
 
       {isShowSchema && (
@@ -108,4 +106,4 @@ const ToolFormItem: FC<Props> = ({
     </div>
   )
 }
-export default ToolFormItem
+export default TriggerFormItem

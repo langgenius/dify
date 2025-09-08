@@ -5,7 +5,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import useConfig from './use-config'
-import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
+import TriggerForm from './trigger-form'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { Type } from '../llm/types'
 
@@ -21,6 +21,8 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
     outputSchema,
     hasObjectOutput,
     isAuthenticated,
+    currentProvider,
+    currentTrigger,
   } = useConfig(id, data)
 
   // Convert output schema to VarItem format
@@ -36,13 +38,14 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
       {isAuthenticated && triggerParameterSchema.length > 0 && (
         <>
           <div className='px-4 pb-4'>
-            <ToolForm
+            <TriggerForm
               readOnly={readOnly}
               nodeId={id}
               schema={triggerParameterSchema as any}
               value={triggerParameterValue}
               onChange={setTriggerParameterValue}
-              providerType="trigger"
+              currentProvider={currentProvider}
+              currentTrigger={currentTrigger}
             />
           </div>
           <Split />

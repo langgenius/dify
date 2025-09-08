@@ -5,7 +5,7 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { PluginDefaultValue, ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -321,7 +321,7 @@ export type NodeDefault<T> = {
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',

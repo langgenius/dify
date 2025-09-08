@@ -27,9 +27,9 @@ class PluginTriggerManager(BasePluginClient):
         def transformer(json_response: dict[str, Any]) -> dict:
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
-                provider_name = declaration.get("identity", {}).get("name")
+                provider_id = provider.get("plugin_id") + "/" + provider.get("provider")
                 for trigger in declaration.get("triggers", []):
-                    trigger["identity"]["provider"] = provider_name
+                    trigger["identity"]["provider"] = provider_id
 
             return json_response
 
@@ -42,10 +42,11 @@ class PluginTriggerManager(BasePluginClient):
         )
 
         for provider in response:
-            provider.declaration.identity.name = str(provider.provider)
+            provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
+
             # override the provider name for each trigger to plugin_id/provider_name
             for trigger in provider.declaration.triggers:
-                trigger.identity.provider = str(provider.provider)
+                trigger.identity.provider = provider.declaration.identity.name
 
         return response
 

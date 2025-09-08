@@ -97,7 +97,7 @@ const AgentTools: FC = () => {
       provider_id: tool.provider_id,
       provider_type: tool.provider_type as CollectionType,
       provider_name: tool.provider_name,
-      tool_name: tool.tool_name,
+      tool_name: tool.trigger_name,
       tool_label: tool.tool_label,
       tool_parameters: tool.params,
       notAuthor: !tool.is_team_authorization,

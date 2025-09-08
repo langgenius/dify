@@ -516,20 +516,20 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         parser.add_argument("provider", type=str, required=True, location="args")
         parser.add_argument("action", type=str, required=True, location="args")
         parser.add_argument("parameter", type=str, required=True, location="args")
-        parser.add_argument("extra", type=dict, required=False, location="args")
+        parser.add_argument("credential_id", type=str, required=False, location="args")
         parser.add_argument("provider_type", type=str, required=True, location="args")
         args = parser.parse_args()
 
         try:
             options = PluginParameterService.get_dynamic_select_options(
-                tenant_id,
-                user_id,
-                args["plugin_id"],
-                args["provider"],
-                args["action"],
-                args["parameter"],
-                args["extra"],
-                args["provider_type"],
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args["plugin_id"],
+                provider=args["provider"],
+                action=args["action"],
+                parameter=args["parameter"],
+                credential_id=args["credential_id"],
+                provider_type=args["provider_type"],
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
