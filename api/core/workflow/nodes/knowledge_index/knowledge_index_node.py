@@ -184,7 +184,6 @@ class KnowledgeIndexNode(Node):
     def version(cls) -> str:
         return "1"
 
-
     def get_streaming_template(self) -> Template:
         """
         Get the template for streaming.

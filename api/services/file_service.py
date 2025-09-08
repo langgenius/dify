@@ -3,7 +3,6 @@ import os
 import uuid
 from typing import Any, Literal, Union
 
-from flask_login import current_user
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound

@@ -2643,7 +2643,9 @@ class SegmentService:
             return segment_data_list
 
     @classmethod
-    def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset) -> DocumentSegment:
+    def update_segment(
+        cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset
+    ) -> DocumentSegment:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
