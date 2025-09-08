@@ -1,5 +1,5 @@
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 import pytz
 
@@ -69,7 +69,7 @@ class AgentService:
         if not app_model_config:
             raise ValueError("App model config not found")
 
-        result = {
+        result: dict[str, Any] = {
             "meta": {
                 "status": "success",
                 "executor": executor,

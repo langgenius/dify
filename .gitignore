@@ -215,6 +215,13 @@ mise.toml
 # Next.js build output
 .next/
 
+# PWA generated files
+web/public/sw.js
+web/public/sw.js.map
+web/public/workbox-*.js
+web/public/workbox-*.js.map
+web/public/fallback-*.js
+
 # AI Assistant
 .roo/
 api/.env.backup
