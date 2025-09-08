@@ -19,8 +19,8 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     """
     Get current user
 
-    NOTE: user_is is not trusted, it could be maliciously set to any value.
-    As a result, it could only been considered as a end user id.
+    NOTE: user_id is not trusted, it could be maliciously set to any value.
+    As a result, it could only be considered as an end user id.
     """
     try:
         with Session(db.engine) as session:
