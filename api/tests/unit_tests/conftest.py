@@ -12,7 +12,6 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 # Getting the absolute path of the project's root directory
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
-print(f"Project directory: {PROJECT_DIR}")
 
 load_dotenv(os.path.normpath(os.path.join(ABS_PATH, ".env")), override=True)
 
