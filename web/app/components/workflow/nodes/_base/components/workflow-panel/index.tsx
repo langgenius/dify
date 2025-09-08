@@ -241,8 +241,8 @@ const BasePanel: FC<BasePanelProps> = ({
   // For trigger plugins, check if they have existing subscriptions (authenticated)
   const triggerProvider = useMemo(() => {
     if (data.type === BlockEnum.TriggerPlugin) {
-      if (data.provider_id && data.provider_name)
-        return `${data.provider_id}/${data.provider_name}`
+      if (data.provider_name)
+        return data.provider_name
       return data.provider_id || ''
     }
     return ''

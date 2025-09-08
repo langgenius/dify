@@ -28,8 +28,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   // Construct provider for authentication check
   const authProvider = useMemo(() => {
-    if (provider_id && provider_name) return `${provider_id}/${provider_name}`
-    return provider_id || ''
+    return provider_name || ''
   }, [provider_id, provider_name])
 
   const { data: subscriptions = [] } = useTriggerSubscriptions(

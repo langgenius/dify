@@ -32,11 +32,8 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
   const provider = useMemo(() => {
     if (data.type === BlockEnum.TriggerPlugin) {
       // If we have both plugin_id and provider_name, construct the full path
-      if (data.provider_id && data.provider_name)
-        return `${data.provider_id}/${data.provider_name}`
-
-      // Otherwise use provider_id as fallback (might be already complete)
-      return data.provider_id || ''
+      if (data.provider_name)
+        return data.provider_name
     }
     return data.provider_id || ''
   }, [data.type, data.provider_id, data.provider_name])

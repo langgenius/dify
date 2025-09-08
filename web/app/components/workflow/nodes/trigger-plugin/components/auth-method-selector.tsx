@@ -31,8 +31,7 @@ const AuthMethodSelector: FC<AuthMethodSelectorProps> = ({
   const initiateTriggerOAuth = useInitiateTriggerOAuth()
   const invalidateSubscriptions = useInvalidateTriggerSubscriptions()
 
-  const providerPath = `${provider.plugin_id}/${provider.name}`
-  const { data: oauthConfig } = useTriggerOAuthConfig(providerPath, supportedMethods.includes('oauth'))
+  const { data: oauthConfig } = useTriggerOAuthConfig(provider.name, supportedMethods.includes('oauth'))
 
   const handleOAuthAuth = useCallback(async () => {
     // Check if OAuth client is configured
@@ -43,10 +42,10 @@ const AuthMethodSelector: FC<AuthMethodSelectorProps> = ({
     }
 
     try {
-      const response = await initiateTriggerOAuth.mutateAsync(providerPath)
+      const response = await initiateTriggerOAuth.mutateAsync(provider.name)
       if (response.authorization_url) {
         openOAuthPopup(response.authorization_url, (callbackData) => {
-          invalidateSubscriptions(providerPath)
+          invalidateSubscriptions(provider.name)
 
           if (callbackData?.success === false) {
             notify({
@@ -69,7 +68,7 @@ const AuthMethodSelector: FC<AuthMethodSelectorProps> = ({
         message: t('workflow.nodes.triggerPlugin.oauthConfigFailed', { error: error.message }),
       })
     }
-  }, [providerPath, initiateTriggerOAuth, invalidateSubscriptions, notify, oauthConfig])
+  }, [provider.name, initiateTriggerOAuth, invalidateSubscriptions, notify, oauthConfig])
 
   const handleApiKeyAuth = useCallback(() => {
     setShowApiKeyModal(true)
@@ -135,7 +134,7 @@ const AuthMethodSelector: FC<AuthMethodSelectorProps> = ({
           onCancel={() => setShowApiKeyModal(false)}
           onSuccess={() => {
             setShowApiKeyModal(false)
-            invalidateSubscriptions(providerPath)
+            invalidateSubscriptions(provider.name)
           }}
         />
       )}

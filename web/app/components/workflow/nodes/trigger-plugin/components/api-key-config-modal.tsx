@@ -46,8 +46,6 @@ const ApiKeyConfigModal: FC<ApiKeyConfigModalProps> = ({
   const buildSubscription = useBuildTriggerSubscription()
   const invalidateSubscriptions = useInvalidateTriggerSubscriptions()
 
-  const providerPath = `${provider.plugin_id}/${provider.name}`
-
   useEffect(() => {
     if (provider.credentials_schema) {
       const schemas = toolCredentialToFormSchemas(provider.credentials_schema as any)
@@ -85,7 +83,7 @@ const ApiKeyConfigModal: FC<ApiKeyConfigModalProps> = ({
       let builderId = subscriptionBuilderId
       if (!builderId) {
         const createResponse = await createBuilder.mutateAsync({
-          provider: providerPath,
+          provider: provider.name,
           credentials: tempCredential,
         })
         builderId = createResponse.subscription_builder.id
@@ -94,7 +92,7 @@ const ApiKeyConfigModal: FC<ApiKeyConfigModalProps> = ({
       else {
         // Update existing builder
         await updateBuilder.mutateAsync({
-          provider: providerPath,
+          provider: provider.name,
           subscriptionBuilderId: builderId,
           credentials: tempCredential,
         })
@@ -102,18 +100,18 @@ const ApiKeyConfigModal: FC<ApiKeyConfigModalProps> = ({
 
       // Step 2: Verify credentials
       await verifyBuilder.mutateAsync({
-        provider: providerPath,
+        provider: provider.name,
         subscriptionBuilderId: builderId,
       })
 
       // Step 3: Build final subscription
       await buildSubscription.mutateAsync({
-        provider: providerPath,
+        provider: provider.name,
         subscriptionBuilderId: builderId,
       })
 
       // Step 4: Invalidate and notify success
-      invalidateSubscriptions(providerPath)
+      invalidateSubscriptions(provider.name)
       notify({
         type: 'success',
         message: t('workflow.nodes.triggerPlugin.apiKeyConfigured'),
