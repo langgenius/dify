@@ -42,7 +42,7 @@ def _get_last_update_timestamp(cache_key: str) -> Optional[datetime]:
 
 
 @redis_fallback()
-def _set_last_update_timestamp(cache_key: str, timestamp: datetime) -> None:
+def _set_last_update_timestamp(cache_key: str, timestamp: datetime):
     """Set last update timestamp in Redis cache with TTL."""
     redis_client.setex(cache_key, _CACHE_TTL_SECONDS, str(timestamp.timestamp()))
 

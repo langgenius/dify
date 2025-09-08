@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
@@ -17,7 +17,7 @@ class TestTagService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.tag_service.current_user") as mock_current_user,
+            patch("services.tag_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
         ):
             # Setup default mock returns
             mock_current_user.current_tenant_id = "test-tenant-id"

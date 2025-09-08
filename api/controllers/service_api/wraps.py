@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Optional
+from typing import Optional, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -21,6 +21,9 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class WhereisUserArg(StrEnum):
@@ -60,27 +63,6 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 
-            tenant_account_join = (
-                db.session.query(Tenant, TenantAccountJoin)
-                .where(Tenant.id == api_token.tenant_id)
-                .where(TenantAccountJoin.tenant_id == Tenant.id)
-                .where(TenantAccountJoin.role.in_(["owner"]))
-                .where(Tenant.status == TenantStatus.NORMAL)
-                .one_or_none()
-            )  # TODO: only owner information is required, so only one is returned.
-            if tenant_account_join:
-                tenant, ta = tenant_account_join
-                account = db.session.query(Account).where(Account.id == ta.account_id).first()
-                # Login admin
-                if account:
-                    account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
-                else:
-                    raise Unauthorized("Tenant owner account does not exist.")
-            else:
-                raise Unauthorized("Tenant does not exist.")
-
             kwargs["app_model"] = app_model
 
             if fetch_user_arg:
@@ -118,8 +100,8 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
 
 
 def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
-    def interceptor(view):
-        def decorated(*args, **kwargs):
+    def interceptor(view: Callable[P, R]):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
 
@@ -148,9 +130,9 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
 
 
 def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
-    def interceptor(view):
+    def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
@@ -170,9 +152,9 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
 
 
 def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
-    def interceptor(view):
+    def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
 
             if resource == "knowledge":

@@ -12,7 +12,7 @@ from models.model import App, Tag, TagBinding
 
 class TagService:
     @staticmethod
-    def get_tags(tag_type: str, current_tenant_id: str, keyword: Optional[str] = None) -> list:
+    def get_tags(tag_type: str, current_tenant_id: str, keyword: Optional[str] = None):
         query = (
             db.session.query(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
@@ -25,7 +25,7 @@ class TagService:
         return results
 
     @staticmethod
-    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list) -> list:
+    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list):
         # Check if tag_ids is not empty to avoid WHERE false condition
         if not tag_ids or len(tag_ids) == 0:
             return []
@@ -51,7 +51,7 @@ class TagService:
         return results
 
     @staticmethod
-    def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str) -> list:
+    def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str):
         if not tag_type or not tag_name:
             return []
         tags = (
@@ -64,7 +64,7 @@ class TagService:
         return tags
 
     @staticmethod
-    def get_tags_by_target_id(tag_type: str, current_tenant_id: str, target_id: str) -> list:
+    def get_tags_by_target_id(tag_type: str, current_tenant_id: str, target_id: str):
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
