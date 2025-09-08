@@ -1,0 +1,24 @@
+{
+  "include": ["models", "configs"],
+  "exclude": [".venv", "tests/", "migrations/"],
+  "ignore": [
+    "core/",
+    "controllers/",
+    "tasks/",
+    "services/",
+    "schedule/",
+    "extensions/",
+    "utils/",
+    "repositories/",
+    "libs/",
+    "fields/",
+    "factories/",
+    "events/",
+    "contexts/",
+    "constants/",
+    "commands.py"
+  ],
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.11",
+  "pythonPlatform": "All"
+}

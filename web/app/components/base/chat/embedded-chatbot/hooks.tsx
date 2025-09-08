@@ -188,7 +188,7 @@ export const useEmbeddedChatbot = () => {
         }
       }
       if (item.number) {
-        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
+        const convertedNumber = Number(initInputs[item.number.variable])
         return {
           ...item.number,
           default: convertedNumber || item.default || item.number.default,
@@ -390,7 +390,7 @@ export const useEmbeddedChatbot = () => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 

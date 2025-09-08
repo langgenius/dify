@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource, fields, reqparse
@@ -6,6 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
+P = ParamSpec("P")
+R = TypeVar("R")
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api, console_ns
@@ -14,9 +18,9 @@ from extensions.ext_database import db
 from models.model import App, InstalledApp, RecommendedApp
 
 
-def admin_required(view):
+def admin_required(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 
@@ -156,15 +160,19 @@ class InsertExploreAppApi(Resource):
             app.is_public = False
 
         with Session(db.engine) as session:
-            installed_apps = session.execute(
-                select(InstalledApp).where(
-                    InstalledApp.app_id == recommended_app.app_id,
-                    InstalledApp.tenant_id != InstalledApp.app_owner_tenant_id,
+            installed_apps = (
+                session.execute(
+                    select(InstalledApp).where(
+                        InstalledApp.app_id == recommended_app.app_id,
+                        InstalledApp.tenant_id != InstalledApp.app_owner_tenant_id,
+                    )
                 )
-            ).all()
+                .scalars()
+                .all()
+            )
 
-        for installed_app in installed_apps:
-            db.session.delete(installed_app)
+            for installed_app in installed_apps:
+                session.delete(installed_app)
 
         db.session.delete(recommended_app)
         db.session.commit()

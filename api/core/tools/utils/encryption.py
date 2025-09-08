@@ -17,11 +17,11 @@ class ProviderConfigCache(Protocol):
         """Get cached provider configuration"""
         ...
 
-    def set(self, config: dict[str, Any]) -> None:
+    def set(self, config: dict[str, Any]):
         """Cache provider configuration"""
         ...
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete cached provider configuration"""
         ...
 

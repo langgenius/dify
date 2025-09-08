@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
@@ -279,9 +280,7 @@ class ProviderConfiguration(BaseModel):
             else [],
         )
 
-    def validate_provider_credentials(
-        self, credentials: dict, credential_id: str = "", session: Session | None = None
-    ) -> dict:
+    def validate_provider_credentials(self, credentials: dict, credential_id: str = "", session: Session | None = None):
         """
         Validate custom credentials.
         :param credentials: provider credentials
@@ -290,7 +289,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.provider_credential_schema.credential_form_schemas
@@ -343,7 +342,65 @@ class ProviderConfiguration(BaseModel):
             with Session(db.engine) as new_session:
                 return _validate(new_session)
 
-    def create_provider_credential(self, credentials: dict, credential_name: str) -> None:
+    def _generate_provider_credential_name(self, session) -> str:
+        """
+        Generate a unique credential name for provider.
+        :return: credential name
+        """
+        return self._generate_next_api_key_name(
+            session=session,
+            query_factory=lambda: select(ProviderCredential).where(
+                ProviderCredential.tenant_id == self.tenant_id,
+                ProviderCredential.provider_name == self.provider.provider,
+            ),
+        )
+
+    def _generate_custom_model_credential_name(self, model: str, model_type: ModelType, session) -> str:
+        """
+        Generate a unique credential name for custom model.
+        :return: credential name
+        """
+        return self._generate_next_api_key_name(
+            session=session,
+            query_factory=lambda: select(ProviderModelCredential).where(
+                ProviderModelCredential.tenant_id == self.tenant_id,
+                ProviderModelCredential.provider_name == self.provider.provider,
+                ProviderModelCredential.model_name == model,
+                ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+            ),
+        )
+
+    def _generate_next_api_key_name(self, session, query_factory) -> str:
+        """
+        Generate next available API KEY name by finding the highest numbered suffix.
+        :param session: database session
+        :param query_factory: function that returns the SQLAlchemy query
+        :return: next available API KEY name
+        """
+        try:
+            stmt = query_factory()
+            credential_records = session.execute(stmt).scalars().all()
+
+            if not credential_records:
+                return "API KEY 1"
+
+            # Extract numbers from API KEY pattern using list comprehension
+            pattern = re.compile(r"^API KEY\s+(\d+)$")
+            numbers = [
+                int(match.group(1))
+                for cr in credential_records
+                if cr.credential_name and (match := pattern.match(cr.credential_name.strip()))
+            ]
+
+            # Return next sequential number
+            next_number = max(numbers, default=0) + 1
+            return f"API KEY {next_number}"
+
+        except Exception as e:
+            logger.warning("Error generating next credential name: %s", str(e))
+            return "API KEY 1"
+
+    def create_provider_credential(self, credentials: dict, credential_name: str | None):
         """
         Add custom provider credentials.
         :param credentials: provider credentials
@@ -351,8 +408,11 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            if self._check_provider_credential_name_exists(credential_name=credential_name, session=session):
-                raise ValueError(f"Credential with name '{credential_name}' already exists.")
+            if credential_name:
+                if self._check_provider_credential_name_exists(credential_name=credential_name, session=session):
+                    raise ValueError(f"Credential with name '{credential_name}' already exists.")
+            else:
+                credential_name = self._generate_provider_credential_name(session)
 
             credentials = self.validate_provider_credentials(credentials=credentials, session=session)
             provider_record = self._get_provider_record(session)
@@ -395,8 +455,8 @@ class ProviderConfiguration(BaseModel):
         self,
         credentials: dict,
         credential_id: str,
-        credential_name: str,
-    ) -> None:
+        credential_name: str | None,
+    ):
         """
         update a saved provider credential (by credential_id).
 
@@ -406,7 +466,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            if self._check_provider_credential_name_exists(
+            if credential_name and self._check_provider_credential_name_exists(
                 credential_name=credential_name, session=session, exclude_id=credential_id
             ):
                 raise ValueError(f"Credential with name '{credential_name}' already exists.")
@@ -428,9 +488,9 @@ class ProviderConfiguration(BaseModel):
             try:
                 # Update credential
                 credential_record.encrypted_config = json.dumps(credentials)
-                credential_record.credential_name = credential_name
                 credential_record.updated_at = naive_utc_now()
-
+                if credential_name:
+                    credential_record.credential_name = credential_name
                 session.commit()
 
                 if provider_record and provider_record.credential_id == credential_id:
@@ -457,7 +517,7 @@ class ProviderConfiguration(BaseModel):
         credential_record: ProviderCredential | ProviderModelCredential,
         credential_source: str,
         session: Session,
-    ) -> None:
+    ):
         """
         Update load balancing configurations that reference the given credential_id.
 
@@ -497,7 +557,7 @@ class ProviderConfiguration(BaseModel):
 
         session.commit()
 
-    def delete_provider_credential(self, credential_id: str) -> None:
+    def delete_provider_credential(self, credential_id: str):
         """
         Delete a saved provider credential (by credential_id).
 
@@ -532,13 +592,7 @@ class ProviderConfiguration(BaseModel):
                         cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
                     )
                     lb_credentials_cache.delete()
-
-                    lb_config.credential_id = None
-                    lb_config.encrypted_config = None
-                    lb_config.enabled = False
-                    lb_config.name = "__delete__"
-                    lb_config.updated_at = naive_utc_now()
-                    session.add(lb_config)
+                    session.delete(lb_config)
 
                 # Check if this is the currently active credential
                 provider_record = self._get_provider_record(session)
@@ -580,7 +634,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def switch_active_provider_credential(self, credential_id: str) -> None:
+    def switch_active_provider_credential(self, credential_id: str):
         """
         Switch active provider credential (copy the selected one into current active snapshot).
 
@@ -758,7 +812,7 @@ class ProviderConfiguration(BaseModel):
         credentials: dict,
         credential_id: str = "",
         session: Session | None = None,
-    ) -> dict:
+    ):
         """
         Validate custom model credentials.
 
@@ -769,7 +823,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.model_credential_schema.credential_form_schemas
@@ -822,7 +876,7 @@ class ProviderConfiguration(BaseModel):
                 return _validate(new_session)
 
     def create_custom_model_credential(
-        self, model_type: ModelType, model: str, credentials: dict, credential_name: str
+        self, model_type: ModelType, model: str, credentials: dict, credential_name: str | None
     ) -> None:
         """
         Create a custom model credential.
@@ -833,10 +887,15 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            if self._check_custom_model_credential_name_exists(
-                model=model, model_type=model_type, credential_name=credential_name, session=session
-            ):
-                raise ValueError(f"Model credential with name '{credential_name}' already exists for {model}.")
+            if credential_name:
+                if self._check_custom_model_credential_name_exists(
+                    model=model, model_type=model_type, credential_name=credential_name, session=session
+                ):
+                    raise ValueError(f"Model credential with name '{credential_name}' already exists for {model}.")
+            else:
+                credential_name = self._generate_custom_model_credential_name(
+                    model=model, model_type=model_type, session=session
+                )
             # validate custom model config
             credentials = self.validate_custom_model_credentials(
                 model_type=model_type, model=model, credentials=credentials, session=session
@@ -880,7 +939,7 @@ class ProviderConfiguration(BaseModel):
                 raise
 
     def update_custom_model_credential(
-        self, model_type: ModelType, model: str, credentials: dict, credential_name: str, credential_id: str
+        self, model_type: ModelType, model: str, credentials: dict, credential_name: str | None, credential_id: str
     ) -> None:
         """
         Update a custom model credential.
@@ -893,7 +952,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as session:
-            if self._check_custom_model_credential_name_exists(
+            if credential_name and self._check_custom_model_credential_name_exists(
                 model=model,
                 model_type=model_type,
                 credential_name=credential_name,
@@ -925,8 +984,9 @@ class ProviderConfiguration(BaseModel):
             try:
                 # Update credential
                 credential_record.encrypted_config = json.dumps(credentials)
-                credential_record.credential_name = credential_name
                 credential_record.updated_at = naive_utc_now()
+                if credential_name:
+                    credential_record.credential_name = credential_name
                 session.commit()
 
                 if provider_model_record and provider_model_record.credential_id == credential_id:
@@ -947,7 +1007,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def delete_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def delete_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
         Delete a saved provider credential (by credential_id).
 
@@ -982,12 +1042,7 @@ class ProviderConfiguration(BaseModel):
                         cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
                     )
                     lb_credentials_cache.delete()
-                    lb_config.credential_id = None
-                    lb_config.encrypted_config = None
-                    lb_config.enabled = False
-                    lb_config.name = "__delete__"
-                    lb_config.updated_at = naive_utc_now()
-                    session.add(lb_config)
+                    session.delete(lb_config)
 
                 # Check if this is the currently active credential
                 provider_model_record = self._get_custom_model_record(model_type, model, session=session)
@@ -1022,7 +1077,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def add_model_credential_to_model(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def add_model_credential_to_model(self, model_type: ModelType, model: str, credential_id: str):
         """
         if model list exist this custom model, switch the custom model credential.
         if model list not exist this custom model, use the credential to add a new custom model record.
@@ -1054,6 +1109,7 @@ class ProviderConfiguration(BaseModel):
                     provider_name=self.provider.provider,
                     model_name=model,
                     model_type=model_type.to_origin_model_type(),
+                    is_valid=True,
                     credential_id=credential_id,
                 )
             else:
@@ -1064,7 +1120,7 @@ class ProviderConfiguration(BaseModel):
             session.add(provider_model_record)
             session.commit()
 
-    def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
         switch the custom model credential.
 
@@ -1094,7 +1150,7 @@ class ProviderConfiguration(BaseModel):
             session.add(provider_model_record)
             session.commit()
 
-    def delete_custom_model(self, model_type: ModelType, model: str) -> None:
+    def delete_custom_model(self, model_type: ModelType, model: str):
         """
         Delete custom model.
         :param model_type: model type
@@ -1289,7 +1345,7 @@ class ProviderConfiguration(BaseModel):
             provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
         )
 
-    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None) -> None:
+    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):
         """
         Switch preferred provider type.
         :param provider_type:
@@ -1301,7 +1357,7 @@ class ProviderConfiguration(BaseModel):
         if provider_type == ProviderType.SYSTEM and not self.system_configuration.enabled:
             return
 
-        def _switch(s: Session) -> None:
+        def _switch(s: Session):
             # get preferred provider
             model_provider_id = ModelProviderID(self.provider.provider)
             provider_names = [self.provider.provider]
@@ -1345,7 +1401,7 @@ class ProviderConfiguration(BaseModel):
 
         return secret_input_form_variables
 
-    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]) -> dict:
+    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]):
         """
         Obfuscated credentials.
 
@@ -1605,11 +1661,9 @@ class ProviderConfiguration(BaseModel):
                         if config.credential_source_type != "custom_model"
                     ]
 
-                    if len(provider_model_lb_configs) > 1:
-                        load_balancing_enabled = True
-
-                    if any(config.name == "__delete__" for config in provider_model_lb_configs):
-                        has_invalid_load_balancing_configs = True
+                    load_balancing_enabled = model_setting.load_balancing_enabled
+                    # when the user enable load_balancing but available configs are less than 2 display warning
+                    has_invalid_load_balancing_configs = load_balancing_enabled and len(provider_model_lb_configs) < 2
 
                 provider_models.append(
                     ModelWithProviderEntity(
@@ -1630,6 +1684,8 @@ class ProviderConfiguration(BaseModel):
         # custom models
         for model_configuration in self.custom_configuration.models:
             if model_configuration.model_type not in model_types:
+                continue
+            if model_configuration.unadded_to_model_list:
                 continue
             if model and model != model_configuration.model:
                 continue
@@ -1663,11 +1719,9 @@ class ProviderConfiguration(BaseModel):
                     if config.credential_source_type != "provider"
                 ]
 
-                if len(custom_model_lb_configs) > 1:
-                    load_balancing_enabled = True
-
-                if any(config.name == "__delete__" for config in custom_model_lb_configs):
-                    has_invalid_load_balancing_configs = True
+                load_balancing_enabled = model_setting.load_balancing_enabled
+                # when the user enable load_balancing but available configs are less than 2 display warning
+                has_invalid_load_balancing_configs = load_balancing_enabled and len(custom_model_lb_configs) < 2
 
             if len(model_configuration.available_model_credentials) > 0 and not model_configuration.credentials:
                 status = ModelStatus.CREDENTIAL_REMOVED

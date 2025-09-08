@@ -571,7 +571,7 @@ def old_metadata_migration():
         for document in documents:
             if document.doc_metadata:
                 doc_metadata = document.doc_metadata
-                for key, value in doc_metadata.items():
+                for key in doc_metadata:
                     for field in BuiltInField:
                         if field.value == key:
                             break

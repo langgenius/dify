@@ -200,51 +200,25 @@ const translation = {
       contentEnableLabel: 'Moderiranje vsebine omogočeno',
     },
     debug: {
-      title: 'Odpravljanje napak',
-      description: 'Debugiranje omogoča pregled podrobnih informacij, kot so podatki API-jev, vklop dnevnikov, opozorila in še več.',
     },
     agent: {
-      title: 'Pomočnik',
-      description: 'Osnovne informacije in odgovorne naloge pomočnika.',
-      prompts: 'Temeljni PROMPT',
       message: {
-        title: 'Vrstice sporočila',
-        user: 'Uporabnik',
-        assistant: 'Pomočnik',
       },
     },
     history: {
-      title: 'Zgodovina',
-      notFound: 'Zgodovina ni bila najdena',
-      notOpen: 'Zgodovina ni odprta',
     },
     prompt: {
-      title: 'Vsebina PROMPT-a',
     },
     message: {
-      title: 'Sporočilo',
-      description: 'Način nastavitve formatiranega pogovora.',
-      tryChat: 'Preizkusi klepet',
     },
     theme: {
-      title: 'Tema',
       themes: {
-        default: 'Osnovna tema',
-        light: 'Svetla tema',
-        dark: 'Temna tema',
-        custom: 'Prilagodi temo',
       },
       modal: {
-        title: 'Nastavitve teme',
         primaryColor: {
-          title: 'Primarna barva',
-          placeholder: 'Izberi primarno barvo',
         },
         textColor: {
-          title: 'Barva besedila',
-          placeholder: 'Izberi barvo besedila',
         },
-        ok: 'V redu',
       },
     },
     fileUpload: {
@@ -332,14 +306,11 @@ const translation = {
     },
     apply: 'Uporabiti',
     generate: 'Ustvariti',
-    instructionPlaceHolder: 'Napišite jasna in specifična navodila.',
     resTitle: 'Ustvarjen poziv',
-    noDataLine2: 'Predogled orkestracije bo prikazan tukaj.',
     overwriteMessage: 'Če uporabite ta poziv, boste preglasili obstoječo konfiguracijo.',
     overwriteTitle: 'Preglasiti obstoječo konfiguracijo?',
     instruction: 'Navodila',
     loading: 'Orkestriranje aplikacije za vas ...',
-    noDataLine1: 'Na levi opišite primer uporabe,',
     title: 'Generator pozivov',
     tryIt: 'Poskusite',
     description: 'Generator pozivov uporablja konfiguriran model za optimizacijo pozivov za višjo kakovost in boljšo strukturo. Prosimo, napišite jasna in podrobna navodila.',

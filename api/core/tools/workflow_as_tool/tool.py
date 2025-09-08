@@ -1,7 +1,9 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional, cast
+from typing import Any, Optional
+
+from sqlalchemy import select
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
@@ -136,7 +138,8 @@ class WorkflowTool(Tool):
                 .first()
             )
         else:
-            workflow = db.session.query(Workflow).where(Workflow.app_id == app_id, Workflow.version == version).first()
+            stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
+            workflow = db.session.scalar(stmt)
 
         if not workflow:
             raise ValueError("workflow not found or not published")
@@ -147,7 +150,8 @@ class WorkflowTool(Tool):
         """
         get the app by app id
         """
-        app = db.session.query(App).where(App.id == app_id).first()
+        stmt = select(App).where(App.id == app_id)
+        app = db.session.scalar(stmt)
         if not app:
             raise ValueError("app not found")
 
@@ -204,14 +208,14 @@ class WorkflowTool(Tool):
                         item = self._update_file_mapping(item)
                         file = build_from_mapping(
                             mapping=item,
-                            tenant_id=str(cast(ToolRuntime, self.runtime).tenant_id),
+                            tenant_id=str(self.runtime.tenant_id),
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 value = self._update_file_mapping(value)
                 file = build_from_mapping(
                     mapping=value,
-                    tenant_id=str(cast(ToolRuntime, self.runtime).tenant_id),
+                    tenant_id=str(self.runtime.tenant_id),
                 )
                 files.append(file)
 
@@ -219,7 +223,7 @@ class WorkflowTool(Tool):
 
         return result, files
 
-    def _update_file_mapping(self, file_dict: dict) -> dict:
+    def _update_file_mapping(self, file_dict: dict):
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
         if transfer_method == FileTransferMethod.TOOL_FILE:
             file_dict["tool_file_id"] = file_dict.get("related_id")

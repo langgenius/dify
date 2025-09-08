@@ -277,6 +277,10 @@ const translation = {
       themeSystemDesc: 'به ظاهر سیستم‌عامل خود پایبند باشید',
       runDesc: 'دستورات سریع اجرا کنید (موضوع، زبان، ...)',
       slashDesc: 'دستورات را مانند /theme، /lang اجرا کنید',
+      feedbackDesc: 'بحث‌های باز بازخورد جامعه',
+      accountDesc: 'به صفحه حساب کاربری بروید',
+      communityDesc: 'جامعه دیسکورد باز',
+      docDesc: 'مستندات کمک را باز کنید',
     },
     emptyState: {
       noKnowledgeBasesFound: 'هیچ پایگاه دانش یافت نشد',
@@ -311,6 +315,7 @@ const translation = {
     inScope: 'در {{scope}}s',
     noMatchingCommands: 'هیچ دستوری منطبق یافت نشد',
     tryDifferentSearch: 'عبارت جستجوی دیگری را امتحان کنید',
+    slashHint: 'برای مشاهده تمام دستورات موجود / را تایپ کنید',
   },
 }
 

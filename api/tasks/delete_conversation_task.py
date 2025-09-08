@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from extensions.ext_database import db
 from models import ConversationVariable
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="conversation")
-def delete_conversation_related_data(conversation_id: str) -> None:
+def delete_conversation_related_data(conversation_id: str):
     """
     Delete related data conversation in correct order from datatbase to respect foreign key constraints
 

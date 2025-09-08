@@ -15,7 +15,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 
 class PromptMessageUtil:
     @staticmethod
-    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: Sequence[PromptMessage]) -> list[dict]:
+    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: Sequence[PromptMessage]):
         """
         Prompt messages to prompt for saving.
         :param model_mode: model mode
@@ -87,7 +87,6 @@ class PromptMessageUtil:
             if isinstance(prompt_message.content, list):
                 for content in prompt_message.content:
                     if content.type == PromptMessageContentType.TEXT:
-                        content = cast(TextPromptMessageContent, content)
                         text += content.data
                     else:
                         content = cast(ImagePromptMessageContent, content)
