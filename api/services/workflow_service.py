@@ -412,6 +412,7 @@ class WorkflowService:
         Check credential policy compliance for the default workspace credential of a tool provider.
 
         This method finds the default credential for the given provider and validates it.
+        Uses the same fallback logic as runtime to handle deauthorized credentials.
 
         :param tenant_id: The tenant ID
         :param provider: The tool provider name
@@ -422,14 +423,17 @@ class WorkflowService:
 
             from models.tools import BuiltinToolProvider
 
-            # Find the default credential for this provider
-            default_provider_stmt = select(BuiltinToolProvider).where(
-                BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider,
-                BuiltinToolProvider.is_default == True,
+            # Use the same fallback logic as runtime: get the first available credential
+            # ordered by is_default DESC, created_at ASC (same as tool_manager.py)
+            default_provider = (
+                db.session.query(BuiltinToolProvider)
+                .where(
+                    BuiltinToolProvider.tenant_id == tenant_id,
+                    BuiltinToolProvider.provider == provider,
+                )
+                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                .first()
             )
-
-            default_provider = db.session.scalar(default_provider_stmt)
 
             if not default_provider:
                 raise ValueError("No default credential found")
@@ -438,7 +442,7 @@ class WorkflowService:
             from core.helper.credential_utils import check_credential_policy_compliance
 
             check_credential_policy_compliance(
-                credential_id=default_provider.id, provider=provider, credential_type=PluginCredentialType.TOOL
+                credential_id=default_provider.id, provider=provider, credential_type=PluginCredentialType.TOOL, check_existence=False
             )
 
         except Exception as e:
