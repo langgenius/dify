@@ -66,7 +66,7 @@ class LLMGenerator:
         try:
             result_dict = json.loads(cleaned_answer)
             answer = result_dict["Your Output"]
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             logger.exception("Failed to generate name after answer, use query instead")
             answer = query
         name = answer.strip()
@@ -127,7 +127,7 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool):
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
@@ -262,9 +262,7 @@ class LLMGenerator:
         return rule_config
 
     @classmethod
-    def generate_code(
-        cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"
-    ) -> dict:
+    def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):
         if code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
         else:
@@ -373,7 +371,7 @@ class LLMGenerator:
     @staticmethod
     def instruction_modify_legacy(
         tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
-    ) -> dict:
+    ):
         last_run: Message | None = (
             db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
         )
@@ -413,7 +411,7 @@ class LLMGenerator:
         instruction: str,
         model_config: dict,
         ideal_output: str | None,
-    ) -> dict:
+    ):
         from services.workflow_service import WorkflowService
 
         app: App | None = db.session.query(App).where(App.id == flow_id).first()
@@ -451,7 +449,7 @@ class LLMGenerator:
                 return []
             parsed: Sequence[AgentLogEvent] = json.loads(raw_agent_log)
 
-            def dict_of_event(event: AgentLogEvent) -> dict:
+            def dict_of_event(event: AgentLogEvent):
                 return {
                     "status": event.status,
                     "error": event.error,
@@ -488,7 +486,7 @@ class LLMGenerator:
         instruction: str,
         node_type: str,
         ideal_output: str | None,
-    ) -> dict:
+    ):
         LAST_RUN = "{{#last_run#}}"
         CURRENT = "{{#current#}}"
         ERROR_MESSAGE = "{{#error_message#}}"

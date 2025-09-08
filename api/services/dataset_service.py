@@ -719,7 +719,7 @@ class DatasetService:
         )
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
+    def get_dataset_auto_disable_logs(dataset_id: str):
         features = FeatureService.get_features(current_user.current_tenant_id)
         if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
             return {
@@ -973,7 +973,7 @@ class DocumentService:
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
             for document in documents
-            if document.data_source_type == "upload_file"
+            if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
         batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
@@ -1067,8 +1067,9 @@ class DocumentService:
         # sync document indexing
         document.indexing_status = "waiting"
         data_source_info = document.data_source_info_dict
-        data_source_info["mode"] = "scrape"
-        document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
+        if data_source_info:
+            data_source_info["mode"] = "scrape"
+            document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
         db.session.add(document)
         db.session.commit()
 
@@ -1093,7 +1094,7 @@ class DocumentService:
         account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
-    ):
+    ) -> tuple[list[Document], str]:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
@@ -1198,7 +1199,7 @@ class DocumentService:
                             "Invalid process rule mode: %s, can not find dataset process rule",
                             process_rule.mode,
                         )
-                        return
+                        return [], ""
                     db.session.add(dataset_process_rule)
                     db.session.commit()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"

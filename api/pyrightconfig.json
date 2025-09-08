@@ -1,0 +1,28 @@
+{
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "tests/",
+    "migrations/",
+    ".venv/",
+    "core/",
+    "controllers/",
+    "tasks/",
+    "services/",
+    "schedule/",
+    "extensions/",
+    "utils/",
+    "repositories/",
+    "libs/",
+    "fields/",
+    "factories/",
+    "events/",
+    "contexts/",
+    "constants/",
+    "commands.py"
+  ],
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.11",
+  "pythonPlatform": "All"
+}

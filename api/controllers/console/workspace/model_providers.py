@@ -67,7 +67,7 @@ class ModelProviderCredentialApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -94,7 +94,7 @@ class ModelProviderCredentialApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()

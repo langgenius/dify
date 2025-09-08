@@ -48,7 +48,7 @@ class MessageCycleManager:
             AdvancedChatAppGenerateEntity,
         ],
         task_state: Union[EasyUITaskState, WorkflowTaskState],
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
 
@@ -99,12 +99,13 @@ class MessageCycleManager:
 
                 # generate conversation name
                 try:
-                    name = LLMGenerator.generate_conversation_name(app_model.tenant_id, query)
+                    name = LLMGenerator.generate_conversation_name(
+                        app_model.tenant_id, query, conversation_id, conversation.app_id
+                    )
                     conversation.name = name
-                except Exception as e:
+                except Exception:
                     if dify_config.DEBUG:
                         logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
-                    pass
 
                 db.session.merge(conversation)
                 db.session.commit()
@@ -131,7 +132,7 @@ class MessageCycleManager:
 
         return None
 
-    def handle_retriever_resources(self, event: QueueRetrieverResourcesEvent) -> None:
+    def handle_retriever_resources(self, event: QueueRetrieverResourcesEvent):
         """
         Handle retriever resources.
         :param event: event

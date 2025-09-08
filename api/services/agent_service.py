@@ -1,5 +1,5 @@
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 import pytz
 from flask_login import current_user
@@ -16,7 +16,7 @@ from models.model import App, Conversation, EndUser, Message, MessageAgentThough
 
 class AgentService:
     @classmethod
-    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str) -> dict:
+    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str):
         """
         Service to get agent logs
         """
@@ -68,7 +68,7 @@ class AgentService:
         if not app_model_config:
             raise ValueError("App model config not found")
 
-        result = {
+        result: dict[str, Any] = {
             "meta": {
                 "status": "success",
                 "executor": executor,

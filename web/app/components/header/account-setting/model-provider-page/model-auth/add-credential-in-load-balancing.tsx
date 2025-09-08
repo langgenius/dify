@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useMemo,
 } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -9,20 +8,22 @@ import { Authorized } from '@/app/components/header/account-setting/model-provid
 import cn from '@/utils/classnames'
 import type {
   Credential,
+  CustomConfigurationModelFixedFields,
   CustomModelCredential,
   ModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import Tooltip from '@/app/components/base/tooltip'
+import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type AddCredentialInLoadBalancingProps = {
   provider: ModelProvider
   model: CustomModelCredential
   configurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   modelCredential: ModelCredential
   onSelectCredential: (credential: Credential) => void
-  onUpdate?: () => void
+  onUpdate?: (payload?: any, formValues?: Record<string, any>) => void
+  onRemove?: (credentialId: string) => void
 }
 const AddCredentialInLoadBalancing = ({
   provider,
@@ -31,41 +32,17 @@ const AddCredentialInLoadBalancing = ({
   modelCredential,
   onSelectCredential,
   onUpdate,
+  onRemove,
 }: AddCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
   const {
     available_credentials,
   } = modelCredential
-  const customModel = configurationMethod === ConfigurationMethodEnum.customizableModel
+  const isCustomModel = configurationMethod === ConfigurationMethodEnum.customizableModel
   const notAllowCustomCredential = provider.allow_custom_token === false
-
-  const ButtonComponent = useMemo(() => {
-    const Item = (
-      <div className={cn(
-        'system-sm-medium flex h-8 items-center rounded-lg px-3 text-text-accent hover:bg-state-base-hover',
-        notAllowCustomCredential && 'cursor-not-allowed opacity-50',
-      )}>
-        <RiAddLine className='mr-2 h-4 w-4' />
-        {
-          customModel
-            ? t('common.modelProvider.auth.addCredential')
-            : t('common.modelProvider.auth.addApiKey')
-        }
-      </div>
-    )
-
-    if (notAllowCustomCredential) {
-      return (
-        <Tooltip
-          asChild
-          popupContent={t('plugin.auth.credentialUnavailable')}
-        >
-          {Item}
-        </Tooltip>
-      )
-    }
-    return Item
-  }, [notAllowCustomCredential, t, customModel])
+  const handleUpdate = useCallback((payload?: any, formValues?: Record<string, any>) => {
+    onUpdate?.(payload, formValues)
+  }, [onUpdate])
 
   const renderTrigger = useCallback((open?: boolean) => {
     const Item = (
@@ -74,40 +51,40 @@ const AddCredentialInLoadBalancing = ({
         open && 'bg-state-base-hover',
       )}>
         <RiAddLine className='mr-2 h-4 w-4' />
-        {
-          customModel
-            ? t('common.modelProvider.auth.addCredential')
-            : t('common.modelProvider.auth.addApiKey')
-        }
+        {t('common.modelProvider.auth.addCredential')}
       </div>
     )
 
     return Item
-  }, [t, customModel])
-
-  if (!available_credentials?.length)
-    return ButtonComponent
+  }, [t, isCustomModel])
 
   return (
     <Authorized
       provider={provider}
       renderTrigger={renderTrigger}
+      authParams={{
+        isModelCredential: isCustomModel,
+        mode: ModelModalModeEnum.configModelCredential,
+        onUpdate: handleUpdate,
+        onRemove,
+      }}
+      triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential}
       items={[
         {
-          title: customModel ? t('common.modelProvider.auth.modelCredentials') : t('common.modelProvider.auth.apiKeys'),
-          model: customModel ? model : undefined,
+          title: isCustomModel ? '' : t('common.modelProvider.auth.apiKeys'),
+          model: isCustomModel ? model : undefined,
           credentials: available_credentials ?? [],
         },
       ]}
+      showModelTitle={!isCustomModel}
       configurationMethod={configurationMethod}
-      currentCustomConfigurationModelFixedFields={customModel ? {
+      currentCustomConfigurationModelFixedFields={isCustomModel ? {
         __model_name: model.model,
         __model_type: model.model_type,
       } : undefined}
       onItemClick={onSelectCredential}
       placement='bottom-start'
-      onUpdate={onUpdate}
-      isModelCredential={customModel}
+      popupTitle={isCustomModel ? t('common.modelProvider.auth.modelCredentials') : ''}
     />
   )
 }

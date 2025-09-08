@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.__base.tool_provider import ToolProviderController
@@ -28,7 +28,7 @@ class MCPToolProviderController(ToolProviderController):
         headers: Optional[dict[str, str]] = None,
         timeout: Optional[float] = None,
         sse_read_timeout: Optional[float] = None,
-    ) -> None:
+    ):
         super().__init__(entity)
         self.entity: ToolProviderEntityWithPlugin = entity
         self.tenant_id = tenant_id
@@ -48,7 +48,7 @@ class MCPToolProviderController(ToolProviderController):
         return ToolProviderType.MCP
 
     @classmethod
-    def _from_db(cls, db_provider: MCPToolProvider) -> "MCPToolProviderController":
+    def from_db(cls, db_provider: MCPToolProvider) -> Self:
         """
         from db provider
         """
@@ -99,7 +99,7 @@ class MCPToolProviderController(ToolProviderController):
             sse_read_timeout=db_provider.sse_read_timeout,
         )
 
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
         """

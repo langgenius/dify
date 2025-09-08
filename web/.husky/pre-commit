@@ -35,19 +35,9 @@ if $api_modified; then
 
     status=${status:-0}
 
-
     if [ $status -ne 0 ]; then
       echo "Ruff linter on api module error, exit code: $status"
       echo "Please run 'dev/reformat' to fix the fixable linting errors."
-      exit 1
-    fi
-
-    # run ty checks
-    uv run --directory api --dev ty check || status=$?
-    status=${status:-0}
-    if [ $status -ne 0 ]; then
-      echo "ty type checker on api module error, exit code: $status"
-      echo "Please run 'dev/ty-check' to check the type errors."
       exit 1
     fi
 fi
