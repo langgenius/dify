@@ -18,7 +18,7 @@ const PublishToast = () => {
     return null
 
   return (
-    <div className='absolute bottom-[45px] left-0 right-0 z-10 flex justify-center'>
+    <div className='pointer-events-none absolute bottom-[45px] left-0 right-0 z-10 flex justify-center'>
       <div
         className='relative flex w-[420px] space-x-1 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg'
       >
@@ -34,7 +34,7 @@ const PublishToast = () => {
           </div>
         </div>
         <div
-          className='flex h-6 w-6 cursor-pointer items-center justify-center'
+          className='pointer-events-auto flex h-6 w-6 cursor-pointer items-center justify-center'
           onClick={() => setHideToast(true)}
         >
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />

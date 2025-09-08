@@ -92,6 +92,7 @@ import dynamic from 'next/dynamic'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import type { VarInInspect } from '@/types/workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
+import cn from '@/utils/classnames'
 
 const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
@@ -310,7 +311,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const [vars, setVars] = useState<VarInInspect[]>([])
   useEffect(() => {
     (async () => {
-      if(!configsMap?.flowType || !configsMap?.flowId)
+      if (!configsMap?.flowType || !configsMap?.flowId)
         return
       const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
       setVars(data)
@@ -318,7 +319,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     })()
   }, [configsMap?.flowType, configsMap?.flowId])
   useEffect(() => {
-    if(schemaTypeDefinitions && isLoadedVars) {
+    if (schemaTypeDefinitions && isLoadedVars) {
       fetchInspectVars({
         passInVars: true,
         vars,
@@ -346,17 +347,17 @@ export const Workflow: FC<WorkflowProps> = memo(({
   return (
     <div
       id='workflow-container'
-      className={`
-        relative h-full w-full min-w-[960px]
-        ${workflowReadOnly && 'workflow-panel-animation'}
-        ${nodeAnimation && 'workflow-node-animation'}
-      `}
+      className={cn(
+        'relative h-full w-full min-w-[960px]',
+        workflowReadOnly && 'workflow-panel-animation',
+        nodeAnimation && 'workflow-node-animation',
+      )}
       ref={workflowContainerRef}
     >
       <SyncingDataModal />
       <CandidateNode />
       <div
-        className='absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
+        className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
         style={{ height: controlHeight }}
       >
         <Control />
