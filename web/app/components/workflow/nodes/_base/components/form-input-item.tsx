@@ -23,7 +23,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import cn from '@/utils/classnames'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { RiCheckLine } from '@remixicon/react'
+import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 type Props = {
   readOnly: boolean
   nodeId: string
@@ -304,19 +304,21 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           disabled={readOnly}
         >
-          <div className="relative">
-            <ListboxButton className="relative h-8 w-full cursor-pointer rounded-lg bg-components-input-bg-normal px-3 py-1.5 text-left text-sm focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white/75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300">
-              <span className="block truncate text-components-input-text-filled">
+          <div className="group/simple-select relative h-8 grow">
+            <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
+              <span className={cn('system-sm-regular block truncate text-left',
+                varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
+              )}>
                 {getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
               </span>
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+              <span className="absolute inset-y-0 right-0 flex items-center pr-2">
                 <ChevronDownIcon
-                  className="h-4 w-4 text-text-tertiary"
+                  className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
                   aria-hidden="true"
                 />
               </span>
             </ListboxButton>
-            <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
+            <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
               {options.filter((option: { show_on: any[] }) => {
                 if (option.show_on?.length)
                   return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
@@ -326,9 +328,9 @@ const FormInputItem: FC<Props> = ({
                   key={option.value}
                   value={option.value}
                   className={({ focus }) =>
-                    `relative cursor-pointer select-none py-2 pl-10 pr-4 ${
-                      focus ? 'bg-state-base-hover text-text-secondary' : 'text-text-primary'
-                    }`
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
+                      focus && 'bg-state-base-hover',
+                    )
                   }
                 >
                   {({ selected }) => (
@@ -337,12 +339,12 @@ const FormInputItem: FC<Props> = ({
                         {option.icon && (
                           <img src={option.icon} alt="" className="mr-2 h-4 w-4" />
                         )}
-                        <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                        <span className={cn('block truncate', selected && 'font-normal')}>
                           {option.label[language] || option.label.en_US}
                         </span>
                       </div>
                       {selected && (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent">
                           <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                         </span>
                       )}
@@ -388,21 +390,28 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           disabled={readOnly || isLoadingOptions}
         >
-          <div className="relative">
-            <ListboxButton className="relative h-8 w-full cursor-pointer rounded-lg bg-components-input-bg-normal px-3 py-1.5 text-left text-sm focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white/75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300">
-              <span className="block truncate text-components-input-text-filled">
+          <div className="group/simple-select relative h-8 grow">
+            <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
+              <span className={cn('system-sm-regular block truncate text-left',
+                isLoadingOptions ? 'text-components-input-text-placeholder'
+                  : varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
+              )}>
                 {isLoadingOptions
                   ? 'Loading...'
                   : getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
               </span>
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                <ChevronDownIcon
-                  className="h-4 w-4 text-text-tertiary"
-                  aria-hidden="true"
-                />
+              <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+                {isLoadingOptions ? (
+                  <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />
+                ) : (
+                  <ChevronDownIcon
+                    className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                    aria-hidden="true"
+                  />
+                )}
               </span>
             </ListboxButton>
-            <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
+            <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
               {(dynamicOptions || options || []).filter((option: { show_on?: any[] }) => {
                 if (option.show_on?.length)
                   return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
@@ -412,9 +421,9 @@ const FormInputItem: FC<Props> = ({
                   key={option.value}
                   value={option.value}
                   className={({ focus }) =>
-                    `relative cursor-pointer select-none py-2 pl-10 pr-4 ${
-                      focus ? 'bg-state-base-hover text-text-secondary' : 'text-text-primary'
-                    }`
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
+                      focus && 'bg-state-base-hover',
+                    )
                   }
                 >
                   {({ selected }) => (
@@ -423,12 +432,12 @@ const FormInputItem: FC<Props> = ({
                         {option.icon && (
                           <img src={option.icon} alt="" className="mr-2 h-4 w-4" />
                         )}
-                        <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                        <span className={cn('block truncate', selected && 'font-normal')}>
                           {option.label[language] || option.label.en_US}
                         </span>
                       </div>
                       {selected && (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent">
                           <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                         </span>
                       )}
