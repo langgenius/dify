@@ -30,7 +30,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             user_model = (
                 session.query(EndUser)
                 .where(
-                    EndUser.session_id == DEFAULT_SERVICE_API_USER_ID,
+                    EndUser.session_id == user_id,
                     EndUser.tenant_id == tenant_id,
                 )
                 .first()
