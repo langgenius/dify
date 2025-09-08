@@ -145,31 +145,30 @@ const FormInputItem: FC<Props> = ({
     extraParams,
   )
 
-  // Fetch dynamic options for Trigger
-  const { data: triggerDynamicOptions, isLoading: isLoadingTriggerOptions } = useTriggerPluginDynamicOptions({
-    plugin_id: currentProvider?.plugin_id || '',
-    provider: currentProvider?.name || '',
-    action: currentTool?.name || '',
-    parameter: variable || '',
-    extra: extraParams || {},
-  }, isTrigger && isDynamicSelect && !!currentTool && !!currentProvider)
+  // Fetch dynamic options hook for Trigger
+  const { mutateAsync: fetchTriggerDynamicOptions } = useTriggerPluginDynamicOptions(
+    currentProvider?.plugin_id || '',
+    currentProvider?.name || '',
+    currentTool?.name || '',
+    variable || '',
+    'trigger',
+    extraParams,
+  )
 
-  // Handle Trigger dynamic options
-  useEffect(() => {
-    if (isTrigger && isDynamicSelect && triggerDynamicOptions) {
-      setDynamicOptions(triggerDynamicOptions.options || [])
-      setIsLoadingOptions(isLoadingTriggerOptions)
-    }
-  }, [isTrigger, isDynamicSelect, triggerDynamicOptions, isLoadingTriggerOptions])
-
-  // Fetch dynamic options when component mounts or dependencies change (for Tool)
+  // Fetch dynamic options when component mounts or dependencies change (for both Tool and Trigger)
   useEffect(() => {
     const fetchOptions = async () => {
-      if (!isTrigger && isDynamicSelect && currentTool && currentProvider) {
+      if (isDynamicSelect && currentTool && currentProvider) {
         setIsLoadingOptions(true)
         try {
-          const data = await fetchDynamicOptions()
-          setDynamicOptions(data?.options || [])
+          let data
+          if (isTrigger)
+            data = await fetchTriggerDynamicOptions()
+
+          else
+            data = await fetchDynamicOptions()
+
+          setDynamicOptions((data?.options || []) as any)
         }
         catch (error) {
           console.error('Failed to fetch dynamic options:', error)
@@ -182,7 +181,7 @@ const FormInputItem: FC<Props> = ({
     }
 
     fetchOptions()
-  }, [isTrigger, isDynamicSelect, currentTool?.name, currentProvider?.name, variable, extraParams])
+  }, [isTrigger, isDynamicSelect, currentTool?.name, currentProvider?.name, variable, extraParams, fetchDynamicOptions, fetchTriggerDynamicOptions])
 
   const handleTypeChange = (newType: string) => {
     if (newType === VarKindType.variable) {

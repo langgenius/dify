@@ -264,22 +264,18 @@ export const useInitiateTriggerOAuth = () => {
 }
 
 // ===== Dynamic Options Support =====
-export const useTriggerPluginDynamicOptions = (payload: {
-  plugin_id: string
-  provider: string
-  action: string
-  parameter: string
-  extra?: Record<string, any>
-}, enabled = true) => {
-  const providerPath = `${payload.plugin_id}/${payload.provider}`
-
-  return useQuery<{ options: Array<{ value: string; label: any }> }>({
-    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.extra],
-    queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
-      `/workspaces/current/trigger-provider/${providerPath}/parameters/dynamic-options`,
-      { params: { action: payload.action, parameter: payload.parameter, ...(payload.extra && { extra: JSON.stringify(payload.extra) }) } },
-    ),
-    enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter,
+export const useTriggerPluginDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string, provider_type: 'trigger', extra?: Record<string, any>) => {
+  return useMutation({
+    mutationFn: () => get<{ options: Array<{ value: string; label: any }> }>('/workspaces/current/plugin/parameters/dynamic-options', {
+      params: {
+        plugin_id,
+        provider,
+        action,
+        parameter,
+        provider_type,
+        ...extra,
+      },
+    }),
   })
 }
 

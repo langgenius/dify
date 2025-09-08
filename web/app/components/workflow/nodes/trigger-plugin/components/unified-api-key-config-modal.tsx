@@ -9,7 +9,6 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
-import Input from '@/app/components/base/input'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import TriggerForm from './trigger-form'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -18,7 +17,6 @@ import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
   useInvalidateTriggerSubscriptions,
-  useUpdateTriggerSubscriptionBuilder,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { useToastContext } from '@/app/components/base/toast'
@@ -55,7 +53,6 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
   // Form values
   const [credentialValues, setCredentialValues] = useState<Record<string, any>>({})
   const [parameterValues, setParameterValues] = useState<Record<string, any>>({})
-  const [subscriptionName, setSubscriptionName] = useState('')
 
   // State management
   const [currentStep, setCurrentStep] = useState<ConfigStep>(ConfigStep.CREDENTIALS)
@@ -64,7 +61,6 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
 
   // API hooks
   const createBuilder = useCreateTriggerSubscriptionBuilder()
-  const updateBuilder = useUpdateTriggerSubscriptionBuilder()
   const verifyBuilder = useVerifyTriggerSubscriptionBuilder()
   const buildSubscription = useBuildTriggerSubscription()
   const invalidateSubscriptions = useInvalidateTriggerSubscriptions()
@@ -105,6 +101,30 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
     }
   }, [provider, trigger])
 
+  // Create subscription builder when modal opens (only once)
+  useEffect(() => {
+    const createBuilderOnMount = async () => {
+      try {
+        const createResponse = await createBuilder.mutateAsync({
+          provider: providerPath,
+          credential_type: 'api-key',
+        })
+        setSubscriptionBuilderId(createResponse.subscription_builder.id)
+      }
+      catch (error: any) {
+        notify({
+          type: 'error',
+          message: t('workflow.nodes.triggerPlugin.builderCreateFailed', { error: error.message }),
+        })
+        onCancel() // Close modal if we can't create builder
+      }
+    }
+
+    // Only create builder once when modal first opens
+    if (!subscriptionBuilderId)
+      createBuilderOnMount()
+  }, []) // Empty dependency array - run only once on mount
+
   // Validation helper
   const validateRequiredFields = useCallback((values: Record<string, any>, schema: any[]) => {
     const requiredFields = schema
@@ -117,43 +137,8 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
     return findMissingRequiredField(values, requiredFields)
   }, [language])
 
-  // Final step: Build subscription
-  const handleBuild = useCallback(async (builderId: string) => {
-    try {
-      await buildSubscription.mutateAsync({
-        provider: providerPath,
-        subscriptionBuilderId: builderId,
-        name: subscriptionName.trim(),
-      })
-
-      // Success - invalidate cache and notify
-      invalidateSubscriptions(providerPath)
-      notify({
-        type: 'success',
-        message: t('workflow.nodes.triggerPlugin.subscriptionConfigured'),
-      })
-      onSuccess()
-    }
-    catch (error: any) {
-      notify({
-        type: 'error',
-        message: t('workflow.nodes.triggerPlugin.subscriptionBuildFailed', { error: error.message }),
-      })
-      // Stay on current step to allow retry
-    }
-  }, [buildSubscription, providerPath, invalidateSubscriptions, notify, t, onSuccess, subscriptionName])
-
-  // Step 1: Handle credentials configuration and creation
+  // Step 1: Handle credentials verification
   const handleCredentialsNext = useCallback(async () => {
-    // Validate subscription name first
-    if (!subscriptionName.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: t('common.errorMsg.fieldRequired', { field: t('workflow.nodes.triggerPlugin.subscriptionName') }),
-      })
-      return
-    }
-
     // Validate credentials
     const missingField = validateRequiredFields(credentialValues, credentialSchema)
     if (missingField) {
@@ -164,22 +149,23 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
       return
     }
 
+    // Builder should already be created, verify we have builder ID
+    if (!subscriptionBuilderId) {
+      notify({
+        type: 'error',
+        message: t('workflow.nodes.triggerPlugin.builderNotCreated'),
+      })
+      return
+    }
+
     setIsLoading(true)
     setCurrentStep(ConfigStep.VERIFYING)
 
     try {
-      // Create subscription builder with credential type only
-      const createResponse = await createBuilder.mutateAsync({
-        provider: providerPath,
-        credential_type: 'api-key',
-      })
-
-      setSubscriptionBuilderId(createResponse.subscription_builder.id)
-
-      // Auto-verify credentials with credential values
+      // Verify credentials with the already created builder
       await verifyBuilder.mutateAsync({
         provider: providerPath,
-        subscriptionBuilderId: createResponse.subscription_builder.id,
+        subscriptionBuilderId,
         credentials: credentialValues,
       })
 
@@ -189,7 +175,29 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
       }
       else {
         // No parameters, proceed directly to build
-        await handleBuild(createResponse.subscription_builder.id)
+        setCurrentStep(ConfigStep.BUILDING)
+
+        try {
+          await buildSubscription.mutateAsync({
+            provider: providerPath,
+            subscriptionBuilderId,
+          })
+
+          // Success - invalidate cache and notify
+          invalidateSubscriptions(providerPath)
+          notify({
+            type: 'success',
+            message: t('workflow.nodes.triggerPlugin.subscriptionConfigured'),
+          })
+          onSuccess()
+        }
+        catch (buildError: any) {
+          notify({
+            type: 'error',
+            message: t('workflow.nodes.triggerPlugin.subscriptionBuildFailed', { error: buildError.message }),
+          })
+          setCurrentStep(ConfigStep.PARAMETERS)
+        }
       }
     }
     catch (error: any) {
@@ -205,17 +213,19 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
   }, [
     credentialValues,
     credentialSchema,
-    subscriptionName,
     parameterSchema.length,
+    subscriptionBuilderId,
     validateRequiredFields,
-    createBuilder,
     verifyBuilder,
+    buildSubscription,
+    invalidateSubscriptions,
     providerPath,
     notify,
     t,
+    onSuccess,
   ])
 
-  // Step 2: Handle parameters configuration
+  // Step 2: Handle parameters configuration and build
   const handleParametersNext = useCallback(async () => {
     // Validate parameters
     const missingField = validateRequiredFields(parameterValues, parameterSchema)
@@ -231,16 +241,20 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
     setCurrentStep(ConfigStep.BUILDING)
 
     try {
-      // Update builder with parameters and the user-provided name
-      await updateBuilder.mutateAsync({
+      // Build subscription with parameters
+      await buildSubscription.mutateAsync({
         provider: providerPath,
         subscriptionBuilderId,
-        name: subscriptionName.trim(),
         parameters: parameterValues,
       })
 
-      // Build final subscription
-      await handleBuild(subscriptionBuilderId)
+      // Success - invalidate cache and notify
+      invalidateSubscriptions(providerPath)
+      notify({
+        type: 'success',
+        message: t('workflow.nodes.triggerPlugin.subscriptionConfigured'),
+      })
+      onSuccess()
     }
     catch (error: any) {
       notify({
@@ -257,10 +271,12 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
     parameterSchema,
     subscriptionBuilderId,
     validateRequiredFields,
-    updateBuilder,
+    buildSubscription,
     providerPath,
+    invalidateSubscriptions,
     notify,
     t,
+    onSuccess,
   ])
 
   // Handle back button
@@ -275,19 +291,6 @@ const UnifiedApiKeyConfigModal: FC<UnifiedApiKeyConfigModalProps> = ({
       case ConfigStep.CREDENTIALS:
         return (
           <>
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-text-secondary">
-                {t('workflow.nodes.triggerPlugin.subscriptionName')}
-                <span className="ml-1 text-text-destructive">*</span>
-              </label>
-              <Input
-                value={subscriptionName}
-                onChange={e => setSubscriptionName(e.target.value)}
-                placeholder={t('workflow.nodes.triggerPlugin.subscriptionNamePlaceholder')}
-                className="w-full"
-              />
-            </div>
-
             {credentialSchema.length > 0 && (
               <Form
                 value={credentialValues}
