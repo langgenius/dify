@@ -49,8 +49,6 @@ class EmailRegisterSendEmailApi(Resource):
         token = AccountService.send_email_register_email(email=args["email"], account=account, language=language)
         return {"result": "success", "data": token}
 
-        
-
 
 class EmailRegisterCheckApi(Resource):
     @setup_required
