@@ -17,14 +17,15 @@ const Link = ({ node, children, ...props }: any) => {
   }
   else {
     const href = props.href || node.properties?.href
-    if (href && href.toString().startsWith('#') && href.toString().length > 1) {
+    if (href && /^#[a-zA-Z0-9_\-]+$/.test(href.toString())) {
       const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
         e.preventDefault()
         // scroll to target element if exists within the answer container
         const answerContainer = e.currentTarget.closest('.chat-answer-container')
 
         if (answerContainer) {
-          const targetElement = answerContainer.querySelector(href)
+          const targetId = CSS.escape(href.toString().substring(1))
+          const targetElement = answerContainer.querySelector(`[id="${targetId}"]`)
           if (targetElement)
             targetElement.scrollIntoView({ behavior: 'smooth' })
         }
@@ -35,7 +36,7 @@ const Link = ({ node, children, ...props }: any) => {
     if (!href || !isValidUrl(href))
       return <span>{children}</span>
 
-    return <a href={href} target="_blank" className={commonClassName}>{children || 'Download'}</a>
+    return <a href={href} target="_blank" rel="noopener noreferrer" className={commonClassName}>{children || 'Download'}</a>
   }
 }
 
