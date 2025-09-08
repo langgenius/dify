@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.__base.tool_provider import ToolProviderController
@@ -48,7 +48,7 @@ class MCPToolProviderController(ToolProviderController):
         return ToolProviderType.MCP
 
     @classmethod
-    def _from_db(cls, db_provider: MCPToolProvider) -> "MCPToolProviderController":
+    def from_db(cls, db_provider: MCPToolProvider) -> Self:
         """
         from db provider
         """
@@ -94,7 +94,7 @@ class MCPToolProviderController(ToolProviderController):
             provider_id=db_provider.server_identifier or "",
             tenant_id=db_provider.tenant_id or "",
             server_url=db_provider.decrypted_server_url,
-            headers={},  # TODO: get headers from db provider
+            headers=db_provider.decrypted_headers or {},
             timeout=db_provider.timeout,
             sse_read_timeout=db_provider.sse_read_timeout,
         )
