@@ -1004,6 +1004,10 @@ const translation = {
     copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
     lastOutput: 'Ultimul rezultat',
   },
+  sidebar: {
+    exportWarning: 'Exportați versiunea salvată curentă',
+    exportWarningDesc: 'Aceasta va exporta versiunea curent salvată a fluxului dumneavoastră de lucru. Dacă aveți modificări nesalvate în editor, vă rugăm să le salvați mai întâi utilizând opțiunea de export din canvasul fluxului de lucru.',
+  },
 }
 
 export default translation
