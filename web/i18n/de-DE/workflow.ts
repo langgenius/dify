@@ -1004,6 +1004,10 @@ const translation = {
     noLastRunFound: 'Kein vorheriger Lauf gefunden',
     lastOutput: 'Letzte Ausgabe',
   },
+  sidebar: {
+    exportWarning: 'Aktuelle gespeicherte Version exportieren',
+    exportWarningDesc: 'Dies wird die derzeit gespeicherte Version Ihres Workflows exportieren. Wenn Sie ungespeicherte Änderungen im Editor haben, speichern Sie diese bitte zuerst, indem Sie die Exportoption im Workflow-Canvas verwenden.',
+  },
 }
 
 export default translation

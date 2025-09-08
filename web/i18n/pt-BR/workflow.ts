@@ -1004,6 +1004,10 @@ const translation = {
     copyLastRun: 'Copiar Última Execução',
     lastOutput: 'Última Saída',
   },
+  sidebar: {
+    exportWarning: 'Exportar a versão salva atual',
+    exportWarningDesc: 'Isto irá exportar a versão atual salva do seu fluxo de trabalho. Se você tiver alterações não salvas no editor, por favor, salve-as primeiro utilizando a opção de exportação na tela do fluxo de trabalho.',
+  },
 }
 
 export default translation

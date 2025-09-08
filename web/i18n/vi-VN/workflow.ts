@@ -1004,6 +1004,10 @@ const translation = {
     copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
     lastOutput: 'Đầu ra cuối cùng',
   },
+  sidebar: {
+    exportWarning: 'Xuất Phiên Bản Đã Lưu Hiện Tại',
+    exportWarningDesc: 'Điều này sẽ xuất phiên bản hiện tại đã được lưu của quy trình làm việc của bạn. Nếu bạn có những thay đổi chưa được lưu trong trình soạn thảo, vui lòng lưu chúng trước bằng cách sử dụng tùy chọn xuất trong bản vẽ quy trình.',
+  },
 }
 
 export default translation
