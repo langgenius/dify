@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
@@ -17,7 +17,9 @@ class TestMetadataService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.metadata_service.current_user") as mock_current_user,
+            patch(
+                "services.metadata_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
             patch("services.metadata_service.redis_client") as mock_redis_client,
             patch("services.dataset_service.DocumentService") as mock_document_service,
         ):
