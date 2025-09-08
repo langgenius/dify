@@ -2,10 +2,7 @@
 Credential utility functions for checking credential existence and policy compliance.
 """
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from services.enterprise.plugin_manager_service import PluginCredentialType
+from services.enterprise.plugin_manager_service import PluginCredentialType
 
 
 def is_credential_exists(credential_id: str, credential_type: "PluginCredentialType") -> bool:
@@ -65,7 +62,7 @@ def check_credential_policy_compliance(
     # Check if credential exists in database first (if requested)
     if check_existence:
         if not is_credential_exists(credential_id, credential_type):
-            raise ValueError(f"Credential with id {credential_id} of type {credential_type.name} not found.")
+            raise ValueError(f"Credential with id {credential_id} for provider {provider} not found.")
 
     # Check policy compliance
     PluginManagerService.check_credential_policy_compliance(
