@@ -229,9 +229,9 @@ class TestCleanNotionDocumentTask:
         # Execute cleanup task with empty document list
         clean_notion_document_task([], dataset.id)
 
-        # Note: This test verifies that the task handles empty document lists gracefully
-        # without throwing exceptions. The actual IndexProcessor verification would require
-        # more sophisticated mocking in an integration test environment.
+        # Verify that the index processor was not called
+        mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
+        mock_processor.clean.assert_not_called()
 
     def test_clean_notion_document_task_with_different_index_types(
         self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
