@@ -23,8 +23,10 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
     with Session(db.engine) as session:
         if credential_type == PluginCredentialType.MODEL:
             # Check both pre-defined and custom model credentials using a single UNION query
-            stmt = select(ProviderCredential.id).where(ProviderCredential.id == credential_id).union(
-                select(ProviderModelCredential.id).where(ProviderModelCredential.id == credential_id)
+            stmt = (
+                select(ProviderCredential.id)
+                .where(ProviderCredential.id == credential_id)
+                .union(select(ProviderModelCredential.id).where(ProviderModelCredential.id == credential_id))
             )
             return session.scalar(stmt) is not None
 
