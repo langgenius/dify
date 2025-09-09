@@ -95,7 +95,7 @@ class AppGenerateEntity(BaseModel):
     task_id: str
 
     # app config
-    app_config: Any
+    app_config: Any = None
     file_upload_config: Optional[FileUploadConfig] = None
 
     inputs: Mapping[str, Any]
