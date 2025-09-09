@@ -77,10 +77,10 @@ class ChatMessageAudioApi(Resource):
 
 
 class ChatMessageTextApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def post(self, app_model: App):
         try:
             parser = reqparse.RequestParser()
@@ -125,10 +125,10 @@ class ChatMessageTextApi(Resource):
 
 
 class TextModesApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         try:
             parser = reqparse.RequestParser()

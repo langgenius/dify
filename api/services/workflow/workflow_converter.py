@@ -18,6 +18,7 @@ from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.nodes import NodeType
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -420,7 +421,11 @@ class WorkflowConverter:
                     query_in_prompt=False,
                 )
 
-                template = prompt_template_config["prompt_template"].template
+                prompt_template_obj = prompt_template_config["prompt_template"]
+                if not isinstance(prompt_template_obj, PromptTemplateParser):
+                    raise TypeError(f"Expected PromptTemplateParser, got {type(prompt_template_obj)}")
+
+                template = prompt_template_obj.template
                 if not template:
                     prompts = []
                 else:
@@ -457,7 +462,11 @@ class WorkflowConverter:
                     query_in_prompt=False,
                 )
 
-                template = prompt_template_config["prompt_template"].template
+                prompt_template_obj = prompt_template_config["prompt_template"]
+                if not isinstance(prompt_template_obj, PromptTemplateParser):
+                    raise TypeError(f"Expected PromptTemplateParser, got {type(prompt_template_obj)}")
+
+                template = prompt_template_obj.template
                 template = self._replace_template_variables(
                     template=template,
                     variables=start_node["data"]["variables"],
@@ -467,6 +476,9 @@ class WorkflowConverter:
                 prompts = {"text": template}
 
                 prompt_rules = prompt_template_config["prompt_rules"]
+                if not isinstance(prompt_rules, dict):
+                    raise TypeError(f"Expected dict for prompt_rules, got {type(prompt_rules)}")
+
                 role_prefix = {
                     "user": prompt_rules.get("human_prefix", "Human"),
                     "assistant": prompt_rules.get("assistant_prefix", "Assistant"),
