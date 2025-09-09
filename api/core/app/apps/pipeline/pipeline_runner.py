@@ -176,6 +176,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             graph_runtime_state=graph_runtime_state,
+            variable_pool=variable_pool,
         )
 
         generator = workflow_entry.run()
