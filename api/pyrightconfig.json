@@ -1,11 +1,7 @@
 {
-  "include": [
-    "."
-  ],
-  "exclude": [
-    "tests/",
-    "migrations/",
-    ".venv/",
+  "include": ["models", "configs"],
+  "exclude": [".venv", "tests/", "migrations/"],
+  "ignore": [
     "core/",
     "controllers/",
     "tasks/",

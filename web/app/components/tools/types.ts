@@ -60,6 +60,8 @@ export type Collection = {
   server_identifier?: string
   timeout?: number
   sse_read_timeout?: number
+  headers?: Record<string, string>
+  masked_headers?: Record<string, string>
   is_authorized?: boolean
   provider?: string
 }
@@ -187,4 +189,5 @@ export type MCPServerDetail = {
   description: string
   status: string
   parameters?: Record<string, string>
+  headers?: Record<string, string>
 }

@@ -9,7 +9,7 @@ export const useNote = (id: string) => {
 
   const handleThemeChange = useCallback((theme: NoteTheme) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { theme } })
-    saveStateToHistory(WorkflowHistoryEvent.NoteChange)
+    saveStateToHistory(WorkflowHistoryEvent.NoteChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const handleEditorChange = useCallback((editorState: EditorState) => {
@@ -21,7 +21,7 @@ export const useNote = (id: string) => {
 
   const handleShowAuthorChange = useCallback((showAuthor: boolean) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { showAuthor } })
-    saveStateToHistory(WorkflowHistoryEvent.NoteChange)
+    saveStateToHistory(WorkflowHistoryEvent.NoteChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   return {

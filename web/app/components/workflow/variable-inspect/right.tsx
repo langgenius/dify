@@ -56,12 +56,6 @@ const Right = ({
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const isTruncated = currentNodeVar?.var.is_truncated
   const fullContent = currentNodeVar?.var.full_content
-  console.log(currentNodeVar?.var)
-  // const isTruncated = true
-  // const fullContent = {
-  //   size_bytes: 11289600,
-  //   download_url: 'https://upload.dify.ai/files/222bc6e7-40bd-4433-9ba8-4b9ecda88b14/file-preview?timestamp=1754976824&nonce=d970eb39b119f76ec94a9b026f2825b3&sign=ltJO4vS0jrwxuBl4GU74E1Sg_Tia2Y4g2LoBoPh3970=&as_attachment=true',
-  // }
 
   const {
     resetConversationVar,

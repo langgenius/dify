@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import Textarea from '@/app/components/base/textarea'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
@@ -72,18 +72,22 @@ const ValueContent = ({
   const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
-  if (showTextEditor) {
-    if (currentVar.value_type === 'number')
-      setValue(JSON.stringify(currentVar.value))
-    if (!currentVar.value)
-      setValue('')
-    setValue(currentVar.value)
-  }
-  if (showJSONEditor)
-    setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
 
-  if (showFileEditor)
-    setFileValue(formatFileValue(currentVar))
+  // update default value when id changed
+  useEffect(() => {
+    if (showTextEditor) {
+      if (currentVar.value_type === 'number')
+        return setValue(JSON.stringify(currentVar.value))
+      if (!currentVar.value)
+        return setValue('')
+      setValue(currentVar.value)
+    }
+    if (showJSONEditor)
+      setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
+
+    if (showFileEditor)
+      setFileValue(formatFileValue(currentVar))
+  }, [currentVar.id, currentVar.value])
 
   const handleTextChange = (value: string) => {
     if (isTruncated)
@@ -299,4 +303,4 @@ const ValueContent = ({
   )
 }
 
-export default ValueContent
+export default React.memo(ValueContent)
