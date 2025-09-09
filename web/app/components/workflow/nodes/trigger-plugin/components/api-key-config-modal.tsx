@@ -43,7 +43,6 @@ const ApiKeyConfigModal: FC<ApiKeyConfigModalProps> = ({
     step,
     builderId,
     isLoading,
-    error,
     startAuth,
     verifyAuth,
     completeConfig,
@@ -164,22 +163,6 @@ const ApiKeyConfigModal: FC<ApiKeyConfigModalProps> = ({
   const renderContent = () => {
     if (credentialSchema.length === 0 && step === 'auth')
       return <Loading type='app' />
-
-    if (error) {
-      return (
-        <div className="flex flex-col items-center justify-center py-8">
-          <p className="mb-4 text-text-destructive">{error}</p>
-          <div className="flex space-x-2">
-            <Button onClick={onCancel}>
-              {t('common.operation.cancel')}
-            </Button>
-            <Button variant="primary" onClick={() => reset()}>
-              {t('common.operation.retry')}
-            </Button>
-          </div>
-        </div>
-      )
-    }
 
     switch (step) {
       case 'auth':
