@@ -74,7 +74,7 @@ class TriggerIdentity(BaseModel):
     author: str = Field(..., description="The author of the trigger")
     name: str = Field(..., description="The name of the trigger")
     label: I18nObject = Field(..., description="The label of the trigger")
-    provider: str = Field(..., description="The provider of the trigger")
+    provider: Optional[str] = Field(default=None, description="The provider of the trigger")
 
 
 class TriggerDescription(BaseModel):
@@ -249,6 +249,7 @@ class SubscriptionBuilderUpdater(BaseModel):
             subscription_builder.credential_expires_at = self.credential_expires_at
         if self.expires_at:
             subscription_builder.expires_at = self.expires_at
+
 
 # Export all entities
 __all__ = [

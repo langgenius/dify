@@ -91,7 +91,6 @@ class ProviderConfigEncrypter:
 
         return data
 
-
     def mask_tool_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
         return self.mask_credentials(data)
 
