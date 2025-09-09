@@ -470,6 +470,12 @@ const translation = {
         back: 'Înapoi',
         promptPlaceholder: 'Descrie schema ta JSON...',
       },
+      reasoningFormat: {
+        tagged: 'Ține minte etichetele',
+        separated: 'Etichete de gândire separate',
+        title: 'Activează separarea etichetelor de raționare',
+        tooltip: 'Extrage conținutul din etichetele think și stochează-l în câmpul reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variabilă de interogare',
@@ -997,6 +1003,10 @@ const translation = {
     noLastRunFound: 'Niciun rulament anterior găsit',
     copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
     lastOutput: 'Ultimul rezultat',
+  },
+  sidebar: {
+    exportWarning: 'Exportați versiunea salvată curentă',
+    exportWarningDesc: 'Aceasta va exporta versiunea curent salvată a fluxului dumneavoastră de lucru. Dacă aveți modificări nesalvate în editor, vă rugăm să le salvați mai întâi utilizând opțiunea de export din canvasul fluxului de lucru.',
   },
 }
 

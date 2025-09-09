@@ -86,7 +86,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]) -> dict:
+    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]):
         """
         Validate for agent chat app model config
 

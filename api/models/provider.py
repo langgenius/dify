@@ -17,7 +17,7 @@ class ProviderType(Enum):
     SYSTEM = "system"
 
     @staticmethod
-    def value_of(value):
+    def value_of(value: str) -> "ProviderType":
         for member in ProviderType:
             if member.value == value:
                 return member
@@ -35,7 +35,7 @@ class ProviderQuotaType(Enum):
     """hosted trial quota"""
 
     @staticmethod
-    def value_of(value):
+    def value_of(value: str) -> "ProviderQuotaType":
         for member in ProviderQuotaType:
             if member.value == value:
                 return member

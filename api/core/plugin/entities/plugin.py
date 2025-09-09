@@ -4,7 +4,8 @@ import re
 from collections.abc import Mapping
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from packaging.version import InvalidVersion, Version
+from pydantic import BaseModel, Field, field_validator, model_validator
 from werkzeug.exceptions import NotFound
 
 from core.agent.plugin_entities import AgentStrategyProviderEntity
@@ -71,10 +72,21 @@ class PluginDeclaration(BaseModel):
         endpoints: Optional[list[str]] = Field(default_factory=list[str])
 
     class Meta(BaseModel):
-        minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+        minimum_dify_version: Optional[str] = Field(default=None)
         version: Optional[str] = Field(default=None)
 
-    version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+        @field_validator("minimum_dify_version")
+        @classmethod
+        def validate_minimum_dify_version(cls, v: Optional[str]) -> Optional[str]:
+            if v is None:
+                return v
+            try:
+                Version(v)
+                return v
+            except InvalidVersion as e:
+                raise ValueError(f"Invalid version format: {v}") from e
+
+    version: str = Field(...)
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
     description: I18nObject
@@ -94,9 +106,18 @@ class PluginDeclaration(BaseModel):
     agent_strategy: Optional[AgentStrategyProviderEntity] = None
     meta: Meta
 
+    @field_validator("version")
+    @classmethod
+    def validate_version(cls, v: str) -> str:
+        try:
+            Version(v)
+            return v
+        except InvalidVersion as e:
+            raise ValueError(f"Invalid version format: {v}") from e
+
     @model_validator(mode="before")
     @classmethod
-    def validate_category(cls, values: dict) -> dict:
+    def validate_category(cls, values: dict):
         # auto detect category
         if values.get("tool"):
             values["category"] = PluginCategory.Tool
@@ -147,7 +168,7 @@ class GenericProviderID:
     def __str__(self) -> str:
         return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
 
-    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+    def __init__(self, value: str, is_hardcoded: bool = False):
         if not value:
             raise NotFound("plugin not found, please add plugin")
         # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
@@ -170,14 +191,14 @@ class GenericProviderID:
 
 
 class ModelProviderID(GenericProviderID):
-    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+    def __init__(self, value: str, is_hardcoded: bool = False):
         super().__init__(value, is_hardcoded)
         if self.organization == "langgenius" and self.provider_name == "google":
             self.plugin_name = "gemini"
 
 
 class ToolProviderID(GenericProviderID):
-    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+    def __init__(self, value: str, is_hardcoded: bool = False):
         super().__init__(value, is_hardcoded)
         if self.organization == "langgenius":
             if self.provider_name in ["jina", "siliconflow", "stepfun", "gitee_ai"]:

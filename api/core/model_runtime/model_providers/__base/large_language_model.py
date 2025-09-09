@@ -408,7 +408,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger before invoke callbacks
 
@@ -456,7 +456,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger new chunk callbacks
 
@@ -503,7 +503,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger after invoke callbacks
 
@@ -553,7 +553,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger invoke error callbacks
 

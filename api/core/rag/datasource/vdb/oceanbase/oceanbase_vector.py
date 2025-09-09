@@ -35,7 +35,7 @@ class OceanBaseVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config OCEANBASE_VECTOR_HOST is required")
         if not values["port"]:
@@ -68,7 +68,7 @@ class OceanBaseVector(BaseVector):
         self._create_collection()
         self.add_texts(texts, embeddings)
 
-    def _create_collection(self) -> None:
+    def _create_collection(self):
         lock_name = "vector_indexing_lock_" + self._collection_name
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = "vector_indexing_" + self._collection_name
@@ -174,7 +174,7 @@ class OceanBaseVector(BaseVector):
         cur = self._client.get(table_name=self._collection_name, ids=id)
         return bool(cur.rowcount != 0)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         self._client.delete(table_name=self._collection_name, ids=ids)
@@ -190,7 +190,7 @@ class OceanBaseVector(BaseVector):
         )
         return [row[0] for row in cur]
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
@@ -278,7 +278,7 @@ class OceanBaseVector(BaseVector):
             )
         return docs
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.drop_table_if_exist(self._collection_name)
 
 
