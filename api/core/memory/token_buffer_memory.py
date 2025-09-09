@@ -27,7 +27,7 @@ class TokenBufferMemory:
         self,
         conversation: Conversation,
         model_instance: ModelInstance,
-    ) -> None:
+    ):
         self.conversation = conversation
         self.model_instance = model_instance
 
@@ -124,6 +124,7 @@ class TokenBufferMemory:
 
         messages = list(reversed(thread_messages))
 
+        curr_message_tokens = 0
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             # Process user message with files

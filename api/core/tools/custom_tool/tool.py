@@ -302,7 +302,7 @@ class ApiTool(Tool):
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
-    ) -> Any:
+    ):
         if max_recursive <= 0:
             raise Exception("Max recursion depth reached")
         for option in any_of or []:
@@ -337,7 +337,7 @@ class ApiTool(Tool):
         # If no option succeeded, you might want to return the value as is or raise an error
         return value  # or raise ValueError(f"Cannot convert value '{value}' to any specified type in anyOf")
 
-    def _convert_body_property_type(self, property: dict[str, Any], value: Any) -> Any:
+    def _convert_body_property_type(self, property: dict[str, Any], value: Any):
         try:
             if "type" in property:
                 if property["type"] == "integer" or property["type"] == "int":

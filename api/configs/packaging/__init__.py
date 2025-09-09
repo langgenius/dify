@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from configs.packaging.pyproject import PyProjectConfig, PyProjectTomlConfig
+from configs.packaging.pyproject import PyProjectTomlConfig
 
 
 class PackagingInfo(PyProjectTomlConfig):

@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import TypeVar, Union
+from typing import TypeVar, Union, cast
 
 from core.agent.entities import AgentInvokeMessage
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -18,7 +18,7 @@ class FileChunk:
     bytes_written: int = field(default=0, init=False)
     data: bytearray = field(init=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         self.data = bytearray(self.total_length)
 
 
@@ -82,10 +82,12 @@ def merge_blob_chunks(
                 message_class = type(resp)
                 merged_message = message_class(
                     type=ToolInvokeMessage.MessageType.BLOB,
-                    message=ToolInvokeMessage.BlobMessage(blob=files[chunk_id].data[: files[chunk_id].bytes_written]),
+                    message=ToolInvokeMessage.BlobMessage(
+                        blob=bytes(files[chunk_id].data[: files[chunk_id].bytes_written])
+                    ),
                     meta=resp.meta,
                 )
-                yield merged_message
+                yield cast(MessageType, merged_message)
                 # Clean up the buffer
                 del files[chunk_id]
         else:
