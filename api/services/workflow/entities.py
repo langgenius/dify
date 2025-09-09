@@ -55,7 +55,7 @@ class PluginTriggerData(TriggerData):
 
     trigger_type: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.PLUGIN
     plugin_id: str
-    webhook_url: str
+    endpoint_id: str
 
 
 class WorkflowTaskData(BaseModel):

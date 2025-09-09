@@ -806,6 +806,72 @@ class DraftWorkflowNodeLastRunApi(Resource):
         return node_exec
 
 
+class DraftWorkflowTriggerNodeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App, node_id: str):
+        """
+        Debug trigger node by creating a debug session and listening for events.
+        """
+        srv = WorkflowService()
+        workflow = srv.get_draft_workflow(app_model)
+        if not workflow:
+            raise NotFound("Workflow not found")
+
+        # Get node configuration
+        node_config = workflow.get_node_config_by_id(node_id)
+        if not node_config:
+            raise NotFound(f"Node {node_id} not found in workflow")
+
+        # Validate it's a trigger plugin node
+        if node_config.get("data", {}).get("type") != "plugin":
+            raise ValueError("Node is not a trigger plugin node")
+
+        # Get subscription ID from node config
+        subscription_id = node_config.get("data", {}).get("subscription_id")
+        if not subscription_id:
+            raise ValueError("No subscription ID configured for this trigger node")
+
+        # Create debug session
+        from services.trigger_debug_service import TriggerDebugService
+
+        assert isinstance(current_user, Account)
+        session_id = TriggerDebugService.create_debug_session(
+            app_id=str(app_model.id),
+            node_id=node_id,
+            subscription_id=subscription_id,
+            user_id=current_user.id,
+            timeout=300,
+        )
+
+        # Stream events to client
+        def generate():
+            for event_data in TriggerDebugService.listen_for_events(session_id):
+                if isinstance(event_data, dict):
+                    if event_data.get("type") == "heartbeat":
+                        yield f"event: heartbeat\ndata: {json.dumps(event_data)}\n\n"
+                    elif event_data.get("type") == "timeout":
+                        yield f"event: timeout\ndata: {json.dumps({'message': 'Session timed out'})}\n\n"
+                        break
+                    elif event_data.get("type") == "error":
+                        yield f"event: error\ndata: {json.dumps(event_data)}\n\n"
+                        break
+                    else:
+                        # Trigger event - prepare for workflow execution
+                        yield f"event: trigger\ndata: {json.dumps(event_data)}\n\n"
+
+                        # TODO: Execute workflow with trigger data if needed
+                        # This would involve extracting trigger data and running the workflow
+                        # For now, just send the trigger event
+                        break
+
+        from flask import Response
+
+        return Response(generate(), mimetype="text/event-stream")
+
+
 api.add_resource(
     DraftWorkflowApi,
     "/apps/<uuid:app_id>/workflows/draft",
@@ -829,6 +895,10 @@ api.add_resource(
 api.add_resource(
     DraftWorkflowNodeRunApi,
     "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    DraftWorkflowTriggerNodeApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger",
 )
 api.add_resource(
     AdvancedChatDraftRunIterationNodeApi,

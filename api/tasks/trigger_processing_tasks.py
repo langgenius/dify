@@ -88,12 +88,11 @@ def dispatch_triggered_workflows_async(
                         )
                         continue
 
-                    TriggerService.process_triggered_workflows(
+                    dispatched_count += TriggerService.dispatch_triggered_workflows(
                         subscription=subscription,
                         trigger=trigger,
-                        request=request,
+                        request_id=request_id,
                     )
-                    dispatched_count += 1
 
                 except Exception:
                     logger.exception(
@@ -103,6 +102,18 @@ def dispatch_triggered_workflows_async(
                     )
                     # Continue processing other triggers even if one fails
                     continue
+
+            # Dispatch to debug sessions after processing all triggers
+            try:
+                debug_dispatched = TriggerService.dispatch_debugging_sessions(
+                    subscription_id=subscription_id,
+                    request=request,
+                    triggers=triggers,
+                    request_id=request_id,
+                )
+            except Exception:
+                # Silent failure for debug dispatch
+                logger.exception("Failed to dispatch to debug sessions")
 
             logger.info(
                 "Completed async trigger dispatching: processed %d/%d triggers",
@@ -117,8 +128,9 @@ def dispatch_triggered_workflows_async(
 
             return {
                 "status": "completed",
-                "dispatched_count": dispatched_count,
                 "total_count": len(triggers),
+                "dispatched_count": dispatched_count,
+                "debug_dispatched_count": debug_dispatched,
             }
 
     except Exception as e:
