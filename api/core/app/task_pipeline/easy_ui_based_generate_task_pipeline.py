@@ -125,7 +125,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
-        if self._stream:
+        if self.stream:
             return self._to_stream_response(generator)
         else:
             return self._to_blocking_response(generator)
@@ -265,9 +265,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
             if isinstance(event, QueueErrorEvent):
                 with Session(db.engine) as session:
-                    err = self._handle_error(event=event, session=session, message_id=self._message_id)
+                    err = self.handle_error(event=event, session=session, message_id=self._message_id)
                     session.commit()
-                yield self._error_to_stream_response(err)
+                yield self.error_to_stream_response(err)
                 break
             elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
                 if isinstance(event, QueueMessageEndEvent):
@@ -354,7 +354,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             elif isinstance(event, QueueMessageReplaceEvent):
                 yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
             elif isinstance(event, QueuePingEvent):
-                yield self._ping_stream_response()
+                yield self.ping_stream_response()
             else:
                 continue
         if publisher:

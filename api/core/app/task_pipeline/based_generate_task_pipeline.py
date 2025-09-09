@@ -40,9 +40,10 @@ class BasedGenerateTaskPipeline:
         self.queue_manager = queue_manager
         self._start_at = time.perf_counter()
         self._output_moderation_handler = self._init_output_moderation()
-        self._stream = stream
+        self.stream = stream
 
-    def _handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+
+    def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -86,7 +87,7 @@ class BasedGenerateTaskPipeline:
 
         return message
 
-    def _error_to_stream_response(self, e: Exception):
+    def error_to_stream_response(self, e: Exception):
         """
         Error to stream response.
         :param e: exception
@@ -94,7 +95,7 @@ class BasedGenerateTaskPipeline:
         """
         return ErrorStreamResponse(task_id=self._application_generate_entity.task_id, err=e)
 
-    def _ping_stream_response(self) -> PingStreamResponse:
+    def ping_stream_response(self) -> PingStreamResponse:
         """
         Ping stream response.
         :return:

@@ -174,7 +174,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
 
-        if self._base_task_pipeline._stream:
+        if self._base_task_pipeline.stream:
             return self._to_stream_response(generator)
         else:
             return self._to_blocking_response(generator)
@@ -302,13 +302,13 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""
-        yield self._base_task_pipeline._ping_stream_response()
+        yield self._base_task_pipeline.ping_stream_response()
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse, None, None]:
         """Handle error events."""
         with self._database_session() as session:
-            err = self._base_task_pipeline._handle_error(event=event, session=session, message_id=self._message_id)
-        yield self._base_task_pipeline._error_to_stream_response(err)
+            err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_workflow_started_event(self, *args, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle workflow started events."""
@@ -627,10 +627,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                 workflow_execution=workflow_execution,
             )
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {workflow_execution.error_message}"))
-            err = self._base_task_pipeline._handle_error(event=err_event, session=session, message_id=self._message_id)
+            err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
 
         yield workflow_finish_resp
-        yield self._base_task_pipeline._error_to_stream_response(err)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_stop_event(
         self,
