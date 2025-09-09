@@ -9,3 +9,7 @@ FILE_MODEL_IDENTITY = "__dify__file__"
 
 def maybe_file_object(o: Any) -> bool:
     return isinstance(o, dict) and o.get("dify_model_identity") == FILE_MODEL_IDENTITY
+
+
+# The default user ID for service API calls.
+DEFAULT_SERVICE_API_USER_ID = "DEFAULT-USER"

@@ -338,7 +338,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return instruction
 
-    def _init_react_state(self, query) -> None:
+    def _init_react_state(self, query):
         """
         init agent scratchpad
         """

@@ -470,6 +470,12 @@ const translation = {
         generateJsonSchema: 'Générer un schéma JSON',
         resultTip: 'Voici le résultat généré. Si vous n\'êtes pas satisfait, vous pouvez revenir en arrière et modifier votre demande.',
       },
+      reasoningFormat: {
+        title: 'Activer la séparation des balises de raisonnement',
+        tagged: 'Gardez les étiquettes de pensée',
+        separated: 'Séparer les balises de réflexion',
+        tooltip: 'Extraire le contenu des balises think et le stocker dans le champ reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variable de requête',
@@ -997,6 +1003,10 @@ const translation = {
     noMatchingInputsFound: 'Aucune entrée correspondante trouvée dans la dernière exécution.',
     copyLastRunError: 'Échec de la copie des entrées de la dernière exécution',
     lastOutput: 'Dernière sortie',
+  },
+  sidebar: {
+    exportWarning: 'Exporter la version enregistrée actuelle',
+    exportWarningDesc: 'Cela exportera la version actuelle enregistrée de votre flux de travail. Si vous avez des modifications non enregistrées dans l\'éditeur, veuillez d\'abord les enregistrer en utilisant l\'option d\'exportation dans le canevas du flux de travail.',
   },
 }
 

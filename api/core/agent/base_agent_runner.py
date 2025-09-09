@@ -62,7 +62,7 @@ class BaseAgentRunner(AppRunner):
         model_instance: ModelInstance,
         memory: Optional[TokenBufferMemory] = None,
         prompt_messages: Optional[list[PromptMessage]] = None,
-    ) -> None:
+    ):
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation

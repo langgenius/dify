@@ -46,7 +46,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         session_maker: SQLAlchemy sessionmaker instance for database connections
     """
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(self, session_maker: sessionmaker[Session]):
         """
         Initialize the repository with a sessionmaker.
 

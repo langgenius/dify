@@ -43,6 +43,16 @@ async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
 
 async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
+  const redirectUrl = urlParams.get('redirect_url')
+  if (redirectUrl) {
+    const decodedRedirectUrl = decodeURIComponent(redirectUrl)
+    const queryString = decodedRedirectUrl.split('?')[1]
+    if (queryString) {
+      const redirectParams = new URLSearchParams(queryString)
+      for (const [key, value] of redirectParams.entries())
+        urlParams.set(key, value)
+    }
+  }
   const systemVariables: Record<string, any> = {}
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
