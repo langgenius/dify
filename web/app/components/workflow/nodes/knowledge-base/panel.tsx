@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { KnowledgeBaseNodeType } from './types'
@@ -60,6 +61,25 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     }
   }, [data.chunk_structure])
 
+  const chunkTypePlaceHolder = useMemo(() => {
+    if (!data.chunk_structure) return ''
+    let placeholder = ''
+    switch (data.chunk_structure) {
+      case ChunkStructureEnum.general:
+        placeholder = 'general_structure'
+        break
+      case ChunkStructureEnum.parent_child:
+        placeholder = 'parent_child_structure'
+        break
+      case ChunkStructureEnum.question_answer:
+        placeholder = 'qa_structure'
+        break
+      default:
+        return ''
+    }
+    return placeholder.charAt(0).toUpperCase() + placeholder.slice(1)
+  }, [data.chunk_structure])
+
   return (
     <div>
       <Group
@@ -81,7 +101,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
               }}
               fieldProps={{
                 fieldTitleProps: {
-                  title: t('workflow.nodes.common.inputVars'),
+                  title: t('workflow.nodes.knowledgeBase.chunksInput'),
+                  tooltip: t('workflow.nodes.knowledgeBase.chunksInputTip'),
                 },
               }}
             >
@@ -95,6 +116,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 isFilterFileVar
                 isSupportFileVar={false}
                 preferSchemaType
+                typePlaceHolder={chunkTypePlaceHolder}
               />
             </BoxGroupField>
             <BoxGroup>

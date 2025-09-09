@@ -942,6 +942,8 @@ const translation = {
       aboutRetrieval: 'درباره روش بازیابی.',
       chunkIsRequired: 'ساختار تکه ای مورد نیاز است',
       chooseChunkStructure: 'یک ساختار تکه ای را انتخاب کنید',
+      chunksInput: 'تکه‌ها',
+      chunksInputTip: 'متغیر ورودی گره پایگاه دانش چانک‌ها است. نوع متغیر یک شیء با یک طرح JSON خاص است که باید با ساختار چانک انتخاب شده سازگار باشد.',
     },
   },
   tracing: {

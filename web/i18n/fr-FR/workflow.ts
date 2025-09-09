@@ -942,6 +942,8 @@ const translation = {
       changeChunkStructure: 'Modifier la structure des morceaux',
       indexMethodIsRequired: 'La méthode d’indexation est requise',
       retrievalSettingIsRequired: 'Le paramètre de récupération est requis',
+      chunksInput: 'Morceaux',
+      chunksInputTip: 'La variable d\'entrée du nœud de la base de connaissances est Chunks. Le type de variable est un objet avec un schéma JSON spécifique qui doit être cohérent avec la structure de morceau sélectionnée.',
     },
   },
   tracing: {

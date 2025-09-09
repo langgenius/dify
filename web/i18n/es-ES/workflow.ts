@@ -942,6 +942,8 @@ const translation = {
       retrievalSettingIsRequired: 'Se requiere configuración de recuperación',
       chunkStructure: 'Estructura de fragmentos',
       chunkIsRequired: 'Se requiere una estructura de fragmentos',
+      chunksInput: 'Trozo',
+      chunksInputTip: 'La variable de entrada del nodo de la base de conocimientos es Chunks. El tipo de variable es un objeto con un esquema JSON específico que debe ser consistente con la estructura del fragmento seleccionado.',
     },
   },
   tracing: {

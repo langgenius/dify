@@ -942,6 +942,8 @@ const translation = {
       aboutRetrieval: 'sobre o método de recuperação.',
       chooseChunkStructure: 'Escolha uma estrutura de blocos',
       indexMethodIsRequired: 'O método de índice é necessário',
+      chunksInput: 'Pedaços',
+      chunksInputTip: 'A variável de entrada do nó da base de conhecimento é Chunks. O tipo da variável é um objeto com um esquema JSON específico que deve ser consistente com a estrutura de chunk selecionada.',
     },
   },
   tracing: {
