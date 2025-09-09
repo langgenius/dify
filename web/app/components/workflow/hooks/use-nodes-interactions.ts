@@ -50,7 +50,7 @@ import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useHelpline } from './use-helpline'
 import {
@@ -67,7 +67,6 @@ export const useNodesInteractions = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
-  const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     checkNestedParallelLimit,
@@ -86,7 +85,7 @@ export const useNodesInteractions = () => {
   } = useNodeLoopInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
 
-  const { saveStateToHistory, undo, redo } = useWorkflowHistory()
+  const { saveStateToHistory } = useWorkflowHistory()
 
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     workflowStore.setState({ nodeAnimation: false })
@@ -1427,31 +1426,35 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
-    const { setNodes, setEdges } = collaborativeWorkflow.getState()
-    undo()
+    // Use collaborative undo from Loro
+    const undoResult = collaborationManager.undo()
 
-    const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0)
-      return
-
-    setEdges(edges)
-    setNodes(nodes)
-  }, [collaborativeWorkflow, undo, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
+    if (undoResult) {
+      // The undo operation will automatically trigger subscriptions
+      // which will update the nodes and edges through setupSubscriptions
+      console.log('Collaborative undo performed')
+    }
+ else {
+      console.log('Nothing to undo')
+    }
+  }, [getNodesReadOnly, getWorkflowReadOnly])
 
   const handleHistoryForward = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
-    const { setNodes, setEdges } = collaborativeWorkflow.getState()
-    redo()
+    // Use collaborative redo from Loro
+    const redoResult = collaborationManager.redo()
 
-    const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0)
-      return
-
-    setEdges(edges)
-    setNodes(nodes)
-  }, [redo, collaborativeWorkflow, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
+    if (redoResult) {
+      // The redo operation will automatically trigger subscriptions
+      // which will update the nodes and edges through setupSubscriptions
+      console.log('Collaborative redo performed')
+    }
+ else {
+      console.log('Nothing to redo')
+    }
+  }, [getNodesReadOnly, getWorkflowReadOnly])
 
   return {
     handleNodeDragStart,

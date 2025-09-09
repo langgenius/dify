@@ -1,4 +1,4 @@
-import { LoroDoc } from 'loro-crdt'
+import { LoroDoc, UndoManager } from 'loro-crdt'
 import { isEqual } from 'lodash-es'
 import { webSocketClient } from './websocket-manager'
 import { CRDTProvider } from './crdt-provider'
@@ -8,6 +8,7 @@ import type { CollaborationState, CursorPosition, OnlineUser } from '../types/co
 
 export class CollaborationManager {
   private doc: LoroDoc | null = null
+  private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
   private nodesMap: any = null
   private edgesMap: any = null
@@ -18,6 +19,7 @@ export class CollaborationManager {
   private isLeader = false
   private leaderId: string | null = null
   private activeConnections = new Set<string>()
+  private isUndoRedoInProgress = false
 
   init = (appId: string, reactFlowStore: any): void => {
     if (!reactFlowStore) {
@@ -28,15 +30,31 @@ export class CollaborationManager {
   }
 
   setNodes = (oldNodes: Node[], newNodes: Node[]): void => {
+    if (!this.doc) return
+
+    // Don't track operations during undo/redo to prevent loops
+    if (this.isUndoRedoInProgress) {
+      console.log('Skipping setNodes during undo/redo')
+      return
+    }
+
+    console.log('Setting nodes with tracking')
     this.syncNodes(oldNodes, newNodes)
-    if (this.doc)
-      this.doc.commit()
+    this.doc.commit()
   }
 
   setEdges = (oldEdges: Edge[], newEdges: Edge[]): void => {
+    if (!this.doc) return
+
+    // Don't track operations during undo/redo to prevent loops
+    if (this.isUndoRedoInProgress) {
+      console.log('Skipping setEdges during undo/redo')
+      return
+    }
+
+    console.log('Setting edges with tracking')
     this.syncEdges(oldEdges, newEdges)
-    if (this.doc)
-      this.doc.commit()
+    this.doc.commit()
   }
 
   destroy = (): void => {
@@ -73,6 +91,54 @@ export class CollaborationManager {
     this.doc = new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes')
     this.edgesMap = this.doc.getMap('edges')
+
+    // Initialize UndoManager for collaborative undo/redo
+    this.undoManager = new UndoManager(this.doc, {
+      maxUndoSteps: 100,
+      mergeInterval: 500, // Merge operations within 500ms
+      excludeOriginPrefixes: [], // Don't exclude anything - let UndoManager track all local operations
+      onPush: (isUndo, range, event) => {
+        console.log('UndoManager onPush:', { isUndo, range, event })
+        // Store current selection state when an operation is pushed
+        const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data.selected)
+
+        // Emit event to update UI button states when new operation is pushed
+        setTimeout(() => {
+          this.eventEmitter.emit('undoRedoStateChange', {
+            canUndo: this.undoManager?.canUndo() || false,
+            canRedo: this.undoManager?.canRedo() || false,
+          })
+        }, 0)
+
+        return {
+          value: {
+            selectedNodeId: selectedNode?.id || null,
+            timestamp: Date.now(),
+          },
+          cursors: [],
+        }
+      },
+      onPop: (isUndo, value, counterRange) => {
+        console.log('UndoManager onPop:', { isUndo, value, counterRange })
+        // Restore selection state when undoing/redoing
+        if (value?.value && typeof value.value === 'object' && 'selectedNodeId' in value.value && this.reactFlowStore) {
+          const selectedNodeId = (value.value as any).selectedNodeId
+          if (selectedNodeId) {
+            const { setNodes } = this.reactFlowStore.getState()
+            const nodes = this.reactFlowStore.getState().getNodes()
+            const newNodes = nodes.map((n: Node) => ({
+              ...n,
+              data: {
+                ...n.data,
+                selected: n.id === selectedNodeId,
+              },
+            }))
+            setNodes(newNodes)
+          }
+        }
+      },
+    })
+
     this.provider = new CRDTProvider(socket, this.doc)
 
     this.setupSubscriptions()
@@ -98,6 +164,7 @@ export class CollaborationManager {
       webSocketClient.disconnect(this.currentAppId)
 
     this.provider?.destroy()
+    this.undoManager = null
     this.doc = null
     this.provider = null
     this.nodesMap = null
@@ -105,6 +172,7 @@ export class CollaborationManager {
     this.currentAppId = null
     this.reactFlowStore = null
     this.cursors = {}
+    this.isUndoRedoInProgress = false
 
     // Only reset leader status when actually disconnecting
     const wasLeader = this.isLeader
@@ -182,12 +250,124 @@ export class CollaborationManager {
     return this.eventEmitter.on('leaderChange', callback)
   }
 
+  onUndoRedoStateChange(callback: (state: { canUndo: boolean; canRedo: boolean }) => void): () => void {
+    return this.eventEmitter.on('undoRedoStateChange', callback)
+  }
+
   getLeaderId(): string | null {
     return this.leaderId
   }
 
   getIsLeader(): boolean {
     return this.isLeader
+  }
+
+  // Collaborative undo/redo methods
+  undo(): boolean {
+    if (!this.undoManager) {
+      console.log('UndoManager not initialized')
+      return false
+    }
+
+    const canUndo = this.undoManager.canUndo()
+    console.log('Can undo:', canUndo)
+
+    if (canUndo) {
+      this.isUndoRedoInProgress = true
+      const result = this.undoManager.undo()
+
+      // After undo, manually update React state from CRDT without triggering collaboration
+      if (result && this.reactFlowStore) {
+        requestAnimationFrame(() => {
+          // Get ReactFlow's native setters, not the collaborative ones
+          const state = this.reactFlowStore.getState()
+          const updatedNodes = Array.from(this.nodesMap.values())
+          const updatedEdges = Array.from(this.edgesMap.values())
+          console.log('Manually updating React state after undo')
+
+          // Call ReactFlow's native setters directly to avoid triggering collaboration
+          state.setNodes(updatedNodes)
+          state.setEdges(updatedEdges)
+
+          this.isUndoRedoInProgress = false
+
+          // Emit event to update UI button states
+          this.eventEmitter.emit('undoRedoStateChange', {
+            canUndo: this.undoManager?.canUndo() || false,
+            canRedo: this.undoManager?.canRedo() || false,
+          })
+        })
+      }
+ else {
+        this.isUndoRedoInProgress = false
+      }
+
+      console.log('Undo result:', result)
+      return result
+    }
+
+    return false
+  }
+
+  redo(): boolean {
+    if (!this.undoManager) {
+      console.log('RedoManager not initialized')
+      return false
+    }
+
+    const canRedo = this.undoManager.canRedo()
+    console.log('Can redo:', canRedo)
+
+    if (canRedo) {
+      this.isUndoRedoInProgress = true
+      const result = this.undoManager.redo()
+
+      // After redo, manually update React state from CRDT without triggering collaboration
+      if (result && this.reactFlowStore) {
+        requestAnimationFrame(() => {
+          // Get ReactFlow's native setters, not the collaborative ones
+          const state = this.reactFlowStore.getState()
+          const updatedNodes = Array.from(this.nodesMap.values())
+          const updatedEdges = Array.from(this.edgesMap.values())
+          console.log('Manually updating React state after redo')
+
+          // Call ReactFlow's native setters directly to avoid triggering collaboration
+          state.setNodes(updatedNodes)
+          state.setEdges(updatedEdges)
+
+          this.isUndoRedoInProgress = false
+
+          // Emit event to update UI button states
+          this.eventEmitter.emit('undoRedoStateChange', {
+            canUndo: this.undoManager?.canUndo() || false,
+            canRedo: this.undoManager?.canRedo() || false,
+          })
+        })
+      }
+ else {
+        this.isUndoRedoInProgress = false
+      }
+
+      console.log('Redo result:', result)
+      return result
+    }
+
+    return false
+  }
+
+  canUndo(): boolean {
+    if (!this.undoManager) return false
+    return this.undoManager.canUndo()
+  }
+
+  canRedo(): boolean {
+    if (!this.undoManager) return false
+    return this.undoManager.canRedo()
+  }
+
+  clearUndoStack(): void {
+    if (!this.undoManager) return
+    this.undoManager.clear()
   }
 
   debugLeaderStatus(): void {
@@ -334,21 +514,43 @@ export class CollaborationManager {
 
   private setupSubscriptions(): void {
     this.nodesMap?.subscribe((event: any) => {
+      console.log('nodesMap subscription event:', event)
       if (event.by === 'import' && this.reactFlowStore) {
+        // Don't update React nodes during undo/redo to prevent loops
+        if (this.isUndoRedoInProgress) {
+          console.log('Skipping nodes subscription update during undo/redo')
+          return
+        }
+
         requestAnimationFrame(() => {
-          const { setNodes } = this.reactFlowStore.getState()
+          // Get ReactFlow's native setters, not the collaborative ones
+          const state = this.reactFlowStore.getState()
           const updatedNodes = Array.from(this.nodesMap.values())
-          setNodes(updatedNodes)
+          console.log('Updating React nodes from subscription')
+
+          // Call ReactFlow's native setter directly to avoid triggering collaboration
+          state.setNodes(updatedNodes)
         })
       }
     })
 
     this.edgesMap?.subscribe((event: any) => {
+      console.log('edgesMap subscription event:', event)
       if (event.by === 'import' && this.reactFlowStore) {
+        // Don't update React edges during undo/redo to prevent loops
+        if (this.isUndoRedoInProgress) {
+          console.log('Skipping edges subscription update during undo/redo')
+          return
+        }
+
         requestAnimationFrame(() => {
-          const { setEdges } = this.reactFlowStore.getState()
+          // Get ReactFlow's native setters, not the collaborative ones
+          const state = this.reactFlowStore.getState()
           const updatedEdges = Array.from(this.edgesMap.values())
-          setEdges(updatedEdges)
+          console.log('Updating React edges from subscription')
+
+          // Call ReactFlow's native setter directly to avoid triggering collaboration
+          state.setEdges(updatedEdges)
         })
       }
     })
