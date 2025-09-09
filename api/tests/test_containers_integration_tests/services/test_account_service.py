@@ -3300,7 +3300,7 @@ class TestRegisterService:
         redis_client.setex(cache_key, 24 * 60 * 60, account_id)
 
         # Execute invitation retrieval
-        result = RegisterService._get_invitation_by_token(
+        result = RegisterService.get_invitation_by_token(
             token=token,
             workspace_id=workspace_id,
             email=email,
@@ -3338,7 +3338,7 @@ class TestRegisterService:
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
 
         # Execute invitation retrieval
-        result = RegisterService._get_invitation_by_token(token=token)
+        result = RegisterService.get_invitation_by_token(token=token)
 
         # Verify result contains expected data
         assert result is not None
