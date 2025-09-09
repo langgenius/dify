@@ -511,7 +511,7 @@ def add_qdrant_index(field: str):
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
 
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
@@ -527,22 +527,19 @@ def add_qdrant_index(field: str):
             try:
                 params = qdrant_config.to_qdrant_params()
                 # Check the type before using
-                if isinstance(params, dict):
-                    if "path" in params:
-                        # PathQdrantParams case
-                        client = qdrant_client.QdrantClient(path=params["path"])
-                    else:
-                        # UrlQdrantParams case
-                        client = qdrant_client.QdrantClient(
-                            url=params["url"],
-                            api_key=params.get("api_key"),
-                            timeout=int(params["timeout"]),
-                            verify=params["verify"],
-                            grpc_port=params["grpc_port"],
-                            prefer_grpc=params["prefer_grpc"],
-                        )
+                if isinstance(params, PathQdrantParams):
+                    # PathQdrantParams case
+                    client = qdrant_client.QdrantClient(path=params.path)
                 else:
-                    raise TypeError("Unexpected params type")
+                    # UrlQdrantParams case - params is UrlQdrantParams
+                    client = qdrant_client.QdrantClient(
+                        url=params.url,
+                        api_key=params.api_key,
+                        timeout=int(params.timeout),
+                        verify=params.verify,
+                        grpc_port=params.grpc_port,
+                        prefer_grpc=params.prefer_grpc,
+                    )
                 # create payload index
                 client.create_payload_index(binding.collection_name, field, field_schema=PayloadSchemaType.KEYWORD)
                 create_count += 1

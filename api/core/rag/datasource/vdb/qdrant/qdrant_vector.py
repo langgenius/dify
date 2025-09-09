@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import qdrant_client
 from flask import current_app
@@ -40,11 +40,11 @@ if TYPE_CHECKING:
     MetadataFilter = Union[DictFilter, common_types.Filter]
 
 
-class PathQdrantParams(TypedDict):
+class PathQdrantParams(BaseModel):
     path: str
 
 
-class UrlQdrantParams(TypedDict):
+class UrlQdrantParams(BaseModel):
     url: str
     api_key: Optional[str]
     timeout: float
@@ -63,7 +63,7 @@ class QdrantConfig(BaseModel):
     replication_factor: int = 1
     write_consistency_factor: int = 1
 
-    def to_qdrant_params(self) -> Union[PathQdrantParams, UrlQdrantParams]:
+    def to_qdrant_params(self) -> PathQdrantParams | UrlQdrantParams:
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
@@ -87,7 +87,7 @@ class QdrantVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config: QdrantConfig, distance_func: str = "Cosine"):
         super().__init__(collection_name)
         self._client_config = config
-        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params())
+        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params().model_dump())
         self._distance_func = distance_func.upper()
         self._group_id = group_id
 
