@@ -257,7 +257,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   }, [])
 
   const isCreateFromRAGPipeline = useCallback((createdFrom: string) => {
-    return createdFrom === 'rag_pipeline'
+    return createdFrom === 'rag-pipeline'
   }, [])
 
   /**
