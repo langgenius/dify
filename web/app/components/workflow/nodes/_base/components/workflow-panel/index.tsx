@@ -256,8 +256,18 @@ const BasePanel: FC<BasePanelProps> = ({
     return methods
   }, [currentTriggerProvider])
 
-  // Unified check for any node that needs authentication UI
-  const needsAuth = useMemo(() => {
+  // Check if trigger plugin should show auth selector (not authenticated)
+  const shouldShowTriggerAuthSelector = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && supportedAuthMethods.length > 0
+  }, [data.type, currentTriggerProvider, supportedAuthMethods.length])
+
+  // Check if trigger plugin should show tab and auth menu (authenticated or no auth needed)
+  const shouldShowTriggerTabAndAuth = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && !shouldShowTriggerAuthSelector
+  }, [data.type, currentTriggerProvider, shouldShowTriggerAuthSelector])
+
+  // Unified check for tool authentication UI
+  const needsToolAuth = useMemo(() => {
     return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
   }, [data.type, currCollection?.allow_delete])
 
@@ -402,7 +412,7 @@ const BasePanel: FC<BasePanelProps> = ({
             />
           </div>
           {
-            needsAuth && data.type === BlockEnum.Tool && currCollection?.allow_delete && (
+            needsToolAuth && (
               <PluginAuth
                 className='px-4 pb-2'
                 pluginPayload={{
@@ -424,7 +434,15 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            needsAuth && data.type !== BlockEnum.Tool && (
+            shouldShowTriggerAuthSelector && (
+              <AuthMethodSelector
+                provider={currentTriggerProvider!}
+                supportedMethods={supportedAuthMethods}
+              />
+            )
+          }
+          {
+            shouldShowTriggerTabAndAuth && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}
@@ -438,15 +456,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && (
-              <AuthMethodSelector
-                provider={currentTriggerProvider}
-                supportedMethods={supportedAuthMethods}
-              />
-            )
-          }
-          {
-            !needsAuth && (
+            !needsToolAuth && data.type !== BlockEnum.TriggerPlugin && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}
