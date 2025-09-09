@@ -43,13 +43,17 @@ class ToolProviderApiEntity(BaseModel):
     server_url: Optional[str] = Field(default="", description="The server url of the tool")
     updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
     server_identifier: Optional[str] = Field(default="", description="The server identifier of the MCP tool")
+    timeout: Optional[float] = Field(default=30.0, description="The timeout of the MCP tool")
+    sse_read_timeout: Optional[float] = Field(default=300.0, description="The SSE read timeout of the MCP tool")
+    masked_headers: Optional[dict[str, str]] = Field(default=None, description="The masked headers of the MCP tool")
+    original_headers: Optional[dict[str, str]] = Field(default=None, description="The original headers of the MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
     def convert_none_to_empty_list(cls, v):
         return v if v is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         # -------------
         # overwrite tool parameter types for temp fix
         tools = jsonable_encoder(self.tools)
@@ -65,6 +69,10 @@ class ToolProviderApiEntity(BaseModel):
         if self.type == ToolProviderType.MCP:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
             optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
+            optional_fields.update(self.optional_field("timeout", self.timeout))
+            optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
+            optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
+            optional_fields.update(self.optional_field("original_headers", self.original_headers))
         return {
             "id": self.id,
             "author": self.author,
@@ -84,7 +92,7 @@ class ToolProviderApiEntity(BaseModel):
             **optional_fields,
         }
 
-    def optional_field(self, key: str, value: Any) -> dict:
+    def optional_field(self, key: str, value: Any):
         """Return dict with key-value if value is truthy, empty dict otherwise."""
         return {key: value} if value else {}
 

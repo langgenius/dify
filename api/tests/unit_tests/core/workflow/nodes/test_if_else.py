@@ -276,7 +276,7 @@ def test_array_file_contains_file_name():
     assert result.outputs["result"] is True
 
 
-def _get_test_conditions() -> list:
+def _get_test_conditions():
     conditions = [
         # Test boolean "is" operator
         {"comparison_operator": "is", "variable_selector": ["start", "bool_true"], "value": "true"},

@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.indexing_runner import IndexingRunner
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
@@ -214,7 +215,7 @@ class DataSourceNotionApi(Resource):
             workspace_id = notion_info["workspace_id"]
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
-                    datasource_type="notion_import",
+                    datasource_type=DatasourceType.NOTION.value,
                     notion_info={
                         "notion_workspace_id": workspace_id,
                         "notion_obj_id": page["page_id"],
@@ -248,7 +249,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
         documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
         for document in documents:
             document_indexing_sync_task.delay(dataset_id_str, document.id)
-        return 200
+        return {"result": "success"}, 200
 
 
 class DataSourceNotionDocumentSyncApi(Resource):
@@ -266,7 +267,7 @@ class DataSourceNotionDocumentSyncApi(Resource):
         if document is None:
             raise NotFound("Document not found.")
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)
-        return 200
+        return {"result": "success"}, 200
 
 
 api.add_resource(DataSourceApi, "/data-source/integrates", "/data-source/integrates/<uuid:binding_id>/<string:action>")

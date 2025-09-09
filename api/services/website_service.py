@@ -132,7 +132,7 @@ class WebsiteService:
         return encrypter.decrypt_token(tenant_id=tenant_id, token=api_key)
 
     @classmethod
-    def document_create_args_validate(cls, args: dict) -> None:
+    def document_create_args_validate(cls, args: dict):
         """Validate arguments for document creation."""
         try:
             WebsiteCrawlApiRequest.from_args(args)

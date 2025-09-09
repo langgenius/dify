@@ -42,11 +42,7 @@ jobs:
       - name: Run Unit tests
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
-      - name: Run ty check
-        run: |
-          cd api
-          uv add --dev ty
-          uv run ty check || true
+
       - name: Run pyrefly check
         run: |
           cd api
@@ -65,15 +61,6 @@ jobs:
 
       - name: Run dify config tests
         run: uv run --project api dev/pytest/pytest_config_tests.py
-
-      - name: MyPy Cache
-        uses: actions/cache@v4
-        with:
-          path: api/.mypy_cache
-          key: mypy-${{ matrix.python-version }}-${{ runner.os }}-${{ hashFiles('api/uv.lock') }}
-
-      - name: Run MyPy Checks
-        run: dev/mypy-check
 
       - name: Set up dotenvs
         run: |

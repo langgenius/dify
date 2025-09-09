@@ -154,11 +154,11 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const handleTitleBlur = useCallback((title: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { title } })
-    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange)
+    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
   const handleDescriptionChange = useCallback((desc: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { desc } })
-    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
+    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
@@ -250,7 +250,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   if(logParams.showSpecialResultPanel) {
     return (
-    <div className={cn(
+      <div className={cn(
         'relative mr-1  h-full',
       )}>
         <div
@@ -356,7 +356,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     >
                       {
                         isSingleRunning ? <Stop className='h-4 w-4 text-text-tertiary' />
-                        : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
+                          : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
                       }
                     </div>
                   </Tooltip>

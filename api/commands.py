@@ -511,7 +511,7 @@ def add_qdrant_index(field: str):
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
 
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
@@ -525,7 +525,21 @@ def add_qdrant_index(field: str):
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,
             )
             try:
-                client = qdrant_client.QdrantClient(**qdrant_config.to_qdrant_params())
+                params = qdrant_config.to_qdrant_params()
+                # Check the type before using
+                if isinstance(params, PathQdrantParams):
+                    # PathQdrantParams case
+                    client = qdrant_client.QdrantClient(path=params.path)
+                else:
+                    # UrlQdrantParams case - params is UrlQdrantParams
+                    client = qdrant_client.QdrantClient(
+                        url=params.url,
+                        api_key=params.api_key,
+                        timeout=int(params.timeout),
+                        verify=params.verify,
+                        grpc_port=params.grpc_port,
+                        prefer_grpc=params.prefer_grpc,
+                    )
                 # create payload index
                 client.create_payload_index(binding.collection_name, field, field_schema=PayloadSchemaType.KEYWORD)
                 create_count += 1
@@ -571,7 +585,7 @@ def old_metadata_migration():
         for document in documents:
             if document.doc_metadata:
                 doc_metadata = document.doc_metadata
-                for key, value in doc_metadata.items():
+                for key in doc_metadata:
                     for field in BuiltInField:
                         if field.value == key:
                             break

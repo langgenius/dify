@@ -8,7 +8,7 @@ import uuid
 from collections import Counter
 from typing import Any, Literal, Optional
 
-from flask_login import current_user
+import sqlalchemy as sa
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -27,6 +27,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now
+from libs.login import current_user
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -133,7 +134,14 @@ class DatasetService:
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("knowledge", tenant_id, tag_ids)
+            if tenant_id is not None:
+                target_ids = TagService.get_target_ids_by_tag_ids(
+                    "knowledge",
+                    tenant_id,
+                    tag_ids,
+                )
+            else:
+                target_ids = []
             if target_ids and len(target_ids) > 0:
                 query = query.where(Dataset.id.in_(target_ids))
             else:
@@ -212,7 +220,7 @@ class DatasetService:
                     and retrieval_model.reranking_model.reranking_model_name
                 ):
                     # check if reranking model setting is valid
-                    DatasetService.check_embedding_model_setting(
+                    DatasetService.check_reranking_model_setting(
                         tenant_id,
                         retrieval_model.reranking_model.reranking_provider_name,
                         retrieval_model.reranking_model.reranking_model_name,
@@ -494,8 +502,11 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
+        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
         try:
             model_manager = ModelManager()
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
                 tenant_id=current_user.current_tenant_id,
                 provider=data["embedding_model_provider"],
@@ -607,8 +618,12 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
+        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+
         model_manager = ModelManager()
         try:
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
                 tenant_id=current_user.current_tenant_id,
                 provider=data["embedding_model_provider"],
@@ -715,7 +730,9 @@ class DatasetService:
         )
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
+    def get_dataset_auto_disable_logs(dataset_id: str):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         features = FeatureService.get_features(current_user.current_tenant_id)
         if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
             return {
@@ -920,6 +937,8 @@ class DocumentService:
 
     @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:
+        assert isinstance(current_user, Account)
+
         documents = (
             db.session.query(Document)
             .where(
@@ -969,9 +988,10 @@ class DocumentService:
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
             for document in documents
-            if document.data_source_type == "upload_file"
+            if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
-        batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
+        if dataset.doc_form is not None:
+            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
         for document in documents:
             db.session.delete(document)
@@ -979,6 +999,8 @@ class DocumentService:
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:
+        assert isinstance(current_user, Account)
+
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise ValueError("Dataset not found.")
@@ -1008,6 +1030,7 @@ class DocumentService:
         if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
             raise DocumentIndexingError()
         # update document to be paused
+        assert current_user is not None
         document.is_paused = True
         document.paused_by = current_user.id
         document.paused_at = naive_utc_now()
@@ -1063,8 +1086,9 @@ class DocumentService:
         # sync document indexing
         document.indexing_status = "waiting"
         data_source_info = document.data_source_info_dict
-        data_source_info["mode"] = "scrape"
-        document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
+        if data_source_info:
+            data_source_info["mode"] = "scrape"
+            document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
         db.session.add(document)
         db.session.commit()
 
@@ -1089,10 +1113,13 @@ class DocumentService:
         account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
-    ):
+    ) -> tuple[list[Document], str]:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
@@ -1149,7 +1176,7 @@ class DocumentService:
                         "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-                        "top_k": 2,
+                        "top_k": 4,
                         "score_threshold_enabled": False,
                     }
 
@@ -1194,7 +1221,7 @@ class DocumentService:
                             "Invalid process rule mode: %s, can not find dataset process rule",
                             process_rule.mode,
                         )
-                        return
+                        return [], ""
                     db.session.add(dataset_process_rule)
                     db.session.commit()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"
@@ -1429,6 +1456,8 @@ class DocumentService:
 
     @staticmethod
     def get_tenant_documents_count():
+        assert isinstance(current_user, Account)
+
         documents_count = (
             db.session.query(Document)
             .where(
@@ -1449,6 +1478,8 @@ class DocumentService:
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
+        assert isinstance(current_user, Account)
+
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data.original_document_id)
         if document is None:
@@ -1508,7 +1539,7 @@ class DocumentService:
                     data_source_binding = (
                         db.session.query(DataSourceOauthBinding)
                         .where(
-                            db.and_(
+                            sa.and_(
                                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
                                 DataSourceOauthBinding.disabled == False,
@@ -1569,6 +1600,9 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
@@ -1612,7 +1646,7 @@ class DocumentService:
                 search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
-                top_k=2,
+                top_k=4,
                 score_threshold_enabled=False,
             )
         # save dataset
@@ -2008,6 +2042,9 @@ class SegmentService:
 
     @classmethod
     def create_segment(cls, args: dict, document: Document, dataset: Dataset):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         content = args["content"]
         doc_id = str(uuid.uuid4())
         segment_hash = helper.generate_text_hash(content)
@@ -2070,6 +2107,9 @@ class SegmentService:
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         lock_name = f"multi_add_segment_lock_document_id_{document.id}"
         increment_word_count = 0
         with redis_client.lock(lock_name, timeout=600):
@@ -2153,6 +2193,9 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
         indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
@@ -2344,6 +2387,7 @@ class SegmentService:
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
+        assert isinstance(current_user, Account)
         segments = (
             db.session.query(DocumentSegment.index_node_id, DocumentSegment.word_count)
             .where(
@@ -2361,7 +2405,9 @@ class SegmentService:
         index_node_ids = [seg.index_node_id for seg in segments]
         total_words = sum(seg.word_count for seg in segments)
 
-        document.word_count -= total_words
+        document.word_count = (
+            document.word_count - total_words if document.word_count and document.word_count > total_words else 0
+        )
         db.session.add(document)
 
         delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
@@ -2372,6 +2418,8 @@ class SegmentService:
     def update_segments_status(
         cls, segment_ids: list, action: Literal["enable", "disable"], dataset: Dataset, document: Document
     ):
+        assert current_user is not None
+
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
@@ -2434,6 +2482,8 @@ class SegmentService:
     def create_child_chunk(
         cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset
     ) -> ChildChunk:
+        assert isinstance(current_user, Account)
+
         lock_name = f"add_child_lock_{segment.id}"
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
@@ -2481,6 +2531,8 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
     ) -> list[ChildChunk]:
+        assert isinstance(current_user, Account)
+
         child_chunks = (
             db.session.query(ChildChunk)
             .where(
@@ -2555,6 +2607,8 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
     ) -> ChildChunk:
+        assert current_user is not None
+
         try:
             child_chunk.content = content
             child_chunk.word_count = len(content)
@@ -2585,6 +2639,8 @@ class SegmentService:
     def get_child_chunks(
         cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: Optional[str] = None
     ):
+        assert isinstance(current_user, Account)
+
         query = (
             select(ChildChunk)
             .filter_by(
@@ -2635,56 +2691,6 @@ class SegmentService:
         paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         return paginated_segments.items, paginated_segments.total
-
-    @classmethod
-    def update_segment_by_id(
-        cls, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, segment_data: dict, user_id: str
-    ) -> tuple[DocumentSegment, Document]:
-        """Update a segment by its ID with validation and checks."""
-        # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-        if not dataset:
-            raise NotFound("Dataset not found.")
-
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
-
-        # check document
-        document = DocumentService.get_document(dataset_id, document_id)
-        if not document:
-            raise NotFound("Document not found.")
-
-        # check embedding model setting if high quality
-        if dataset.indexing_technique == "high_quality":
-            try:
-                model_manager = ModelManager()
-                model_manager.get_model_instance(
-                    tenant_id=user_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
-                )
-            except LLMBadRequestError:
-                raise ValueError(
-                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
-            except ProviderTokenNotInitError as ex:
-                raise ValueError(ex.description)
-
-        # check segment
-        segment = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
-
-        # validate and update segment
-        cls.segment_create_args_validate(segment_data, document)
-        updated_segment = cls.update_segment(SegmentUpdateArgs(**segment_data), segment, document, dataset)
-
-        return updated_segment, document
 
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:

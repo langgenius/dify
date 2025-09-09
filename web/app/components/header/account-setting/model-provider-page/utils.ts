@@ -161,7 +161,7 @@ export const modelTypeFormat = (modelType: ModelTypeEnum) => {
 
 export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
   return {
-    type: FormTypeEnum.radio,
+    type: FormTypeEnum.select,
     label: {
       zh_Hans: '模型类型',
       en_US: 'Model Type',

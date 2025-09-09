@@ -107,13 +107,23 @@ class CustomModelConfiguration(BaseModel):
 
     model: str
     model_type: ModelType
-    credentials: dict | None
+    credentials: dict | None = None
     current_credential_id: Optional[str] = None
     current_credential_name: Optional[str] = None
     available_model_credentials: list[CredentialConfiguration] = []
+    unadded_to_model_list: Optional[bool] = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+
+class UnaddedModelConfiguration(BaseModel):
+    """
+    Model class for provider unadded model configuration.
+    """
+
+    model: str
+    model_type: ModelType
 
 
 class CustomConfiguration(BaseModel):
@@ -123,6 +133,7 @@ class CustomConfiguration(BaseModel):
 
     provider: Optional[CustomProviderConfiguration] = None
     models: list[CustomModelConfiguration] = []
+    can_added_models: list[UnaddedModelConfiguration] = []
 
 
 class ModelLoadBalancingConfiguration(BaseModel):
@@ -134,6 +145,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
     name: str
     credentials: dict
     credential_source_type: str | None = None
+    credential_id: str | None = None
 
 
 class ModelSettings(BaseModel):
@@ -144,6 +156,7 @@ class ModelSettings(BaseModel):
     model: str
     model_type: ModelType
     enabled: bool = True
+    load_balancing_enabled: bool = False
     load_balancing_configs: list[ModelLoadBalancingConfiguration] = []
 
     # pydantic configs
