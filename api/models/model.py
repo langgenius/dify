@@ -1459,6 +1459,14 @@ class OperationLog(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
+class DefaultEndUserSessionID(StrEnum):
+    """
+    End User Session ID enum.
+    """
+
+    DEFAULT_SESSION_ID = "DEFAULT-USER"
+
+
 class EndUser(Base, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (

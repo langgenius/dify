@@ -8,11 +8,10 @@ from flask_restx import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from core.file.constants import DEFAULT_SERVICE_API_USER_ID
 from extensions.ext_database import db
 from libs.login import _get_user
 from models.account import Tenant
-from models.model import EndUser
+from models.model import DefaultEndUserSessionID, EndUser
 
 
 def get_user(tenant_id: str, user_id: str | None) -> EndUser:
@@ -25,7 +24,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     try:
         with Session(db.engine) as session:
             if not user_id:
-                user_id = DEFAULT_SERVICE_API_USER_ID
+                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 
             user_model = (
                 session.query(EndUser)
@@ -39,7 +38,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 user_model = EndUser(
                     tenant_id=tenant_id,
                     type="service_api",
-                    is_anonymous=user_id == DEFAULT_SERVICE_API_USER_ID,
+                    is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value,
                     session_id=user_id,
                 )
                 session.add(user_model)
@@ -70,7 +69,7 @@ def get_user_tenant(view: Optional[Callable] = None):
                 raise ValueError("tenant_id is required")
 
             if not user_id:
-                user_id = DEFAULT_SERVICE_API_USER_ID
+                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 
             del kwargs["tenant_id"]
             del kwargs["user_id"]
