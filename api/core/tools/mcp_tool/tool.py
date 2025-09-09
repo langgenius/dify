@@ -67,22 +67,42 @@ class MCPTool(Tool):
 
         for content in result.content:
             if isinstance(content, TextContent):
-                try:
-                    content_json = json.loads(content.text)
-                    if isinstance(content_json, dict):
-                        yield self.create_json_message(content_json)
-                    elif isinstance(content_json, list):
-                        for item in content_json:
-                            yield self.create_json_message(item)
-                    else:
-                        yield self.create_text_message(content.text)
-                except json.JSONDecodeError:
-                    yield self.create_text_message(content.text)
-
+                yield from self._process_text_content(content)
             elif isinstance(content, ImageContent):
-                yield self.create_blob_message(
-                    blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}
-                )
+                yield self._process_image_content(content)
+
+    def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
+        """Process text content and yield appropriate messages."""
+        try:
+            content_json = json.loads(content.text)
+            yield from self._process_json_content(content_json)
+        except json.JSONDecodeError:
+            yield self.create_text_message(content.text)
+
+    def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
+        """Process JSON content based on its type."""
+        if isinstance(content_json, dict):
+            yield self.create_json_message(content_json)
+        elif isinstance(content_json, list):
+            yield from self._process_json_list(content_json)
+        else:
+            # For primitive types (str, int, bool, etc.), convert to string
+            yield self.create_text_message(str(content_json))
+
+    def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
+        """Process a list of JSON items."""
+        for item in json_list:
+            if isinstance(item, dict):
+                yield self.create_json_message(item)
+            else:
+                # If we encounter a non-dict item in the list,
+                # return the entire list as a text message
+                yield self.create_text_message(str(json_list))
+                return
+
+    def _process_image_content(self, content: ImageContent) -> ToolInvokeMessage:
+        """Process image content and return a blob message."""
+        return self.create_blob_message(blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType})
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "MCPTool":
         return MCPTool(
