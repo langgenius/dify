@@ -1,4 +1,6 @@
 import enum
+import json
+
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
@@ -162,8 +164,6 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     # Try to parse JSON string for arrays
                     if isinstance(value, str):
                         try:
-                            import json
-
                             parsed_value = json.loads(value)
                             if isinstance(parsed_value, list):
                                 return parsed_value
@@ -176,8 +176,6 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     # Try to parse JSON string for objects
                     if isinstance(value, str):
                         try:
-                            import json
-
                             parsed_value = json.loads(value)
                             if isinstance(parsed_value, dict):
                                 return parsed_value
