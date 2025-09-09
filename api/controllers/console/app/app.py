@@ -167,6 +167,7 @@ class AppApi(Resource):
         app_service = AppService()
         # Construct ArgsDict from parsed arguments
         from services.app_service import AppService as AppServiceType
+
         args_dict: AppServiceType.ArgsDict = {
             "name": args["name"],
             "description": args.get("description", ""),
