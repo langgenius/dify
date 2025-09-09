@@ -45,7 +45,7 @@ class DefaultValueType(StrEnum):
 
 
 class DefaultValue(BaseModel):
-    value: Any
+    value: Any = None
     type: DefaultValueType
     key: str
 

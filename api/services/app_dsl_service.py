@@ -99,17 +99,17 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
 class PendingData(BaseModel):
     import_mode: str
     yaml_content: str
-    name: str | None
-    description: str | None
-    icon_type: str | None
-    icon: str | None
-    icon_background: str | None
-    app_id: str | None
+    name: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    app_id: str | None = None
 
 
 class CheckDependenciesPendingData(BaseModel):
     dependencies: list[PluginDependency]
-    app_id: str | None
+    app_id: str | None = None
 
 
 class AppDslService:

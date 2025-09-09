@@ -768,8 +768,8 @@ class AgentLogStreamResponse(StreamResponse):
         node_execution_id: str
         id: str
         label: str
-        parent_id: str | None
-        error: str | None
+        parent_id: str | None = None
+        error: str | None = None
         status: str
         data: Mapping[str, Any]
         metadata: Optional[Mapping[str, Any]] = None

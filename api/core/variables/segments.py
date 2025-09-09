@@ -19,7 +19,7 @@ class Segment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     value_type: SegmentType
-    value: Any
+    value: Any = None
 
     @field_validator("value_type")
     @classmethod
