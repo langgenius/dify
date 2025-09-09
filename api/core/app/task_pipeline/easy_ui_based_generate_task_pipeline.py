@@ -438,7 +438,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         # transform usage
         model_type_instance = model_config.provider_model_bundle.model_type_instance
         model_type_instance = cast(LargeLanguageModel, model_type_instance)
-        self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
+        self._task_state.llm_result.usage = model_type_instance.calc_response_usage(
             model, credentials, prompt_tokens, completion_tokens
         )
 
