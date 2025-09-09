@@ -96,7 +96,7 @@ class IterationNode(Node):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _run(self) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:  # type: ignore
         variable = self._get_iterator_variable()
 
         if self._is_empty_iteration(variable):
