@@ -1,11 +1,8 @@
 import logging
 
-from libs.login import current_user
 from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
-
-from models import Account
 
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
@@ -26,6 +23,8 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
 from libs.helper import uuid_value
+from libs.login import current_user
+from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError

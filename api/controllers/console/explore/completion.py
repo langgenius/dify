@@ -1,11 +1,9 @@
 import logging
 
-from libs.login import current_user
 from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from models import Account
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -29,6 +27,8 @@ from extensions.ext_database import db
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import uuid_value
+from libs.login import current_user
+from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError

@@ -16,8 +16,26 @@ api = ExternalApi(
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 
 from . import index  # pyright: ignore[reportUnusedImport]
-from .app import annotation, app, audio, completion, conversation, file, file_preview, message, site, workflow  # pyright: ignore[reportUnusedImport]
-from .dataset import dataset, document, hit_testing, metadata, segment, upload_file  # pyright: ignore[reportUnusedImport]
+from .app import (  # pyright: ignore[reportUnusedImport]
+    annotation,
+    app,
+    audio,
+    completion,
+    conversation,
+    file,
+    file_preview,
+    message,
+    site,
+    workflow,
+)
+from .dataset import (  # pyright: ignore[reportUnusedImport]
+    dataset,
+    document,
+    hit_testing,
+    metadata,
+    segment,
+    upload_file,
+)
 from .workspace import models  # pyright: ignore[reportUnusedImport]
 
 api.add_namespace(service_api_ns)

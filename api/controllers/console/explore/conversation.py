@@ -1,10 +1,7 @@
-from libs.login import current_user
 from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
-
-from models import Account
 
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
@@ -12,6 +9,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
+from libs.login import current_user
+from models import Account
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError

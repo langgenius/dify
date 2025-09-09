@@ -1,15 +1,14 @@
-from libs.login import current_user
 from flask_restx import fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import NotFound
-
-from models import Account
 
 from controllers.console import api
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField, uuid_value
+from libs.login import current_user
+from models import Account
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 

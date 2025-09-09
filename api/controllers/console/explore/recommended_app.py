@@ -1,11 +1,10 @@
-from libs.login import current_user
 from flask_restx import Resource, fields, marshal_with, reqparse
 
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required
 from libs.helper import AppIconUrlField
-from libs.login import login_required
+from libs.login import current_user, login_required
 from services.recommended_app_service import RecommendedAppService
 
 app_fields = {

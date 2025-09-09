@@ -1,7 +1,7 @@
 import hashlib
 import os
 import uuid
-from typing import Any, Literal, Union
+from typing import Literal, Union
 
 from werkzeug.exceptions import NotFound
 
