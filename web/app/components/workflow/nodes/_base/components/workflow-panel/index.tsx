@@ -256,15 +256,15 @@ const BasePanel: FC<BasePanelProps> = ({
     return methods
   }, [currentTriggerProvider])
 
-  // Check if trigger plugin should show auth selector (not authenticated)
+  // Simplified: Always show auth selector for trigger plugins
   const shouldShowTriggerAuthSelector = useMemo(() => {
     return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && supportedAuthMethods.length > 0
   }, [data.type, currentTriggerProvider, supportedAuthMethods.length])
 
-  // Check if trigger plugin should show tab and auth menu (authenticated or no auth needed)
-  const shouldShowTriggerTabAndAuth = useMemo(() => {
-    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && !shouldShowTriggerAuthSelector
-  }, [data.type, currentTriggerProvider, shouldShowTriggerAuthSelector])
+  // Simplified: Always show tab for trigger plugins
+  const shouldShowTriggerTab = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider
+  }, [data.type, currentTriggerProvider])
 
   // Unified check for tool authentication UI
   const needsToolAuth = useMemo(() => {
@@ -442,7 +442,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            shouldShowTriggerTabAndAuth && (
+            shouldShowTriggerTab && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}
