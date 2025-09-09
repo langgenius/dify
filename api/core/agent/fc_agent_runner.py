@@ -104,8 +104,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             response = ""
 
             # save tool call names and inputs
-            tool_call_names = ""
-            tool_call_inputs = ""
+            tool_call_names = {}
+            tool_call_inputs = {}
 
             current_llm_usage = None
 
@@ -121,10 +121,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     if self.check_tool_calls(chunk):
                         function_call_state = True
                         tool_calls.extend(self.extract_tool_calls(chunk) or [])
-                        tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
+                        tool_call_names = {tool_call[0]: tool_call[1] for tool_call in tool_calls}
                         try:
                             tool_call_inputs = json.dumps(
-                                {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
+                                {tool_call[0]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
                         except TypeError:
                             # fallback: force ASCII to handle non-serializable objects
@@ -148,10 +148,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 if self.check_blocking_tool_calls(result):
                     function_call_state = True
                     tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
-                    tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
+                    tool_call_names = {tool_call[0]: tool_call[1] for tool_call in tool_calls}
                     try:
                         tool_call_inputs = json.dumps(
-                            {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
+                            {tool_call[0]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
                     except TypeError:
                         # fallback: force ASCII to handle non-serializable objects
@@ -277,14 +277,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 # save agent thought
                 self.save_agent_thought(
                     agent_thought_id=agent_thought_id,
-                    tool_name="",
-                    tool_input="",
+                    tool_name={},
+                    tool_input={},
                     thought="",
                     tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
+                        tool_response["tool_call_id"]: tool_response["meta"] for tool_response in tool_responses
                     },
                     observation={
-                        tool_response["tool_call_name"]: tool_response["tool_response"]
+                        tool_response["tool_call_id"]: tool_response["tool_response"]
                         for tool_response in tool_responses
                     },
                     answer="",

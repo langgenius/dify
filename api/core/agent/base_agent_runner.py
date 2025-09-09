@@ -322,7 +322,7 @@ class BaseAgentRunner(AppRunner):
     def save_agent_thought(
         self,
         agent_thought_id: str,
-        tool_name: str | None,
+        tool_name: dict | None,
         tool_input: Union[str, dict, None],
         thought: str | None,
         observation: Union[str, dict, None],
@@ -343,7 +343,9 @@ class BaseAgentRunner(AppRunner):
             agent_thought.thought += thought
 
         if tool_name:
-            agent_thought.tool = tool_name
+            # get all the keys as tool names, separated by ;
+            agent_tool_name = ";".join(tool_name.keys())
+            agent_thought.tool = agent_tool_name
 
         if tool_input:
             if isinstance(tool_input, dict):
@@ -381,16 +383,17 @@ class BaseAgentRunner(AppRunner):
 
         # check if tool labels is not empty
         labels = agent_thought.tool_labels or {}
-        tools = agent_thought.tool.split(";") if agent_thought.tool else []
-        for tool in tools:
+
+        # get tools from tool_name values, iterate from tool_name
+        for key, tool  in tool_name.items():
             if not tool:
                 continue
             if tool not in labels:
                 tool_label = ToolManager.get_tool_label(tool)
                 if tool_label:
-                    labels[tool] = tool_label.to_dict()
+                    labels[key] = tool_label.to_dict()
                 else:
-                    labels[tool] = {"en_US": tool, "zh_Hans": tool}
+                    labels[key] = {"en_US": tool, "zh_Hans": tool}
 
         agent_thought.tool_labels_str = json.dumps(labels)
 
