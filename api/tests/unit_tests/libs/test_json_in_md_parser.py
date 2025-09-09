@@ -70,3 +70,19 @@ def test_parse_and_check_json_markdown_success():
     """
     obj = parse_and_check_json_markdown(src, ["present"])
     assert obj == {"present": 1, "other": 2}
+
+
+def test_parse_and_check_json_markdown_multiple_blocks_fails():
+    src = """
+    ```json
+    {"a": 1}
+    ```
+    Some text
+    ```json
+    {"b": 2}
+    ```
+    """
+    # The current implementation is greedy and will match from the first
+    # opening fence to the last closing fence, causing JSON decode failure.
+    with pytest.raises(OutputParserError):
+        parse_and_check_json_markdown(src, [])
