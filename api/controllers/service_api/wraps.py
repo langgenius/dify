@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Optional, ParamSpec, TypeVar
+from typing import Concatenate, Optional, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -24,6 +24,7 @@ from services.feature_service import FeatureService
 
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
 
 
 class WhereisUserArg(StrEnum):
@@ -41,10 +42,10 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optional[FetchUserArg] = None):
-    def decorator(view_func):
+def validate_app_token(view: Optional[Callable[P, R]] = None, *, fetch_user_arg: Optional[FetchUserArg] = None):
+    def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
-        def decorated_view(*args, **kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("app")
 
             app_model = db.session.query(App).where(App.id == api_token.app_id).first()
@@ -188,10 +189,10 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def validate_dataset_token(view=None):
-    def decorator(view):
+def validate_dataset_token(view: Optional[Callable[Concatenate[T, P], R]] = None):
+    def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
