@@ -115,7 +115,7 @@ const translation = {
     signUp: '新規登録',
     createAccount: 'アカウントを作成',
     welcome: '👋 ようこそ！必要事項を入力して始めましょう。',
-    verifyMail: 'Continue with verification code',
+    verifyMail: 'コードで続行',
     haveAccount: 'すでにアカウントをお持ちですか？',
     signIn: 'ログインはこちら',
   },

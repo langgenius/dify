@@ -18,7 +18,7 @@ const ChangePasswordForm = () => {
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const { mutateAsync: register } = useMailRegister()
+  const { mutateAsync: register, isPending } = useMailRegister()
 
   const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
@@ -54,6 +54,10 @@ const ChangePasswordForm = () => {
       })
       const { result, data } = res as MailRegisterResponse
       if(result === 'success') {
+        Toast.notify({
+          type: 'success',
+          message: t('common.api.actionSuccess'),
+        })
         localStorage.setItem('console_token', data.access_token)
         localStorage.setItem('refresh_token', data.refresh_token)
         router.replace('/apps')
@@ -121,7 +125,7 @@ const ChangePasswordForm = () => {
                 variant='primary'
                 className='w-full'
                 onClick={handleSubmit}
-                disabled={!password || !confirmPassword}
+                disabled={isPending || !password || !confirmPassword}
               >
                 {t('login.changePasswordBtn')}
               </Button>

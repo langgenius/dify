@@ -116,7 +116,7 @@ const translation = {
     signUp: '立即注册',
     createAccount: '创建您的账户',
     welcome: '👋欢迎！请填写信息以开始使用。',
-    verifyMail: '继续使用验证码',
+    verifyMail: '发送验证码',
     haveAccount: '已有账户？',
     signIn: '立即登录',
   },
