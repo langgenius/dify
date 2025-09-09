@@ -49,7 +49,7 @@ import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workfl
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
-import { useAllTriggerPlugins, useTriggerSubscriptions } from '@/service/use-triggers'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 import AuthMethodSelector from '@/app/components/workflow/nodes/trigger-plugin/components/auth-method-selector'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
@@ -238,23 +238,8 @@ const BasePanel: FC<BasePanelProps> = ({
     return buildInTools.find(item => canFindTool(item.id, data.provider_id))
   }, [buildInTools, data.provider_id])
 
-  // For trigger plugins, check if they have existing subscriptions (authenticated)
-  const triggerProvider = useMemo(() => {
-    if (data.type === BlockEnum.TriggerPlugin) {
-      if (data.provider_name)
-        return data.provider_name
-      return data.provider_id || ''
-    }
-    return ''
-  }, [data.type, data.provider_id, data.provider_name])
-
-  const { data: triggerSubscriptions = [] } = useTriggerSubscriptions(
-    triggerProvider,
-    data.type === BlockEnum.TriggerPlugin && !!triggerProvider,
-  )
-
+  // For trigger plugins, get basic provider info
   const { data: triggerProviders = [] } = useAllTriggerPlugins()
-
   const currentTriggerProvider = useMemo(() => {
     if (data.type !== BlockEnum.TriggerPlugin || !data.provider_id || !data.provider_name)
       return undefined
@@ -271,26 +256,20 @@ const BasePanel: FC<BasePanelProps> = ({
     return methods
   }, [currentTriggerProvider])
 
-  const isTriggerAuthenticated = useMemo(() => {
-    if (data.type !== BlockEnum.TriggerPlugin) return true
-    if (!triggerSubscriptions.length) return false
+  // Simplified: Always show auth selector for trigger plugins
+  const shouldShowTriggerAuthSelector = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && supportedAuthMethods.length > 0
+  }, [data.type, currentTriggerProvider, supportedAuthMethods.length])
 
-    const subscription = triggerSubscriptions[0]
-    return subscription.credential_type !== 'unauthorized'
-  }, [data.type, triggerSubscriptions])
+  // Simplified: Always show tab for trigger plugins
+  const shouldShowTriggerTab = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider
+  }, [data.type, currentTriggerProvider])
 
-  const shouldShowAuthSelector = useMemo(() => {
-    return data.type === BlockEnum.TriggerPlugin
-           && !isTriggerAuthenticated
-           && supportedAuthMethods.length > 0
-           && !!currentTriggerProvider
-  }, [data.type, isTriggerAuthenticated, supportedAuthMethods.length, currentTriggerProvider])
-
-  // Unified check for any node that needs authentication UI
-  const needsAuth = useMemo(() => {
+  // Unified check for tool authentication UI
+  const needsToolAuth = useMemo(() => {
     return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
-           || (data.type === BlockEnum.TriggerPlugin && isTriggerAuthenticated)
-  }, [data.type, currCollection?.allow_delete, isTriggerAuthenticated])
+  }, [data.type, currCollection?.allow_delete])
 
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
@@ -433,7 +412,7 @@ const BasePanel: FC<BasePanelProps> = ({
             />
           </div>
           {
-            needsAuth && data.type === BlockEnum.Tool && currCollection?.allow_delete && (
+            needsToolAuth && (
               <PluginAuth
                 className='px-4 pb-2'
                 pluginPayload={{
@@ -455,7 +434,15 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            needsAuth && data.type !== BlockEnum.Tool && (
+            shouldShowTriggerAuthSelector && (
+              <AuthMethodSelector
+                provider={currentTriggerProvider!}
+                supportedMethods={supportedAuthMethods}
+              />
+            )
+          }
+          {
+            shouldShowTriggerTab && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}
@@ -469,15 +456,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            shouldShowAuthSelector && (
-              <AuthMethodSelector
-                provider={currentTriggerProvider!}
-                supportedMethods={supportedAuthMethods}
-              />
-            )
-          }
-          {
-            !needsAuth && data.type !== BlockEnum.TriggerPlugin && (
+            !needsToolAuth && data.type !== BlockEnum.TriggerPlugin && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}

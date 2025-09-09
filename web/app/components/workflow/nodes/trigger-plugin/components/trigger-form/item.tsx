@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiBracesLine,
 } from '@remixicon/react'
-import type { PluginTriggerVarInputs } from '../types'
+import type { PluginTriggerVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -13,7 +13,7 @@ import FormInputItem from '@/app/components/workflow/nodes/_base/components/form
 import { useBoolean } from 'ahooks'
 import SchemaModal from '@/app/components/plugins/plugin-detail-panel/tool-selector/schema-modal'
 import type { Trigger } from '@/app/components/tools/types'
-import type { TriggerWithProvider } from '../../../block-selector/types'
+import type { TriggerWithProvider } from '../../../../block-selector/types'
 
 type Props = {
   readOnly: boolean
