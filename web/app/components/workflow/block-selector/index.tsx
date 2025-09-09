@@ -86,9 +86,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     e.stopPropagation()
     handleOpenChange(!open)
   }, [handleOpenChange, open, disabled])
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleOpenChange(false)
-    onSelect(type, toolDefaultValue)
+    onSelect(type, pluginDefaultValue)
   }, [handleOpenChange, onSelect])
 
   const [activeTab, setActiveTab] = useState(

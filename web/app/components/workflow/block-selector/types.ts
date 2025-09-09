@@ -1,5 +1,5 @@
 import type { PluginMeta } from '../../plugins/types'
-import type { Collection, Tool } from '../../tools/types'
+import type { Collection, Trigger } from '../../tools/types'
 import type { TypeWithI18N } from '../../base/form/types'
 
 export enum TabsEnum {
@@ -24,11 +24,32 @@ export enum BlockClassificationEnum {
   Utilities = 'utilities',
 }
 
-export type ToolDefaultValue = {
+export type PluginDefaultValue = {
   provider_id: string
   provider_type: string
   provider_name: string
-  tool_name: string
+  plugin_name: string
+  plugin_label: string
+}
+
+export type TriggerDefaultValue = PluginDefaultValue & {
+  trigger_name: string
+  trigger_label: string
+  trigger_description: string
+  title: string
+  is_team_authorization: boolean
+  params: Record<string, any>
+  paramSchemas: Record<string, any>[]
+  output_schema: Record<string, any>
+  credential_id?: string
+  meta?: PluginMeta
+}
+
+export type ToolDefaultValue = PluginDefaultValue & {
+  provider_id: string
+  provider_type: string
+  provider_name: string
+  trigger_name: string
   tool_label: string
   tool_description: string
   title: string
@@ -55,6 +76,7 @@ export type ToolValue = {
 
 // Backend API types - exact match with Python definitions
 export type TriggerParameter = {
+  multiple: boolean
   name: string
   label: TypeWithI18N
   description?: TypeWithI18N
@@ -141,7 +163,7 @@ export type TriggerProviderApiEntity = {
 
 // Frontend types - compatible with ToolWithProvider
 export type TriggerWithProvider = Collection & {
-  tools: Tool[] // Use existing Tool type for compatibility
+  triggers: Trigger[]
   meta: PluginMeta
   credentials_schema?: TriggerCredentialField[]
   oauth_client_schema?: TriggerCredentialField[]

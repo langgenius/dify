@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import PluginParameterAutoGenerate, PluginParameterOption, PluginParameterTemplate
@@ -40,6 +40,10 @@ class TriggerParameter(BaseModel):
     template: Optional[PluginParameterTemplate] = Field(default=None, description="The template of the parameter")
     scope: Optional[str] = None
     required: Optional[bool] = False
+    multiple: bool | None = Field(
+        default=False,
+        description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
+    )
     default: Union[int, float, str, list, None] = None
     min: Union[float, int, None] = None
     max: Union[float, int, None] = None
@@ -70,7 +74,7 @@ class TriggerIdentity(BaseModel):
     author: str = Field(..., description="The author of the trigger")
     name: str = Field(..., description="The name of the trigger")
     label: I18nObject = Field(..., description="The label of the trigger")
-    provider: str = Field(..., description="The provider of the trigger")
+    provider: Optional[str] = Field(default=None, description="The provider of the trigger")
 
 
 class TriggerDescription(BaseModel):
@@ -217,12 +221,54 @@ class SubscriptionBuilder(BaseModel):
         )
 
 
+class SubscriptionBuilderUpdater(BaseModel):
+    name: str | None = Field(default=None, description="The name of the subscription builder")
+    parameters: Mapping[str, Any] | None = Field(default=None, description="The parameters of the subscription builder")
+    properties: Mapping[str, Any] | None = Field(default=None, description="The properties of the subscription builder")
+    credentials: Mapping[str, str] | None = Field(
+        default=None, description="The credentials of the subscription builder"
+    )
+    credential_type: str | None = Field(default=None, description="The credential type of the subscription builder")
+    credential_expires_at: int | None = Field(
+        default=None, description="The credential expires at of the subscription builder"
+    )
+    expires_at: int | None = Field(default=None, description="The expires at of the subscription builder")
+
+    def update(self, subscription_builder: SubscriptionBuilder) -> None:
+        if self.name:
+            subscription_builder.name = self.name
+        if self.parameters:
+            subscription_builder.parameters = self.parameters
+        if self.properties:
+            subscription_builder.properties = self.properties
+        if self.credentials:
+            subscription_builder.credentials = self.credentials
+        if self.credential_type:
+            subscription_builder.credential_type = self.credential_type
+        if self.credential_expires_at:
+            subscription_builder.credential_expires_at = self.credential_expires_at
+        if self.expires_at:
+            subscription_builder.expires_at = self.expires_at
+
+
+class TriggerDebugEventData(BaseModel):
+    """Debug event data dispatched to debug sessions."""
+
+    subscription_id: str
+    triggers: list[str]
+    request_id: str
+    timestamp: float
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 # Export all entities
 __all__ = [
     "OAuthSchema",
     "RequestLog",
     "Subscription",
     "SubscriptionBuilder",
+    "TriggerDebugEventData",
     "TriggerDescription",
     "TriggerEntity",
     "TriggerIdentity",

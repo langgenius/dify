@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { memo, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AuthorizedInNode } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { BlockEnum, type Node } from '@/app/components/workflow/types'
@@ -14,6 +15,7 @@ import {
   useTriggerSubscriptions,
 } from '@/service/use-triggers'
 import { useToastContext } from '@/app/components/base/toast'
+import { openOAuthPopup } from '@/hooks/use-oauth'
 
 type NodeAuthProps = {
   data: Node['data']
@@ -21,6 +23,7 @@ type NodeAuthProps = {
 }
 
 const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
+  const { t } = useTranslation()
   const buildInTools = useStore(s => s.buildInTools)
   const { notify } = useToastContext()
 
@@ -29,11 +32,8 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
   const provider = useMemo(() => {
     if (data.type === BlockEnum.TriggerPlugin) {
       // If we have both plugin_id and provider_name, construct the full path
-      if (data.provider_id && data.provider_name)
-        return `${data.provider_id}/${data.provider_name}`
-
-      // Otherwise use provider_id as fallback (might be already complete)
-      return data.provider_id || ''
+      if (data.provider_name)
+        return data.provider_name
     }
     return data.provider_id || ''
   }, [data.type, data.provider_id, data.provider_name])
@@ -89,19 +89,24 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
     if (!provider) return
 
     try {
-      // Directly initiate OAuth flow, backend will automatically create subscription builder
       const response = await initiateTriggerOAuth.mutateAsync(provider)
       if (response.authorization_url) {
-        // Open OAuth authorization window
-        const authWindow = window.open(response.authorization_url, 'oauth_authorization', 'width=600,height=600')
+        openOAuthPopup(response.authorization_url, (callbackData) => {
+          invalidateSubscriptions(provider)
 
-        // Monitor window closure and refresh subscription list
-        const checkClosed = setInterval(() => {
-          if (authWindow?.closed) {
-            clearInterval(checkClosed)
-            invalidateSubscriptions(provider)
+          if (callbackData?.success === false) {
+            notify({
+              type: 'error',
+              message: callbackData.errorDescription || callbackData.error || t('workflow.nodes.triggerPlugin.authenticationFailed'),
+            })
           }
-        }, 1000)
+          else if (callbackData?.subscriptionId) {
+            notify({
+              type: 'success',
+              message: t('workflow.nodes.triggerPlugin.authenticationSuccess'),
+            })
+          }
+        })
       }
     }
     catch (error: any) {

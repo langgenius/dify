@@ -45,6 +45,7 @@ const ToolForm: FC<Props> = ({
             currentTool={currentTool}
             currentProvider={currentProvider}
             extraParams={extraParams}
+            providerType='tool'
           />
         ))
       }

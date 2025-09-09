@@ -32,7 +32,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   * tool_parameters: tool dynamic setting(form type = llm)
   * output_schema: tool dynamic output
   */
-  const { provider_id, provider_type, tool_name, tool_configurations, output_schema, tool_parameters } = inputs
+  const { provider_id, provider_type, trigger_name: tool_name, tool_configurations, output_schema, tool_parameters } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)

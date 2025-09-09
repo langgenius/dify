@@ -25,6 +25,7 @@ type Props = {
   currentTool?: Tool
   currentProvider?: ToolWithProvider
   extraParams?: Record<string, any>
+  providerType?: 'tool' | 'trigger'
 }
 
 const ToolFormItem: FC<Props> = ({
@@ -37,6 +38,7 @@ const ToolFormItem: FC<Props> = ({
   currentTool,
   currentProvider,
   extraParams,
+  providerType = 'tool',
 }) => {
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -89,9 +91,10 @@ const ToolFormItem: FC<Props> = ({
         value={value}
         onChange={onChange}
         inPanel={inPanel}
-        currentTool={currentTool}
+        currentResource={currentTool}
         currentProvider={currentProvider}
         extraParams={extraParams}
+        providerType={providerType}
       />
 
       {isShowSchema && (

@@ -3,7 +3,7 @@ import { memo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import type { BlockEnum } from '../types'
 import { useTabs } from './hooks'
-import type { ToolDefaultValue } from './types'
+import type { PluginDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllStartBlocks from './all-start-blocks'
@@ -15,7 +15,7 @@ export type TabsProps = {
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
   tags: string[]
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, plugin?: PluginDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   filterElem: React.ReactNode
   noBlocks?: boolean

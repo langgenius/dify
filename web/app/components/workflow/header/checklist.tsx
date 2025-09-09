@@ -119,8 +119,8 @@ const WorkflowChecklist = ({
                             <span className='grow truncate'>
                               {node.title}
                             </span>
-                            <div className='flex h-4 w-[50px] items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100'>
-                              <span className='text-xs font-medium leading-4 text-primary-600'>
+                            <div className='flex h-4 w-[60px] shrink-0 items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100'>
+                              <span className='whitespace-nowrap text-xs font-medium leading-4 text-primary-600'>
                                 {t('workflow.panel.goTo')}
                               </span>
                               <IconR className='h-3.5 w-3.5 text-primary-600' />

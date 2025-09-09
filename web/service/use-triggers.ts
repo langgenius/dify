@@ -31,9 +31,7 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     allow_delete: false,
     labels: provider.tags || [],
     plugin_id: provider.plugin_id,
-
-    // ToolWithProvider fields - convert "triggers" to "tools"
-    tools: provider.triggers.map(trigger => ({
+    triggers: provider.triggers.map(trigger => ({
       name: trigger.name,
       author: provider.author,
       label: trigger.description.human, // Already TypeWithI18N format
@@ -51,6 +49,7 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
           label: option.label,
           value: option.value,
         })) || [],
+        multiple: param.multiple || false,
       })),
       labels: provider.tags || [],
       output_schema: trigger.output_schema || {},
@@ -269,7 +268,12 @@ export const useTriggerPluginDynamicOptions = (payload: {
     queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.extra],
     queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
       '/workspaces/current/plugin/parameters/dynamic-options',
-      { params: payload },
+      {
+        params: {
+          ...payload,
+          provider_type: 'trigger', // Add required provider_type parameter
+        },
+      },
     ),
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter,
   })

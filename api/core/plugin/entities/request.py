@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
 from flask import Response
@@ -239,9 +240,11 @@ class RequestFetchAppInfo(BaseModel):
 
     app_id: str
 
+class Event(BaseModel):
+    variables: Mapping[str, Any]
 
 class TriggerInvokeResponse(BaseModel):
-    event: dict[str, Any]
+    event: Event
 
 
 class PluginTriggerDispatchResponse(BaseModel):

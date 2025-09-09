@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import type { TriggerWithProvider } from '../types'
-import type { Tool } from '@/app/components/tools/types'
+import type { Trigger } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
-import type { ToolDefaultValue } from '../types'
+import type { TriggerDefaultValue } from '../types'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
@@ -13,10 +13,10 @@ import { useTranslation } from 'react-i18next'
 
 type Props = {
   provider: TriggerWithProvider
-  payload: Tool
+  payload: Trigger
   disabled?: boolean
   isAdded?: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
 }
 
 const TriggerPluginActionItem: FC<Props> = ({
@@ -63,9 +63,9 @@ const TriggerPluginActionItem: FC<Props> = ({
             provider_id: provider.id,
             provider_type: provider.type as string,
             provider_name: provider.name,
-            tool_name: payload.name,
-            tool_label: payload.label[language],
-            tool_description: payload.description[language],
+            trigger_name: payload.name,
+            trigger_label: payload.label[language],
+            trigger_description: payload.description[language],
             title: payload.label[language],
             is_team_authorization: provider.is_team_authorization,
             output_schema: payload.output_schema || {},

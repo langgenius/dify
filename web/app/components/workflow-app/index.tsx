@@ -11,6 +11,9 @@ import {
 import {
   useWorkflowInit,
 } from './hooks'
+import { useAppTriggers } from '@/service/use-tools'
+import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   initialEdges,
@@ -37,6 +40,29 @@ const WorkflowAppWithAdditionalContext = () => {
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+
+  // Initialize trigger status at application level
+  const { setTriggerStatuses } = useTriggerStatusStore()
+  const appDetail = useAppStore(s => s.appDetail)
+  const appId = appDetail?.id
+  const { data: triggersResponse } = useAppTriggers(appId, {
+    enabled: !!appId,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false,
+  })
+
+  // Sync trigger statuses to store when data loads
+  useEffect(() => {
+    if (triggersResponse?.data) {
+      // Map API status to EntryNodeStatus: 'enabled' stays 'enabled', all others become 'disabled'
+      const statusMap = triggersResponse.data.reduce((acc, trigger) => {
+        acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
+        return acc
+      }, {} as Record<string, 'enabled' | 'disabled'>)
+
+      setTriggerStatuses(statusMap)
+    }
+  }, [triggersResponse?.data, setTriggerStatuses])
 
   // Cleanup on unmount
   useEffect(() => {

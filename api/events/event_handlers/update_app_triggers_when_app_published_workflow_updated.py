@@ -95,7 +95,7 @@ def get_trigger_infos_from_workflow(published_workflow: Workflow) -> list[dict]:
         return []
 
     nodes = graph.get("nodes", [])
-    trigger_types = {NodeType.TRIGGER_WEBHOOK.value, NodeType.TRIGGER_SCHEDULE.value}
+    trigger_types = {NodeType.TRIGGER_WEBHOOK.value, NodeType.TRIGGER_SCHEDULE.value, NodeType.TRIGGER_PLUGIN.value}
 
     trigger_infos = [
         {

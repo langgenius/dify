@@ -1,8 +1,8 @@
 'use client'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { BlockEnum } from '../types'
-import type { ToolDefaultValue } from './types'
+import type { BlockEnum, OnSelectBlock } from '../types'
+import type { TriggerDefaultValue } from './types'
 import StartBlocks from './start-blocks'
 import TriggerPluginSelector from './trigger-plugin-selector'
 import { ENTRY_NODE_TYPES } from './constants'
@@ -16,7 +16,7 @@ import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 type AllStartBlocksProps = {
   className?: string
   searchText: string
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   tags?: string[]
 }
@@ -75,7 +75,7 @@ const AllStartBlocks = ({
           <>
             <StartBlocks
               searchText={searchText}
-              onSelect={onSelect}
+              onSelect={onSelect as OnSelectBlock}
               availableBlocksTypes={ENTRY_NODE_TYPES as unknown as BlockEnum[]}
               onContentStateChange={handleStartBlocksContentChange}
             />

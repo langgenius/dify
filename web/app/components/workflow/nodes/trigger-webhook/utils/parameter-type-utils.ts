@@ -72,6 +72,9 @@ export const normalizeParameterType = (input: string | undefined | null): VarTyp
     return VarType.arrayBoolean
   else if (trimmed === 'array[object]')
     return VarType.arrayObject
+  else if (trimmed === 'array')
+    // Migrate legacy 'array' type to 'array[string]'
+    return VarType.arrayString
   else if (trimmed === 'number')
     return VarType.number
   else if (trimmed === 'boolean')
