@@ -175,7 +175,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         agent_mode = config["agent_mode"]
         if not isinstance(agent_mode, dict):
             raise ValueError("agent_mode must be of object type")
-        
+
         # FIXME(-LAN-): Cast needed due to basedpyright limitation with dict type narrowing
         agent_mode = cast(dict[str, Any], agent_mode)
 
@@ -188,9 +188,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         if not agent_mode.get("strategy"):
             agent_mode["strategy"] = PlanningStrategy.ROUTER.value
 
-        if agent_mode["strategy"] not in [
-            member.value for member in list(PlanningStrategy.__members__.values())
-        ]:
+        if agent_mode["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
             raise ValueError("strategy in agent_mode must be in the specified strategy list")
 
         if not agent_mode.get("tools"):
