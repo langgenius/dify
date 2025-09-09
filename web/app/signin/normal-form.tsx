@@ -219,7 +219,6 @@ const NormalForm = () => {
               >{t('login.setAdminAccount')}</Link>
             </div>}
           </>}
-
         </div>
       </div>
     </>

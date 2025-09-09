@@ -46,7 +46,7 @@ export default function CheckCode() {
       if ((res as MailValidityResponse).is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent((res as MailValidityResponse).token))
-        router.push(`/signup/check-code?${params.toString()}`)
+        router.push(`/signup/set-password?${params.toString()}`)
       }
       else {
         Toast.notify({

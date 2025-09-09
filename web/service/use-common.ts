@@ -48,12 +48,12 @@ export const useMailValidity = () => {
   })
 }
 
-export type MailRegisterResponse = { result: string }
+export type MailRegisterResponse = { result: string, data: { access_token: string, refresh_token: string } }
 
 export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
-    mutationFn: (body: { token: string, password: string }) => {
+    mutationFn: (body: { token: string, new_password: string, password_confirm: string }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
   })

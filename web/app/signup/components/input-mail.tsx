@@ -10,6 +10,9 @@ import Toast from '@/app/components/base/toast'
 import type { MailSendResponse } from '@/service/use-common'
 import { useSendMail } from '@/service/use-common'
 import I18n from '@/context/i18n'
+import Split from '@/app/signin/split'
+import Link from 'next/link'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   onSuccess: (email: string, payload: string) => void
@@ -20,6 +23,8 @@ export default function Form({
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const { locale } = useContext(I18n)
+  const { systemFeatures } = useGlobalPublicStore()
+
   const { mutateAsync: submitMail, isPending } = useSendMail()
 
   const handleSubmit = useCallback(async () => {
@@ -63,7 +68,35 @@ export default function Form({
         onClick={handleSubmit}
         disabled={isPending || !email}
         className="w-full"
-      >{t('login.signBtn')}</Button>
+      >{t('login.signup.verifyMail')}</Button>
     </div>
+    <Split className='mb-5 mt-4' />
+
+    <div className='text-[13px] font-medium leading-4 text-text-secondary'>
+      <span>{t('login.signup.haveAccount')}</span>
+      <Link
+        className='text-text-accent'
+        href='/signin'
+      >{t('login.signup.signIn')}</Link>
+    </div>
+
+    {!systemFeatures.branding.enabled && <>
+      <div className="system-xs-regular mt-3 block w-full text-text-tertiary">
+        {t('login.tosDesc')}
+              &nbsp;
+        <Link
+          className='system-xs-medium text-text-secondary hover:underline'
+          target='_blank' rel='noopener noreferrer'
+          href='https://dify.ai/terms'
+        >{t('login.tos')}</Link>
+              &nbsp;&&nbsp;
+        <Link
+          className='system-xs-medium text-text-secondary hover:underline'
+          target='_blank' rel='noopener noreferrer'
+          href='https://dify.ai/privacy'
+        >{t('login.pp')}</Link>
+      </div>
+    </>}
+
   </form>
 }

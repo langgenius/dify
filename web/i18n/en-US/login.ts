@@ -1,6 +1,6 @@
 const translation = {
-  pageTitle: 'Hey, let\'s get started!',
-  welcome: '👋 Welcome to Dify, please log in to continue.',
+  pageTitle: 'Log in to Dify',
+  welcome: '👋 Welcome! Please log in to get started.',
   email: 'Email address',
   emailPlaceholder: 'Your email',
   password: 'Password',
@@ -114,6 +114,11 @@ const translation = {
   signup: {
     noAccount: 'Don’t have an account? ',
     signUp: 'Sign Up',
+    createAccount: 'Create your account',
+    welcome: '👋 Welcome! Please fill in the details to get started.',
+    verifyMail: 'Continue with verification code',
+    haveAccount: 'Already have an account? ',
+    signIn: 'Sign In',
   },
 }
 

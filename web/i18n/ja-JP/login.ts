@@ -1,6 +1,6 @@
 const translation = {
-  pageTitle: 'はじめましょう！👋',
-  welcome: 'Dify へようこそ。続行するにはログインしてください。',
+  pageTitle: 'Dify にログイン',
+  welcome: '👋 ようこそ！ログインしてはじめましょう。',
   email: 'メールアドレス',
   emailPlaceholder: 'メールアドレスを入力してください',
   password: 'パスワード',
@@ -109,6 +109,15 @@ const translation = {
     noLoginMethod: 'Web アプリに対して認証方法が構成されていません',
     noLoginMethodTip: 'システム管理者に連絡して、認証方法を追加してください。',
     disabled: 'Web アプリの認証が無効になっています。システム管理者に連絡して有効にしてください。直接アプリを使用してみてください。',
+  },
+  signup: {
+    noAccount: 'アカウントをお持ちでないですか？',
+    signUp: '新規登録',
+    createAccount: 'アカウントを作成',
+    welcome: '👋 ようこそ！必要事項を入力して始めましょう。',
+    verifyMail: 'Continue with verification code',
+    haveAccount: 'すでにアカウントをお持ちですか？',
+    signIn: 'ログインはこちら',
   },
 }
 
