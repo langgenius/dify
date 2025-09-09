@@ -113,7 +113,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
             MetadataService.enable_built_in_field(dataset)
         elif action == "disable":
             MetadataService.disable_built_in_field(dataset)
-        return 200
+        return {"result": "success"}, 200
 
 
 class DocumentMetadataEditApi(Resource):
@@ -135,7 +135,7 @@ class DocumentMetadataEditApi(Resource):
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 
-        return 200
+        return {"result": "success"}, 200
 
 
 api.add_resource(DatasetMetadataCreateApi, "/datasets/<uuid:dataset_id>/metadata")
