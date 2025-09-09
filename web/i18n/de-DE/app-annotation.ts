@@ -83,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Speichern',
   },
   embeddingModelSwitchTip: 'Anmerkungstext-Vektorisierungsmodell, das Wechseln von Modellen wird neu eingebettet, was zusätzliche Kosten verursacht.',
+  list: {
+    delete: {
+      title: 'Bist du sicher, dass du löschen möchtest?',
+    },
+  },
+  batchAction: {
+    cancel: 'Abbrechen',
+    selected: 'Ausgewählt',
+    delete: 'Löschen',
+  },
 }
 
 export default translation

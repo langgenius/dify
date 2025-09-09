@@ -60,6 +60,7 @@ const translation = {
     format: 'फॉर्मेट',
     selectAll: 'सभी चुनें',
     deSelectAll: 'सभी चयन हटाएँ',
+    config: 'कॉन्फ़िगरेशन',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -205,7 +206,6 @@ const translation = {
     langGeniusAccountTip: 'आपका Dify खाता और संबंधित उपयोगकर्ता डेटा।',
     editName: 'नाम संपादित करें',
     showAppLength: '{{length}} ऐप्स दिखाएं',
-    deleteConfirmTip: 'पुष्टि करने के लिए, कृपया अपने पंजीकृत ईमेल से निम्नलिखित भेजें',
     delete: 'खाता हटाएं',
     deleteTip: 'अपना खाता हटाने से आपका सारा डेटा स्थायी रूप से मिट जाएगा और इसे पुनर्प्राप्त नहीं किया जा सकता है।',
     account: 'खाता',
@@ -489,6 +489,29 @@ const translation = {
     toBeConfigured: 'कॉन्फ़िगर किया जाना है',
     emptyProviderTitle: 'मॉडल प्रदाता सेट नहीं किया गया',
     emptyProviderTip: 'कृपया पहले एक मॉडल प्रदाता स्थापित करें।',
+    auth: {
+      apiKeyModal: {
+        addModel: 'मॉडल जोड़ें',
+        title: 'एपीआई कुंजी प्राधिकरण कॉन्फ़िगरेशन',
+        desc: 'क्रेडेंशियल्स कॉन्फ़िगर करने के बाद, कार्यक्षेत्र के सभी सदस्यों को एप्लिकेशन को व्यवस्थित करते समय इस मॉडल का उपयोग करने की अनुमति होती है।',
+      },
+      apiKeys: 'एपीआई कुंजी',
+      addNewModel: 'नया मॉडल जोड़ें',
+      authorizationError: 'अनु autorización त्रुटि',
+      unAuthorized: 'अअनधिकारित',
+      modelCredentials: 'मॉडल क्रेडेंशियल्स',
+      addCredential: 'क्रेडेंशियल जोड़ें',
+      addApiKey: 'एपीआई कुंजी जोड़ें',
+      authRemoved: 'प्राधिकरण हटाया गया',
+      providerManaged: 'प्रदाता द्वारा प्रबंधित',
+      configModel: 'कॉन्फ़िग मॉडल',
+      configLoadBalancing: 'कॉन्फ़िग लोड बैलेंसिंग',
+      addModelCredential: 'मॉडल क्रेडेंशियल जोड़ें',
+      specifyModelCredential: 'मॉडल की क्रेडेंशियल निर्दिष्ट करें',
+      specifyModelCredentialTip: 'कॉन्फ़िगर की गई मॉडल क्रेडेंशियल का उपयोग करें।',
+      providerManagedTip: 'वर्तमान कॉन्फ़िगरेशन प्रदाता द्वारा होस्ट किया गया है।',
+      selectModelCredential: 'एक मॉडल क्रेडेंशियल चुनें',
+    },
   },
   dataSource: {
     add: 'डेटा स्रोत जोड़ें',
@@ -738,6 +761,16 @@ const translation = {
     dropImageHere: 'अपनी छवि यहाँ छोड़ें, या',
   },
   you: 'आप',
+  avatar: {
+    deleteTitle: 'अवतार हटाएँ',
+    deleteDescription: 'क्या आप सुनिश्चित हैं कि आप अपनी प्रोफ़ाइल तस्वीर को हटाना चाहते हैं? आपका खाता डिफ़ॉल्ट प्रारंभिक अवतार का उपयोग करेगा।',
+  },
+  feedback: {
+    content: 'प्रतिक्रिया सामग्री',
+    title: 'प्रतिक्रिया प्रदान करें',
+    subtitle: 'कृपया हमें बताएं कि इस प्रतिक्रिया में क्या गलत हुआ',
+    placeholder: 'कृपया बताएं कि क्या गलत हुआ या हम कैसे सुधार कर सकते हैं...',
+  },
 }
 
 export default translation

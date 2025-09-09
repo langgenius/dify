@@ -57,6 +57,7 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         conversation: Conversation,
         message: Message,
         stream: bool,
-    ) -> None:
+    ):
         super().__init__(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -257,7 +258,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         Process stream response.
         :return:
         """
-        for message in self._queue_manager.listen():
+        for message in self.queue_manager.listen():
             if publisher:
                 publisher.publish(message)
             event = message.event
@@ -361,7 +362,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self, *, session: Session, trace_manager: Optional[TraceQueueManager] = None) -> None:
+    def _save_message(self, *, session: Session, trace_manager: Optional[TraceQueueManager] = None):
         """
         Save message.
         :return:
@@ -389,6 +390,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             if llm_result.message.content
             else ""
         )
+        message.updated_at = naive_utc_now()
         message.answer_tokens = usage.completion_tokens
         message.answer_unit_price = usage.completion_unit_price
         message.answer_price_unit = usage.completion_price_unit
@@ -410,7 +412,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             application_generate_entity=self._application_generate_entity,
         )
 
-    def _handle_stop(self, event: QueueStopEvent) -> None:
+    def _handle_stop(self, event: QueueStopEvent):
         """
         Handle stop.
         :return:
@@ -470,9 +472,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :param event: agent thought event
         :return:
         """
-        agent_thought: Optional[MessageAgentThought] = (
-            db.session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
-        )
+        with Session(db.engine, expire_on_commit=False) as session:
+            agent_thought: Optional[MessageAgentThought] = (
+                session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
+            )
 
         if agent_thought:
             return AgentThoughtStreamResponse(
@@ -499,7 +502,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             if self._output_moderation_handler.should_direct_output():
                 # stop subscribe new token when output moderation should direct output
                 self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
-                self._queue_manager.publish(
+                self.queue_manager.publish(
                     QueueLLMChunkEvent(
                         chunk=LLMResultChunk(
                             model=self._task_state.llm_result.model,
@@ -513,7 +516,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     PublishFrom.TASK_PIPELINE,
                 )
 
-                self._queue_manager.publish(
+                self.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
                 )
                 return True

@@ -32,6 +32,13 @@ const translation = {
     pickTime: 'Выберите время',
   },
   defaultPlaceholder: 'Выберите время...',
+  dateFormats: {
+    display: 'MMMM D, YYYY',
+    outputWithTime: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+    displayWithTime: 'MMMM D, YYYY hh:mm A',
+    output: 'ГГГГ-ММ-ДД',
+    input: 'ГГГГ-ММ-ДД',
+  },
 }
 
 export default translation

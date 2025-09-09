@@ -94,6 +94,7 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
   credential_id?: string
+  _dimmed?: boolean
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
@@ -109,7 +110,8 @@ export type CommonEdgeType = {
   isInLoop?: boolean
   loop_id?: string
   sourceType: BlockEnum
-  targetType: BlockEnum
+  targetType: BlockEnum,
+  _isTemp?: boolean,
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
@@ -178,9 +180,11 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
+  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
+  jsonObject = 'json_object', // only object support define json schema
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
   singleFile = 'file',
@@ -206,6 +210,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
+  json_schema?: string // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -264,6 +269,7 @@ export enum VarType {
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
+  arrayBoolean = 'array[boolean]',
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',
@@ -294,6 +300,7 @@ export type NodeOutPutVar = {
   vars: Var[]
   isStartNode?: boolean
   isLoop?: boolean
+  isFlat?: boolean
 }
 
 export type Block = {
@@ -445,8 +452,10 @@ export enum VersionHistoryContextMenuOptions {
   restore = 'restore',
   edit = 'edit',
   delete = 'delete',
+  exportDSL = 'exportDSL',
+  copyId = 'copyId',
 }
 
-export interface ChildNodeTypeCount {
+export type ChildNodeTypeCount = {
   [key: string]: number;
 }

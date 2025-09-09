@@ -103,7 +103,7 @@ function unicodeToChar(text: string) {
   if (!text)
     return ''
 
-  return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
+  return text.replace(/\\u([0-9a-f]{4})/g, (_match, p1) => {
     return String.fromCharCode(Number.parseInt(p1, 16))
   })
 }
@@ -398,9 +398,7 @@ export const ssePost = async (
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
-          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
-            ssePost(url, fetchOptions, otherOptions)
-          }).catch(() => {
+          if (isPublicAPI) {
             res.json().then((data: any) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
@@ -417,7 +415,14 @@ export const ssePost = async (
                 }
               }
             })
-          })
+          }
+          else {
+            refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
+              ssePost(url, fetchOptions, otherOptions)
+            }).catch((err) => {
+              console.error(err)
+            })
+          }
         }
         else {
           res.json().then((data) => {
@@ -437,32 +442,32 @@ export const ssePost = async (
         }
         onData?.(str, isFirstMessage, moreInfo)
       },
-        onCompleted,
-        onThought,
-        onMessageEnd,
-        onMessageReplace,
-        onFile,
-        onWorkflowStarted,
-        onWorkflowFinished,
-        onNodeStarted,
-        onNodeFinished,
-        onIterationStart,
-        onIterationNext,
-        onIterationFinish,
-        onLoopStart,
-        onLoopNext,
-        onLoopFinish,
-        onNodeRetry,
-        onParallelBranchStarted,
-        onParallelBranchFinished,
-        onTextChunk,
-        onTTSChunk,
-        onTTSEnd,
-        onTextReplace,
-        onAgentLog,
+      onCompleted,
+      onThought,
+      onMessageEnd,
+      onMessageReplace,
+      onFile,
+      onWorkflowStarted,
+      onWorkflowFinished,
+      onNodeStarted,
+      onNodeFinished,
+      onIterationStart,
+      onIterationNext,
+      onIterationFinish,
+      onLoopStart,
+      onLoopNext,
+      onLoopFinish,
+      onNodeRetry,
+      onParallelBranchStarted,
+      onParallelBranchFinished,
+      onTextChunk,
+      onTTSChunk,
+      onTTSEnd,
+      onTextReplace,
+      onAgentLog,
       )
     }).catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
+      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
       onError?.(e)
     })

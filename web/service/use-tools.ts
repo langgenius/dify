@@ -85,6 +85,9 @@ export const useCreateMCP = () => {
       icon_type: AppIconType
       icon: string
       icon_background?: string | null
+      timeout?: number
+      sse_read_timeout?: number
+      headers?: Record<string, string>
     }) => {
       return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
         body: {
@@ -109,6 +112,9 @@ export const useUpdateMCP = ({
       icon: string
       icon_background?: string | null
       provider_id: string
+      timeout?: number
+      sse_read_timeout?: number
+      headers?: Record<string, string>
     }) => {
       return put('workspaces/current/tool-provider/mcp', {
         body: {

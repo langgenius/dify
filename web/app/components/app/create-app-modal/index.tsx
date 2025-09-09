@@ -82,8 +82,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e.message || t('app.newApp.appCreateFailed'),
+      })
     }
     isCreatingRef.current = false
   }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])

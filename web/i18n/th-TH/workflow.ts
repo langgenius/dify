@@ -105,9 +105,7 @@ const translation = {
     noHistory: 'ไม่มีประวัติ',
     versionHistory: 'ประวัติรุ่น',
     exportPNG: 'ส่งออกเป็น PNG',
-    noExist: 'ไม่มีตัวแปรดังกล่าว',
     exportJPEG: 'ส่งออกเป็น JPEG',
-    referenceVar: 'ตัวแปรอ้างอิง',
     publishUpdate: 'เผยแพร่การอัปเดต',
     exitVersions: 'ออกเวอร์ชัน',
     exportImage: 'ส่งออกภาพ',
@@ -116,6 +114,8 @@ const translation = {
     addBlock: 'เพิ่มโนด',
     needEndNode: 'ต้องเพิ่มโหนดจบ',
     tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
+    currentWorkflow: 'เวิร์กโฟลว์ปัจจุบัน',
+    currentView: 'ปัจจุบัน View',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
@@ -289,6 +289,18 @@ const translation = {
     zoomTo50: 'ซูมไปที่ 50%',
     zoomTo100: 'ซูมไปที่ 100%',
     zoomToFit: 'ซูมให้พอดี',
+    alignBottom: 'ด้านล่าง',
+    alignCenter: 'ศูนย์กลาง',
+    alignMiddle: 'กลาง',
+    horizontal: 'แนวนอน',
+    vertical: 'แนวตั้ง',
+    alignTop: 'ด้านบน',
+    distributeVertical: 'ระยะห่างแนวตั้ง',
+    alignLeft: 'ซ้าย',
+    selectionAlignment: 'การจัดตําแหน่งการเลือก',
+    distributeHorizontal: 'ระยะห่างแนวนอน',
+    alignRight: 'ขวา',
+    alignNodes: 'จัดตําแหน่งโหนด',
   },
   panel: {
     userInputField: 'ฟิลด์ป้อนข้อมูลของผู้ใช้',
@@ -458,6 +470,12 @@ const translation = {
         stringValidations: 'การตรวจสอบสตริง',
         required: 'จำเป็นต้องใช้',
       },
+      reasoningFormat: {
+        tagged: 'รักษาความคิดเกี่ยวกับแท็ก',
+        separated: 'แยกแท็กความคิดเห็น',
+        tooltip: 'ดึงเนื้อหาจากแท็กคิดและเก็บไว้ในฟิลด์ reasoning_content.',
+        title: 'เปิดใช้งานการแยกแท็กการเหตุผล',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'ตัวแปรแบบสอบถาม',
@@ -608,7 +626,6 @@ const translation = {
       selectVariable: 'เลือกตัวแปร...',
       addSubVariable: 'ตัวแปรย่อย',
       select: 'เลือก',
-      condition: 'เงื่อนไข',
     },
     variableAssigner: {
       title: 'กําหนดตัวแปร',
@@ -831,6 +848,7 @@ const translation = {
           type: 'ประเภทการสนับสนุน ตอนนี้รองรับเฉพาะรูปภาพ',
         },
         text: 'เนื้อหาที่สร้างตัวแทน',
+        usage: 'ข้อมูลการใช้งานรุ่น',
         json: 'ตัวแทนสร้าง JSON',
       },
       checkList: {
@@ -930,6 +948,7 @@ const translation = {
       restoreSuccess: 'เวอร์ชันที่กู้คืน',
       restoreFailure: 'ไม่สามารถกู้คืนเวอร์ชันได้',
       updateSuccess: 'อัปเดตเวอร์ชัน',
+      copyIdSuccess: 'คัดลอกรหัสไปยังคลิปบอร์ด',
     },
     releaseNotesPlaceholder: 'อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร',
     currentDraft: 'ร่างปัจจุบัน',
@@ -940,6 +959,7 @@ const translation = {
     nameThisVersion: 'ชื่อเวอร์ชันนี้',
     title: 'เวอร์ชัน',
     latest: 'ล่าสุด',
+    copyId: 'คัดลอก ID',
   },
   debug: {
     noData: {
@@ -969,6 +989,24 @@ const translation = {
     },
     settingsTab: 'การตั้งค่า',
     lastRunTab: 'รอบสุดท้าย',
+    relations: {
+      dependents: 'ผู้อยู่ในอุปการะ',
+      dependencies: 'อ้าง อิง',
+      dependenciesDescription: 'โหนดที่โหนดนี้อาศัย',
+      noDependencies: 'ไม่มีการพึ่งพา',
+      noDependents: 'ไม่มีผู้อยู่ในอุปการะ',
+      dependentsDescription: 'โหนดที่อาศัยโหนดนี้',
+    },
+    relationsTab: 'สัมพันธ์',
+    copyLastRun: 'คัดลอกการทำงานล่าสุด',
+    noLastRunFound: 'ไม่พบการทำงานก่อนหน้า',
+    copyLastRunError: 'ไม่สามารถคัดลอกข้อมูลการทำงานครั้งสุดท้ายได้',
+    noMatchingInputsFound: 'ไม่พบข้อมูลที่ตรงกันจากการรันครั้งล่าสุด',
+    lastOutput: 'ผลลัพธ์สุดท้าย',
+  },
+  sidebar: {
+    exportWarning: 'ส่งออกเวอร์ชันที่บันทึกปัจจุบัน',
+    exportWarningDesc: 'นี่จะส่งออกเวอร์ชันที่บันทึกไว้ปัจจุบันของเวิร์กโฟลว์ของคุณ หากคุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึกในแก้ไข กรุณาบันทึกมันก่อนโดยใช้ตัวเลือกส่งออกในผืนผ้าใบเวิร์กโฟลว์',
   },
 }
 

@@ -1,6 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import Container from './Container'
+import Container from './container'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 const AppList = () => {

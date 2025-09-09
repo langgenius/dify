@@ -129,10 +129,11 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
     let modified = false
     const linesToRemove = []
 
-    // Find lines to remove for each key
+    // Find lines to remove for each key (including multiline values)
     for (const keyToRemove of fileSpecificKeys) {
       const keyParts = keyToRemove.split('.')
       let targetLineIndex = -1
+      const linesToRemoveForKey = []
 
       // Build regex pattern for the exact key path
       if (keyParts.length === 1) {
@@ -183,8 +184,53 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
       }
 
       if (targetLineIndex !== -1) {
-        linesToRemove.push(targetLineIndex)
-        console.log(`🗑️  Found key to remove: ${keyToRemove} at line ${targetLineIndex + 1}`)
+        linesToRemoveForKey.push(targetLineIndex)
+
+        // Check if this is a multiline key-value pair
+        const keyLine = lines[targetLineIndex]
+        const trimmedKeyLine = keyLine.trim()
+
+        // If key line ends with ":" (not ":", "{ " or complete value), it's likely multiline
+        if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"`]/)) {
+          // Find the value lines that belong to this key
+          let currentLine = targetLineIndex + 1
+          let foundValue = false
+
+          while (currentLine < lines.length) {
+            const line = lines[currentLine]
+            const trimmed = line.trim()
+
+            // Skip empty lines
+            if (trimmed === '') {
+              currentLine++
+              continue
+            }
+
+            // Check if this line starts a new key (indicates end of current value)
+            if (trimmed.match(/^\w+\s*:/))
+              break
+
+            // Check if this line is part of the value
+            if (trimmed.startsWith('\'') || trimmed.startsWith('"') || trimmed.startsWith('`') || foundValue) {
+              linesToRemoveForKey.push(currentLine)
+              foundValue = true
+
+              // Check if this line ends the value (ends with quote and comma/no comma)
+              if ((trimmed.endsWith('\',') || trimmed.endsWith('",') || trimmed.endsWith('`,')
+                   || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
+                  && !trimmed.startsWith('//'))
+                break
+            }
+ else {
+              break
+            }
+
+            currentLine++
+          }
+        }
+
+        linesToRemove.push(...linesToRemoveForKey)
+        console.log(`🗑️  Found key to remove: ${keyToRemove} at line ${targetLineIndex + 1}${linesToRemoveForKey.length > 1 ? ` (multiline, ${linesToRemoveForKey.length} lines)` : ''}`)
         modified = true
       }
  else {
@@ -193,10 +239,10 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
     }
 
     if (modified) {
-      // Remove lines in reverse order to maintain correct indices
-      linesToRemove.sort((a, b) => b - a)
+      // Remove duplicates and sort in reverse order to maintain correct indices
+      const uniqueLinesToRemove = [...new Set(linesToRemove)].sort((a, b) => b - a)
 
-      for (const lineIndex of linesToRemove) {
+      for (const lineIndex of uniqueLinesToRemove) {
         const line = lines[lineIndex]
         console.log(`🗑️  Removing line ${lineIndex + 1}: ${line.trim()}`)
         lines.splice(lineIndex, 1)
@@ -237,7 +283,7 @@ async function main() {
 
     // Filter target keys by file if specified
     const targetKeys = targetFile
-      ? allTargetKeys.filter(key => key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())))
+      ? allTargetKeys.filter(key => key.startsWith(`${targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())}.`))
       : allTargetKeys
 
     // Filter languages by target language if specified
@@ -247,7 +293,7 @@ async function main() {
 
     // Filter language keys by file if specified
     const languagesKeys = targetFile
-      ? allLanguagesKeys.map(keys => keys.filter(key => key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase()))))
+      ? allLanguagesKeys.map(keys => keys.filter(key => key.startsWith(`${targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())}.`)))
       : allLanguagesKeys
 
     const keysCount = languagesKeys.map(keys => keys.length)

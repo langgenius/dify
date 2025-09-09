@@ -110,12 +110,11 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const wordCountText = useMemo(() => {
     const count = content.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.length])
 
   return (
     <div className={'flex h-full flex-col'}>
-      <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
+      <div className={classNames('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
         <div className='flex flex-col'>
           <div className='system-xl-semibold text-text-primary'>{t('datasetDocuments.segment.addChildChunk')}</div>
           <div className='flex items-center gap-x-2'>
@@ -146,8 +145,8 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow w-full', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'py-3 px-4')}>
-        <div className={classNames('break-all overflow-hidden whitespace-pre-line h-full', fullScreen ? 'w-1/2' : 'w-full')}>
+      <div className={classNames('flex w-full grow', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3')}>
+        <div className={classNames('h-full overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
             docForm={ChunkingMode.parentChild}
             question={content}

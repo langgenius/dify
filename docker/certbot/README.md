@@ -2,12 +2,12 @@
 
 ## Short description
 
-docker compose certbot configurations with Backward compatibility (without certbot container).  
+docker compose certbot configurations with Backward compatibility (without certbot container).\
 Use `docker compose --profile certbot up` to use this features.
 
 ## The simplest way for launching new servers with SSL certificates
 
-1. Get letsencrypt certs  
+1. Get letsencrypt certs\
    set `.env` values
    ```properties
    NGINX_SSL_CERT_FILENAME=fullchain.pem
@@ -25,7 +25,7 @@ Use `docker compose --profile certbot up` to use this features.
    ```shell
    docker compose exec -it certbot /bin/sh /update-cert.sh
    ```
-2. Edit `.env` file and `docker compose --profile certbot up` again.  
+1. Edit `.env` file and `docker compose --profile certbot up` again.\
    set `.env` value additionally
    ```properties
    NGINX_HTTPS_ENABLED=true
@@ -34,7 +34,7 @@ Use `docker compose --profile certbot up` to use this features.
    ```shell
    docker compose --profile certbot up -d --no-deps --force-recreate nginx
    ```
-   Then you can access your serve with HTTPS.  
+   Then you can access your serve with HTTPS.\
    [https://your_domain.com](https://your_domain.com)
 
 ## SSL certificates renewal

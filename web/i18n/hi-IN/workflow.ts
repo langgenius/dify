@@ -109,8 +109,6 @@ const translation = {
     exitVersions: 'निकलने के संस्करण',
     exportPNG: 'PNG के रूप में निर्यात करें',
     exportJPEG: 'JPEG के रूप में निर्यात करें',
-    referenceVar: 'संदर्भ चर',
-    noExist: 'कोई ऐसा चर नहीं है',
     exportImage: 'छवि निर्यात करें',
     publishUpdate: 'अपडेट प्रकाशित करें',
     exportSVG: 'SVG के रूप में निर्यात करें',
@@ -119,6 +117,8 @@ const translation = {
     addBlock: 'नोड जोड़ें',
     needEndNode: 'अंत नोड जोड़ा जाना चाहिए',
     tagBound: 'इस टैग का उपयोग करने वाले ऐप्स की संख्या',
+    currentView: 'वर्तमान दृश्य',
+    currentWorkflow: 'वर्तमान कार्यप्रवाह',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -300,6 +300,18 @@ const translation = {
     zoomTo50: '50% पर ज़ूम करें',
     zoomTo100: '100% पर ज़ूम करें',
     zoomToFit: 'फिट करने के लिए ज़ूम करें',
+    alignRight: 'दाएं',
+    alignLeft: 'बाएं',
+    alignTop: 'शीर्ष',
+    horizontal: 'क्षैतिज',
+    alignNodes: 'नोड्स को संरेखित करें',
+    selectionAlignment: 'चयन संरेखण',
+    alignCenter: 'केंद्र',
+    vertical: 'ऊर्ध्वाधर',
+    distributeHorizontal: 'क्षैतिज रूप से वितरित करें',
+    alignBottom: 'नीचे',
+    distributeVertical: 'ऊर्ध्वाधर रूप से वितरित करें',
+    alignMiddle: 'मध्य',
   },
   panel: {
     userInputField: 'उपयोगकर्ता इनपुट फ़ील्ड',
@@ -471,6 +483,12 @@ const translation = {
         required: 'आवश्यक',
         addChildField: 'बच्चे का क्षेत्र जोड़ें',
       },
+      reasoningFormat: {
+        title: 'कारण संबंध टैग विभाजन सक्षम करें',
+        separated: 'अलग सोच टैग',
+        tagged: 'टैग्स के बारे में सोचते रहें',
+        tooltip: 'थिंक टैग से सामग्री निकाले और इसे reasoning_content क्षेत्र में संग्रहित करें।',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'प्रश्न वेरिएबल',
@@ -623,7 +641,6 @@ const translation = {
       },
       select: 'चुनना',
       addSubVariable: 'उप चर',
-      condition: 'स्थिति',
     },
     variableAssigner: {
       title: 'वेरिएबल्स असाइन करें',
@@ -851,6 +868,7 @@ const translation = {
           title: 'एजेंट द्वारा उत्पन्न फ़ाइलें',
         },
         text: 'एजेंट द्वारा उत्पन्न सामग्री',
+        usage: 'मॉडल उपयोग जानकारी',
         json: 'एजेंट द्वारा उत्पन्न जेसन',
       },
       checkList: {
@@ -950,6 +968,7 @@ const translation = {
       updateSuccess: 'संस्करण अपडेट किया गया',
       updateFailure: 'संस्करण अपडेट करने में विफल',
       restoreFailure: 'संस्करण को पुनर्स्थापित करने में विफल',
+      copyIdSuccess: 'आईडी क्लिपबोर्ड पर कॉपी हो गई',
     },
     latest: 'लेटेस्ट',
     editVersionInfo: 'संस्करण की जानकारी संपादित करें',
@@ -960,6 +979,7 @@ const translation = {
     restorationTip: 'संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।',
     defaultName: 'अविभाजित संस्करण',
     deletionTip: 'हटाना अप्रतिबंधी है, कृपया पुष्टि करें।',
+    copyId: 'आईडी कॉपी करें',
   },
   debug: {
     noData: {
@@ -989,6 +1009,24 @@ const translation = {
     },
     settingsTab: 'सेटिंग्स',
     lastRunTab: 'अंतिम रन',
+    relations: {
+      dependents: 'निष्पाभ लोग',
+      dependentsDescription: 'इस नोड पर निर्भर नोड्स',
+      dependencies: 'निर्भरता',
+      noDependents: 'कोई आश्रित नहीं',
+      dependenciesDescription: 'यह नोड जिस नोड पर निर्भर करता है',
+      noDependencies: 'कोई निर्भरताएँ नहीं',
+    },
+    relationsTab: 'रिश्ते',
+    copyLastRun: 'अंतिम रन कॉपी करें',
+    noLastRunFound: 'कोई पिछला रन नहीं मिला',
+    noMatchingInputsFound: 'अंतिम रन से कोई मेल खाने वाले इनपुट नहीं मिले',
+    copyLastRunError: 'अंतिम रन इनपुट को कॉपी करने में विफल',
+    lastOutput: 'अंतिम आउटपुट',
+  },
+  sidebar: {
+    exportWarning: 'वर्तमान सहेजी गई संस्करण निर्यात करें',
+    exportWarningDesc: 'यह आपके कार्यप्रवाह का वर्तमान सहेजा हुआ संस्करण निर्यात करेगा। यदि आपके संपादक में कोई असहेजा किए गए परिवर्तन हैं, तो कृपया पहले उन्हें सहेजें, कार्यप्रवाह कैनवास में निर्यात विकल्प का उपयोग करके।',
   },
 }
 

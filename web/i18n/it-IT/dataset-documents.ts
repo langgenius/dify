@@ -29,7 +29,7 @@ const translation = {
       delete: 'Elimina',
       enableWarning: 'Il file archiviato non può essere abilitato',
       sync: 'Sincronizza',
-      resume: 'Riassumere',
+      resume: 'Riprendi',
       pause: 'Pausa',
     },
     index: {
@@ -344,7 +344,6 @@ const translation = {
     keywords: 'Parole Chiave',
     addKeyWord: 'Aggiungi parola chiave',
     keywordError: 'La lunghezza massima della parola chiave è 20',
-    characters: 'caratteri',
     hitCount: 'Conteggio recuperi',
     vectorHash: 'Hash del vettore: ',
     questionPlaceholder: 'aggiungi domanda qui',

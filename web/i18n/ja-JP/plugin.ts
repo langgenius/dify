@@ -247,6 +247,9 @@ const translation = {
     addOAuth: 'OAuthを追加する',
     useApiAuthDesc: '認証情報を設定した後、ワークスペース内のすべてのメンバーは、アプリケーションをオーケストレーションする際にこのツールを使用できます。',
     clientInfo: 'このツールプロバイダーにシステムクライアントシークレットが見つからないため、手動で設定する必要があります。redirect_uriには、次を使用してください。',
+    unavailable: '利用できません',
+    customCredentialUnavailable: 'カスタム資格情報は現在利用できません',
+    credentialUnavailable: '現在、資格情報は利用できません。管理者にご連絡ください。',
   },
   autoUpdate: {
     strategy: {

@@ -42,6 +42,35 @@ const translation = {
   rejectTitle: '您的 Dify 教育版认证已被拒绝',
   rejectContent: '非常遗憾，您无法使用此电子邮件以获得教育版认证资格，也无法领取 Dify Professional 版的 100% 独家优惠券。',
   emailLabel: '您当前的邮箱',
+  notice: {
+    dateFormat: 'YYYY/MM/DD',
+    expired: {
+      title: '您的教育认证已过期',
+      summary: {
+        line1: '您仍可继续使用 Dify，但将无法再领取新的教育优惠券。',
+        line2: '',
+      },
+    },
+    isAboutToExpire: {
+      title: '您的教育认证将于 {{date}} 过期',
+      summary: '别担心，这不会影响您当前的订阅。但续订时您将无法继续享受教育优惠，除非重新完成身份验证。',
+    },
+    stillInEducation: {
+      title: '仍在就读？',
+      expired: '立即重新认证，获取新学年的教育优惠券。优惠券将发放至您的账户，并可在下次升级时使用。',
+      isAboutToExpire: '立即重新验证，获取新学年的教育优惠券。优惠券将发放至您的账户，并可在下次续订时使用。',
+    },
+    alreadyGraduated: {
+      title: '已毕业？',
+      expired: '您可以随时升级以获得所有付费功能。',
+      isAboutToExpire: '您的当前订阅仍将保持有效。订阅结束后，空间将切换为 Sandbox 套餐，您也可以随时升级，恢复全部付费功能的使用。',
+    },
+    action: {
+      dismiss: '忽略',
+      upgrade: '升级套餐',
+      reVerify: '重新认证',
+    },
+  },
 }
 
 export default translation

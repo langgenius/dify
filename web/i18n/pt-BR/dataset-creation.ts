@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Criar Conhecimento',
-      update: 'Adicionar dados',
       fallbackRoute: 'Conhecimento',
     },
     one: 'Escolher fonte de dados',
@@ -23,6 +21,7 @@ const translation = {
     uploader: {
       title: 'Enviar arquivo de texto',
       button: 'Arraste e solte arquivos ou pastas, ou',
+      buttonSingleFile: 'Arraste e solte um arquivo, ou',
       browse: 'Navegar',
       tip: 'Suporta {{supportTypes}}. Máximo de {{size}}MB cada.',
       validation: {

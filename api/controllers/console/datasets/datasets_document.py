@@ -1,10 +1,10 @@
 import logging
 from argparse import ArgumentTypeError
-from typing import cast
+from typing import Literal, cast
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -40,6 +40,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from fields.document_fields import (
@@ -53,6 +54,8 @@ from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentResource(Resource):
@@ -352,9 +355,6 @@ class DatasetInitApi(Resource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
         knowledge_config = KnowledgeConfig(**args)
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
@@ -426,7 +426,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE.value, upload_file=file, document_model=document.doc_form
                 )
 
                 indexing_runner = IndexingRunner()
@@ -468,27 +468,15 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
         data_process_rule = documents[0].dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict()
-        info_list = []
         extract_settings = []
         for document in documents:
             if document.indexing_status in {"completed", "error"}:
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
-            # format document files info
-            if data_source_info and "upload_file_id" in data_source_info:
-                file_id = data_source_info["upload_file_id"]
-                info_list.append(file_id)
-            # format document notion info
-            elif (
-                data_source_info and "notion_workspace_id" in data_source_info and "notion_page_id" in data_source_info
-            ):
-                pages = []
-                page = {"page_id": data_source_info["notion_page_id"], "type": data_source_info["type"]}
-                pages.append(page)
-                notion_info = {"workspace_id": data_source_info["notion_workspace_id"], "pages": pages}
-                info_list.append(notion_info)
 
             if document.data_source_type == "upload_file":
+                if not data_source_info:
+                    continue
                 file_id = data_source_info["upload_file_id"]
                 file_detail = (
                     db.session.query(UploadFile)
@@ -500,13 +488,15 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file_detail, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE.value, upload_file=file_detail, document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
 
             elif document.data_source_type == "notion_import":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
-                    datasource_type="notion_import",
+                    datasource_type=DatasourceType.NOTION.value,
                     notion_info={
                         "notion_workspace_id": data_source_info["notion_workspace_id"],
                         "notion_obj_id": data_source_info["notion_page_id"],
@@ -517,8 +507,10 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 )
                 extract_settings.append(extract_setting)
             elif document.data_source_type == "website_crawl":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
-                    datasource_type="website_crawl",
+                    datasource_type=DatasourceType.WEBSITE.value,
                     website_info={
                         "provider": data_source_info["provider"],
                         "job_id": data_source_info["job_id"],
@@ -642,7 +634,7 @@ class DocumentIndexingStatusApi(DocumentResource):
         return marshal(document_dict, document_status_fields)
 
 
-class DocumentDetailApi(DocumentResource):
+class DocumentApi(DocumentResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
     @setup_required
@@ -730,13 +722,35 @@ class DocumentDetailApi(DocumentResource):
 
         return response, 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def delete(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        document = self.get_document(dataset_id, document_id)
+
+        try:
+            DocumentService.delete_document(document)
+        except services.errors.document.DocumentIndexingError:
+            raise DocumentIndexingError("Cannot delete document during indexing.")
+
+        return {"result": "success"}, 204
+
 
 class DocumentProcessingApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, document_id, action):
+    def patch(self, dataset_id, document_id, action: Literal["pause", "resume"]):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
@@ -762,34 +776,8 @@ class DocumentProcessingApi(DocumentResource):
             document.paused_at = None
             document.is_paused = False
             db.session.commit()
-        else:
-            raise InvalidActionError()
 
         return {"result": "success"}, 200
-
-
-class DocumentDeleteApi(DocumentResource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
-    def delete(self, dataset_id, document_id):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
-
-        document = self.get_document(dataset_id, document_id)
-
-        try:
-            DocumentService.delete_document(document)
-        except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
-
-        return {"result": "success"}, 204
 
 
 class DocumentMetadataApi(DocumentResource):
@@ -842,7 +830,7 @@ class DocumentStatusApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, action):
+    def patch(self, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
@@ -970,7 +958,7 @@ class DocumentRetryApi(DocumentResource):
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception:
-                logging.exception("Failed to retry document, document id: %s", document_id)
+                logger.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)
@@ -1037,11 +1025,10 @@ api.add_resource(
 api.add_resource(DocumentBatchIndexingEstimateApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 api.add_resource(DocumentBatchIndexingStatusApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
-api.add_resource(DocumentDetailApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
+api.add_resource(DocumentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(
     DocumentProcessingApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>"
 )
-api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentMetadataApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
 api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 api.add_resource(DocumentPauseApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")

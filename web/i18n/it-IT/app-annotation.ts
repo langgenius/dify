@@ -85,6 +85,16 @@ const translation = {
   },
   embeddingModelSwitchTip:
     'Modello di vettorizzazione del testo di annotazione, il cambio di modello comporterà una nuova integrazione, comportando costi aggiuntivi.',
+  list: {
+    delete: {
+      title: 'Sei sicuro di voler eliminare?',
+    },
+  },
+  batchAction: {
+    delete: 'Elimina',
+    cancel: 'Annulla',
+    selected: 'selezionato',
+  },
 }
 
 export default translation

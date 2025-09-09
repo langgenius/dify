@@ -11,10 +11,10 @@ import {
 } from '../utils'
 import type { ValueSelector } from '../../../types'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from './../default'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
-import cn from '@/utils/classnames'
-import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  VariableLabelInNode,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 type ConditionValueProps = {
@@ -32,11 +32,7 @@ const ConditionValue = ({
 
   const variableSelector = variable_selector as ValueSelector
 
-  const variableName = (isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.'))
   const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${operator}`) : operator
-  const notHasValue = comparisonOperatorNotRequireValue(operator)
-  const isEnvVar = isENV(variableSelector)
-  const isChatVar = isConversationVar(variableSelector)
   const formatValue = useCallback((c: Condition) => {
     const notHasValue = comparisonOperatorNotRequireValue(c.comparison_operator)
     if (notHasValue)
@@ -76,19 +72,11 @@ const ConditionValue = ({
   return (
     <div className='rounded-md bg-workflow-block-parma-bg'>
       <div className='flex h-6 items-center px-1 '>
-        {!isEnvVar && !isChatVar && <Variable02 className='mr-1 h-3.5 w-3.5 shrink-0 text-text-accent' />}
-        {isEnvVar && <Env className='mr-1 h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
-
-        <div
-          className={cn(
-            'shrink-0  truncate text-xs font-medium text-text-accent',
-            !notHasValue && 'max-w-[70px]',
-          )}
-          title={variableName}
-        >
-          {variableName}
-        </div>
+        <VariableLabelInNode
+          className='w-0 grow'
+          variables={variableSelector}
+          notShowFullPath
+        />
         <div
           className='mx-1 shrink-0 text-xs font-medium text-text-primary'
           title={operatorName}

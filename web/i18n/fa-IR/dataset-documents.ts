@@ -341,7 +341,6 @@ const translation = {
     keywords: 'کلیدواژه‌ها',
     addKeyWord: 'اضافه کردن کلیدواژه',
     keywordError: 'حداکثر طول کلیدواژه ۲۰ کاراکتر است',
-    characters: 'کاراکترها',
     hitCount: 'تعداد بازیابی',
     vectorHash: 'هش برداری: ',
     questionPlaceholder: 'سؤال را اینجا اضافه کنید',

@@ -126,7 +126,7 @@ class SimplePromptTransform(PromptTransform):
         has_context: bool,
         query_in_prompt: bool,
         with_memory_prompt: bool = False,
-    ) -> dict:
+    ):
         prompt_rules = self._get_prompt_rule(app_mode=app_mode, provider=provider, model=model)
 
         custom_variable_keys = []
@@ -265,11 +265,11 @@ class SimplePromptTransform(PromptTransform):
     ) -> UserPromptMessage:
         if files:
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
             prompt_message = UserPromptMessage(content=prompt_message_contents)
         else:
@@ -277,7 +277,7 @@ class SimplePromptTransform(PromptTransform):
 
         return prompt_message
 
-    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str) -> dict:
+    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str):
         """
         Get simple prompt rule.
         :param app_mode: app mode

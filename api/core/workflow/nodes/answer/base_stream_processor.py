@@ -6,33 +6,21 @@ from typing import Optional
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunExceptionEvent, NodeRunSucceededEvent
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.runtime_route_state import RuntimeRouteState
 
 logger = logging.getLogger(__name__)
 
 
 class StreamProcessor(ABC):
-    def __init__(self, graph: Graph, variable_pool: VariablePool, node_run_state: RuntimeRouteState) -> None:
+    def __init__(self, graph: Graph, variable_pool: VariablePool):
         self.graph = graph
         self.variable_pool = variable_pool
-        self.node_run_state = node_run_state
         self.rest_node_ids = graph.node_ids.copy()
 
     @abstractmethod
     def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         raise NotImplementedError
 
-    def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent | NodeRunExceptionEvent) -> None:
-        """
-        Prunes unreachable branches from the `rest_node_ids` list after a branch node has executed.
-
-        This method implements a conservative, non-recursive pruning strategy to prevent a critical bug
-        where the pruning process would incorrectly "spread" across join points (nodes with multiple inputs)
-        and erroneously remove shared downstream nodes that should have been preserved.
-
-        By only removing the immediate first node of each determined unreachable branch, we ensure that
-        the integrity of shared paths in complex graph topologies is maintained.
-        """
+    def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent | NodeRunExceptionEvent):
         finished_node_id = event.route_node_state.node_id
         if finished_node_id not in self.rest_node_ids:
             return
@@ -80,14 +68,9 @@ class StreamProcessor(ABC):
                     ):
                         continue
                     unreachable_first_node_ids.append(edge.target_node_id)
-
-            # Instead of recursively removing the entire unreachable branch,
-            # which can cause issues with complex join points,
-            # we will only remove the immediate first node of the unreachable branch.
-            # This prevents the removal logic from incorrectly pruning shared paths downstream.
-            for node_id in list(set(unreachable_first_node_ids) - set(reachable_node_ids)):
-                if node_id in self.rest_node_ids:
-                    self.rest_node_ids.remove(node_id)
+            unreachable_first_node_ids = list(set(unreachable_first_node_ids) - set(reachable_node_ids))
+            for node_id in unreachable_first_node_ids:
+                self._remove_node_ids_in_unreachable_branch(node_id, reachable_node_ids)
 
     def _fetch_node_ids_in_reachable_branch(self, node_id: str, branch_identify: Optional[str] = None) -> list[str]:
         if node_id not in self.rest_node_ids:
@@ -106,7 +89,7 @@ class StreamProcessor(ABC):
             node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id, branch_identify))
         return node_ids
 
-    def _remove_node_ids_in_unreachable_branch(self, node_id: str, reachable_node_ids: list[str]) -> None:
+    def _remove_node_ids_in_unreachable_branch(self, node_id: str, reachable_node_ids: list[str]):
         """
         remove target node ids until merge
         """

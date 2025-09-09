@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Optional, cast
+from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -76,7 +76,7 @@ class MarkdownExtractor(BaseExtractor):
         markdown_tups.append((current_header, current_text))
 
         markdown_tups = [
-            (re.sub(r"#", "", cast(str, key)).strip() if key else None, re.sub(r"<.*?>", "", value))
+            (re.sub(r"#", "", key).strip() if key else None, re.sub(r"<.*?>", "", value))
             for key, value in markdown_tups
         ]
 

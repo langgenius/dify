@@ -5,10 +5,11 @@ import secrets
 from typing import Any, Optional
 
 import click
+import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound
+from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from constants.languages import languages
@@ -35,6 +36,9 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
+from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
+
+logger = logging.getLogger(__name__)
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -180,8 +184,8 @@ def migrate_annotation_vector_database():
             )
             if not apps:
                 break
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for app in apps:
@@ -307,8 +311,8 @@ def migrate_knowledge_vector_database():
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for dataset in datasets:
@@ -457,7 +461,7 @@ def convert_to_agent_apps():
         """
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query))
+            rs = conn.execute(sa.text(sql_query))
 
             apps = []
             for i in rs:
@@ -560,14 +564,14 @@ def old_metadata_migration():
                 .order_by(DatasetDocument.created_at.desc())
             )
             documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if not documents:
             break
         for document in documents:
             if document.doc_metadata:
                 doc_metadata = document.doc_metadata
-                for key, value in doc_metadata.items():
+                for key in doc_metadata:
                     for field in BuiltInField:
                         if field.value == key:
                             break
@@ -683,7 +687,7 @@ def upgrade_db():
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception:
-            logging.exception("Failed to execute database migration")
+            logger.exception("Failed to execute database migration")
         finally:
             lock.release()
     else:
@@ -702,7 +706,7 @@ def fix_app_site_missing():
         sql = """select apps.id as id from apps left join sites on sites.app_id=apps.id
 where sites.id is null limit 1000"""
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql))
+            rs = conn.execute(sa.text(sql))
 
             processed_count = 0
             for i in rs:
@@ -731,7 +735,7 @@ where sites.id is null limit 1000"""
                 except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
-                    logging.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
+                    logger.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
                     continue
 
             if not processed_count:
@@ -916,7 +920,7 @@ def clear_orphaned_file_records(force: bool):
         )
         orphaned_message_files = []
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(query))
+            rs = conn.execute(sa.text(query))
             for i in rs:
                 orphaned_message_files.append({"id": str(i[0]), "message_id": str(i[1])})
 
@@ -937,7 +941,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
             query = "DELETE FROM message_files WHERE id IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(db.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
+                conn.execute(sa.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
             click.echo(
                 click.style(f"Removed {len(orphaned_message_files)} orphaned message_files records.", fg="green")
             )
@@ -954,7 +958,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style(f"- Listing file records in table {files_table['table']}", fg="white"))
             query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(query))
+                rs = conn.execute(sa.text(query))
             for i in rs:
                 all_files_in_tables.append({"table": files_table["table"], "id": str(i[0]), "key": i[1]})
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
@@ -974,7 +978,7 @@ def clear_orphaned_file_records(force: bool):
                     f"SELECT {ids_table['column']} FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
             elif ids_table["type"] == "text":
@@ -989,7 +993,7 @@ def clear_orphaned_file_records(force: bool):
                     f"FROM {ids_table['table']}"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     for j in i[0]:
                         all_ids_in_tables.append({"table": ids_table["table"], "id": j})
@@ -1008,7 +1012,7 @@ def clear_orphaned_file_records(force: bool):
                     f"FROM {ids_table['table']}"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     for j in i[0]:
                         all_ids_in_tables.append({"table": ids_table["table"], "id": j})
@@ -1037,7 +1041,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style(f"- Deleting orphaned file records in table {files_table['table']}", fg="white"))
             query = f"DELETE FROM {files_table['table']} WHERE {files_table['id_column']} IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(db.text(query), {"ids": tuple(orphaned_files)})
+                conn.execute(sa.text(query), {"ids": tuple(orphaned_files)})
     except Exception as e:
         click.echo(click.style(f"Error deleting orphaned file records: {str(e)}", fg="red"))
         return
@@ -1107,7 +1111,7 @@ def remove_orphaned_files_on_storage(force: bool):
             click.echo(click.style(f"- Listing files from table {files_table['table']}", fg="white"))
             query = f"SELECT {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(query))
+                rs = conn.execute(sa.text(query))
             for i in rs:
                 all_files_in_tables.append(str(i[0]))
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
@@ -1201,3 +1205,138 @@ def setup_system_tool_oauth_client(provider, client_params):
     db.session.add(oauth_client)
     db.session.commit()
     click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+
+
+def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:
+    """
+    Find draft variables that reference non-existent apps.
+
+    Args:
+        batch_size: Maximum number of orphaned app IDs to return
+
+    Returns:
+        List of app IDs that have draft variables but don't exist in the apps table
+    """
+    query = """
+        SELECT DISTINCT wdv.app_id
+        FROM workflow_draft_variables AS wdv
+        WHERE NOT EXISTS(
+            SELECT 1 FROM apps WHERE apps.id = wdv.app_id
+        )
+        LIMIT :batch_size
+    """
+
+    with db.engine.connect() as conn:
+        result = conn.execute(sa.text(query), {"batch_size": batch_size})
+        return [row[0] for row in result]
+
+
+def _count_orphaned_draft_variables() -> dict[str, Any]:
+    """
+    Count orphaned draft variables by app.
+
+    Returns:
+        Dictionary with statistics about orphaned variables
+    """
+    query = """
+        SELECT
+            wdv.app_id,
+            COUNT(*) as variable_count
+        FROM workflow_draft_variables AS wdv
+        WHERE NOT EXISTS(
+            SELECT 1 FROM apps WHERE apps.id = wdv.app_id
+        )
+        GROUP BY wdv.app_id
+        ORDER BY variable_count DESC
+    """
+
+    with db.engine.connect() as conn:
+        result = conn.execute(sa.text(query))
+        orphaned_by_app = {row[0]: row[1] for row in result}
+
+        total_orphaned = sum(orphaned_by_app.values())
+        app_count = len(orphaned_by_app)
+
+        return {
+            "total_orphaned_variables": total_orphaned,
+            "orphaned_app_count": app_count,
+            "orphaned_by_app": orphaned_by_app,
+        }
+
+
+@click.command()
+@click.option("--dry-run", is_flag=True, help="Show what would be deleted without actually deleting")
+@click.option("--batch-size", default=1000, help="Number of records to process per batch (default 1000)")
+@click.option("--max-apps", default=None, type=int, help="Maximum number of apps to process (default: no limit)")
+@click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
+def cleanup_orphaned_draft_variables(
+    dry_run: bool,
+    batch_size: int,
+    max_apps: int | None,
+    force: bool = False,
+):
+    """
+    Clean up orphaned draft variables from the database.
+
+    This script finds and removes draft variables that belong to apps
+    that no longer exist in the database.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Get statistics
+    stats = _count_orphaned_draft_variables()
+
+    logger.info("Found %s orphaned draft variables", stats["total_orphaned_variables"])
+    logger.info("Across %s non-existent apps", stats["orphaned_app_count"])
+
+    if stats["total_orphaned_variables"] == 0:
+        logger.info("No orphaned draft variables found. Exiting.")
+        return
+
+    if dry_run:
+        logger.info("DRY RUN: Would delete the following:")
+        for app_id, count in sorted(stats["orphaned_by_app"].items(), key=lambda x: x[1], reverse=True)[
+            :10
+        ]:  # Show top 10
+            logger.info("  App %s: %s variables", app_id, count)
+        if len(stats["orphaned_by_app"]) > 10:
+            logger.info("  ... and %s more apps", len(stats["orphaned_by_app"]) - 10)
+        return
+
+    # Confirm deletion
+    if not force:
+        click.confirm(
+            f"Are you sure you want to delete {stats['total_orphaned_variables']} "
+            f"orphaned draft variables from {stats['orphaned_app_count']} apps?",
+            abort=True,
+        )
+
+    total_deleted = 0
+    processed_apps = 0
+
+    while True:
+        if max_apps and processed_apps >= max_apps:
+            logger.info("Reached maximum app limit (%s). Stopping.", max_apps)
+            break
+
+        orphaned_app_ids = _find_orphaned_draft_variables(batch_size=10)
+        if not orphaned_app_ids:
+            logger.info("No more orphaned draft variables found.")
+            break
+
+        for app_id in orphaned_app_ids:
+            if max_apps and processed_apps >= max_apps:
+                break
+
+            try:
+                deleted_count = delete_draft_variables_batch(app_id, batch_size)
+                total_deleted += deleted_count
+                processed_apps += 1
+
+                logger.info("Deleted %s variables for app %s", deleted_count, app_id)
+
+            except Exception:
+                logger.exception("Error processing app %s", app_id)
+                continue
+
+    logger.info("Cleanup completed. Total deleted: %s variables across %s apps", total_deleted, processed_apps)

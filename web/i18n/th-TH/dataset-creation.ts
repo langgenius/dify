@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'สร้างความรู้',
-      update: 'เพิ่มข้อมูล',
       fallbackRoute: 'ความรู้',
     },
     one: 'เลือกแหล่งข้อมูล',
@@ -33,6 +31,7 @@ const translation = {
     uploader: {
       title: 'อัปโหลดไฟล์',
       button: 'ลากและวางไฟล์หรือโฟลเดอร์หรือ',
+      buttonSingleFile: 'ลากและวางไฟล์หรือ',
       browse: 'เล็ม',
       tip: 'รองรับ {{supportTypes}} สูงสุด {{size}}MB แต่ละตัว',
       validation: {

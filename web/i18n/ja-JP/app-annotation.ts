@@ -17,7 +17,7 @@ const translation = {
       bulkImport: '一括インポート',
       bulkExport: '一括エクスポート',
       clearAll: 'すべて削除',
-      clearAllConfirm: 'すべての寸法を削除?',
+      clearAllConfirm: 'すべての注釈を削除しますか？',
     },
   },
   editModal: {

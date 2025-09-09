@@ -32,7 +32,7 @@ def get_attr(*, file: File, attr: FileAttribute):
         case FileAttribute.TRANSFER_METHOD:
             return file.transfer_method.value
         case FileAttribute.URL:
-            return file.remote_url
+            return _to_url(file)
         case FileAttribute.EXTENSION:
             return file.extension
         case FileAttribute.RELATED_ID:
@@ -88,6 +88,7 @@ def to_prompt_message_content(
         "url": _to_url(f) if dify_config.MULTIMODAL_SEND_FORMAT == "url" else "",
         "format": f.extension.removeprefix("."),
         "mime_type": f.mime_type,
+        "filename": f.filename or "",
     }
     if f.type == FileType.IMAGE:
         params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW

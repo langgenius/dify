@@ -83,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Shrani',
   },
   embeddingModelSwitchTip: 'Model za vektorizacijo besedila opomb, preklapljanje modelov bo ponovno vektoriziralo, kar bo povzročilo dodatne stroške.',
+  list: {
+    delete: {
+      title: 'Ali ste prepričani, da želite izbrisati?',
+    },
+  },
+  batchAction: {
+    cancel: 'Prekliči',
+    delete: 'Izbriši',
+    selected: 'Izbrano',
+  },
 }
 
 export default translation

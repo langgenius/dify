@@ -313,7 +313,7 @@ const FileUploader = ({
             <RiUploadCloud2Line className='mr-2 size-5' />
 
             <span>
-              {t('datasetCreation.stepOne.uploader.button')}
+              {notSupportBatchUpload ? t('datasetCreation.stepOne.uploader.buttonSingleFile') : t('datasetCreation.stepOne.uploader.button')}
               {supportTypes.length > 0 && (
                 <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}

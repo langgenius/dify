@@ -1,3 +1,4 @@
+import queue
 from datetime import timedelta
 from typing import Any, Protocol
 
@@ -27,19 +28,19 @@ class LoggingFnT(Protocol):
     def __call__(
         self,
         params: types.LoggingMessageNotificationParams,
-    ) -> None: ...
+    ): ...
 
 
 class MessageHandlerFnT(Protocol):
     def __call__(
         self,
         message: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
-    ) -> None: ...
+    ): ...
 
 
 def _default_message_handler(
     message: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
-) -> None:
+):
     if isinstance(message, Exception):
         raise ValueError(str(message))
     elif isinstance(message, (types.ServerNotification | RequestResponder)):
@@ -67,7 +68,7 @@ def _default_list_roots_callback(
 
 def _default_logging_callback(
     params: types.LoggingMessageNotificationParams,
-) -> None:
+):
     pass
 
 
@@ -85,15 +86,15 @@ class ClientSession(
 ):
     def __init__(
         self,
-        read_stream,
-        write_stream,
+        read_stream: queue.Queue,
+        write_stream: queue.Queue,
         read_timeout_seconds: timedelta | None = None,
         sampling_callback: SamplingFnT | None = None,
         list_roots_callback: ListRootsFnT | None = None,
         logging_callback: LoggingFnT | None = None,
         message_handler: MessageHandlerFnT | None = None,
         client_info: types.Implementation | None = None,
-    ) -> None:
+    ):
         super().__init__(
             read_stream,
             write_stream,
@@ -154,9 +155,7 @@ class ClientSession(
             types.EmptyResult,
         )
 
-    def send_progress_notification(
-        self, progress_token: str | int, progress: float, total: float | None = None
-    ) -> None:
+    def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
         """Send a progress notification."""
         self.send_notification(
             types.ClientNotification(
@@ -313,7 +312,7 @@ class ClientSession(
             types.ListToolsResult,
         )
 
-    def send_roots_list_changed(self) -> None:
+    def send_roots_list_changed(self):
         """Send a roots/list_changed notification."""
         self.send_notification(
             types.ClientNotification(
@@ -323,7 +322,7 @@ class ClientSession(
             )
         )
 
-    def _received_request(self, responder: RequestResponder[types.ServerRequest, types.ClientResult]) -> None:
+    def _received_request(self, responder: RequestResponder[types.ServerRequest, types.ClientResult]):
         ctx = RequestContext[ClientSession, Any](
             request_id=responder.request_id,
             meta=responder.request_meta,
@@ -351,11 +350,11 @@ class ClientSession(
     def _handle_incoming(
         self,
         req: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
-    ) -> None:
+    ):
         """Handle incoming messages by forwarding to the message handler."""
         self._message_handler(req)
 
-    def _received_notification(self, notification: types.ServerNotification) -> None:
+    def _received_notification(self, notification: types.ServerNotification):
         """Handle notifications from the server."""
         # Process specific notification types
         match notification.root:

@@ -8,25 +8,30 @@ from core.mcp.mcp_client import MCPClient
 from core.mcp.types import ImageContent, TextContent
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 
 
 class MCPTool(Tool):
-    tenant_id: str
-    icon: str
-    runtime_parameters: Optional[list[ToolParameter]]
-    server_url: str
-    provider_id: str
-
     def __init__(
-        self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, icon: str, server_url: str, provider_id: str
-    ) -> None:
+        self,
+        entity: ToolEntity,
+        runtime: ToolRuntime,
+        tenant_id: str,
+        icon: str,
+        server_url: str,
+        provider_id: str,
+        headers: Optional[dict[str, str]] = None,
+        timeout: Optional[float] = None,
+        sse_read_timeout: Optional[float] = None,
+    ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
         self.icon = icon
-        self.runtime_parameters = None
         self.server_url = server_url
         self.provider_id = provider_id
+        self.headers = headers or {}
+        self.timeout = timeout
+        self.sse_read_timeout = sse_read_timeout
 
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.MCP
@@ -42,7 +47,15 @@ class MCPTool(Tool):
         from core.tools.errors import ToolInvokeError
 
         try:
-            with MCPClient(self.server_url, self.provider_id, self.tenant_id, authed=True) as mcp_client:
+            with MCPClient(
+                self.server_url,
+                self.provider_id,
+                self.tenant_id,
+                authed=True,
+                headers=self.headers,
+                timeout=self.timeout,
+                sse_read_timeout=self.sse_read_timeout,
+            ) as mcp_client:
                 tool_parameters = self._handle_none_parameter(tool_parameters)
                 result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
         except MCPAuthError as e:
@@ -79,6 +92,9 @@ class MCPTool(Tool):
             icon=self.icon,
             server_url=self.server_url,
             provider_id=self.provider_id,
+            headers=self.headers,
+            timeout=self.timeout,
+            sse_read_timeout=self.sse_read_timeout,
         )
 
     def _handle_none_parameter(self, parameter: dict[str, Any]) -> dict[str, Any]:

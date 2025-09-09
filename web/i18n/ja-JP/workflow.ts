@@ -74,6 +74,8 @@ const translation = {
     exportPNG: 'PNG で出力',
     exportJPEG: 'JPEG で出力',
     exportSVG: 'SVG で出力',
+    currentView: '現在のビュー',
+    currentWorkflow: '現在のワークフロー',
     model: 'モデル',
     workflowAsTool: 'ワークフローをツールとして公開する',
     configureRequired: '設定が必要',
@@ -137,6 +139,10 @@ const translation = {
       ignore: 'DSL をエクスポート',
       export: 'シークレット値付きでエクスポート',
     },
+  },
+  sidebar: {
+    exportWarning: '現在保存されているバージョンをエクスポート',
+    exportWarningDesc: 'これは現在保存されているワークフローのバージョンをエクスポートします。エディターで未保存の変更がある場合は、まずワークフローキャンバスのエクスポートオプションを使用して保存してください。',
   },
   chatVariable: {
     panelTitle: '会話変数',
@@ -287,6 +293,18 @@ const translation = {
     zoomTo50: '50% サイズ',
     zoomTo100: '等倍表示',
     zoomToFit: '画面に合わせる',
+    horizontal: '水平',
+    alignBottom: '下',
+    alignNodes: 'ノードを整列',
+    vertical: '垂直',
+    alignLeft: '左',
+    alignTop: '上',
+    alignRight: '右',
+    alignMiddle: '中央',
+    distributeVertical: '垂直方向に等間隔配置',
+    alignCenter: '中央',
+    selectionAlignment: '選択の整列',
+    distributeHorizontal: '水平方向に等間隔配置',
   },
   variableReference: {
     noAvailableVars: '利用可能な変数がありません',
@@ -462,6 +480,12 @@ const translation = {
         warningTips: {
           saveSchema: '編集中のフィールドを確定してから保存してください。',
         },
+      },
+      reasoningFormat: {
+        tagged: 'タグを考え続けてください',
+        separated: '思考タグを分ける',
+        title: '推論タグの分離を有効にする',
+        tooltip: 'thinkタグから内容を抽出し、それをreasoning_contentフィールドに保存します。',
       },
     },
     knowledgeRetrieval: {
@@ -868,6 +892,7 @@ const translation = {
         },
         text: 'エージェント生成コンテンツ',
         json: 'エージェント生成の JSON',
+        usage: 'モデル使用量',
       },
       checkList: {
         strategyNotSelected: '戦略が選択されていません',
@@ -936,7 +961,9 @@ const translation = {
       deleteFailure: '削除に失敗しました',
       updateSuccess: '更新が完了しました',
       updateFailure: '更新に失敗しました',
+      copyIdSuccess: 'IDがクリップボードにコピーされました',
     },
+    copyId: 'IDをコピー',
   },
   debug: {
     noData: {
@@ -966,6 +993,21 @@ const translation = {
     },
     settingsTab: '設定',
     lastRunTab: '最後の実行',
+    relationsTab: '関係',
+    relations: {
+      dependencies: '依存元',
+      dependents: '依存先',
+      dependenciesDescription: 'このノードが依存している他のノード',
+      dependentsDescription: 'このノードに依存している他のノード',
+      noDependencies: '依存元なし',
+      noDependents: '依存先なし',
+    },
+    copyLastRun: '最後の実行をコピー',
+    noLastRunFound: '以前の実行が見つかりませんでした。',
+    copyLastRunError: '最後の実行の入力をコピーできませんでした',
+    noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
+    lastRunInputsCopied: '前回の実行から{{count}}個の入力をコピーしました',
+    lastOutput: '最後の出力',
   },
 }
 

@@ -29,7 +29,7 @@ const translation = {
       delete: 'Удалить',
       enableWarning: 'Архивный файл не может быть включен',
       sync: 'Синхронизировать',
-      resume: 'Продовжити',
+      resume: 'Возобновить',
       pause: 'Пауза',
     },
     index: {
@@ -342,7 +342,6 @@ const translation = {
     keywords: 'Ключевые слова',
     addKeyWord: 'Добавить ключевое слово',
     keywordError: 'Максимальная длина ключевого слова - 20',
-    characters: 'символов',
     hitCount: 'Количество обращений',
     vectorHash: 'Векторный хэш: ',
     questionPlaceholder: 'добавьте вопрос здесь',

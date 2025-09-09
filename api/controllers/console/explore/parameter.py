@@ -1,4 +1,4 @@
-from flask_restful import marshal_with
+from flask_restx import marshal_with
 
 from controllers.common import fields
 from controllers.console import api
@@ -43,6 +43,8 @@ class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
         app_model = installed_app.app
+        if not app_model:
+            raise ValueError("App not found")
         return AppService().get_app_meta(app_model)
 
 

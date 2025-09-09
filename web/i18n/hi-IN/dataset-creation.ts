@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'ज्ञान बनाएं',
-      update: 'डेटा जोड़ें',
       fallbackRoute: 'ज्ञान',
     },
     one: 'डेटा स्रोत चुनें',
@@ -28,6 +26,7 @@ const translation = {
     uploader: {
       title: 'फ़ाइल अपलोड करें',
       button: 'फ़ाइलों या फ़ोल्डरों को खींचें और छोड़ें, या',
+      buttonSingleFile: 'फ़ाइल को खींचें और छोड़ें, या',
       browse: 'ब्राउज़ करें',
       tip: 'समर्थित {{supportTypes}}। प्रत्येक अधिकतम {{size}}MB।',
       validation: {

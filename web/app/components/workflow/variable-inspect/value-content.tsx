@@ -21,6 +21,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 
 type Props = {
   currentVar: VarInInspect
@@ -35,6 +36,8 @@ const ValueContent = ({
   const errorMessageRef = useRef<HTMLDivElement>(null)
   const [editorHeight, setEditorHeight] = useState(0)
   const showTextEditor = currentVar.value_type === 'secret' || currentVar.value_type === 'string' || currentVar.value_type === 'number'
+  const showBoolEditor = typeof currentVar.value === 'boolean'
+  const showBoolArrayEditor = Array.isArray(currentVar.value) && currentVar.value.every(v => typeof v === 'boolean')
   const isSysFiles = currentVar.type === VarInInspectType.system && currentVar.name === 'files'
   const showJSONEditor = !isSysFiles && (currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]' || currentVar.value_type === 'array[any]')
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
@@ -57,23 +60,18 @@ const ValueContent = ({
   const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
+  if (showTextEditor) {
+    if (currentVar.value_type === 'number')
+      setValue(JSON.stringify(currentVar.value))
+    if (!currentVar.value)
+      setValue('')
+    setValue(currentVar.value)
+  }
+  if (showJSONEditor)
+    setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
 
-  // update default value when id changed
-  useEffect(() => {
-    if (showTextEditor) {
-      if (currentVar.value_type === 'number')
-        return setValue(JSON.stringify(currentVar.value))
-      if (!currentVar.value)
-        return setValue('')
-      setValue(currentVar.value)
-    }
-    if (showJSONEditor)
-      setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
-
-    if (showFileEditor)
-      setFileValue(formatFileValue(currentVar))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentVar.id, currentVar.value])
+  if (showFileEditor)
+    setFileValue(formatFileValue(currentVar))
 
   const handleTextChange = (value: string) => {
     if (currentVar.value_type === 'string')
@@ -178,6 +176,35 @@ const ValueContent = ({
             onChange={e => handleTextChange(e.target.value)}
           />
         )}
+        {showBoolEditor && (
+          <div className='w-[295px]'>
+            <BoolValue
+              value={currentVar.value as boolean}
+              onChange={(newValue) => {
+                setValue(newValue)
+                debounceValueChange(currentVar.id, newValue)
+              }}
+            />
+          </div>
+        )}
+        {
+          showBoolArrayEditor && (
+            <div className='w-[295px] space-y-1'>
+              {currentVar.value.map((v: boolean, i: number) => (
+                <BoolValue
+                  key={i}
+                  value={v}
+                  onChange={(newValue) => {
+                    const newArray = [...(currentVar.value as boolean[])]
+                    newArray[i] = newValue
+                    setValue(newArray)
+                    debounceValueChange(currentVar.id, newArray)
+                  }}
+                />
+              ))}
+            </div>
+          )
+        }
         {showJSONEditor && (
           <SchemaEditor
             readonly={JSONEditorDisabled}

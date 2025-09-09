@@ -9,7 +9,12 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
   return get<AppListResponse>(url, { params })
 }
 
-export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
+export const fetchAppDetail: Fetcher<AppDetailResponse, { url: string; id: string }> = ({ url, id }) => {
+  return get<AppDetailResponse>(`${url}/${id}`)
+}
+
+// Direct API call function for non-SWR usage
+export const fetchAppDetailDirect = async ({ url, id }: { url: string; id: string }): Promise<AppDetailResponse> => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }
 
@@ -30,8 +35,13 @@ export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; 
   return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon_type, icon, icon_background, mode, description } })
 }
 
-export const exportAppConfig: Fetcher<{ data: string }, { appID: string; include?: boolean }> = ({ appID, include = false }) => {
-  return get<{ data: string }>(`apps/${appID}/export?include_secret=${include}`)
+export const exportAppConfig: Fetcher<{ data: string }, { appID: string; include?: boolean; workflowID?: string }> = ({ appID, include = false, workflowID }) => {
+  const params = new URLSearchParams({
+    include_secret: include.toString(),
+  })
+  if (workflowID)
+    params.append('workflow_id', workflowID)
+  return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
 }
 
 // TODO: delete

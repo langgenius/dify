@@ -1,6 +1,5 @@
 """Abstract interface for document loader implementations."""
 
-import datetime
 import logging
 import mimetypes
 import os
@@ -19,6 +18,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 
@@ -56,13 +56,13 @@ class WordExtractor(BaseExtractor):
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
-    def __del__(self) -> None:
+    def __del__(self):
         if hasattr(self, "temp_file"):
             self.temp_file.close()
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
-        content = self.parse_docx(self.file_path, "storage")
+        content = self.parse_docx(self.file_path)
         return [
             Document(
                 page_content=content,
@@ -117,10 +117,10 @@ class WordExtractor(BaseExtractor):
                     mime_type=mime_type or "",
                     created_by=self.user_id,
                     created_by_role=CreatorUserRole.ACCOUNT,
-                    created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    created_at=naive_utc_now(),
                     used=True,
                     used_by=self.user_id,
-                    used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    used_at=naive_utc_now(),
                 )
 
                 db.session.add(upload_file)
@@ -189,23 +189,8 @@ class WordExtractor(BaseExtractor):
                 paragraph_content.append(run.text)
         return "".join(paragraph_content).strip()
 
-    def _parse_paragraph(self, paragraph, image_map):
-        paragraph_content = []
-        for run in paragraph.runs:
-            if run.element.xpath(".//a:blip"):
-                for blip in run.element.xpath(".//a:blip"):
-                    embed_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
-                    if embed_id:
-                        rel_target = run.part.rels[embed_id].target_ref
-                        if rel_target in image_map:
-                            paragraph_content.append(image_map[rel_target])
-            if run.text.strip():
-                paragraph_content.append(run.text.strip())
-        return " ".join(paragraph_content) if paragraph_content else ""
-
-    def parse_docx(self, docx_path, image_folder):
+    def parse_docx(self, docx_path):
         doc = DocxDocument(docx_path)
-        os.makedirs(image_folder, exist_ok=True)
 
         content = []
 

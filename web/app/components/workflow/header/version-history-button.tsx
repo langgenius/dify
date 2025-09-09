@@ -5,6 +5,8 @@ import { useKeyPress } from 'ahooks'
 import Button from '../../base/button'
 import Tooltip from '../../base/tooltip'
 import { getKeyboardKeyCodeBySystem } from '../utils'
+import useTheme from '@/hooks/use-theme'
+import cn from '@/utils/classnames'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown
@@ -38,6 +40,7 @@ PopupContent.displayName = 'PopupContent'
 const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
   onClick,
 }) => {
+  const { theme } = useTheme()
   const handleViewVersionHistory = useCallback(async () => {
     await onClick?.()
   }, [onClick])
@@ -55,7 +58,10 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
     shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] p-1.5'
   >
     <Button
-      className={'p-2'}
+      className={cn(
+        'p-2',
+        theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+      )}
       onClick={handleViewVersionHistory}
     >
       <RiHistoryLine className='h-4 w-4 text-components-button-secondary-text' />

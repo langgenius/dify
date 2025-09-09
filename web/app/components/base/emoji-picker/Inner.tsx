@@ -149,7 +149,8 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
     {/* Color Select */}
     <div className={cn('flex items-center justify-between p-3 pb-0')}>
       <p className='system-xs-medium-uppercase mb-2 text-text-primary'>Choose Style</p>
-      {showStyleColors ? <ChevronDownIcon className='h-4 w-4' onClick={() => setShowStyleColors(!showStyleColors)} /> : <ChevronUpIcon className='h-4 w-4' onClick={() => setShowStyleColors(!showStyleColors)} />}
+      {showStyleColors ? <ChevronDownIcon className='h-4 w-4 cursor-pointer text-text-quaternary' onClick={() => setShowStyleColors(!showStyleColors)} />
+        : <ChevronUpIcon className='h-4 w-4 cursor-pointer text-text-quaternary' onClick={() => setShowStyleColors(!showStyleColors)} />}
     </div>
     {showStyleColors && <div className='grid w-full grid-cols-8 gap-1 px-3'>
       {backgroundColors.map((color) => {

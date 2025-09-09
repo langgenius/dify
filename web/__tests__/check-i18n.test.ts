@@ -265,7 +265,6 @@ export default translation
       fs.writeFileSync(path.join(testZhDir, 'pages.ts'), file2Content)
 
       const allEnKeys = await getKeysFromLanguage('en-US')
-      const allZhKeys = await getKeysFromLanguage('zh-Hans')
 
       // Test file filtering logic
       const targetFile = 'components'
@@ -561,6 +560,203 @@ export default translation
       const zhKeysExtra = await getKeysFromLanguage('zh-Hans')
 
       expect(enKeys.length - zhKeysExtra.length).toBe(-2) // -2 means 2 extra keys
+    })
+  })
+
+  describe('Auto-remove multiline key-value pairs', () => {
+    // Helper function to simulate removeExtraKeysFromFile logic
+    function removeExtraKeysFromFile(content: string, keysToRemove: string[]): string {
+      const lines = content.split('\n')
+      const linesToRemove: number[] = []
+
+      for (const keyToRemove of keysToRemove) {
+        let targetLineIndex = -1
+        const linesToRemoveForKey: number[] = []
+
+        // Find the key line (simplified for single-level keys in test)
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const keyPattern = new RegExp(`^\\s*${keyToRemove}\\s*:`)
+          if (keyPattern.test(line)) {
+            targetLineIndex = i
+            break
+          }
+        }
+
+        if (targetLineIndex !== -1) {
+          linesToRemoveForKey.push(targetLineIndex)
+
+          // Check if this is a multiline key-value pair
+          const keyLine = lines[targetLineIndex]
+          const trimmedKeyLine = keyLine.trim()
+
+          // If key line ends with ":" (not complete value), it's likely multiline
+          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"`]/)) {
+            // Find the value lines that belong to this key
+            let currentLine = targetLineIndex + 1
+            let foundValue = false
+
+            while (currentLine < lines.length) {
+              const line = lines[currentLine]
+              const trimmed = line.trim()
+
+              // Skip empty lines
+              if (trimmed === '') {
+                currentLine++
+                continue
+              }
+
+              // Check if this line starts a new key (indicates end of current value)
+              if (trimmed.match(/^\w+\s*:/))
+                break
+
+              // Check if this line is part of the value
+              if (trimmed.startsWith('\'') || trimmed.startsWith('"') || trimmed.startsWith('`') || foundValue) {
+                linesToRemoveForKey.push(currentLine)
+                foundValue = true
+
+                // Check if this line ends the value (ends with quote and comma/no comma)
+                if ((trimmed.endsWith('\',') || trimmed.endsWith('",') || trimmed.endsWith('`,')
+                     || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
+                    && !trimmed.startsWith('//'))
+                  break
+              }
+              else {
+                break
+              }
+
+              currentLine++
+            }
+          }
+
+          linesToRemove.push(...linesToRemoveForKey)
+        }
+      }
+
+      // Remove duplicates and sort in reverse order
+      const uniqueLinesToRemove = [...new Set(linesToRemove)].sort((a, b) => b - a)
+
+      for (const lineIndex of uniqueLinesToRemove)
+        lines.splice(lineIndex, 1)
+
+      return lines.join('\n')
+    }
+
+    it('should remove single-line key-value pairs correctly', () => {
+      const content = `const translation = {
+  keepThis: 'This should stay',
+  removeThis: 'This should be removed',
+  alsoKeep: 'This should also stay',
+}
+
+export default translation`
+
+      const result = removeExtraKeysFromFile(content, ['removeThis'])
+
+      expect(result).toContain('keepThis: \'This should stay\'')
+      expect(result).toContain('alsoKeep: \'This should also stay\'')
+      expect(result).not.toContain('removeThis: \'This should be removed\'')
+    })
+
+    it('should remove multiline key-value pairs completely', () => {
+      const content = `const translation = {
+  keepThis: 'This should stay',
+  removeMultiline:
+    'This is a multiline value that should be removed completely',
+  alsoKeep: 'This should also stay',
+}
+
+export default translation`
+
+      const result = removeExtraKeysFromFile(content, ['removeMultiline'])
+
+      expect(result).toContain('keepThis: \'This should stay\'')
+      expect(result).toContain('alsoKeep: \'This should also stay\'')
+      expect(result).not.toContain('removeMultiline:')
+      expect(result).not.toContain('This is a multiline value that should be removed completely')
+    })
+
+    it('should handle mixed single-line and multiline removals', () => {
+      const content = `const translation = {
+  keepThis: 'Keep this',
+  removeSingle: 'Remove this single line',
+  removeMultiline:
+    'Remove this multiline value',
+  anotherMultiline:
+    'Another multiline that spans multiple lines',
+  keepAnother: 'Keep this too',
+}
+
+export default translation`
+
+      const result = removeExtraKeysFromFile(content, ['removeSingle', 'removeMultiline', 'anotherMultiline'])
+
+      expect(result).toContain('keepThis: \'Keep this\'')
+      expect(result).toContain('keepAnother: \'Keep this too\'')
+      expect(result).not.toContain('removeSingle:')
+      expect(result).not.toContain('removeMultiline:')
+      expect(result).not.toContain('anotherMultiline:')
+      expect(result).not.toContain('Remove this single line')
+      expect(result).not.toContain('Remove this multiline value')
+      expect(result).not.toContain('Another multiline that spans multiple lines')
+    })
+
+    it('should properly detect multiline vs single-line patterns', () => {
+      const multilineContent = `const translation = {
+  singleLine: 'This is single line',
+  multilineKey:
+    'This is multiline',
+  keyWithColon: 'Value with: colon inside',
+  objectKey: {
+    nested: 'value'
+  },
+}
+
+export default translation`
+
+      // Test that single line with colon in value is not treated as multiline
+      const result1 = removeExtraKeysFromFile(multilineContent, ['keyWithColon'])
+      expect(result1).not.toContain('keyWithColon:')
+      expect(result1).not.toContain('Value with: colon inside')
+
+      // Test that true multiline is handled correctly
+      const result2 = removeExtraKeysFromFile(multilineContent, ['multilineKey'])
+      expect(result2).not.toContain('multilineKey:')
+      expect(result2).not.toContain('This is multiline')
+
+      // Test that object key removal works (note: this is a simplified test)
+      // In real scenario, object removal would be more complex
+      const result3 = removeExtraKeysFromFile(multilineContent, ['objectKey'])
+      expect(result3).not.toContain('objectKey: {')
+      // Note: Our simplified test function doesn't handle nested object removal perfectly
+      // This is acceptable as it's testing the main multiline string removal functionality
+    })
+
+    it('should handle real-world Polish translation structure', () => {
+      const polishContent = `const translation = {
+  createApp: 'UTWÓRZ APLIKACJĘ',
+  newApp: {
+    captionAppType: 'Jaki typ aplikacji chcesz stworzyć?',
+    chatbotDescription:
+      'Zbuduj aplikację opartą na czacie. Ta aplikacja używa formatu pytań i odpowiedzi.',
+    agentDescription:
+      'Zbuduj inteligentnego agenta, który może autonomicznie wybierać narzędzia.',
+    basic: 'Podstawowy',
+  },
+}
+
+export default translation`
+
+      const result = removeExtraKeysFromFile(polishContent, ['captionAppType', 'chatbotDescription', 'agentDescription'])
+
+      expect(result).toContain('createApp: \'UTWÓRZ APLIKACJĘ\'')
+      expect(result).toContain('basic: \'Podstawowy\'')
+      expect(result).not.toContain('captionAppType:')
+      expect(result).not.toContain('chatbotDescription:')
+      expect(result).not.toContain('agentDescription:')
+      expect(result).not.toContain('Jaki typ aplikacji')
+      expect(result).not.toContain('Zbuduj aplikację opartą na czacie')
+      expect(result).not.toContain('Zbuduj inteligentnego agenta')
     })
   })
 })

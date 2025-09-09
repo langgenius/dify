@@ -6,7 +6,7 @@ from core.workflow.nodes.answer.entities import (
     TextGenerateRouteChunk,
     VarGenerateRouteChunk,
 )
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 
@@ -18,25 +18,22 @@ class AnswerStreamGeneratorRouter:
         reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
     ) -> AnswerStreamGenerateRoute:
         """
-        Initializes the stream generation routes for all Answer nodes in the workflow.
-        This method performs a static analysis of the graph to parse the answer templates.
-        The old logic for pre-calculating static dependencies has been deprecated and removed,
-        as the decision logic is now handled dynamically at runtime by the AnswerStreamProcessor.
+        Get stream generate routes.
+        :return:
         """
         # parse stream output node value selectors of answer nodes
         answer_generate_route: dict[str, list[GenerateRouteChunk]] = {}
-        answer_node_ids = []
         for answer_node_id, node_config in node_id_config_mapping.items():
             if node_config.get("data", {}).get("type") != NodeType.ANSWER.value:
                 continue
 
-            answer_node_ids.append(answer_node_id)
             # get generate route for stream output
             generate_route = cls._extract_generate_route_selectors(node_config)
             answer_generate_route[answer_node_id] = generate_route
 
-        # Calculate answer dependencies
-        answer_dependencies = cls._fetch_answer_dependencies(
+        # fetch answer dependencies
+        answer_node_ids = list(answer_generate_route.keys())
+        answer_dependencies = cls._fetch_answers_dependencies(
             answer_node_ids=answer_node_ids,
             reverse_edge_mapping=reverse_edge_mapping,
             node_id_config_mapping=node_id_config_mapping,
@@ -93,41 +90,85 @@ class AnswerStreamGeneratorRouter:
         :return:
         """
         node_data = AnswerNodeData(**config.get("data", {}))
-        # Trim whitespace from the answer template to prevent parsing issues with leading/trailing spaces.
-        if node_data.answer:
-            node_data.answer = node_data.answer.strip()
         return cls.extract_generate_route_from_node_data(node_data)
-
-    @classmethod
-    def _fetch_answer_dependencies(
-        cls, answer_node_ids: list[str], reverse_edge_mapping: dict, node_id_config_mapping: dict
-    ) -> dict[str, list[str]]:
-        """
-        Fetch answer dependencies.
-        :param answer_node_ids: answer node ids
-        :param reverse_edge_mapping: reverse edge mapping
-        :param node_id_config_mapping: node id config mapping
-        :return: answer dependencies (answer node id -> dependent answer node ids)
-        """
-        answer_dependencies: dict[str, list[str]] = {}
-
-        # Initialize dependencies for all answer nodes
-        for answer_node_id in answer_node_ids:
-            answer_dependencies[answer_node_id] = []
-
-        # For each answer node, check if it has incoming edges from other answer nodes
-        for answer_node_id in answer_node_ids:
-            if answer_node_id not in reverse_edge_mapping:
-                continue
-
-            for edge in reverse_edge_mapping[answer_node_id]:
-                source_node_id = edge.source_node_id
-                if source_node_id in answer_node_ids and source_node_id != answer_node_id:
-                    answer_dependencies[answer_node_id].append(source_node_id)
-
-        return answer_dependencies
 
     @classmethod
     def _is_variable(cls, part, variable_keys):
         cleaned_part = part.replace("{{", "").replace("}}", "")
         return part.startswith("{{") and cleaned_part in variable_keys
+
+    @classmethod
+    def _fetch_answers_dependencies(
+        cls,
+        answer_node_ids: list[str],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        node_id_config_mapping: dict[str, dict],
+    ) -> dict[str, list[str]]:
+        """
+        Fetch answer dependencies
+        :param answer_node_ids: answer node ids
+        :param reverse_edge_mapping: reverse edge mapping
+        :param node_id_config_mapping: node id config mapping
+        :return:
+        """
+        answer_dependencies: dict[str, list[str]] = {}
+        for answer_node_id in answer_node_ids:
+            if answer_dependencies.get(answer_node_id) is None:
+                answer_dependencies[answer_node_id] = []
+
+            cls._recursive_fetch_answer_dependencies(
+                current_node_id=answer_node_id,
+                answer_node_id=answer_node_id,
+                node_id_config_mapping=node_id_config_mapping,
+                reverse_edge_mapping=reverse_edge_mapping,
+                answer_dependencies=answer_dependencies,
+            )
+
+        return answer_dependencies
+
+    @classmethod
+    def _recursive_fetch_answer_dependencies(
+        cls,
+        current_node_id: str,
+        answer_node_id: str,
+        node_id_config_mapping: dict[str, dict],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        answer_dependencies: dict[str, list[str]],
+    ):
+        """
+        Recursive fetch answer dependencies
+        :param current_node_id: current node id
+        :param answer_node_id: answer node id
+        :param node_id_config_mapping: node id config mapping
+        :param reverse_edge_mapping: reverse edge mapping
+        :param answer_dependencies: answer dependencies
+        :return:
+        """
+        reverse_edges = reverse_edge_mapping.get(current_node_id, [])
+        for edge in reverse_edges:
+            source_node_id = edge.source_node_id
+            if source_node_id not in node_id_config_mapping:
+                continue
+            source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
+            source_node_data = node_id_config_mapping[source_node_id].get("data", {})
+            if (
+                source_node_type
+                in {
+                    NodeType.ANSWER,
+                    NodeType.IF_ELSE,
+                    NodeType.QUESTION_CLASSIFIER,
+                    NodeType.ITERATION,
+                    NodeType.LOOP,
+                    NodeType.VARIABLE_ASSIGNER,
+                }
+                or source_node_data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH
+            ):
+                answer_dependencies[answer_node_id].append(source_node_id)
+            else:
+                cls._recursive_fetch_answer_dependencies(
+                    current_node_id=source_node_id,
+                    answer_node_id=answer_node_id,
+                    node_id_config_mapping=node_id_config_mapping,
+                    reverse_edge_mapping=reverse_edge_mapping,
+                    answer_dependencies=answer_dependencies,
+                )

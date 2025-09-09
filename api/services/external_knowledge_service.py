@@ -9,6 +9,7 @@ from sqlalchemy import select
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from core.rag.entities.metadata_entities import MetadataCondition
+from core.workflow.nodes.http_request.exc import InvalidHttpMethodError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import (
@@ -88,7 +89,7 @@ class ExternalDatasetService:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
-        except Exception as e:
+        except Exception:
             raise ValueError(f"failed to connect to the endpoint: {endpoint}")
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
@@ -113,8 +114,9 @@ class ExternalDatasetService:
         )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
-        if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
-            args.get("settings")["api_key"] = external_knowledge_api.settings_dict.get("api_key")
+        settings = args.get("settings")
+        if settings and settings.get("api_key") == HIDDEN_VALUE and external_knowledge_api.settings_dict:
+            settings["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
         external_knowledge_api.name = args.get("name")
         external_knowledge_api.description = args.get("description", "")
@@ -185,9 +187,19 @@ class ExternalDatasetService:
             "follow_redirects": True,
         }
 
-        response: httpx.Response = getattr(ssrf_proxy, settings.request_method)(
-            data=json.dumps(settings.params), files=files, **kwargs
-        )
+        _METHOD_MAP = {
+            "get": ssrf_proxy.get,
+            "head": ssrf_proxy.head,
+            "post": ssrf_proxy.post,
+            "put": ssrf_proxy.put,
+            "delete": ssrf_proxy.delete,
+            "patch": ssrf_proxy.patch,
+        }
+        method_lc = settings.request_method.lower()
+        if method_lc not in _METHOD_MAP:
+            raise InvalidHttpMethodError(f"Invalid http method {settings.request_method}")
+
+        response: httpx.Response = _METHOD_MAP[method_lc](data=json.dumps(settings.params), files=files, **kwargs)
         return response
 
     @staticmethod
@@ -218,7 +230,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api_settings(settings: dict) -> ExternalKnowledgeApiSetting:
-        return ExternalKnowledgeApiSetting.parse_obj(settings)
+        return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
     def create_external_dataset(tenant_id: str, user_id: str, args: dict) -> Dataset:
@@ -266,7 +278,7 @@ class ExternalDatasetService:
         query: str,
         external_retrieval_parameters: dict,
         metadata_condition: Optional[MetadataCondition] = None,
-    ) -> list:
+    ):
         external_knowledge_binding = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )

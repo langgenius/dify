@@ -101,14 +101,6 @@ export type SelectTypeFormItem = {
   options: string[]
   hide: boolean
 }
-
-export type ParagraphTypeFormItem = {
-  default: string
-  label: string
-  variable: string
-  required: boolean
-  hide: boolean
-}
 /**
  * User Input Form Item
  */

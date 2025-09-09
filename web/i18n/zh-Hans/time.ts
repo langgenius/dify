@@ -32,6 +32,14 @@ const translation = {
     pickTime: '选择时间',
   },
   defaultPlaceholder: '请选择时间...',
+  // Date format configurations
+  dateFormats: {
+    display: 'YYYY年MM月DD日',
+    displayWithTime: 'YYYY年MM月DD日 HH:mm',
+    input: 'YYYY-MM-DD',
+    output: 'YYYY-MM-DD',
+    outputWithTime: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+  },
 }
 
 export default translation

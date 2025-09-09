@@ -85,6 +85,16 @@ const translation = {
   },
   embeddingModelSwitchTip:
     'Model wektoryzacji tekstu adnotacji, przełączanie modeli spowoduje ponowne osadzenie, co wiąże się z dodatkowymi kosztami.',
+  list: {
+    delete: {
+      title: 'Czy na pewno chcesz usunąć?',
+    },
+  },
+  batchAction: {
+    selected: 'Wybrany',
+    delete: 'Usuń',
+    cancel: 'Anuluj',
+  },
 }
 
 export default translation

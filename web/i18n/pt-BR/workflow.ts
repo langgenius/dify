@@ -107,8 +107,6 @@ const translation = {
     publishUpdate: 'Publicar Atualização',
     versionHistory: 'Histórico de Versão',
     exportImage: 'Exportar Imagem',
-    referenceVar: 'Variável de Referência',
-    noExist: 'Nenhuma variável desse tipo',
     exitVersions: 'Versões de Sair',
     exportSVG: 'Exportar como SVG',
     exportJPEG: 'Exportar como JPEG',
@@ -116,6 +114,8 @@ const translation = {
     needEndNode: 'O nó de Fim deve ser adicionado',
     needAnswerNode: 'O nó de resposta deve ser adicionado',
     tagBound: 'Número de aplicativos usando esta tag',
+    currentView: 'Visualização atual',
+    currentWorkflow: 'Fluxo de trabalho atual',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -289,6 +289,18 @@ const translation = {
     zoomTo50: 'Aproximar para 50%',
     zoomTo100: 'Aproximar para 100%',
     zoomToFit: 'Aproximar para ajustar',
+    vertical: 'Vertical',
+    alignNodes: 'Alinhar nós',
+    selectionAlignment: 'Alinhamento de seleção',
+    alignLeft: 'Esquerda',
+    alignBottom: 'Inferior',
+    distributeHorizontal: 'Distribuir horizontalmente',
+    alignMiddle: 'Meio',
+    alignRight: 'Direita',
+    horizontal: 'Horizontal',
+    distributeVertical: 'Distribuir verticalmente',
+    alignCenter: 'Centro',
+    alignTop: 'Superior',
   },
   panel: {
     userInputField: 'Campo de entrada do usuário',
@@ -458,6 +470,12 @@ const translation = {
         apply: 'Aplicar',
         required: 'obrigatório',
       },
+      reasoningFormat: {
+        tagged: 'Mantenha as tags de pensamento',
+        title: 'Ativar separação de tags de raciocínio',
+        separated: 'Separe as tags de pensamento',
+        tooltip: 'Extraia o conteúdo das tags de pensamento e armazene-o no campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variável de consulta',
@@ -608,7 +626,6 @@ const translation = {
       },
       addSubVariable: 'Subvariável',
       select: 'Selecionar',
-      condition: 'Condição',
     },
     variableAssigner: {
       title: 'Atribuir variáveis',
@@ -832,6 +849,7 @@ const translation = {
         },
         json: 'JSON gerado pelo agente',
         text: 'Conteúdo gerado pelo agente',
+        usage: 'Informações de uso do modelo',
       },
       checkList: {
         strategyNotSelected: 'Estratégia não selecionada',
@@ -930,6 +948,7 @@ const translation = {
       restoreFailure: 'Falha ao restaurar versão',
       restoreSuccess: 'Versão restaurada',
       deleteFailure: 'Falha ao deletar versão',
+      copyIdSuccess: 'ID copiado para a área de transferência',
     },
     title: 'Versões',
     latest: 'Último',
@@ -940,6 +959,7 @@ const translation = {
     restorationTip: 'Após a restauração da versão, o rascunho atual será substituído.',
     currentDraft: 'Rascunho Atual',
     deletionTip: 'A exclusão é irreversível, por favor confirme.',
+    copyId: 'Copiar ID',
   },
   debug: {
     noData: {
@@ -969,6 +989,24 @@ const translation = {
     },
     settingsTab: 'Configurações',
     lastRunTab: 'Última execução',
+    relations: {
+      noDependents: 'Sem dependentes',
+      dependenciesDescription: 'Nós dos quais esse nó depende',
+      dependents: 'Dependentes',
+      dependencies: 'Dependências',
+      dependentsDescription: 'Nós que dependem desse nó',
+      noDependencies: 'Sem dependências',
+    },
+    relationsTab: 'Relações',
+    noMatchingInputsFound: 'Nenhuma entrada correspondente encontrada na última execução.',
+    copyLastRunError: 'Falha ao copiar as entradas da última execução',
+    noLastRunFound: 'Nenhuma execução anterior encontrada.',
+    copyLastRun: 'Copiar Última Execução',
+    lastOutput: 'Última Saída',
+  },
+  sidebar: {
+    exportWarning: 'Exportar a versão salva atual',
+    exportWarningDesc: 'Isto irá exportar a versão atual salva do seu fluxo de trabalho. Se você tiver alterações não salvas no editor, por favor, salve-as primeiro utilizando a opção de exportação na tela do fluxo de trabalho.',
   },
 }
 

@@ -70,7 +70,7 @@ const style = {
     priceTip: 'text-text-primary-on-surface',
     description: 'text-text-primary-on-surface',
     bg: 'border-effects-highlight bg-[#155AEF] text-text-primary-on-surface',
-    btnStyle: 'bg-white bg-opacity-96 hover:opacity-85 border-[0.5px] border-components-button-secondary-border text-[#155AEF] shadow-xs',
+    btnStyle: 'bg-white/96 hover:opacity-85 border-[0.5px] border-components-button-secondary-border text-[#155AEF] shadow-xs',
     values: 'text-text-primary-on-surface',
     tooltipIconColor: 'text-text-primary-on-surface',
   },

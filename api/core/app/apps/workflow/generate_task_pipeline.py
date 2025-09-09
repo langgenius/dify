@@ -92,7 +92,7 @@ class WorkflowAppGenerateTaskPipeline:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
-    ) -> None:
+    ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -131,6 +131,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         self._workflow_response_converter = WorkflowResponseConverter(
             application_generate_entity=application_generate_entity,
+            user=user,
         )
 
         self._application_generate_entity = application_generate_entity
@@ -262,7 +263,7 @@ class WorkflowAppGenerateTaskPipeline:
                 session.rollback()
                 raise
 
-    def _ensure_workflow_initialized(self) -> None:
+    def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
         if not self._workflow_run_id:
             raise ValueError("workflow run not initialized.")
@@ -299,16 +300,15 @@ class WorkflowAppGenerateTaskPipeline:
         """Handle node retry events."""
         self._ensure_workflow_initialized()
 
-        with self._database_session() as session:
-            workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
-                workflow_execution_id=self._workflow_run_id,
-                event=event,
-            )
-            response = self._workflow_response_converter.workflow_node_retry_to_stream_response(
-                event=event,
-                task_id=self._application_generate_entity.task_id,
-                workflow_node_execution=workflow_node_execution,
-            )
+        workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
+            workflow_execution_id=self._workflow_run_id,
+            event=event,
+        )
+        response = self._workflow_response_converter.workflow_node_retry_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+            workflow_node_execution=workflow_node_execution,
+        )
 
         if response:
             yield response
@@ -711,7 +711,7 @@ class WorkflowAppGenerateTaskPipeline:
         # Initialize graph runtime state
         graph_runtime_state = None
 
-        for queue_message in self._base_task_pipeline._queue_manager.listen():
+        for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
 
             match event:
@@ -744,7 +744,7 @@ class WorkflowAppGenerateTaskPipeline:
         if tts_publisher:
             tts_publisher.publish(None)
 
-    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution) -> None:
+    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution):
         invoke_from = self._application_generate_entity.invoke_from
         if invoke_from == InvokeFrom.SERVICE_API:
             created_from = WorkflowAppLogCreatedFrom.SERVICE_API

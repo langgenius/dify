@@ -66,7 +66,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
       >
         <div
           className={classNames(
-            'flex items-center px-2 py-1 gap-0.5 rounded-lg bg-components-input-bg-normal',
+            'flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1',
             disabled ? 'cursor-not-allowed !bg-components-input-bg-disabled' : 'cursor-pointer hover:bg-state-base-hover-alt',
             open && 'bg-state-base-hover-alt',
             className,
@@ -99,7 +99,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                   <div
                     key={item.value}
                     className={classNames(
-                      'flex items-center px-2 py-1 gap-1 self-stretch rounded-lg',
+                      'flex items-center gap-1 self-stretch rounded-lg px-2 py-1',
                       'cursor-pointer hover:bg-state-base-hover',
                     )}
                     onClick={() => {

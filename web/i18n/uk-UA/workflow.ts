@@ -103,9 +103,7 @@ const translation = {
     addFailureBranch: 'Додано гілку помилки',
     noHistory: 'Без історії',
     loadMore: 'Завантажте більше робочих процесів',
-    referenceVar: 'Посилальна змінна',
     exportPNG: 'Експортувати як PNG',
-    noExist: 'Такої змінної не існує',
     exitVersions: 'Вихідні версії',
     versionHistory: 'Історія версій',
     publishUpdate: 'Опублікувати оновлення',
@@ -116,6 +114,8 @@ const translation = {
     needEndNode: 'Необхідно додати кінцевий вузол',
     needAnswerNode: 'Вузол Відповіді повинен бути доданий',
     tagBound: 'Кількість додатків, що використовують цей тег',
+    currentView: 'Поточний вигляд',
+    currentWorkflow: 'Поточний робочий процес',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -289,6 +289,18 @@ const translation = {
     zoomTo50: 'Збільшити до 50%',
     zoomTo100: 'Збільшити до 100%',
     zoomToFit: 'Збільшити для підгонки',
+    alignCenter: 'Центр',
+    alignRight: 'Праворуч',
+    vertical: 'Вертикальний',
+    alignBottom: 'Низ',
+    alignLeft: 'Ліворуч',
+    alignTop: 'Верх',
+    horizontal: 'Горизонтальний',
+    alignMiddle: 'По центру',
+    distributeVertical: 'Розподілити по вертикалі',
+    distributeHorizontal: 'Розподілити по горизонталі',
+    selectionAlignment: 'Вирівнювання вибору',
+    alignNodes: 'Вирівнювання вузлів',
   },
   panel: {
     userInputField: 'Поле введення користувача',
@@ -458,6 +470,12 @@ const translation = {
         title: 'Структурована схема виходу',
         doc: 'Дізнайтеся більше про структурований вихід',
       },
+      reasoningFormat: {
+        separated: 'Окремі теги для думок',
+        tagged: 'Продовжуйте думати про мітки',
+        title: 'Увімкніть розділення тегів для міркування',
+        tooltip: 'Витягніть вміст з тегів think і зберігайте його в полі reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Змінна запиту',
@@ -608,7 +626,6 @@ const translation = {
       },
       select: 'Виберіть',
       addSubVariable: 'Підзмінна',
-      condition: 'Умова',
     },
     variableAssigner: {
       title: 'Присвоєння змінних',
@@ -831,6 +848,7 @@ const translation = {
           title: 'Файли, створені агентом',
         },
         text: 'Контент, створений агентом',
+        usage: 'Інформація про використання моделі',
         json: 'Агент згенерував JSON',
       },
       checkList: {
@@ -930,6 +948,7 @@ const translation = {
       deleteSuccess: 'Версія видалена',
       restoreSuccess: 'Версія відновлена',
       updateFailure: 'Не вдалося оновити версію',
+      copyIdSuccess: 'ID скопійовано в буфер обміну',
     },
     defaultName: 'Без назви версія',
     restorationTip: 'Після відновлення версії нинішній проект буде перезаписано.',
@@ -940,6 +959,7 @@ const translation = {
     editVersionInfo: 'Редагувати інформацію про версію',
     nameThisVersion: 'Назвіть цю версію',
     latest: 'Останні новини',
+    copyId: 'Копіювати ідентифікатор',
   },
   debug: {
     noData: {
@@ -969,6 +989,24 @@ const translation = {
     },
     lastRunTab: 'Останній запуск',
     settingsTab: 'Налаштування',
+    relations: {
+      noDependents: 'Без утриманців',
+      dependents: 'Утриманців',
+      dependencies: 'Залежностей',
+      noDependencies: 'Відсутність залежностей',
+      dependenciesDescription: 'Вузли, на які спирається цей вузол',
+      dependentsDescription: 'Вузли, які спираються на цей вузол',
+    },
+    relationsTab: 'Відносин',
+    copyLastRun: 'Копіювати останній запуск',
+    noLastRunFound: 'Жодного попереднього запуску не знайдено.',
+    copyLastRunError: 'Не вдалося скопіювати вхідні дані останнього виконання',
+    noMatchingInputsFound: 'Не знайдено відповідних вхідних даних з останнього запуску',
+    lastOutput: 'Останній вихід',
+  },
+  sidebar: {
+    exportWarning: 'Експортувати поточну збережену версію',
+    exportWarningDesc: 'Це експортує поточну збережену версію вашого робочого процесу. Якщо у вас є незбережені зміни в редакторі, будь ласка, спочатку збережіть їх, використовуючи опцію експорту на полотні робочого процесу.',
   },
 }
 

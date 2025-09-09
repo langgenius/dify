@@ -5,7 +5,7 @@ from core.workflow.graph_engine.entities.event import GraphEngineEvent
 
 class WorkflowCallback(ABC):
     @abstractmethod
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: GraphEngineEvent):
         """
         Published event
         """

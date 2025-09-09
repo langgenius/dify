@@ -104,9 +104,7 @@ const translation = {
     noHistory: 'بدون تاریخچه',
     loadMore: 'بارگذاری گردش کار بیشتر',
     exportPNG: 'صادرات به فرمت PNG',
-    noExist: 'هیچگونه متغیری وجود ندارد',
     exitVersions: 'نسخه‌های خروجی',
-    referenceVar: 'متغیر مرجع',
     exportSVG: 'صادرات به فرمت SVG',
     exportJPEG: 'صادرات به فرمت JPEG',
     exportImage: 'تصویر را صادر کنید',
@@ -116,6 +114,8 @@ const translation = {
     needAnswerNode: 'باید گره پاسخ اضافه شود',
     addBlock: 'نود اضافه کنید',
     tagBound: 'تعداد برنامه‌هایی که از این برچسب استفاده می‌کنند',
+    currentView: 'نمای فعلی',
+    currentWorkflow: 'گردش کار فعلی',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
@@ -289,6 +289,18 @@ const translation = {
     zoomTo50: 'بزرگ‌نمایی به 50%',
     zoomTo100: 'بزرگ‌نمایی به 100%',
     zoomToFit: 'تناسب با اندازه',
+    horizontal: 'افقی',
+    alignBottom: 'پایین',
+    alignRight: 'راست',
+    vertical: 'عمودی',
+    alignCenter: 'مرکز',
+    alignLeft: 'چپ',
+    distributeVertical: 'توزیع عمودی',
+    distributeHorizontal: 'توزیع افقی',
+    alignTop: 'بالا',
+    alignNodes: 'تراز کردن گره ها',
+    selectionAlignment: 'تراز انتخاب',
+    alignMiddle: 'وسط',
   },
   panel: {
     userInputField: 'فیلد ورودی کاربر',
@@ -458,6 +470,12 @@ const translation = {
         fieldNamePlaceholder: 'نام میدان',
         generationTip: 'شما می‌توانید از زبان طبیعی برای ایجاد سریع یک طرح‌واره JSON استفاده کنید.',
       },
+      reasoningFormat: {
+        separated: 'تگ‌های تفکر جداگانه',
+        title: 'فعال‌سازی جداسازی برچسب‌های استدلال',
+        tagged: 'به فکر برچسب‌ها باشید',
+        tooltip: 'محتوا را از تگ‌های تفکر استخراج کرده و در فیلد reasoning_content ذخیره کنید.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'متغیر جستجو',
@@ -608,7 +626,6 @@ const translation = {
       },
       select: 'انتخاب',
       addSubVariable: 'متغیر فرعی',
-      condition: 'شرط',
     },
     variableAssigner: {
       title: 'تخصیص متغیرها',
@@ -831,6 +848,7 @@ const translation = {
           type: 'نوع پشتیبانی. اکنون فقط از تصویر پشتیبانی می کند',
         },
         text: 'محتوای تولید شده توسط عامل',
+        usage: 'اطلاعات استفاده از مدل',
         json: 'عامل JSON را تولید کرد',
       },
       checkList: {
@@ -930,6 +948,7 @@ const translation = {
       deleteFailure: 'حذف نسخه موفق نبود',
       restoreFailure: 'بازگرداندن نسخه ناموفق بود',
       updateFailure: 'به‌روزرسانی نسخه ناموفق بود',
+      copyIdSuccess: 'شناسه در کلیپ بورد کپی شده است',
     },
     latest: 'آخرین',
     editVersionInfo: 'ویرایش اطلاعات نسخه',
@@ -940,6 +959,7 @@ const translation = {
     releaseNotesPlaceholder: 'شرح دهید چه چیزی تغییر کرده است',
     restorationTip: 'پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.',
     deletionTip: 'حذف غیرقابل برگشت است، لطفا تأیید کنید.',
+    copyId: 'شناسه کپی',
   },
   debug: {
     noData: {
@@ -969,6 +989,24 @@ const translation = {
     },
     settingsTab: 'تنظیمات',
     lastRunTab: 'آخرین اجرا',
+    relations: {
+      dependents: 'وابسته',
+      dependencies: 'وابسته',
+      noDependents: 'بدون وابستگان',
+      noDependencies: 'بدون وابستگی',
+      dependenciesDescription: 'گره هایی که این گره به آنها متکی است',
+      dependentsDescription: 'گره هایی که به این گره متکی هستند',
+    },
+    relationsTab: 'روابط',
+    copyLastRun: 'کپی آخرین اجرا',
+    noLastRunFound: 'هیچ اجرای قبلی یافت نشد',
+    noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
+    copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
+    lastOutput: 'آخرین خروجی',
+  },
+  sidebar: {
+    exportWarning: 'صادرات نسخه ذخیره شده فعلی',
+    exportWarningDesc: 'این نسخه فعلی ذخیره شده از کار خود را صادر خواهد کرد. اگر تغییرات غیرذخیره شده‌ای در ویرایشگر دارید، لطفاً ابتدا از گزینه صادرات در بوم کار برای ذخیره آنها استفاده کنید.',
   },
 }
 

@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Ustvari Znanje',
-      update: 'Dodaj podatke',
       fallbackRoute: 'Znanje',
     },
     one: 'Izberi vir podatkov',
@@ -33,6 +31,7 @@ const translation = {
     uploader: {
       title: 'Naloži datoteko',
       button: 'Povleci in spusti datoteke ali mape oz',
+      buttonSingleFile: 'Povleci in spusti datoteko oz',
       browse: 'Prebrskaj',
       tip: 'Podprti tipi datotek: {{supportTypes}}. Največ {{size}}MB na datoteko.',
       validation: {

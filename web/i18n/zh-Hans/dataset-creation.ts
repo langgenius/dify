@@ -36,6 +36,7 @@ const translation = {
     uploader: {
       title: '上传文本文件',
       button: '拖拽文件或文件夹至此，或者',
+      buttonSingleFile: '拖拽文件至此，或者',
       browse: '选择文件',
       tip: '已支持 {{supportTypes}}，每个文件不超过 {{size}}MB。',
       validation: {

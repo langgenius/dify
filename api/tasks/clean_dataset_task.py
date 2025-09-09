@@ -2,10 +2,10 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.tools.utils.rag_web_reader import get_image_upload_file_ids
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.dataset import (
@@ -19,6 +19,8 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.model import UploadFile
+
+logger = logging.getLogger(__name__)
 
 
 # Add import statement for ValueError
@@ -42,7 +44,7 @@ def clean_dataset_task(
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
-    logging.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
+    logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -56,15 +58,34 @@ def clean_dataset_task(
         documents = db.session.query(Document).where(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id).all()
 
-        if documents is None or len(documents) == 0:
-            logging.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
-        else:
-            logging.info(click.style(f"Cleaning documents for dataset: {dataset_id}", fg="green"))
-            # Specify the index type before initializing the index processor
-            if doc_form is None:
-                raise ValueError("Index type must be specified.")
+        # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace
+        # This ensures all invalid doc_form values are properly handled
+        if doc_form is None or (isinstance(doc_form, str) and not doc_form.strip()):
+            # Use default paragraph index type for empty/invalid datasets to enable vector database cleanup
+            from core.rag.index_processor.constant.index_type import IndexType
+
+            doc_form = IndexType.PARAGRAPH_INDEX
+            logger.info(
+                click.style(f"Invalid doc_form detected, using default index type for cleanup: {doc_form}", fg="yellow")
+            )
+
+        # Add exception handling around IndexProcessorFactory.clean() to prevent single point of failure
+        # This ensures Document/Segment deletion can continue even if vector database cleanup fails
+        try:
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
+            logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))
+        except Exception:
+            logger.exception(click.style(f"Failed to clean vector database for dataset {dataset_id}", fg="red"))
+            # Continue with document and segment deletion even if vector cleanup fails
+            logger.info(
+                click.style(f"Continuing with document and segment deletion for dataset: {dataset_id}", fg="yellow")
+            )
+
+        if documents is None or len(documents) == 0:
+            logger.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
+        else:
+            logger.info(click.style(f"Cleaning documents for dataset: {dataset_id}", fg="green"))
 
             for document in documents:
                 db.session.delete(document)
@@ -78,7 +99,7 @@ def clean_dataset_task(
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception(
+                        logger.exception(
                             "Delete image_files failed when storage deleted, \
                                           image_upload_file_is: %s",
                             upload_file_id,
@@ -115,10 +136,18 @@ def clean_dataset_task(
 
         db.session.commit()
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}", fg="green")
         )
     except Exception:
-        logging.exception("Cleaned dataset when dataset deleted failed")
+        # Add rollback to prevent dirty session state in case of exceptions
+        # This ensures the database session is properly cleaned up
+        try:
+            db.session.rollback()
+            logger.info(click.style(f"Rolled back database session for dataset: {dataset_id}", fg="yellow"))
+        except Exception:
+            logger.exception("Failed to rollback database session")
+
+        logger.exception("Cleaned dataset when dataset deleted failed")
     finally:
         db.session.close()

@@ -3,11 +3,11 @@ import logging
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
 
-from flask_login import current_user
-from sqlalchemy import orm
+import sqlalchemy as sa
+from sqlalchemy import DateTime, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -17,15 +17,13 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIAB
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_tenant_id
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
     from models.model import AppMode
 
-import sqlalchemy as sa
-from sqlalchemy import Index, PrimaryKeyConstraint, UniqueConstraint, func
+from sqlalchemy import Index, PrimaryKeyConstraint, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
@@ -40,7 +38,7 @@ from .engine import db
 from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class WorkflowType(Enum):
@@ -117,33 +115,33 @@ class Workflow(Base):
 
     __tablename__ = "workflows"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="workflow_pkey"),
-        db.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
+        sa.PrimaryKeyConstraint("id", name="workflow_pkey"),
+        sa.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    version: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    version: Mapped[str] = mapped_column(String(255), nullable=False)
     marked_name: Mapped[str] = mapped_column(default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     graph: Mapped[str] = mapped_column(sa.Text)
     _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
     updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime,
+        DateTime,
         nullable=False,
         default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
-        "environment_variables", db.Text, nullable=False, server_default="{}"
+        "environment_variables", sa.Text, nullable=False, server_default="{}"
     )
     _conversation_variables: Mapped[str] = mapped_column(
-        "conversation_variables", db.Text, nullable=False, server_default="{}"
+        "conversation_variables", sa.Text, nullable=False, server_default="{}"
     )
 
     VERSION_DRAFT = "draft"
@@ -226,7 +224,7 @@ class Workflow(Base):
             raise WorkflowDataError("nodes not found in workflow graph")
 
         try:
-            node_config = next(filter(lambda node: node["id"] == node_id, nodes))
+            node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
             raise NodeNotFoundError(node_id)
         assert isinstance(node_config, dict)
@@ -284,14 +282,14 @@ class Workflow(Base):
         return self._features
 
     @features.setter
-    def features(self, value: str) -> None:
+    def features(self, value: str):
         self._features = value
 
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
 
-    def user_input_form(self, to_old_structure: bool = False) -> list:
+    def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
         # get start node from graph
         if not self.graph:
             return []
@@ -308,7 +306,7 @@ class Workflow(Base):
         variables: list[Any] = start_node.get("data", {}).get("variables", [])
 
         if to_old_structure:
-            old_structure_variables = []
+            old_structure_variables: list[dict[str, Any]] = []
             for variable in variables:
                 old_structure_variables.append({variable["type"]: variable})
 
@@ -338,21 +336,20 @@ class Workflow(Base):
         """
         from models.tools import WorkflowToolProvider
 
-        return (
-            db.session.query(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
-            .count()
-            > 0
+        stmt = select(
+            exists().where(
+                WorkflowToolProvider.tenant_id == self.tenant_id,
+                WorkflowToolProvider.app_id == self.app_id,
+            )
         )
+        return db.session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
-        # TODO: find some way to init `self._environment_variables` when instance created.
-        if self._environment_variables is None:
-            self._environment_variables = "{}"
+        # _environment_variables is guaranteed to be non-None due to server_default="{}"
 
-        # Get tenant_id from current_user (Account or EndUser)
-        tenant_id = extract_tenant_id(current_user)
+        # Use workflow.tenant_id to avoid relying on request user in background threads
+        tenant_id = self.tenant_id
 
         if not tenant_id:
             return []
@@ -363,17 +360,18 @@ class Workflow(Base):
         ]
 
         # decrypt secret variables value
-        def decrypt_func(var):
+        def decrypt_func(var: Variable) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
             elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
                 return var
             else:
-                raise AssertionError("this statement should be unreachable.")
+                # Other variable types are not supported for environment variables
+                raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
 
-        decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = list(
-            map(decrypt_func, results)
-        )
+        decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = [
+            decrypt_func(var) for var in results
+        ]
         return decrypted_results
 
     @environment_variables.setter
@@ -382,8 +380,8 @@ class Workflow(Base):
             self._environment_variables = "{}"
             return
 
-        # Get tenant_id from current_user (Account or EndUser)
-        tenant_id = extract_tenant_id(current_user)
+        # Use workflow.tenant_id to avoid relying on request user in background threads
+        tenant_id = self.tenant_id
 
         if not tenant_id:
             self._environment_variables = "{}"
@@ -401,7 +399,7 @@ class Workflow(Base):
                 value[i] = origin_variables_dictionary[variable.id].model_copy(update={"name": variable.name})
 
         # encrypt secret variables value
-        def encrypt_func(var):
+        def encrypt_func(var: Variable) -> Variable:
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
             else:
@@ -431,16 +429,14 @@ class Workflow(Base):
 
     @property
     def conversation_variables(self) -> Sequence[Variable]:
-        # TODO: find some way to init `self._conversation_variables` when instance created.
-        if self._conversation_variables is None:
-            self._conversation_variables = "{}"
+        # _conversation_variables is guaranteed to be non-None due to server_default="{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
         results = [variable_factory.build_conversation_variable_from_mapping(v) for v in variables_dict.values()]
         return results
 
     @conversation_variables.setter
-    def conversation_variables(self, value: Sequence[Variable]) -> None:
+    def conversation_variables(self, value: Sequence[Variable]):
         self._conversation_variables = json.dumps(
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
@@ -491,31 +487,31 @@ class WorkflowRun(Base):
 
     __tablename__ = "workflow_runs"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
-        db.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
+        sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
+        sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
 
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    type: Mapped[str] = mapped_column(db.String(255))
-    triggered_from: Mapped[str] = mapped_column(db.String(255))
-    version: Mapped[str] = mapped_column(db.String(255))
-    graph: Mapped[Optional[str]] = mapped_column(db.Text)
-    inputs: Mapped[Optional[str]] = mapped_column(db.Text)
-    status: Mapped[str] = mapped_column(db.String(255))  # running, succeeded, failed, stopped, partial-succeeded
+    type: Mapped[str] = mapped_column(String(255))
+    triggered_from: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(255))
+    graph: Mapped[Optional[str]] = mapped_column(sa.Text)
+    inputs: Mapped[Optional[str]] = mapped_column(sa.Text)
+    status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
-    error: Mapped[Optional[str]] = mapped_column(db.Text)
-    elapsed_time: Mapped[float] = mapped_column(db.Float, nullable=False, server_default=sa.text("0"))
+    error: Mapped[Optional[str]] = mapped_column(sa.Text)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
-    total_steps: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
-    created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
+    total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
+    created_by_role: Mapped[str] = mapped_column(String(255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    finished_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    exceptions_count: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
     @property
     def created_by_account(self):
@@ -578,7 +574,7 @@ class WorkflowRun(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "WorkflowRun":
+    def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
         return cls(
             id=data.get("id"),
             tenant_id=data.get("tenant_id"),
@@ -663,7 +659,8 @@ class WorkflowNodeExecutionModel(Base):
     __tablename__ = "workflow_node_executions"
 
     @declared_attr
-    def __table_args__(cls):  # noqa
+    @classmethod
+    def __table_args__(cls) -> Any:
         return (
             PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
             Index(
@@ -700,33 +697,33 @@ class WorkflowNodeExecutionModel(Base):
                 # MyPy may flag the following line because it doesn't recognize that
                 # the `declared_attr` decorator passes the receiving class as the first
                 # argument to this method, allowing us to reference class attributes.
-                cls.created_at.desc(),  # type: ignore
+                cls.created_at.desc(),
             ),
         )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    triggered_from: Mapped[str] = mapped_column(db.String(255))
+    triggered_from: Mapped[str] = mapped_column(String(255))
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    index: Mapped[int] = mapped_column(db.Integer)
-    predecessor_node_id: Mapped[Optional[str]] = mapped_column(db.String(255))
-    node_execution_id: Mapped[Optional[str]] = mapped_column(db.String(255))
-    node_id: Mapped[str] = mapped_column(db.String(255))
-    node_type: Mapped[str] = mapped_column(db.String(255))
-    title: Mapped[str] = mapped_column(db.String(255))
-    inputs: Mapped[Optional[str]] = mapped_column(db.Text)
-    process_data: Mapped[Optional[str]] = mapped_column(db.Text)
-    outputs: Mapped[Optional[str]] = mapped_column(db.Text)
-    status: Mapped[str] = mapped_column(db.String(255))
-    error: Mapped[Optional[str]] = mapped_column(db.Text)
-    elapsed_time: Mapped[float] = mapped_column(db.Float, server_default=db.text("0"))
-    execution_metadata: Mapped[Optional[str]] = mapped_column(db.Text)
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
-    created_by_role: Mapped[str] = mapped_column(db.String(255))
+    index: Mapped[int] = mapped_column(sa.Integer)
+    predecessor_node_id: Mapped[Optional[str]] = mapped_column(String(255))
+    node_execution_id: Mapped[Optional[str]] = mapped_column(String(255))
+    node_id: Mapped[str] = mapped_column(String(255))
+    node_type: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(String(255))
+    inputs: Mapped[Optional[str]] = mapped_column(sa.Text)
+    process_data: Mapped[Optional[str]] = mapped_column(sa.Text)
+    outputs: Mapped[Optional[str]] = mapped_column(sa.Text)
+    status: Mapped[str] = mapped_column(String(255))
+    error: Mapped[Optional[str]] = mapped_column(sa.Text)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
+    execution_metadata: Mapped[Optional[str]] = mapped_column(sa.Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    created_by_role: Mapped[str] = mapped_column(String(255))
     created_by: Mapped[str] = mapped_column(StringUUID)
-    finished_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     @property
     def created_by_account(self):
@@ -762,15 +759,15 @@ class WorkflowNodeExecutionModel(Base):
         return json.loads(self.execution_metadata) if self.execution_metadata else {}
 
     @property
-    def extras(self):
+    def extras(self) -> dict[str, Any]:
         from core.tools.tool_manager import ToolManager
 
-        extras = {}
+        extras: dict[str, Any] = {}
         if self.execution_metadata_dict:
             from core.workflow.nodes import NodeType
 
             if self.node_type == NodeType.TOOL.value and "tool_info" in self.execution_metadata_dict:
-                tool_info = self.execution_metadata_dict["tool_info"]
+                tool_info: dict[str, Any] = self.execution_metadata_dict["tool_info"]
                 extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self.tenant_id,
                     provider_type=tool_info["provider_type"],
@@ -834,19 +831,20 @@ class WorkflowAppLog(Base):
 
     __tablename__ = "workflow_app_logs"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
-        db.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
+        sa.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
+        sa.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
+        sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID)
-    created_from: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    created_by_role: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    created_from: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def workflow_run(self):
@@ -864,6 +862,19 @@ class WorkflowAppLog(Base):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "app_id": self.app_id,
+            "workflow_id": self.workflow_id,
+            "workflow_run_id": self.workflow_run_id,
+            "created_from": self.created_from,
+            "created_by_role": self.created_by_role,
+            "created_by": self.created_by,
+            "created_at": self.created_at,
+        }
+
 
 class ConversationVariable(Base):
     __tablename__ = "workflow_conversation_variables"
@@ -871,15 +882,15 @@ class ConversationVariable(Base):
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True, index=True)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
-    data: Mapped[str] = mapped_column(db.Text, nullable=False)
+    data: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=func.current_timestamp(), index=True
+        DateTime, nullable=False, server_default=func.current_timestamp(), index=True
     )
     updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str) -> None:
+    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str):
         self.id = id
         self.app_id = app_id
         self.conversation_id = conversation_id
@@ -910,7 +921,7 @@ def _naive_utc_datetime():
 
 class WorkflowDraftVariable(Base):
     """`WorkflowDraftVariable` record variables and outputs generated during
-    debugging worfklow or chatflow.
+    debugging workflow or chatflow.
 
     IMPORTANT: This model maintains multiple invariant rules that must be preserved.
     Do not instantiate this class directly with the constructor.
@@ -933,17 +944,17 @@ class WorkflowDraftVariable(Base):
     __allow_unmapped__ = True
 
     # id is the unique identifier of a draft variable.
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
 
     created_at: Mapped[datetime] = mapped_column(
-        db.DateTime,
+        DateTime,
         nullable=False,
         default=_naive_utc_datetime,
         server_default=func.current_timestamp(),
     )
 
     updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime,
+        DateTime,
         nullable=False,
         default=_naive_utc_datetime,
         server_default=func.current_timestamp(),
@@ -958,7 +969,7 @@ class WorkflowDraftVariable(Base):
     #
     # If it's not edited after creation, its value is `None`.
     last_edited_at: Mapped[datetime | None] = mapped_column(
-        db.DateTime,
+        DateTime,
         nullable=True,
         default=None,
     )
@@ -1024,7 +1035,7 @@ class WorkflowDraftVariable(Base):
     # making this attribute harder to access from outside the class.
     __value: Segment | None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
         The constructor of `WorkflowDraftVariable` is not intended for
         direct use outside this file. Its solo purpose is setup private state
@@ -1042,15 +1053,15 @@ class WorkflowDraftVariable(Base):
         self.__value = None
 
     def get_selector(self) -> list[str]:
-        selector = json.loads(self.selector)
+        selector: Any = json.loads(self.selector)
         if not isinstance(selector, list):
-            _logger.error(
+            logger.error(
                 "invalid selector loaded from database, type=%s, value=%s",
-                type(selector),
+                type(selector).__name__,
                 self.selector,
             )
             raise ValueError("invalid selector.")
-        return selector
+        return cast(list[str], selector)
 
     def _set_selector(self, value: list[str]):
         self.selector = json.dumps(value)
@@ -1060,7 +1071,7 @@ class WorkflowDraftVariable(Base):
         return self.build_segment_with_type(self.value_type, value)
 
     @staticmethod
-    def rebuild_file_types(value: Any) -> Any:
+    def rebuild_file_types(value: Any):
         # NOTE(QuantumGhost): Temporary workaround for structured data handling.
         # By this point, `output` has been converted to dict by
         # `WorkflowEntry.handle_special_values`, so we need to
@@ -1073,15 +1084,17 @@ class WorkflowDraftVariable(Base):
         # `WorkflowEntry.handle_special_values`, making a comprehensive migration challenging.
         if isinstance(value, dict):
             if not maybe_file_object(value):
-                return value
+                return cast(Any, value)
             return File.model_validate(value)
         elif isinstance(value, list) and value:
-            first = value[0]
+            value_list = cast(list[Any], value)
+            first: Any = value_list[0]
             if not maybe_file_object(first):
-                return value
-            return [File.model_validate(i) for i in value]
+                return cast(Any, value)
+            file_list: list[File] = [File.model_validate(cast(dict[str, Any], i)) for i in value_list]
+            return cast(Any, file_list)
         else:
-            return value
+            return cast(Any, value)
 
     @classmethod
     def build_segment_with_type(cls, segment_type: SegmentType, value: Any) -> Segment:
@@ -1140,7 +1153,7 @@ class WorkflowDraftVariable(Base):
             value: The Segment object to store as the variable's value.
         """
         self.__value = value
-        self.value = json.dumps(value, cls=variable_utils.SegmentJSONEncoder)
+        self.value = variable_utils.dumps_with_segments(value)
         self.value_type = value.value_type
 
     def get_node_id(self) -> str | None:

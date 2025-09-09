@@ -9,6 +9,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 import click
+import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
 from sqlalchemy.orm import Session
@@ -32,7 +33,7 @@ excluded_providers = ["time", "audio", "code", "webscraper"]
 
 class PluginMigration:
     @classmethod
-    def extract_plugins(cls, filepath: str, workers: int) -> None:
+    def extract_plugins(cls, filepath: str, workers: int):
         """
         Migrate plugin.
         """
@@ -54,7 +55,7 @@ class PluginMigration:
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        def process_tenant(flask_app: Flask, tenant_id: str) -> None:
+        def process_tenant(flask_app: Flask, tenant_id: str):
             with flask_app.app_context():
                 nonlocal handled_tenant_count
                 try:
@@ -197,7 +198,7 @@ class PluginMigration:
         """
         with Session(db.engine) as session:
             rs = session.execute(
-                db.text(f"SELECT DISTINCT {column} FROM {table} WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id}
+                sa.text(f"SELECT DISTINCT {column} FROM {table} WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id}
             )
             result = []
             for row in rs:
@@ -290,7 +291,7 @@ class PluginMigration:
         return plugin_manifest[0].latest_package_identifier
 
     @classmethod
-    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str) -> None:
+    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str):
         """
         Extract unique plugins.
         """
@@ -327,7 +328,7 @@ class PluginMigration:
         return {"plugins": plugins, "plugin_not_exist": plugin_not_exist}
 
     @classmethod
-    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
+    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100):
         """
         Install plugins.
         """
@@ -347,7 +348,7 @@ class PluginMigration:
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
-        def install(tenant_id: str, plugin_ids: list[str]) -> None:
+        def install(tenant_id: str, plugin_ids: list[str]):
             logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
             # fetch plugin already installed
             installed_plugins = manager.list_plugins(tenant_id)

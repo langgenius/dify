@@ -7,6 +7,7 @@ from typing import Any, TypeAlias, final
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from httpx_sse import EventSource, ServerSentEvent
 from sseclient import SSEClient
 
 from core.mcp import types
@@ -37,11 +38,6 @@ WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
 
 
-def remove_request_params(url: str) -> str:
-    """Remove request parameters from URL, keeping only the path."""
-    return urljoin(url, urlparse(url).path)
-
-
 class SSETransport:
     """SSE client transport implementation."""
 
@@ -51,7 +47,7 @@ class SSETransport:
         headers: dict[str, Any] | None = None,
         timeout: float = 5.0,
         sse_read_timeout: float = 5 * 60,
-    ) -> None:
+    ):
         """Initialize the SSE transport.
 
         Args:
@@ -80,7 +76,7 @@ class SSETransport:
 
         return url_parsed.netloc == endpoint_parsed.netloc and url_parsed.scheme == endpoint_parsed.scheme
 
-    def _handle_endpoint_event(self, sse_data: str, status_queue: StatusQueue) -> None:
+    def _handle_endpoint_event(self, sse_data: str, status_queue: StatusQueue):
         """Handle an 'endpoint' SSE event.
 
         Args:
@@ -98,7 +94,7 @@ class SSETransport:
 
         status_queue.put(_StatusReady(endpoint_url))
 
-    def _handle_message_event(self, sse_data: str, read_queue: ReadQueue) -> None:
+    def _handle_message_event(self, sse_data: str, read_queue: ReadQueue):
         """Handle a 'message' SSE event.
 
         Args:
@@ -114,7 +110,7 @@ class SSETransport:
             logger.exception("Error parsing server message")
             read_queue.put(exc)
 
-    def _handle_sse_event(self, sse, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def _handle_sse_event(self, sse: ServerSentEvent, read_queue: ReadQueue, status_queue: StatusQueue):
         """Handle a single SSE event.
 
         Args:
@@ -130,7 +126,7 @@ class SSETransport:
             case _:
                 logger.warning("Unknown SSE event: %s", sse.event)
 
-    def sse_reader(self, event_source, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def sse_reader(self, event_source: EventSource, read_queue: ReadQueue, status_queue: StatusQueue):
         """Read and process SSE events.
 
         Args:
@@ -148,7 +144,7 @@ class SSETransport:
         finally:
             read_queue.put(None)
 
-    def _send_message(self, client: httpx.Client, endpoint_url: str, message: SessionMessage) -> None:
+    def _send_message(self, client: httpx.Client, endpoint_url: str, message: SessionMessage):
         """Send a single message to the server.
 
         Args:
@@ -167,7 +163,7 @@ class SSETransport:
         response.raise_for_status()
         logger.debug("Client message sent successfully: %s", response.status_code)
 
-    def post_writer(self, client: httpx.Client, endpoint_url: str, write_queue: WriteQueue) -> None:
+    def post_writer(self, client: httpx.Client, endpoint_url: str, write_queue: WriteQueue):
         """Handle writing messages to the server.
 
         Args:
@@ -225,7 +221,7 @@ class SSETransport:
         self,
         executor: ThreadPoolExecutor,
         client: httpx.Client,
-        event_source,
+        event_source: EventSource,
     ) -> tuple[ReadQueue, WriteQueue]:
         """Establish connection and start worker threads.
 
@@ -307,7 +303,7 @@ def sse_client(
                 write_queue.put(None)
 
 
-def send_message(http_client: httpx.Client, endpoint_url: str, session_message: SessionMessage) -> None:
+def send_message(http_client: httpx.Client, endpoint_url: str, session_message: SessionMessage):
     """
     Send a message to the server using the provided HTTP client.
 
@@ -327,7 +323,7 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
         )
         response.raise_for_status()
         logger.debug("Client message sent successfully: %s", response.status_code)
-    except Exception as exc:
+    except Exception:
         logger.exception("Error sending message")
         raise
 

@@ -6,7 +6,6 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from datetime import UTC, datetime
 from typing import Any, Optional, cast
 
 from flask import Flask, current_app
@@ -15,7 +14,7 @@ from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool, VariableValue
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
@@ -51,7 +50,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.utils import variable_utils
+from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom
 from models.workflow import WorkflowType
@@ -67,7 +66,7 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
         initializer=None,
         initargs=(),
         max_submit_count=dify_config.MAX_SUBMIT_COUNT,
-    ) -> None:
+    ):
         super().__init__(max_workers, thread_name_prefix, initializer, initargs)
         self.max_submit_count = max_submit_count
         self.submit_count = 0
@@ -81,7 +80,7 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
     def task_done_callback(self, future):
         self.submit_count -= 1
 
-    def check_is_full(self) -> None:
+    def check_is_full(self):
         if self.submit_count > self.max_submit_count:
             raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached.")
 
@@ -105,7 +104,7 @@ class GraphEngine:
         max_execution_steps: int,
         max_execution_time: int,
         thread_pool_id: Optional[str] = None,
-    ) -> None:
+    ):
         thread_pool_max_submit_count = dify_config.MAX_SUBMIT_COUNT
         thread_pool_max_workers = 10
 
@@ -379,7 +378,7 @@ class GraphEngine:
                         if len(sub_edge_mappings) == 0:
                             continue
 
-                        edge = cast(GraphEdge, sub_edge_mappings[0])
+                        edge = sub_edge_mappings[0]
                         if edge.run_condition is None:
                             logger.warning("Edge %s run condition is None", edge.target_node_id)
                             continue
@@ -542,7 +541,7 @@ class GraphEngine:
         parent_parallel_id: Optional[str] = None,
         parent_parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
-    ) -> None:
+    ):
         """
         Run parallel nodes
         """
@@ -645,7 +644,7 @@ class GraphEngine:
         while should_continue_retry and retries <= max_retries:
             try:
                 # run node
-                retry_start_at = datetime.now(UTC).replace(tzinfo=None)
+                retry_start_at = naive_utc_now()
                 # yield control to other threads
                 time.sleep(0.001)
                 event_stream = node.run()
@@ -705,11 +704,9 @@ class GraphEngine:
                                     route_node_state.status = RouteNodeState.Status.EXCEPTION
                                     if run_result.outputs:
                                         for variable_key, variable_value in run_result.outputs.items():
-                                            # append variables to variable pool recursively
-                                            self._append_variables_recursively(
-                                                node_id=node.node_id,
-                                                variable_key_list=[variable_key],
-                                                variable_value=variable_value,
+                                            # Add variables to variable pool
+                                            self.graph_runtime_state.variable_pool.add(
+                                                [node.node_id, variable_key], variable_value
                                             )
                                     yield NodeRunExceptionEvent(
                                         error=run_result.error or "System Error",
@@ -762,11 +759,9 @@ class GraphEngine:
                                 # append node output variables to variable pool
                                 if run_result.outputs:
                                     for variable_key, variable_value in run_result.outputs.items():
-                                        # append variables to variable pool recursively
-                                        self._append_variables_recursively(
-                                            node_id=node.node_id,
-                                            variable_key_list=[variable_key],
-                                            variable_value=variable_value,
+                                        # Add variables to variable pool
+                                        self.graph_runtime_state.variable_pool.add(
+                                            [node.node_id, variable_key], variable_value
                                         )
 
                                 # When setting metadata, convert to dict first
@@ -854,21 +849,6 @@ class GraphEngine:
             except Exception as e:
                 logger.exception("Node %s run failed", node.title)
                 raise e
-
-    def _append_variables_recursively(self, node_id: str, variable_key_list: list[str], variable_value: VariableValue):
-        """
-        Append variables recursively
-        :param node_id: node id
-        :param variable_key_list: variable key list
-        :param variable_value: variable value
-        :return:
-        """
-        variable_utils.append_variables_recursively(
-            self.graph_runtime_state.variable_pool,
-            node_id,
-            variable_key_list,
-            variable_value,
-        )
 
     def _is_timed_out(self, start_at: float, max_execution_time: int) -> bool:
         """

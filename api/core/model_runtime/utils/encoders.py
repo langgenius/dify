@@ -18,7 +18,7 @@ from pydantic_core import Url
 from pydantic_extra_types.color import Color
 
 
-def _model_dump(model: BaseModel, mode: Literal["json", "python"] = "json", **kwargs: Any) -> Any:
+def _model_dump(model: BaseModel, mode: Literal["json", "python"] = "json", **kwargs: Any):
     return model.model_dump(mode=mode, **kwargs)
 
 
@@ -100,7 +100,7 @@ def jsonable_encoder(
     exclude_none: bool = False,
     custom_encoder: Optional[dict[Any, Callable[[Any], Any]]] = None,
     sqlalchemy_safe: bool = True,
-) -> Any:
+):
     custom_encoder = custom_encoder or {}
     if custom_encoder:
         if type(obj) in custom_encoder:
@@ -151,12 +151,9 @@ def jsonable_encoder(
         return format(obj, "f")
     if isinstance(obj, dict):
         encoded_dict = {}
-        allowed_keys = set(obj.keys())
         for key, value in obj.items():
-            if (
-                (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa")))
-                and (value is not None or not exclude_none)
-                and key in allowed_keys
+            if (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa"))) and (
+                value is not None or not exclude_none
             ):
                 encoded_key = jsonable_encoder(
                     key,

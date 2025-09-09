@@ -20,9 +20,7 @@ from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import Datas
 
 
 class DatasetRetrieverTool(Tool):
-    retrieval_tool: DatasetRetrieverBaseTool
-
-    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, retrieval_tool: DatasetRetrieverBaseTool) -> None:
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, retrieval_tool: DatasetRetrieverBaseTool):
         super().__init__(entity, runtime)
         self.retrieval_tool = retrieval_tool
 

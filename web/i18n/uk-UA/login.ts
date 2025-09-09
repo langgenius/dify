@@ -70,7 +70,6 @@ const translation = {
   activated: 'Увійти зараз',
   adminInitPassword: 'Пароль ініціалізації адміністратора',
   validate: 'Перевірити',
-  sso: 'Продовжуйте працювати з SSW',
   checkCode: {
     didNotReceiveCode: 'Не отримали код?',
     invalidCode: 'Невірний код',
@@ -81,8 +80,8 @@ const translation = {
     verify: 'Перевірити',
     verificationCode: 'Код підтвердження',
     useAnotherMethod: 'Використовуйте інший спосіб',
-    tips: 'Ми надсилаємо код підтвердження на <strong>адресу {{email}}</strong>',
     validTime: 'Майте на увазі, що код дійсний протягом 5 хвилин',
+    tipsPrefix: 'Ми відправляємо код підтвердження на',
   },
   back: 'Задній',
   backToLogin: 'Назад до входу',

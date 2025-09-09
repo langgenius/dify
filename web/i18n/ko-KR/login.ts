@@ -73,7 +73,6 @@ const translation = {
   checkCode: {
     verify: '확인',
     verificationCode: '인증 코드',
-    tips: '<strong>{{email}}</strong>로 인증 코드를 보내드립니다.',
     validTime: '코드는 5 분 동안 유효합니다',
     checkYourEmail: '이메일 주소 확인',
     invalidCode: '유효하지 않은 코드',
@@ -82,6 +81,7 @@ const translation = {
     useAnotherMethod: '다른 방법 사용',
     didNotReceiveCode: '코드를 받지 못하셨나요?',
     resend: '재전송',
+    tipsPrefix: '우리는 확인 코드를 보냅니다',
   },
   back: '뒤로',
   or: '또는',

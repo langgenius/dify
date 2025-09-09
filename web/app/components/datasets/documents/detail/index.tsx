@@ -139,7 +139,12 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   })
 
   const backToPrev = () => {
-    router.push(`/datasets/${datasetId}/documents`)
+    // Preserve pagination and filter states when navigating back
+    const searchParams = new URLSearchParams(window.location.search)
+    const queryString = searchParams.toString()
+    const separator = queryString ? '?' : ''
+    const backPath = `/datasets/${datasetId}/documents${separator}${queryString}`
+    router.push(backPath)
   }
 
   const isDetailLoading = !documentDetail && !error
