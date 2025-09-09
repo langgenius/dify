@@ -11,7 +11,9 @@ from core.variables import Segment
 class WorkflowRuntimeTypeConverter:
     def to_json_encodable(self, value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         result = self._to_json_encodable_recursive(value)
-        return result if isinstance(result, Mapping) or result is None else dict(result)
+        if isinstance(result, Mapping) or result is None:
+            return result
+        return {}
 
     def _to_json_encodable_recursive(self, value: Any):
         if value is None:
