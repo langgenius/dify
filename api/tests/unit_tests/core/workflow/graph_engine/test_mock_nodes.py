@@ -625,8 +625,6 @@ class MockIterationNode(MockNodeMixin, IterationNode):
             graph=iteration_graph,
             graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
-            max_execution_steps=10000,  # Use default or config value
-            max_execution_time=600,  # Use default or config value
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
 
@@ -695,8 +693,6 @@ class MockLoopNode(MockNodeMixin, LoopNode):
             graph=loop_graph,
             graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
-            max_execution_steps=10000,  # Use default or config value
-            max_execution_time=600,  # Use default or config value
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
 

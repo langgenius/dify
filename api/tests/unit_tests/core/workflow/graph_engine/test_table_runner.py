@@ -388,8 +388,6 @@ class TableTestRunner:
                 graph=graph,
                 graph_config=graph_config,
                 graph_runtime_state=graph_runtime_state,
-                max_execution_steps=500,
-                max_execution_time=int(test_case.timeout),
                 command_channel=InMemoryChannel(),
                 min_workers=self.graph_engine_min_workers,
                 max_workers=self.graph_engine_max_workers,

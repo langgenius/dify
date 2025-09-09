@@ -65,8 +65,6 @@ class GraphEngine:
         graph: Graph,
         graph_config: Mapping[str, object],
         graph_runtime_state: GraphRuntimeState,
-        max_execution_steps: int,
-        max_execution_time: int,
         command_channel: CommandChannel,
         min_workers: int | None = None,
         max_workers: int | None = None,
@@ -85,8 +83,6 @@ class GraphEngine:
             user_from=user_from,
             invoke_from=invoke_from,
             call_depth=call_depth,
-            max_execution_steps=max_execution_steps,
-            max_execution_time=max_execution_time,
         )
 
         # Graph execution tracks the overall execution state
@@ -216,7 +212,6 @@ class GraphEngine:
             event_handler=self._event_handler_registry,
             event_collector=self._event_manager,
             execution_coordinator=self._execution_coordinator,
-            max_execution_time=self._execution_context.max_execution_time,
             event_emitter=self._event_manager,
         )
 

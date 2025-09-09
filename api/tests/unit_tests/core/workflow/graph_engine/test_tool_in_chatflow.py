@@ -38,8 +38,6 @@ def test_tool_in_chatflow():
         graph=graph,
         graph_config=graph_config,
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=500,
-        max_execution_time=30,
         command_channel=InMemoryChannel(),
     )
 

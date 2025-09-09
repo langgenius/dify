@@ -470,8 +470,6 @@ def test_layer_system_basic():
         graph=graph,
         graph_config=fixture_data.get("workflow", {}).get("graph", {}),
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=300,
-        max_execution_time=60,
         command_channel=InMemoryChannel(),
     )
 
@@ -535,8 +533,6 @@ def test_layer_chaining():
         graph=graph,
         graph_config=fixture_data.get("workflow", {}).get("graph", {}),
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=300,
-        max_execution_time=60,
         command_channel=InMemoryChannel(),
     )
 
@@ -591,8 +587,6 @@ def test_layer_error_handling():
         graph=graph,
         graph_config=fixture_data.get("workflow", {}).get("graph", {}),
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=300,
-        max_execution_time=60,
         command_channel=InMemoryChannel(),
     )
 

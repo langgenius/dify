@@ -83,8 +83,6 @@ class WorkflowEntry:
             graph=graph,
             graph_config=graph_config,
             graph_runtime_state=graph_runtime_state,
-            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
-            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             command_channel=command_channel,
         )
 

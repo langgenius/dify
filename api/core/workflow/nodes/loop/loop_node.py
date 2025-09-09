@@ -4,7 +4,6 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
-from configs import dify_config
 from core.variables import Segment, SegmentType
 from core.workflow.enums import (
     ErrorStrategy,
@@ -454,8 +453,6 @@ class LoopNode(Node):
             graph=loop_graph,
             graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
-            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
-            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
 

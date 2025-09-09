@@ -52,8 +52,6 @@ def test_abort_command():
         graph=mock_graph,
         graph_config={},
         graph_runtime_state=shared_runtime_state,  # Use shared instance
-        max_execution_steps=100,
-        max_execution_time=10,
         command_channel=command_channel,
     )
 

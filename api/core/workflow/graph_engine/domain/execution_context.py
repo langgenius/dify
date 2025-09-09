@@ -24,14 +24,8 @@ class ExecutionContext:
     user_from: UserFrom
     invoke_from: InvokeFrom
     call_depth: int
-    max_execution_steps: int
-    max_execution_time: int
 
     def __post_init__(self) -> None:
         """Validate execution context parameters."""
         if self.call_depth < 0:
             raise ValueError("Call depth must be non-negative")
-        if self.max_execution_steps <= 0:
-            raise ValueError("Max execution steps must be positive")
-        if self.max_execution_time <= 0:
-            raise ValueError("Max execution time must be positive")

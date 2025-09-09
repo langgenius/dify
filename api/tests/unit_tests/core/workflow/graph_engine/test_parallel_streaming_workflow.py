@@ -128,8 +128,6 @@ def test_parallel_streaming_workflow():
         graph=graph,
         graph_config=graph_config,
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=500,
-        max_execution_time=30,
         command_channel=InMemoryChannel(),
     )
 

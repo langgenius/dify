@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 EmptyArraySegment = NewType("EmptyArraySegment", ArraySegment)
 
+
 class IterationNode(Node):
     """
     Iteration Node.
@@ -95,7 +96,7 @@ class IterationNode(Node):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]: # pyright: ignore[reportIncompatibleMethodOverride]
+    def _run(self) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:  # pyright: ignore[reportIncompatibleMethodOverride]
         variable = self._get_iterator_variable()
 
         if self._is_empty_iteration(variable):
@@ -466,8 +467,6 @@ class IterationNode(Node):
             graph=iteration_graph,
             graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
-            max_execution_steps=10000,  # Use default or config value
-            max_execution_time=600,  # Use default or config value
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
 
