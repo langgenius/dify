@@ -192,7 +192,7 @@ class AnswerStreamProcessor(StreamProcessor):
         if len(reverse_edges) <= 1:
             return False
 
-                # Dynamic check: trace back from LLM to Start node
+            # Dynamic check: trace back from LLM to Start node
         visited = set()
 
         def _trace_path_to_start(node_id: str) -> bool:
@@ -214,7 +214,7 @@ class AnswerStreamProcessor(StreamProcessor):
                     node_execution_state = route_state
                     break
 
-            is_current_llm_node = (node_id == llm_node_id)
+            is_current_llm_node = node_id == llm_node_id
 
             if not node_execution_state:
                 return False
@@ -239,10 +239,12 @@ class AnswerStreamProcessor(StreamProcessor):
                             source_execution_state = route_state
                             break
 
-                    if (source_execution_state and
-                        source_execution_state.node_run_result and
-                        source_execution_state.node_run_result.edge_source_handle ==
-                        edge.run_condition.branch_identify):
+                    if (
+                        source_execution_state
+                        and source_execution_state.node_run_result
+                        and source_execution_state.node_run_result.edge_source_handle
+                        == edge.run_condition.branch_identify
+                    ):
                         if _trace_path_to_start(source_node_id):
                             return True
                 else:
@@ -253,5 +255,3 @@ class AnswerStreamProcessor(StreamProcessor):
             return False
 
         return _trace_path_to_start(llm_node_id)
-
-
