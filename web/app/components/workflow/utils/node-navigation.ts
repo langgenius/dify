@@ -97,13 +97,14 @@ export function setupScrollToNodeListener(
       const node = nodes.find(n => n.id === nodeId)
       if (node) {
         // Use ReactFlow's fitView API to scroll to the node
-        reactflow.fitView({
-          nodes: [node],
-          padding: 0.2,
-          duration: 800,
-          minZoom: 0.5,
-          maxZoom: 1,
-        })
+        const nodePosition = { x: node.position.x, y: node.position.y }
+
+        // Calculate position to place node in top-left area
+        // Move the center point right and down to show node in top-left
+        const targetX = nodePosition.x + window.innerWidth * 0.25
+        const targetY = nodePosition.y + window.innerHeight * 0.25
+
+        reactflow.setCenter(targetX, targetY, { zoom: 1, duration: 800 })
       }
     }
   }
