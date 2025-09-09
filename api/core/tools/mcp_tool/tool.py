@@ -91,14 +91,14 @@ class MCPTool(Tool):
 
     def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
         """Process a list of JSON items."""
+        if any(not isinstance(item, dict) for item in json_list):
+            # If the list contains any non-dict item, treat the entire list as a text message.
+            yield self.create_text_message(str(json_list))
+            return
+
+        # Otherwise, process each dictionary as a separate JSON message.
         for item in json_list:
-            if isinstance(item, dict):
-                yield self.create_json_message(item)
-            else:
-                # If we encounter a non-dict item in the list,
-                # return the entire list as a text message
-                yield self.create_text_message(str(json_list))
-                return
+            yield self.create_json_message(item)
 
     def _process_image_content(self, content: ImageContent) -> ToolInvokeMessage:
         """Process image content and return a blob message."""
