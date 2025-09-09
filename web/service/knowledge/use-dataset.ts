@@ -10,7 +10,7 @@ import type {
   RelatedAppResponse,
 } from '@/models/datasets'
 import { get } from '../base'
-import { useReset } from '../use-base'
+import { useInvalid } from '../use-base'
 import qs from 'qs'
 
 const NAME_SPACE = 'dataset'
@@ -36,8 +36,8 @@ export const useDatasetList = (params: DatasetListRequest) => {
   })
 }
 
-export const useResetDatasetList = () => {
-  return useReset([...DatasetListKey])
+export const useInvalidDatasetList = () => {
+  return useInvalid([...DatasetListKey])
 }
 
 export const datasetDetailQueryKeyPrefix = [NAME_SPACE, 'detail']

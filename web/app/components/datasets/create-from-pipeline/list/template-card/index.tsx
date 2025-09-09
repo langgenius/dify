@@ -19,7 +19,7 @@ import Content from './content'
 import Actions from './actions'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalid } from '@/service/use-base'
-import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -44,7 +44,7 @@ const TemplateCard = ({
   }, false)
   const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
 
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
@@ -64,7 +64,7 @@ const TemplateCard = ({
           type: 'success',
           message: t('datasetPipeline.creation.successTip'),
         })
-        resetDatasetList()
+        invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
@@ -76,7 +76,7 @@ const TemplateCard = ({
         })
       },
     })
-  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, resetDatasetList])
+  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)

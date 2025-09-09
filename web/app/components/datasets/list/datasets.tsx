@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import NewDatasetCard from './new-dataset-card'
 import DatasetCard from './dataset-card'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { useDatasetList, useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 type Props = {
   tags: string[]
@@ -32,7 +32,7 @@ const Datasets = ({
     include_all: includeAll,
     keyword: keywords,
   })
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
 
@@ -58,7 +58,7 @@ const Datasets = ({
       <nav className='grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
         {isCurrentWorkspaceEditor && <NewDatasetCard />}
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
-          <DatasetCard key={dataset.id} dataset={dataset} onSuccess={resetDatasetList} />),
+          <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} />),
         ))}
         <div ref={anchorRef} className='h-0' />
       </nav>
