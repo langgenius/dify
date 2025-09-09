@@ -85,7 +85,7 @@ class AnswerStreamProcessor(StreamProcessor):
             # Check if Answer node should output
             if event.route_node_state.node_id != answer_node_id and (
                 answer_node_id not in self.rest_node_ids
-                or not self._is_dynamic_dependencies_met(answer_node_id, event.route_node_state.node_id)
+                or not self._is_dynamic_dependencies_met(answer_node_id, event.route_node_state.node_id, event)
             ):
                 continue
 
@@ -142,21 +142,51 @@ class AnswerStreamProcessor(StreamProcessor):
         :param event: queue text chunk event
         :return:
         """
+
         if not event.from_variable_selector:
             return []
 
         stream_output_value_selector = event.from_variable_selector
         stream_out_answer_node_ids = []
+
         for answer_node_id, route_position in self.route_position.items():
+
+            # Answer nodes might be incorrectly removed from rest_node_ids by branch pruning
             if answer_node_id not in self.rest_node_ids:
-                continue
-            # Use hybrid dependency check for streaming
-            if self._is_dynamic_dependencies_met(answer_node_id, event.route_node_state.node_id):
+                # Only recover if we can establish a streaming dependency relationship
+                answer_node_config = self.graph.node_id_config_mapping.get(answer_node_id, {})
+
+                if (answer_node_config.get('data', {}).get('type') == 'answer' and
+                    self.node_run_state):  # Only when we have runtime state
+
+                    # Pre-check: does this answer node reference the current streaming node?
+                    current_node_id = event.route_node_state.node_id
+                    answer_routes = self.generate_routes.answer_generate_route.get(answer_node_id, [])
+                    references_current_node = any(
+                        (route_chunk.type == GenerateRouteChunk.ChunkType.VAR and
+                         isinstance(route_chunk, VarGenerateRouteChunk) and
+                         route_chunk.value_selector and
+                         len(route_chunk.value_selector) >= 2 and
+                         route_chunk.value_selector[0] == current_node_id)
+                        for route_chunk in answer_routes
+                    )
+
+                    # Only recover if this answer truly references the current streaming node
+                    if references_current_node:
+                        self.rest_node_ids.append(answer_node_id)
+                    else:
+                        continue
+                else:
+                    continue
+
+            # Use hybrid dependency check for streaming - pass event for runtime state access
+            dependencies_met = self._is_dynamic_dependencies_met(answer_node_id, event.route_node_state.node_id, event)
+
+            if dependencies_met:
                 if route_position >= len(self.generate_routes.answer_generate_route[answer_node_id]):
                     continue
 
                 route_chunk = self.generate_routes.answer_generate_route[answer_node_id][route_position]
-
                 if route_chunk.type != GenerateRouteChunk.ChunkType.VAR:
                     continue
 
@@ -171,26 +201,44 @@ class AnswerStreamProcessor(StreamProcessor):
 
         return stream_out_answer_node_ids
 
-    def _is_dynamic_dependencies_met(self, answer_node_id: str, llm_node_id: str) -> bool:
+    def _is_dynamic_dependencies_met(self, answer_node_id: str, llm_node_id: str, event=None) -> bool:
         """
         Check if Answer node dependencies are met using hybrid static/dynamic analysis
         """
-        if not self.node_run_state:
-            # Fallback to original static logic
-            answer_dependencies_ids = self.generate_routes.answer_dependencies.get(answer_node_id, [])
-            return all(dep_id not in self.rest_node_ids for dep_id in answer_dependencies_ids)
 
-        # Conservative strategy: try static check first
+        # Always start with original static logic to maintain backward compatibility
         answer_dependencies_ids = self.generate_routes.answer_dependencies.get(answer_node_id, [])
         static_result = all(dep_id not in self.rest_node_ids for dep_id in answer_dependencies_ids)
 
+        # If static check passes, return True (original behavior)
         if static_result:
             return True
 
-        # Only use dynamic check for branch merge scenarios
-        # Check if there's branch merge anywhere in the path from answer to start
-        has_branch_merge = self._has_branch_merge_in_path(answer_node_id)
-        if not has_branch_merge:
+        # If no runtime state available, return static result (original behavior)
+        if not self.node_run_state:
+            return False
+
+        runtime_state = self.node_run_state
+
+        # Only use dynamic check when static fails AND we have runtime state AND it's a branch merge scenario
+        def has_merge_in_path(node_id, visited=None):
+            if visited is None:
+                visited = set()
+            if node_id in visited or node_id == self.graph.root_node_id:
+                return False
+            visited.add(node_id)
+
+            reverse_edges = self.graph.reverse_edge_mapping.get(node_id, [])
+            if len(reverse_edges) > 1:
+                return True
+
+            return any(has_merge_in_path(edge.source_node_id, visited.copy())
+                      for edge in reverse_edges)
+
+        has_merge = has_merge_in_path(answer_node_id)
+
+        # If no branch merge, return original static result (False since static_result was False)
+        if not has_merge:
             return False
 
         # Dynamic check: trace back from LLM to Start node
@@ -210,7 +258,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
             # Check node execution state
             node_execution_state = None
-            for route_state in self.node_run_state.node_state_mapping.values():
+            for route_state in runtime_state.node_state_mapping.values():
                 if route_state.node_id == node_id:
                     node_execution_state = route_state
                     break
@@ -235,7 +283,7 @@ class AnswerStreamProcessor(StreamProcessor):
                 if edge.run_condition and edge.run_condition.branch_identify:
                     # Verify branch was actually executed
                     source_execution_state = None
-                    for route_state in self.node_run_state.node_state_mapping.values():
+                    for route_state in runtime_state.node_state_mapping.values():
                         if route_state.node_id == source_node_id:
                             source_execution_state = route_state
                             break
@@ -255,42 +303,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
             return False
 
-        return _trace_path_to_start(llm_node_id)
+        dynamic_result = _trace_path_to_start(llm_node_id)
+        return dynamic_result
 
-    def _has_branch_merge_in_path(self, start_node_id: str) -> bool:
-        """
-        Check if there's conditional branch merge scenario (specifically for if/else convergence)
-        More conservative approach to avoid affecting parallel/iteration scenarios
-        """
-        visited = set()
 
-        def _check_conditional_merge_recursive(node_id: str) -> bool:
-            if node_id in visited:
-                return False
-            visited.add(node_id)
-
-            if node_id == self.graph.root_node_id:
-                return False
-
-            reverse_edges = self.graph.reverse_edge_mapping.get(node_id, [])
-
-            # Check if this node has multiple incoming edges from conditional sources
-            conditional_incoming = 0
-            for edge in reverse_edges:
-                # Only count edges that have run conditions (conditional branches)
-                if hasattr(edge, "run_condition") and edge.run_condition:
-                    conditional_incoming += 1
-                # Also check if source is an if/else type node
-                elif hasattr(edge, "source_node_id"):
-                    source_config = self.graph.node_id_config_mapping.get(edge.source_node_id, {})
-                    if source_config.get("data", {}).get("type") in ["if_else"]:
-                        conditional_incoming += 1
-
-            # Only consider it a branch merge if multiple conditional branches converge
-            if conditional_incoming > 1:
-                return True
-
-            # Recursively check upstream nodes, but more conservatively
-            return any(_check_conditional_merge_recursive(edge.source_node_id) for edge in reverse_edges)
-
-        return _check_conditional_merge_recursive(start_node_id)
