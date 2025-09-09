@@ -1,4 +1,3 @@
-
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -21,28 +20,16 @@ def test_branch_merge_streaming_scenario():
         "edges": [
             {"id": "start-input", "source": "start", "target": "input"},
             {"id": "input-if_else_1", "source": "input", "target": "if_else_1"},
-
             # Primary branch splits into multiple paths
-            {"id": "if_else_1-if_else_2", "source": "if_else_1", "target": "if_else_2",
-             "sourceHandle": "true"},
-            {"id": "if_else_1-if_else_3", "source": "if_else_1", "target": "if_else_3",
-             "sourceHandle": "false"},
-            {"id": "if_else_1-do_something", "source": "if_else_1", "target": "do_something",
-             "sourceHandle": "other"},
-
+            {"id": "if_else_1-if_else_2", "source": "if_else_1", "target": "if_else_2", "sourceHandle": "true"},
+            {"id": "if_else_1-if_else_3", "source": "if_else_1", "target": "if_else_3", "sourceHandle": "false"},
+            {"id": "if_else_1-do_something", "source": "if_else_1", "target": "do_something", "sourceHandle": "other"},
             # Secondary branches with their own sub-paths
-            {"id": "if_else_2-code", "source": "if_else_2", "target": "code_join",
-             "sourceHandle": "true"},
-            {"id": "if_else_2-dummy_1", "source": "if_else_2", "target": "dummy_1",
-             "sourceHandle": "false"},
-
-            {"id": "if_else_3-code", "source": "if_else_3", "target": "code_join",
-             "sourceHandle": "true"},
-            {"id": "if_else_3-dummy_2", "source": "if_else_3", "target": "dummy_2",
-             "sourceHandle": "false"},
-
+            {"id": "if_else_2-code", "source": "if_else_2", "target": "code_join", "sourceHandle": "true"},
+            {"id": "if_else_2-dummy_1", "source": "if_else_2", "target": "dummy_1", "sourceHandle": "false"},
+            {"id": "if_else_3-code", "source": "if_else_3", "target": "code_join", "sourceHandle": "true"},
+            {"id": "if_else_3-dummy_2", "source": "if_else_3", "target": "dummy_2", "sourceHandle": "false"},
             {"id": "do_something-code", "source": "do_something", "target": "code_join"},
-
             # All paths converge at code join point
             {"id": "code-llm", "source": "code_join", "target": "llm"},
             {"id": "llm-answer", "source": "llm", "target": "answer"},
@@ -56,32 +43,22 @@ def test_branch_merge_streaming_scenario():
             {"data": {"type": "code"}, "id": "do_something"},
             {"data": {"type": "code"}, "id": "code_join"},
             {"data": {"type": "llm"}, "id": "llm"},
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "Result: {{#llm.text#}}"
-                },
-                "id": "answer"
-            },
+            {"data": {"type": "answer", "title": "answer", "answer": "Result: {{#llm.text#}}"}, "id": "answer"},
             {"data": {"type": "code"}, "id": "dummy_1"},
             {"data": {"type": "code"}, "id": "dummy_2"},
-        ]
+        ],
     }
 
     # Create graph and generate routes
     graph = Graph.init(graph_config=graph_config)
     answer_routes = AnswerStreamGeneratorRouter.init(
-        node_id_config_mapping={node['id']: node for node in graph_config["nodes"]},
-        reverse_edge_mapping=graph.reverse_edge_mapping
+        node_id_config_mapping={node["id"]: node for node in graph_config["nodes"]},
+        reverse_edge_mapping=graph.reverse_edge_mapping,
     )
     graph.answer_stream_generate_routes = answer_routes
 
     # Create variable pool
-    variable_pool = VariablePool(
-        system_variables={},
-        user_inputs={}
-    )
+    variable_pool = VariablePool(system_variables={}, user_inputs={})
 
     # Create runtime state with nodes executed on the taken path
     runtime_state = RuntimeRouteState()
@@ -89,19 +66,11 @@ def test_branch_merge_streaming_scenario():
     # Simulate execution: One specific path is taken
     # Path: start -> input -> if_else_1 -> if_else_2 -> code_join -> llm -> answer
     start_state = runtime_state.create_node_state("start")
-    start_result = NodeRunResult(
-        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-        inputs={},
-        outputs={}
-    )
+    start_result = NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={})
     start_state.set_finished(start_result)
 
     input_state = runtime_state.create_node_state("input")
-    input_result = NodeRunResult(
-        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-        inputs={},
-        outputs={}
-    )
+    input_result = NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={})
     input_state.set_finished(input_result)
 
     # Primary branch takes "true" path
@@ -110,7 +79,7 @@ def test_branch_merge_streaming_scenario():
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
         inputs={},
         outputs={},
-        edge_source_handle="true"  # Goes to if_else_2
+        edge_source_handle="true",  # Goes to if_else_2
     )
     if_else_1_state.set_finished(if_else_1_result)
 
@@ -120,17 +89,13 @@ def test_branch_merge_streaming_scenario():
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
         inputs={},
         outputs={},
-        edge_source_handle="true"  # Goes to code_join
+        edge_source_handle="true",  # Goes to code_join
     )
     if_else_2_state.set_finished(if_else_2_result)
 
     # Join point where multiple branches converge
     code_join_state = runtime_state.create_node_state("code_join")
-    code_join_result = NodeRunResult(
-        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-        inputs={},
-        outputs={}
-    )
+    code_join_result = NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={})
     code_join_state.set_finished(code_join_result)
 
     # LLM is currently running (streaming)
@@ -138,11 +103,7 @@ def test_branch_merge_streaming_scenario():
     llm_state.status = RouteNodeState.Status.RUNNING
 
     # Create processor
-    processor = AnswerStreamProcessor(
-        graph=graph,
-        variable_pool=variable_pool,
-        node_run_state=runtime_state
-    )
+    processor = AnswerStreamProcessor(graph=graph, variable_pool=variable_pool, node_run_state=runtime_state)
 
     # Test: Check if dependencies are met for streaming
     result = processor._is_dynamic_dependencies_met("answer", "llm")
@@ -166,34 +127,20 @@ def test_simple_workflow_uses_static_check():
         "nodes": [
             {"data": {"type": "start"}, "id": "start"},
             {"data": {"type": "llm"}, "id": "llm"},
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "Result: {{#llm.text#}}"
-                },
-                "id": "answer"
-            },
-        ]
+            {"data": {"type": "answer", "title": "answer", "answer": "Result: {{#llm.text#}}"}, "id": "answer"},
+        ],
     }
 
     graph = Graph.init(graph_config=graph_config)
     answer_routes = AnswerStreamGeneratorRouter.init(
-        node_id_config_mapping={node['id']: node for node in graph_config["nodes"]},
-        reverse_edge_mapping=graph.reverse_edge_mapping
+        node_id_config_mapping={node["id"]: node for node in graph_config["nodes"]},
+        reverse_edge_mapping=graph.reverse_edge_mapping,
     )
     graph.answer_stream_generate_routes = answer_routes
 
-    variable_pool = VariablePool(
-        system_variables={},
-        user_inputs={}
-    )
+    variable_pool = VariablePool(system_variables={}, user_inputs={})
 
-    processor = AnswerStreamProcessor(
-        graph=graph,
-        variable_pool=variable_pool,
-        node_run_state=RuntimeRouteState()
-    )
+    processor = AnswerStreamProcessor(graph=graph, variable_pool=variable_pool, node_run_state=RuntimeRouteState())
 
     # Simple workflow should use static check and pass
     result = processor._is_dynamic_dependencies_met("answer", "llm")
@@ -212,35 +159,21 @@ def test_fallback_without_runtime_state():
         "nodes": [
             {"data": {"type": "start"}, "id": "start"},
             {"data": {"type": "llm"}, "id": "llm"},
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "Result: {{#llm.text#}}"
-                },
-                "id": "answer"
-            },
-        ]
+            {"data": {"type": "answer", "title": "answer", "answer": "Result: {{#llm.text#}}"}, "id": "answer"},
+        ],
     }
 
     graph = Graph.init(graph_config=graph_config)
     answer_routes = AnswerStreamGeneratorRouter.init(
-        node_id_config_mapping={node['id']: node for node in graph_config["nodes"]},
-        reverse_edge_mapping=graph.reverse_edge_mapping
+        node_id_config_mapping={node["id"]: node for node in graph_config["nodes"]},
+        reverse_edge_mapping=graph.reverse_edge_mapping,
     )
     graph.answer_stream_generate_routes = answer_routes
 
-    variable_pool = VariablePool(
-        system_variables={},
-        user_inputs={}
-    )
+    variable_pool = VariablePool(system_variables={}, user_inputs={})
 
     # No runtime state provided
-    processor = AnswerStreamProcessor(
-        graph=graph,
-        variable_pool=variable_pool,
-        node_run_state=None
-    )
+    processor = AnswerStreamProcessor(graph=graph, variable_pool=variable_pool, node_run_state=None)
 
     # Should fallback to original logic
     result = processor._is_dynamic_dependencies_met("answer", "llm")

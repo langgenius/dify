@@ -163,7 +163,7 @@ class AnswerStreamProcessor(StreamProcessor):
                 route_chunk = cast(VarGenerateRouteChunk, route_chunk)
                 value_selector = route_chunk.value_selector
 
-                                # check chunk node id is before current node id or equal to current node id
+                # check chunk node id is before current node id or equal to current node id
                 if value_selector != stream_output_value_selector:
                     continue
 
@@ -188,7 +188,7 @@ class AnswerStreamProcessor(StreamProcessor):
             return True
 
         # Only use dynamic check for branch merge scenarios
-                # Check if there's branch merge anywhere in the path from answer to start
+        # Check if there's branch merge anywhere in the path from answer to start
         has_branch_merge = self._has_branch_merge_in_path(answer_node_id)
         if not has_branch_merge:
             return False
@@ -278,12 +278,12 @@ class AnswerStreamProcessor(StreamProcessor):
             conditional_incoming = 0
             for edge in reverse_edges:
                 # Only count edges that have run conditions (conditional branches)
-                if hasattr(edge, 'run_condition') and edge.run_condition:
+                if hasattr(edge, "run_condition") and edge.run_condition:
                     conditional_incoming += 1
                 # Also check if source is an if/else type node
-                elif hasattr(edge, 'source_node_id'):
+                elif hasattr(edge, "source_node_id"):
                     source_config = self.graph.node_id_config_mapping.get(edge.source_node_id, {})
-                    if source_config.get('data', {}).get('type') in ['if_else']:
+                    if source_config.get("data", {}).get("type") in ["if_else"]:
                         conditional_incoming += 1
 
             # Only consider it a branch merge if multiple conditional branches converge
