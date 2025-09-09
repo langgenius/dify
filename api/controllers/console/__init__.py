@@ -70,14 +70,14 @@ from .app import (
 )
 
 # Import auth controllers
-from .auth import (  # pyright: ignore[reportUnusedImport]
-    activate,
-    data_source_bearer_auth,
-    data_source_oauth,
-    forgot_password,
-    login,
-    oauth,
-    oauth_server,
+from .auth import (
+    activate,  # pyright: ignore[reportUnusedImport]
+    data_source_bearer_auth,  # pyright: ignore[reportUnusedImport]
+    data_source_oauth,  # pyright: ignore[reportUnusedImport]
+    forgot_password,  # pyright: ignore[reportUnusedImport]
+    login,  # pyright: ignore[reportUnusedImport]
+    oauth,  # pyright: ignore[reportUnusedImport]
+    oauth_server,  # pyright: ignore[reportUnusedImport]
 )
 
 # Import billing controllers
