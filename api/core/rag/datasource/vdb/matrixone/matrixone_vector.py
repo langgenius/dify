@@ -205,7 +205,9 @@ class MatrixoneVector(BaseVector):
         assert self.client is not None
         self.client.delete()
 
+
 T = TypeVar("T", bound=MatrixoneVector)
+
 
 def ensure_client(func: Callable[Concatenate[T, P], R]):
     @wraps(func)
