@@ -1,49 +1,27 @@
-import Ajv, { type SchemaValidateFunction } from 'ajv'
+import type { Schema } from 'jsonschema'
+import { Validator } from 'jsonschema'
+import draft07Schema from './draft-07.json'
 
-const ajv = new Ajv({
-  strict: true,
-  strictSchema: true,
-  allErrors: true,
-  code: { source: false },
-})
+const validator = new Validator()
 
-const validation: SchemaValidateFunction = (flag: boolean, schemaObj: any): boolean => {
-  if (!flag) return true
+export const draft07Validator = (schema: any) => {
+  return validator.validate(schema, draft07Schema as unknown as Schema)
+}
 
-  if (schemaObj && schemaObj.properties) {
-    for (const key of Object.keys(schemaObj.properties)) {
-      const val = schemaObj.properties[key]
+export const forbidBooleanProperties = (schema: any, path: string[] = []): string[] => {
+  let errors: string[] = []
+
+  if (schema && typeof schema === 'object' && schema.properties) {
+    for (const [key, val] of Object.entries(schema.properties)) {
       if (typeof val === 'boolean') {
-        validation.errors = [
-          {
-            keyword: 'noBooleanProps',
-            instancePath: `/properties/${key}`,
-            schemaPath: '#/noBooleanProps',
-            params: { property: key },
-            message: `Boolean schema not allowed in properties ("${key}")`,
-          },
-        ]
-        return false
+        errors.push(
+          `Error: Property '${[...path, key].join('.')}' must not be a boolean schema`,
+        )
+      }
+      else if (typeof val === 'object') {
+        errors = errors.concat(forbidBooleanProperties(val, [...path, key]))
       }
     }
   }
-  return true
+  return errors
 }
-
-ajv.addKeyword({
-  keyword: 'noBooleanProps',
-  type: 'object',
-  schemaType: 'boolean',
-  validate: validation,
-  errors: true,
-})
-
-const draft7MetaSchema = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
-  type: 'object',
-  noBooleanProps: true,
-}
-
-const validateDraft7 = ajv.compile(draft7MetaSchema)
-
-export { validateDraft7 }

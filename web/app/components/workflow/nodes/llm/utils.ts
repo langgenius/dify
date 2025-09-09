@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { ArrayType, Type } from './types'
 import type { ArrayItems, Field, LLMNodeType } from './types'
-import { validateDraft7 } from '@/utils/validators'
-import type { ErrorObject } from 'ajv'
+import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
+import type { ValidationError } from 'jsonschema'
 
 export const checkNodeValid = (_payload: LLMNodeType) => {
   return true
@@ -115,14 +115,20 @@ export const findPropertyWithPath = (target: any, path: string[]) => {
 }
 
 export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
-  const valid = validateDraft7(schemaToValidate)
-  const errors = valid ? [] : validateDraft7.errors || []
-  return errors
+  // First check against Draft-07
+  const result = draft07Validator(schemaToValidate)
+  // Then apply custom rule
+  const customErrors = forbidBooleanProperties(schemaToValidate)
+
+  return [...result.errors, ...customErrors]
 }
 
-export const getValidationErrorMessage = (errors: ErrorObject[]) => {
+export const getValidationErrorMessage = (errors: Array<ValidationError | string>) => {
   const message = errors.map((error) => {
-    return `Error: ${error.instancePath} - ${error.message}\n`
+    if (typeof error === 'string')
+      return error
+    else
+      return `Error: ${error.stack}\n`
   }).join('')
   return message
 }
