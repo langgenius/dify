@@ -942,6 +942,8 @@ const translation = {
       aboutRetrieval: 'despre metoda de recuperare.',
       chooseChunkStructure: 'Alegeți o structură de bucăți',
       changeChunkStructure: 'Modificați structura bucății',
+      chunksInput: 'Bucăți',
+      chunksInputTip: 'Variabila de intrare a nodului bazei de cunoștințe este Chunks. Tipul variabilei este un obiect cu un Șchema JSON specific care trebuie să fie coerent cu structura de chunk selectată.',
     },
   },
   tracing: {

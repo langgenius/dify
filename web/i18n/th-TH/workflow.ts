@@ -942,6 +942,8 @@ const translation = {
       indexMethodIsRequired: 'ต้องใช้วิธีการจัดทําดัชนี',
       retrievalSettingIsRequired: 'จําเป็นต้องมีการตั้งค่าการดึงข้อมูล',
       chunkIsRequired: 'จําเป็นต้องมีโครงสร้างก้อน',
+      chunksInput: 'ชิ้นส่วน',
+      chunksInputTip: 'ตัวแปรนำเข้าของโหนดฐานความรู้คือ Chunks ตัวแปรประเภทเป็นอ็อบเจ็กต์ที่มี JSON Schema เฉพาะซึ่งต้องสอดคล้องกับโครงสร้างชิ้นส่วนที่เลือกไว้.',
     },
   },
   tracing: {

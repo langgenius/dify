@@ -943,6 +943,8 @@ const translation = {
       aboutRetrieval: 'geri alma yöntemi hakkında.',
       retrievalSettingIsRequired: 'Alma ayarı gereklidir',
       changeChunkStructure: 'Yığın Yapısını Değiştir',
+      chunksInput: 'Parçalar',
+      chunksInputTip: 'Bilgi tabanı düğümünün girdi değişkeni \'Chunks\'tır. Değişkenin tipi, seçilen parça yapısıyla tutarlı olması gereken belirli bir JSON Şemasına sahip bir nesnedir.',
     },
   },
   tracing: {

@@ -953,6 +953,8 @@ const translation = {
       retrievalSettingIsRequired: 'リトリーバル設定が必要です',
       changeChunkStructure: 'チャンク構造を変更する',
       indexMethodIsRequired: 'インデックスメソッドが必要です',
+      chunksInput: 'チャンク',
+      chunksInputTip: '知識ベースノードの入力変数はチャンクです。変数のタイプは、選択されたチャンク構造と一貫性のある特定のJSONスキーマを持つオブジェクトです。',
     },
   },
   tracing: {

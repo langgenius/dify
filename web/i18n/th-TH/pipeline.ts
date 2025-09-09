@@ -27,6 +27,7 @@ const translation = {
     resultPreview: {
       viewDetails: 'ดูรายละเอียด',
       error: 'เกิดข้อผิดพลาดระหว่างการดําเนินการ',
+      loading: 'กำลังประมวลผล...กรุณารอ',
     },
   },
   ragToolSuggestions: {

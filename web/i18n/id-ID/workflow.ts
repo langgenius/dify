@@ -917,6 +917,8 @@ const translation = {
       retrievalSettingIsRequired: 'Pengaturan pengambilan diperlukan',
       indexMethodIsRequired: 'Metode indeks diperlukan',
       chunkStructure: 'Struktur Potongan',
+      chunksInput: 'Potongan',
+      chunksInputTip: 'Variabel input dari node basis pengetahuan adalah Chunks. Tipe variabel adalah objek dengan Skema JSON tertentu yang harus konsisten dengan struktur chunk yang dipilih.',
     },
   },
   tracing: {},

@@ -950,6 +950,8 @@ const translation = {
         learnMore: 'Learn more',
       },
       changeChunkStructure: 'Change Chunk Structure',
+      chunksInput: 'Chunks',
+      chunksInputTip: 'The input variable of the knowledge base node is Chunks. The variable type is an object with a specific JSON Schema which must be consistent with the selected chunk structure.',
       aboutRetrieval: 'about retrieval method.',
       chunkIsRequired: 'Chunk structure is required',
       indexMethodIsRequired: 'Index method is required',

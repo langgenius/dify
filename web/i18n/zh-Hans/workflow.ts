@@ -950,6 +950,8 @@ const translation = {
         learnMore: '了解更多',
       },
       changeChunkStructure: '更改分段结构',
+      chunksInput: '分块',
+      chunksInputTip: '知识库节点的输入变量为 Chunks。该变量类型是符合特定 JSON Schema 的对象，必须与所选块结构一致。',
       aboutRetrieval: '关于知识检索。',
       chunkIsRequired: '分段结构是必需的',
       indexMethodIsRequired: '索引方法是必需的',

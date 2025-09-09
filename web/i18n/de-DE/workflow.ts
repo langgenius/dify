@@ -942,6 +942,8 @@ const translation = {
       aboutRetrieval: 'Über die Abrufmethode.',
       chooseChunkStructure: 'Auswählen einer Chunk-Struktur',
       chunkIsRequired: 'Chunk-Struktur ist erforderlich',
+      chunksInput: 'Stücke',
+      chunksInputTip: 'Die Eingangsvariable des Wissensbasis-Knotens sind Chunks. Der Variablentyp ist ein Objekt mit einem spezifischen JSON-Schema, das konsistent mit der ausgewählten Chunk-Struktur sein muss.',
     },
   },
   tracing: {
