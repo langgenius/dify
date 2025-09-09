@@ -391,11 +391,6 @@ export type createDocumentResponse = {
   documents: InitialDocumentDetail[]
 }
 
-export type PrecessRule = {
-  mode: ProcessMode
-  rules: Rules
-}
-
 export type FullDocumentDetail = SimpleDocumentDetail & {
   batch: string
   created_api_request_id: string
@@ -418,7 +413,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   doc_type?: DocType | null | 'others'
   doc_metadata?: DocMetadata | null
   segment_count: number
-  dataset_process_rule: PrecessRule
+  dataset_process_rule: ProcessRule
   document_process_rule: ProcessRule
   [key: string]: any
 }

@@ -188,7 +188,7 @@ export const useEmbeddedChatbot = () => {
         }
       }
       if (item.number) {
-        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
+        const convertedNumber = Number(initInputs[item.number.variable])
         return {
           ...item.number,
           default: convertedNumber || item.default || item.number.default,
