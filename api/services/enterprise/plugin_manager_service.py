@@ -48,5 +48,6 @@ class PluginManagerService:
             raise CredentialPolicyViolationError("Credentials not available: Please use ENTERPRISE global credentials")
 
         logging.debug(
-            f"Credential policy compliance checked for {body.provider} with credential {body.dify_credential_id}, result: {ret.get('result', False)}"
+            "Credential policy compliance checked for %s with credential %s, result: %s",
+            body.provider, body.dify_credential_id, ret.get('result', False)
         )
