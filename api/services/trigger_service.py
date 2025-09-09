@@ -1,5 +1,5 @@
-import json
 import logging
+import time
 import uuid
 
 from flask import Request, Response
@@ -8,10 +8,9 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.utils.http_parser import serialize_request
-from core.trigger.entities.entities import TriggerEntity
+from core.trigger.entities.entities import TriggerDebugEventData, TriggerEntity
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
@@ -19,6 +18,7 @@ from models.trigger import TriggerSubscription
 from models.workflow import Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger_debug_service import TriggerDebugService
 from services.workflow.entities import PluginTriggerData
 
 logger = logging.getLogger(__name__)
@@ -30,19 +30,27 @@ class TriggerService:
     __ENDPOINT_REQUEST_CACHE_EXPIRE_MS__ = 5 * 60 * 1000
 
     @classmethod
-    def process_triggered_workflows(
-        cls, subscription: TriggerSubscription, trigger: TriggerEntity, request: Request
-    ) -> None:
-        """Process triggered workflows."""
+    def dispatch_triggered_workflows(
+        cls, subscription: TriggerSubscription, trigger: TriggerEntity, request_id: str
+    ) -> int:
+        """Process triggered workflows.
 
-        subscribers = cls._get_subscriber_triggers(subscription=subscription, trigger=trigger)
+        Args:
+            subscription: The trigger subscription
+            trigger: The trigger entity that was activated
+            request_id: The ID of the stored request in storage system
+        """
+
+        subscribers = cls.get_subscriber_triggers(
+            tenant_id=subscription.tenant_id, subscription_id=subscription.id, trigger_name=trigger.identity.name
+        )
         if not subscribers:
             logger.warning(
                 "No workflows found for trigger '%s' in subscription '%s'",
                 trigger.identity.name,
                 subscription.id,
             )
-            return
+            return 0
 
         with Session(db.engine) as session:
             # Get tenant owner for workflow execution
@@ -57,10 +65,10 @@ class TriggerService:
 
             if not tenant_owner:
                 logger.error("Tenant owner not found for tenant %s", subscription.tenant_id)
-                return
-
+                return 0
+            dispatched_count = 0
             for plugin_trigger in subscribers:
-                # 2. Get workflow
+                # Get workflow
                 workflow = session.scalar(
                     select(Workflow)
                     .where(
@@ -77,14 +85,7 @@ class TriggerService:
                     )
                     continue
 
-                # Get trigger parameters from node configuration
-                node_config = workflow.get_node_config_by_id(plugin_trigger.node_id)
-                parameters = node_config.get("data", {}).get("parameters", {}) if node_config else {}
-
-                # 3. Store trigger data
-                storage_key = cls._store_trigger_data(request, subscription, trigger, parameters)
-
-                # 4. Create trigger data for async execution
+                # Create trigger data for async execution
                 trigger_data = PluginTriggerData(
                     app_id=plugin_trigger.app_id,
                     tenant_id=subscription.tenant_id,
@@ -92,13 +93,18 @@ class TriggerService:
                     root_node_id=plugin_trigger.node_id,
                     trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
                     plugin_id=subscription.provider_id,
-                    webhook_url=f"trigger/endpoint/{subscription.endpoint_id}",  # For tracking
-                    inputs={"storage_key": storage_key},  # Pass storage key to async task
+                    endpoint_id=subscription.endpoint_id,
+                    inputs={
+                        "request_id": request_id,
+                        "trigger_name": trigger.identity.name,
+                        "subscription_id": subscription.id,
+                    },
                 )
 
-                # 5. Trigger async workflow
+                # Trigger async workflow
                 try:
                     AsyncWorkflowService.trigger_workflow_async(session, tenant_owner, trigger_data)
+                    dispatched_count += 1
                     logger.info(
                         "Triggered workflow for app %s with trigger %s",
                         plugin_trigger.app_id,
@@ -110,21 +116,37 @@ class TriggerService:
                         plugin_trigger.app_id,
                     )
 
+            return dispatched_count
+
     @classmethod
-    def select_triggers(cls, controller, dispatch_response, provider_id, subscription) -> list[TriggerEntity]:
-        triggers = []
-        for trigger_name in dispatch_response.triggers:
-            trigger = controller.get_trigger(trigger_name)
-            if trigger is None:
-                logger.error(
-                    "Trigger '%s' not found in provider '%s' for tenant '%s'",
-                    trigger_name,
-                    provider_id,
-                    subscription.tenant_id,
-                )
-                raise ValueError(f"Trigger '{trigger_name}' not found")
-            triggers.append(trigger)
-        return triggers
+    def dispatch_debugging_sessions(
+        cls, subscription_id: str, request: Request, triggers: list[str], request_id: str
+    ) -> int:
+        """
+        Dispatch to debug sessions - simplified version.
+
+        Args:
+            subscription_id: Subscription ID
+            request: Original request
+            triggers: List of trigger names
+            request_id: Request ID for storage reference
+        """
+        try:
+            # Prepare streamlined event data using Pydantic model
+            debug_data = TriggerDebugEventData(
+                subscription_id=subscription_id,
+                triggers=triggers,
+                request_id=request_id,
+                timestamp=time.time(),
+            )
+            return TriggerDebugService.dispatch_to_debug_sessions(
+                subscription_id=subscription_id, event_data=debug_data
+            )
+
+        except Exception as e:
+            # Silent failure, don't affect production
+            logger.exception("Debug dispatch failed", exc_info=e)
+            return 0
 
     @classmethod
     def process_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
@@ -167,53 +189,16 @@ class TriggerService:
         return dispatch_response.response
 
     @classmethod
-    def _get_subscriber_triggers(
-        cls, subscription: TriggerSubscription, trigger: TriggerEntity
+    def get_subscriber_triggers(
+        cls, tenant_id: str, subscription_id: str, trigger_name: str
     ) -> list[WorkflowPluginTrigger]:
         """Get WorkflowPluginTriggers for a subscription and trigger."""
         with Session(db.engine, expire_on_commit=False) as session:
             subscribers = session.scalars(
                 select(WorkflowPluginTrigger).where(
-                    WorkflowPluginTrigger.tenant_id == subscription.tenant_id,
-                    WorkflowPluginTrigger.subscription_id == subscription.id,
-                    WorkflowPluginTrigger.trigger_name == trigger.identity.name,
+                    WorkflowPluginTrigger.tenant_id == tenant_id,
+                    WorkflowPluginTrigger.subscription_id == subscription_id,
+                    WorkflowPluginTrigger.trigger_name == trigger_name,
                 )
             ).all()
             return list(subscribers)
-
-    @classmethod
-    def _store_trigger_data(
-        cls,
-        request: Request,
-        subscription: TriggerSubscription,
-        trigger: TriggerEntity,
-        parameters: dict,
-    ) -> str:
-        """Store trigger data in storage and return key."""
-        storage_key = f"trigger_data_{uuid.uuid4().hex}"
-
-        # Prepare data to store
-        trigger_data = {
-            "request": {
-                "method": request.method,
-                "headers": dict(request.headers),
-                "query_params": dict(request.args),
-                "body": request.get_data(as_text=True),
-            },
-            "subscription": {
-                "id": subscription.id,
-                "provider_id": subscription.provider_id,
-                "credentials": subscription.credentials,
-                "credential_type": subscription.credential_type,
-            },
-            "trigger": {
-                "name": trigger.identity.name,
-                "parameters": parameters,
-            },
-            "user_id": subscription.user_id,
-        }
-
-        # Store with 1 hour TTL using Redis
-        redis_client.setex(storage_key, 3600, json.dumps(trigger_data))
-
-        return storage_key

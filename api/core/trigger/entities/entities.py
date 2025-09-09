@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import PluginParameterAutoGenerate, PluginParameterOption, PluginParameterTemplate
@@ -251,12 +251,24 @@ class SubscriptionBuilderUpdater(BaseModel):
             subscription_builder.expires_at = self.expires_at
 
 
+class TriggerDebugEventData(BaseModel):
+    """Debug event data dispatched to debug sessions."""
+
+    subscription_id: str
+    triggers: list[str]
+    request_id: str
+    timestamp: float
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 # Export all entities
 __all__ = [
     "OAuthSchema",
     "RequestLog",
     "Subscription",
     "SubscriptionBuilder",
+    "TriggerDebugEventData",
     "TriggerDescription",
     "TriggerEntity",
     "TriggerIdentity",
