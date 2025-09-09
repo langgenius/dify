@@ -167,7 +167,6 @@ class DatetimeString:
         return value
 
 
-
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string
