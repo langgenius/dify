@@ -246,6 +246,10 @@ export class CollaborationManager {
     return this.eventEmitter.on('varsAndFeaturesUpdate', callback)
   }
 
+  onAppStateUpdate(callback: (update: any) => void): () => void {
+    return this.eventEmitter.on('appStateUpdate', callback)
+  }
+
   onLeaderChange(callback: (isLeader: boolean) => void): () => void {
     return this.eventEmitter.on('leaderChange', callback)
   }
@@ -574,6 +578,10 @@ export class CollaborationManager {
       else if (update.type === 'varsAndFeaturesUpdate') {
         console.log('Processing varsAndFeaturesUpdate event:', update)
         this.eventEmitter.emit('varsAndFeaturesUpdate', update)
+      }
+      else if (update.type === 'appStateUpdate') {
+        console.log('Processing appStateUpdate event:', update)
+        this.eventEmitter.emit('appStateUpdate', update)
       }
       else if (update.type === 'syncRequest') {
         console.log('Received sync request from another user')

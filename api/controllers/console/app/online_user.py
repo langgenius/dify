@@ -207,6 +207,8 @@ def handle_collaboration_event(sid, data):
     Handle general collaboration events, include:
     1. mouseMove
     2. varsAndFeaturesUpdate
+    3. syncRequest(ask leader to update graph)
+    4. appStateUpdate
 
     """
     mapping = redis_client.get(f"ws_sid_map:{sid}")
