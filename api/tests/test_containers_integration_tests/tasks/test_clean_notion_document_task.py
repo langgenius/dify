@@ -44,7 +44,7 @@ class TestCleanNotionDocumentTask:
     def mock_index_processor_factory(self, mock_index_processor):
         """Mock IndexProcessorFactory for testing."""
         # Mock the actual IndexProcessorFactory class
-        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory") as mock_factory:
+        with patch("tasks.clean_notion_document_task.IndexProcessorFactory") as mock_factory:
             # Create a mock instance that will be returned when IndexProcessorFactory() is called
             mock_instance = Mock()
             mock_instance.init_index_processor.return_value = mock_index_processor
