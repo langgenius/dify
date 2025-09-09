@@ -209,6 +209,7 @@ def handle_collaboration_event(sid, data):
     2. varsAndFeaturesUpdate
     3. syncRequest(ask leader to update graph)
     4. appStateUpdate
+    5. mcpServerUpdate
 
     """
     mapping = redis_client.get(f"ws_sid_map:{sid}")

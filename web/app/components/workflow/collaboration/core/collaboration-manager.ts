@@ -250,6 +250,10 @@ export class CollaborationManager {
     return this.eventEmitter.on('appStateUpdate', callback)
   }
 
+  onMcpServerUpdate(callback: (update: any) => void): () => void {
+    return this.eventEmitter.on('mcpServerUpdate', callback)
+  }
+
   onLeaderChange(callback: (isLeader: boolean) => void): () => void {
     return this.eventEmitter.on('leaderChange', callback)
   }
@@ -582,6 +586,10 @@ export class CollaborationManager {
       else if (update.type === 'appStateUpdate') {
         console.log('Processing appStateUpdate event:', update)
         this.eventEmitter.emit('appStateUpdate', update)
+      }
+      else if (update.type === 'mcpServerUpdate') {
+        console.log('Processing mcpServerUpdate event:', update)
+        this.eventEmitter.emit('mcpServerUpdate', update)
       }
       else if (update.type === 'syncRequest') {
         console.log('Received sync request from another user')
