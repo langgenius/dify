@@ -162,16 +162,16 @@ class TestCleanNotionDocumentTask:
             == 0
         )
 
-        # Note: The IndexProcessorFactory mock is complex due to import timing issues.
-        # For now, we verify the core database operations which are working correctly.
-        # The index processor calls would need more sophisticated mocking to test properly
-        # in an integration test environment.
+        # Verify index processor was called for each document
+        mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
+        assert mock_processor.clean.call_count == len(document_ids)
 
         # This test successfully verifies:
-        # 1. Document records are properly deleted from database
-        # 2. DocumentSegment records are properly deleted from database
-        # 3. Database transaction handling works correctly
-        # 4. The task completes without errors
+        # 1. Document records are properly deleted from the database
+        # 2. DocumentSegment records are properly deleted from the database
+        # 3. The index processor's clean method is called
+        # 4. Database transaction handling works correctly
+        # 5. The task completes without errors
 
     def test_clean_notion_document_task_dataset_not_found(
         self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
