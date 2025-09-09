@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import Textarea from '@/app/components/base/textarea'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
@@ -299,4 +299,4 @@ const ValueContent = ({
   )
 }
 
-export default ValueContent
+export default React.memo(ValueContent)
