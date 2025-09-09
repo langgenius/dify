@@ -93,6 +93,7 @@ class StreamResponse(BaseModel):
     task_id: str
 
     def to_dict(self):
+        # NOTE(-LAN-): Don't use it, use `model_dump(mode="json")` instead.
         return jsonable_encoder(self)
 
 
@@ -744,9 +745,6 @@ class AppBlockingResponse(BaseModel):
     """
 
     task_id: str
-
-    def to_dict(self):
-        return jsonable_encoder(self)
 
 
 class ChatbotAppBlockingResponse(AppBlockingResponse):
