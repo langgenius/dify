@@ -525,7 +525,24 @@ def add_qdrant_index(field: str):
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,
             )
             try:
-                client = qdrant_client.QdrantClient(**qdrant_config.to_qdrant_params())
+                params = qdrant_config.to_qdrant_params()
+                # Check the type before using
+                if isinstance(params, dict):
+                    if "path" in params:
+                        # PathQdrantParams case
+                        client = qdrant_client.QdrantClient(path=params["path"])
+                    else:
+                        # UrlQdrantParams case
+                        client = qdrant_client.QdrantClient(
+                            url=params["url"],
+                            api_key=params.get("api_key"),
+                            timeout=int(params["timeout"]),
+                            verify=params["verify"],
+                            grpc_port=params["grpc_port"],
+                            prefer_grpc=params["prefer_grpc"],
+                        )
+                else:
+                    raise TypeError("Unexpected params type")
                 # create payload index
                 client.create_payload_index(binding.collection_name, field, field_schema=PayloadSchemaType.KEYWORD)
                 create_count += 1

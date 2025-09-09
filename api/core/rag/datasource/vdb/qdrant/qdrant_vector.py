@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union
 
 import qdrant_client
 from flask import current_app
@@ -40,6 +40,19 @@ if TYPE_CHECKING:
     MetadataFilter = Union[DictFilter, common_types.Filter]
 
 
+class PathQdrantParams(TypedDict):
+    path: str
+
+
+class UrlQdrantParams(TypedDict):
+    url: str
+    api_key: Optional[str]
+    timeout: float
+    verify: bool
+    grpc_port: int
+    prefer_grpc: bool
+
+
 class QdrantConfig(BaseModel):
     endpoint: str
     api_key: Optional[str] = None
@@ -50,7 +63,7 @@ class QdrantConfig(BaseModel):
     replication_factor: int = 1
     write_consistency_factor: int = 1
 
-    def to_qdrant_params(self):
+    def to_qdrant_params(self) -> Union[PathQdrantParams, UrlQdrantParams]:
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
@@ -58,16 +71,16 @@ class QdrantConfig(BaseModel):
                     raise ValueError("Root path is not set")
                 path = os.path.join(self.root_path, path)
 
-            return {"path": path}
+            return PathQdrantParams(path=path)
         else:
-            return {
-                "url": self.endpoint,
-                "api_key": self.api_key,
-                "timeout": self.timeout,
-                "verify": self.endpoint.startswith("https"),
-                "grpc_port": self.grpc_port,
-                "prefer_grpc": self.prefer_grpc,
-            }
+            return UrlQdrantParams(
+                url=self.endpoint,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                verify=self.endpoint.startswith("https"),
+                grpc_port=self.grpc_port,
+                prefer_grpc=self.prefer_grpc,
+            )
 
 
 class QdrantVector(BaseVector):
