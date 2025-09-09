@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import logging
 import uuid
@@ -23,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 R = TypeVar("R")
-T = TypeVar("T", bound=MatrixoneVector)
 
 
 class MatrixoneConfig(BaseModel):
@@ -48,16 +45,6 @@ class MatrixoneConfig(BaseModel):
         if not values["database"]:
             raise ValueError("config database is required")
         return values
-
-
-def ensure_client(func: Callable[Concatenate[T, P], R]):
-    @wraps(func)
-    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
-        if self.client is None:
-            self.client = self._get_client(None, False)
-        return func(self, *args, **kwargs)
-
-    return wrapper
 
 
 class MatrixoneVector(BaseVector):
@@ -217,6 +204,17 @@ class MatrixoneVector(BaseVector):
     def delete(self):
         assert self.client is not None
         self.client.delete()
+
+T = TypeVar("T", bound=MatrixoneVector)
+
+def ensure_client(func: Callable[Concatenate[T, P], R]):
+    @wraps(func)
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
+        if self.client is None:
+            self.client = self._get_client(None, False)
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class MatrixoneVectorFactory(AbstractVectorFactory):
