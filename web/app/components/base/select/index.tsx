@@ -202,7 +202,7 @@ const SimpleSelect: FC<ISelectProps> = ({
     if (!isCurrentSelectionValid) {
       let defaultSelect = null
       // Handle cases where defaultValue might be undefined, null, or empty string
-      defaultSelect = (defaultValue && items.find((item: Item) => item.value === defaultValue)) || null
+      defaultSelect = items.find((item: Item) => item.value === defaultValue) ?? null
       setSelectedItem(defaultSelect)
     }
   }, [defaultValue, items, selectedItem])
