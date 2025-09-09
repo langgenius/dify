@@ -51,8 +51,8 @@ const FormInputItem: FC<Props> = ({
   providerType,
 }) => {
   const language = useLanguage()
-  const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
-  const [isLoadingOptions, setIsLoadingOptions] = useState(false)
+  const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
+  const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
   const {
     placeholder,
@@ -156,34 +156,30 @@ const FormInputItem: FC<Props> = ({
     extra: extraParams,
   }, isDynamicSelect && providerType === 'trigger' && !!currentResource && !!currentProvider)
 
-  // Fetch dynamic options when component mounts or dependencies change
+  // Computed values for dynamic options (unified for triggers and tools)
+  const dynamicOptions = providerType === 'trigger' ? triggerDynamicOptions?.options || [] : toolsOptions
+  const isLoadingOptions = providerType === 'trigger' ? isTriggerOptionsLoading : isLoadingToolsOptions
+
+  // Fetch dynamic options for tools only (triggers use hook directly)
   useEffect(() => {
-    const fetchOptions = async () => {
-      if (isDynamicSelect && currentResource && currentProvider) {
-        if (providerType === 'trigger') {
-          // For triggers, use the hook-based approach with automatic refetch
-          setIsLoadingOptions(isTriggerOptionsLoading)
-          setDynamicOptions(triggerDynamicOptions?.options || [])
+    const fetchToolOptions = async () => {
+      if (isDynamicSelect && currentResource && currentProvider && providerType === 'tool') {
+        setIsLoadingToolsOptions(true)
+        try {
+          const data = await fetchDynamicOptions()
+          setToolsOptions(data?.options || [])
         }
-        else {
-          // For tools, use the mutation-based approach
-          setIsLoadingOptions(true)
-          try {
-            const data = await fetchDynamicOptions()
-            setDynamicOptions(data?.options || [])
-          }
-          catch (error) {
-            console.error('Failed to fetch dynamic options:', error)
-            setDynamicOptions([])
-          }
-          finally {
-            setIsLoadingOptions(false)
-          }
+        catch (error) {
+          console.error('Failed to fetch dynamic options:', error)
+          setToolsOptions([])
+        }
+        finally {
+          setIsLoadingToolsOptions(false)
         }
       }
     }
 
-    fetchOptions()
+    fetchToolOptions()
   }, [
     isDynamicSelect,
     currentResource?.name,
@@ -191,8 +187,7 @@ const FormInputItem: FC<Props> = ({
     variable,
     extraParams,
     providerType,
-    triggerDynamicOptions,
-    isTriggerOptionsLoading,
+    fetchDynamicOptions,
   ])
 
   const handleTypeChange = (newType: string) => {
