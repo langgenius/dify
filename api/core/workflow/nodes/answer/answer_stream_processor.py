@@ -163,13 +163,13 @@ class AnswerStreamProcessor(StreamProcessor):
                 route_chunk = cast(VarGenerateRouteChunk, route_chunk)
                 value_selector = route_chunk.value_selector
 
-                # check chunk node id is before current node id or equal to current node id
+                                # check chunk node id is before current node id or equal to current node id
                 if value_selector != stream_output_value_selector:
                     continue
 
                 stream_out_answer_node_ids.append(answer_node_id)
 
-                return stream_out_answer_node_ids
+        return stream_out_answer_node_ids
 
     def _is_dynamic_dependencies_met(self, answer_node_id: str, llm_node_id: str) -> bool:
         """
@@ -188,11 +188,12 @@ class AnswerStreamProcessor(StreamProcessor):
             return True
 
         # Only use dynamic check for branch merge scenarios
-        reverse_edges = self.graph.reverse_edge_mapping.get(answer_node_id, [])
-        if len(reverse_edges) <= 1:
+                # Check if there's branch merge anywhere in the path from answer to start
+        has_branch_merge = self._has_branch_merge_in_path(answer_node_id)
+        if not has_branch_merge:
             return False
 
-            # Dynamic check: trace back from LLM to Start node
+        # Dynamic check: trace back from LLM to Start node
         visited = set()
 
         def _trace_path_to_start(node_id: str) -> bool:
@@ -255,3 +256,41 @@ class AnswerStreamProcessor(StreamProcessor):
             return False
 
         return _trace_path_to_start(llm_node_id)
+
+    def _has_branch_merge_in_path(self, start_node_id: str) -> bool:
+        """
+        Check if there's conditional branch merge scenario (specifically for if/else convergence)
+        More conservative approach to avoid affecting parallel/iteration scenarios
+        """
+        visited = set()
+
+        def _check_conditional_merge_recursive(node_id: str) -> bool:
+            if node_id in visited:
+                return False
+            visited.add(node_id)
+
+            if node_id == self.graph.root_node_id:
+                return False
+
+            reverse_edges = self.graph.reverse_edge_mapping.get(node_id, [])
+
+            # Check if this node has multiple incoming edges from conditional sources
+            conditional_incoming = 0
+            for edge in reverse_edges:
+                # Only count edges that have run conditions (conditional branches)
+                if hasattr(edge, 'run_condition') and edge.run_condition:
+                    conditional_incoming += 1
+                # Also check if source is an if/else type node
+                elif hasattr(edge, 'source_node_id'):
+                    source_config = self.graph.node_id_config_mapping.get(edge.source_node_id, {})
+                    if source_config.get('data', {}).get('type') in ['if_else']:
+                        conditional_incoming += 1
+
+            # Only consider it a branch merge if multiple conditional branches converge
+            if conditional_incoming > 1:
+                return True
+
+            # Recursively check upstream nodes, but more conservatively
+            return any(_check_conditional_merge_recursive(edge.source_node_id) for edge in reverse_edges)
+
+        return _check_conditional_merge_recursive(start_node_id)
