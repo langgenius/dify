@@ -8,37 +8,44 @@ from flask_restx import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from core.file.constants import DEFAULT_SERVICE_API_USER_ID
 from extensions.ext_database import db
 from libs.login import _get_user
-from models.account import Account, Tenant
+from models.account import Tenant
 from models.model import EndUser
-from services.account_service import AccountService
 
 
-def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
+def get_user(tenant_id: str, user_id: str | None) -> EndUser:
+    """
+    Get current user
+
+    NOTE: user_id is not trusted, it could be maliciously set to any value.
+    As a result, it could only be considered as an end user id.
+    """
     try:
         with Session(db.engine) as session:
             if not user_id:
-                user_id = "DEFAULT-USER"
+                user_id = DEFAULT_SERVICE_API_USER_ID
 
-            if user_id == "DEFAULT-USER":
-                user_model = session.query(EndUser).where(EndUser.session_id == "DEFAULT-USER").first()
-                if not user_model:
-                    user_model = EndUser(
-                        tenant_id=tenant_id,
-                        type="service_api",
-                        is_anonymous=True if user_id == "DEFAULT-USER" else False,
-                        session_id=user_id,
-                    )
-                    session.add(user_model)
-                    session.commit()
-                    session.refresh(user_model)
-            else:
-                user_model = AccountService.load_user(user_id)
-                if not user_model:
-                    user_model = session.query(EndUser).where(EndUser.id == user_id).first()
-                if not user_model:
-                    raise ValueError("user not found")
+            user_model = (
+                session.query(EndUser)
+                .where(
+                    EndUser.session_id == user_id,
+                    EndUser.tenant_id == tenant_id,
+                )
+                .first()
+            )
+            if not user_model:
+                user_model = EndUser(
+                    tenant_id=tenant_id,
+                    type="service_api",
+                    is_anonymous=user_id == DEFAULT_SERVICE_API_USER_ID,
+                    session_id=user_id,
+                )
+                session.add(user_model)
+                session.commit()
+                session.refresh(user_model)
+
     except Exception:
         raise ValueError("user not found")
 
@@ -63,7 +70,7 @@ def get_user_tenant(view: Optional[Callable] = None):
                 raise ValueError("tenant_id is required")
 
             if not user_id:
-                user_id = "DEFAULT-USER"
+                user_id = DEFAULT_SERVICE_API_USER_ID
 
             del kwargs["tenant_id"]
             del kwargs["user_id"]
