@@ -6,7 +6,8 @@
     "migrations/",
     "core/rag",
     "extensions",
-    "libs"
+    "libs",
+    "controllers/console/datasets"
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
