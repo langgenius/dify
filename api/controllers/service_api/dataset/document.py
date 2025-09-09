@@ -5,6 +5,7 @@ from flask_restx import marshal, reqparse
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
+from models.model import EndUser
 import services
 from controllers.common.errors import (
     FilenameNotExistsError,
@@ -297,6 +298,9 @@ class DocumentAddByFileApi(DatasetApiResource):
         file = request.files["file"]
         if not file.filename:
             raise FilenameNotExistsError
+        
+        if not isinstance(current_user, EndUser):
+            raise ValueError("Invalid user account")
 
         upload_file = FileService.upload_file(
             filename=file.filename,
@@ -387,6 +391,8 @@ class DocumentUpdateByFileApi(DatasetApiResource):
                 raise FilenameNotExistsError
 
             try:
+                if not isinstance(current_user, EndUser):
+                    raise ValueError("Invalid user account")
                 upload_file = FileService.upload_file(
                     filename=file.filename,
                     content=file.read(),
