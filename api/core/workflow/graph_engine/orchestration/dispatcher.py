@@ -86,7 +86,7 @@ class Dispatcher:
                 try:
                     event = self._event_queue.get(timeout=0.1)
                     # Route to the event handler
-                    self._event_handler.handle_event(event)
+                    self._event_handler.dispatch(event)
                     self._event_queue.task_done()
                 except queue.Empty:
                     # Check if execution is complete
