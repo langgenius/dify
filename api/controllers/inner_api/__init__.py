@@ -16,8 +16,8 @@ api = ExternalApi(
 # Create namespace
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
-from . import mail as _mail  # pyright: ignore[reportUnusedImport]  # noqa: F401
-from .plugin import plugin as _plugin  # pyright: ignore[reportUnusedImport]  # noqa: F401
-from .workspace import workspace as _workspace  # pyright: ignore[reportUnusedImport]  # noqa: F401
+from . import mail as _mail  # pyright: ignore[reportUnusedImport]
+from .plugin import plugin as _plugin  # pyright: ignore[reportUnusedImport]
+from .workspace import workspace as _workspace  # pyright: ignore[reportUnusedImport]
 
 api.add_namespace(inner_api_ns)
