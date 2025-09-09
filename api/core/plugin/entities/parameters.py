@@ -1,6 +1,5 @@
 import enum
 import json
-
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
