@@ -48,9 +48,9 @@ class MatrixoneConfig(BaseModel):
         return values
 
 
-def ensure_client(func:Callable[Concatenate[T, P], R]):
+def ensure_client(func: Callable[Concatenate[T, P], R]):
     @wraps(func)
-    def wrapper(self:T, *args:P.args, **kwargs:P.kwargs):
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
         if self.client is None:
             self.client = self._get_client(None, False)
         return func(self, *args, **kwargs)

@@ -11,6 +11,7 @@ from models.account import Account
 P = ParamSpec("P")
 R = TypeVar("R")
 
+
 def _load_app_model(app_id: str) -> Optional[App]:
     assert isinstance(current_user, Account)
     app_model = (
@@ -21,10 +22,7 @@ def _load_app_model(app_id: str) -> Optional[App]:
     return app_model
 
 
-
-def get_app_model(
-    view: Optional[Callable[P, R]] = None, *, mode: Union[AppMode, list[AppMode], None] = None
-):
+def get_app_model(view: Optional[Callable[P, R]] = None, *, mode: Union[AppMode, list[AppMode], None] = None):
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
