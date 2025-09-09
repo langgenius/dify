@@ -227,3 +227,4 @@ web/public/fallback-*.js
 .roo/
 api/.env.backup
 /clickzetta
+.serena/
