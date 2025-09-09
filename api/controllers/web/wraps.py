@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
@@ -13,6 +15,9 @@ from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 def validate_jwt_token(view=None):
@@ -49,18 +54,19 @@ def decode_jwt_token():
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
-        app_model = db.session.scalar(select(App).where(App.id == app_id))
-        site = db.session.scalar(select(Site).where(Site.code == app_code))
-        if not app_model:
-            raise NotFound()
-        if not app_code or not site:
-            raise BadRequest("Site URL is no longer valid.")
-        if app_model.enable_site is False:
-            raise BadRequest("Site is disabled.")
-        end_user_id = decoded.get("end_user_id")
-        end_user = db.session.scalar(select(EndUser).where(EndUser.id == end_user_id))
-        if not end_user:
-            raise NotFound()
+        with Session(db.engine, expire_on_commit=False) as session:
+            app_model = session.scalar(select(App).where(App.id == app_id))
+            site = session.scalar(select(Site).where(Site.code == app_code))
+            if not app_model:
+                raise NotFound()
+            if not app_code or not site:
+                raise BadRequest("Site URL is no longer valid.")
+            if app_model.enable_site is False:
+                raise BadRequest("Site is disabled.")
+            end_user_id = decoded.get("end_user_id")
+            end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
+            if not end_user:
+                raise NotFound()
 
         # for enterprise webapp auth
         app_web_auth_enabled = False

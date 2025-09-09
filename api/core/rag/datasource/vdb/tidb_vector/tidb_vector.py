@@ -31,7 +31,7 @@ class TiDBVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config TIDB_VECTOR_HOST is required")
         if not values["port"]:
@@ -144,7 +144,7 @@ class TiDBVector(BaseVector):
         result = self.get_ids_by_metadata_field("doc_id", id)
         return bool(result)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         with Session(self._engine) as session:
             ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
@@ -179,7 +179,7 @@ class TiDBVector(BaseVector):
         else:
             return None
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self._delete_by_ids(ids)
@@ -237,7 +237,7 @@ class TiDBVector(BaseVector):
         # tidb doesn't support bm25 search
         return []
 
-    def delete(self) -> None:
+    def delete(self):
         with Session(self._engine) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
             session.commit()

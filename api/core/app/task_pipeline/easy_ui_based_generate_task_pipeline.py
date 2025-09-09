@@ -80,7 +80,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         conversation: Conversation,
         message: Message,
         stream: bool,
-    ) -> None:
+    ):
         super().__init__(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -362,7 +362,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self, *, session: Session, trace_manager: Optional[TraceQueueManager] = None) -> None:
+    def _save_message(self, *, session: Session, trace_manager: Optional[TraceQueueManager] = None):
         """
         Save message.
         :return:
@@ -412,7 +412,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             application_generate_entity=self._application_generate_entity,
         )
 
-    def _handle_stop(self, event: QueueStopEvent) -> None:
+    def _handle_stop(self, event: QueueStopEvent):
         """
         Handle stop.
         :return:
@@ -472,9 +472,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :param event: agent thought event
         :return:
         """
-        agent_thought: Optional[MessageAgentThought] = (
-            db.session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
-        )
+        with Session(db.engine, expire_on_commit=False) as session:
+            agent_thought: Optional[MessageAgentThought] = (
+                session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
+            )
 
         if agent_thought:
             return AgentThoughtStreamResponse(

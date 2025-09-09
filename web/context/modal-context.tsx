@@ -9,7 +9,6 @@ import type {
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
-  ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -29,6 +28,7 @@ import { removeSpecificQueryParam } from '@/utils'
 import { noop } from 'lodash-es'
 import dynamic from 'next/dynamic'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
+import type { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
@@ -71,8 +71,8 @@ const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-not
 export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
-  onSaveCallback?: (newPayload: T) => void
-  onRemoveCallback?: (newPayload: T) => void
+  onSaveCallback?: (newPayload?: T, formValues?: Record<string, any>) => void
+  onRemoveCallback?: (newPayload?: T, formValues?: Record<string, any>) => void
   onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
   isEditMode?: boolean
@@ -86,10 +86,7 @@ export type ModelModalType = {
   isModelCredential?: boolean
   credential?: Credential
   model?: CustomModel
-}
-export type LoadBalancingEntryModalType = ModelModalType & {
-  entry?: ModelLoadBalancingConfigEntry
-  index?: number
+  mode?: ModelModalModeEnum
 }
 
 export type ModalContextState = {
@@ -187,9 +184,15 @@ export const ModalContextProvider = ({
       showModelModal.onCancelCallback()
   }, [showModelModal])
 
-  const handleSaveModelModal = useCallback(() => {
+  const handleSaveModelModal = useCallback((formValues?: Record<string, any>) => {
     if (showModelModal?.onSaveCallback)
-      showModelModal.onSaveCallback(showModelModal.payload)
+      showModelModal.onSaveCallback(showModelModal.payload, formValues)
+    setShowModelModal(null)
+  }, [showModelModal])
+
+  const handleRemoveModelModal = useCallback((formValues?: Record<string, any>) => {
+    if (showModelModal?.onRemoveCallback)
+      showModelModal.onRemoveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
   }, [showModelModal])
 
@@ -329,8 +332,10 @@ export const ModalContextProvider = ({
               isModelCredential={showModelModal.payload.isModelCredential}
               credential={showModelModal.payload.credential}
               model={showModelModal.payload.model}
+              mode={showModelModal.payload.mode}
               onCancel={handleCancelModelModal}
               onSave={handleSaveModelModal}
+              onRemove={handleRemoveModelModal}
             />
           )
         }

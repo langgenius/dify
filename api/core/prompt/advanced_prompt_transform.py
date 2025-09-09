@@ -30,7 +30,7 @@ class AdvancedPromptTransform(PromptTransform):
         self,
         with_variable_tmpl: bool = False,
         image_detail_config: ImagePromptMessageContent.DETAIL = ImagePromptMessageContent.DETAIL.LOW,
-    ) -> None:
+    ):
         self.with_variable_tmpl = with_variable_tmpl
         self.image_detail_config = image_detail_config
 

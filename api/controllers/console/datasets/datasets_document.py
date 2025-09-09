@@ -40,6 +40,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from fields.document_fields import (
@@ -354,9 +355,6 @@ class DatasetInitApi(Resource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
         knowledge_config = KnowledgeConfig(**args)
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
@@ -428,7 +426,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE.value, upload_file=file, document_model=document.doc_form
                 )
 
                 indexing_runner = IndexingRunner()
@@ -477,6 +475,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             data_source_info = document.data_source_info_dict
 
             if document.data_source_type == "upload_file":
+                if not data_source_info:
+                    continue
                 file_id = data_source_info["upload_file_id"]
                 file_detail = (
                     db.session.query(UploadFile)
@@ -488,13 +488,15 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file_detail, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE.value, upload_file=file_detail, document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
 
             elif document.data_source_type == "notion_import":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
-                    datasource_type="notion_import",
+                    datasource_type=DatasourceType.NOTION.value,
                     notion_info={
                         "notion_workspace_id": data_source_info["notion_workspace_id"],
                         "notion_obj_id": data_source_info["notion_page_id"],
@@ -505,8 +507,10 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 )
                 extract_settings.append(extract_setting)
             elif document.data_source_type == "website_crawl":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
-                    datasource_type="website_crawl",
+                    datasource_type=DatasourceType.WEBSITE.value,
                     website_info={
                         "provider": data_source_info["provider"],
                         "job_id": data_source_info["job_id"],

@@ -470,6 +470,12 @@ const translation = {
         instruction: 'Anleitung',
         regenerate: 'Regenerieren',
       },
+      reasoningFormat: {
+        tooltip: 'Inhalte aus Denk-Tags extrahieren und im Feld reasoning_content speichern.',
+        separated: 'Separate Denk tags',
+        title: 'Aktivieren Sie die Trennung von Argumentations-Tags',
+        tagged: 'Behalte die Denk-Tags',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Abfragevariable',
@@ -997,6 +1003,10 @@ const translation = {
     noMatchingInputsFound: 'Keine übereinstimmenden Eingaben aus dem letzten Lauf gefunden.',
     noLastRunFound: 'Kein vorheriger Lauf gefunden',
     lastOutput: 'Letzte Ausgabe',
+  },
+  sidebar: {
+    exportWarning: 'Aktuelle gespeicherte Version exportieren',
+    exportWarningDesc: 'Dies wird die derzeit gespeicherte Version Ihres Workflows exportieren. Wenn Sie ungespeicherte Änderungen im Editor haben, speichern Sie diese bitte zuerst, indem Sie die Exportoption im Workflow-Canvas verwenden.',
   },
 }
 

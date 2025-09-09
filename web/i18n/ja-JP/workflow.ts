@@ -140,6 +140,10 @@ const translation = {
       export: 'シークレット値付きでエクスポート',
     },
   },
+  sidebar: {
+    exportWarning: '現在保存されているバージョンをエクスポート',
+    exportWarningDesc: 'これは現在保存されているワークフローのバージョンをエクスポートします。エディターで未保存の変更がある場合は、まずワークフローキャンバスのエクスポートオプションを使用して保存してください。',
+  },
   chatVariable: {
     panelTitle: '会話変数',
     panelDescription: '対話情報を保存・管理（会話履歴/ファイル/ユーザー設定など）。書き換えができます。',
@@ -476,6 +480,12 @@ const translation = {
         warningTips: {
           saveSchema: '編集中のフィールドを確定してから保存してください。',
         },
+      },
+      reasoningFormat: {
+        tagged: 'タグを考え続けてください',
+        separated: '思考タグを分ける',
+        title: '推論タグの分離を有効にする',
+        tooltip: 'thinkタグから内容を抽出し、それをreasoning_contentフィールドに保存します。',
       },
     },
     knowledgeRetrieval: {

@@ -49,7 +49,7 @@ class DifyTestContainers:
         self._containers_started = False
         logger.info("DifyTestContainers initialized - ready to manage test containers")
 
-    def start_containers_with_env(self) -> None:
+    def start_containers_with_env(self):
         """
         Start all required containers for integration testing.
 
@@ -230,7 +230,7 @@ class DifyTestContainers:
         self._containers_started = True
         logger.info("All test containers started successfully")
 
-    def stop_containers(self) -> None:
+    def stop_containers(self):
         """
         Stop and clean up all test containers.
 

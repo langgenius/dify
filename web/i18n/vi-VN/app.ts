@@ -277,6 +277,10 @@ const translation = {
       runDesc: 'Chạy các lệnh nhanh (chủ đề, ngôn ngữ, ... )',
       themeCategoryDesc: 'Chuyển đổi giao diện ứng dụng',
       slashDesc: 'Thực hiện các lệnh như /theme, /lang',
+      feedbackDesc: 'Thảo luận phản hồi cộng đồng mở',
+      accountDesc: 'Đi đến trang tài khoản',
+      docDesc: 'Mở tài liệu trợ giúp',
+      communityDesc: 'Mở cộng đồng Discord',
     },
     emptyState: {
       noWorkflowNodesFound: 'Không tìm thấy nút quy trình làm việc',
@@ -311,6 +315,7 @@ const translation = {
     inScope: 'trong {{scope}}s',
     tryDifferentSearch: 'Thử một cụm từ tìm kiếm khác',
     noMatchingCommands: 'Không tìm thấy lệnh phù hợp',
+    slashHint: 'Gõ / để xem tất cả các lệnh có sẵn',
   },
 }
 

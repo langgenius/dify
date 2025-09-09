@@ -5,7 +5,7 @@ Revises: 8bcc02c9bd07
 Create Date: 2025-08-09 15:53:54.341341
 
 """
-from alembic import op
+from alembic import op, context
 from libs.uuid_utils import uuidv7
 import models as models
 import sqlalchemy as sa
@@ -43,7 +43,15 @@ def upgrade():
     with op.batch_alter_table('load_balancing_model_configs', schema=None) as batch_op:
         batch_op.add_column(sa.Column('credential_id', models.types.StringUUID(), nullable=True))
 
-    migrate_existing_providers_data()
+    if not context.is_offline_mode():
+        migrate_existing_providers_data()
+    else:
+        op.execute(
+            '-- [IMPORTANT] Data migration skipped!!!\n'
+            "-- You should manually run data migration function `migrate_existing_providers_data`\n"
+            f"-- inside file {__file__}\n"
+            "-- Please review the migration script carefully!"
+        )
 
     # Remove encrypted_config column from providers table after migration
     with op.batch_alter_table('providers', schema=None) as batch_op:
@@ -119,7 +127,16 @@ def downgrade():
         batch_op.add_column(sa.Column('encrypted_config', sa.Text(), nullable=True))
 
     # Migrate data back from provider_credentials to providers
-    migrate_data_back_to_providers()
+
+    if not context.is_offline_mode():
+        migrate_data_back_to_providers()
+    else:
+        op.execute(
+            '-- [IMPORTANT] Data migration skipped!!!\n'
+            "-- You should manually run data migration function `migrate_data_back_to_providers`\n"
+            f"-- inside file {__file__}\n"
+            "-- Please review the migration script carefully!"
+        )
 
     # Remove credential_id columns
     with op.batch_alter_table('load_balancing_model_configs', schema=None) as batch_op:
