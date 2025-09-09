@@ -23,6 +23,7 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
+from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -362,6 +363,23 @@ class ModelInstance:
                 else:
                     raise last_exception
 
+            # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
+            try:
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                if lb_config.credential_id:
+                    check_credential_policy_compliance(
+                        credential_id=lb_config.credential_id,
+                        provider=self.provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Load balancing config %s failed policy compliance check in round-robin: %s", lb_config.id, str(e)
+                )
+                self.load_balancing_manager.cooldown(lb_config, expire=60)
+                continue
+
             try:
                 if "credentials" in kwargs:
                     del kwargs["credentials"]
@@ -513,6 +531,24 @@ class LBModelManager:
                     # all configs are in cooldown
                     return None
 
+                continue
+
+            # Check policy compliance for the selected configuration
+            try:
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                if config.credential_id:
+                    check_credential_policy_compliance(
+                        credential_id=config.credential_id,
+                        provider=self._provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+            except Exception as e:
+                logger.warning("Load balancing config %s failed policy compliance check: %s", config.id, str(e))
+                cooldown_load_balancing_configs.append(config)
+                if len(cooldown_load_balancing_configs) >= len(self._load_balancing_configs):
+                    # all configs are in cooldown or failed policy compliance
+                    return None
                 continue
 
             if dify_config.DEBUG:
