@@ -1,10 +1,11 @@
 import logging
 
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
+from models import Account
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -57,6 +58,8 @@ class CompletionApi(InstalledAppResource):
         db.session.commit()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
@@ -90,6 +93,8 @@ class CompletionStopApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {"result": "success"}, 200
@@ -117,6 +122,8 @@ class ChatApi(InstalledAppResource):
         db.session.commit()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
@@ -153,6 +160,8 @@ class ChatStopApi(InstalledAppResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {"result": "success"}, 200

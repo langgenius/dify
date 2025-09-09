@@ -1,9 +1,11 @@
 import logging
 
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
+
+from models import Account
 
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
@@ -54,6 +56,8 @@ class MessageListApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             return MessageService.pagination_by_first_id(
                 app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
             )
@@ -75,6 +79,8 @@ class MessageFeedbackApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             MessageService.create_feedback(
                 app_model=app_model,
                 message_id=message_id,
@@ -105,6 +111,8 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         streaming = args["response_mode"] == "streaming"
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=current_user,
@@ -142,6 +150,8 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         message_id = str(message_id)
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
