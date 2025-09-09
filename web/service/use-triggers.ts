@@ -268,7 +268,12 @@ export const useTriggerPluginDynamicOptions = (payload: {
     queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.extra],
     queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
       '/workspaces/current/plugin/parameters/dynamic-options',
-      { params: payload },
+      {
+        params: {
+          ...payload,
+          provider_type: 'trigger', // Add required provider_type parameter
+        },
+      },
     ),
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter,
   })
