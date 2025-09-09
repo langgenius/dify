@@ -1,10 +1,12 @@
+from pydantic import Field
+
 from .segments import Segment
 from .types import SegmentType
 
 
 class SegmentGroup(Segment):
     value_type: SegmentType = SegmentType.GROUP
-    value: list[Segment]
+    value: list[Segment] = Field(...)
 
     @property
     def text(self):
