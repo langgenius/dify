@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Optional, ParamSpec, TypeVar, Concatenate, Callable
+from typing import Concatenate, Optional, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in

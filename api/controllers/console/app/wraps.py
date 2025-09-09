@@ -1,13 +1,13 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, Union
+from typing import Optional, ParamSpec, TypeVar, Union
 
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
 from models import App, AppMode
 from models.account import Account
-from typing import ParamSpec, TypeVar
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
