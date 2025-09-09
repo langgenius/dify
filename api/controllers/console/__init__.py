@@ -178,6 +178,7 @@ api.add_resource(
 
 # Register workflow alias routes
 from .app.workflow_alias import WorkflowAliasApi  # pyright: ignore[reportUnusedImport]
+
 # Import tag controllers
 from .tag import tags  # pyright: ignore[reportUnusedImport]
 
