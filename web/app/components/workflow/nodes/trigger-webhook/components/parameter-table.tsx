@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import GenericTable from './generic-table'
 import type { ColumnConfig, GenericTableRow } from './generic-table'
@@ -31,7 +31,11 @@ const ParameterTable: FC<ParameterTableProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const typeOptions = createParameterTypeOptions(contentType, isRequestBody)
+  // Memoize typeOptions to prevent unnecessary re-renders that cause SimpleSelect state resets
+  const typeOptions = useMemo(() =>
+    createParameterTypeOptions(contentType, isRequestBody),
+  [contentType, isRequestBody],
+  )
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [

@@ -194,13 +194,18 @@ const SimpleSelect: FC<ISelectProps> = ({
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
 
-  // Ensure selectedItem is properly set when defaultValue or items change
+  // Enhanced: Preserve user selection, only reset when necessary
   useEffect(() => {
-    let defaultSelect = null
-    // Handle cases where defaultValue might be undefined, null, or empty string
-    defaultSelect = (defaultValue && items.find((item: Item) => item.value === defaultValue)) || null
-    setSelectedItem(defaultSelect)
-  }, [defaultValue, items])
+    // Only reset if no current selection or current selection is invalid
+    const isCurrentSelectionValid = selectedItem && items.some(item => item.value === selectedItem.value)
+
+    if (!isCurrentSelectionValid) {
+      let defaultSelect = null
+      // Handle cases where defaultValue might be undefined, null, or empty string
+      defaultSelect = (defaultValue && items.find((item: Item) => item.value === defaultValue)) || null
+      setSelectedItem(defaultSelect)
+    }
+  }, [defaultValue, items, selectedItem])
 
   const listboxRef = useRef<HTMLDivElement>(null)
 
