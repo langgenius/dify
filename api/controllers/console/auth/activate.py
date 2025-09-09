@@ -11,16 +11,20 @@ from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService
 
 
+def _get_activation_check_parser():
+    """Get parser for activation check endpoint"""
+    parser = reqparse.RequestParser()
+    parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="args", help="Workspace ID")
+    parser.add_argument("email", type=email, required=False, nullable=True, location="args", help="Email address")
+    parser.add_argument("token", type=str, required=True, nullable=False, location="args", help="Activation token")
+    return parser
+
+
 @console_ns.route("/activate/check")
 class ActivateCheckApi(Resource):
     @api.doc("check_activation_token")
     @api.doc(description="Check if activation token is valid")
-    @api.expect(
-        api.parser()
-        .add_argument("workspace_id", type=str, location="args", help="Workspace ID")
-        .add_argument("email", type=str, location="args", help="Email address")
-        .add_argument("token", type=str, required=True, location="args", help="Activation token")
-    )
+    @api.expect(_get_activation_check_parser())
     @api.response(
         200,
         "Success",
@@ -33,10 +37,7 @@ class ActivateCheckApi(Resource):
         ),
     )
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="args")
-        parser.add_argument("email", type=email, required=False, nullable=True, location="args")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="args")
+        parser = _get_activation_check_parser()
         args = parser.parse_args()
 
         workspaceId = args["workspace_id"]
