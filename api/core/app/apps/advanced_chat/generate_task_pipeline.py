@@ -683,7 +683,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         """Handle advanced chat message end events."""
         self._ensure_graph_runtime_initialized(graph_runtime_state)
 
-        output_moderation_answer = self._base_task_pipeline._handle_output_moderation_when_task_finished(
+        output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
             self._task_state.answer
         )
         if output_moderation_answer:
@@ -899,7 +899,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         message.answer = answer_text
         message.updated_at = naive_utc_now()
-        message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
+        message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
         message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
             MessageFile(
@@ -955,9 +955,9 @@ class AdvancedChatAppGenerateTaskPipeline:
         :param text: text
         :return: True if output moderation should direct output, otherwise False
         """
-        if self._base_task_pipeline._output_moderation_handler:
-            if self._base_task_pipeline._output_moderation_handler.should_direct_output():
-                self._task_state.answer = self._base_task_pipeline._output_moderation_handler.get_final_output()
+        if self._base_task_pipeline.output_moderation_handler:
+            if self._base_task_pipeline.output_moderation_handler.should_direct_output():
+                self._task_state.answer = self._base_task_pipeline.output_moderation_handler.get_final_output()
                 self._base_task_pipeline.queue_manager.publish(
                     QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
                 )
@@ -967,7 +967,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
                 return True
             else:
-                self._base_task_pipeline._output_moderation_handler.append_new_token(text)
+                self._base_task_pipeline.output_moderation_handler.append_new_token(text)
 
         return False
 

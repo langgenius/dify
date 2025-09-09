@@ -277,7 +277,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     self._handle_stop(event)
 
                 # handle output moderation
-                output_moderation_answer = self._handle_output_moderation_when_task_finished(
+                output_moderation_answer = self.handle_output_moderation_when_task_finished(
                     cast(str, self._task_state.llm_result.message.content)
                 )
                 if output_moderation_answer:
@@ -394,7 +394,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.answer_tokens = usage.completion_tokens
         message.answer_unit_price = usage.completion_unit_price
         message.answer_price_unit = usage.completion_price_unit
-        message.provider_response_latency = time.perf_counter() - self._start_at
+        message.provider_response_latency = time.perf_counter() - self.start_at
         message.total_price = usage.total_price
         message.currency = usage.currency
         self._task_state.llm_result.usage.latency = message.provider_response_latency
@@ -498,10 +498,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :param text: text
         :return: True if output moderation should direct output, otherwise False
         """
-        if self._output_moderation_handler:
-            if self._output_moderation_handler.should_direct_output():
+        if self.output_moderation_handler:
+            if self.output_moderation_handler.should_direct_output():
                 # stop subscribe new token when output moderation should direct output
-                self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
+                self._task_state.llm_result.message.content = self.output_moderation_handler.get_final_output()
                 self.queue_manager.publish(
                     QueueLLMChunkEvent(
                         chunk=LLMResultChunk(
@@ -521,6 +521,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 )
                 return True
             else:
-                self._output_moderation_handler.append_new_token(text)
+                self.output_moderation_handler.append_new_token(text)
 
         return False

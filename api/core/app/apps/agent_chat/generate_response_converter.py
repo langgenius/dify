@@ -46,7 +46,10 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         response = cls.convert_blocking_full_response(blocking_response)
 
         metadata = response.get("metadata", {})
-        response["metadata"] = cls._get_simple_metadata(metadata)
+        if isinstance(metadata, dict):
+            response["metadata"] = cls._get_simple_metadata(metadata)
+        else:
+            response["metadata"] = {}
 
         return response
 

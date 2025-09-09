@@ -71,7 +71,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, Any] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
@@ -102,7 +102,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, Any] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
