@@ -150,24 +150,25 @@ class AnswerStreamProcessor(StreamProcessor):
         stream_out_answer_node_ids = []
 
         for answer_node_id, route_position in self.route_position.items():
-
             # Answer nodes might be incorrectly removed from rest_node_ids by branch pruning
             if answer_node_id not in self.rest_node_ids:
                 # Only recover if we can establish a streaming dependency relationship
                 answer_node_config = self.graph.node_id_config_mapping.get(answer_node_id, {})
 
-                if (answer_node_config.get('data', {}).get('type') == 'answer' and
-                    self.node_run_state):  # Only when we have runtime state
-
+                if (
+                    answer_node_config.get("data", {}).get("type") == "answer" and self.node_run_state
+                ):  # Only when we have runtime state
                     # Pre-check: does this answer node reference the current streaming node?
                     current_node_id = event.route_node_state.node_id
                     answer_routes = self.generate_routes.answer_generate_route.get(answer_node_id, [])
                     references_current_node = any(
-                        (route_chunk.type == GenerateRouteChunk.ChunkType.VAR and
-                         isinstance(route_chunk, VarGenerateRouteChunk) and
-                         route_chunk.value_selector and
-                         len(route_chunk.value_selector) >= 2 and
-                         route_chunk.value_selector[0] == current_node_id)
+                        (
+                            route_chunk.type == GenerateRouteChunk.ChunkType.VAR
+                            and isinstance(route_chunk, VarGenerateRouteChunk)
+                            and route_chunk.value_selector
+                            and len(route_chunk.value_selector) >= 2
+                            and route_chunk.value_selector[0] == current_node_id
+                        )
                         for route_chunk in answer_routes
                     )
 
@@ -232,8 +233,7 @@ class AnswerStreamProcessor(StreamProcessor):
             if len(reverse_edges) > 1:
                 return True
 
-            return any(has_merge_in_path(edge.source_node_id, visited.copy())
-                      for edge in reverse_edges)
+            return any(has_merge_in_path(edge.source_node_id, visited.copy()) for edge in reverse_edges)
 
         has_merge = has_merge_in_path(answer_node_id)
 
@@ -305,5 +305,3 @@ class AnswerStreamProcessor(StreamProcessor):
 
         dynamic_result = _trace_path_to_start(llm_node_id)
         return dynamic_result
-
-

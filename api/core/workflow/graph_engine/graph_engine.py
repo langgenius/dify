@@ -922,7 +922,7 @@ class GraphEngine:
         """
         # Check if any answer node has multiple incoming paths with conditional branches
         for node_id, node_config in self.graph.node_id_config_mapping.items():
-            if node_config.get('data', {}).get('type') != 'answer':
+            if node_config.get("data", {}).get("type") != "answer":
                 continue
 
             # Check if this answer node has branch merge in its path
@@ -945,17 +945,13 @@ class GraphEngine:
 
         # Check if this node has multiple incoming edges with at least one conditional
         if len(reverse_edges) > 1:
-            has_conditional = any(
-                edge.run_condition and edge.run_condition.branch_identify
-                for edge in reverse_edges
-            )
+            has_conditional = any(edge.run_condition and edge.run_condition.branch_identify for edge in reverse_edges)
             if has_conditional:
                 return True
 
         # Recursively check upstream nodes
         return any(
-            self._has_conditional_branch_merge_to_node(edge.source_node_id, visited.copy())
-            for edge in reverse_edges
+            self._has_conditional_branch_merge_to_node(edge.source_node_id, visited.copy()) for edge in reverse_edges
         )
 
 

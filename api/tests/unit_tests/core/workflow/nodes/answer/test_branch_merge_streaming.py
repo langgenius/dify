@@ -211,7 +211,7 @@ def test_streaming_output_flow():
             title="Test LLM",
             model={"provider": "openai", "name": "gpt-3.5-turbo", "mode": "chat"},
             prompt_template=[],
-            context={"enabled": False}
+            context={"enabled": False},
         ),
         route_node_state=llm_state,
         chunk_content="Generated text chunk",
