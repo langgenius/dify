@@ -188,9 +188,9 @@ class Graph:
         for node_id, node_config in node_configs_map.items():
             try:
                 node_instance = node_factory.create_node(node_config)
-            except ValueError as e:
-                logger.warning("Failed to create node instance: %s", str(e))
-                continue
+            except Exception:
+                logger.exception("Failed to create node instance for node_id %s", node_id)
+                raise
             nodes[node_id] = node_instance
 
         return nodes
