@@ -7,7 +7,7 @@ from typing import final
 
 from core.workflow.graph import Edge, Graph
 
-from ..state_management import UnifiedStateManager
+from ..graph_state_manager import GraphStateManager
 
 
 @final
@@ -22,7 +22,7 @@ class SkipPropagator:
     def __init__(
         self,
         graph: Graph,
-        state_manager: UnifiedStateManager,
+        state_manager: GraphStateManager,
     ) -> None:
         """
         Initialize the skip propagator.

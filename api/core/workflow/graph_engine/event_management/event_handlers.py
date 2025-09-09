@@ -32,8 +32,8 @@ from ..response_coordinator import ResponseStreamCoordinator
 
 if TYPE_CHECKING:
     from ..error_handling import ErrorHandler
+    from ..graph_state_manager import GraphStateManager
     from ..graph_traversal import EdgeProcessor
-    from ..state_management import UnifiedStateManager
     from .event_manager import EventManager
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class EventHandler:
         response_coordinator: ResponseStreamCoordinator,
         event_collector: "EventManager",
         edge_processor: "EdgeProcessor",
-        state_manager: "UnifiedStateManager",
+        state_manager: "GraphStateManager",
         error_handler: "ErrorHandler",
     ) -> None:
         """

@@ -33,12 +33,12 @@ from .domain import ExecutionContext, GraphExecution
 from .entities.commands import AbortCommand
 from .error_handling import ErrorHandler
 from .event_management import EventHandler, EventManager
+from .graph_state_manager import GraphStateManager
 from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
-from .state_management import UnifiedStateManager
 from .worker_management import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ class GraphEngine:
 
         # === State Management ===
         # Unified state manager handles all node state transitions and queue operations
-        self._state_manager = UnifiedStateManager(self._graph, self._ready_queue)
+        self._state_manager = GraphStateManager(self._graph, self._ready_queue)
 
         # === Response Coordination ===
         # Coordinates response streaming from response nodes

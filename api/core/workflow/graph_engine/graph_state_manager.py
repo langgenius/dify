@@ -1,8 +1,5 @@
 """
-Unified state manager that combines node, edge, and execution tracking.
-
-This is a proposed simplification that merges NodeStateManager, EdgeStateManager,
-and ExecutionTracker into a single cohesive class.
+Graph state manager that combines node, edge, and execution tracking.
 """
 
 import queue
@@ -23,24 +20,10 @@ class EdgeStateAnalysis(TypedDict):
 
 
 @final
-class UnifiedStateManager:
-    """
-    Unified manager for all graph state operations.
-
-    This class combines the responsibilities of:
-    - NodeStateManager: Node state transitions and ready queue
-    - EdgeStateManager: Edge state transitions and analysis
-    - ExecutionTracker: Tracking executing nodes
-
-    Benefits:
-    - Single lock for all state operations (reduced contention)
-    - Cohesive state management interface
-    - Simplified dependency injection
-    """
-
+class GraphStateManager:
     def __init__(self, graph: Graph, ready_queue: queue.Queue[str]) -> None:
         """
-        Initialize the unified state manager.
+        Initialize the state manager.
 
         Args:
             graph: The workflow graph
