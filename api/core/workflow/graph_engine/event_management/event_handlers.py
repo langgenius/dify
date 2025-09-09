@@ -31,7 +31,7 @@ from ..domain.graph_execution import GraphExecution
 from ..response_coordinator import ResponseStreamCoordinator
 
 if TYPE_CHECKING:
-    from ..error_handling import ErrorHandler
+    from ..error_handler import ErrorHandler
     from ..graph_state_manager import GraphStateManager
     from ..graph_traversal import EdgeProcessor
     from .event_manager import EventManager

@@ -58,7 +58,7 @@ layers =
     orchestration
     command_processing
     event_management
-    error_handling
+    error_handler
     graph_traversal
     graph_state_manager
     worker_management

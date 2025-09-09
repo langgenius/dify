@@ -23,7 +23,7 @@ from core.workflow.graph_events import (
 from core.workflow.node_events import NodeRunResult
 
 if TYPE_CHECKING:
-    from ..domain import GraphExecution
+    from .domain import GraphExecution
 
 logger = logging.getLogger(__name__)
 

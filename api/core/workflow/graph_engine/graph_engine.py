@@ -31,7 +31,7 @@ from models.enums import UserFrom
 from .command_processing import AbortCommandHandler, CommandProcessor
 from .domain import ExecutionContext, GraphExecution
 from .entities.commands import AbortCommand
-from .error_handling import ErrorHandler
+from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
 from .graph_state_manager import GraphStateManager
 from .graph_traversal import EdgeProcessor, SkipPropagator
