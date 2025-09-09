@@ -25,6 +25,7 @@ from services.feature_service import FeatureService
 
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
 
 
 class WhereisUserArg(StrEnum):
@@ -189,8 +190,8 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def validate_dataset_token(view: Optional[Callable[Concatenate[str, P], R]] = None):
-    def decorator(view: Callable[Concatenate[str, P], R]):
+def validate_dataset_token(view: Optional[Callable[Concatenate[T, P], R]] = None):
+    def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("dataset")

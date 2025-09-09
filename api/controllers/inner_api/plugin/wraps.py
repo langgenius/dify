@@ -64,10 +64,10 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
             parser.add_argument("tenant_id", type=str, required=True, location="json")
             parser.add_argument("user_id", type=str, required=True, location="json")
 
-            kwargs = parser.parse_args()
+            p = parser.parse_args()
 
-            user_id = kwargs.get("user_id")
-            tenant_id = kwargs.get("tenant_id")
+            user_id: Optional[str] = p.get("user_id")
+            tenant_id: str = p.get("tenant_id")
 
             if not tenant_id:
                 raise ValueError("tenant_id is required")

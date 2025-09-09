@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import uuid
@@ -21,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 R = TypeVar("R")
-T = TypeVar("T")
+T = TypeVar("T", bound=MatrixoneVector)
 
 
 class MatrixoneConfig(BaseModel):
