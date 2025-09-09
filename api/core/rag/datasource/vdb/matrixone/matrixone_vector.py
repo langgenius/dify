@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from functools import wraps
-from typing import Any, Optional
+from typing import Any, Callable, Optional,Concatenate,ParamSpec, TypeVar
 
 from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -17,10 +17,10 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
-from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
 
 
 class MatrixoneConfig(BaseModel):
@@ -47,9 +47,9 @@ class MatrixoneConfig(BaseModel):
         return values
 
 
-def ensure_client(func):
+def ensure_client(func:Callable[Concatenate[T, P], R]):
     @wraps(func)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self:T, *args:P.args, **kwargs:P.kwargs):
         if self.client is None:
             self.client = self._get_client(None, False)
         return func(self, *args, **kwargs)
