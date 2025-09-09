@@ -110,7 +110,7 @@ class TestAccountService:
                 email=email,
                 name=name,
                 interface_language="en-US",
-                password="my_strong_and_secure_password",
+                password="123s4t5r6o7n8g9",
             )
 
     def test_create_account_registration_disabled(self, db_session_with_containers, mock_external_service_dependencies):
