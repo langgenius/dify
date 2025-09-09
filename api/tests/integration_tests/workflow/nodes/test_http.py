@@ -77,6 +77,7 @@ def test_get(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -110,6 +111,7 @@ def test_no_auth(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -139,6 +141,7 @@ def test_custom_authorization_header(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -231,6 +234,7 @@ def test_bearer_authorization_with_custom_header_ignored(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -271,6 +275,7 @@ def test_basic_authorization_with_custom_header_ignored(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -310,6 +315,7 @@ def test_custom_authorization_with_empty_api_key(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -343,6 +349,7 @@ def test_template(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -378,6 +385,7 @@ def test_json(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -420,6 +428,7 @@ def test_x_www_form_urlencoded(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -467,6 +476,7 @@ def test_form_data(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -517,6 +527,7 @@ def test_none_data(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -550,6 +561,7 @@ def test_mock_404(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -579,6 +591,7 @@ def test_multi_colons_parse(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -635,6 +648,7 @@ def test_nested_object_variable_selector(setup_http_mock):
             {
                 "id": "1",
                 "data": {
+                    "type": "http-request",
                     "title": "http",
                     "desc": "",
                     "method": "get",

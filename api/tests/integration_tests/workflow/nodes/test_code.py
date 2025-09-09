@@ -89,6 +89,7 @@ def test_execute_code(setup_code_executor_mock):
     code_config = {
         "id": "code",
         "data": {
+            "type": "code",
             "outputs": {
                 "result": {
                     "type": "number",
@@ -135,6 +136,7 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     code_config = {
         "id": "code",
         "data": {
+            "type": "code",
             "outputs": {
                 "result": {
                     "type": "string",
@@ -180,6 +182,7 @@ def test_execute_code_output_validator_depth():
     code_config = {
         "id": "code",
         "data": {
+            "type": "code",
             "outputs": {
                 "string_validator": {
                     "type": "string",
@@ -298,6 +301,7 @@ def test_execute_code_output_object_list():
     code_config = {
         "id": "code",
         "data": {
+            "type": "code",
             "outputs": {
                 "object_list": {
                     "type": "array[object]",
@@ -358,7 +362,8 @@ def test_execute_code_output_object_list():
         node._transform_result(result, node._node_data.outputs)
 
 
-def test_execute_code_scientific_notation():
+@pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
+def test_execute_code_scientific_notation(setup_code_executor_mock):
     code = """
     def main():
         return {
@@ -370,6 +375,7 @@ def test_execute_code_scientific_notation():
     code_config = {
         "id": "code",
         "data": {
+            "type": "code",
             "outputs": {
                 "result": {
                     "type": "number",
