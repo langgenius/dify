@@ -7,7 +7,8 @@
     "core/rag",
     "extensions",
     "libs",
-    "controllers/console/datasets"
+    "controllers/console/datasets",
+    "controllers/service_api/dataset"
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
