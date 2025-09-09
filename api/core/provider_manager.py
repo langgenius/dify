@@ -1129,6 +1129,7 @@ class ProviderManager:
                                 name=load_balancing_model_config.name,
                                 credentials=provider_model_credentials,
                                 credential_source_type=load_balancing_model_config.credential_source_type,
+                                credential_id=load_balancing_model_config.credential_id,
                             )
                         )
 

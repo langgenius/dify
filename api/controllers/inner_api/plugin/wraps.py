@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional
+from typing import Optional, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -13,6 +13,9 @@ from extensions.ext_database import db
 from libs.login import _get_user
 from models.account import Tenant
 from models.model import EndUser
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 def get_user(tenant_id: str, user_id: str | None) -> EndUser:
@@ -52,19 +55,19 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view: Optional[Callable] = None):
-    def decorator(view_func):
+def get_user_tenant(view: Optional[Callable[P, R]] = None):
+    def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
-        def decorated_view(*args, **kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs):
             # fetch json body
             parser = reqparse.RequestParser()
             parser.add_argument("tenant_id", type=str, required=True, location="json")
             parser.add_argument("user_id", type=str, required=True, location="json")
 
-            kwargs = parser.parse_args()
+            p = parser.parse_args()
 
-            user_id = kwargs.get("user_id")
-            tenant_id = kwargs.get("tenant_id")
+            user_id: Optional[str] = p.get("user_id")
+            tenant_id: str = p.get("tenant_id")
 
             if not tenant_id:
                 raise ValueError("tenant_id is required")
@@ -107,9 +110,9 @@ def get_user_tenant(view: Optional[Callable] = None):
         return decorator(view)
 
 
-def plugin_data(view: Optional[Callable] = None, *, payload_type: type[BaseModel]):
-    def decorator(view_func):
-        def decorated_view(*args, **kwargs):
+def plugin_data(view: Optional[Callable[P, R]] = None, *, payload_type: type[BaseModel]):
+    def decorator(view_func: Callable[P, R]):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs):
             try:
                 data = request.get_json()
             except Exception:

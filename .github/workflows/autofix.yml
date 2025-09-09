@@ -20,7 +20,7 @@ jobs:
           cd api
           uv sync --dev
           # Fix lint errors
-          uv run ruff check --fix-only .
+          uv run ruff check --fix .
           # Format code
           uv run ruff format .
       - name: ast-grep
