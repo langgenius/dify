@@ -296,7 +296,12 @@ class TestBatchCreateSegmentToIndexTask:
         from extensions.ext_database import db
 
         # Check that segments were created
-        segments = db.session.query(DocumentSegment).filter_by(document_id=document.id).all()
+        segments = (
+            db.session.query(DocumentSegment)
+            .filter_by(document_id=document.id)
+            .order_by(DocumentSegment.position)
+            .all()
+        )
         assert len(segments) == 3
 
         # Verify segment content and metadata
