@@ -62,7 +62,7 @@ import CustomDialog from '@/app/components/base/dialog'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
-import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -556,7 +556,7 @@ const StepTwo = ({
   })
 
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
 
   const createHandle = async () => {
     const params = getCreationParams()
@@ -586,7 +586,7 @@ const StepTwo = ({
     }
     if (mutateDatasetRes)
       mutateDatasetRes()
-    resetDatasetList()
+    invalidDatasetList()
     onStepChange && onStepChange(+1)
     isSetting && onSave && onSave()
   }

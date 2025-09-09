@@ -36,7 +36,7 @@ import ChunkStructure from '../chunk-structure'
 import Toast from '@/app/components/base/toast'
 import { RiAlertFill } from '@remixicon/react'
 import { useDocLink } from '@/context/i18n'
-import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 const rowClass = 'flex gap-x-1'
 const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
@@ -127,7 +127,7 @@ const Form = () => {
     getMembers()
   })
 
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
   const handleSave = async () => {
     if (loading)
       return
@@ -190,7 +190,7 @@ const Form = () => {
       Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (mutateDatasets) {
         await mutateDatasets()
-        resetDatasetList()
+        invalidDatasetList()
       }
     }
     catch {
