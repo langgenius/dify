@@ -1184,7 +1184,8 @@ def _combine_message_content_with_role(
             return AssistantPromptMessage(content=contents)
         case PromptMessageRole.SYSTEM:
             return SystemPromptMessage(content=contents)
-    raise NotImplementedError(f"Role {role} is not supported")
+        case _:
+            raise NotImplementedError(f"Role {role} is not supported")
 
 
 def _render_jinja2_message(

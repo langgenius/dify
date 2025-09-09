@@ -66,8 +66,8 @@ class ListOperatorNode(Node):
         return "1"
 
     def _run(self):
-        inputs: dict[str, list] = {}
-        process_data: dict[str, list] = {}
+        inputs: dict[str, Sequence[object]] = {}
+        process_data: dict[str, Sequence[object]] = {}
         outputs: dict[str, Any] = {}
 
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.variable)

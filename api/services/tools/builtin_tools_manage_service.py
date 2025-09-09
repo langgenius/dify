@@ -223,8 +223,8 @@ class BuiltinToolManageService:
         """
         add builtin tool provider
         """
-        try:
-            with Session(db.engine) as session:
+        with Session(db.engine) as session:
+            try:
                 lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
                 with redis_client.lock(lock, timeout=20):
                     provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
@@ -285,9 +285,9 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.commit()
-        except Exception as e:
-            session.rollback()
-            raise ValueError(str(e))
+            except Exception as e:
+                session.rollback()
+                raise ValueError(str(e))
         return {"result": "success"}
 
     @staticmethod

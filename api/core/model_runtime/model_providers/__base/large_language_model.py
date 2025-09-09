@@ -357,7 +357,7 @@ class LargeLanguageModel(AIModel):
             )
         return 0
 
-    def _calc_response_usage(
+    def calc_response_usage(
         self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int
     ) -> LLMUsage:
         """
