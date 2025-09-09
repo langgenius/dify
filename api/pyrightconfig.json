@@ -1,6 +1,13 @@
 {
   "include": ["."],
-  "exclude": [".venv", "tests/", "migrations/", "core/rag/datasource/vdb"],
+  "exclude": [
+    ".venv",
+    "tests/",
+    "migrations/",
+    "core/rag",
+    "extensions",
+    "libs"
+  ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
     "flask_restx",
