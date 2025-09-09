@@ -3,7 +3,7 @@ import sys
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Any, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
 
 from core.file import File
 
@@ -74,12 +74,12 @@ class NoneSegment(Segment):
 
 class StringSegment(Segment):
     value_type: SegmentType = SegmentType.STRING
-    value: str = Field(...)
+    value: str = None  # type: ignore
 
 
 class FloatSegment(Segment):
     value_type: SegmentType = SegmentType.FLOAT
-    value: float = Field(...)
+    value: float = None  # type: ignore
     # NOTE(QuantumGhost): seems that the equality for FloatSegment with `NaN` value has some problems.
     # The following tests cannot pass.
     #
@@ -98,12 +98,12 @@ class FloatSegment(Segment):
 
 class IntegerSegment(Segment):
     value_type: SegmentType = SegmentType.INTEGER
-    value: int = Field(...)
+    value: int = None  # type: ignore
 
 
 class ObjectSegment(Segment):
     value_type: SegmentType = SegmentType.OBJECT
-    value: Mapping[str, Any] = Field(...)
+    value: Mapping[str, Any] = None  # type: ignore
 
     @property
     def text(self) -> str:
@@ -136,7 +136,7 @@ class ArraySegment(Segment):
 
 class FileSegment(Segment):
     value_type: SegmentType = SegmentType.FILE
-    value: File = Field(...)
+    value: File = None  # type: ignore
 
     @property
     def markdown(self) -> str:
@@ -153,17 +153,17 @@ class FileSegment(Segment):
 
 class BooleanSegment(Segment):
     value_type: SegmentType = SegmentType.BOOLEAN
-    value: bool = Field(...)
+    value: bool = None  # type: ignore
 
 
 class ArrayAnySegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_ANY
-    value: Sequence[Any] = Field(...)
+    value: Sequence[Any] = None  # type: ignore
 
 
 class ArrayStringSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_STRING
-    value: Sequence[str] = Field(...)
+    value: Sequence[str] = None  # type: ignore
 
     @property
     def text(self) -> str:
@@ -175,17 +175,17 @@ class ArrayStringSegment(ArraySegment):
 
 class ArrayNumberSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_NUMBER
-    value: Sequence[float | int] = Field(...)
+    value: Sequence[float | int] = None  # type: ignore
 
 
 class ArrayObjectSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_OBJECT
-    value: Sequence[Mapping[str, Any]] = Field(...)
+    value: Sequence[Mapping[str, Any]] = None  # type: ignore
 
 
 class ArrayFileSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_FILE
-    value: Sequence[File] = Field(...)
+    value: Sequence[File] = None  # type: ignore
 
     @property
     def markdown(self) -> str:
@@ -205,7 +205,7 @@ class ArrayFileSegment(ArraySegment):
 
 class ArrayBooleanSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_BOOLEAN
-    value: Sequence[bool] = Field(...)
+    value: Sequence[bool] = None  # type: ignore
 
 
 def get_segment_discriminator(v: Any) -> SegmentType | None:
