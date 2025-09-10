@@ -5,7 +5,7 @@ from typing import Any, NamedTuple, TypeVar
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql.sqltypes import VARCHAR
 
@@ -114,12 +114,14 @@ class TestEnumText:
             session.commit()
 
         with Session(engine) as session:
-            user = session.query(_User).where(_User.id == admin_user_id).first()
+            user = session.scalars(select(_User).where(_User.id == admin_user_id).limit(1)).first()
+            assert user is not None
             assert user.user_type == _UserType.admin
             assert user.user_type_nullable is None
 
         with Session(engine) as session:
-            user = session.query(_User).where(_User.id == normal_user_id).first()
+            user = session.scalars(select(_User).where(_User.id == normal_user_id).limit(1)).first()
+            assert user is not None
             assert user.user_type == _UserType.normal
             assert user.user_type_nullable == _UserType.normal
 
@@ -188,4 +190,4 @@ class TestEnumText:
 
         with pytest.raises(ValueError) as exc:
             with Session(engine) as session:
-                _user = session.query(_User).where(_User.id == 1).first()
+                _user = session.scalars(select(_User).where(_User.id == 1).limit(1)).first()

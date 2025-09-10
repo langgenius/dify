@@ -147,7 +147,7 @@ class RetrievalService:
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Optional[Dataset]:
         with Session(db.engine) as session:
-            return session.query(Dataset).where(Dataset.id == dataset_id).first()
+            return session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
 
     @classmethod
     def keyword_search(

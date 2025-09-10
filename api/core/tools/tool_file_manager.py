@@ -10,6 +10,7 @@ from typing import Optional, Union
 from uuid import uuid4
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -158,13 +159,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with Session(self._engine, expire_on_commit=False) as session:
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalars(select(ToolFile).where(ToolFile.id == id).limit(1)).first()
 
         if not tool_file:
             return None
@@ -182,13 +177,9 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with Session(self._engine, expire_on_commit=False) as session:
-            message_file: MessageFile | None = (
-                session.query(MessageFile)
-                .where(
-                    MessageFile.id == id,
-                )
-                .first()
-            )
+            message_file: MessageFile | None = session.scalars(
+                select(MessageFile).where(MessageFile.id == id).limit(1)
+            ).first()
 
             # Check if message_file is not None
             if message_file is not None:
@@ -202,13 +193,9 @@ class ToolFileManager:
             else:
                 tool_file_id = None
 
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == tool_file_id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalars(
+                select(ToolFile).where(ToolFile.id == tool_file_id).limit(1)
+            ).first()
 
         if not tool_file:
             return None
@@ -226,13 +213,9 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with Session(self._engine, expire_on_commit=False) as session:
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == tool_file_id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalars(
+                select(ToolFile).where(ToolFile.id == tool_file_id).limit(1)
+            ).first()
 
         if not tool_file:
             return None, None

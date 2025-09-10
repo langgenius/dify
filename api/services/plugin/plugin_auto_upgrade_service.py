@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
@@ -8,11 +9,11 @@ class PluginAutoUpgradeService:
     @staticmethod
     def get_strategy(tenant_id: str) -> TenantPluginAutoUpgradeStrategy | None:
         with Session(db.engine) as session:
-            return (
-                session.query(TenantPluginAutoUpgradeStrategy)
+            return session.scalars(
+                select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
-                .first()
-            )
+                .limit(1)
+            ).first()
 
     @staticmethod
     def change_strategy(
@@ -24,11 +25,11 @@ class PluginAutoUpgradeService:
         include_plugins: list[str],
     ) -> bool:
         with Session(db.engine) as session:
-            exist_strategy = (
-                session.query(TenantPluginAutoUpgradeStrategy)
+            exist_strategy = session.scalars(
+                select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
-                .first()
-            )
+                .limit(1)
+            ).first()
             if not exist_strategy:
                 strategy = TenantPluginAutoUpgradeStrategy(
                     tenant_id=tenant_id,
@@ -52,11 +53,11 @@ class PluginAutoUpgradeService:
     @staticmethod
     def exclude_plugin(tenant_id: str, plugin_id: str) -> bool:
         with Session(db.engine) as session:
-            exist_strategy = (
-                session.query(TenantPluginAutoUpgradeStrategy)
+            exist_strategy = session.scalars(
+                select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
-                .first()
-            )
+                .limit(1)
+            ).first()
             if not exist_strategy:
                 # create for this tenant
                 PluginAutoUpgradeService.change_strategy(

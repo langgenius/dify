@@ -3,6 +3,7 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask_login import current_user
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -24,13 +25,9 @@ def plugin_permission_required(
             tenant_id = user.current_tenant_id
 
             with Session(db.engine) as session:
-                permission = (
-                    session.query(TenantPluginPermission)
-                    .where(
-                        TenantPluginPermission.tenant_id == tenant_id,
-                    )
-                    .first()
-                )
+                permission = session.scalars(
+                    select(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).limit(1)
+                ).first()
 
                 if not permission:
                     # no permission set, allow access for everyone
