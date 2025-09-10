@@ -42,6 +42,7 @@ class WorkflowCommentService:
     @staticmethod
     def get_comment(tenant_id: str, app_id: str, comment_id: str, session: Session = None) -> WorkflowComment:
         """Get a specific comment."""
+
         def _get_comment(session: Session) -> WorkflowComment:
             stmt = (
                 select(WorkflowComment)
@@ -96,9 +97,9 @@ class WorkflowCommentService:
             for user_id in mentioned_user_ids:
                 if isinstance(user_id, str) and uuid_value(user_id):
                     mention = WorkflowCommentMention(
-                        comment_id=comment.id, 
+                        comment_id=comment.id,
                         reply_id=None,  # This is a comment mention, not reply mention
-                        mentioned_user_id=user_id
+                        mentioned_user_id=user_id,
                     )
                     session.add(mention)
 
@@ -123,16 +124,13 @@ class WorkflowCommentService:
 
         with Session(db.engine, expire_on_commit=False) as session:
             # Get comment with validation
-            stmt = (
-                select(WorkflowComment)
-                .where(
-                    WorkflowComment.id == comment_id,
-                    WorkflowComment.tenant_id == tenant_id,
-                    WorkflowComment.app_id == app_id,
-                )
+            stmt = select(WorkflowComment).where(
+                WorkflowComment.id == comment_id,
+                WorkflowComment.tenant_id == tenant_id,
+                WorkflowComment.app_id == app_id,
             )
             comment = session.scalar(stmt)
-            
+
             if not comment:
                 raise NotFound("Comment not found")
 
@@ -151,7 +149,7 @@ class WorkflowCommentService:
             existing_mentions = session.scalars(
                 select(WorkflowCommentMention).where(
                     WorkflowCommentMention.comment_id == comment.id,
-                    WorkflowCommentMention.reply_id.is_(None)  # Only comment mentions, not reply mentions
+                    WorkflowCommentMention.reply_id.is_(None),  # Only comment mentions, not reply mentions
                 )
             ).all()
             for mention in existing_mentions:
@@ -162,18 +160,15 @@ class WorkflowCommentService:
             for user_id_str in mentioned_user_ids:
                 if isinstance(user_id_str, str) and uuid_value(user_id_str):
                     mention = WorkflowCommentMention(
-                        comment_id=comment.id, 
+                        comment_id=comment.id,
                         reply_id=None,  # This is a comment mention
-                        mentioned_user_id=user_id_str
+                        mentioned_user_id=user_id_str,
                     )
                     session.add(mention)
 
             session.commit()
-            
-            return {
-                "id": comment.id,
-                "updated_at": comment.updated_at
-            }
+
+            return {"id": comment.id, "updated_at": comment.updated_at}
 
     @staticmethod
     def delete_comment(tenant_id: str, app_id: str, comment_id: str, user_id: str) -> None:
@@ -219,10 +214,7 @@ class WorkflowCommentService:
 
     @staticmethod
     def create_reply(
-        comment_id: str, 
-        content: str, 
-        created_by: str,
-        mentioned_user_ids: Optional[list[str]] = None
+        comment_id: str, content: str, created_by: str, mentioned_user_ids: Optional[list[str]] = None
     ) -> dict:
         """Add a reply to a workflow comment."""
         WorkflowCommentService._validate_content(content)
@@ -244,29 +236,21 @@ class WorkflowCommentService:
                 if isinstance(user_id, str) and uuid_value(user_id):
                     # Create mention linking to specific reply
                     mention = WorkflowCommentMention(
-                        comment_id=comment_id,
-                        reply_id=reply.id,
-                        mentioned_user_id=user_id
+                        comment_id=comment_id, reply_id=reply.id, mentioned_user_id=user_id
                     )
                     session.add(mention)
 
             session.commit()
-            
-            return {
-                "id": reply.id,
-                "created_at": reply.created_at
-            }
+
+            return {"id": reply.id, "created_at": reply.created_at}
 
     @staticmethod
     def update_reply(
-        reply_id: str, 
-        user_id: str, 
-        content: str,
-        mentioned_user_ids: Optional[list[str]] = None
+        reply_id: str, user_id: str, content: str, mentioned_user_ids: Optional[list[str]] = None
     ) -> WorkflowCommentReply:
         """Update a comment reply."""
         WorkflowCommentService._validate_content(content)
-        
+
         with Session(db.engine, expire_on_commit=False) as session:
             reply = session.get(WorkflowCommentReply, reply_id)
             if not reply:
@@ -290,19 +274,14 @@ class WorkflowCommentService:
             for user_id_str in mentioned_user_ids:
                 if isinstance(user_id_str, str) and uuid_value(user_id_str):
                     mention = WorkflowCommentMention(
-                        comment_id=reply.comment_id,
-                        reply_id=reply.id, 
-                        mentioned_user_id=user_id_str
+                        comment_id=reply.comment_id, reply_id=reply.id, mentioned_user_id=user_id_str
                     )
                     session.add(mention)
 
             session.commit()
             session.refresh(reply)  # Refresh to get updated timestamp
 
-            return {
-                    "id": reply.id,
-                    "updated_at": reply.updated_at
-                }
+            return {"id": reply.id, "updated_at": reply.updated_at}
 
     @staticmethod
     def delete_reply(reply_id: str, user_id: str) -> None:

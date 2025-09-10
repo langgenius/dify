@@ -9,7 +9,7 @@ comment_account_fields = {"id": fields.String, "name": fields.String, "email": f
 workflow_comment_mention_fields = {
     "mentioned_user_id": fields.String,
     "mentioned_user_account": fields.Nested(comment_account_fields, allow_null=True),
-    "reply_id": fields.String
+    "reply_id": fields.String,
 }
 
 # Comment reply fields

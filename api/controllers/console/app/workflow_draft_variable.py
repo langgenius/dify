@@ -370,7 +370,7 @@ class ConversationVariableCollectionApi(Resource):
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
         db.session.commit()
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -379,7 +379,7 @@ class ConversationVariableCollectionApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_variables", type=list, required=True, location="json")
         args = parser.parse_args()
@@ -397,7 +397,7 @@ class ConversationVariableCollectionApi(Resource):
             conversation_variables=conversation_variables,
         )
 
-        return { "result": "success" }
+        return {"result": "success"}
 
 
 class SystemVariableCollectionApi(Resource):
@@ -439,7 +439,7 @@ class EnvironmentVariableCollectionApi(Resource):
             )
 
         return {"items": env_vars_list}
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -448,7 +448,7 @@ class EnvironmentVariableCollectionApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         parser = reqparse.RequestParser()
         parser.add_argument("environment_variables", type=list, required=True, location="json")
         args = parser.parse_args()
@@ -466,7 +466,7 @@ class EnvironmentVariableCollectionApi(Resource):
             environment_variables=environment_variables,
         )
 
-        return { "result": "success" }
+        return {"result": "success"}
 
 
 api.add_resource(

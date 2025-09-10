@@ -88,7 +88,7 @@ def handle_disconnect(sid):
     if mapping:
         data = json.loads(mapping)
         workflow_id = data["workflow_id"]
-        
+
         # Remove this specific session
         redis_client.hdel(f"workflow_online_users:{workflow_id}", sid)
         redis_client.delete(f"ws_sid_map:{sid}")
@@ -177,18 +177,20 @@ def broadcast_online_users(workflow_id):
     """
     sessions_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
     users = []
-    
+
     for sid, session_info_json in sessions_json.items():
         try:
             session_info = json.loads(session_info_json)
             # Each session appears as a separate "user" in the UI
-            users.append({
-                "user_id": session_info["user_id"],
-                "username": session_info["username"],
-                "avatar": session_info.get("avatar"),
-                "sid": session_info["sid"],
-                "connected_at": session_info.get("connected_at"),
-            })
+            users.append(
+                {
+                    "user_id": session_info["user_id"],
+                    "username": session_info["username"],
+                    "avatar": session_info.get("avatar"),
+                    "sid": session_info["sid"],
+                    "connected_at": session_info.get("connected_at"),
+                }
+            )
         except Exception:
             continue
 

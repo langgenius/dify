@@ -164,10 +164,10 @@ class WorkflowCommentReplyApi(Resource):
         args = parser.parse_args()
 
         result = WorkflowCommentService.create_reply(
-            comment_id=comment_id, 
-            content=args.content, 
+            comment_id=comment_id,
+            content=args.content,
             created_by=current_user.id,
-            mentioned_user_ids=args.mentioned_user_ids
+            mentioned_user_ids=args.mentioned_user_ids,
         )
 
         return result, 201
@@ -194,10 +194,7 @@ class WorkflowCommentReplyDetailApi(Resource):
         args = parser.parse_args()
 
         reply = WorkflowCommentService.update_reply(
-            reply_id=reply_id, 
-            user_id=current_user.id, 
-            content=args.content,
-            mentioned_user_ids=args.mentioned_user_ids
+            reply_id=reply_id, user_id=current_user.id, content=args.content, mentioned_user_ids=args.mentioned_user_ids
         )
 
         return reply
@@ -227,7 +224,7 @@ class WorkflowCommentMentionUsersApi(Resource):
     @get_app_model
     @marshal_with({"users": fields.List(fields.Nested(account_with_role_fields))})
     def get(self, app_model: App):
-        """Get all users in current tenant for mentions."""        
+        """Get all users in current tenant for mentions."""
         members = TenantService.get_tenant_members(current_user.current_tenant)
         return {"users": members}
 

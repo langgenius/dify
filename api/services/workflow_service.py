@@ -244,9 +244,10 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
-    
+
     def update_draft_workflow_environment_variables(
-        self, *,
+        self,
+        *,
         app_model: App,
         environment_variables: Sequence[Variable],
         account: Account,
@@ -268,7 +269,8 @@ class WorkflowService:
         db.session.commit()
 
     def update_draft_workflow_conversation_variables(
-        self, *,
+        self,
+        *,
         app_model: App,
         conversation_variables: Sequence[Variable],
         account: Account,
@@ -290,7 +292,8 @@ class WorkflowService:
         db.session.commit()
 
     def update_draft_workflow_features(
-        self, *,
+        self,
+        *,
         app_model: App,
         features: dict,
         account: Account,
@@ -303,7 +306,7 @@ class WorkflowService:
 
         if not workflow:
             raise ValueError("No draft workflow found.")
-        
+
         # validate features structure
         self.validate_features_structure(app_model=app_model, features=features)
 
