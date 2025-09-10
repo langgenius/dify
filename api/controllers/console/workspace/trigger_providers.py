@@ -447,14 +447,16 @@ class TriggerOAuthClientManageApi(Resource):
                 provider_id=provider_id,
             )
             provider_controller = TriggerManager.get_trigger_provider(user.current_tenant_id, provider_id)
-            return jsonable_encoder({
-                "configured": bool(custom_params or system_client),
-                "oauth_client_schema": provider_controller.get_oauth_client_schema(),
-                "custom_configured": bool(custom_params),
-                "custom_enabled": is_custom_enabled,
-                "redirect_uri": f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
-                "params": custom_params if custom_params else {},
-            })
+            return jsonable_encoder(
+                {
+                    "configured": bool(custom_params or system_client),
+                    "oauth_client_schema": provider_controller.get_oauth_client_schema(),
+                    "custom_configured": bool(custom_params),
+                    "custom_enabled": is_custom_enabled,
+                    "redirect_uri": f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
+                    "params": custom_params if custom_params else {},
+                }
+            )
 
         except Exception as e:
             logger.exception("Error getting OAuth client", exc_info=e)
