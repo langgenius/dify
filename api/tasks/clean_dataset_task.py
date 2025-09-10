@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
@@ -55,8 +56,8 @@ def clean_dataset_task(
             index_struct=index_struct,
             collection_binding_id=collection_binding_id,
         )
-        documents = db.session.query(Document).where(Document.dataset_id == dataset_id).all()
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id).all()
+        documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset_id)).all()
+        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id)).all()
 
         # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace
         # This ensures all invalid doc_form values are properly handled
