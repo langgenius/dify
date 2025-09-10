@@ -942,6 +942,8 @@ const translation = {
       chooseChunkStructure: 'Wybieranie struktury fragmentów',
       indexMethodIsRequired: 'Metoda indeksowa jest wymagana',
       chunkIsRequired: 'Wymagana jest struktura porcji',
+      chunksInput: 'Kawałki',
+      chunksInputTip: 'Zmienna wejściowa węzła bazy wiedzy to Chunks. Typ zmiennej to obiekt z określonym schematem JSON, który musi być zgodny z wybraną strukturą chunk.',
     },
   },
   tracing: {

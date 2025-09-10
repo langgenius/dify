@@ -4,7 +4,7 @@ import Divider from '../../base/divider'
 import { useTranslation } from 'react-i18next'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from './create-options/create-from-dsl-modal'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 const Footer = () => {
   const { t } = useTranslation()
@@ -14,7 +14,7 @@ const Footer = () => {
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
 
   const activeTab = useMemo(() => {
     if (dslUrl)
@@ -34,8 +34,8 @@ const Footer = () => {
   }, [dslUrl, replace])
 
   const onImportFromDSLSuccess = useCallback(() => {
-    resetDatasetList()
-  }, [resetDatasetList])
+    invalidDatasetList()
+  }, [invalidDatasetList])
 
   return (
     <div className='absolute bottom-0 left-0 right-0 z-10 flex flex-col gap-y-4 bg-knowledge-pipeline-creation-footer-bg px-16 pb-6 backdrop-blur-[6px]'>

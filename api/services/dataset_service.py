@@ -223,7 +223,7 @@ class DatasetService:
                     and retrieval_model.reranking_model.reranking_model_name
                 ):
                     # check if reranking model setting is valid
-                    DatasetService.check_embedding_model_setting(
+                    DatasetService.check_reranking_model_setting(
                         tenant_id,
                         retrieval_model.reranking_model.reranking_provider_name,
                         retrieval_model.reranking_model.reranking_model_name,

@@ -968,6 +968,8 @@ const translation = {
       aboutRetrieval: 'Informazioni sul metodo di recupero.',
       chunkIsRequired: 'È necessaria una struttura a blocchi',
       retrievalSettingIsRequired: 'È richiesta l\'impostazione di recupero',
+      chunksInputTip: 'La variabile di input del nodo della base di conoscenza è Chunks. Il tipo di variabile è un oggetto con uno specifico schema JSON che deve essere coerente con la struttura del chunk selezionato.',
+      chunksInput: 'Pezzetti',
     },
   },
   tracing: {

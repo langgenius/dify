@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddCircleLine } from '@remixicon/react'
 import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
-import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import Toast from '@/app/components/base/toast'
 import { useRouter } from 'next/navigation'
 
@@ -11,7 +11,7 @@ const CreateCard = () => {
   const { push } = useRouter()
 
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
 
   const handleCreate = useCallback(async () => {
     await createEmptyDataset(undefined, {
@@ -22,7 +22,7 @@ const CreateCard = () => {
             type: 'success',
             message: t('datasetPipeline.creation.successTip'),
           })
-          resetDatasetList()
+          invalidDatasetList()
           push(`/datasets/${id}/pipeline`)
         }
       },
@@ -33,7 +33,7 @@ const CreateCard = () => {
         })
       },
     })
-  }, [createEmptyDataset, push, resetDatasetList, t])
+  }, [createEmptyDataset, push, invalidDatasetList, t])
 
   return (
     <div

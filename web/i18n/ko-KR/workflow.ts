@@ -990,6 +990,8 @@ const translation = {
       changeChunkStructure: '청크 구조 변경',
       indexMethodIsRequired: '인덱스 메서드가 필요합니다.',
       retrievalSettingIsRequired: '검색 설정이 필요합니다.',
+      chunksInput: '청크',
+      chunksInputTip: '지식 기반 노드의 입력 변수는 Chunks입니다. 변수 유형은 선택된 청크 구조와 일치해야 하는 특정 JSON 스키마를 가진 객체입니다.',
     },
   },
   tracing: {

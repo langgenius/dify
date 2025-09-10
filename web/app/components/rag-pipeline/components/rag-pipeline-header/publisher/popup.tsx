@@ -38,7 +38,7 @@ import {
 import Confirm from '@/app/components/base/confirm'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 import type { IconInfo } from '@/models/datasets'
-import { useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useProviderContext } from '@/context/provider-context'
 import classNames from '@/utils/classnames'
 import PremiumBadge from '@/app/components/base/premium-badge'
@@ -86,7 +86,7 @@ const Popup = () => {
   }] = useBoolean(false)
 
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
 
   const handlePublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (publishing)
@@ -130,7 +130,7 @@ const Popup = () => {
           workflowStore.getState().setPublishedAt(res.created_at)
           mutateDatasetRes?.()
           invalidPublishedPipelineInfo()
-          resetDatasetList()
+          invalidDatasetList()
         }
       }
     }
@@ -150,9 +150,7 @@ const Popup = () => {
     if (published)
       return
     handlePublish()
-  },
-    { exactMatch: true, useCapture: true },
-  )
+  }, { exactMatch: true, useCapture: true })
 
   const goToAddDocuments = useCallback(() => {
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)

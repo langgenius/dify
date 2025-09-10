@@ -7,7 +7,7 @@ import Menu from './menu'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import type { DataSet } from '@/models/datasets'
-import { datasetDetailQueryKeyPrefix, useResetDatasetList } from '@/service/knowledge/use-dataset'
+import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import Toast from '../../base/toast'
@@ -38,13 +38,13 @@ const DropDown = ({
     setOpen(prev => !prev)
   }, [])
 
-  const resetDatasetList = useResetDatasetList()
+  const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
 
   const refreshDataset = useCallback(() => {
-    resetDatasetList()
+    invalidDatasetList()
     invalidDatasetDetail()
-  }, [invalidDatasetDetail, resetDatasetList])
+  }, [invalidDatasetDetail, invalidDatasetList])
 
   const openRenameModal = useCallback(() => {
     setShowRenameModal(true)
@@ -65,9 +65,11 @@ const DropDown = ({
       })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
+      const url = URL.createObjectURL(file)
+      a.href = url
       a.download = `${name}.pipeline`
       a.click()
+      URL.revokeObjectURL(url)
     }
     catch {
       Toast.notify({ type: 'error', message: t('app.exportFailed') })
@@ -93,13 +95,13 @@ const DropDown = ({
     try {
       await deleteDataset(dataset.id)
       Toast.notify({ type: 'success', message: t('dataset.datasetDeleted') })
-      resetDatasetList()
+      invalidDatasetList()
       replace('/datasets')
     }
     finally {
       setShowConfirmDelete(false)
     }
-  }, [dataset.id, replace, resetDatasetList, t])
+  }, [dataset.id, replace, invalidDatasetList, t])
 
   return (
     <PortalToFollowElem
