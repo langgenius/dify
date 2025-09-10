@@ -55,7 +55,6 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def trace(self, trace_info: BaseTraceInfo):
         """Simple dispatch to trace methods"""
-        logger.info("[MLflow] Trace info: %s", trace_info.__class__.__name__)
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
@@ -114,9 +113,11 @@ class MLflowDataTrace(BaseTraceInstance):
                     "app_name": node.title,
                 }
 
-                if node.node_type == NodeType.LLM:
+                if node.node_type in (NodeType.LLM, NodeType.QUESTION_CLASSIFIER):
                     inputs, llm_attributes = self._parse_llm_inputs_and_attributes(node)
                     attributes.update(llm_attributes)
+                elif node.node_type == NodeType.HTTP_REQUEST:
+                    inputs = node.process_data # contains request URL
 
                 if not inputs:
                     inputs = json.loads(node.inputs) if node.inputs else {}
@@ -134,7 +135,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 if node.status != "succeeded":
                     node_span.set_status(SpanStatus(SpanStatusCode.ERROR))
                     node_span.add_event(SpanEvent(
-                        name="error",
+                        name="exception",
                         attributes={
                             "exception.message": f"Node failed with status: {node.status}",
                             "exception.type": "Error",
@@ -147,13 +148,18 @@ class MLflowDataTrace(BaseTraceInstance):
                 outputs = json.loads(node.outputs) if node.outputs else {}
                 if node.node_type == NodeType.KNOWLEDGE_RETRIEVAL:
                     outputs = self._parse_knowledge_retrieval_outputs(outputs)
-                node_span.end(outputs=outputs, end_time_ns=datetime_to_nanoseconds(finished_at))
+                elif node.node_type == NodeType.LLM:
+                    outputs = outputs.get("text", outputs)
+                node_span.end(
+                    outputs=outputs,
+                    end_time_ns=datetime_to_nanoseconds(finished_at),
+                )
 
             # Handle workflow-level errors
             if trace_info.error:
                 workflow_span.set_status(SpanStatus(SpanStatusCode.ERROR))
                 workflow_span.add_event(SpanEvent(
-                    name="error",
+                    name="exception",
                     attributes={
                         "exception.message": trace_info.error,
                         "exception.type": "Error",
@@ -428,6 +434,7 @@ class MLflowDataTrace(BaseTraceInstance):
         """Map Dify node types to MLflow span types"""
         node_type_mapping = {
             NodeType.LLM: SpanType.LLM,
+            NodeType.QUESTION_CLASSIFIER: SpanType.LLM,
             NodeType.KNOWLEDGE_RETRIEVAL: SpanType.RETRIEVER,
             NodeType.TOOL: SpanType.TOOL,
             NodeType.CODE: SpanType.TOOL,
