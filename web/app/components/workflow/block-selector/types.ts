@@ -28,8 +28,6 @@ export type PluginDefaultValue = {
   provider_id: string
   provider_type: string
   provider_name: string
-  plugin_name: string
-  plugin_label: string
 }
 
 export type TriggerDefaultValue = PluginDefaultValue & {
@@ -46,10 +44,7 @@ export type TriggerDefaultValue = PluginDefaultValue & {
 }
 
 export type ToolDefaultValue = PluginDefaultValue & {
-  provider_id: string
-  provider_type: string
-  provider_name: string
-  trigger_name: string
+  tool_name: string
   tool_label: string
   tool_description: string
   title: string

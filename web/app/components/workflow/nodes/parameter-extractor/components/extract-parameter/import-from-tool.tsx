@@ -44,7 +44,7 @@ const ImportFromTool: FC<Props> = ({
   const workflowTools = useStore(s => s.workflowTools)
 
   const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: ToolDefaultValue) => {
-    const { provider_id, provider_type, trigger_name: tool_name } = toolInfo!
+    const { provider_id, provider_type, tool_name: tool_name } = toolInfo!
     const currentTools = (() => {
       switch (provider_type) {
         case CollectionType.builtIn:
