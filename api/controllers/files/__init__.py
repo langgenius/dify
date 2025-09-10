@@ -10,7 +10,6 @@ api = ExternalApi(
     version="1.0",
     title="Files API",
     description="API for file operations including upload and preview",
-    doc="/docs",  # Enable Swagger UI at /files/docs
 )
 
 files_ns = Namespace("files", description="File operations", path="/")

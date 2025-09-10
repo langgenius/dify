@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
@@ -26,7 +27,16 @@ from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
+
+api = ExternalApi(
+    bp,
+    version="1.0",
+    title="Console API",
+    description="Console management APIs for app configuration, monitoring, and administration",
+)
+
+# Create namespace
+console_ns = Namespace("console", description="Console management API operations", path="/")
 
 # File
 api.add_resource(FileApi, "/files/upload")
@@ -43,7 +53,16 @@ api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm"
 api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
 
 # Import other controllers
-from . import admin, apikey, extension, feature, ping, setup, version  # pyright: ignore[reportUnusedImport]
+from . import (
+    admin,  # pyright: ignore[reportUnusedImport]
+    apikey,  # pyright: ignore[reportUnusedImport]
+    extension,  # pyright: ignore[reportUnusedImport]
+    feature,  # pyright: ignore[reportUnusedImport]
+    init_validate,  # pyright: ignore[reportUnusedImport]
+    ping,  # pyright: ignore[reportUnusedImport]
+    setup,  # pyright: ignore[reportUnusedImport]
+    version,  # pyright: ignore[reportUnusedImport]
+)
 
 # Import app controllers
 from .app import (
@@ -101,6 +120,23 @@ from .explore import (
     parameter,  # pyright: ignore[reportUnusedImport]
     recommended_app,  # pyright: ignore[reportUnusedImport]
     saved_message,  # pyright: ignore[reportUnusedImport]
+)
+
+# Import tag controllers
+from .tag import tags  # pyright: ignore[reportUnusedImport]
+
+# Import workspace controllers
+from .workspace import (
+    account,  # pyright: ignore[reportUnusedImport]
+    agent_providers,  # pyright: ignore[reportUnusedImport]
+    endpoint,  # pyright: ignore[reportUnusedImport]
+    load_balancing_config,  # pyright: ignore[reportUnusedImport]
+    members,  # pyright: ignore[reportUnusedImport]
+    model_providers,  # pyright: ignore[reportUnusedImport]
+    models,  # pyright: ignore[reportUnusedImport]
+    plugin,  # pyright: ignore[reportUnusedImport]
+    tool_providers,  # pyright: ignore[reportUnusedImport]
+    workspace,  # pyright: ignore[reportUnusedImport]
 )
 
 # Explore Audio
@@ -174,19 +210,4 @@ api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
 )
 
-# Import tag controllers
-from .tag import tags  # pyright: ignore[reportUnusedImport]
-
-# Import workspace controllers
-from .workspace import (
-    account,  # pyright: ignore[reportUnusedImport]
-    agent_providers,  # pyright: ignore[reportUnusedImport]
-    endpoint,  # pyright: ignore[reportUnusedImport]
-    load_balancing_config,  # pyright: ignore[reportUnusedImport]
-    members,  # pyright: ignore[reportUnusedImport]
-    model_providers,  # pyright: ignore[reportUnusedImport]
-    models,  # pyright: ignore[reportUnusedImport]
-    plugin,  # pyright: ignore[reportUnusedImport]
-    tool_providers,  # pyright: ignore[reportUnusedImport]
-    workspace,  # pyright: ignore[reportUnusedImport]
-)
+api.add_namespace(console_ns)
