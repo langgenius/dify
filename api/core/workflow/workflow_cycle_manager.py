@@ -356,8 +356,8 @@ class WorkflowCycleManager:
         workflow_execution: WorkflowExecution,
         event: QueueNodeStartedEvent,
         status: WorkflowNodeExecutionStatus,
-        error: Optional[str] = None,
-        created_at: Optional[datetime] = None,
+        error: str | None = None,
+        created_at: datetime | None = None,
     ) -> WorkflowNodeExecution:
         """Create a node execution from an event."""
         now = naive_utc_now()

@@ -557,7 +557,9 @@ class WorkflowService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
+    def get_default_block_config(
+        self, node_type: str, filters: Mapping[str, object] | None = None
+    ) -> Mapping[str, object]:
         """
         Get default config of node.
         :param node_type: node type
@@ -568,12 +570,12 @@ class WorkflowService:
 
         # return default block config
         if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
-            return None
+            return {}
 
         node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
         default_config = node_class.get_default_config(filters=filters)
         if not default_config:
-            return None
+            return {}
 
         return default_config
 
