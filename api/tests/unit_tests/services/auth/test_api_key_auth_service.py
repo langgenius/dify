@@ -148,7 +148,7 @@ class TestApiKeyAuthService:
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
         assert result == self.mock_credentials
-        mock_session.query.assert_called_once_with(DataSourceApiKeyAuthBinding)
+        mock_session.scalars.assert_called_once_with(DataSourceApiKeyAuthBinding)
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_auth_credentials_not_found(self, mock_session):
