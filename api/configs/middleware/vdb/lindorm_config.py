@@ -26,11 +26,10 @@ class LindormConfig(BaseSettings):
         default="hnsw",
     )
     LINDORM_DISTANCE_TYPE: Optional[str] = Field(
-        description="Vector Distance Type, support l2, cosinesimil, innerproduct",
-        default="l2"
+        description="Vector Distance Type, support l2, cosinesimil, innerproduct", default="l2"
     )
     LINDORM_USING_UGC: Optional[bool] = Field(
-        description="Using UGC index will store indexes with the same IndexType/Dimension in a single big index and retrieve separately.",
+        description="Using UGC index will store indexes with the same IndexType/Dimension in a single big index.",
         default=True,
     )
     LINDORM_QUERY_TIMEOUT: Optional[float] = Field(description="The lindorm search request timeout (s)", default=2.0)

@@ -50,7 +50,7 @@ class LindormVectorStoreConfig(BaseModel):
             "use_ssl": False,
             "pool_maxsize": 128,
             "timeout": 30,
-            }
+        }
         if self.username and self.password:
             params["http_auth"] = (self.username, self.password)
         return params
@@ -250,7 +250,7 @@ class LindormVectorStore(BaseVector):
 
         search_query: dict[str, Any] = {
             "size": kwargs.get("top_k", 5),
-            "_source": True,  
+            "_source": True,
             "query": {"knn": {Field.VECTOR.value: {"vector": query_vector, "k": kwargs.get("top_k", 5)}}},
         }
 
@@ -304,13 +304,13 @@ class LindormVectorStore(BaseVector):
         if self._using_ugc:
             filters.append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
         if filters:
-            full_text_query["query"]["bool"]["filter"] = filters 
-            
+            full_text_query["query"]["bool"]["filter"] = filters
+
         params = {"timeout": self._client_config.request_timeout}
         try:
             params = {"timeout": self._client_config.request_timeout}
             if self._using_ugc:
-                params["routing"] = self._routing  
+                params["routing"] = self._routing
             response = self._client.search(index=self._collection_name, body=full_text_query, params=params)
         except Exception:
             logger.exception("Error executing vector search, query: %s", full_text_query)
@@ -327,7 +327,8 @@ class LindormVectorStore(BaseVector):
         return docs
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None):
+        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+    ):
         lock_name = f"vector_indexing_lock_{self._collection_name.lower()}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name.lower}"
@@ -344,9 +345,13 @@ class LindormVectorStore(BaseVector):
                                 "type": "knn_vector",
                                 "dimension": len(embeddings[0]),  # Make sure the dimension is correct here
                                 "method": {
-                                    "name": index_params.get("index_type", "hnsw") if index_params else dify_config.LINDORM_INDEX_TYPE,
-                                    "space_type": index_params.get("space_type", "l2") if index_params else dify_config.LINDORM_DISTANCE_TYPE,
-                                    "engine": "lvector"
+                                    "name": index_params.get("index_type", "hnsw")
+                                    if index_params
+                                    else dify_config.LINDORM_INDEX_TYPE,
+                                    "space_type": index_params.get("space_type", "l2")
+                                    if index_params
+                                    else dify_config.LINDORM_DISTANCE_TYPE,
+                                    "engine": "lvector",
                                 },
                             },
                             Field.METADATA_KEY.value: {
@@ -404,7 +409,9 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             }
             dataset.index_struct = json.dumps(index_struct_dict)
             if using_ugc:
-                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{dify_config.LINDORM_INDEX_TYPE}_{dify_config.LINDORM_DISTANCE_TYPE}"
+                index_type = dify_config.LINDORM_INDEX_TYPE
+                distance_type = dify_config.LINDORM_DISTANCE_TYPE
+                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}"
                 routing_value = class_prefix.lower()
             else:
                 index_name = class_prefix.lower()
