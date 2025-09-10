@@ -250,7 +250,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
 
         # Patch the necessary components
         with (
-            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
+            patch("core.app.apps.advanced_chat.app_runner.Session", autospec=True) as mock_session_class,
             patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
             patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
             patch.object(runner, "_init_graph") as mock_init_graph,
