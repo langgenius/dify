@@ -100,7 +100,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock MessageFile not found
-            mock_db.session.query.return_value.where.return_value.first.return_value = None
+            mock_db.session.scalars.return_value.first.return_value = None
 
             # Execute and assert exception
             with pytest.raises(FileNotFoundError) as exc_info:
