@@ -10,7 +10,7 @@ import type {
 } from '@/types/workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -113,5 +113,14 @@ export const updateEnvironmentVariables = ({ appId, environmentVariables }: {
 }) => {
   return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
     body: { environment_variables: environmentVariables },
+  })
+}
+
+export const updateConversationVariables = ({ appId, conversationVariables }: {
+  appId: string
+  conversationVariables: ConversationVariable[]
+}) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/conversation-variables`, {
+    body: { conversation_variables: conversationVariables },
   })
 }

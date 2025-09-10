@@ -370,6 +370,34 @@ class ConversationVariableCollectionApi(Resource):
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
         db.session.commit()
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
+    
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.ADVANCED_CHAT)
+    def post(self, app_model: App):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument("conversation_variables", type=list, required=True, location="json")
+        args = parser.parse_args()
+
+        workflow_service = WorkflowService()
+
+        conversation_variables_list = args.get("conversation_variables") or []
+        conversation_variables = [
+            variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_conversation_variables(
+            app_model=app_model,
+            account=current_user,
+            conversation_variables=conversation_variables,
+        )
+
+        return { "result": "success" }
 
 
 class SystemVariableCollectionApi(Resource):

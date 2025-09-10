@@ -267,6 +267,28 @@ class WorkflowService:
         # commit db session changes
         db.session.commit()
 
+    def update_draft_workflow_conversation_variables(
+        self, *,
+        app_model: App,
+        conversation_variables: Sequence[Variable],
+        account: Account,
+    ):
+        """
+        Update draft workflow conversation variables
+        """
+        # fetch draft workflow by app_model
+        workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not workflow:
+            raise ValueError("No draft workflow found.")
+
+        workflow.conversation_variables = conversation_variables
+        workflow.updated_by = account.id
+        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+
+        # commit db session changes
+        db.session.commit()
+
     def publish_workflow(
         self,
         *,
