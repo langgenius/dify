@@ -118,7 +118,7 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        account = db.session.query(Account).filter_by(id=user_id).first()
+        account = db.session.scalars(select(Account).filter_by(id=user_id).limit(1)).first()
         if not account:
             return None
 
@@ -169,7 +169,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
 
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = db.session.scalars(select(Account).filter_by(email=email).limit(1)).first()
         if not account:
             raise AccountNotFoundError()
 
@@ -368,7 +368,9 @@ class AccountService:
     def update_account_email(account: Account, email: str) -> Account:
         """Update account email"""
         account.email = email
-        account_integrate = db.session.query(AccountIntegrate).filter_by(account_id=account.id).first()
+        account_integrate = db.session.scalars(
+            select(AccountIntegrate).filter_by(account_id=account.id).limit(1)
+        ).first()
         if account_integrate:
             db.session.delete(account_integrate)
         db.session.add(account)
@@ -862,7 +864,7 @@ class AccountService:
 
     @staticmethod
     def check_email_unique(email: str) -> bool:
-        return db.session.query(Account).filter_by(email=email).first() is None
+        return db.session.scalars(select(Account).filter_by(email=email).limit(1)).first() is None
 
 
 class TenantService:

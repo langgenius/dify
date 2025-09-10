@@ -52,7 +52,7 @@ def load_user_from_request(request_from_flask_login):
                 )
                 if tenant_account_join:
                     tenant, ta = tenant_account_join
-                    account = db.session.query(Account).filter_by(id=ta.account_id).first()
+                    account = db.session.scalars(select(Account).filter_by(id=ta.account_id).limit(1)).first()
                     if account:
                         account.current_tenant = tenant
                         return account

@@ -27,7 +27,9 @@ class VectorService:
 
         for segment in segments:
             if doc_form == IndexType.PARENT_CHILD_INDEX:
-                dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
+                dataset_document = db.session.scalars(
+                    select(DatasetDocument).filter_by(id=segment.document_id).limit(1)
+                ).first()
                 if not dataset_document:
                     logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",

@@ -28,7 +28,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
 
         if not dataset:
             raise Exception("Dataset not found")

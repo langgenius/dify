@@ -3,6 +3,7 @@ import logging
 import time
 
 import click
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 import app
@@ -47,7 +48,7 @@ def clean_messages():
         if not messages:
             break
         for message in messages:
-            app = db.session.query(App).filter_by(id=message.app_id).first()
+            app = db.session.scalars(select(App).filter_by(id=message.app_id).limit(1)).first()
             if not app:
                 logger.warning(
                     "Expected App record to exist, but none was found, app_id=%s, message_id=%s",

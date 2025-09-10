@@ -1,3 +1,5 @@
+from sqlalchemy import select
+
 """
 TestContainers-based integration tests for WorkflowService.
 
@@ -1240,7 +1242,7 @@ class TestWorkflowService:
         assert result is True
 
         # Verify workflow is actually deleted
-        deleted_workflow = db.session.query(Workflow).filter_by(id=workflow.id).first()
+        deleted_workflow = db.session.scalars(select(Workflow).filter_by(id=workflow.id).limit(1)).first()
         assert deleted_workflow is None
 
     def test_delete_workflow_draft_error(self, db_session_with_containers):

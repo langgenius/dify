@@ -109,7 +109,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 context_list: list[RetrievalSourceMetadata] = []
                 resource_number = 1
                 for segment in sorted_segments:
-                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                    dataset = db.session.scalars(select(Dataset).filter_by(id=segment.dataset_id).limit(1)).first()
                     document_stmt = select(Document).where(
                         Document.id == segment.document_id,
                         Document.enabled == True,

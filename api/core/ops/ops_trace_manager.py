@@ -560,7 +560,7 @@ class TraceTask:
         inputs = message_data.message
 
         # get message file data
-        message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
+        message_file_data = db.session.scalars(select(MessageFile).filter_by(message_id=message_id).limit(1)).first()
         file_list = []
         if message_file_data and message_file_data.url is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
@@ -620,9 +620,9 @@ class TraceTask:
         # get workflow_app_log_id
         workflow_app_log_id = None
         if message_data.workflow_run_id:
-            workflow_app_log_data = (
-                db.session.query(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).first()
-            )
+            workflow_app_log_data = db.session.scalars(
+                select(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).limit(1)
+            ).first()
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         moderation_trace_info = ModerationTraceInfo(
@@ -661,9 +661,9 @@ class TraceTask:
         # get workflow_app_log_id
         workflow_app_log_id = None
         if message_data.workflow_run_id:
-            workflow_app_log_data = (
-                db.session.query(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).first()
-            )
+            workflow_app_log_data = db.session.scalars(
+                select(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).limit(1)
+            ).first()
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
@@ -756,7 +756,7 @@ class TraceTask:
         }
 
         file_url = ""
-        message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
+        message_file_data = db.session.scalars(select(MessageFile).filter_by(message_id=message_id).limit(1)).first()
         if message_file_data:
             message_file_id = message_file_data.id if message_file_data else None
             type = message_file_data.type

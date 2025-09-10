@@ -258,7 +258,7 @@ class DatasetService:
 
     @staticmethod
     def get_dataset(dataset_id) -> Optional[Dataset]:
-        dataset: Optional[Dataset] = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        dataset: Optional[Dataset] = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
         return dataset
 
     @staticmethod

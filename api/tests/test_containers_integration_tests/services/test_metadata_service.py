@@ -2,6 +2,7 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -438,7 +439,7 @@ class TestMetadataService:
         # Verify metadata was deleted from database
         from extensions.ext_database import db
 
-        deleted_metadata = db.session.query(DatasetMetadata).filter_by(id=metadata.id).first()
+        deleted_metadata = db.session.scalars(select(DatasetMetadata).filter_by(id=metadata.id).limit(1)).first()
         assert deleted_metadata is None
 
     def test_delete_metadata_not_found(self, db_session_with_containers, mock_external_service_dependencies):
@@ -519,7 +520,7 @@ class TestMetadataService:
         assert result is not None
 
         # Verify metadata was deleted from database
-        deleted_metadata = db.session.query(DatasetMetadata).filter_by(id=metadata.id).first()
+        deleted_metadata = db.session.scalars(select(DatasetMetadata).filter_by(id=metadata.id).limit(1)).first()
         assert deleted_metadata is None
 
         # Note: The service attempts to update document metadata but may not succeed

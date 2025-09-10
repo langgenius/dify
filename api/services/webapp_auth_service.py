@@ -33,7 +33,7 @@ class WebAppAuthService:
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
         """authenticate account with email and password"""
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = db.session.scalars(select(Account).filter_by(email=email).limit(1)).first()
         if not account:
             raise AccountNotFoundError()
 

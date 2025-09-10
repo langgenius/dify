@@ -913,7 +913,7 @@ class DatasetKeywordTable(Base):
                 super().__init__(object_hook=object_hook, *args, **kwargs)
 
         # get dataset
-        dataset = db.session.query(Dataset).filter_by(id=self.dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).filter_by(id=self.dataset_id).limit(1)).first()
         if not dataset:
             return None
         if self.data_source_type == "database":

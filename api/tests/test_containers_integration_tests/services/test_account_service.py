@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -389,7 +390,7 @@ class TestAccountService:
         # Verify tenant was created and linked
         from extensions.ext_database import db
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
@@ -2030,7 +2031,7 @@ class TestTenantService:
         from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
         assert account.current_tenant is not None
@@ -2305,7 +2306,7 @@ class TestRegisterService:
         from models.account import Account
         from models.model import DifySetup
 
-        account = db.session.query(Account).filter_by(email=admin_email).first()
+        account = db.session.scalars(select(Account).filter_by(email=admin_email).limit(1)).first()
         assert account is not None
         assert account.name == admin_name
         assert account.last_login_ip == ip_address
@@ -2319,7 +2320,7 @@ class TestRegisterService:
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
@@ -2354,7 +2355,7 @@ class TestRegisterService:
             from models.account import Account, Tenant, TenantAccountJoin
             from models.model import DifySetup
 
-            account = db.session.query(Account).filter_by(email=admin_email).first()
+            account = db.session.scalars(select(Account).filter_by(email=admin_email).limit(1)).first()
             tenant_count = db.session.query(Tenant).count()
             tenant_join_count = db.session.query(TenantAccountJoin).count()
             dify_setup_count = db.session.query(DifySetup).count()
@@ -2401,7 +2402,7 @@ class TestRegisterService:
         from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
         assert account.current_tenant is not None
@@ -2491,7 +2492,7 @@ class TestRegisterService:
         from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
@@ -2529,7 +2530,7 @@ class TestRegisterService:
         from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is None
 
     def test_register_workspace_limit_exceeded(self, db_session_with_containers, mock_external_service_dependencies):
@@ -2569,7 +2570,7 @@ class TestRegisterService:
         from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is None
 
     def test_register_without_workspace(self, db_session_with_containers, mock_external_service_dependencies):
@@ -2604,7 +2605,7 @@ class TestRegisterService:
         from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db.session.scalars(select(TenantAccountJoin).filter_by(account_id=account.id).limit(1)).first()
         assert tenant_join is None
 
     def test_invite_new_member_new_account(self, db_session_with_containers, mock_external_service_dependencies):
@@ -2662,7 +2663,7 @@ class TestRegisterService:
         from extensions.ext_database import db
         from models.account import Account, TenantAccountJoin
 
-        new_account = db.session.query(Account).filter_by(email=new_member_email).first()
+        new_account = db.session.scalars(select(Account).filter_by(email=new_member_email).limit(1)).first()
         assert new_account is not None
         assert new_account.name == new_member_email.split("@")[0]  # Default name from email
         assert new_account.status == "pending"
