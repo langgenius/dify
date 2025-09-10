@@ -715,7 +715,6 @@ class WorkflowByIdApi(Resource):
             raise ValueError("Marked name cannot exceed 20 characters")
         if args.marked_comment and len(args.marked_comment) > 100:
             raise ValueError("Marked comment cannot exceed 100 characters")
-        args = parser.parse_args()
 
         # Prepare update data
         update_data = {}
