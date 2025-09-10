@@ -1312,11 +1312,16 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def get_datasource_plugins(self, pipeline_id: str, is_published: bool) -> list[dict]:
+    def get_datasource_plugins(self, dataset_id: str, is_published: bool) -> list[dict]:
         """
         Get datasource plugins
         """
-        pipeline: Pipeline | None = db.session.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+        dataset: Dataset | None = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError("Dataset not found")
+        pipeline: Pipeline | None = db.session.query(Pipeline).filter(Pipeline.id == dataset.pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
 
         workflow: Workflow | None = None
         if is_published:
