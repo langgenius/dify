@@ -10,26 +10,32 @@ api = ExternalApi(
     version="1.0",
     title="Service API",
     description="API for application services",
-    doc="/docs",  # Enable Swagger UI at /v1/docs
 )
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 
-from . import index
+
+from . import index  # pyright: ignore[reportUnusedImport]
 from .app import (
-    annotation,
-    app,
-    audio,
-    completion,
-    conversation,
-    file,
-    file_preview,
-    message,
-    node_executions,
-    site,
-    workflow,
+    annotation,  # pyright: ignore[reportUnusedImport]
+    app,  # pyright: ignore[reportUnusedImport]
+    audio,  # pyright: ignore[reportUnusedImport]
+    completion,  # pyright: ignore[reportUnusedImport]
+    conversation,  # pyright: ignore[reportUnusedImport]
+    file,  # pyright: ignore[reportUnusedImport]
+    file_preview,  # pyright: ignore[reportUnusedImport]
+    message,  # pyright: ignore[reportUnusedImport]
+    site,  # pyright: ignore[reportUnusedImport]
+    workflow,  # pyright: ignore[reportUnusedImport]
 )
-from .dataset import dataset, document, hit_testing, metadata, segment, upload_file
-from .workspace import models
+from .dataset import (
+    dataset,  # pyright: ignore[reportUnusedImport]
+    document,  # pyright: ignore[reportUnusedImport]
+    hit_testing,  # pyright: ignore[reportUnusedImport]
+    metadata,  # pyright: ignore[reportUnusedImport]
+    segment,  # pyright: ignore[reportUnusedImport]
+    upload_file,  # pyright: ignore[reportUnusedImport]
+)
+from .workspace import models  # pyright: ignore[reportUnusedImport]
 
 api.add_namespace(service_api_ns)

@@ -3,7 +3,7 @@ import logging
 from json import JSONDecodeError
 from typing import Optional, Union
 
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
@@ -165,7 +165,7 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials = json.loads(load_balancing_config.encrypted_config)
+                    credentials: dict[str, object] = json.loads(load_balancing_config.encrypted_config)
                 else:
                     credentials = {}
             except JSONDecodeError:
@@ -180,11 +180,13 @@ class ModelLoadBalancingService:
             for variable in credential_secret_variables:
                 if variable in credentials:
                     try:
-                        credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            credentials.get(variable),  # ty: ignore [invalid-argument-type]
-                            decoding_rsa_key,
-                            decoding_cipher_rsa,
-                        )
+                        token_value = credentials.get(variable)
+                        if isinstance(token_value, str):
+                            credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                token_value,
+                                decoding_rsa_key,
+                                decoding_cipher_rsa,
+                            )
                     except ValueError:
                         pass
 
@@ -320,16 +322,14 @@ class ModelLoadBalancingService:
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
 
-        current_load_balancing_configs = (
-            db.session.query(LoadBalancingModelConfig)
-            .where(
+        current_load_balancing_configs = db.session.scalars(
+            select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
                 LoadBalancingModelConfig.model_name == model,
             )
-            .all()
-        )
+        ).all()
 
         # id as key, config as value
         current_load_balancing_configs_dict = {config.id: config for config in current_load_balancing_configs}
@@ -345,8 +345,9 @@ class ModelLoadBalancingService:
             credential_id = config.get("credential_id")
             enabled = config.get("enabled")
 
+            credential_record: ProviderCredential | ProviderModelCredential | None = None
+
             if credential_id:
-                credential_record: ProviderCredential | ProviderModelCredential | None = None
                 if config_from == "predefined-model":
                     credential_record = (
                         db.session.query(ProviderCredential)
