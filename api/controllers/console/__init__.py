@@ -26,7 +26,7 @@ from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
+api: ExternalApi = ExternalApi(bp)
 
 # File
 api.add_resource(FileApi, "/files/upload")
@@ -63,6 +63,7 @@ from .app import (
     site,  # pyright: ignore[reportUnusedImport]
     statistic,  # pyright: ignore[reportUnusedImport]
     workflow,  # pyright: ignore[reportUnusedImport]
+    workflow_alias,  # pyright: ignore[reportUnusedImport]
     workflow_app_log,  # pyright: ignore[reportUnusedImport]
     workflow_draft_variable,  # pyright: ignore[reportUnusedImport]
     workflow_run,  # pyright: ignore[reportUnusedImport]
@@ -174,6 +175,10 @@ api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
 )
 
+
+# Register workflow alias routes
+from .app.workflow_alias import WorkflowAliasApi  # pyright: ignore[reportUnusedImport]
+
 # Import tag controllers
 from .tag import tags  # pyright: ignore[reportUnusedImport]
 
@@ -190,3 +195,5 @@ from .workspace import (
     tool_providers,  # pyright: ignore[reportUnusedImport]
     workspace,  # pyright: ignore[reportUnusedImport]
 )
+
+api.add_resource(WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases")
