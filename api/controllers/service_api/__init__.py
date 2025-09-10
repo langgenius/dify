@@ -10,7 +10,6 @@ api = ExternalApi(
     version="1.0",
     title="Service API",
     description="API for application services",
-    doc="/docs",  # Enable Swagger UI at /v1/docs
 )
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")

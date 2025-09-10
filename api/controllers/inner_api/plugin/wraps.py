@@ -75,9 +75,6 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
             if not user_id:
                 user_id = DEFAULT_SERVICE_API_USER_ID
 
-            del kwargs["tenant_id"]
-            del kwargs["user_id"]
-
             try:
                 tenant_model = (
                     db.session.query(Tenant)
