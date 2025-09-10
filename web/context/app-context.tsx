@@ -147,9 +147,9 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   }, [userProfile?.email])
 
   useEffect(() => {
-    if (ZENDESK_FIELD_IDS.WORKSPACE && currentWorkspace?.id) {
+    if (ZENDESK_FIELD_IDS.WORKSPACE_ID && currentWorkspace?.id) {
       setZendeskConversationFields([{
-        id: ZENDESK_FIELD_IDS.WORKSPACE,
+        id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
         value: currentWorkspace.id,
       }])
     }
