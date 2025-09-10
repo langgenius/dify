@@ -687,6 +687,10 @@ class WebhookService:
 
     @classmethod
     def generate_webhook_id(cls) -> str:
-        """Generate unique 24-character webhook ID"""
+        """
+        Generate unique 24-character webhook ID
+
+        Deduplication is not needed, DB already has unique constraint on webhook_id.
+        """
         # Generate 24-character random string
         return secrets.token_urlsafe(18)[:24]  # token_urlsafe gives base64url, take first 24 chars
