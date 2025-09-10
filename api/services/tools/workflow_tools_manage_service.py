@@ -123,15 +123,15 @@ class WorkflowToolManageService:
         WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)
 
         # check if the name is unique
-        existing_workflow_tool_provider = (
-            db.session.query(WorkflowToolProvider)
+        existing_workflow_tool_provider = db.session.scalars(
+            select(WorkflowToolProvider)
             .where(
                 WorkflowToolProvider.tenant_id == tenant_id,
                 WorkflowToolProvider.name == name,
                 WorkflowToolProvider.id != workflow_tool_id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} already exists")

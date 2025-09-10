@@ -116,15 +116,15 @@ class BaseApiKeyResource(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        key = (
-            db.session.query(ApiToken)
+        key = db.session.scalars(
+            select(ApiToken)
             .where(
                 getattr(ApiToken, self.resource_id_field) == resource_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if key is None:
             flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")

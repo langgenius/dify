@@ -32,7 +32,9 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     start_at = time.perf_counter()
     indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
     # get app info
-    app = db.session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+    app = db.session.scalars(
+        select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+    ).first()
 
     if app:
         try:

@@ -33,7 +33,9 @@ def enable_annotation_reply_task(
     logger.info(click.style(f"Start add app annotation to index: {app_id}", fg="green"))
     start_at = time.perf_counter()
     # get app info
-    app = db.session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+    app = db.session.scalars(
+        select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+    ).first()
 
     if not app:
         logger.info(click.style(f"App not found: {app_id}", fg="red"))

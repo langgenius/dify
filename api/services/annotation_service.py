@@ -26,11 +26,11 @@ class AppAnnotationService:
     def up_insert_app_annotation_from_message(cls, args: dict, app_id: str) -> MessageAnnotation:
         # get app info
         assert isinstance(current_user, Account)
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -126,11 +126,11 @@ class AppAnnotationService:
         # get app info
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -160,11 +160,11 @@ class AppAnnotationService:
         # get app info
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -181,11 +181,11 @@ class AppAnnotationService:
         # get app info
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -214,11 +214,11 @@ class AppAnnotationService:
         # get app info
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -255,11 +255,11 @@ class AppAnnotationService:
         # get app info
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -296,11 +296,11 @@ class AppAnnotationService:
         # get app info
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -346,11 +346,11 @@ class AppAnnotationService:
         # get app info
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -387,11 +387,11 @@ class AppAnnotationService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # get app info
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -463,11 +463,11 @@ class AppAnnotationService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # get app info
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -501,11 +501,11 @@ class AppAnnotationService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # get app info
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
@@ -547,11 +547,11 @@ class AppAnnotationService:
     def clear_all_annotations(cls, app_id: str):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        app = (
-            db.session.query(App)
+        app = db.session.scalars(
+            select(App)
             .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not app:
             raise NotFound("App not found")
