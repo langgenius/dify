@@ -35,6 +35,9 @@ class AnnotationReplyFeature:
 
         collection_binding_detail = annotation_setting.collection_binding_detail
 
+        if not collection_binding_detail:
+            return None
+
         try:
             score_threshold = annotation_setting.score_threshold or 1
             embedding_provider_name = collection_binding_detail.provider_name
