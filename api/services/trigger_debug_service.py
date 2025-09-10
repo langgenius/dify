@@ -181,7 +181,7 @@ class TriggerDebugService:
 
                 # Publish event via Pub/Sub
                 channel = f"{cls.PUBSUB_CHANNEL_PREFIX}{session_id}"
-                subscriber_count = redis_client.publish(channel, json.dumps(event_data))
+                subscriber_count = redis_client.publish(channel, json.dumps(event_data.model_dump()))
 
                 if subscriber_count > 0:
                     active_sessions += 1
