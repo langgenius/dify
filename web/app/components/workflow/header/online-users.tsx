@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Avatar from '@/app/components/base/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { useStore } from '../store'
@@ -13,12 +13,46 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useAppContext } from '@/context/app-context'
+import { getAvatar } from '@/service/common'
+
+const useAvatarUrls = (users: any[]) => {
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const fetchAvatars = async () => {
+      const newAvatarUrls: Record<string, string> = {}
+
+      await Promise.all(
+        users.map(async (user) => {
+          if (user.avatar) {
+            try {
+              const response = await getAvatar({ avatar: user.avatar })
+              newAvatarUrls[user.sid] = response.avatar_url
+            }
+ catch (error) {
+              console.error('Failed to fetch avatar:', error)
+              newAvatarUrls[user.sid] = user.avatar
+            }
+          }
+        }),
+      )
+
+      setAvatarUrls(newAvatarUrls)
+    }
+
+    if (users.length > 0)
+      fetchAvatars()
+  }, [users])
+
+  return avatarUrls
+}
 
 const OnlineUsers = () => {
   const appId = useStore(s => s.appId)
   const { onlineUsers } = useCollaboration(appId)
   const { userProfile } = useAppContext()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const avatarUrls = useAvatarUrls(onlineUsers || [])
 
   const currentUserId = userProfile?.id
 
@@ -32,6 +66,10 @@ const OnlineUsers = () => {
   const maxVisible = shouldShowCount ? 2 : 3
   const visibleUsers = onlineUsers.slice(0, maxVisible)
   const remainingCount = onlineUsers.length - maxVisible
+
+  const getAvatarUrl = (user: any) => {
+    return avatarUrls[user.sid] || user.avatar
+  }
 
   return (
     <div className="flex items-center rounded-full bg-white px-1 py-1">
@@ -59,7 +97,7 @@ const OnlineUsers = () => {
                 >
                   <Avatar
                     name={user.username || 'User'}
-                    avatar={user.avatar}
+                    avatar={getAvatarUrl(user)}
                     size={28}
                     className="ring-2 ring-white"
                     backgroundColor={userColor}
@@ -113,7 +151,7 @@ const OnlineUsers = () => {
                       >
                         <Avatar
                           name={user.username || 'User'}
-                          avatar={user.avatar}
+                          avatar={getAvatarUrl(user)}
                           size={24}
                           backgroundColor={userColor}
                         />
