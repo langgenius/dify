@@ -240,8 +240,10 @@ class RequestFetchAppInfo(BaseModel):
 
     app_id: str
 
+
 class Event(BaseModel):
     variables: Mapping[str, Any]
+
 
 class TriggerInvokeResponse(BaseModel):
     event: Event

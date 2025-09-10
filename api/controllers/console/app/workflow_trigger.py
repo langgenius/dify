@@ -1,10 +1,9 @@
 import logging
-import secrets
 
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.console import api
@@ -126,127 +125,34 @@ class WebhookTriggerApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
     @marshal_with(webhook_trigger_fields)
-    def post(self, app_model):
-        """Create webhook trigger"""
+    def get(self, app_model):
+        """Get webhook trigger for a node"""
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
-        parser.add_argument(
-            "triggered_by",
-            type=str,
-            required=False,
-            default="production",
-            choices=["debugger", "production"],
-            help="triggered_by must be debugger or production",
-        )
         args = parser.parse_args()
 
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        if not current_user.is_editor:
-            raise Forbidden()
-
         node_id = args["node_id"]
-        triggered_by = args["triggered_by"]
 
         with Session(db.engine) as session:
-            # Check if webhook trigger already exists for this app, node, and environment
-            existing_trigger = (
-                session.query(WorkflowWebhookTrigger)
-                .filter(
-                    WorkflowWebhookTrigger.app_id == app_model.id,
-                    WorkflowWebhookTrigger.node_id == node_id,
-                    WorkflowWebhookTrigger.triggered_by == triggered_by,
-                )
-                .first()
-            )
-
-            if existing_trigger:
-                raise BadRequest("Webhook trigger already exists for this node and environment")
-
-            # Generate unique webhook_id
-            webhook_id = self._generate_webhook_id(session)
-
-            # Create new webhook trigger
-            webhook_trigger = WorkflowWebhookTrigger(
-                app_id=app_model.id,
-                node_id=node_id,
-                tenant_id=current_user.current_tenant_id,
-                webhook_id=webhook_id,
-                triggered_by=triggered_by,
-                created_by=current_user.id,
-            )
-
-            session.add(webhook_trigger)
-            session.commit()
-            session.refresh(webhook_trigger)
-
-        # Add computed fields for marshal_with
-        base_url = dify_config.SERVICE_API_URL
-        webhook_trigger.webhook_url = f"{base_url}/triggers/webhook/{webhook_trigger.webhook_id}"
-        webhook_trigger.webhook_debug_url = f"{base_url}/triggers/webhook-debug/{webhook_trigger.webhook_id}"
-
-        return webhook_trigger
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
-    def delete(self, app_model):
-        """Delete webhook trigger"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
-        parser.add_argument(
-            "triggered_by",
-            type=str,
-            required=False,
-            default="production",
-            choices=["debugger", "production"],
-            help="triggered_by must be debugger or production",
-        )
-        args = parser.parse_args()
-
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        node_id = args["node_id"]
-        triggered_by = args["triggered_by"]
-
-        with Session(db.engine) as session:
-            # Find webhook trigger
+            # Get webhook trigger for this app and node
             webhook_trigger = (
                 session.query(WorkflowWebhookTrigger)
                 .filter(
                     WorkflowWebhookTrigger.app_id == app_model.id,
                     WorkflowWebhookTrigger.node_id == node_id,
-                    WorkflowWebhookTrigger.triggered_by == triggered_by,
-                    WorkflowWebhookTrigger.tenant_id == current_user.current_tenant_id,
                 )
                 .first()
             )
 
             if not webhook_trigger:
-                raise NotFound("Webhook trigger not found")
+                raise NotFound("Webhook trigger not found for this node")
 
-            session.delete(webhook_trigger)
-            session.commit()
+            # Add computed fields for marshal_with
+            base_url = dify_config.SERVICE_API_URL
+            webhook_trigger.webhook_url = f"{base_url}/triggers/webhook/{webhook_trigger.webhook_id}"  # type: ignore
+            webhook_trigger.webhook_debug_url = f"{base_url}/triggers/webhook-debug/{webhook_trigger.webhook_id}"  # type: ignore
 
-        return {"result": "success"}, 204
-
-    def _generate_webhook_id(self, session: Session) -> str:
-        """Generate unique 24-character webhook ID"""
-        while True:
-            # Generate 24-character random string
-            webhook_id = secrets.token_urlsafe(18)[:24]  # token_urlsafe gives base64url, take first 24 chars
-
-            # Check if it already exists
-            existing = (
-                session.query(WorkflowWebhookTrigger).filter(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
-            )
-
-            if not existing:
-                return webhook_id
+            return webhook_trigger
 
 
 class AppTriggersApi(Resource):
@@ -259,6 +165,9 @@ class AppTriggersApi(Resource):
     @marshal_with(triggers_list_fields)
     def get(self, app_model):
         """Get app triggers list"""
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+        
         with Session(db.engine) as session:
             # Get all triggers for this app using select API
             triggers = (
@@ -278,9 +187,9 @@ class AppTriggersApi(Resource):
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         for trigger in triggers:
             if trigger.trigger_type == "trigger-plugin":
-                trigger.icon = url_prefix + trigger.provider_name + "/icon"
+                trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
             else:
-                trigger.icon = ""
+                trigger.icon = ""  # type: ignore
 
         return {"data": triggers}
 
@@ -327,9 +236,9 @@ class AppTriggerEnableApi(Resource):
         # Add computed icon field
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         if trigger.trigger_type == "trigger-plugin":
-            trigger.icon = url_prefix + trigger.provider_name + "/icon"
+            trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
         else:
-            trigger.icon = ""
+            trigger.icon = ""  # type: ignore
 
         return trigger
 

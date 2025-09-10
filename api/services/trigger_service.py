@@ -29,6 +29,8 @@ class TriggerService:
     __ENDPOINT_REQUEST_CACHE_COUNT__ = 10
     __ENDPOINT_REQUEST_CACHE_EXPIRE_MS__ = 5 * 60 * 1000
 
+    __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
+
     @classmethod
     def dispatch_triggered_workflows(
         cls, subscription: TriggerSubscription, trigger: TriggerEntity, request_id: str
@@ -150,7 +152,13 @@ class TriggerService:
 
     @classmethod
     def process_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
-        """Extract and process data from incoming endpoint request."""
+        """
+        Extract and process data from incoming endpoint request.
+
+        Args:
+            endpoint_id: Endpoint ID
+            request: Request
+        """
         subscription = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
         if not subscription:
             return None
@@ -192,7 +200,14 @@ class TriggerService:
     def get_subscriber_triggers(
         cls, tenant_id: str, subscription_id: str, trigger_name: str
     ) -> list[WorkflowPluginTrigger]:
-        """Get WorkflowPluginTriggers for a subscription and trigger."""
+        """
+        Get WorkflowPluginTriggers for a subscription and trigger.
+
+        Args:
+            tenant_id: Tenant ID
+            subscription_id: Subscription ID
+            trigger_name: Trigger name
+        """
         with Session(db.engine, expire_on_commit=False) as session:
             subscribers = session.scalars(
                 select(WorkflowPluginTrigger).where(

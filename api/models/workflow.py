@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -288,6 +288,54 @@ class Workflow(Base):
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
+
+    def walk_nodes(
+        self, specific_node_type: NodeType | None = None
+    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+        """
+        Walk through the workflow nodes, yield each node configuration.
+
+        Each node configuration is a tuple containing the node's id and the node's properties.
+
+        Node properties example:
+        {
+            "type": "llm",
+            "title": "LLM",
+            "desc": "",
+            "variables": [],
+            "model":
+              {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": { "temperature": 0.7 },
+              },
+            "prompt_template": [{ "role": "system", "text": "" }],
+            "context": { "enabled": false, "variable_selector": [] },
+            "vision": { "enabled": false },
+            "memory":
+              {
+                "window": { "enabled": false, "size": 10 },
+                "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+                "role_prefix": { "user": "", "assistant": "" },
+              },
+            "selected": false,
+        }
+
+        For specific node type, refer to `core.workflow.nodes`
+        """
+        graph_dict = self.graph_dict
+        if "nodes" not in graph_dict:
+            raise WorkflowDataError("nodes not found in workflow graph")
+
+        if specific_node_type:
+            yield from (
+                (node["id"], node["data"])
+                for node in graph_dict["nodes"]
+                if node["data"]["type"] == specific_node_type.value
+            )
+        else:
+            yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
 
     def user_input_form(self, to_old_structure: bool = False) -> list:
         # get start node from graph
@@ -1396,7 +1444,6 @@ class WorkflowWebhookTrigger(Base):
     - node_id (varchar) Node ID which node in the workflow
     - tenant_id (uuid) Workspace ID
     - webhook_id (varchar) Webhook ID for URL: https://api.dify.ai/triggers/webhook/:webhook_id
-    - triggered_by (varchar) Environment: debugger or production
     - created_by (varchar) User ID of the creator
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time
@@ -1406,7 +1453,7 @@ class WorkflowWebhookTrigger(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_webhook_trigger_pkey"),
         sa.Index("workflow_webhook_trigger_tenant_idx", "tenant_id"),
-        sa.UniqueConstraint("app_id", "node_id", "triggered_by", name="uniq_node"),
+        sa.UniqueConstraint("app_id", "node_id", name="uniq_node"),
         sa.UniqueConstraint("webhook_id", name="uniq_webhook_id"),
     )
 
@@ -1415,7 +1462,6 @@ class WorkflowWebhookTrigger(Base):
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
-    triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(

@@ -385,7 +385,7 @@ class TestVisualToCron(unittest.TestCase):
         visual_config = VisualConfig(on_minute=0)
         result = ScheduleService.visual_to_cron("hourly", visual_config)
         assert result == "0 * * * *"
-        
+
         # Maximum value
         visual_config = VisualConfig(on_minute=59)
         result = ScheduleService.visual_to_cron("hourly", visual_config)
@@ -397,7 +397,7 @@ class TestVisualToCron(unittest.TestCase):
         visual_config = VisualConfig(time="12:00 AM")
         result = ScheduleService.visual_to_cron("daily", visual_config)
         assert result == "0 0 * * *"
-        
+
         # Noon
         visual_config = VisualConfig(time="12:00 PM")
         result = ScheduleService.visual_to_cron("daily", visual_config)
@@ -429,7 +429,7 @@ class TestVisualToCron(unittest.TestCase):
             monthly_days=all_days,
         )
         result = ScheduleService.visual_to_cron("monthly", visual_config)
-        expected_days = ','.join([str(i) for i in range(1, 32)]) + ',L'
+        expected_days = ",".join([str(i) for i in range(1, 32)]) + ",L"
         assert result == f"1 0 {expected_days} * *"
 
     def test_visual_to_cron_monthly_no_days(self):
