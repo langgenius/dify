@@ -340,6 +340,9 @@ class DatasetApi(DatasetApiResource):
         else:
             data["embedding_available"] = True
 
+            # force update search method to keyword_search if indexing_technique is economic
+            data['retrieval_model_dict']['search_method'] = 'keyword_search'
+
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
