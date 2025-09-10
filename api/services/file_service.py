@@ -1,7 +1,7 @@
 import hashlib
 import os
 import uuid
-from typing import Any, Literal, Union
+from typing import Literal, Union
 
 from werkzeug.exceptions import NotFound
 
@@ -35,7 +35,7 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Union[Account, EndUser, Any],
+        user: Union[Account, EndUser],
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> UploadFile:

@@ -71,7 +71,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, Any] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
@@ -82,7 +82,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump(mode="json"))
             yield response_chunk
 
     @classmethod
@@ -102,7 +102,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, Any] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
@@ -110,7 +110,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
             }
 
             if isinstance(sub_stream_response, MessageEndStreamResponse):
-                sub_stream_response_dict = sub_stream_response.to_dict()
+                sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
                 metadata = sub_stream_response_dict.get("metadata", {})
                 sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
                 response_chunk.update(sub_stream_response_dict)
@@ -118,8 +118,8 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
-                response_chunk.update(sub_stream_response.to_ignore_detail_dict())  # ty: ignore [unresolved-attribute]
+                response_chunk.update(sub_stream_response.to_ignore_detail_dict())
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump(mode="json"))
 
             yield response_chunk

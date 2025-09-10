@@ -23,7 +23,7 @@ NumberType = Union[int, float]
 
 
 class DefaultValue(BaseModel):
-    value: Any
+    value: Any = None
     type: DefaultValueType
     key: str
 

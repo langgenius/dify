@@ -95,6 +95,9 @@ class OAuthCallback(Resource):
         if state:
             invite_token = state
 
+        if not code:
+            return {"error": "Authorization code is required"}, 400
+
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
@@ -104,7 +107,7 @@ class OAuthCallback(Resource):
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
-            invitation = RegisterService._get_invitation_by_token(token=invite_token)
+            invitation = RegisterService.get_invitation_by_token(token=invite_token)
             if invitation:
                 invitation_email = invitation.get("email", None)
                 if invitation_email != user_info.email:

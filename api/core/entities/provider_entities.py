@@ -107,7 +107,7 @@ class CustomModelConfiguration(BaseModel):
 
     model: str
     model_type: ModelType
-    credentials: dict | None
+    credentials: dict | None = None
     current_credential_id: Optional[str] = None
     current_credential_name: Optional[str] = None
     available_model_credentials: list[CredentialConfiguration] = []
@@ -145,6 +145,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
     name: str
     credentials: dict
     credential_source_type: str | None = None
+    credential_id: str | None = None
 
 
 class ModelSettings(BaseModel):

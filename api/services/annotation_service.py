@@ -349,7 +349,7 @@ class AppAnnotationService:
 
         try:
             # Skip the first row
-            df = pd.read_csv(file, dtype=str)
+            df = pd.read_csv(file.stream, dtype=str)
             result = []
             for _, row in df.iterrows():
                 content = {"question": row.iloc[0], "answer": row.iloc[1]}
@@ -463,15 +463,23 @@ class AppAnnotationService:
         annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
-            return {
-                "id": annotation_setting.id,
-                "enabled": True,
-                "score_threshold": annotation_setting.score_threshold,
-                "embedding_model": {
-                    "embedding_provider_name": collection_binding_detail.provider_name,
-                    "embedding_model_name": collection_binding_detail.model_name,
-                },
-            }
+            if collection_binding_detail:
+                return {
+                    "id": annotation_setting.id,
+                    "enabled": True,
+                    "score_threshold": annotation_setting.score_threshold,
+                    "embedding_model": {
+                        "embedding_provider_name": collection_binding_detail.provider_name,
+                        "embedding_model_name": collection_binding_detail.model_name,
+                    },
+                }
+            else:
+                return {
+                    "id": annotation_setting.id,
+                    "enabled": True,
+                    "score_threshold": annotation_setting.score_threshold,
+                    "embedding_model": {},
+                }
         return {"enabled": False}
 
     @classmethod
@@ -506,15 +514,23 @@ class AppAnnotationService:
 
         collection_binding_detail = annotation_setting.collection_binding_detail
 
-        return {
-            "id": annotation_setting.id,
-            "enabled": True,
-            "score_threshold": annotation_setting.score_threshold,
-            "embedding_model": {
-                "embedding_provider_name": collection_binding_detail.provider_name,
-                "embedding_model_name": collection_binding_detail.model_name,
-            },
-        }
+        if collection_binding_detail:
+            return {
+                "id": annotation_setting.id,
+                "enabled": True,
+                "score_threshold": annotation_setting.score_threshold,
+                "embedding_model": {
+                    "embedding_provider_name": collection_binding_detail.provider_name,
+                    "embedding_model_name": collection_binding_detail.model_name,
+                },
+            }
+        else:
+            return {
+                "id": annotation_setting.id,
+                "enabled": True,
+                "score_threshold": annotation_setting.score_threshold,
+                "embedding_model": {},
+            }
 
     @classmethod
     def clear_all_annotations(cls, app_id: str):

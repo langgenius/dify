@@ -111,7 +111,7 @@ class TagBindingCreateApi(Resource):
         args = parser.parse_args()
         TagService.save_tag_binding(args)
 
-        return 200
+        return {"result": "success"}, 200
 
 
 class TagBindingDeleteApi(Resource):
@@ -132,7 +132,7 @@ class TagBindingDeleteApi(Resource):
         args = parser.parse_args()
         TagService.delete_tag_binding(args)
 
-        return 200
+        return {"result": "success"}, 200
 
 
 api.add_resource(TagListApi, "/tags")
