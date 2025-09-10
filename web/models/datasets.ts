@@ -377,7 +377,7 @@ export type InitialDocumentDetail = {
   data_source_info: DataSourceInfo
   dataset_process_rule_id: string
   name: string
-  created_from: 'api' | 'web'
+  created_from: 'rag-pipeline' | 'api' | 'web'
   created_by: string
   created_at: number
   indexing_status: DocumentIndexingStatus
@@ -403,7 +403,6 @@ export type SimpleDocumentDetail = InitialDocumentDetail & {
     }
   }
   doc_metadata?: MetadataItemWithValue[]
-  created_from: 'rag-pipeline' | 'web'
 }
 
 export type DocumentListResponse = {
