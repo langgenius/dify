@@ -22,7 +22,7 @@ from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
-from .. import api
+from .. import api, console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,13 @@ def get_oauth_providers():
         return OAUTH_PROVIDERS
 
 
+@console_ns.route("/oauth/login/<provider>")
 class OAuthLogin(Resource):
+    @api.doc("oauth_login")
+    @api.doc(description="Initiate OAuth login process")
+    @api.doc(params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"})
+    @api.response(302, "Redirect to OAuth authorization URL")
+    @api.response(400, "Invalid provider")
     def get(self, provider: str):
         invite_token = request.args.get("invite_token") or None
         OAUTH_PROVIDERS = get_oauth_providers()
@@ -63,7 +69,19 @@ class OAuthLogin(Resource):
         return redirect(auth_url)
 
 
+@console_ns.route("/oauth/authorize/<provider>")
 class OAuthCallback(Resource):
+    @api.doc("oauth_callback")
+    @api.doc(description="Handle OAuth callback and complete login process")
+    @api.doc(
+        params={
+            "provider": "OAuth provider name (github/google)",
+            "code": "Authorization code from OAuth provider",
+            "state": "Optional state parameter (used for invite token)",
+        }
+    )
+    @api.response(302, "Redirect to console with access token")
+    @api.response(400, "OAuth process failed")
     def get(self, provider: str):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
@@ -184,7 +202,3 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     AccountService.link_account_integrate(provider, user_info.id, account)
 
     return account
-
-
-api.add_resource(OAuthLogin, "/oauth/login/<provider>")
-api.add_resource(OAuthCallback, "/oauth/authorize/<provider>")
