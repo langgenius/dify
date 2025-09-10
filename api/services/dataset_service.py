@@ -2738,11 +2738,7 @@ class DatasetPermissionService:
             ).where(DatasetPermission.dataset_id == dataset_id)
         ).all()
 
-        user_list = []
-        for user in user_list_query:
-            user_list.append(user.account_id)
-
-        return user_list
+        return user_list_query
 
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
