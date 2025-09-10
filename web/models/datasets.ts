@@ -403,7 +403,7 @@ export type SimpleDocumentDetail = InitialDocumentDetail & {
     }
   }
   doc_metadata?: MetadataItemWithValue[]
-  created_from: string
+  created_from: 'rag-pipeline' | 'web'
 }
 
 export type DocumentListResponse = {
