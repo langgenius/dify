@@ -167,7 +167,7 @@ class AppTriggersApi(Resource):
         """Get app triggers list"""
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        
+
         with Session(db.engine) as session:
             # Get all triggers for this app using select API
             triggers = (

@@ -33,6 +33,7 @@ class WebhookService:
     """Service for handling webhook operations."""
 
     __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
+    MAX_WEBHOOK_NODES_PER_WORKFLOW = 5  # Maximum allowed webhook nodes per workflow
 
     @classmethod
     def get_webhook_trigger_and_workflow(
@@ -611,6 +612,9 @@ class WebhookService:
         Approach:
         Frequent DB operations may cause performance issues, using Redis to cache it instead.
         If any record exists, cache it.
+
+        Limits:
+        - Maximum 5 webhook nodes per workflow
         """
 
         class Cache(BaseModel):
@@ -623,6 +627,13 @@ class WebhookService:
             webhook_id: str
 
         nodes_id_in_graph = [node_id for node_id, _ in workflow.walk_nodes(NodeType.TRIGGER_WEBHOOK)]
+
+        # Check webhook node limit
+        if len(nodes_id_in_graph) > cls.MAX_WEBHOOK_NODES_PER_WORKFLOW:
+            raise ValueError(
+                f"Workflow exceeds maximum webhook node limit. "
+                f"Found {len(nodes_id_in_graph)} webhook nodes, maximum allowed is {cls.MAX_WEBHOOK_NODES_PER_WORKFLOW}"
+            )
 
         not_found_in_cache: list[str] = []
         for node_id in nodes_id_in_graph:
