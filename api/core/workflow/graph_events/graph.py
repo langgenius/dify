@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import Field
 
@@ -10,7 +10,7 @@ class GraphRunStartedEvent(BaseGraphEvent):
 
 
 class GraphRunSucceededEvent(BaseGraphEvent):
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, Any] | None = None
 
 
 class GraphRunFailedEvent(BaseGraphEvent):
@@ -20,11 +20,11 @@ class GraphRunFailedEvent(BaseGraphEvent):
 
 class GraphRunPartialSucceededEvent(BaseGraphEvent):
     exceptions_count: int = Field(..., description="exception count")
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, Any] | None = None
 
 
 class GraphRunAbortedEvent(BaseGraphEvent):
     """Event emitted when a graph run is aborted by user command."""
 
-    reason: Optional[str] = Field(default=None, description="reason for abort")
-    outputs: Optional[dict[str, Any]] = Field(default=None, description="partial outputs if any")
+    reason: str | None = Field(default=None, description="reason for abort")
+    outputs: dict[str, Any] | None = Field(default=None, description="partial outputs if any")

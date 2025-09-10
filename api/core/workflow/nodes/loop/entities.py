@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator
 
@@ -41,7 +41,7 @@ class LoopNodeData(BaseLoopNodeData):
     loop_count: int  # Maximum number of loops
     break_conditions: list[Condition]  # Conditions to break the loop
     logical_operator: Literal["and", "or"]
-    loop_variables: Optional[list[LoopVariableData]] = Field(default_factory=list[LoopVariableData])
+    loop_variables: list[LoopVariableData] | None = Field(default_factory=list[LoopVariableData])
     outputs: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("outputs", mode="before")
@@ -74,7 +74,7 @@ class LoopState(BaseLoopState):
     """
 
     outputs: list[Any] = Field(default_factory=list)
-    current_output: Optional[Any] = None
+    current_output: Any = None
 
     class MetaData(BaseLoopState.MetaData):
         """
@@ -83,7 +83,7 @@ class LoopState(BaseLoopState):
 
         loop_length: int
 
-    def get_last_output(self) -> Optional[Any]:
+    def get_last_output(self) -> Any:
         """
         Get last output.
         """
@@ -91,7 +91,7 @@ class LoopState(BaseLoopState):
             return self.outputs[-1]
         return None
 
-    def get_current_output(self) -> Optional[Any]:
+    def get_current_output(self) -> Any:
         """
         Get current output.
         """

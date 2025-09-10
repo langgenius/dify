@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.variables.segments import Segment
 from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
@@ -17,7 +17,7 @@ class VariableAggregatorNode(Node):
     def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = VariableAssignerNodeData(**data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -26,7 +26,7 @@ class VariableAggregatorNode(Node):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:

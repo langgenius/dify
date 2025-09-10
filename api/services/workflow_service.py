@@ -543,12 +543,12 @@ class WorkflowService:
             # This will prevent validation errors from breaking the workflow
             return []
 
-    def get_default_block_configs(self) -> list[dict]:
+    def get_default_block_configs(self) -> Sequence[Mapping[str, object]]:
         """
         Get default block configs
         """
         # return default block config
-        default_block_configs = []
+        default_block_configs: list[Mapping[str, object]] = []
         for node_class_mapping in NODE_TYPE_CLASSES_MAPPING.values():
             node_class = node_class_mapping[LATEST_VERSION]
             default_config = node_class.get_default_config()

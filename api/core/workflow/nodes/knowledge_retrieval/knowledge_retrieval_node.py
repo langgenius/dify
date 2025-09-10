@@ -4,7 +4,7 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import Float, and_, func, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
@@ -119,7 +119,7 @@ class KnowledgeRetrievalNode(Node):
     def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = KnowledgeRetrievalNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -128,7 +128,7 @@ class KnowledgeRetrievalNode(Node):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -410,7 +410,7 @@ class KnowledgeRetrievalNode(Node):
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
+    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
         document_query = db.session.query(Document).where(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
@@ -568,7 +568,7 @@ class KnowledgeRetrievalNode(Node):
         return automatic_metadata_filters
 
     def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list[Any]
+        self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list[Any]
     ) -> list[Any]:
         if value is None and condition not in ("empty", "not empty"):
             return filters

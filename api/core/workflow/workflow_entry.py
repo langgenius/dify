@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -43,7 +43,7 @@ class WorkflowEntry:
         call_depth: int,
         variable_pool: VariablePool,
         graph_runtime_state: GraphRuntimeState,
-        command_channel: Optional[CommandChannel] = None,
+        command_channel: CommandChannel | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -341,7 +341,7 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
-    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         # NOTE(QuantumGhost): Avoid using this function in new code.
         # Keep values structured as long as possible and only convert to dict
         # immediately before serialization (e.g., JSON serialization) to maintain

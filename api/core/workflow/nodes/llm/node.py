@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
@@ -139,7 +139,7 @@ class LLMNode(Node):
     def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = LLMNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -148,7 +148,7 @@ class LLMNode(Node):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -354,10 +354,10 @@ class LLMNode(Node):
         node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
-        stop: Optional[Sequence[str]] = None,
+        stop: Sequence[str] | None = None,
         user_id: str,
         structured_output_enabled: bool,
-        structured_output: Optional[Mapping[str, Any]] = None,
+        structured_output: Mapping[str, Any] | None = None,
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
@@ -716,7 +716,7 @@ class LLMNode(Node):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
         tenant_id: str,
-    ) -> tuple[Sequence[PromptMessage], Optional[Sequence[str]]]:
+    ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
         if isinstance(prompt_template, list):
@@ -959,7 +959,7 @@ class LLMNode(Node):
         return variable_mapping
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "llm",
             "config": {
@@ -987,7 +987,7 @@ class LLMNode(Node):
     def handle_list_messages(
         *,
         messages: Sequence[LLMNodeChatModelMessage],
-        context: Optional[str],
+        context: str | None,
         jinja2_variables: Sequence[VariableSelector],
         variable_pool: VariablePool,
         vision_detail_config: ImagePromptMessageContent.DETAIL,
@@ -1175,7 +1175,7 @@ class LLMNode(Node):
 
 
 def _combine_message_content_with_role(
-    *, contents: Optional[str | list[PromptMessageContentUnionTypes]] = None, role: PromptMessageRole
+    *, contents: str | list[PromptMessageContentUnionTypes] | None = None, role: PromptMessageRole
 ):
     match role:
         case PromptMessageRole.USER:
@@ -1281,7 +1281,7 @@ def _handle_memory_completion_mode(
 def _handle_completion_template(
     *,
     template: LLMNodeCompletionModelPromptTemplate,
-    context: Optional[str],
+    context: str | None,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
 ) -> Sequence[PromptMessage]:

@@ -145,11 +145,10 @@ class Node:
             for event in result:
                 # NOTE: this is necessary because iteration and loop nodes yield GraphNodeEventBase
                 if isinstance(event, NodeEventBase):  # pyright: ignore[reportUnnecessaryIsInstance]
-                    event = self._dispatch(event)
-
-                if not event.in_iteration_id and not event.in_loop_id:
+                    yield self._dispatch(event)
+                elif isinstance(event, GraphNodeEventBase) and not event.in_iteration_id and not event.in_loop_id:  # pyright: ignore[reportUnnecessaryIsInstance]
                     event.id = self._node_execution_id
-                yield event
+                    yield event
         except Exception as e:
             logger.exception("Node %s failed to run", self._node_id)
             result = NodeRunResult(

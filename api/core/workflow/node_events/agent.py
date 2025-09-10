@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import Field
 
@@ -14,5 +14,5 @@ class AgentLogEvent(NodeEventBase):
     error: str | None = Field(..., description="error")
     status: str = Field(..., description="status")
     data: Mapping[str, Any] = Field(..., description="data")
-    metadata: Optional[Mapping[str, Any]] = Field(default=None, description="metadata")
+    metadata: Mapping[str, Any] | None = Field(default=None, description="metadata")
     node_id: str = Field(..., description="node id")
