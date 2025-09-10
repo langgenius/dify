@@ -299,7 +299,9 @@ class AccountService:
         if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
 
-            raise EmailCodeAccountDeletionRateLimitExceededError()
+            raise EmailCodeAccountDeletionRateLimitExceededError(
+                cls.email_code_account_deletion_rate_limiter.time_window / 60
+            )
 
         send_account_deletion_verification_code.delay(to=email, code=code)
 
@@ -447,7 +449,7 @@ class AccountService:
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import PasswordResetRateLimitExceededError
 
-            raise PasswordResetRateLimitExceededError()
+            raise PasswordResetRateLimitExceededError(cls.reset_password_rate_limiter.time_window / 60)
 
         code, token = cls.generate_reset_password_token(account_email, account)
 
@@ -480,7 +482,7 @@ class AccountService:
         if cls.email_register_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailRegisterRateLimitExceededError
 
-            raise EmailRegisterRateLimitExceededError()
+            raise EmailRegisterRateLimitExceededError(cls.email_register_rate_limiter.time_window / 60)
 
         code, token = cls.generate_email_register_token(account_email)
 
@@ -517,7 +519,7 @@ class AccountService:
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
-            raise EmailChangeRateLimitExceededError()
+            raise EmailChangeRateLimitExceededError(cls.change_email_rate_limiter.time_window / 60)
 
         code, token = cls.generate_change_email_token(account_email, account, old_email=old_email)
 
@@ -561,7 +563,7 @@ class AccountService:
         if cls.owner_transfer_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import OwnerTransferRateLimitExceededError
 
-            raise OwnerTransferRateLimitExceededError()
+            raise OwnerTransferRateLimitExceededError(cls.owner_transfer_rate_limiter.time_window / 60)
 
         code, token = cls.generate_owner_transfer_token(account_email, account)
         workspace_name = workspace_name or ""
@@ -723,7 +725,7 @@ class AccountService:
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
-            raise EmailCodeLoginRateLimitExceededError()
+            raise EmailCodeLoginRateLimitExceededError(cls.email_code_login_rate_limiter.time_window / 60)
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
