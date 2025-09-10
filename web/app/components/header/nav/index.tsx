@@ -42,7 +42,6 @@ const Nav = ({
   useEffect(() => {
     if (pathname === link)
       setLinkLastSearchParams(searchParams.toString())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams])
 
   return (

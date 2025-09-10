@@ -1,5 +1,5 @@
 import cn from '@/utils/classnames'
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 
 type CredentialIconProps = {
   avatar_url?: string
@@ -21,10 +21,15 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
   size = 20,
   className = '',
 }) => {
+  const [showAvatar, setShowAvatar] = useState(!!avatar_url && avatar_url !== 'default')
   const firstLetter = useMemo(() => name.charAt(0).toUpperCase(), [name])
   const bgColor = useMemo(() => ICON_BG_COLORS[firstLetter.charCodeAt(0) % ICON_BG_COLORS.length], [firstLetter])
 
-  if (avatar_url && avatar_url !== 'default') {
+  const onImgLoadError = useCallback(() => {
+    setShowAvatar(false)
+  }, [])
+
+  if (avatar_url && avatar_url !== 'default' && showAvatar) {
     return (
       <div
         className='flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-divider-regular'
@@ -35,6 +40,7 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
           width={size}
           height={size}
           className={cn('shrink-0 object-contain', className)}
+          onError={onImgLoadError}
         />
       </div>
     )
