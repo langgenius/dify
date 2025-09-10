@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal, Optional
 from numbers import Number
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
