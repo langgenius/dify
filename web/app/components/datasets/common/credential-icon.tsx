@@ -21,7 +21,7 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
   size = 20,
   className = '',
 }) => {
-  const [showAvatar, setShowAvatar] = useState(!!avatar_url)
+  const [showAvatar, setShowAvatar] = useState(true)
   const firstLetter = useMemo(() => name.charAt(0).toUpperCase(), [name])
   const bgColor = useMemo(() => ICON_BG_COLORS[firstLetter.charCodeAt(0) % ICON_BG_COLORS.length], [firstLetter])
 

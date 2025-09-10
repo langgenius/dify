@@ -65,8 +65,6 @@ const DatasetNav = () => {
     const runtimeMode = currentDataset?.runtime_mode
     if (runtimeMode === 'rag_pipeline')
       return `${basePath}/datasets/create-from-pipeline`
-    else if (runtimeMode === 'general')
-      return `${basePath}/datasets/create`
     else
       return `${basePath}/datasets/create`
   }, [currentDataset?.runtime_mode])
