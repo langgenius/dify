@@ -61,7 +61,7 @@ const DatasetNav = () => {
     }) as NavItem[]
   }, [datasetItems])
 
-  const createRouter = useMemo(() => {
+  const createRoute = useMemo(() => {
     const runtimeMode = currentDataset?.runtime_mode
     if (runtimeMode === 'rag_pipeline')
       return `${basePath}/datasets/create-from-pipeline`
@@ -85,7 +85,7 @@ const DatasetNav = () => {
       curNav={curNav}
       navigationItems={navigationItems}
       createText={t('common.menus.newDataset')}
-      onCreate={() => router.push(createRouter)}
+      onCreate={() => router.push(createRoute)}
       onLoadMore={handleLoadMore}
     />
   )
