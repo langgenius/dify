@@ -154,11 +154,11 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const handleTitleBlur = useCallback((title: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { title } })
-    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange)
+    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
   const handleDescriptionChange = useCallback((desc: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { desc } })
-    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
+    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)

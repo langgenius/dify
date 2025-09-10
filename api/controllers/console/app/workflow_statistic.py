@@ -18,10 +18,10 @@ from models.model import AppMode
 
 
 class WorkflowDailyRunsStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -80,10 +80,10 @@ WHERE
 
 
 class WorkflowDailyTerminalsStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -142,10 +142,10 @@ WHERE
 
 
 class WorkflowDailyTokenCostStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 

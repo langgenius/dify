@@ -1840,8 +1840,14 @@ class ProviderConfigurations(BaseModel):
     def __setitem__(self, key, value):
         self.configurations[key] = value
 
+    def __contains__(self, key):
+        if "/" not in key:
+            key = str(ModelProviderID(key))
+        return key in self.configurations
+
     def __iter__(self):
-        return iter(self.configurations)
+        # Return an iterator of (key, value) tuples to match BaseModel's __iter__
+        yield from self.configurations.items()
 
     def values(self) -> Iterator[ProviderConfiguration]:
         return iter(self.configurations.values())
