@@ -10,21 +10,23 @@ from libs.helper import StrLen, email, extract_remote_ip, timezone
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService
 
-
-def _get_activation_check_parser():
-    """Get parser for activation check endpoint"""
-    parser = reqparse.RequestParser()
-    parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="args", help="Workspace ID")
-    parser.add_argument("email", type=email, required=False, nullable=True, location="args", help="Email address")
-    parser.add_argument("token", type=str, required=True, nullable=False, location="args", help="Activation token")
-    return parser
+active_check_parser = reqparse.RequestParser()
+active_check_parser.add_argument(
+    "workspace_id", type=str, required=False, nullable=True, location="args", help="Workspace ID"
+)
+active_check_parser.add_argument(
+    "email", type=email, required=False, nullable=True, location="args", help="Email address"
+)
+active_check_parser.add_argument(
+    "token", type=str, required=True, nullable=False, location="args", help="Activation token"
+)
 
 
 @console_ns.route("/activate/check")
 class ActivateCheckApi(Resource):
     @api.doc("check_activation_token")
     @api.doc(description="Check if activation token is valid")
-    @api.expect(_get_activation_check_parser())
+    @api.expect(active_check_parser)
     @api.response(
         200,
         "Success",
@@ -37,8 +39,7 @@ class ActivateCheckApi(Resource):
         ),
     )
     def get(self):
-        parser = _get_activation_check_parser()
-        args = parser.parse_args()
+        args = active_check_parser.parse_args()
 
         workspaceId = args["workspace_id"]
         reg_email = args["email"]
@@ -59,23 +60,22 @@ class ActivateCheckApi(Resource):
             return {"is_valid": False}
 
 
+active_parser = reqparse.RequestParser()
+active_parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="json")
+active_parser.add_argument("email", type=email, required=False, nullable=True, location="json")
+active_parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+active_parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
+active_parser.add_argument(
+    "interface_language", type=supported_language, required=True, nullable=False, location="json"
+)
+active_parser.add_argument("timezone", type=timezone, required=True, nullable=False, location="json")
+
+
 @console_ns.route("/activate")
 class ActivateApi(Resource):
     @api.doc("activate_account")
     @api.doc(description="Activate account with invitation token")
-    @api.expect(
-        api.model(
-            "ActivationRequest",
-            {
-                "workspace_id": fields.String(description="Workspace ID"),
-                "email": fields.String(description="Email address"),
-                "token": fields.String(required=True, description="Activation token"),
-                "name": fields.String(required=True, description="User name (max 30 characters)"),
-                "interface_language": fields.String(required=True, description="Interface language"),
-                "timezone": fields.String(required=True, description="User timezone"),
-            },
-        )
-    )
+    @api.expect(active_parser)
     @api.response(
         200,
         "Account activated successfully",
@@ -89,16 +89,7 @@ class ActivateApi(Resource):
     )
     @api.response(400, "Already activated or invalid token")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("email", type=email, required=False, nullable=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
-        parser.add_argument(
-            "interface_language", type=supported_language, required=True, nullable=False, location="json"
-        )
-        parser.add_argument("timezone", type=timezone, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = active_parser.parse_args()
 
         invitation = RegisterService.get_invitation_if_token_valid(args["workspace_id"], args["email"], args["token"])
         if invitation is None:

@@ -139,8 +139,6 @@ from .workspace import (
     workspace,  # pyright: ignore[reportUnusedImport]
 )
 
-api.add_namespace(console_ns)
-
 # Explore Audio
 api.add_resource(ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text", endpoint="installed_app_audio")
 api.add_resource(ChatTextApi, "/installed-apps/<uuid:installed_app_id>/text-to-audio", endpoint="installed_app_text")
@@ -211,3 +209,5 @@ api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_ap
 api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
 )
+
+api.add_namespace(console_ns)
