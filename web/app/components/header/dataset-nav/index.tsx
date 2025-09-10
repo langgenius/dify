@@ -12,6 +12,7 @@ import Nav from '../nav'
 import type { NavItem } from '../nav/nav-selector'
 import { basePath } from '@/utils/var'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
+import type { DataSet } from '@/models/datasets'
 
 const DatasetNav = () => {
   const { t } = useTranslation()
@@ -40,15 +41,19 @@ const DatasetNav = () => {
     } as Omit<NavItem, 'link'>
   }, [currentDataset?.id, currentDataset?.name, currentDataset?.icon_info])
 
+  const getDatasetLink = useCallback((dataset: DataSet) => {
+    const isPipelineUnpublished = dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
+    const link = isPipelineUnpublished
+      ? `/datasets/${dataset.id}/pipeline`
+      : `/datasets/${dataset.id}/documents`
+    return dataset.provider === 'external'
+      ? `/datasets/${dataset.id}/hitTesting`
+      : link
+  }, [])
+
   const navigationItems = useMemo(() => {
     return datasetItems.map((dataset) => {
-      const isPipelineUnpublished = dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
-      const internalLink = isPipelineUnpublished
-        ? `/datasets/${dataset.id}/pipeline`
-        : `/datasets/${dataset.id}/documents`
-      const link = dataset.provider === 'external'
-        ? `/datasets/${dataset.id}/hitTesting`
-        : internalLink
+      const link = getDatasetLink(dataset)
       return {
         id: dataset.id,
         name: dataset.name,
@@ -59,7 +64,7 @@ const DatasetNav = () => {
         icon_url: dataset.icon_info.icon_url,
       }
     }) as NavItem[]
-  }, [datasetItems])
+  }, [datasetItems, getDatasetLink])
 
   const createRoute = useMemo(() => {
     const runtimeMode = currentDataset?.runtime_mode
