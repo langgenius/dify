@@ -17,4 +17,3 @@ def test_oauth_base_methods_raise_not_implemented():
 
     with pytest.raises(NotImplementedError):
         oauth._transform_user_info({})  # type: ignore[name-defined]
-

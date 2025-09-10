@@ -51,4 +51,3 @@ def test_sendgrid_timeout_reraise(mock_client_cls: MagicMock):
     sg = SendGridClient(sendgrid_api_key="key", _from="noreply@example.com")
     with pytest.raises(TimeoutError):
         sg.send(_mail())
-
