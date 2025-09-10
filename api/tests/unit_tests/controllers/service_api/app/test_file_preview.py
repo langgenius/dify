@@ -320,7 +320,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock database query to raise unexpected exception
-            mock_db.session.query.side_effect = Exception("Unexpected database error")
+            mock_db.session.scalars.side_effect = Exception("Unexpected database error")
 
             # Execute and assert exception
             with pytest.raises(FileAccessDeniedError) as exc_info:
