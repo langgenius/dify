@@ -60,8 +60,8 @@ const HeaderInNormal = ({
         <EditingTitle />
       </div>
       <div className='flex items-center gap-2'>
-        {components?.left}
         <OnlineUsers />
+        {components?.left}
         <Divider type='vertical' className='mx-auto h-3.5' />
         <EnvButton disabled={nodesReadOnly} />
         <Divider type='vertical' className='mx-auto h-3.5' />
