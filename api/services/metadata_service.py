@@ -27,11 +27,11 @@ class MetadataService:
             raise ValueError("Metadata name cannot exceed 255 characters.")
 
         # check if metadata name already exists
-        if (
-            db.session.query(DatasetMetadata)
+        if db.session.scalars(
+            select(DatasetMetadata)
             .filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=metadata_args.name)
-            .first()
-        ):
+            .limit(1)
+        ).first():
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
             if field.value == metadata_args.name:
@@ -55,11 +55,11 @@ class MetadataService:
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
-        if (
-            db.session.query(DatasetMetadata)
+        if db.session.scalars(
+            select(DatasetMetadata)
             .filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name)
-            .first()
-        ):
+            .limit(1)
+        ).first():
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
             if field.value == name:

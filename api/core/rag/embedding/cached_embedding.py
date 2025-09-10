@@ -3,6 +3,7 @@ import logging
 from typing import Any, Optional, cast
 
 import numpy as np
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
@@ -31,13 +32,13 @@ class CacheEmbedding(Embeddings):
         embedding_queue_indices = []
         for i, text in enumerate(texts):
             hash = helper.generate_text_hash(text)
-            embedding = (
-                db.session.query(Embedding)
+            embedding = db.session.scalars(
+                select(Embedding)
                 .filter_by(
                     model_name=self._model_instance.model, hash=hash, provider_name=self._model_instance.provider
                 )
-                .first()
-            )
+                .limit(1)
+            ).first()
             if embedding:
                 text_embeddings[i] = embedding.get_embedding()
             else:
