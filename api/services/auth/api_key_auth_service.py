@@ -36,16 +36,16 @@ class ApiKeyAuthService:
 
     @staticmethod
     def get_auth_credentials(tenant_id: str, category: str, provider: str):
-        data_source_api_key_bindings = (
-            db.session.query(DataSourceApiKeyAuthBinding)
+        data_source_api_key_bindings = db.session.scalars(
+            select(DataSourceApiKeyAuthBinding)
             .where(
                 DataSourceApiKeyAuthBinding.tenant_id == tenant_id,
                 DataSourceApiKeyAuthBinding.category == category,
                 DataSourceApiKeyAuthBinding.provider == provider,
                 DataSourceApiKeyAuthBinding.disabled.is_(False),
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not data_source_api_key_bindings:
             return None
         credentials = json.loads(data_source_api_key_bindings.credentials)

@@ -350,16 +350,16 @@ class TestSavedMessageService:
         # Check if saved message was created in database
         from extensions.ext_database import db
 
-        saved_message = (
-            db.session.query(SavedMessage)
+        saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
                 SavedMessage.created_by_role == "account",
                 SavedMessage.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert saved_message is not None
         assert saved_message.app_id == app.id
@@ -460,14 +460,16 @@ class TestSavedMessageService:
 
         # Verify saved message exists
         assert (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-                SavedMessage.created_by_role == "account",
-                SavedMessage.created_by == account.id,
-            )
-            .first()
+            db.session.scalars(
+                select(SavedMessage)
+                .where(
+                    SavedMessage.app_id == app.id,
+                    SavedMessage.message_id == message.id,
+                    SavedMessage.created_by_role == "account",
+                    SavedMessage.created_by == account.id,
+                )
+                .limit(1)
+            ).first()
             is not None
         )
 
@@ -476,16 +478,16 @@ class TestSavedMessageService:
 
         # Assert: Verify the expected outcomes
         # Check if saved message was deleted from database
-        deleted_saved_message = (
-            db.session.query(SavedMessage)
+        deleted_saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
                 SavedMessage.created_by_role == "account",
                 SavedMessage.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert deleted_saved_message is None
 
@@ -576,14 +578,16 @@ class TestSavedMessageService:
 
         # Verify saved message exists
         assert (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-                SavedMessage.created_by_role == "account",
-                SavedMessage.created_by == account.id,
-            )
-            .first()
+            db.session.scalars(
+                select(SavedMessage)
+                .where(
+                    SavedMessage.app_id == app.id,
+                    SavedMessage.message_id == message.id,
+                    SavedMessage.created_by_role == "account",
+                    SavedMessage.created_by == account.id,
+                )
+                .limit(1)
+            ).first()
             is not None
         )
 
@@ -592,16 +596,16 @@ class TestSavedMessageService:
 
         # Assert: Verify the expected outcomes
         # Check if saved message was deleted from database
-        deleted_saved_message = (
-            db.session.query(SavedMessage)
+        deleted_saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
                 SavedMessage.created_by_role == "account",
                 SavedMessage.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert deleted_saved_message is None
 

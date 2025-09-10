@@ -1,5 +1,7 @@
 from typing import Optional, Union
 
+from sqlalchemy import select
+
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
@@ -35,16 +37,16 @@ class SavedMessageService:
     def save(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
         if not user:
             return
-        saved_message = (
-            db.session.query(SavedMessage)
+        saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app_model.id,
                 SavedMessage.message_id == message_id,
                 SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
                 SavedMessage.created_by == user.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if saved_message:
             return
@@ -65,16 +67,16 @@ class SavedMessageService:
     def delete(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
         if not user:
             return
-        saved_message = (
-            db.session.query(SavedMessage)
+        saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app_model.id,
                 SavedMessage.message_id == message_id,
                 SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
                 SavedMessage.created_by == user.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not saved_message:
             return

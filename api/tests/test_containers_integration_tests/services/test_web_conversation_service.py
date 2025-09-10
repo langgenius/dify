@@ -319,16 +319,16 @@ class TestWebConversationService:
         # Verify the conversation was pinned
         from extensions.ext_database import db
 
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
                 PinnedConversation.created_by_role == "account",
                 PinnedConversation.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is not None
         assert pinned_conversation.app_id == app.id
@@ -385,16 +385,16 @@ class TestWebConversationService:
         # Verify the conversation was pinned
         from extensions.ext_database import db
 
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
                 PinnedConversation.created_by_role == "end_user",
                 PinnedConversation.created_by == end_user.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is not None
         assert pinned_conversation.app_id == app.id
@@ -418,16 +418,16 @@ class TestWebConversationService:
         # Verify it was pinned
         from extensions.ext_database import db
 
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
                 PinnedConversation.created_by_role == "account",
                 PinnedConversation.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is not None
 
@@ -435,16 +435,16 @@ class TestWebConversationService:
         WebConversationService.unpin(app, conversation.id, account)
 
         # Verify it was unpinned
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
                 PinnedConversation.created_by_role == "account",
                 PinnedConversation.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is None
 
@@ -464,16 +464,16 @@ class TestWebConversationService:
         # Verify no pinned conversation record exists
         from extensions.ext_database import db
 
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
                 PinnedConversation.created_by_role == "account",
                 PinnedConversation.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is None
 
@@ -539,16 +539,16 @@ class TestWebConversationService:
         # Verify it was pinned
         from extensions.ext_database import db
 
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
                 PinnedConversation.created_by_role == "account",
                 PinnedConversation.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is not None
 
@@ -556,15 +556,15 @@ class TestWebConversationService:
         WebConversationService.unpin(app, conversation.id, None)
 
         # Verify the conversation is still pinned
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
                 PinnedConversation.created_by_role == "account",
                 PinnedConversation.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is not None
