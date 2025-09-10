@@ -1381,7 +1381,7 @@ class TestRegisterService:
 
             # Mock database queries - complex query mocking
             mock_query1 = MagicMock()
-            mock_query1.where.return_value.first.return_value = mock_tenant
+            mock_query1.scalars.return_value.first.return_value = mock_tenant
 
             mock_query2 = MagicMock()
             mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
