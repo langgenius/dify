@@ -9,7 +9,6 @@ from typing import Any, Optional, Union, cast
 from flask import Flask, current_app
 from sqlalchemy import Float, and_, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
-from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -508,7 +507,7 @@ class DatasetRetrieval:
 
     def _on_retrieval_end(
         self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
-    ) -> None:
+    ):
         """Handle retrieval end."""
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
@@ -526,7 +525,7 @@ class DatasetRetrieval:
                         )
                         child_chunk = db.session.scalar(child_chunk_stmt)
                         if child_chunk:
-                            segment = (
+                            _ = (
                                 db.session.query(DocumentSegment)
                                 .where(DocumentSegment.id == child_chunk.segment_id)
                                 .update(
@@ -561,7 +560,7 @@ class DatasetRetrieval:
                 )
             )
 
-    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
+    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
         """
         Handle query.
         """
@@ -593,9 +592,8 @@ class DatasetRetrieval:
         metadata_condition: Optional[MetadataCondition] = None,
     ):
         with flask_app.app_context():
-            with Session(db.engine) as session:
-                dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-                dataset = session.scalar(dataset_stmt)
+            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             if not dataset:
                 return []
@@ -987,7 +985,7 @@ class DatasetRetrieval:
             )
 
             # handle invoke result
-            result_text, usage = self._handle_invoke_result(invoke_result=invoke_result)
+            result_text, _ = self._handle_invoke_result(invoke_result=invoke_result)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
             automatic_metadata_filters = []
@@ -1002,7 +1000,7 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
+        except Exception:
             return None
         return automatic_metadata_filters
 

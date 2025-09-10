@@ -89,7 +89,7 @@ class ExternalDatasetService:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
-        except Exception as e:
+        except Exception:
             raise ValueError(f"failed to connect to the endpoint: {endpoint}")
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
@@ -114,8 +114,9 @@ class ExternalDatasetService:
         )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
-        if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
-            args.get("settings")["api_key"] = external_knowledge_api.settings_dict.get("api_key")
+        settings = args.get("settings")
+        if settings and settings.get("api_key") == HIDDEN_VALUE and external_knowledge_api.settings_dict:
+            settings["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
         external_knowledge_api.name = args.get("name")
         external_knowledge_api.description = args.get("description", "")
@@ -180,7 +181,7 @@ class ExternalDatasetService:
         do http request depending on api bundle
         """
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "url": settings.url,
             "headers": settings.headers,
             "follow_redirects": True,
@@ -277,7 +278,7 @@ class ExternalDatasetService:
         query: str,
         external_retrieval_parameters: dict,
         metadata_condition: Optional[MetadataCondition] = None,
-    ) -> list:
+    ):
         external_knowledge_binding = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )

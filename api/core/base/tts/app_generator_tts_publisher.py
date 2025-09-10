@@ -72,7 +72,7 @@ class AppGeneratorTTSPublisher:
         self.voice = voice
         if not voice or voice not in values:
             self.voice = self.voices[0].get("value")
-        self.MAX_SENTENCE = 2
+        self.max_sentence = 2
         self._last_audio_event: Optional[AudioTrunk] = None
         # FIXME better way to handle this threading.start
         threading.Thread(target=self._runtime).start()
@@ -113,8 +113,8 @@ class AppGeneratorTTSPublisher:
                     self.msg_text += message.event.outputs.get("output", "")
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
-                if len(sentence_arr) >= min(self.MAX_SENTENCE, 7):
-                    self.MAX_SENTENCE += 1
+                if len(sentence_arr) >= min(self.max_sentence, 7):
+                    self.max_sentence += 1
                     text_content = "".join(sentence_arr)
                     futures_result = self.executor.submit(
                         _invoice_tts, text_content, self.model_instance, self.tenant_id, self.voice

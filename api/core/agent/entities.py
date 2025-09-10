@@ -41,7 +41,7 @@ class AgentScratchpadUnit(BaseModel):
         action_name: str
         action_input: Union[dict, str]
 
-        def to_dict(self) -> dict:
+        def to_dict(self):
             """
             Convert to dictionary.
             """

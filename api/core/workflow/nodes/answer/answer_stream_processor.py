@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class AnswerStreamProcessor(StreamProcessor):
-    def __init__(self, graph: Graph, variable_pool: VariablePool) -> None:
+    def __init__(self, graph: Graph, variable_pool: VariablePool):
         super().__init__(graph, variable_pool)
         self.generate_routes = graph.answer_stream_generate_routes
         self.route_position = {}
@@ -66,9 +66,9 @@ class AnswerStreamProcessor(StreamProcessor):
             else:
                 yield event
 
-    def reset(self) -> None:
+    def reset(self):
         self.route_position = {}
-        for answer_node_id, route_chunks in self.generate_routes.answer_generate_route.items():
+        for answer_node_id, _ in self.generate_routes.answer_generate_route.items():
             self.route_position[answer_node_id] = 0
         self.rest_node_ids = self.graph.node_ids.copy()
         self.current_stream_chunk_generating_node_ids = {}

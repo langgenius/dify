@@ -130,7 +130,7 @@ class ResetPasswordSendEmailApi(Resource):
             language = "en-US"
         try:
             account = AccountService.get_user_through_email(args["email"])
-        except AccountRegisterError as are:
+        except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
@@ -162,7 +162,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "en-US"
         try:
             account = AccountService.get_user_through_email(args["email"])
-        except AccountRegisterError as are:
+        except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
@@ -200,7 +200,7 @@ class EmailCodeLoginApi(Resource):
         AccountService.revoke_email_code_login_token(args["token"])
         try:
             account = AccountService.get_user_through_email(user_email)
-        except AccountRegisterError as are:
+        except AccountRegisterError:
             raise AccountInFreezeError()
         if account:
             tenants = TenantService.get_join_tenants(account)
@@ -223,7 +223,7 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
-            except AccountRegisterError as are:
+            except AccountRegisterError:
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()

@@ -30,7 +30,7 @@ prepare-web:
 prepare-api:
 	@echo "🔧 Setting up API environment..."
 	@cp -n api/.env.example api/.env 2>/dev/null || echo "API .env already exists"
-	@cd api && uv sync --dev --extra all
+	@cd api && uv sync --dev
 	@cd api && uv run flask db upgrade
 	@echo "✅ API environment prepared (not started)"
 

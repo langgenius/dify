@@ -227,7 +227,7 @@ class AppGenerateService:
         # If workflow_id is specified, get the specific workflow version
         if workflow_id:
             try:
-                workflow_uuid = uuid.UUID(workflow_id)
+                _ = uuid.UUID(workflow_id)
             except ValueError:
                 raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
             workflow = workflow_service.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)

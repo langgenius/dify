@@ -43,56 +43,64 @@ api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm"
 api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
 
 # Import other controllers
-from . import admin, apikey, extension, feature, ping, setup, version
+from . import admin, apikey, extension, feature, ping, setup, version  # pyright: ignore[reportUnusedImport]
 
 # Import app controllers
 from .app import (
-    advanced_prompt_template,
-    agent,
-    annotation,
-    app,
-    audio,
-    completion,
-    conversation,
-    conversation_variables,
-    generator,
-    mcp_server,
-    message,
-    model_config,
-    ops_trace,
-    site,
-    statistic,
-    workflow,
-    workflow_app_log,
-    workflow_draft_variable,
-    workflow_run,
-    workflow_statistic,
+    advanced_prompt_template,  # pyright: ignore[reportUnusedImport]
+    agent,  # pyright: ignore[reportUnusedImport]
+    annotation,  # pyright: ignore[reportUnusedImport]
+    app,  # pyright: ignore[reportUnusedImport]
+    audio,  # pyright: ignore[reportUnusedImport]
+    completion,  # pyright: ignore[reportUnusedImport]
+    conversation,  # pyright: ignore[reportUnusedImport]
+    conversation_variables,  # pyright: ignore[reportUnusedImport]
+    generator,  # pyright: ignore[reportUnusedImport]
+    mcp_server,  # pyright: ignore[reportUnusedImport]
+    message,  # pyright: ignore[reportUnusedImport]
+    model_config,  # pyright: ignore[reportUnusedImport]
+    ops_trace,  # pyright: ignore[reportUnusedImport]
+    site,  # pyright: ignore[reportUnusedImport]
+    statistic,  # pyright: ignore[reportUnusedImport]
+    workflow,  # pyright: ignore[reportUnusedImport]
+    workflow_app_log,  # pyright: ignore[reportUnusedImport]
+    workflow_draft_variable,  # pyright: ignore[reportUnusedImport]
+    workflow_run,  # pyright: ignore[reportUnusedImport]
+    workflow_statistic,  # pyright: ignore[reportUnusedImport]
 )
 
 # Import auth controllers
-from .auth import activate, data_source_bearer_auth, data_source_oauth, forgot_password, login, oauth, oauth_server
+from .auth import (
+    activate,  # pyright: ignore[reportUnusedImport]
+    data_source_bearer_auth,  # pyright: ignore[reportUnusedImport]
+    data_source_oauth,  # pyright: ignore[reportUnusedImport]
+    forgot_password,  # pyright: ignore[reportUnusedImport]
+    login,  # pyright: ignore[reportUnusedImport]
+    oauth,  # pyright: ignore[reportUnusedImport]
+    oauth_server,  # pyright: ignore[reportUnusedImport]
+)
 
 # Import billing controllers
-from .billing import billing, compliance
+from .billing import billing, compliance  # pyright: ignore[reportUnusedImport]
 
 # Import datasets controllers
 from .datasets import (
-    data_source,
-    datasets,
-    datasets_document,
-    datasets_segments,
-    external,
-    hit_testing,
-    metadata,
-    website,
+    data_source,  # pyright: ignore[reportUnusedImport]
+    datasets,  # pyright: ignore[reportUnusedImport]
+    datasets_document,  # pyright: ignore[reportUnusedImport]
+    datasets_segments,  # pyright: ignore[reportUnusedImport]
+    external,  # pyright: ignore[reportUnusedImport]
+    hit_testing,  # pyright: ignore[reportUnusedImport]
+    metadata,  # pyright: ignore[reportUnusedImport]
+    website,  # pyright: ignore[reportUnusedImport]
 )
 
 # Import explore controllers
 from .explore import (
-    installed_app,
-    parameter,
-    recommended_app,
-    saved_message,
+    installed_app,  # pyright: ignore[reportUnusedImport]
+    parameter,  # pyright: ignore[reportUnusedImport]
+    recommended_app,  # pyright: ignore[reportUnusedImport]
+    saved_message,  # pyright: ignore[reportUnusedImport]
 )
 
 # Explore Audio
@@ -167,18 +175,18 @@ api.add_resource(
 )
 
 # Import tag controllers
-from .tag import tags
+from .tag import tags  # pyright: ignore[reportUnusedImport]
 
 # Import workspace controllers
 from .workspace import (
-    account,
-    agent_providers,
-    endpoint,
-    load_balancing_config,
-    members,
-    model_providers,
-    models,
-    plugin,
-    tool_providers,
-    workspace,
+    account,  # pyright: ignore[reportUnusedImport]
+    agent_providers,  # pyright: ignore[reportUnusedImport]
+    endpoint,  # pyright: ignore[reportUnusedImport]
+    load_balancing_config,  # pyright: ignore[reportUnusedImport]
+    members,  # pyright: ignore[reportUnusedImport]
+    model_providers,  # pyright: ignore[reportUnusedImport]
+    models,  # pyright: ignore[reportUnusedImport]
+    plugin,  # pyright: ignore[reportUnusedImport]
+    tool_providers,  # pyright: ignore[reportUnusedImport]
+    workspace,  # pyright: ignore[reportUnusedImport]
 )
