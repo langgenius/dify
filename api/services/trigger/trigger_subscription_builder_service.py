@@ -142,7 +142,7 @@ class TriggerSubscriptionBuilderService:
         user_id: str,
         provider_id: TriggerProviderID,
         credential_type: CredentialType,
-    ) -> SubscriptionBuilder:
+    ) -> SubscriptionBuilderApiEntity:
         """
         Add a new trigger subscription validation.
         """
@@ -170,7 +170,7 @@ class TriggerSubscriptionBuilderService:
         redis_client.setex(
             cache_key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_MS__, subscription_builder.model_dump_json()
         )
-        return subscription_builder
+        return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder)
 
     @classmethod
     def update_trigger_subscription_builder(
