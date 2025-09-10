@@ -54,7 +54,9 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        app: App | None = db.session.query(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
+        app: App | None = db.session.scalars(
+            select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1)
+        ).first()
 
         if app is None:
             raise ValueError(f"App {workflow_app_id} not found")
@@ -134,18 +136,18 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} already exists")
 
-        workflow_tool_provider: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        workflow_tool_provider: WorkflowToolProvider | None = db.session.scalars(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if workflow_tool_provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        app: App | None = (
-            db.session.query(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).first()
-        )
+        app: App | None = db.session.scalars(
+            select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
+        ).first()
 
         if app is None:
             raise ValueError(f"App {workflow_tool_provider.app_id} not found")
@@ -243,11 +245,11 @@ class WorkflowToolManageService:
         :param workflow_tool_id: the workflow tool id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        db_tool: WorkflowToolProvider | None = db.session.scalars(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         return cls._get_workflow_tool(tenant_id, db_tool)
 
     @classmethod
@@ -259,11 +261,11 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        db_tool: WorkflowToolProvider | None = db.session.scalars(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == workflow_app_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         return cls._get_workflow_tool(tenant_id, db_tool)
 
     @classmethod
@@ -276,9 +278,9 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError("Tool not found")
 
-        workflow_app: App | None = (
-            db.session.query(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).first()
-        )
+        workflow_app: App | None = db.session.scalars(
+            select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
+        ).first()
 
         if workflow_app is None:
             raise ValueError(f"App {db_tool.app_id} not found")
@@ -318,11 +320,11 @@ class WorkflowToolManageService:
         :param workflow_tool_id: the workflow tool id
         :return: the list of tools
         """
-        db_tool: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        db_tool: WorkflowToolProvider | None = db.session.scalars(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if db_tool is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")

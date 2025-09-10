@@ -55,11 +55,9 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
                     )
         except Exception as e:
             for document_id in document_ids:
-                document = (
-                    db.session.query(Document)
-                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
-                    .first()
-                )
+                document = db.session.scalars(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                ).first()
                 if document:
                     document.indexing_status = "error"
                     document.error = str(e)
@@ -71,9 +69,9 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
         for document_id in document_ids:
             logger.info(click.style(f"Start process document: {document_id}", fg="green"))
 
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-            )
+            document = db.session.scalars(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            ).first()
 
             if document:
                 # clean old data

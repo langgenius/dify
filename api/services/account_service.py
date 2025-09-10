@@ -1047,20 +1047,24 @@ class TenantService:
             raise ValueError("all roles must be TenantAccountRole")
 
         return (
-            db.session.query(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role.in_([role.value for role in roles]))
-            .first()
+            db.session.scalars(
+                select(TenantAccountJoin)
+                .where(
+                    TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role.in_([role.value for role in roles])
+                )
+                .limit(1)
+            ).first()
             is not None
         )
 
     @staticmethod
     def get_user_role(account: Account, tenant: Tenant) -> Optional[TenantAccountRole]:
         """Get the role of the current account for a given tenant"""
-        join = (
-            db.session.query(TenantAccountJoin)
+        join = db.session.scalars(
+            select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         return TenantAccountRole(join.role) if join else None
 
     @staticmethod
@@ -1324,11 +1328,9 @@ class RegisterService:
         if not invitation_data:
             return None
 
-        tenant = (
-            db.session.query(Tenant)
-            .where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
-            .first()
-        )
+        tenant = db.session.scalars(
+            select(Tenant).where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal").limit(1)
+        ).first()
 
         if not tenant:
             return None

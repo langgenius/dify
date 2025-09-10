@@ -125,11 +125,11 @@ def clean_dataset_task(
                             data_source_info = document.data_source_info_dict
                             if data_source_info and "upload_file_id" in data_source_info:
                                 file_id = data_source_info["upload_file_id"]
-                                file = (
-                                    db.session.query(UploadFile)
+                                file = db.session.scalars(
+                                    select(UploadFile)
                                     .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
-                                    .first()
-                                )
+                                    .limit(1)
+                                ).first()
                                 if not file:
                                     continue
                                 storage.delete(file.key)

@@ -541,9 +541,9 @@ class WorkflowRun(Base):
     def message(self):
         from models.model import Message
 
-        return (
-            db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
-        )
+        return db.session.scalars(
+            select(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).limit(1)
+        ).first()
 
     @property
     def workflow(self):

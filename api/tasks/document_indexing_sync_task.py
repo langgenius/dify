@@ -28,7 +28,9 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Start sync document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    document = db.session.scalars(
+        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+    ).first()
 
     if not document:
         logger.info(click.style(f"Document not found: {document_id}", fg="red"))

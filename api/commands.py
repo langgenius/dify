@@ -588,11 +588,11 @@ def old_metadata_migration():
                         if field.value == key:
                             break
                     else:
-                        dataset_metadata = (
-                            db.session.query(DatasetMetadata)
+                        dataset_metadata = db.session.scalars(
+                            select(DatasetMetadata)
                             .where(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
-                            .first()
-                        )
+                            .limit(1)
+                        ).first()
                         if not dataset_metadata:
                             dataset_metadata = DatasetMetadata(
                                 tenant_id=document.tenant_id,

@@ -45,11 +45,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                             "your subscription."
                         )
             except Exception as e:
-                document = (
-                    db.session.query(Document)
-                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
-                    .first()
-                )
+                document = db.session.scalars(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                ).first()
                 if document:
                     document.indexing_status = "error"
                     document.error = str(e)
@@ -60,9 +58,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 return
 
             logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-            )
+            document = db.session.scalars(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            ).first()
             if not document:
                 logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
                 return

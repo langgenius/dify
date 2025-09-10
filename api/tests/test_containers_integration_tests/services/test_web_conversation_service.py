@@ -515,14 +515,11 @@ class TestWebConversationService:
         # Verify no pinned conversation was created
         from extensions.ext_database import db
 
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
-            .where(
-                PinnedConversation.app_id == app.id,
-                PinnedConversation.conversation_id == conversation.id,
-            )
-            .first()
-        )
+        pinned_conversation = db.session.scalars(
+            select(PinnedConversation)
+            .where(PinnedConversation.app_id == app.id, PinnedConversation.conversation_id == conversation.id)
+            .limit(1)
+        ).first()
 
         assert pinned_conversation is None
 

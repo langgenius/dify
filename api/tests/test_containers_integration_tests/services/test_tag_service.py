@@ -912,11 +912,9 @@ class TestTagService:
 
         # Verify tag bindings were created
         for tag in tags:
-            binding = (
-                db.session.query(TagBinding)
-                .where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id)
-                .first()
-            )
+            binding = db.session.scalars(
+                select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id).limit(1)
+            ).first()
             assert binding is not None
             assert binding.tenant_id == tenant.id
             assert binding.created_by == account.id
@@ -1020,9 +1018,9 @@ class TestTagService:
         # Verify binding exists before deletion
         from extensions.ext_database import db
 
-        binding_before = (
-            db.session.query(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id).first()
-        )
+        binding_before = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id).limit(1)
+        ).first()
         assert binding_before is not None
 
         # Act: Execute the method under test
@@ -1031,9 +1029,9 @@ class TestTagService:
 
         # Assert: Verify the expected outcomes
         # Verify tag binding was deleted
-        binding_after = (
-            db.session.query(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id).first()
-        )
+        binding_after = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id).limit(1)
+        ).first()
         assert binding_after is None
 
     def test_delete_tag_binding_non_existent_binding(

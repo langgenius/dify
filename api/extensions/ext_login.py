@@ -88,9 +88,9 @@ def load_user_from_request(request_from_flask_login):
         ).first()
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
-        end_user = (
-            db.session.query(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == "mcp").first()
-        )
+        end_user = db.session.scalars(
+            select(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == "mcp").limit(1)
+        ).first()
         if not end_user:
             raise NotFound("End user not found.")
         return end_user

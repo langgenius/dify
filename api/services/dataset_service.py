@@ -870,9 +870,9 @@ class DocumentService:
     @staticmethod
     def get_document(dataset_id: str, document_id: Optional[str] = None) -> Optional[Document]:
         if document_id:
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-            )
+            document = db.session.scalars(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            ).first()
             return document
         else:
             return None
@@ -1220,11 +1220,11 @@ class DocumentService:
                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
                     for file_id in upload_file_list:
-                        file = (
-                            db.session.query(UploadFile)
+                        file = db.session.scalars(
+                            select(UploadFile)
                             .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                            .first()
-                        )
+                            .limit(1)
+                        ).first()
 
                         # raise error if file not found
                         if not file:
@@ -1504,11 +1504,11 @@ class DocumentService:
                     raise ValueError("No file info list found.")
                 upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
                 for file_id in upload_file_list:
-                    file = (
-                        db.session.query(UploadFile)
+                    file = db.session.scalars(
+                        select(UploadFile)
                         .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
 
                     # raise error if file not found
                     if not file:
@@ -2643,11 +2643,9 @@ class SegmentService:
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> Optional[ChildChunk]:
         """Get a child chunk by its ID."""
-        result = (
-            db.session.query(ChildChunk)
-            .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
-            .first()
-        )
+        result = db.session.scalars(
+            select(ChildChunk).where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).limit(1)
+        ).first()
         return result if isinstance(result, ChildChunk) else None
 
     @classmethod
@@ -2680,11 +2678,11 @@ class SegmentService:
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
         """Get a segment by its ID."""
-        result = (
-            db.session.query(DocumentSegment)
+        result = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         return result if isinstance(result, DocumentSegment) else None
 
 

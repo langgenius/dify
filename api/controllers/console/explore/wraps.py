@@ -4,6 +4,7 @@ from typing import Concatenate, Optional, ParamSpec, TypeVar
 
 from flask_login import current_user
 from flask_restx import Resource
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError
@@ -24,13 +25,13 @@ def installed_app_required(view: Optional[Callable[Concatenate[InstalledApp, P],
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
-            installed_app = (
-                db.session.query(InstalledApp)
+            installed_app = db.session.scalars(
+                select(InstalledApp)
                 .where(
                     InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_user.current_tenant_id
                 )
-                .first()
-            )
+                .limit(1)
+            ).first()
 
             if installed_app is None:
                 raise NotFound("Installed app not found")

@@ -112,10 +112,9 @@ class ChatClient(DifyClient):
         user: str,
         last_id: str | None = None,
         limit: int | None = None,
-        pinned: bool | None = None
+        pinned: bool | None = None,
     ):
-        params = {"user": user, "last_id": last_id,
-                  "limit": limit, "pinned": pinned}
+        params = {"user": user, "last_id": last_id, "limit": limit, "pinned": pinned}
         return self._send_request("GET", "/conversations", params=params)
 
     def get_conversation_messages(
@@ -123,7 +122,7 @@ class ChatClient(DifyClient):
         user: str,
         conversation_id: str | None = None,
         first_id: str | None = None,
-        limit: int | None = None
+        limit: int | None = None,
     ):
         params = {"user": user}
 

@@ -2,6 +2,7 @@ import threading
 from typing import Any, Optional
 
 import pytz
+from sqlalchemy import select
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
@@ -23,26 +24,16 @@ class AgentService:
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
-        conversation: Conversation | None = (
-            db.session.query(Conversation)
-            .where(
-                Conversation.id == conversation_id,
-                Conversation.app_id == app_model.id,
-            )
-            .first()
-        )
+        conversation: Conversation | None = db.session.scalars(
+            select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
+        ).first()
 
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Optional[Message] = (
-            db.session.query(Message)
-            .where(
-                Message.id == message_id,
-                Message.conversation_id == conversation_id,
-            )
-            .first()
-        )
+        message: Optional[Message] = db.session.scalars(
+            select(Message).where(Message.id == message_id, Message.conversation_id == conversation_id).limit(1)
+        ).first()
 
         if not message:
             raise ValueError(f"Message not found: {message_id}")

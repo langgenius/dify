@@ -425,14 +425,9 @@ class TestSavedMessageService:
         # Verify no saved message was created
         from extensions.ext_database import db
 
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-            )
-            .first()
-        )
+        saved_message = db.session.scalars(
+            select(SavedMessage).where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id).limit(1)
+        ).first()
 
         assert saved_message is None
 
@@ -546,14 +541,9 @@ class TestSavedMessageService:
         # Verify no saved message was created
         from extensions.ext_database import db
 
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-            )
-            .first()
-        )
+        saved_message = db.session.scalars(
+            select(SavedMessage).where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id).limit(1)
+        ).first()
 
         assert saved_message is None
 

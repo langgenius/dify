@@ -4,7 +4,7 @@ import pytz  # pip install pytz
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -300,11 +300,9 @@ api.add_resource(ChatConversationDetailApi, "/apps/<uuid:app_id>/chat-conversati
 
 
 def _get_conversation(app_model, conversation_id):
-    conversation = (
-        db.session.query(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-        .first()
-    )
+    conversation = db.session.scalars(
+        select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
+    ).first()
 
     if not conversation:
         raise NotFound("Conversation Not Exists.")

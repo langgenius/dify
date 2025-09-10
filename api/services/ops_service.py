@@ -17,11 +17,11 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = (
-            db.session.query(TraceAppConfig)
+        trace_config_data: Optional[TraceAppConfig] = db.session.scalars(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not trace_config_data:
             return None
@@ -155,11 +155,11 @@ class OpsService:
             project_url = None
 
         # check if trace config already exists
-        trace_config_data: Optional[TraceAppConfig] = (
-            db.session.query(TraceAppConfig)
+        trace_config_data: Optional[TraceAppConfig] = db.session.scalars(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if trace_config_data:
             return None
@@ -197,11 +197,11 @@ class OpsService:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         # check if trace config already exists
-        current_trace_config = (
-            db.session.query(TraceAppConfig)
+        current_trace_config = db.session.scalars(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not current_trace_config:
             return None
@@ -234,11 +234,11 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config = (
-            db.session.query(TraceAppConfig)
+        trace_config = db.session.scalars(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not trace_config:
             return None

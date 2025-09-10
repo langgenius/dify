@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Optional
 
 from pydantic import Field
+from sqlalchemy import select
 
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -82,11 +83,11 @@ class WorkflowToolProviderController(ToolProviderController):
         :param app: the app
         :return: the tool
         """
-        workflow: Workflow | None = (
-            db.session.query(Workflow)
+        workflow: Workflow | None = db.session.scalars(
+            select(Workflow)
             .where(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not workflow:
             raise ValueError("workflow not found")
@@ -188,14 +189,11 @@ class WorkflowToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
 
-        db_providers: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == tenant_id,
-                WorkflowToolProvider.app_id == self.provider_id,
-            )
-            .first()
-        )
+        db_providers: WorkflowToolProvider | None = db.session.scalars(
+            select(WorkflowToolProvider)
+            .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == self.provider_id)
+            .limit(1)
+        ).first()
 
         if not db_providers:
             return []

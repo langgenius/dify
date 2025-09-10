@@ -678,13 +678,13 @@ class TestAnnotationService:
         # Verify history was created
         from models.model import AppAnnotationHitHistory
 
-        history = (
-            db.session.query(AppAnnotationHitHistory)
+        history = db.session.scalars(
+            select(AppAnnotationHitHistory)
             .where(
                 AppAnnotationHitHistory.annotation_id == annotation.id, AppAnnotationHitHistory.message_id == message_id
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert history is not None
         assert history.app_id == app.id

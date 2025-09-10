@@ -1,6 +1,8 @@
 import json
 from typing import Optional, Union
 
+from sqlalchemy import select
+
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
@@ -48,11 +50,9 @@ class MessageService:
         fetch_limit = limit + 1
 
         if first_id:
-            first_message = (
-                db.session.query(Message)
-                .where(Message.conversation_id == conversation.id, Message.id == first_id)
-                .first()
-            )
+            first_message = db.session.scalars(
+                select(Message).where(Message.conversation_id == conversation.id, Message.id == first_id).limit(1)
+            ).first()
 
             if not first_message:
                 raise FirstMessageNotExistsError()
@@ -249,11 +249,11 @@ class MessageService:
             )
         else:
             if not conversation.override_model_configs:
-                app_model_config = (
-                    db.session.query(AppModelConfig)
+                app_model_config = db.session.scalars(
+                    select(AppModelConfig)
                     .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
-                    .first()
-                )
+                    .limit(1)
+                ).first()
             else:
                 conversation_override_model_configs = json.loads(conversation.override_model_configs)
                 app_model_config = AppModelConfig(

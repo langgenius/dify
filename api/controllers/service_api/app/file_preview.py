@@ -108,9 +108,9 @@ class FilePreviewApi(Resource):
                 raise FileNotFoundError("File not found in message context")
 
             # Get the message and verify it belongs to the requesting app
-            message = (
-                db.session.query(Message).where(Message.id == message_file.message_id, Message.app_id == app_id).first()
-            )
+            message = db.session.scalars(
+                select(Message).where(Message.id == message_file.message_id, Message.app_id == app_id).limit(1)
+            ).first()
 
             if not message:
                 raise FileAccessDeniedError("File access denied: not owned by requesting app")

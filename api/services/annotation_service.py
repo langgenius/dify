@@ -37,7 +37,9 @@ class AppAnnotationService:
         if args.get("message_id"):
             message_id = str(args["message_id"])
             # get message info
-            message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app.id).first()
+            message = db.session.scalars(
+                select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1)
+            ).first()
 
             if not message:
                 raise NotFound("Message Not Exists.")
@@ -508,14 +510,11 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting)
-            .where(
-                AppAnnotationSetting.app_id == app_id,
-                AppAnnotationSetting.id == annotation_setting_id,
-            )
-            .first()
-        )
+        annotation_setting = db.session.scalars(
+            select(AppAnnotationSetting)
+            .where(AppAnnotationSetting.app_id == app_id, AppAnnotationSetting.id == annotation_setting_id)
+            .limit(1)
+        ).first()
         if not annotation_setting:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]

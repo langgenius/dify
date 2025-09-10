@@ -305,7 +305,9 @@ class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
+        dataset = db.session.scalars(
+            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1)
+        ).first()
 
         if not dataset:
             raise NotFound("Dataset not found.")

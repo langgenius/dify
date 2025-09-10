@@ -1078,20 +1078,20 @@ class Message(Base):
 
     @property
     def user_feedback(self):
-        feedback = (
-            db.session.query(MessageFeedback)
+        feedback = db.session.scalars(
+            select(MessageFeedback)
             .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
-            .first()
-        )
+            .limit(1)
+        ).first()
         return feedback
 
     @property
     def admin_feedback(self):
-        feedback = (
-            db.session.query(MessageFeedback)
+        feedback = db.session.scalars(
+            select(MessageFeedback)
             .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
-            .first()
-        )
+            .limit(1)
+        ).first()
         return feedback
 
     @property

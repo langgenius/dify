@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
@@ -194,14 +195,11 @@ class TestWorkflowToolManageService:
         from extensions.ext_database import db
 
         # Check if workflow tool provider was created
-        created_tool_provider = (
-            db.session.query(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == account.current_tenant.id,
-                WorkflowToolProvider.app_id == app.id,
-            )
-            .first()
-        )
+        created_tool_provider = db.session.scalars(
+            select(WorkflowToolProvider)
+            .where(WorkflowToolProvider.tenant_id == account.current_tenant.id, WorkflowToolProvider.app_id == app.id)
+            .limit(1)
+        ).first()
 
         assert created_tool_provider is not None
         assert created_tool_provider.name == tool_name
@@ -549,14 +547,11 @@ class TestWorkflowToolManageService:
         # Get the created tool
         from extensions.ext_database import db
 
-        created_tool = (
-            db.session.query(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == account.current_tenant.id,
-                WorkflowToolProvider.app_id == app.id,
-            )
-            .first()
-        )
+        created_tool = db.session.scalars(
+            select(WorkflowToolProvider)
+            .where(WorkflowToolProvider.tenant_id == account.current_tenant.id, WorkflowToolProvider.app_id == app.id)
+            .limit(1)
+        ).first()
 
         # Setup update parameters
         updated_tool_name = fake.word()
@@ -686,14 +681,11 @@ class TestWorkflowToolManageService:
         # Get the created tool
         from extensions.ext_database import db
 
-        created_tool = (
-            db.session.query(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == account.current_tenant.id,
-                WorkflowToolProvider.app_id == app.id,
-            )
-            .first()
-        )
+        created_tool = db.session.scalars(
+            select(WorkflowToolProvider)
+            .where(WorkflowToolProvider.tenant_id == account.current_tenant.id, WorkflowToolProvider.app_id == app.id)
+            .limit(1)
+        ).first()
 
         # Attempt to update tool with same name (should not fail)
         result = WorkflowToolManageService.update_workflow_tool(

@@ -124,11 +124,11 @@ class TagService:
         TagService.check_target_exists(args["type"], args["target_id"])
         # save tag binding
         for tag_id in args["tag_ids"]:
-            tag_binding = (
-                db.session.query(TagBinding)
+            tag_binding = db.session.scalars(
+                select(TagBinding)
                 .where(TagBinding.tag_id == tag_id, TagBinding.target_id == args["target_id"])
-                .first()
-            )
+                .limit(1)
+            ).first()
             if tag_binding:
                 continue
             new_tag_binding = TagBinding(
@@ -145,11 +145,11 @@ class TagService:
         # check if target exists
         TagService.check_target_exists(args["type"], args["target_id"])
         # delete tag binding
-        tag_bindings = (
-            db.session.query(TagBinding)
+        tag_bindings = db.session.scalars(
+            select(TagBinding)
             .where(TagBinding.target_id == args["target_id"], TagBinding.tag_id == (args["tag_id"]))
-            .first()
-        )
+            .limit(1)
+        ).first()
         if tag_bindings:
             db.session.delete(tag_bindings)
             db.session.commit()
@@ -157,19 +157,17 @@ class TagService:
     @staticmethod
     def check_target_exists(type: str, target_id: str):
         if type == "knowledge":
-            dataset = (
-                db.session.query(Dataset)
+            dataset = db.session.scalars(
+                select(Dataset)
                 .where(Dataset.tenant_id == current_user.current_tenant_id, Dataset.id == target_id)
-                .first()
-            )
+                .limit(1)
+            ).first()
             if not dataset:
                 raise NotFound("Dataset not found")
         elif type == "app":
-            app = (
-                db.session.query(App)
-                .where(App.tenant_id == current_user.current_tenant_id, App.id == target_id)
-                .first()
-            )
+            app = db.session.scalars(
+                select(App).where(App.tenant_id == current_user.current_tenant_id, App.id == target_id).limit(1)
+            ).first()
             if not app:
                 raise NotFound("App not found")
         else:

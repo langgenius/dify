@@ -218,11 +218,11 @@ class OpsTraceManager:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = (
-            db.session.query(TraceAppConfig)
+        trace_config_data: Optional[TraceAppConfig] = db.session.scalars(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not trace_config_data:
             return None

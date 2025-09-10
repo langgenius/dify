@@ -53,11 +53,11 @@ class ApiKeyAuthService:
 
     @staticmethod
     def delete_provider_auth(tenant_id: str, binding_id: str):
-        data_source_api_key_binding = (
-            db.session.query(DataSourceApiKeyAuthBinding)
+        data_source_api_key_binding = db.session.scalars(
+            select(DataSourceApiKeyAuthBinding)
             .where(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.id == binding_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if data_source_api_key_binding:
             db.session.delete(data_source_api_key_binding)
             db.session.commit()
