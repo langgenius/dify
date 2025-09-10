@@ -242,20 +242,20 @@ export const OperationAction: FC<{
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       // If it is a delete operation, need to update the selectedIds state
-      if (selectedIds && onSelectedIdChange && operationName === 'delete')
+      if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
         onSelectedIdChange(selectedIds.filter(selectedId => selectedId !== id))
 
       onUpdate(operationName)
     }
     else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
-    if (operationName === 'delete')
+    if (operationName === DocumentActionType.delete)
       setDeleting(false)
   }
 
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
-    if (operationName === 'enable' && enabled)
+    if (operationName === DocumentActionType.enable && enabled)
       return
-    if (operationName === 'disable' && !enabled)
+    if (operationName === DocumentActionType.disable && !enabled)
       return
     onOperate(operationName)
   }, { wait: 500 })
