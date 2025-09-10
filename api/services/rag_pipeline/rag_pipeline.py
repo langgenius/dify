@@ -1354,11 +1354,12 @@ class RagPipelineService:
                     user_input_variables.append(value)
 
                 datasource_plugins.append({
+                    "node_id": datasource_node.get("id"),
                     "plugin_id": datasource_node_data.get("plugin_id"),
                     "provider_name": datasource_node_data.get("provider_name"),
-                    "datasource_name": datasource_node_data.get("datasource_name"),
-                    "datasource_configurations": datasource_node_data.get("datasource_configurations"),
-                    "plugin_unique_identifier": datasource_node_data.get("plugin_unique_identifier"),
+                    "provider_type": datasource_node_data.get("provider_type"),
+                    "title": datasource_node_data.get("title"),
+                    "user_input_variables": user_input_variables,
                 })
 
         return datasource_plugins
