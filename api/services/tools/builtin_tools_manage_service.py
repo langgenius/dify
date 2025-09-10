@@ -153,14 +153,11 @@ class BuiltinToolManageService:
         """
         with Session(db.engine) as session:
             # get if the provider exists
-            db_provider = (
-                session.query(BuiltinToolProvider)
-                .where(
-                    BuiltinToolProvider.tenant_id == tenant_id,
-                    BuiltinToolProvider.id == credential_id,
-                )
-                .first()
-            )
+            db_provider = session.scalars(
+                select(BuiltinToolProvider)
+                .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.id == credential_id)
+                .limit(1)
+            ).first()
             if db_provider is None:
                 raise ValueError(f"you have not added provider {provider}")
 
@@ -409,14 +406,11 @@ class BuiltinToolManageService:
         delete tool provider
         """
         with Session(db.engine) as session:
-            db_provider = (
-                session.query(BuiltinToolProvider)
-                .where(
-                    BuiltinToolProvider.tenant_id == tenant_id,
-                    BuiltinToolProvider.id == credential_id,
-                )
-                .first()
-            )
+            db_provider = session.scalars(
+                select(BuiltinToolProvider)
+                .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.id == credential_id)
+                .limit(1)
+            ).first()
 
             if db_provider is None:
                 raise ValueError(f"you have not added provider {provider}")

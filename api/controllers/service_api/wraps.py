@@ -276,16 +276,16 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
         user_id = DEFAULT_SERVICE_API_USER_ID
 
     with Session(db.engine, expire_on_commit=False) as session:
-        end_user = (
-            session.query(EndUser)
+        end_user = session.scalars(
+            select(EndUser)
             .where(
                 EndUser.tenant_id == app_model.tenant_id,
                 EndUser.app_id == app_model.id,
                 EndUser.session_id == user_id,
                 EndUser.type == "service_api",
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if end_user is None:
             end_user = EndUser(

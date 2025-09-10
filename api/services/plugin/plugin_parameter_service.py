@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.parameters import PluginParameterOption
@@ -49,14 +50,11 @@ class PluginParameterService:
                 else:
                     # fetch credentials from db
                     with Session(db.engine) as session:
-                        db_record = (
-                            session.query(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.provider == provider,
-                            )
-                            .first()
-                        )
+                        db_record = session.scalars(
+                            select(BuiltinToolProvider)
+                            .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider)
+                            .limit(1)
+                        ).first()
 
                     if db_record is None:
                         raise ValueError(f"Builtin provider {provider} not found when fetching credentials")

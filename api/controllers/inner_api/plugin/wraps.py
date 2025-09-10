@@ -31,14 +31,9 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             if not user_id:
                 user_id = DEFAULT_SERVICE_API_USER_ID
 
-            user_model = (
-                session.query(EndUser)
-                .where(
-                    EndUser.session_id == user_id,
-                    EndUser.tenant_id == tenant_id,
-                )
-                .first()
-            )
+            user_model = session.scalars(
+                select(EndUser).where(EndUser.session_id == user_id, EndUser.tenant_id == tenant_id).limit(1)
+            ).first()
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
