@@ -22,6 +22,7 @@ jobs:
       - name: trigger deployments
         env:
           DEV_ENV_ADDRS: ${{ vars.DEV_ENV_ADDRS }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
         run: |
           IFS=',' read -ra ENDPOINTS <<< "$DEV_ENV_ADDRS"
           
@@ -35,6 +36,6 @@ jobs:
             }
             EOF
             )
-            API_SIGNATURE=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "deploy_secret" | awk '{print "sha256="$2}')
-            curl -X POST -H "Content-Type: application/json" -H "X-Hub-Signature-256: $API_SIGNATURE" -d "$API_BODY" "$ENDPOINT"
+            API_SIGNATURE=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "$DEPLOY_SECRET" | awk '{print "sha256="$2}')
+            curl -X POST -H "Content-Type: application/json" -H "X-Hub-Signature-256: $API_SIGNATURE" -d "$BODY" "$ENDPOINT"
           done
