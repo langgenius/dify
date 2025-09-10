@@ -53,7 +53,7 @@ jobs:
 
       - name: Run Mypy Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv --directory api add zuban && uv --directory api run zmypy --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+        run: uv --directory api add zuban && uv --directory api run zmypy --exclude '.venv/' --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
