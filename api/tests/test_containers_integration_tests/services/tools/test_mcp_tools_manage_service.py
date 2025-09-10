@@ -706,7 +706,14 @@ class TestMCPToolManageService:
 
         # Verify mock interactions
         mock_mcp_client.assert_called_once_with(
-            "https://example.com/mcp", mcp_provider.id, tenant.id, authed=False, for_list=True
+            "https://example.com/mcp",
+            mcp_provider.id,
+            tenant.id,
+            authed=False,
+            for_list=True,
+            headers={},
+            timeout=30.0,
+            sse_read_timeout=300.0,
         )
 
     def test_list_mcp_tool_from_remote_server_auth_error(
@@ -1181,6 +1188,11 @@ class TestMCPToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
+        # Create MCP provider first
+        mcp_provider = self._create_test_mcp_provider(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+        )
+
         # Mock MCPClient and its context manager
         mock_tools = [
             type("MockTool", (), {"model_dump": lambda self: {"name": "test_tool_1", "description": "Test tool 1"}})(),
@@ -1194,7 +1206,7 @@ class TestMCPToolManageService:
 
             # Act: Execute the method under test
             result = MCPToolManageService._re_connect_mcp_provider(
-                "https://example.com/mcp", "test_provider_id", tenant.id
+                "https://example.com/mcp", mcp_provider.id, tenant.id
             )
 
         # Assert: Verify the expected outcomes
@@ -1213,7 +1225,14 @@ class TestMCPToolManageService:
 
         # Verify mock interactions
         mock_mcp_client.assert_called_once_with(
-            "https://example.com/mcp", "test_provider_id", tenant.id, authed=False, for_list=True
+            "https://example.com/mcp",
+            mcp_provider.id,
+            tenant.id,
+            authed=False,
+            for_list=True,
+            headers={},
+            timeout=30.0,
+            sse_read_timeout=300.0,
         )
 
     def test_re_connect_mcp_provider_auth_error(self, db_session_with_containers, mock_external_service_dependencies):
@@ -1231,6 +1250,11 @@ class TestMCPToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
+        # Create MCP provider first
+        mcp_provider = self._create_test_mcp_provider(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+        )
+
         # Mock MCPClient to raise authentication error
         with patch("services.tools.mcp_tools_manage_service.MCPClient") as mock_mcp_client:
             from core.mcp.error import MCPAuthError
@@ -1240,7 +1264,7 @@ class TestMCPToolManageService:
 
             # Act: Execute the method under test
             result = MCPToolManageService._re_connect_mcp_provider(
-                "https://example.com/mcp", "test_provider_id", tenant.id
+                "https://example.com/mcp", mcp_provider.id, tenant.id
             )
 
         # Assert: Verify the expected outcomes
@@ -1265,6 +1289,11 @@ class TestMCPToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
+        # Create MCP provider first
+        mcp_provider = self._create_test_mcp_provider(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+        )
+
         # Mock MCPClient to raise connection error
         with patch("services.tools.mcp_tools_manage_service.MCPClient") as mock_mcp_client:
             from core.mcp.error import MCPError
@@ -1274,4 +1303,4 @@ class TestMCPToolManageService:
 
             # Act & Assert: Verify proper error handling
             with pytest.raises(ValueError, match="Failed to re-connect MCP server: Connection failed"):
-                MCPToolManageService._re_connect_mcp_provider("https://example.com/mcp", "test_provider_id", tenant.id)
+                MCPToolManageService._re_connect_mcp_provider("https://example.com/mcp", mcp_provider.id, tenant.id)
