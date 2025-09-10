@@ -105,6 +105,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
+                user_id=self.application_generate_entity.user_id,
             )
 
         # RUN WORKFLOW
