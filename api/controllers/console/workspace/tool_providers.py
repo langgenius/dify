@@ -967,14 +967,14 @@ class ToolMCPAuthApi(Resource):
                 return {"result": "success"}
 
         except MCPAuthError:
-            auth_provider = OAuthClientProvider(provider_id, tenant_id, for_list=True)
-            return auth(auth_provider, provider.decrypted_server_url, args["authorization_code"])
+            try:
+                auth_provider = OAuthClientProvider(provider_id, tenant_id, for_list=True)
+                return auth(auth_provider, provider.decrypted_server_url, args["authorization_code"])
+            except Exception as e:
+                MCPToolManageService.clear_mcp_provider_credentials(mcp_provider=provider)
+                raise ValueError(f"Failed to authenticate, please try again: {e}") from e
         except MCPError as e:
-            MCPToolManageService.update_mcp_provider_credentials(
-                mcp_provider=provider,
-                credentials={},
-                authed=False,
-            )
+            MCPToolManageService.clear_mcp_provider_credentials(mcp_provider=provider)
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 

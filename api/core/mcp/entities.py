@@ -4,7 +4,7 @@ from typing import Any, Generic, TypeVar
 from core.mcp.session.base_session import BaseSession
 from core.mcp.types import LATEST_PROTOCOL_VERSION, RequestId, RequestParams
 
-SUPPORTED_PROTOCOL_VERSIONS: list[str] = ["2024-11-05", LATEST_PROTOCOL_VERSION]
+SUPPORTED_PROTOCOL_VERSIONS: list[str] = ["2024-11-05", "2025-03-26", LATEST_PROTOCOL_VERSION]
 
 
 SessionT = TypeVar("SessionT", bound=BaseSession[Any, Any, Any, Any, Any])

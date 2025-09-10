@@ -254,6 +254,7 @@ class ToolTransformService:
                 description=I18nObject(en_US=tool.description, zh_Hans=tool.description),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
                 labels=[],
+                output_schema=tool.outputSchema,
             )
             for tool in tools
         ]

@@ -9,7 +9,7 @@ from core.mcp.client.sse_client import sse_client
 from core.mcp.client.streamable_client import streamablehttp_client
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.session.client_session import ClientSession
-from core.mcp.types import Tool
+from core.mcp.types import CallToolResult, Tool
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class MCPClient:
         tools = response.tools
         return tools
 
-    def invoke_tool(self, tool_name: str, tool_args: dict):
+    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """Call a tool"""
         if not self._initialized or not self._session:
             raise ValueError("Session not initialized.")

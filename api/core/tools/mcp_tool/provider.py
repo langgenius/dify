@@ -72,7 +72,7 @@ class MCPToolProviderController(ToolProviderController):
                     ),
                     llm=remote_mcp_tool.description or "",
                 ),
-                output_schema=None,
+                output_schema=remote_mcp_tool.outputSchema,
                 has_runtime_parameters=len(remote_mcp_tool.inputSchema) > 0,
             )
             for remote_mcp_tool in remote_mcp_tools

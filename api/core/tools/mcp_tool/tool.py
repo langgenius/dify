@@ -64,12 +64,16 @@ class MCPTool(Tool):
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:
             raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
-
+        # handle dify tool output
         for content in result.content:
             if isinstance(content, TextContent):
                 yield from self._process_text_content(content)
             elif isinstance(content, ImageContent):
                 yield self._process_image_content(content)
+        # handle MCP structured output
+        if self.entity.output_schema and result.structuredContent:
+            for k, v in result.structuredContent.items():
+                yield self.create_variable_message(k, v)
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
         """Process text content and yield appropriate messages."""
@@ -91,7 +95,7 @@ class MCPTool(Tool):
 
     def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
         """Process a list of JSON items."""
-        if any(not isinstance(item, dict) for item in json_list):
+        if any(not isinstance(item, dict[str, Any]) for item in json_list):
             # If the list contains any non-dict item, treat the entire list as a text message.
             yield self.create_text_message(str(json_list))
             return

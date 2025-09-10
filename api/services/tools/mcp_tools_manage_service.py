@@ -299,6 +299,17 @@ class MCPToolManageService:
         db.session.commit()
 
     @classmethod
+    def clear_mcp_provider_credentials(
+        cls,
+        mcp_provider: MCPToolProvider,
+    ):
+        mcp_provider.tools = "[]"
+        mcp_provider.encrypted_credentials = "{}"
+        mcp_provider.updated_at = datetime.now()
+        mcp_provider.authed = False
+        db.session.commit()
+
+    @classmethod
     def _re_connect_mcp_provider(cls, server_url: str, provider_id: str, tenant_id: str):
         # Get the existing provider to access headers and timeout settings
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)

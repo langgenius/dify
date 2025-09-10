@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 
 from core.mcp.auth.auth_provider import OAuthClientProvider
 from core.mcp.types import (
+    LATEST_PROTOCOL_VERSION,
     OAuthClientInformation,
     OAuthClientInformationFull,
     OAuthClientMetadata,
@@ -20,7 +21,6 @@ from core.mcp.types import (
 )
 from extensions.ext_redis import redis_client
 
-LATEST_PROTOCOL_VERSION = "1.0"
 OAUTH_STATE_EXPIRY_SECONDS = 5 * 60  # 5 minutes expiry
 OAUTH_STATE_REDIS_KEY_PREFIX = "oauth_state:"
 
