@@ -250,15 +250,15 @@ class TestAdvancedChatAppRunnerConversationVariables:
 
         # Patch the necessary components
         with (
-            patch("core.app.apps.advanced_chat.app_runner.Session", autospec=True) as mock_session_class,
-            patch("core.app.apps.advanced_chat.app_runner.select", autospec=True) as mock_select,
-            patch("core.app.apps.advanced_chat.app_runner.db", autospec=True) as mock_db,
-            patch.object(runner, "_init_graph", autospec=True) as mock_init_graph,
+            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
+            patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
+            patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
+            patch.object(runner, "_init_graph") as mock_init_graph,
             patch.object(runner, "handle_input_moderation", return_value=False),
             patch.object(runner, "handle_annotation_reply", return_value=False),
-            patch("core.app.apps.advanced_chat.app_runner.WorkflowEntry", autospec=True) as mock_workflow_entry_class,
-            patch("core.app.apps.advanced_chat.app_runner.VariablePool", autospec=True) as mock_variable_pool_class,
-            patch("core.app.apps.advanced_chat.app_runner.ConversationVariable", autospec=True) as mock_conv_var_class,
+            patch("core.app.apps.advanced_chat.app_runner.WorkflowEntry") as mock_workflow_entry_class,
+            patch("core.app.apps.advanced_chat.app_runner.VariablePool") as mock_variable_pool_class,
+            patch("core.app.apps.advanced_chat.app_runner.ConversationVariable") as mock_conv_var_class,
         ):
             # Setup mocks
             mock_session_class.return_value.__enter__.return_value = mock_session
