@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, ParamSpec, TypeVar
+from typing import Optional, ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.file.constants import DEFAULT_SERVICE_API_USER_ID
 from extensions.ext_database import db
-from libs.login import _get_user
+from libs.login import current_user
 from models.account import Tenant
 from models.model import EndUser
 
@@ -66,17 +66,14 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
 
             p = parser.parse_args()
 
-            user_id: Optional[str] = p.get("user_id")
-            tenant_id: str = p.get("tenant_id")
+            user_id = cast(str, p.get("user_id"))
+            tenant_id = cast(str, p.get("tenant_id"))
 
             if not tenant_id:
                 raise ValueError("tenant_id is required")
 
             if not user_id:
                 user_id = DEFAULT_SERVICE_API_USER_ID
-
-            del kwargs["tenant_id"]
-            del kwargs["user_id"]
 
             try:
                 tenant_model = (
@@ -98,7 +95,7 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
             kwargs["user_model"] = user
 
             current_app.login_manager._update_request_context_with_user(user)  # type: ignore
-            user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
+            user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
 
             return view_func(*args, **kwargs)
 
