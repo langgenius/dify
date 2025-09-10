@@ -827,9 +827,9 @@ class TestMetadataService:
         assert document.doc_metadata["test_metadata"] == "test_value"
 
         # Verify metadata binding was created
-        binding = (
-            db.session.query(DatasetMetadataBinding).filter_by(metadata_id=metadata.id, document_id=document.id).first()
-        )
+        binding = db.session.scalars(
+            select(DatasetMetadataBinding).filter_by(metadata_id=metadata.id, document_id=document.id).limit(1)
+        ).first()
         assert binding is not None
         assert binding.tenant_id == tenant.id
         assert binding.dataset_id == dataset.id

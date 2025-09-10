@@ -52,9 +52,9 @@ def mail_clean_document_notify_task():
                 if not tenant:
                     continue
                 # check current owner
-                current_owner_join = (
-                    db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
-                )
+                current_owner_join = db.session.scalars(
+                    select(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").limit(1)
+                ).first()
                 if not current_owner_join:
                     continue
                 account = db.session.scalars(

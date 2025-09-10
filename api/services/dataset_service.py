@@ -197,7 +197,7 @@ class DatasetService:
         retrieval_model: Optional[RetrievalModel] = None,
     ):
         # check if dataset name already exists
-        if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
+        if db.session.scalars(select(Dataset).filter_by(name=name, tenant_id=tenant_id).limit(1)).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
         embedding_model = None
         if indexing_technique == "high_quality":
@@ -686,9 +686,9 @@ class DatasetService:
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
                 if dataset.created_by != user.id:
-                    user_permission = (
-                        db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
-                    )
+                    user_permission = db.session.scalars(
+                        select(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).limit(1)
+                    ).first()
                     if not user_permission:
                         logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                         raise NoPermissionError("You do not have permission to access this dataset.")
