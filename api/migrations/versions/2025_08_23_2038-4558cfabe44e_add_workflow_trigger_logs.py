@@ -1,4 +1,4 @@
-"""empty message
+"""Add workflow trigger logs table
 
 Revision ID: 4558cfabe44e
 Revises: 0e154742a5fa
