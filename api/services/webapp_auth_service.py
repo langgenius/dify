@@ -3,6 +3,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
@@ -52,7 +53,7 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = db.session.query(Account).where(Account.email == email).first()
+        account = db.session.scalars(select(Account).where(Account.email == email).limit(1)).first()
         if not account:
             return None
 
@@ -91,10 +92,10 @@ class WebAppAuthService:
 
     @classmethod
     def create_end_user(cls, app_code, email) -> EndUser:
-        site = db.session.query(Site).where(Site.code == app_code).first()
+        site = db.session.scalars(select(Site).where(Site.code == app_code).limit(1)).first()
         if not site:
             raise NotFound("Site not found.")
-        app_model = db.session.query(App).where(App.id == site.app_id).first()
+        app_model = db.session.scalars(select(App).where(App.id == site.app_id).limit(1)).first()
         if not app_model:
             raise NotFound("App not found.")
         end_user = EndUser(

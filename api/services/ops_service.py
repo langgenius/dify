@@ -1,5 +1,7 @@
 from typing import Any, Optional
 
+from sqlalchemy import select
+
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
 from extensions.ext_database import db
@@ -25,7 +27,7 @@ class OpsService:
             return None
 
         # decrypt_token and obfuscated_token
-        app = db.session.query(App).where(App.id == app_id).first()
+        app = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -163,7 +165,7 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).where(App.id == app_id).first()
+        app = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -205,7 +207,7 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).where(App.id == app_id).first()
+        app = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app:
             return None
         tenant_id = app.tenant_id

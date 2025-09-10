@@ -4,6 +4,7 @@ from typing import cast
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource
+from sqlalchemy import select
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -41,9 +42,9 @@ class ModelConfigResource(Resource):
 
         if app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
             # get original app model config
-            original_app_model_config = (
-                db.session.query(AppModelConfig).where(AppModelConfig.id == app_model.app_model_config_id).first()
-            )
+            original_app_model_config = db.session.scalars(
+                select(AppModelConfig).where(AppModelConfig.id == app_model.app_model_config_id).limit(1)
+            ).first()
             if original_app_model_config is None:
                 raise ValueError("Original app model config not found")
             agent_mode = original_app_model_config.agent_mode_dict

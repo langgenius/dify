@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
@@ -26,7 +27,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
     documents = []
     start_at = time.perf_counter()
 
-    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+    dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
     if not dataset:
         logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
         db.session.close()

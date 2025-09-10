@@ -1,4 +1,5 @@
 from flask_restx import Resource
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import build_site_model
@@ -29,7 +30,7 @@ class AppSiteApi(Resource):
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalars(select(Site).where(Site.app_id == app_model.id).limit(1)).first()
 
         if not site:
             raise Forbidden()

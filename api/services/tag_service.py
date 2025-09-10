@@ -93,7 +93,7 @@ class TagService:
     def update_tags(args: dict, tag_id: str) -> Tag:
         if TagService.get_tag_by_tag_name(args.get("type", ""), current_user.current_tenant_id, args.get("name", "")):
             raise ValueError("Tag name already exists")
-        tag = db.session.query(Tag).where(Tag.id == tag_id).first()
+        tag = db.session.scalars(select(Tag).where(Tag.id == tag_id).limit(1)).first()
         if not tag:
             raise NotFound("Tag not found")
         tag.name = args["name"]
@@ -107,7 +107,7 @@ class TagService:
 
     @staticmethod
     def delete_tag(tag_id: str):
-        tag = db.session.query(Tag).where(Tag.id == tag_id).first()
+        tag = db.session.scalars(select(Tag).where(Tag.id == tag_id).limit(1)).first()
         if not tag:
             raise NotFound("Tag not found")
         db.session.delete(tag)

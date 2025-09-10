@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from models.model import EndUser, Message
 from models.web import SavedMessage
@@ -496,7 +497,7 @@ class TestSavedMessageService:
         # Verify database state
         db.session.commit()
         # The message should still exist, only the saved_message should be deleted
-        assert db.session.query(Message).where(Message.id == message.id).first() is not None
+        assert db.session.scalars(select(Message).where(Message.id == message.id).limit(1)).first() is not None
 
     def test_pagination_by_last_id_error_no_user(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -617,4 +618,4 @@ class TestSavedMessageService:
         # Verify database state
         db.session.commit()
         # The message should still exist, only the saved_message should be deleted
-        assert db.session.query(Message).where(Message.id == message.id).first() is not None
+        assert db.session.scalars(select(Message).where(Message.id == message.id).limit(1)).first() is not None

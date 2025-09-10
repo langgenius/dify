@@ -879,7 +879,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Optional[Document]:
-        document = db.session.query(Document).where(Document.id == document_id).first()
+        document = db.session.scalars(select(Document).where(Document.id == document_id).limit(1)).first()
 
         return document
 
@@ -1301,8 +1301,8 @@ class DocumentService:
                             exist_document[data_source_info["notion_page_id"]] = document.id
                     for notion_info in notion_info_list:
                         workspace_id = notion_info.workspace_id
-                        data_source_binding = (
-                            db.session.query(DataSourceOauthBinding)
+                        data_source_binding = db.session.scalars(
+                            select(DataSourceOauthBinding)
                             .where(
                                 db.and_(
                                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
@@ -1311,8 +1311,8 @@ class DocumentService:
                                     DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                                 )
                             )
-                            .first()
-                        )
+                            .limit(1)
+                        ).first()
                         if not data_source_binding:
                             raise ValueError("Data source binding not found.")
                         for page in notion_info.pages:
@@ -1524,8 +1524,8 @@ class DocumentService:
                 notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     workspace_id = notion_info.workspace_id
-                    data_source_binding = (
-                        db.session.query(DataSourceOauthBinding)
+                    data_source_binding = db.session.scalars(
+                        select(DataSourceOauthBinding)
                         .where(
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
@@ -1534,8 +1534,8 @@ class DocumentService:
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
                     if not data_source_binding:
                         raise ValueError("Data source binding not found.")
                     for page in notion_info.pages:
@@ -2090,7 +2090,9 @@ class SegmentService:
                 segment_document.status = "error"
                 segment_document.error = str(e)
                 db.session.commit()
-            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+            segment = db.session.scalars(
+                select(DocumentSegment).where(DocumentSegment.id == segment_document.id).limit(1)
+            ).first()
             return segment
 
     @classmethod
@@ -2254,11 +2256,11 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
+                    processing_rule = db.session.scalars(
+                        select(DatasetProcessRule)
                         .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
                     if not processing_rule:
                         raise ValueError("No processing rule found.")
                     VectorService.generate_child_chunks(
@@ -2330,11 +2332,11 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
+                    processing_rule = db.session.scalars(
+                        select(DatasetProcessRule)
                         .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
                     if not processing_rule:
                         raise ValueError("No processing rule found.")
                     VectorService.generate_child_chunks(
@@ -2351,7 +2353,9 @@ class SegmentService:
             segment.status = "error"
             segment.error = str(e)
             db.session.commit()
-        new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
+        new_segment = db.session.scalars(
+            select(DocumentSegment).where(DocumentSegment.id == segment.id).limit(1)
+        ).first()
         return new_segment
 
     @classmethod

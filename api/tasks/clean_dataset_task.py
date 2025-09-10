@@ -94,7 +94,9 @@ def clean_dataset_task(
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+                    image_file = db.session.scalars(
+                        select(UploadFile).where(UploadFile.id == upload_file_id).limit(1)
+                    ).first()
                     if image_file is None:
                         continue
                     try:

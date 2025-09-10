@@ -624,7 +624,7 @@ class TestTagService:
         assert result.id is not None
 
         # Verify tag was actually saved to database
-        saved_tag = db.session.query(Tag).where(Tag.id == result.id).first()
+        saved_tag = db.session.scalars(select(Tag).where(Tag.id == result.id).limit(1)).first()
         assert saved_tag is not None
         assert saved_tag.name == "test_tag_name"
 
@@ -689,7 +689,7 @@ class TestTagService:
         assert result.name == "updated_name"
 
         # Verify tag was actually updated in database
-        updated_tag = db.session.query(Tag).where(Tag.id == tag.id).first()
+        updated_tag = db.session.scalars(select(Tag).where(Tag.id == tag.id).limit(1)).first()
         assert updated_tag is not None
         assert updated_tag.name == "updated_name"
 
@@ -838,10 +838,10 @@ class TestTagService:
         # Verify tag and binding exist before deletion
         from extensions.ext_database import db
 
-        tag_before = db.session.query(Tag).where(Tag.id == tag.id).first()
+        tag_before = db.session.scalars(select(Tag).where(Tag.id == tag.id).limit(1)).first()
         assert tag_before is not None
 
-        binding_before = db.session.query(TagBinding).where(TagBinding.tag_id == tag.id).first()
+        binding_before = db.session.scalars(select(TagBinding).where(TagBinding.tag_id == tag.id).limit(1)).first()
         assert binding_before is not None
 
         # Act: Execute the method under test
@@ -849,11 +849,11 @@ class TestTagService:
 
         # Assert: Verify the expected outcomes
         # Verify tag was deleted
-        tag_after = db.session.query(Tag).where(Tag.id == tag.id).first()
+        tag_after = db.session.scalars(select(Tag).where(Tag.id == tag.id).limit(1)).first()
         assert tag_after is None
 
         # Verify tag binding was deleted
-        binding_after = db.session.query(TagBinding).where(TagBinding.tag_id == tag.id).first()
+        binding_after = db.session.scalars(select(TagBinding).where(TagBinding.tag_id == tag.id).limit(1)).first()
         assert binding_after is None
 
     def test_delete_tag_not_found_error(self, db_session_with_containers, mock_external_service_dependencies):

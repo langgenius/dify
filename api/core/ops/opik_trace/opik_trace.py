@@ -6,6 +6,7 @@ from typing import Optional, cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -282,9 +283,9 @@ class OpikDataTrace(BaseTraceInstance):
         metadata["file_list"] = file_list
 
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: Optional[EndUser] = db.session.scalars(
+                select(EndUser).where(EndUser.id == message_data.from_end_user_id).limit(1)
+            ).first()
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
                 metadata["end_user_id"] = end_user_id

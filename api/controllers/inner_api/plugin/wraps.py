@@ -6,6 +6,7 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import reqparse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.file.constants import DEFAULT_SERVICE_API_USER_ID
@@ -76,13 +77,7 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
                 user_id = DEFAULT_SERVICE_API_USER_ID
 
             try:
-                tenant_model = (
-                    db.session.query(Tenant)
-                    .where(
-                        Tenant.id == tenant_id,
-                    )
-                    .first()
-                )
+                tenant_model = db.session.scalars(select(Tenant).where(Tenant.id == tenant_id).limit(1)).first()
             except Exception:
                 raise ValueError("tenant not found")
 

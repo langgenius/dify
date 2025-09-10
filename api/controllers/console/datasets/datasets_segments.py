@@ -369,7 +369,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         args = parser.parse_args()
         upload_file_id = args["upload_file_id"]
 
-        upload_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+        upload_file = db.session.scalars(select(UploadFile).where(UploadFile.id == upload_file_id).limit(1)).first()
         if not upload_file:
             raise NotFound("UploadFile not found.")
 

@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from models.api_based_extension import APIBasedExtension
 from services.account_service import AccountService, TenantService
@@ -234,7 +235,9 @@ class TestAPIBasedExtensionService:
         # Verify extension was deleted
         from extensions.ext_database import db
 
-        deleted_extension = db.session.query(APIBasedExtension).where(APIBasedExtension.id == extension_id).first()
+        deleted_extension = db.session.scalars(
+            select(APIBasedExtension).where(APIBasedExtension.id == extension_id).limit(1)
+        ).first()
         assert deleted_extension is None
 
     def test_save_extension_duplicate_name(self, db_session_with_containers, mock_external_service_dependencies):

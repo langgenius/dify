@@ -8,7 +8,7 @@ from hashlib import sha256
 from typing import Any, Optional, cast
 
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -690,7 +690,7 @@ class AccountService:
                 )
             )
 
-        account = db.session.query(Account).where(Account.email == email).first()
+        account = db.session.scalars(select(Account).where(Account.email == email).limit(1)).first()
         if not account:
             return None
 

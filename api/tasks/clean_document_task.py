@@ -31,7 +31,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
 
         if not dataset:
             raise Exception("Document has no dataset")
@@ -46,7 +46,9 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+                    image_file = db.session.scalars(
+                        select(UploadFile).where(UploadFile.id == upload_file_id).limit(1)
+                    ).first()
                     if image_file is None:
                         continue
                     try:
@@ -62,7 +64,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
             db.session.commit()
         if file_id:
-            file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+            file = db.session.scalars(select(UploadFile).where(UploadFile.id == file_id).limit(1)).first()
             if file:
                 try:
                     storage.delete(file.key)

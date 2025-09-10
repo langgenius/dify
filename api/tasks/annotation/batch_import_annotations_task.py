@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -49,9 +50,9 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 )
                 documents.append(document)
             # if annotation reply is enabled , batch add annotations' index
-            app_annotation_setting = (
-                db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
-            )
+            app_annotation_setting = db.session.scalars(
+                select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
+            ).first()
 
             if app_annotation_setting:
                 dataset_collection_binding = (

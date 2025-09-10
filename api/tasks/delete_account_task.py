@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from sqlalchemy import select
 
 from extensions.ext_database import db
 from models.account import Account
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task(queue="dataset")
 def delete_account_task(account_id):
-    account = db.session.query(Account).where(Account.id == account_id).first()
+    account = db.session.scalars(select(Account).where(Account.id == account_id).limit(1)).first()
     try:
         BillingService.delete_account(account_id)
     except Exception:

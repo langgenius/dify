@@ -89,7 +89,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             return None
 
         # get app detail
-        app_model = db.session.query(App).where(App.id == app_id).first()
+        app_model = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app_model or not app_model.is_public:
             return None
 

@@ -29,7 +29,7 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
         if dataset is None:
             logger.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
             db.session.close()

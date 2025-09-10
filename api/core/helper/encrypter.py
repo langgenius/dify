@@ -1,5 +1,7 @@
 import base64
 
+from sqlalchemy import select
+
 from libs import rsa
 
 
@@ -19,7 +21,7 @@ def encrypt_token(tenant_id: str, token: str):
     from models.account import Tenant
     from models.engine import db
 
-    if not (tenant := db.session.query(Tenant).where(Tenant.id == tenant_id).first()):
+    if not (tenant := db.session.scalars(select(Tenant).where(Tenant.id == tenant_id).limit(1)).first()):
         raise ValueError(f"Tenant with id {tenant_id} not found")
     assert tenant.encrypt_public_key is not None
     encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)

@@ -4,6 +4,7 @@ from typing import Optional
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
@@ -26,7 +27,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
     logger.info(click.style(f"Start create segment to index: {segment_id}", fg="green"))
     start_at = time.perf_counter()
 
-    segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
+    segment = db.session.scalars(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)).first()
     if not segment:
         logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
         db.session.close()

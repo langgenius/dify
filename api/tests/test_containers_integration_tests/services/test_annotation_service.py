@@ -2,6 +2,7 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from models.account import Account
@@ -474,7 +475,9 @@ class TestAnnotationService:
         # Verify annotation was deleted
         from extensions.ext_database import db
 
-        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.scalars(
+            select(MessageAnnotation).where(MessageAnnotation.id == annotation_id).limit(1)
+        ).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called (when annotation setting exists)
@@ -1178,7 +1181,9 @@ class TestAnnotationService:
         AppAnnotationService.delete_app_annotation(app.id, annotation_id)
 
         # Verify annotation was deleted
-        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.scalars(
+            select(MessageAnnotation).where(MessageAnnotation.id == annotation_id).limit(1)
+        ).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called

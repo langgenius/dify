@@ -4,7 +4,7 @@ from functools import cached_property
 from typing import Optional
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, text
+from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -84,7 +84,9 @@ class Provider(Base):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.query(ProviderCredential).where(ProviderCredential.id == self.credential_id).first()
+            return db.session.scalars(
+                select(ProviderCredential).where(ProviderCredential.id == self.credential_id).limit(1)
+            ).first()
 
     @property
     def credential_name(self):
@@ -141,11 +143,9 @@ class ProviderModel(Base):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return (
-                db.session.query(ProviderModelCredential)
-                .where(ProviderModelCredential.id == self.credential_id)
-                .first()
-            )
+            return db.session.scalars(
+                select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id).limit(1)
+            ).first()
 
     @property
     def credential_name(self):

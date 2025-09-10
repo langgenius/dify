@@ -39,7 +39,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
     # delete all document segment and index
     try:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
         if not dataset:
             raise Exception("Dataset not found")
 

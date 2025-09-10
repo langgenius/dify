@@ -6,6 +6,8 @@ from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
+from sqlalchemy import select
+
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import sign_tool_file
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
@@ -110,13 +112,15 @@ class App(Base):
 
     @property
     def site(self) -> Optional["Site"]:
-        site = db.session.query(Site).where(Site.app_id == self.id).first()
+        site = db.session.scalars(select(Site).where(Site.app_id == self.id).limit(1)).first()
         return site
 
     @property
     def app_model_config(self) -> Optional["AppModelConfig"]:
         if self.app_model_config_id:
-            return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
+            return db.session.scalars(
+                select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).limit(1)
+            ).first()
 
         return None
 
@@ -125,7 +129,7 @@ class App(Base):
         if self.workflow_id:
             from .workflow import Workflow
 
-            return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
+            return db.session.scalars(select(Workflow).where(Workflow.id == self.workflow_id).limit(1)).first()
 
         return None
 
@@ -135,7 +139,7 @@ class App(Base):
 
     @property
     def tenant(self) -> Optional[Tenant]:
-        tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
+        tenant = db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
         return tenant
 
     @property
@@ -293,7 +297,7 @@ class App(Base):
     @property
     def author_name(self) -> Optional[str]:
         if self.created_by:
-            account = db.session.query(Account).where(Account.id == self.created_by).first()
+            account = db.session.scalars(select(Account).where(Account.id == self.created_by).limit(1)).first()
             if account:
                 return account.name
 
@@ -335,7 +339,7 @@ class AppModelConfig(Base):
 
     @property
     def app(self) -> Optional[App]:
-        app = db.session.query(App).where(App.id == self.app_id).first()
+        app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
     @property
@@ -368,9 +372,9 @@ class AppModelConfig(Base):
 
     @property
     def annotation_reply_dict(self) -> dict[str, Any]:
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).first()
-        )
+        annotation_setting = db.session.scalars(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).limit(1)
+        ).first()
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
             if not collection_binding_detail:
@@ -547,7 +551,7 @@ class RecommendedApp(Base):
 
     @property
     def app(self) -> Optional[App]:
-        app = db.session.query(App).where(App.id == self.app_id).first()
+        app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
 
@@ -571,12 +575,12 @@ class InstalledApp(Base):
 
     @property
     def app(self) -> Optional[App]:
-        app = db.session.query(App).where(App.id == self.app_id).first()
+        app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
     @property
     def tenant(self) -> Optional[Tenant]:
-        tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
+        tenant = db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
         return tenant
 
 
@@ -728,9 +732,9 @@ class Conversation(Base):
                 else:
                     model_config["configs"] = override_model_configs
             else:
-                app_model_config = (
-                    db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
-                )
+                app_model_config = db.session.scalars(
+                    select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).limit(1)
+                ).first()
                 if app_model_config:
                     model_config = app_model_config.to_dict()
 
@@ -756,7 +760,9 @@ class Conversation(Base):
 
     @property
     def annotation(self):
-        return db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).first()
+        return db.session.scalars(
+            select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1)
+        ).first()
 
     @property
     def message_count(self):
@@ -846,12 +852,12 @@ class Conversation(Base):
 
     @property
     def app(self) -> Optional[App]:
-        return db.session.query(App).where(App.id == self.app_id).first()
+        return db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
 
     @property
     def from_end_user_session_id(self):
         if self.from_end_user_id:
-            end_user = db.session.query(EndUser).where(EndUser.id == self.from_end_user_id).first()
+            end_user = db.session.scalars(select(EndUser).where(EndUser.id == self.from_end_user_id).limit(1)).first()
             if end_user:
                 return end_user.session_id
 
@@ -860,7 +866,7 @@ class Conversation(Base):
     @property
     def from_account_name(self) -> Optional[str]:
         if self.from_account_id:
-            account = db.session.query(Account).where(Account.id == self.from_account_id).first()
+            account = db.session.scalars(select(Account).where(Account.id == self.from_account_id).limit(1)).first()
             if account:
                 return account.name
 
@@ -1095,28 +1101,32 @@ class Message(Base):
 
     @property
     def annotation(self):
-        annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.message_id == self.id).first()
+        annotation = db.session.scalars(
+            select(MessageAnnotation).where(MessageAnnotation.message_id == self.id).limit(1)
+        ).first()
         return annotation
 
     @property
     def annotation_hit_history(self):
-        annotation_history = (
-            db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id == self.id).first()
-        )
+        annotation_history = db.session.scalars(
+            select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id == self.id).limit(1)
+        ).first()
         if annotation_history:
-            annotation = (
-                db.session.query(MessageAnnotation)
-                .where(MessageAnnotation.id == annotation_history.annotation_id)
-                .first()
-            )
+            annotation = db.session.scalars(
+                select(MessageAnnotation).where(MessageAnnotation.id == annotation_history.annotation_id).limit(1)
+            ).first()
             return annotation
         return None
 
     @property
     def app_model_config(self):
-        conversation = db.session.query(Conversation).where(Conversation.id == self.conversation_id).first()
+        conversation = db.session.scalars(
+            select(Conversation).where(Conversation.id == self.conversation_id).limit(1)
+        ).first()
         if conversation:
-            return db.session.query(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).first()
+            return db.session.scalars(
+                select(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).limit(1)
+            ).first()
 
         return None
 
@@ -1146,7 +1156,7 @@ class Message(Base):
         from factories import file_factory
 
         message_files = db.session.scalars(select(MessageFile).where(MessageFile.message_id == self.id)).all()
-        current_app = db.session.query(App).where(App.id == self.app_id).first()
+        current_app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
@@ -1210,7 +1220,9 @@ class Message(Base):
         if self.workflow_run_id:
             from .workflow import WorkflowRun
 
-            return db.session.query(WorkflowRun).where(WorkflowRun.id == self.workflow_run_id).first()
+            return db.session.scalars(
+                select(WorkflowRun).where(WorkflowRun.id == self.workflow_run_id).limit(1)
+            ).first()
 
         return None
 
@@ -1285,7 +1297,7 @@ class MessageFeedback(Base):
 
     @property
     def from_account(self):
-        account = db.session.query(Account).where(Account.id == self.from_account_id).first()
+        account = db.session.scalars(select(Account).where(Account.id == self.from_account_id).limit(1)).first()
         return account
 
     def to_dict(self) -> dict[str, Any]:
@@ -1367,12 +1379,12 @@ class MessageAnnotation(Base):
 
     @property
     def account(self):
-        account = db.session.query(Account).where(Account.id == self.account_id).first()
+        account = db.session.scalars(select(Account).where(Account.id == self.account_id).limit(1)).first()
         return account
 
     @property
     def annotation_create_account(self):
-        account = db.session.query(Account).where(Account.id == self.account_id).first()
+        account = db.session.scalars(select(Account).where(Account.id == self.account_id).limit(1)).first()
         return account
 
 
@@ -1410,7 +1422,7 @@ class AppAnnotationHitHistory(Base):
 
     @property
     def annotation_create_account(self):
-        account = db.session.query(Account).where(Account.id == self.account_id).first()
+        account = db.session.scalars(select(Account).where(Account.id == self.account_id).limit(1)).first()
         return account
 
 
@@ -1434,11 +1446,9 @@ class AppAnnotationSetting(Base):
     def collection_binding_detail(self):
         from .dataset import DatasetCollectionBinding
 
-        collection_binding_detail = (
-            db.session.query(DatasetCollectionBinding)
-            .where(DatasetCollectionBinding.id == self.collection_binding_id)
-            .first()
-        )
+        collection_binding_detail = db.session.scalars(
+            select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id).limit(1)
+        ).first()
         return collection_binding_detail
 
 

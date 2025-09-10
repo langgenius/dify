@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import service_api_ns
@@ -45,7 +46,7 @@ class UploadFileApi(DatasetApiResource):
         data_source_info = document.data_source_info_dict
         if data_source_info and "upload_file_id" in data_source_info:
             file_id = data_source_info["upload_file_id"]
-            upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = db.session.scalars(select(UploadFile).where(UploadFile.id == file_id).limit(1)).first()
             if not upload_file:
                 raise NotFound("UploadFile not found.")
         else:

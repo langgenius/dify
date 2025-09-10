@@ -49,7 +49,9 @@ def enable_annotation_reply_task(
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
             embedding_provider_name, embedding_model_name, "annotation"
         )
-        annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+        annotation_setting = db.session.scalars(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
+        ).first()
         if annotation_setting:
             if dataset_collection_binding.id != annotation_setting.collection_binding_id:
                 old_dataset_collection_binding = (

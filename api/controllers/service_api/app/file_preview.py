@@ -3,6 +3,7 @@ from urllib.parse import quote
 
 from flask import Response
 from flask_restx import Resource, reqparse
+from sqlalchemy import select
 
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -99,7 +100,9 @@ class FilePreviewApi(Resource):
                 raise FileAccessDeniedError("Invalid file or app identifier")
 
             # First, find the MessageFile that references this upload file
-            message_file = db.session.query(MessageFile).where(MessageFile.upload_file_id == file_id).first()
+            message_file = db.session.scalars(
+                select(MessageFile).where(MessageFile.upload_file_id == file_id).limit(1)
+            ).first()
 
             if not message_file:
                 raise FileNotFoundError("File not found in message context")
@@ -113,13 +116,13 @@ class FilePreviewApi(Resource):
                 raise FileAccessDeniedError("File access denied: not owned by requesting app")
 
             # Get the actual upload file record
-            upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = db.session.scalars(select(UploadFile).where(UploadFile.id == file_id).limit(1)).first()
 
             if not upload_file:
                 raise FileNotFoundError("Upload file record not found")
 
             # Additional security: verify tenant isolation
-            app = db.session.query(App).where(App.id == app_id).first()
+            app = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
             if app and upload_file.tenant_id != app.tenant_id:
                 raise FileAccessDeniedError("File access denied: tenant mismatch")
 

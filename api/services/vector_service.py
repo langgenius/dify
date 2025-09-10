@@ -1,6 +1,8 @@
 import logging
 from typing import Optional
 
+from sqlalchemy import select
+
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -34,11 +36,11 @@ class VectorService:
                     )
                     continue
                 # get the process rule
-                processing_rule = (
-                    db.session.query(DatasetProcessRule)
+                processing_rule = db.session.scalars(
+                    select(DatasetProcessRule)
                     .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                    .first()
-                )
+                    .limit(1)
+                ).first()
                 if not processing_rule:
                     raise ValueError("No processing rule found.")
                 # get embedding model instance

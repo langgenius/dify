@@ -255,7 +255,7 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app: Optional[App] = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
 
         if app is None:
             return None
@@ -329,7 +329,7 @@ class OpsTraceManager:
         except KeyError:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        app_config: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app_config: Optional[App] = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app_config:
             raise ValueError("App not found")
         app_config.tracing = json.dumps(
@@ -347,7 +347,7 @@ class OpsTraceManager:
         :param app_id: app id
         :return:
         """
-        app: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app: Optional[App] = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app:
             raise ValueError("App not found")
         if not app.tracing:

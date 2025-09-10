@@ -3,6 +3,7 @@ import json
 import flask_login  # type: ignore
 from flask import Response, request
 from flask_login import user_loaded_from_request, user_logged_in
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
@@ -74,7 +75,7 @@ def load_user_from_request(request_from_flask_login):
         end_user_id = decoded.get("end_user_id")
         if not end_user_id:
             raise Unauthorized("Invalid Authorization token.")
-        end_user = db.session.query(EndUser).where(EndUser.id == decoded["end_user_id"]).first()
+        end_user = db.session.scalars(select(EndUser).where(EndUser.id == decoded["end_user_id"]).limit(1)).first()
         if not end_user:
             raise NotFound("End user not found.")
         return end_user
@@ -82,7 +83,9 @@ def load_user_from_request(request_from_flask_login):
         server_code = request.view_args.get("server_code") if request.view_args else None
         if not server_code:
             raise Unauthorized("Invalid Authorization token.")
-        app_mcp_server = db.session.query(AppMCPServer).where(AppMCPServer.server_code == server_code).first()
+        app_mcp_server = db.session.scalars(
+            select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1)
+        ).first()
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
         end_user = (
