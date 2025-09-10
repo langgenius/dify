@@ -26,6 +26,7 @@ from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
@@ -595,6 +596,9 @@ class AppDslService:
             if not include_secret and data_type == NodeType.AGENT.value:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
+            if data_type == NodeType.TRIGGER_SCHEDULE.value:
+                # override the config with the default config
+                node_data["config"] = TriggerScheduleNode.get_default_config()["config"]
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
