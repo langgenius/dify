@@ -318,6 +318,7 @@ const translation = {
     },
   },
   embedding: {
+    waiting: 'Embedding waiting...',
     processing: 'Embedding processing...',
     paused: 'Embedding paused',
     completed: 'Embedding completed',

@@ -340,6 +340,7 @@ const translation = {
     hierarchical: 'Rodzic-dziecko',
     childMaxTokens: 'Dziecko',
     pause: 'Pauza',
+    waiting: 'Oczekiwanie na osadzenie...',
   },
   segment: {
     paragraphs: 'Akapity',

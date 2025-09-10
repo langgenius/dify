@@ -338,6 +338,7 @@ const translation = {
     parentMaxTokens: '부모',
     pause: '일시 중지',
     hierarchical: '부모 - 자식',
+    waiting: '임베딩 대기 중...',
   },
   segment: {
     paragraphs: '단락',

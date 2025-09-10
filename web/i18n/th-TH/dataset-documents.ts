@@ -338,6 +338,7 @@ const translation = {
     parentMaxTokens: 'พ่อแม่',
     pause: 'หยุด',
     hierarchical: 'พ่อแม่ลูก',
+    waiting: 'กำลังรอสัญญาณ...',
   },
   segment: {
     paragraphs: 'ย่อหน้า',

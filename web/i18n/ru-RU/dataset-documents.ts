@@ -339,6 +339,7 @@ const translation = {
     childMaxTokens: 'Ребёнок',
     hierarchical: 'Родитель-дочерний',
     pause: 'Пауза',
+    waiting: 'Ожидание встраивания...',
   },
   segment: {
     paragraphs: 'Абзацы',

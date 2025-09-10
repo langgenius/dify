@@ -338,6 +338,7 @@ const translation = {
     pause: 'مکث',
     childMaxTokens: 'کودک',
     hierarchical: 'پدر و مادر و فرزند',
+    waiting: 'در حال انتظار برای جاسازی...',
   },
   segment: {
     paragraphs: 'پاراگراف‌ها',

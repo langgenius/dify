@@ -338,6 +338,7 @@ const translation = {
     parentMaxTokens: 'Ebeveyn',
     hierarchical: 'Ebeveyn-çocuk',
     pause: 'Duraklat',
+    waiting: 'Gömme bekleniyor...',
   },
   segment: {
     paragraphs: 'Paragraflar',

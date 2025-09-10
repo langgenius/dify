@@ -338,6 +338,7 @@ const translation = {
     pause: 'Пауза',
     parentMaxTokens: 'Родитель',
     hierarchical: 'Батьки-діти',
+    waiting: 'Виконання очікує...',
   },
   segment: {
     paragraphs: 'Параграфи',
