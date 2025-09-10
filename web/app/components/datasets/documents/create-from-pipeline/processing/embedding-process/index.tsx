@@ -88,7 +88,7 @@ const EmbeddingProcess = ({
     router.push('/datasets?category=api')
   }
 
-  const isEmbedingWaiting = useMemo(() => {
+  const isEmbeddingWaiting = useMemo(() => {
     if (!indexingStatusBatchDetail.length) return false
     return indexingStatusBatchDetail.every(indexingStatusDetail => ['waiting'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
@@ -130,11 +130,11 @@ const EmbeddingProcess = ({
     <>
       <div className='flex flex-col gap-y-3'>
         <div className='system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary'>
-          {(isEmbedingWaiting || isEmbedding) && (
+          {(isEmbeddingWaiting || isEmbedding) && (
             <>
               <RiLoader2Fill className='size-4 animate-spin' />
               <span>
-                {isEmbedingWaiting ? t('datasetDocuments.embedding.waiting') : t('datasetDocuments.embedding.processing')}
+                {isEmbeddingWaiting ? t('datasetDocuments.embedding.waiting') : t('datasetDocuments.embedding.processing')}
               </span>
             </>
           )}
