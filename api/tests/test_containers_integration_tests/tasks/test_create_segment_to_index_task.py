@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 from faker import Faker
 
+from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from tasks.create_segment_to_index_task import create_segment_to_index_task
@@ -20,22 +21,36 @@ from tasks.create_segment_to_index_task import create_segment_to_index_task
 class TestCreateSegmentToIndexTask:
     """Integration tests for create_segment_to_index_task using testcontainers."""
 
+    @pytest.fixture(autouse=True)
+    def cleanup_database(self, db_session_with_containers):
+        """Clean up database and Redis before each test to ensure isolation."""
+        from extensions.ext_database import db
+
+        # Clear all test data
+        db.session.query(DocumentSegment).delete()
+        db.session.query(Document).delete()
+        db.session.query(Dataset).delete()
+        db.session.query(TenantAccountJoin).delete()
+        db.session.query(Tenant).delete()
+        db.session.query(Account).delete()
+        db.session.commit()
+
+        # Clear Redis cache
+        redis_client.flushdb()
+
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.create_segment_to_index_task.IndexProcessorFactory") as mock_factory,
-            patch("tasks.create_segment_to_index_task.redis_client") as mock_redis,
         ):
             # Setup default mock returns
             mock_processor = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = mock_processor
-            mock_redis.delete.return_value = None
 
             yield {
                 "index_processor_factory": mock_factory,
                 "index_processor": mock_processor,
-                "redis_client": mock_redis,
             }
 
     def _create_test_account_and_tenant(self, db_session_with_containers):
@@ -206,9 +221,8 @@ class TestCreateSegmentToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify Redis cache cleanup
-        mock_external_service_dependencies["redis_client"].delete.assert_called_once_with(
-            f"segment_{segment.id}_indexing"
-        )
+        cache_key = f"segment_{segment.id}_indexing"
+        assert redis_client.exists(cache_key) == 0
 
     def test_create_segment_to_index_segment_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -483,9 +497,8 @@ class TestCreateSegmentToIndexTask:
         assert segment.error == "Processor failed"
 
         # Verify Redis cache cleanup still occurs
-        mock_external_service_dependencies["redis_client"].delete.assert_called_once_with(
-            f"segment_{segment.id}_indexing"
-        )
+        cache_key = f"segment_{segment.id}_indexing"
+        assert redis_client.exists(cache_key) == 0
 
     def test_create_segment_to_index_with_keywords(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -693,18 +706,18 @@ class TestCreateSegmentToIndexTask:
             db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status="waiting"
         )
 
+        # Set up Redis cache key to simulate indexing in progress
+        cache_key = f"segment_{segment.id}_indexing"
+        redis_client.set(cache_key, "processing", ex=300)
+
         # Mock Redis to raise exception in finally block
-        def mock_redis_delete_with_exception(*args, **kwargs):
-            raise Exception("Redis connection failed")
+        with patch.object(redis_client, 'delete', side_effect=Exception("Redis connection failed")):
+            # Act: Execute the task - Redis failure should not prevent completion
+            with pytest.raises(Exception) as exc_info:
+                create_segment_to_index_task(segment.id)
 
-        mock_external_service_dependencies["redis_client"].delete.side_effect = mock_redis_delete_with_exception
-
-        # Act: Execute the task - Redis failure should not prevent completion
-        with pytest.raises(Exception) as exc_info:
-            create_segment_to_index_task(segment.id)
-
-        # Verify the exception contains the expected Redis error message
-        assert "Redis connection failed" in str(exc_info.value)
+            # Verify the exception contains the expected Redis error message
+            assert "Redis connection failed" in str(exc_info.value)
 
         # Assert: Verify indexing still completed successfully despite Redis failure
         db_session_with_containers.refresh(segment)
@@ -712,10 +725,8 @@ class TestCreateSegmentToIndexTask:
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
 
-        # Verify Redis was attempted but failed
-        mock_external_service_dependencies["redis_client"].delete.assert_called_once_with(
-            f"segment_{segment.id}_indexing"
-        )
+        # Verify Redis cache key still exists (since delete failed)
+        assert redis_client.exists(cache_key) == 1
 
     def test_create_segment_to_index_database_transaction_rollback(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -1083,5 +1094,6 @@ class TestCreateSegmentToIndexTask:
         assert mock_external_service_dependencies["index_processor_factory"].call_count == expected_calls
 
         # Verify Redis cleanup for each segment
-        expected_redis_calls = len(segments)
-        assert mock_external_service_dependencies["redis_client"].delete.call_count == expected_redis_calls
+        for segment in segments:
+            cache_key = f"segment_{segment.id}_indexing"
+            assert redis_client.exists(cache_key) == 0
