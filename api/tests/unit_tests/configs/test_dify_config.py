@@ -86,7 +86,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
             "options": "-c timezone=UTC",
         },
         "max_overflow": 10,
-        "pool_pre_ping": True,
+        "pool_pre_ping": False,
         "pool_recycle": 3600,
         "pool_size": 30,
         "pool_use_lifo": False,
