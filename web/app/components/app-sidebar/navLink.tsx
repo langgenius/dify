@@ -41,6 +41,12 @@ const NavLink = ({
   const isActive = href.toLowerCase().split('/')?.pop() === formattedSegment
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 
+  const renderIcon = () => (
+    <div className={classNames(mode !== 'expand' && '-ml-1')}>
+      <NavIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+    </div>
+  )
+
   if (disabled) {
     return (
       <button
@@ -54,9 +60,7 @@ const NavLink = ({
         title={mode === 'collapse' ? name : ''}
         aria-disabled
       >
-        <div className={classNames(mode !== 'expand' && '-ml-1')}>
-          <NavIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-        </div>
+        {renderIcon()}
         <span
           className={classNames(
             'overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out',
@@ -83,9 +87,7 @@ const NavLink = ({
       )}
       title={mode === 'collapse' ? name : ''}
     >
-      <div className={classNames(mode !== 'expand' && '-ml-1')}>
-        <NavIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-      </div>
+      {renderIcon()}
       <span
         className={classNames(
           'overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out',
