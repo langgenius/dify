@@ -395,7 +395,7 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
     return total_deleted
 
 
-def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str) -> None:
+def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str):
     while True:
         with db.engine.begin() as conn:
             rs = conn.execute(sa.text(query_sql), params)

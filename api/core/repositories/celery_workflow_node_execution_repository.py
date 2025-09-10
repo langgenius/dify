@@ -94,10 +94,10 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # In-memory cache for workflow node executions
-        self._execution_cache: dict[str, WorkflowNodeExecution] = {}
+        self._execution_cache = {}
 
         # Cache for mapping workflow_execution_ids to execution IDs for efficient retrieval
-        self._workflow_execution_mapping: dict[str, list[str]] = {}
+        self._workflow_execution_mapping = {}
 
         logger.info(
             "Initialized CeleryWorkflowNodeExecutionRepository for tenant %s, app %s, triggered_from %s",
@@ -106,7 +106,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._triggered_from,
         )
 
-    def save(self, execution: WorkflowNodeExecution) -> None:
+    def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a WorkflowNodeExecution instance to cache and asynchronously to database.
 
@@ -142,7 +142,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
             logger.debug("Cached and queued async save for workflow node execution: %s", execution.id)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to cache or queue save operation for node execution %s", execution.id)
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception
@@ -185,6 +185,6 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             logger.debug("Retrieved %d workflow node executions for run %s from cache", len(result), workflow_run_id)
             return result
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to get workflow node executions for run %s from cache", workflow_run_id)
             return []

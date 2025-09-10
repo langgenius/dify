@@ -107,7 +107,7 @@ def fetch_memory(
     return memory
 
 
-def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
+def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage):
     provider_model_bundle = model_instance.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
 

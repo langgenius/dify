@@ -1,8 +1,9 @@
-from typing import Any, Optional
+from typing import Optional
 
 import flask_restx
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with
+from flask_restx._http import HTTPStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -40,7 +41,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
             ).scalar_one_or_none()
 
     if resource is None:
-        flask_restx.abort(404, message=f"{resource_model.__name__} not found.")
+        flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
 
     return resource
 
@@ -49,7 +50,7 @@ class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: Optional[Any] = None
+    resource_model: Optional[type] = None
     resource_id_field: str | None = None
     token_prefix: str | None = None
     max_keys = 10
@@ -82,12 +83,12 @@ class BaseApiKeyListResource(Resource):
 
         if current_key_count >= self.max_keys:
             flask_restx.abort(
-                400,
+                HTTPStatus.BAD_REQUEST,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                code="max_keys_exceeded",
+                custom="max_keys_exceeded",
             )
 
-        key = ApiToken.generate_api_key(self.token_prefix, 24)
+        key = ApiToken.generate_api_key(self.token_prefix or "", 24)
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
         api_token.tenant_id = current_user.current_tenant_id
@@ -102,7 +103,7 @@ class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: Optional[Any] = None
+    resource_model: Optional[type] = None
     resource_id_field: str | None = None
 
     def delete(self, resource_id, api_key_id):
@@ -126,7 +127,7 @@ class BaseApiKeyResource(Resource):
         )
 
         if key is None:
-            flask_restx.abort(404, message="API key not found")
+            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

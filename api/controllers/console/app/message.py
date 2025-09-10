@@ -1,6 +1,5 @@
 import logging
 
-from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import exists, select
@@ -27,7 +26,8 @@ from extensions.ext_database import db
 from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models.account import Account
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
@@ -118,11 +118,14 @@ class ChatMessageListApi(Resource):
 
 
 class MessageFeedbackApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def post(self, app_model):
+        if current_user is None:
+            raise Forbidden()
+
         parser = reqparse.RequestParser()
         parser.add_argument("message_id", required=True, type=uuid_value, location="json")
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
@@ -130,7 +133,7 @@ class MessageFeedbackApi(Resource):
 
         message_id = str(args["message_id"])
 
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
             raise NotFound("Message Not Exists.")
@@ -167,6 +170,8 @@ class MessageAnnotationApi(Resource):
     @get_app_model
     @marshal_with(annotation_fields)
     def post(self, app_model):
+        if not isinstance(current_user, Account):
+            raise Forbidden()
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -182,10 +187,10 @@ class MessageAnnotationApi(Resource):
 
 
 class MessageAnnotationCountApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
 

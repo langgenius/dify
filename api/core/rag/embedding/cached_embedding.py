@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, model_instance: ModelInstance, user: Optional[str] = None) -> None:
+    def __init__(self, model_instance: ModelInstance, user: Optional[str] = None):
         self._model_instance = model_instance
         self._user = user
 

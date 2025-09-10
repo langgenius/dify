@@ -470,6 +470,12 @@ const translation = {
         required: '必需的',
         resultTip: '這是生成的結果。如果您不滿意，可以回去修改您的提示。',
       },
+      reasoningFormat: {
+        title: '啟用推理標籤分離',
+        tooltip: '從 think 標籤中提取內容並將其存儲在 reasoning_content 欄位中。',
+        tagged: '保持思考標籤',
+        separated: '分開思考標籤',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: '查詢變量',
@@ -997,6 +1003,10 @@ const translation = {
     noMatchingInputsFound: '在上次運行中未找到匹配的輸入',
     noLastRunFound: '沒有找到之前的運行',
     lastOutput: '最後的輸出',
+  },
+  sidebar: {
+    exportWarning: '導出當前保存的版本',
+    exportWarningDesc: '這將導出當前保存的工作流程版本。如果您在編輯器中有未保存的更改，請先通過使用工作流程畫布中的導出選項來保存它們。',
   },
 }
 

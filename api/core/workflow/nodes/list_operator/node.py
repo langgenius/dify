@@ -41,7 +41,7 @@ class ListOperatorNode(BaseNode):
 
     _node_data: ListOperatorNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = ListOperatorNodeData(**data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -67,8 +67,8 @@ class ListOperatorNode(BaseNode):
         return "1"
 
     def _run(self):
-        inputs: dict[str, list] = {}
-        process_data: dict[str, list] = {}
+        inputs: dict[str, Sequence[object]] = {}
+        process_data: dict[str, Sequence[object]] = {}
         outputs: dict[str, Any] = {}
 
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.variable)

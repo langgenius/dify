@@ -1,9 +1,9 @@
 const translation = {
   tips: {
     needLogin: 'Proszę się zalogować, aby autoryzować',
-    notLoggedIn: 'chce uzyskać dostęp do twojego konta Dify Cloud',
+    notLoggedIn: 'Ta aplikacja chce uzyskać dostęp do twojego konta Dify Cloud',
     common: 'Szanujemy Twoją prywatność i będziemy wykorzystywać te informacje tylko w celu ulepszenia Twojego doświadczenia z naszymi narzędziami deweloperskimi.',
-    loggedIn: 'chce uzyskać dostęp do następujących informacji z twojego konta Dify Cloud.',
+    loggedIn: 'Ta aplikacja chce uzyskać dostęp do następujących informacji z twojego konta Dify Cloud.',
   },
   scopes: {
     timezone: 'Strefa czasowa',

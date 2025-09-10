@@ -13,6 +13,7 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
+  ModelModalModeEnum,
   ModelProvider,
   ModelTypeEnum,
 } from './declarations'
@@ -348,29 +349,31 @@ export const useRefreshModel = () => {
 
 export const useModelModalHandler = () => {
   const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
-  const { handleRefreshModel } = useRefreshModel()
 
   return (
     provider: ModelProvider,
     configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-    isModelCredential?: boolean,
-    credential?: Credential,
-    model?: CustomModel,
-    onUpdate?: () => void,
+    extra: {
+      isModelCredential?: boolean,
+      credential?: Credential,
+      model?: CustomModel,
+      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void,
+      mode?: ModelModalModeEnum,
+    } = {},
   ) => {
     setShowModelModal({
       payload: {
         currentProvider: provider,
         currentConfigurationMethod: configurationMethod,
         currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-        isModelCredential,
-        credential,
-        model,
+        isModelCredential: extra.isModelCredential,
+        credential: extra.credential,
+        model: extra.model,
+        mode: extra.mode,
       },
-      onSaveCallback: () => {
-        handleRefreshModel(provider, configurationMethod, CustomConfigurationModelFixedFields)
-        onUpdate?.()
+      onSaveCallback: (newPayload, formValues) => {
+        extra.onUpdate?.(newPayload, formValues)
       },
     })
   }
