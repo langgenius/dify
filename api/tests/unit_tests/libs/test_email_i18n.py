@@ -281,7 +281,7 @@ class TestEmailI18nService:
 
         assert len(mock_sender.sent_emails) == 1
         # Subject is left unformatted due to KeyError fallback path without application_title
-        assert mock_sender.sent_emails[0]["subject"].startswith("Invite: ")
+        assert mock_sender.sent_emails[0]["subject"] == "Invite: {unknown_placeholder}"
 
     def test_send_change_email_old_phase(
         self,
