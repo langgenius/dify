@@ -10,7 +10,6 @@ api = ExternalApi(
     version="1.0",
     title="Web API",
     description="Public APIs for web applications including file uploads, chat interactions, and app management",
-    doc="/docs",  # Enable Swagger UI at /api/docs
 )
 
 # Create namespace
