@@ -49,19 +49,24 @@ const NavLink = ({
         disabled
         className={classNames(
           'system-sm-medium flex h-8 cursor-not-allowed items-center rounded-lg text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover',
-          mode === 'expand' ? 'pl-3 pr-1' : 'px-1.5',
+          'pl-3 pr-1',
         )}
         title={mode === 'collapse' ? name : ''}
         aria-disabled
       >
-        <NavIcon
+        <div className={classNames(mode !== 'expand' && '-ml-1')}>
+          <NavIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        </div>
+        <span
           className={classNames(
-            'h-4 w-4 shrink-0',
-            mode === 'expand' ? 'mr-2' : 'mr-0',
+            'overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out',
+            mode === 'expand'
+              ? 'ml-2 max-w-none opacity-100'
+              : 'ml-0 max-w-0 opacity-0',
           )}
-          aria-hidden='true'
-        />
-        {mode === 'expand' && name}
+        >
+          {name}
+        </span>
       </button>
     )
   }
@@ -74,24 +79,19 @@ const NavLink = ({
         isActive
           ? 'system-sm-semibold border-b-[0.25px] border-l-[0.75px] border-r-[0.25px] border-t-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active text-text-accent-light-mode-only'
           : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
-        'flex h-8 items-center rounded-lg',
-        mode === 'expand' ? 'pl-3 pr-1' : 'px-1.5',
+        'flex h-8 items-center rounded-lg pl-3 pr-1',
       )}
       title={mode === 'collapse' ? name : ''}
     >
-      <NavIcon
-        className={classNames(
-          'h-4 w-4 shrink-0',
-          mode === 'expand' ? 'mr-2' : 'mr-0',
-        )}
-        aria-hidden='true'
-      />
+      <div className={classNames(mode !== 'expand' && '-ml-1')}>
+        <NavIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </div>
       <span
         className={classNames(
-          'whitespace-nowrap transition-all duration-200 ease-in-out',
+          'overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out',
           mode === 'expand'
-            ? 'w-auto opacity-100'
-            : 'pointer-events-none w-0 overflow-hidden opacity-0',
+            ? 'ml-2 max-w-none opacity-100'
+            : 'ml-0 max-w-0 opacity-0',
         )}
       >
         {name}
