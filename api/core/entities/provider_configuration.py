@@ -4,11 +4,12 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Optional
+from typing import Optional, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 
 from constants import HIDDEN_VALUE
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
@@ -431,7 +432,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_name: credential name
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             if credential_name:
                 if self._check_provider_credential_name_exists(credential_name=credential_name, session=session):
                     raise ValueError(f"Credential with name '{credential_name}' already exists.")
@@ -489,7 +491,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_name: credential name
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             if credential_name and self._check_provider_credential_name_exists(
                 credential_name=credential_name, session=session, exclude_id=credential_id
             ):
@@ -588,7 +591,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
@@ -665,7 +669,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
@@ -912,7 +917,8 @@ class ProviderConfiguration(BaseModel):
         :param credentials: model credentials dict
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             if credential_name:
                 if self._check_custom_model_credential_name_exists(
                     model=model, model_type=model_type, credential_name=credential_name, session=session
@@ -977,7 +983,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             if credential_name and self._check_custom_model_credential_name_exists(
                 model=model,
                 model_type=model_type,
@@ -1040,7 +1047,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
@@ -1113,7 +1121,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
@@ -1226,7 +1235,8 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             model_setting = self._get_provider_model_setting(model_type=model_type, model=model, session=session)
 
             if model_setting:
@@ -1253,7 +1263,8 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             model_setting = self._get_provider_model_setting(model_type=model_type, model=model, session=session)
 
             if model_setting:
@@ -1294,7 +1305,8 @@ class ProviderConfiguration(BaseModel):
         if model_provider_id.is_langgenius():
             provider_names.append(model_provider_id.provider_name)
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             stmt = select(func.count(LoadBalancingModelConfig.id)).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
                 LoadBalancingModelConfig.provider_name.in_(provider_names),
@@ -1331,7 +1343,8 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             model_setting = self._get_provider_model_setting(model_type=model_type, model=model, session=session)
 
             if model_setting:
@@ -1407,11 +1420,12 @@ class ProviderConfiguration(BaseModel):
                 s.add(preferred_model_provider)
             s.commit()
 
-        if session:
+        if session is not None:
             return _switch(session)
         else:
-            with Session(db.engine) as session:
-                return _switch(session)
+            session_maker = get_session_maker()
+            with session_maker() as s:
+                return _switch(cast(Session, s))
 
     def extract_secret_variables(self, credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
         """

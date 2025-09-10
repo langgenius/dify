@@ -11,6 +11,7 @@ from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from core.file.constants import DEFAULT_SERVICE_API_USER_ID
@@ -243,7 +244,8 @@ def validate_and_get_api_token(scope: str | None = None):
 
     current_time = naive_utc_now()
     cutoff_time = current_time - timedelta(minutes=1)
-    with Session(db.engine, expire_on_commit=False) as session:
+    session_maker = get_session_maker()
+    with session_maker() as session:
         update_stmt = (
             update(ApiToken)
             .where(
@@ -275,7 +277,8 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     if not user_id:
         user_id = DEFAULT_SERVICE_API_USER_ID
 
-    with Session(db.engine, expire_on_commit=False) as session:
+    session_maker = get_session_maker()
+    with session_maker() as session:
         end_user = (
             session.query(EndUser)
             .where(
