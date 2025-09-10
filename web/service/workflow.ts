@@ -11,6 +11,7 @@ import type {
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import type { ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
+import type { Features } from '@/app/components/base/features/types'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -122,5 +123,14 @@ export const updateConversationVariables = ({ appId, conversationVariables }: {
 }) => {
   return post<CommonResponse>(`apps/${appId}/workflows/draft/conversation-variables`, {
     body: { conversation_variables: conversationVariables },
+  })
+}
+
+export const updateFeatures = ({ appId, features }: {
+  appId: string
+  features: Features
+}) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/features`, {
+    body: { features },
   })
 }

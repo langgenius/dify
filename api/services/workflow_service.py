@@ -289,6 +289,31 @@ class WorkflowService:
         # commit db session changes
         db.session.commit()
 
+    def update_draft_workflow_features(
+        self, *,
+        app_model: App,
+        features: dict,
+        account: Account,
+    ):
+        """
+        Update draft workflow features
+        """
+        # fetch draft workflow by app_model
+        workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not workflow:
+            raise ValueError("No draft workflow found.")
+        
+        # validate features structure
+        self.validate_features_structure(app_model=app_model, features=features)
+
+        workflow.features = json.dumps(features)
+        workflow.updated_by = account.id
+        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+
+        # commit db session changes
+        db.session.commit()
+
     def publish_workflow(
         self,
         *,

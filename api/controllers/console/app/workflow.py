@@ -628,6 +628,27 @@ class WorkflowConfigApi(Resource):
         }
 
 
+class WorkflowFeaturesApi(Resource):
+    """Update draft workflow features."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        parser = reqparse.RequestParser()
+        parser.add_argument("features", type=dict, required=True, location="json")
+        args = parser.parse_args()
+
+        features = args.get("features")
+
+        # Update draft workflow features
+        workflow_service = WorkflowService()
+        workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
+
+        return {"result": "success"}
+
+
 class PublishedAllWorkflowApi(Resource):
     @setup_required
     @login_required
@@ -825,6 +846,10 @@ api.add_resource(
 api.add_resource(
     WorkflowConfigApi,
     "/apps/<uuid:app_id>/workflows/draft/config",
+)
+api.add_resource(
+    WorkflowFeaturesApi,
+    "/apps/<uuid:app_id>/workflows/draft/features",
 )
 api.add_resource(
     AdvancedChatDraftWorkflowRunApi,
