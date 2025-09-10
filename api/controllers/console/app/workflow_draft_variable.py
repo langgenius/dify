@@ -17,8 +17,8 @@ from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
-from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import App, AppMode, db
 from models.workflow import WorkflowDraftVariable
@@ -295,7 +295,7 @@ class VariableApi(Resource):
                 if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
                     raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
                 raw_value = build_from_mappings(mappings=raw_value, tenant_id=app_model.tenant_id)
-            new_value = build_segment_with_type(variable.value_type, raw_value)
+            new_value = variable_factory.build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
         return variable
@@ -411,6 +411,34 @@ class EnvironmentVariableCollectionApi(Resource):
             )
 
         return {"items": env_vars_list}
+    
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument("environment_variables", type=list, required=True, location="json")
+        args = parser.parse_args()
+
+        workflow_service = WorkflowService()
+
+        environment_variables_list = args.get("environment_variables") or []
+        environment_variables = [
+            variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_environment_variables(
+            app_model=app_model,
+            account=current_user,
+            environment_variables=environment_variables,
+        )
+
+        return { "result": "success" }
 
 
 api.add_resource(

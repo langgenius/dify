@@ -10,6 +10,7 @@ import type {
 } from '@/types/workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -98,4 +99,19 @@ export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]
 export const fetchNodeInspectVars = async (appId: string, nodeId: string): Promise<VarInInspect[]> => {
   const { items } = (await get(`apps/${appId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
   return items
+}
+
+// Environment Variables API
+export const fetchEnvironmentVariables = async (appId: string): Promise<EnvironmentVariable[]> => {
+  const { items } = (await get(`apps/${appId}/workflows/draft/environment-variables`)) as { items: EnvironmentVariable[] }
+  return items
+}
+
+export const updateEnvironmentVariables = ({ appId, environmentVariables }: {
+  appId: string
+  environmentVariables: EnvironmentVariable[]
+}) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
+    body: { environment_variables: environmentVariables },
+  })
 }
