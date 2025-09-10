@@ -30,7 +30,7 @@ jobs:
             
             BODY=$(cat <<EOF
             {
-              "project": "dify-api-web",
+              "project": "dify-api",
               "tag": "deploy-enterprise"
             }
             EOF
