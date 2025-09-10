@@ -408,6 +408,7 @@ class ClearFreePlanTenantExpiredLogs:
                         datetime.timedelta(hours=1),
                     ]
 
+                    tenant_count = 0
                     for test_interval in test_intervals:
                         tenant_count = (
                             session.query(Tenant.id)

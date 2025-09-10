@@ -165,7 +165,7 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials = json.loads(load_balancing_config.encrypted_config)
+                    credentials: dict[str, object] = json.loads(load_balancing_config.encrypted_config)
                 else:
                     credentials = {}
             except JSONDecodeError:
@@ -180,11 +180,13 @@ class ModelLoadBalancingService:
             for variable in credential_secret_variables:
                 if variable in credentials:
                     try:
-                        credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            credentials.get(variable),  # ty: ignore [invalid-argument-type]
-                            decoding_rsa_key,
-                            decoding_cipher_rsa,
-                        )
+                        token_value = credentials.get(variable)
+                        if isinstance(token_value, str):
+                            credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                token_value,
+                                decoding_rsa_key,
+                                decoding_cipher_rsa,
+                            )
                     except ValueError:
                         pass
 
@@ -343,8 +345,9 @@ class ModelLoadBalancingService:
             credential_id = config.get("credential_id")
             enabled = config.get("enabled")
 
+            credential_record: ProviderCredential | ProviderModelCredential | None = None
+
             if credential_id:
-                credential_record: ProviderCredential | ProviderModelCredential | None = None
                 if config_from == "predefined-model":
                     credential_record = (
                         db.session.query(ProviderCredential)

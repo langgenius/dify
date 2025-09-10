@@ -135,11 +135,14 @@ class DatasetService:
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids(
-                "knowledge",
-                tenant_id,  # ty: ignore [invalid-argument-type]
-                tag_ids,
-            )
+            if tenant_id is not None:
+                target_ids = TagService.get_target_ids_by_tag_ids(
+                    "knowledge",
+                    tenant_id,
+                    tag_ids,
+                )
+            else:
+                target_ids = []
             if target_ids and len(target_ids) > 0:
                 query = query.where(Dataset.id.in_(target_ids))
             else:
@@ -975,7 +978,8 @@ class DocumentService:
             for document in documents
             if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
-        batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
+        if dataset.doc_form is not None:
+            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
         for document in documents:
             db.session.delete(document)
@@ -2668,56 +2672,6 @@ class SegmentService:
         paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         return paginated_segments.items, paginated_segments.total
-
-    @classmethod
-    def update_segment_by_id(
-        cls, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, segment_data: dict, user_id: str
-    ) -> tuple[DocumentSegment, Document]:
-        """Update a segment by its ID with validation and checks."""
-        # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-        if not dataset:
-            raise NotFound("Dataset not found.")
-
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
-
-        # check document
-        document = DocumentService.get_document(dataset_id, document_id)
-        if not document:
-            raise NotFound("Document not found.")
-
-        # check embedding model setting if high quality
-        if dataset.indexing_technique == "high_quality":
-            try:
-                model_manager = ModelManager()
-                model_manager.get_model_instance(
-                    tenant_id=user_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
-                )
-            except LLMBadRequestError:
-                raise ValueError(
-                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
-            except ProviderTokenNotInitError as ex:
-                raise ValueError(ex.description)
-
-        # check segment
-        segment = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
-
-        # validate and update segment
-        cls.segment_create_args_validate(segment_data, document)
-        updated_segment = cls.update_segment(SegmentUpdateArgs(**segment_data), segment, document, dataset)
-
-        return updated_segment, document
 
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:

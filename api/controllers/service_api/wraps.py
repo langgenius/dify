@@ -17,7 +17,7 @@ from core.file.constants import DEFAULT_SERVICE_API_USER_ID
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from libs.login import _get_user
+from libs.login import current_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App, EndUser
@@ -210,7 +210,7 @@ def validate_dataset_token(view: Optional[Callable[Concatenate[T, P], R]] = None
                 if account:
                     account.current_tenant = tenant
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
                     raise Unauthorized("Tenant owner account does not exist.")
             else:

@@ -34,14 +34,14 @@ class VersionApi(Resource):
             return result
 
         try:
-            response = requests.get(check_update_url, {"current_version": args.get("current_version")}, timeout=(3, 10))
+            response = requests.get(check_update_url, {"current_version": args["current_version"]}, timeout=(3, 10))
         except Exception as error:
             logger.warning("Check update version error: %s.", str(error))
-            result["version"] = args.get("current_version")
+            result["version"] = args["current_version"]
             return result
 
         content = json.loads(response.content)
-        if _has_new_version(latest_version=content["version"], current_version=f"{args.get('current_version')}"):
+        if _has_new_version(latest_version=content["version"], current_version=f"{args['current_version']}"):
             result["version"] = content["version"]
             result["release_date"] = content["releaseDate"]
             result["release_notes"] = content["releaseNotes"]
