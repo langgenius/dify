@@ -1200,7 +1200,7 @@ class TestRegisterService:
 
         # Mock database queries - need to mock the Session query
         mock_session = MagicMock()
-        mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
+        mock_session.scalars.return_value.first.return_value = mock_existing_account
 
         with patch("services.account_service.Session") as mock_session_class:
             mock_session_class.return_value.__enter__.return_value = mock_session

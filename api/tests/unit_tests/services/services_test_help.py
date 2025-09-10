@@ -56,4 +56,4 @@ class ServiceDbTestHelper:
             mock_query.filter_by.side_effect = filter_by_side_effect
             return mock_query
 
-        mock_db.session.query.side_effect = query_side_effect
+        mock_db.session.scalars.side_effect = query_side_effect
