@@ -26,10 +26,9 @@ export type WorkflowDraftSliceShape = {
 export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = set => ({
   backupDraft: undefined,
   setBackupDraft: backupDraft => set(() => ({ backupDraft })),
-  // TODO: hjlarry test collaboration
   debouncedSyncWorkflowDraft: debounce((syncWorkflowDraft) => {
     syncWorkflowDraft()
-  }, 500000),
+  }, 5000),
   syncWorkflowDraftHash: '',
   setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
   isSyncingWorkflowDraft: false,
