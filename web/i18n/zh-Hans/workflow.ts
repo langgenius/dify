@@ -1171,6 +1171,11 @@ const translation = {
     back: '返回',
     learnMore: '了解更多',
     aboutStartNode: '关于开始节点。',
+    escTip: {
+      press: '按',
+      key: 'esc',
+      toDismiss: '键关闭',
+    },
   },
 }
 
