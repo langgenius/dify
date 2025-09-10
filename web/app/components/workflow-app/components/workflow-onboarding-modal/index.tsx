@@ -84,7 +84,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 
       {/* ESC tip below modal */}
       {isShow && (
-        <div className="body-xs-regular pointer-events-none fixed left-1/2 top-1/2 z-[70] flex -translate-x-1/2 translate-y-[160px] items-center gap-1 text-text-quaternary">
+        <div className="body-xs-regular pointer-events-none fixed left-1/2 top-1/2 z-[70] flex -translate-x-1/2 translate-y-[165px] items-center gap-1 text-text-quaternary">
           <span>Press</span>
           <kbd className="system-kbd inline-flex h-4 min-w-4 items-center justify-center rounded bg-components-kbd-bg-gray px-1 text-text-tertiary">
             esc
