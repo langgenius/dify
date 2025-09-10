@@ -4,7 +4,8 @@ from typing import cast
 from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+
+from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api, console_ns
@@ -16,7 +17,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
-from extensions.ext_database import db
+
 from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
 from libs.login import login_required
 from libs.validators import validate_description_length
@@ -298,7 +299,8 @@ class AppCopyApi(Resource):
         parser.add_argument("icon_background", type=str, location="json")
         args = parser.parse_args()
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             account = cast(Account, current_user)

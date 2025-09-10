@@ -9,7 +9,7 @@ from pydantic import BaseModel, model_validator
 from sqlalchemy import Float, create_engine, insert, select, text
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
 from configs import dify_config
 from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM
@@ -55,7 +55,8 @@ class PGVectoRS(BaseVector):
             f"postgresql+psycopg2://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}"
         )
         self._client = create_engine(self._url)
-        with Session(self._client) as session:
+        session_maker = sessionmaker(bind=self._client, expire_on_commit=False)
+        with session_maker() as session:
             session.execute(text("CREATE EXTENSION IF NOT EXISTS vectors"))
             session.commit()
         self._fields: list[str] = []
@@ -88,7 +89,8 @@ class PGVectoRS(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
             index_name = f"{self._collection_name}_embedding_index"
-            with Session(self._client) as session:
+            session_maker = sessionmaker(bind=self._client, expire_on_commit=False)
+            with session_maker() as session:
                 create_statement = sql_text(f"""
                     CREATE TABLE IF NOT EXISTS {self._collection_name} (
                         id UUID PRIMARY KEY,
@@ -116,7 +118,8 @@ class PGVectoRS(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         pks = []
-        with Session(self._client) as session:
+        session_maker = sessionmaker(bind=self._client, expire_on_commit=False)
+        with session_maker() as session:
             for document, embedding in zip(documents, embeddings):
                 pk = uuid4()
                 session.execute(
@@ -145,7 +148,8 @@ class PGVectoRS(BaseVector):
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
-            with Session(self._client) as session:
+            session_maker = sessionmaker(bind=self._client, expire_on_commit=False)
+            with session_maker() as session:
                 select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
                 session.execute(select_statement, {"ids": ids})
                 session.commit()
@@ -165,7 +169,8 @@ class PGVectoRS(BaseVector):
                     session.commit()
 
     def delete(self):
-        with Session(self._client) as session:
+        session_maker = sessionmaker(bind=self._client, expire_on_commit=False)
+        with session_maker() as session:
             session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
             session.commit()
 

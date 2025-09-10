@@ -3,6 +3,7 @@ from typing import cast
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.app.wraps import get_app_model
@@ -48,7 +49,8 @@ class AppImportApi(Resource):
         args = parser.parse_args()
 
         # Create service with session
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             # Import app
             account = cast(Account, current_user)
@@ -89,7 +91,8 @@ class AppImportConfirmApi(Resource):
             raise Forbidden()
 
         # Create service with session
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             # Confirm import
             account = cast(Account, current_user)

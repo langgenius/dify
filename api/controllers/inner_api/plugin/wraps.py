@@ -6,7 +6,7 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import reqparse
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 
 from extensions.ext_database import db
 from libs.login import current_user
@@ -28,9 +28,9 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
         user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
     is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
     try:
-        with Session(db.engine) as session:
-            user_model = None
 
+        session_maker = get_session_maker()
+        with session_maker() as session:
             if is_anonymous:
                 user_model = (
                     session.query(EndUser)
