@@ -2,10 +2,8 @@ import type { RefObject } from 'react'
 import type { CursorPosition } from '../types/collaboration'
 import type { ReactFlowInstance } from 'reactflow'
 
-export type CursorServiceConfig = {
-  minMoveDistance?: number
-  throttleMs?: number
-}
+const CURSOR_MIN_MOVE_DISTANCE = 10
+const CURSOR_THROTTLE_MS = 500
 
 export class CursorService {
   private containerRef: RefObject<HTMLElement> | null = null
@@ -15,14 +13,6 @@ export class CursorService {
   private onEmitPosition: ((position: CursorPosition) => void) | null = null
   private lastEmitTime = 0
   private lastPosition: { x: number; y: number } | null = null
-  private config: Required<CursorServiceConfig>
-
-  constructor(config: CursorServiceConfig = {}) {
-    this.config = {
-      minMoveDistance: config.minMoveDistance ?? 5,
-      throttleMs: config.throttleMs ?? 300,
-    }
-  }
 
   startTracking(
     containerRef: RefObject<HTMLElement>,
@@ -78,10 +68,11 @@ export class CursorService {
 
     // Always emit cursor position (remove boundary check since world coordinates can be negative)
     const now = Date.now()
-    const timeThrottled = now - this.lastEmitTime > this.config.throttleMs
+    const timeThrottled = now - this.lastEmitTime > CURSOR_THROTTLE_MS
+    const minDistance = CURSOR_MIN_MOVE_DISTANCE / (this.reactFlowInstance?.getZoom() || 1)
     const distanceThrottled = !this.lastPosition
-        || (Math.abs(x - this.lastPosition.x) > this.config.minMoveDistance / (this.reactFlowInstance?.getZoom() || 1))
-        || (Math.abs(y - this.lastPosition.y) > this.config.minMoveDistance / (this.reactFlowInstance?.getZoom() || 1))
+        || (Math.abs(x - this.lastPosition.x) > minDistance)
+        || (Math.abs(y - this.lastPosition.y) > minDistance)
 
     if (timeThrottled && distanceThrottled) {
         this.lastPosition = { x, y }

@@ -19,12 +19,8 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
 
     let connectionId: string | null = null
 
-    if (!cursorServiceRef.current) {
-      cursorServiceRef.current = new CursorService({
-        minMoveDistance: 10,
-        throttleMs: 300,
-      })
-    }
+    if (!cursorServiceRef.current)
+      cursorServiceRef.current = new CursorService()
 
     const initCollaboration = async () => {
       connectionId = await collaborationManager.connect(appId, reactFlowStore)
