@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 import httpx
-from config_helper import config_helper
-from logger_helper import Logger
+from common import config_helper, Logger
 
 
 def setup_admin_account() -> None:
     """Setup Dify API with an admin account."""
-    
+
     log = Logger("SetupAdmin")
     log.header("Setting up Admin Account")
 
@@ -20,7 +24,9 @@ def setup_admin_account() -> None:
 
     # Save credentials to config file
     if config_helper.write_config("admin_config", admin_config):
-        log.info(f"Admin credentials saved to: {config_helper.get_config_path('admin_config')}")
+        log.info(
+            f"Admin credentials saved to: {config_helper.get_config_path('admin_config')}"
+        )
 
     # API setup endpoint
     base_url = "http://localhost:5001"
@@ -34,7 +40,7 @@ def setup_admin_account() -> None:
     }
 
     log.step("Configuring Dify with admin account...")
-    
+
     try:
         # Make the setup request
         with httpx.Client() as client:
@@ -46,11 +52,13 @@ def setup_admin_account() -> None:
 
             if response.status_code == 201:
                 log.success("Admin account created successfully!")
-                log.key_value("Email", admin_config['email'])
-                log.key_value("Username", admin_config['username'])
+                log.key_value("Email", admin_config["email"])
+                log.key_value("Username", admin_config["username"])
 
             elif response.status_code == 400:
-                log.warning("Setup may have already been completed or invalid data provided")
+                log.warning(
+                    "Setup may have already been completed or invalid data provided"
+                )
                 log.debug(f"Response: {response.text}")
             else:
                 log.error(f"Setup failed with status code: {response.status_code}")

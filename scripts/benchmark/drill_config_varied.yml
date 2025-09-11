@@ -1,0 +1,85 @@
+concurrency: 10                           # Number of concurrent users
+base: 'http://localhost:5001'            # Base URL for the API
+iterations: 100                          # Total number of requests to make
+rampup: 5                                # Seconds to gradually start all threads
+
+plan:
+  - name: 'Question 1 - Capital'
+    request:
+      url: /v1/workflows/run
+      method: POST
+      body: |
+        {
+          "inputs": {
+            "question": "What is the capital of France?"
+          },
+          "user": "benchmark-user",
+          "response_mode": "blocking"
+        }
+      headers:
+        Authorization: 'Bearer {{ api_token }}'
+        Content-Type: 'application/json'
+        
+  - name: 'Question 2 - Quantum'
+    request:
+      url: /v1/workflows/run
+      method: POST
+      body: |
+        {
+          "inputs": {
+            "question": "Explain quantum computing in simple terms"
+          },
+          "user": "benchmark-user",
+          "response_mode": "blocking"
+        }
+      headers:
+        Authorization: 'Bearer {{ api_token }}'
+        Content-Type: 'application/json'
+        
+  - name: 'Question 3 - Exercise'
+    request:
+      url: /v1/workflows/run
+      method: POST
+      body: |
+        {
+          "inputs": {
+            "question": "What are the benefits of exercise?"
+          },
+          "user": "benchmark-user",
+          "response_mode": "blocking"
+        }
+      headers:
+        Authorization: 'Bearer {{ api_token }}'
+        Content-Type: 'application/json'
+        
+  - name: 'Question 4 - Photosynthesis'
+    request:
+      url: /v1/workflows/run
+      method: POST
+      body: |
+        {
+          "inputs": {
+            "question": "How does photosynthesis work?"
+          },
+          "user": "benchmark-user",
+          "response_mode": "blocking"
+        }
+      headers:
+        Authorization: 'Bearer {{ api_token }}'
+        Content-Type: 'application/json'
+        
+  - name: 'Question 5 - ML'
+    request:
+      url: /v1/workflows/run
+      method: POST
+      body: |
+        {
+          "inputs": {
+            "question": "What is machine learning?"
+          },
+          "user": "benchmark-user",
+          "response_mode": "blocking"
+        }
+      headers:
+        Authorization: 'Bearer {{ api_token }}'
+        Content-Type: 'application/json'

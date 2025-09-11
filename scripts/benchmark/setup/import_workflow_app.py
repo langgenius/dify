@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 import httpx
 import json
-from pathlib import Path
-from config_helper import config_helper
-from logger_helper import Logger
+from common import config_helper, Logger
 
 
 def import_workflow_app() -> None:
     """Import workflow app from DSL file and save app_id."""
-    
+
     log = Logger("ImportApp")
     log.header("Importing Workflow Application")
 
@@ -82,8 +85,10 @@ def import_workflow_app() -> None:
                     if app_id:
                         log.success("Workflow app imported successfully!")
                         log.key_value("App ID", app_id)
-                        log.key_value("App Mode", response_data.get('app_mode'))
-                        log.key_value("DSL Version", response_data.get('imported_dsl_version'))
+                        log.key_value("App Mode", response_data.get("app_mode"))
+                        log.key_value(
+                            "DSL Version", response_data.get("imported_dsl_version")
+                        )
 
                         # Save app_id to config
                         app_config = {
@@ -94,7 +99,9 @@ def import_workflow_app() -> None:
                         }
 
                         if config_helper.write_config("app_config", app_config):
-                            log.info(f"App config saved to: {config_helper.get_config_path('app_config')}")
+                            log.info(
+                                f"App config saved to: {config_helper.get_config_path('app_config')}"
+                            )
                     else:
                         log.error("Import completed but no app_id received")
                         log.debug(f"Response: {json.dumps(response_data, indent=2)}")

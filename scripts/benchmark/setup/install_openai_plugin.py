@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 import httpx
 import time
-from config_helper import config_helper
-from logger_helper import Logger
+from common import config_helper
+from common import Logger
 
 
 def install_openai_plugin() -> None:
     """Install OpenAI plugin using saved access token."""
-    
+
     log = Logger("InstallPlugin")
     log.header("Installing OpenAI Plugin")
 
@@ -23,7 +28,9 @@ def install_openai_plugin() -> None:
 
     # API endpoint for plugin installation
     base_url = "http://localhost:5001"
-    install_endpoint = f"{base_url}/console/api/workspaces/current/plugin/install/marketplace"
+    install_endpoint = (
+        f"{base_url}/console/api/workspaces/current/plugin/install/marketplace"
+    )
 
     # Plugin identifier
     plugin_payload = {
@@ -76,13 +83,15 @@ def install_openai_plugin() -> None:
                 log.info("Polling for task completion...")
 
                 # Poll for task completion
-                task_endpoint = f"{base_url}/console/api/workspaces/current/plugin/tasks/{task_id}"
+                task_endpoint = (
+                    f"{base_url}/console/api/workspaces/current/plugin/tasks/{task_id}"
+                )
 
                 max_attempts = 30  # 30 attempts with 2 second delay = 60 seconds max
                 attempt = 0
 
                 log.spinner_start("Installing plugin")
-                
+
                 while attempt < max_attempts:
                     attempt += 1
                     time.sleep(2)  # Wait 2 seconds between polls
@@ -94,7 +103,10 @@ def install_openai_plugin() -> None:
                     )
 
                     if task_response.status_code != 200:
-                        log.spinner_stop(success=False, message=f"Failed to get task status: {task_response.status_code}")
+                        log.spinner_stop(
+                            success=False,
+                            message=f"Failed to get task status: {task_response.status_code}",
+                        )
                         return
 
                     task_data = task_response.json()
@@ -109,8 +121,8 @@ def install_openai_plugin() -> None:
                         plugins = task_info.get("plugins", [])
                         if plugins:
                             plugin_info = plugins[0]
-                            log.key_value("Plugin ID", plugin_info.get('plugin_id'))
-                            log.key_value("Message", plugin_info.get('message'))
+                            log.key_value("Plugin ID", plugin_info.get("plugin_id"))
+                            log.key_value("Message", plugin_info.get("message"))
                         break
 
                     elif status == "failed":
@@ -119,7 +131,9 @@ def install_openai_plugin() -> None:
                         plugins = task_info.get("plugins", [])
                         if plugins:
                             for plugin in plugins:
-                                log.list_item(f"{plugin.get('plugin_id')}: {plugin.get('message')}")
+                                log.list_item(
+                                    f"{plugin.get('plugin_id')}: {plugin.get('message')}"
+                                )
                         break
 
                     # Continue polling if status is "pending" or other
@@ -135,7 +149,9 @@ def install_openai_plugin() -> None:
                 log.warning("Plugin may already be installed")
                 log.debug(f"Response: {response.text}")
             else:
-                log.error(f"Installation failed with status code: {response.status_code}")
+                log.error(
+                    f"Installation failed with status code: {response.status_code}"
+                )
                 log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

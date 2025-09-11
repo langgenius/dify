@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 import httpx
 import json
-from config_helper import config_helper
-from logger_helper import Logger
+from common import config_helper
+from common import Logger
 
 
 def create_api_key() -> None:
     """Create API key for the imported app."""
-    
+
     log = Logger("CreateAPIKey")
     log.header("Creating API Key")
 
@@ -73,7 +78,7 @@ def create_api_key() -> None:
                     log.success("API key created successfully!")
                     log.key_value("Key ID", api_key_id)
                     log.key_value("Token", api_key_token)
-                    log.key_value("Type", response_data.get('type'))
+                    log.key_value("Type", response_data.get("type"))
 
                     # Save API key to config
                     api_key_config = {
@@ -85,7 +90,9 @@ def create_api_key() -> None:
                     }
 
                     if config_helper.write_config("api_key_config", api_key_config):
-                        log.info(f"API key saved to: {config_helper.get_config_path('api_key_config')}")
+                        log.info(
+                            f"API key saved to: {config_helper.get_config_path('api_key_config')}"
+                        )
                 else:
                     log.error("No API token received")
                     log.debug(f"Response: {json.dumps(response_data, indent=2)}")
@@ -94,7 +101,9 @@ def create_api_key() -> None:
                 log.error("API key creation failed: Unauthorized")
                 log.info("Token may have expired. Please run login_admin.py again")
             else:
-                log.error(f"API key creation failed with status code: {response.status_code}")
+                log.error(
+                    f"API key creation failed with status code: {response.status_code}"
+                )
                 log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

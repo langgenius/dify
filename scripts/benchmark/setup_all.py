@@ -5,12 +5,13 @@ import sys
 import time
 import socket
 from pathlib import Path
-from logger_helper import Logger, ProgressLogger
+
+from common import Logger, ProgressLogger
 
 
 def run_script(script_name: str, description: str) -> bool:
     """Run a Python script and return success status."""
-    script_path = Path(__file__).parent / script_name
+    script_path = Path(__file__).parent / "setup" / script_name
 
     if not script_path.exists():
         print(f"❌ Script not found: {script_path}")
@@ -68,7 +69,7 @@ def check_port(host: str, port: int, service_name: str) -> bool:
 
 def main() -> None:
     """Run all setup scripts in order."""
-    
+
     log = Logger("Setup")
     log.box("Dify Benchmark Setup - Full Installation")
 
@@ -143,7 +144,10 @@ def main() -> None:
         log.success("Setup completed successfully!")
         log.info("Next steps:")
         log.list_item("Test the workflow:")
-        log.info('   python scripts/benchmark/setup/run_workflow.py "Your question here"', indent=4)
+        log.info(
+            '   python scripts/benchmark/setup/run_workflow.py "Your question here"',
+            indent=4,
+        )
         log.list_item("To clean up and start over:")
         log.info("   python scripts/benchmark/setup/cleanup.py", indent=4)
 

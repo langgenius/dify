@@ -3,16 +3,17 @@
 import shutil
 import sys
 from pathlib import Path
-from logger_helper import Logger
+
+from common import Logger
 
 
 def cleanup() -> None:
     """Clean up all configuration files created during setup."""
-    
+
     log = Logger("Cleanup")
     log.header("Configuration Cleanup")
 
-    config_dir = Path(__file__).parent / "config"
+    config_dir = Path(__file__).parent / "setup" / "config"
 
     if not config_dir.exists():
         log.success("Config directory does not exist. Nothing to clean.")
@@ -33,7 +34,9 @@ def cleanup() -> None:
     if sys.stdin.isatty():
         log.separator()
         log.warning("This action cannot be undone!")
-        confirmation = input("Are you sure you want to remove all config files? (yes/no): ")
+        confirmation = input(
+            "Are you sure you want to remove all config files? (yes/no): "
+        )
 
         if confirmation.lower() not in ["yes", "y"]:
             log.error("Cleanup cancelled.")

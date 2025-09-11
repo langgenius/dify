@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 import httpx
 import json
-import sys
-from config_helper import config_helper
-from logger_helper import Logger
+from common import config_helper, Logger
 
 
 def run_workflow(question: str = "fake question", streaming: bool = True) -> None:
     """Run the workflow app with a question."""
-    
+
     log = Logger("RunWorkflow")
     log.header("Running Workflow")
 
@@ -67,20 +70,26 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
                                     event = data.get("event")
 
                                     if event == "workflow_started":
-                                        log.progress(f"Workflow started: {data.get('data', {}).get('id')}")
+                                        log.progress(
+                                            f"Workflow started: {data.get('data', {}).get('id')}"
+                                        )
                                     elif event == "node_started":
                                         node_data = data.get("data", {})
-                                        log.progress(f"Node started: {node_data.get('node_type')} - {node_data.get('title')}")
+                                        log.progress(
+                                            f"Node started: {node_data.get('node_type')} - {node_data.get('title')}"
+                                        )
                                     elif event == "node_finished":
                                         node_data = data.get("data", {})
-                                        log.progress(f"Node finished: {node_data.get('node_type')} - {node_data.get('title')}")
+                                        log.progress(
+                                            f"Node finished: {node_data.get('node_type')} - {node_data.get('title')}"
+                                        )
 
                                         # Print output if it's the LLM node
                                         outputs = node_data.get("outputs", {})
                                         if outputs.get("text"):
                                             log.separator()
                                             log.info("💬 LLM Response:")
-                                            log.info(outputs.get('text'), indent=2)
+                                            log.info(outputs.get("text"), indent=2)
                                             log.separator()
 
                                     elif event == "workflow_finished":
@@ -89,10 +98,16 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
                                         if outputs.get("answer"):
                                             log.separator()
                                             log.info("📤 Final Answer:")
-                                            log.info(outputs.get('answer'), indent=2)
+                                            log.info(outputs.get("answer"), indent=2)
                                         log.separator()
-                                        log.key_value("Total tokens", str(workflow_data.get('total_tokens', 0)))
-                                        log.key_value("Total steps", str(workflow_data.get('total_steps', 0)))
+                                        log.key_value(
+                                            "Total tokens",
+                                            str(workflow_data.get("total_tokens", 0)),
+                                        )
+                                        log.key_value(
+                                            "Total steps",
+                                            str(workflow_data.get("total_steps", 0)),
+                                        )
 
                                     elif event == "error":
                                         log.error(f"Error: {data.get('message')}")
@@ -101,7 +116,9 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
                                     # Some lines might not be JSON
                                     pass
                     else:
-                        log.error(f"Workflow run failed with status code: {response.status_code}")
+                        log.error(
+                            f"Workflow run failed with status code: {response.status_code}"
+                        )
                         log.debug(f"Response: {response.text}")
             else:
                 # Handle blocking response
@@ -123,9 +140,11 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
                     if outputs.get("answer"):
                         log.separator()
                         log.info("📤 Final Answer:")
-                        log.info(outputs.get('answer'), indent=2)
+                        log.info(outputs.get("answer"), indent=2)
                 else:
-                    log.error(f"Workflow run failed with status code: {response.status_code}")
+                    log.error(
+                        f"Workflow run failed with status code: {response.status_code}"
+                    )
                     log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

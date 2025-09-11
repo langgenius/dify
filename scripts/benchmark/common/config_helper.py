@@ -2,21 +2,21 @@
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class ConfigHelper:
     """Helper class for reading and writing configuration files."""
 
-    def __init__(self, base_dir: Optional[Path] = None):
+    def __init__(self, base_dir: Path | None = None):
         """Initialize ConfigHelper with base directory.
 
         Args:
-            base_dir: Base directory for config files. If None, uses script's parent/config
+            base_dir: Base directory for config files. If None, uses setup/config
         """
         if base_dir is None:
-            # Default to config directory in the same folder as the calling script
-            base_dir = Path(__file__).parent / "config"
+            # Default to config directory in setup folder
+            base_dir = Path(__file__).parent.parent / "setup" / "config"
         self.base_dir = base_dir
 
     def ensure_config_dir(self) -> None:
@@ -36,7 +36,7 @@ class ConfigHelper:
             filename += ".json"
         return self.base_dir / filename
 
-    def read_config(self, filename: str) -> Optional[dict[str, Any]]:
+    def read_config(self, filename: str) -> dict[str, Any] | None:
         """Read a configuration file.
 
         Args:
@@ -110,7 +110,7 @@ class ConfigHelper:
             print(f"❌ Error deleting {filename}: {e}")
             return False
 
-    def get_token(self) -> Optional[str]:
+    def get_token(self) -> str | None:
         """Get the access token from token config.
 
         Returns:
@@ -121,7 +121,7 @@ class ConfigHelper:
             return token_config.get("access_token")
         return None
 
-    def get_app_id(self) -> Optional[str]:
+    def get_app_id(self) -> str | None:
         """Get the app ID from app config.
 
         Returns:
@@ -132,7 +132,7 @@ class ConfigHelper:
             return app_config.get("app_id")
         return None
 
-    def get_api_key(self) -> Optional[str]:
+    def get_api_key(self) -> str | None:
         """Get the API key token from api_key config.
 
         Returns:

@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 import httpx
 import json
-from config_helper import config_helper
-from logger_helper import Logger
+from common import config_helper
+from common import Logger
 
 
 def publish_workflow() -> None:
     """Publish the imported workflow app."""
-    
+
     log = Logger("PublishWorkflow")
     log.header("Publishing Workflow")
 
@@ -74,7 +79,9 @@ def publish_workflow() -> None:
                     try:
                         response_data = response.json()
                         if response_data:
-                            log.debug(f"Response: {json.dumps(response_data, indent=2)}")
+                            log.debug(
+                                f"Response: {json.dumps(response_data, indent=2)}"
+                            )
                     except json.JSONDecodeError:
                         # Response might be empty or non-JSON
                         pass
@@ -86,7 +93,9 @@ def publish_workflow() -> None:
                 log.error("Workflow publish failed: App not found")
                 log.info("Make sure the app was imported successfully")
             else:
-                log.error(f"Workflow publish failed with status code: {response.status_code}")
+                log.error(
+                    f"Workflow publish failed with status code: {response.status_code}"
+                )
                 log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

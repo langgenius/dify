@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 import httpx
 import json
-from config_helper import config_helper
-from logger_helper import Logger
+from common import config_helper
+from common import Logger
 
 
 def login_admin() -> None:
     """Login with admin account and save access token."""
-    
+
     log = Logger("Login")
     log.header("Admin Login")
 
@@ -72,10 +77,16 @@ def login_admin() -> None:
 
                 # Save token config
                 if config_helper.write_config("token_config", token_config):
-                    log.info(f"Token saved to: {config_helper.get_config_path('token_config')}")
-                
+                    log.info(
+                        f"Token saved to: {config_helper.get_config_path('token_config')}"
+                    )
+
                 # Show truncated token for verification
-                token_display = f"{access_token[:20]}..." if len(access_token) > 20 else "Token saved"
+                token_display = (
+                    f"{access_token[:20]}..."
+                    if len(access_token) > 20
+                    else "Token saved"
+                )
                 log.key_value("Access token", token_display)
 
             elif response.status_code == 401:

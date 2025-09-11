@@ -1,0 +1,1 @@
+"""Dify benchmark setup scripts."""
