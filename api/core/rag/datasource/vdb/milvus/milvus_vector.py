@@ -36,7 +36,7 @@ class MilvusConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         Raises ValueError if required fields are missing.
@@ -79,7 +79,7 @@ class MilvusVector(BaseVector):
             self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
 
-    def _load_collection_fields(self, fields: Optional[list[str]] = None) -> None:
+    def _load_collection_fields(self, fields: Optional[list[str]] = None):
         if fields is None:
             # Load collection fields from remote server
             collection_info = self._client.describe_collection(self._collection_name)
@@ -171,7 +171,7 @@ class MilvusVector(BaseVector):
             if ids:
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """
         Delete documents by their IDs.
         """
@@ -183,7 +183,7 @@ class MilvusVector(BaseVector):
                 ids = [item["id"] for item in result]
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete(self) -> None:
+    def delete(self):
         """
         Delete the entire collection.
         """
@@ -376,7 +376,12 @@ class MilvusVector(BaseVector):
         if config.token:
             client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
         else:
-            client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
+            client = MilvusClient(
+                uri=config.uri,
+                user=config.user or "",
+                password=config.password or "",
+                db_name=config.database,
+            )
         return client
 
 

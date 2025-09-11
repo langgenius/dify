@@ -51,6 +51,7 @@ export function useWorkflowHistoryStore() {
         setState: (state: WorkflowHistoryState) => {
           store.setState({
             workflowHistoryEvent: state.workflowHistoryEvent,
+            workflowHistoryEventMeta: state.workflowHistoryEventMeta,
             nodes: state.nodes.map((node: Node) => ({ ...node, data: { ...node.data, selected: false } })),
             edges: state.edges.map((edge: Edge) => ({ ...edge, selected: false }) as Edge),
           })
@@ -76,6 +77,7 @@ function createStore({
     (set, get) => {
       return {
         workflowHistoryEvent: undefined,
+        workflowHistoryEventMeta: undefined,
         nodes: storeNodes,
         edges: storeEdges,
         getNodes: () => get().nodes,
@@ -97,6 +99,7 @@ export type WorkflowHistoryStore = {
   nodes: Node[]
   edges: Edge[]
   workflowHistoryEvent: WorkflowHistoryEvent | undefined
+  workflowHistoryEventMeta?: WorkflowHistoryEventMeta
 }
 
 export type WorkflowHistoryActions = {
@@ -118,4 +121,9 @@ export type WorkflowWithHistoryProviderProps = {
   nodes: Node[]
   edges: Edge[]
   children: ReactNode
+}
+
+export type WorkflowHistoryEventMeta = {
+  nodeId?: string
+  nodeTitle?: string
 }

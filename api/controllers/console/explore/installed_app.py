@@ -2,9 +2,8 @@ import logging
 from typing import Any
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, inputs, marshal_with, reqparse
-from sqlalchemy import and_
+from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import api
@@ -13,8 +12,8 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.datetime_utils import naive_utc_now
-from libs.login import login_required
-from models import App, InstalledApp, RecommendedApp
+from libs.login import current_user, login_required
+from models import Account, App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -29,17 +28,23 @@ class InstalledAppsListApi(Resource):
     @marshal_with(installed_app_list_fields)
     def get(self):
         app_id = request.args.get("app_id", default=None, type=str)
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         current_tenant_id = current_user.current_tenant_id
 
         if app_id:
-            installed_apps = (
-                db.session.query(InstalledApp)
-                .where(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
-                .all()
-            )
+            installed_apps = db.session.scalars(
+                select(InstalledApp).where(
+                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id)
+                )
+            ).all()
         else:
-            installed_apps = db.session.query(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id).all()
+            installed_apps = db.session.scalars(
+                select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)
+            ).all()
 
+        if current_user.current_tenant is None:
+            raise ValueError("current_user.current_tenant must not be None")
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_app_list: list[dict[str, Any]] = [
             {
@@ -115,6 +120,8 @@ class InstalledAppsListApi(Resource):
         if recommended_app is None:
             raise NotFound("App not found")
 
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         current_tenant_id = current_user.current_tenant_id
         app = db.session.query(App).where(App.id == args["app_id"]).first()
 
@@ -154,6 +161,8 @@ class InstalledAppApi(InstalledAppResource):
     """
 
     def delete(self, installed_app):
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         if installed_app.app_owner_tenant_id == current_user.current_tenant_id:
             raise BadRequest("You can't uninstall an app owned by the current tenant")
 

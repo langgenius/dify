@@ -72,6 +72,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         function_call_state = True
         llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
         final_answer = ""
+        prompt_messages: list = []  # Initialize prompt_messages
+        agent_thought_id = ""  # Initialize agent_thought_id
 
         def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
@@ -338,7 +340,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return instruction
 
-    def _init_react_state(self, query) -> None:
+    def _init_react_state(self, query):
         """
         init agent scratchpad
         """

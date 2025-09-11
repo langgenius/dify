@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useCallback, useMemo, useState } from 'react'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -15,7 +15,7 @@ type Params = {
   id: string,
   payload: ToolNodeType,
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
@@ -61,7 +61,7 @@ const useSingleRunFormParams = ({
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
         const { type, value } = inputs.tool_parameters[key]
         if (type === VarType.constant && (value === undefined || value === null)) {
-            if(!draft.tool_parameters || !draft.tool_parameters[key])
+          if(!draft.tool_parameters || !draft.tool_parameters[key])
             return
           draft[key] = value
         }

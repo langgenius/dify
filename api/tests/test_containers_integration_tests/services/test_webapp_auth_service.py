@@ -57,10 +57,12 @@ class TestWebAppAuthService:
             tuple: (account, tenant) - Created account and tenant instances
         """
         fake = Faker()
+        import uuid
 
-        # Create account
+        # Create account with unique email to avoid collisions
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status="active",
@@ -109,8 +111,11 @@ class TestWebAppAuthService:
         password = fake.password(length=12)
 
         # Create account with password
+        import uuid
+
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status="active",
@@ -322,9 +327,12 @@ class TestWebAppAuthService:
         """
         # Arrange: Create account without password
         fake = Faker()
+        import uuid
+
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status="active",
@@ -431,9 +439,12 @@ class TestWebAppAuthService:
         """
         # Arrange: Create banned account
         fake = Faker()
+        import uuid
+
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status=AccountStatus.BANNED.value,

@@ -1,6 +1,5 @@
 import logging
 
-from flask_login import current_user
 from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -28,6 +27,8 @@ from extensions.ext_database import db
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import uuid_value
+from libs.login import current_user
+from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
@@ -57,6 +58,8 @@ class CompletionApi(InstalledAppResource):
         db.session.commit()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
@@ -90,6 +93,8 @@ class CompletionStopApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {"result": "success"}, 200
@@ -117,6 +122,8 @@ class ChatApi(InstalledAppResource):
         db.session.commit()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
@@ -153,6 +160,8 @@ class ChatStopApi(InstalledAppResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {"result": "success"}, 200

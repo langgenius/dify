@@ -222,12 +222,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   {t('workflow.nodes.agent.clickToViewParameterSchema')}
                 </div>}
                 asChild={false}>
-                  <div
-                    className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                    onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
-                  >
-                    <RiBracesLine className='size-3.5'/>
-                  </div>
+                <div
+                  className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                  onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
+                >
+                  <RiBracesLine className='size-3.5'/>
+                </div>
               </Tooltip>
             )}
 

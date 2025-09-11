@@ -435,7 +435,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         context: contextvars.Context,
         variable_loader: VariableLoader,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Generate worker in a new thread.
         :param flask_app: Flask app

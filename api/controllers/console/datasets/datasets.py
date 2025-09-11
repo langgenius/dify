@@ -2,6 +2,7 @@ import flask_restx
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, marshal, marshal_with, reqparse
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -22,6 +23,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
@@ -410,11 +412,11 @@ class DatasetIndexingEstimateApi(Resource):
         extract_settings = []
         if args["info_list"]["data_source_type"] == "upload_file":
             file_ids = args["info_list"]["file_info_list"]["file_ids"]
-            file_details = (
-                db.session.query(UploadFile)
-                .where(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids))
-                .all()
-            )
+            file_details = db.session.scalars(
+                select(UploadFile).where(
+                    UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids)
+                )
+            ).all()
 
             if file_details is None:
                 raise NotFound("File not found.")
@@ -422,7 +424,9 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
-                        datasource_type="upload_file", upload_file=file_detail, document_model=args["doc_form"]
+                        datasource_type=DatasourceType.FILE.value,
+                        upload_file=file_detail,
+                        document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
         elif args["info_list"]["data_source_type"] == "notion_import":
@@ -431,7 +435,7 @@ class DatasetIndexingEstimateApi(Resource):
                 workspace_id = notion_info["workspace_id"]
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
-                        datasource_type="notion_import",
+                        datasource_type=DatasourceType.NOTION.value,
                         notion_info={
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page["page_id"],
@@ -445,7 +449,7 @@ class DatasetIndexingEstimateApi(Resource):
             website_info_list = args["info_list"]["website_info_list"]
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
-                    datasource_type="website_crawl",
+                    datasource_type=DatasourceType.WEBSITE.value,
                     website_info={
                         "provider": website_info_list["provider"],
                         "job_id": website_info_list["job_id"],
@@ -515,11 +519,11 @@ class DatasetIndexingStatusApi(Resource):
     @account_initialization_required
     def get(self, dataset_id):
         dataset_id = str(dataset_id)
-        documents = (
-            db.session.query(Document)
-            .where(Document.dataset_id == dataset_id, Document.tenant_id == current_user.current_tenant_id)
-            .all()
-        )
+        documents = db.session.scalars(
+            select(Document).where(
+                Document.dataset_id == dataset_id, Document.tenant_id == current_user.current_tenant_id
+            )
+        ).all()
         documents_status = []
         for document in documents:
             completed_segments = (
@@ -566,11 +570,11 @@ class DatasetApiKeyApi(Resource):
     @account_initialization_required
     @marshal_with(api_key_list)
     def get(self):
-        keys = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
-            .all()
-        )
+        keys = db.session.scalars(
+            select(ApiToken).where(
+                ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id
+            )
+        ).all()
         return {"items": keys}
 
     @setup_required
