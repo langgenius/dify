@@ -1,6 +1,7 @@
 const translation = {
   subscription: {
     title: '订阅',
+    listNum: '{{num}} 个订阅',
     empty: {
       title: '暂无订阅',
       description: '创建您的第一个订阅以开始接收事件',

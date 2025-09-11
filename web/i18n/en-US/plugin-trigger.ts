@@ -1,6 +1,7 @@
 const translation = {
   subscription: {
     title: 'Subscriptions',
+    listNum: '{{num}} subscriptions',
     empty: {
       title: 'No subscriptions',
       description: 'Create your first subscription to start receiving events',

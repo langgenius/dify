@@ -30,7 +30,7 @@ export const SubscriptionList = ({ detail }: Props) => {
   const showTopBorder = detail.declaration.tool || detail.declaration.endpoint
 
   // Fetch subscriptions
-  const { data: subscriptions, isLoading } = useTriggerSubscriptions(`${detail.plugin_id}/${detail.declaration.name}`)
+  const { data: subscriptions, isLoading, refetch } = useTriggerSubscriptions(`${detail.plugin_id}/${detail.declaration.name}`)
 
   // Modal states
   const [isShowAddModal, {
@@ -58,8 +58,7 @@ export const SubscriptionList = ({ detail }: Props) => {
   }
 
   const handleRefreshList = () => {
-    // This will be called after successful operations
-    // The query will auto-refresh due to React Query
+    refetch()
   }
 
   if (isLoading) {
@@ -98,9 +97,11 @@ export const SubscriptionList = ({ detail }: Props) => {
       ) : (
         // List state with header and secondary add button
         <>
-          <div className='system-sm-semibold-uppercase mb-3 flex h-6 items-center justify-between text-text-secondary'>
-            <div className='flex items-center gap-0.5'>
-              {t('pluginTrigger.subscription.list.title')}
+          <div className='system-sm-semibold-uppercase mb-3 flex items-center justify-between'>
+            <div className='flex items-center gap-1'>
+              <span className='system-sm-semibold text-text-secondary'>
+                {t('pluginTrigger.subscription.listNum', { num: subscriptions?.length || 0 })}
+              </span>
               <Tooltip
                 position='right'
                 popupClassName='w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border'
@@ -140,7 +141,7 @@ export const SubscriptionList = ({ detail }: Props) => {
             </div>
           </div>
 
-          <div className='flex flex-col gap-2'>
+          <div className='flex flex-col gap-1'>
             {subscriptions?.map(subscription => (
               <SubscriptionCard
                 key={subscription.id}

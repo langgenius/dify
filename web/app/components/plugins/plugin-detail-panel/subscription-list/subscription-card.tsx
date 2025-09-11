@@ -1,15 +1,13 @@
 'use client'
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import {
   RiDeleteBinLine,
-  RiGitBranchLine,
-  RiKeyLine,
-  RiUserLine,
   RiWebhookLine,
 } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
+import Indicator from '@/app/components/header/indicator'
 import Confirm from '@/app/components/base/confirm'
 import Toast from '@/app/components/base/toast'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
@@ -21,39 +19,13 @@ type Props = {
   onRefresh: () => void
 }
 
-const getProviderIcon = (provider: string) => {
-  switch (provider) {
-    case 'github':
-      return <RiGitBranchLine className='h-4 w-4' />
-    case 'gitlab':
-      return <RiGitBranchLine className='h-4 w-4' />
-    default:
-      return <RiWebhookLine className='h-4 w-4' />
-  }
-}
-
-const getCredentialIcon = (credentialType: string) => {
-  switch (credentialType) {
-    case 'oauth2':
-      return <RiUserLine className='h-4 w-4 text-text-accent' />
-    case 'api_key':
-      return <RiKeyLine className='h-4 w-4 text-text-warning' />
-    case 'unauthorized':
-      return <RiWebhookLine className='h-4 w-4 text-text-secondary' />
-    default:
-      return <RiWebhookLine className='h-4 w-4' />
-  }
-}
-
 const SubscriptionCard = ({ data, onRefresh }: Props) => {
   const { t } = useTranslation()
-  const [isHovered, setIsHovered] = useState(false)
   const [isShowDeleteModal, {
     setTrue: showDeleteModal,
     setFalse: hideDeleteModal,
   }] = useBoolean(false)
 
-  // API mutations
   const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
 
   const handleDelete = () => {
@@ -71,78 +43,55 @@ const SubscriptionCard = ({ data, onRefresh }: Props) => {
           type: 'error',
           message: error?.message || 'Failed to delete subscription',
         })
-        hideDeleteModal()
       },
     })
   }
 
-  // Determine if subscription is active/enabled based on properties
   const isActive = data.properties?.active !== false
 
   return (
     <>
       <div
         className={cn(
-          'group relative flex items-center justify-between rounded-lg border-[0.5px] p-3 transition-all',
-          'hover:border-components-panel-border hover:bg-background-default-hover',
-          isActive
-            ? 'bg-components-panel-on-panel-item border-components-panel-border-subtle'
-            : 'bg-components-panel-on-panel-item-disabled border-components-panel-border-subtle opacity-60',
+          'group relative cursor-pointer rounded-lg border-[0.5px] px-4 py-3 shadow-xs transition-all',
+          'border-components-panel-border-subtle bg-components-panel-on-panel-item-bg',
+          'hover:bg-components-panel-on-panel-item-bg-hover',
+          'has-[.subscription-delete-btn:hover]:!border-state-destructive-border has-[.subscription-delete-btn:hover]:!bg-state-destructive-hover',
         )}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
-        <div className='flex items-center gap-3'>
-          <div className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px]',
-            isActive
-              ? 'border-components-panel-border-subtle bg-background-default-subtle text-text-secondary'
-              : 'bg-background-default-disabled border-components-panel-border-subtle text-text-quaternary',
-          )}>
-            {getProviderIcon(data.provider)}
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-1'>
+            <RiWebhookLine className='h-4 w-4 text-text-secondary' />
+            <span className='system-md-semibold text-text-secondary'>
+              {data.name}
+            </span>
           </div>
-          <div className='flex flex-col'>
-            <div className='flex items-center gap-2'>
-              <span className={cn(
-                'system-sm-medium',
-                isActive ? 'text-text-primary' : 'text-text-tertiary',
-              )}>
-                {data.name}
-              </span>
-              {getCredentialIcon(data.credential_type)}
-            </div>
-            <div className={cn(
-              'system-xs-regular flex items-center gap-2',
-              isActive ? 'text-text-tertiary' : 'text-text-quaternary',
-            )}>
-              <span>{data.provider}</span>
-              <span>•</span>
-              <span className={cn(
-                'rounded px-2 py-0.5 text-xs font-medium',
-                isActive
-                  ? 'bg-state-success-bg text-state-success-text'
-                  : 'bg-background-default-subtle text-text-quaternary',
-              )}>
-                {isActive
-                  ? t('pluginTrigger.subscription.list.item.status.active')
-                  : t('pluginTrigger.subscription.list.item.status.inactive')
-                }
-              </span>
-            </div>
+
+          <div className='flex h-[26px] w-6 items-center justify-center group-hover:hidden'>
+            <Indicator
+              color={isActive ? 'green' : 'red'}
+              className=''
+            />
+          </div>
+
+          <div className='hidden group-hover:block'>
+            <ActionButton
+              onClick={showDeleteModal}
+              className='subscription-delete-btn transition-colors hover:bg-state-destructive-hover hover:text-text-destructive'
+            >
+              <RiDeleteBinLine className='h-4 w-4' />
+            </ActionButton>
           </div>
         </div>
 
-        {/* Delete button - only show on hover */}
-        <div className={cn(
-          'absolute right-3 top-1/2 -translate-y-1/2 transition-opacity',
-          isHovered ? 'opacity-100' : 'opacity-0',
-        )}>
-          <ActionButton
-            onClick={showDeleteModal}
-            className='hover:text-state-destructive-text hover:bg-state-destructive-hover'
-          >
-            <RiDeleteBinLine className='h-4 w-4' />
-          </ActionButton>
+        <div className='mt-1 flex items-center justify-between'>
+          <div className='system-xs-regular flex-1 truncate text-text-tertiary'>
+            {data.endpoint}
+          </div>
+          <div className="mx-2 text-xs text-text-tertiary opacity-30">·</div>
+          <div className='system-xs-regular shrink-0 text-text-tertiary'>
+            {isActive ? 'Used by 3 workflows' : 'No workflow used'}
+          </div>
         </div>
       </div>
 
