@@ -48,7 +48,9 @@ def send_reset_password_mail_task(language: str, to: str, code: str):
 
 
 @shared_task(queue="mail")
-def send_reset_password_mail_task_when_account_not_exist(language: str, to: str, is_allow_register: bool) -> None:
+def send_reset_password_mail_task_when_account_not_exist(
+    language: str, to: str, is_allow_register: bool, account_name: str
+) -> None:
     """
     Send reset password email with internationalization support when account not exist.
 
@@ -73,6 +75,7 @@ def send_reset_password_mail_task_when_account_not_exist(language: str, to: str,
                 template_context={
                     "to": to,
                     "sign_up_url": sign_up_url,
+                    "account_name": account_name,
                 },
             )
         else:
@@ -81,6 +84,9 @@ def send_reset_password_mail_task_when_account_not_exist(language: str, to: str,
                 email_type=EmailType.RESET_PASSWORD_WHEN_ACCOUNT_NOT_EXIST_NO_REGISTER,
                 language_code=language,
                 to=to,
+                template_context={
+                    "account_name": account_name,
+                },
             )
 
         end_at = time.perf_counter()
