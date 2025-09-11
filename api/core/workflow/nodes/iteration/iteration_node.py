@@ -111,7 +111,7 @@ class IterationNode(Node):
 
         started_at = naive_utc_now()
         iter_run_map: dict[str, float] = {}
-        outputs: list[Any] = []
+        outputs: list[object] = []
 
         yield IterationStartedEvent(
             start_at=started_at,
@@ -188,7 +188,7 @@ class IterationNode(Node):
     def _execute_iterations(
         self,
         iterator_list_value: Sequence[object],
-        outputs: list[Any],
+        outputs: list[object],
         iter_run_map: dict[str, float],
     ) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:
         if self._node_data.is_parallel:
@@ -220,7 +220,7 @@ class IterationNode(Node):
     def _execute_parallel_iterations(
         self,
         iterator_list_value: Sequence[object],
-        outputs: list[Any],
+        outputs: list[object],
         iter_run_map: dict[str, float],
     ) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:
         # Initialize outputs list with None values to maintain order
@@ -279,7 +279,7 @@ class IterationNode(Node):
     def _execute_single_iteration_parallel(
         self,
         index: int,
-        item: Any,
+        item: object,
     ) -> tuple[datetime, list[GraphNodeEventBase], object | None, int]:
         """Execute a single iteration in parallel mode and return results."""
         iter_start_at = datetime.now(UTC).replace(tzinfo=None)
@@ -305,7 +305,7 @@ class IterationNode(Node):
         self,
         started_at: datetime,
         inputs: dict[str, Sequence[object]],
-        outputs: list[Any],
+        outputs: list[object],
         iterator_list_value: Sequence[object],
         iter_run_map: dict[str, float],
     ) -> Generator[NodeEventBase, None, None]:
@@ -335,7 +335,7 @@ class IterationNode(Node):
         self,
         started_at: datetime,
         inputs: dict[str, Sequence[object]],
-        outputs: list[Any],
+        outputs: list[object],
         iterator_list_value: Sequence[object],
         iter_run_map: dict[str, float],
         error: IterationNodeError,
@@ -502,7 +502,7 @@ class IterationNode(Node):
                     case ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
                         return
 
-    def _create_graph_engine(self, index: int, item: Any):
+    def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
         from core.workflow.entities import GraphInitParams, GraphRuntimeState
         from core.workflow.graph import Graph
