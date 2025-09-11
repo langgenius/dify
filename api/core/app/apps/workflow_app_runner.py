@@ -149,7 +149,9 @@ class WorkflowBasedAppRunner:
         node_configs = [
             node
             for node in graph_config.get("nodes", [])
-            if node.get("id") == node_id or node.get("data", {}).get("iteration_id", "") == node_id
+            if node.get("id") == node_id
+            or node.get("data", {}).get("iteration_id", "") == node_id
+            or node.get("id") == f"{node_id}start"
         ]
 
         graph_config["nodes"] = node_configs
@@ -264,7 +266,9 @@ class WorkflowBasedAppRunner:
         node_configs = [
             node
             for node in graph_config.get("nodes", [])
-            if node.get("id") == node_id or node.get("data", {}).get("loop_id", "") == node_id
+            if node.get("id") == node_id
+            or node.get("data", {}).get("loop_id", "") == node_id
+            or node.get("id") == f"{node_id}start"
         ]
 
         graph_config["nodes"] = node_configs
