@@ -2,11 +2,12 @@ import base64
 import secrets
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.console import api
+from constants.languages import languages
+from controllers.console import api, console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
     EmailPasswordResetLimitError,
@@ -25,7 +26,32 @@ from services.account_service import AccountService, TenantService
 from services.feature_service import FeatureService
 
 
+@console_ns.route("/forgot-password")
 class ForgotPasswordSendEmailApi(Resource):
+    @api.doc("send_forgot_password_email")
+    @api.doc(description="Send password reset email")
+    @api.expect(
+        api.model(
+            "ForgotPasswordEmailRequest",
+            {
+                "email": fields.String(required=True, description="Email address"),
+                "language": fields.String(description="Language for email (zh-Hans/en-US)"),
+            },
+        )
+    )
+    @api.response(
+        200,
+        "Email sent successfully",
+        api.model(
+            "ForgotPasswordEmailResponse",
+            {
+                "result": fields.String(description="Operation result"),
+                "data": fields.String(description="Reset token"),
+                "code": fields.String(description="Error code if account not found"),
+            },
+        ),
+    )
+    @api.response(400, "Invalid email or rate limit exceeded")
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -56,7 +82,33 @@ class ForgotPasswordSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/forgot-password/validity")
 class ForgotPasswordCheckApi(Resource):
+    @api.doc("check_forgot_password_code")
+    @api.doc(description="Verify password reset code")
+    @api.expect(
+        api.model(
+            "ForgotPasswordCheckRequest",
+            {
+                "email": fields.String(required=True, description="Email address"),
+                "code": fields.String(required=True, description="Verification code"),
+                "token": fields.String(required=True, description="Reset token"),
+            },
+        )
+    )
+    @api.response(
+        200,
+        "Code verified successfully",
+        api.model(
+            "ForgotPasswordCheckResponse",
+            {
+                "is_valid": fields.Boolean(description="Whether code is valid"),
+                "email": fields.String(description="Email address"),
+                "token": fields.String(description="New reset token"),
+            },
+        ),
+    )
+    @api.response(400, "Invalid code or token")
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -95,7 +147,26 @@ class ForgotPasswordCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
+@console_ns.route("/forgot-password/resets")
 class ForgotPasswordResetApi(Resource):
+    @api.doc("reset_password")
+    @api.doc(description="Reset password with verification token")
+    @api.expect(
+        api.model(
+            "ForgotPasswordResetRequest",
+            {
+                "token": fields.String(required=True, description="Verification token"),
+                "new_password": fields.String(required=True, description="New password"),
+                "password_confirm": fields.String(required=True, description="Password confirmation"),
+            },
+        )
+    )
+    @api.response(
+        200,
+        "Password reset successfully",
+        api.model("ForgotPasswordResetResponse", {"result": fields.String(description="Operation result")}),
+    )
+    @api.response(400, "Invalid token or password mismatch")
     @setup_required
     @email_password_login_enabled
     def post(self):

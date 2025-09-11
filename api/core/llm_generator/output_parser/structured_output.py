@@ -45,6 +45,7 @@ class SpecialModelType(StrEnum):
 
 @overload
 def invoke_llm_with_structured_output(
+    *,
     provider: str,
     model_schema: AIModelEntity,
     model_instance: ModelInstance,
@@ -53,14 +54,13 @@ def invoke_llm_with_structured_output(
     model_parameters: Optional[Mapping] = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: Optional[list[str]] = None,
-    stream: Literal[True] = True,
+    stream: Literal[True],
     user: Optional[str] = None,
     callbacks: Optional[list[Callback]] = None,
 ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
-
-
 @overload
 def invoke_llm_with_structured_output(
+    *,
     provider: str,
     model_schema: AIModelEntity,
     model_instance: ModelInstance,
@@ -69,14 +69,13 @@ def invoke_llm_with_structured_output(
     model_parameters: Optional[Mapping] = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: Optional[list[str]] = None,
-    stream: Literal[False] = False,
+    stream: Literal[False],
     user: Optional[str] = None,
     callbacks: Optional[list[Callback]] = None,
 ) -> LLMResultWithStructuredOutput: ...
-
-
 @overload
 def invoke_llm_with_structured_output(
+    *,
     provider: str,
     model_schema: AIModelEntity,
     model_instance: ModelInstance,
@@ -89,9 +88,8 @@ def invoke_llm_with_structured_output(
     user: Optional[str] = None,
     callbacks: Optional[list[Callback]] = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
-
-
 def invoke_llm_with_structured_output(
+    *,
     provider: str,
     model_schema: AIModelEntity,
     model_instance: ModelInstance,

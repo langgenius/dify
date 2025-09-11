@@ -6,6 +6,7 @@ import secrets
 import time
 import uuid
 from collections import Counter
+from collections.abc import Sequence
 from typing import Any, Literal, Optional
 
 import sqlalchemy as sa
@@ -134,11 +135,14 @@ class DatasetService:
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids(
-                "knowledge",
-                tenant_id,  # ty: ignore [invalid-argument-type]
-                tag_ids,
-            )
+            if tenant_id is not None:
+                target_ids = TagService.get_target_ids_by_tag_ids(
+                    "knowledge",
+                    tenant_id,
+                    tag_ids,
+                )
+            else:
+                target_ids = []
             if target_ids and len(target_ids) > 0:
                 query = query.where(Dataset.id.in_(target_ids))
             else:
@@ -217,7 +221,7 @@ class DatasetService:
                     and retrieval_model.reranking_model.reranking_model_name
                 ):
                     # check if reranking model setting is valid
-                    DatasetService.check_embedding_model_setting(
+                    DatasetService.check_reranking_model_setting(
                         tenant_id,
                         retrieval_model.reranking_model.reranking_provider_name,
                         retrieval_model.reranking_model.reranking_model_name,
@@ -738,14 +742,12 @@ class DatasetService:
             }
         # get recent 30 days auto disable logs
         start_date = datetime.datetime.now() - datetime.timedelta(days=30)
-        dataset_auto_disable_logs = (
-            db.session.query(DatasetAutoDisableLog)
-            .where(
+        dataset_auto_disable_logs = db.session.scalars(
+            select(DatasetAutoDisableLog).where(
                 DatasetAutoDisableLog.dataset_id == dataset_id,
                 DatasetAutoDisableLog.created_at >= start_date,
             )
-            .all()
-        )
+        ).all()
         if dataset_auto_disable_logs:
             return {
                 "document_ids": [log.document_id for log in dataset_auto_disable_logs],
@@ -882,69 +884,58 @@ class DocumentService:
         return document
 
     @staticmethod
-    def get_document_by_ids(document_ids: list[str]) -> list[Document]:
-        documents = (
-            db.session.query(Document)
-            .where(
+    def get_document_by_ids(document_ids: list[str]) -> Sequence[Document]:
+        documents = db.session.scalars(
+            select(Document).where(
                 Document.id.in_(document_ids),
                 Document.enabled == True,
                 Document.indexing_status == "completed",
                 Document.archived == False,
             )
-            .all()
-        )
+        ).all()
         return documents
 
     @staticmethod
-    def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = (
-            db.session.query(Document)
-            .where(
+    def get_document_by_dataset_id(dataset_id: str) -> Sequence[Document]:
+        documents = db.session.scalars(
+            select(Document).where(
                 Document.dataset_id == dataset_id,
                 Document.enabled == True,
             )
-            .all()
-        )
+        ).all()
 
         return documents
 
     @staticmethod
-    def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = (
-            db.session.query(Document)
-            .where(
+    def get_working_documents_by_dataset_id(dataset_id: str) -> Sequence[Document]:
+        documents = db.session.scalars(
+            select(Document).where(
                 Document.dataset_id == dataset_id,
                 Document.enabled == True,
                 Document.indexing_status == "completed",
                 Document.archived == False,
             )
-            .all()
-        )
+        ).all()
 
         return documents
 
     @staticmethod
-    def get_error_documents_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = (
-            db.session.query(Document)
-            .where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
-            .all()
-        )
+    def get_error_documents_by_dataset_id(dataset_id: str) -> Sequence[Document]:
+        documents = db.session.scalars(
+            select(Document).where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
+        ).all()
         return documents
 
     @staticmethod
-    def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:
+    def get_batch_documents(dataset_id: str, batch: str) -> Sequence[Document]:
         assert isinstance(current_user, Account)
-
-        documents = (
-            db.session.query(Document)
-            .where(
+        documents = db.session.scalars(
+            select(Document).where(
                 Document.batch == batch,
                 Document.dataset_id == dataset_id,
                 Document.tenant_id == current_user.current_tenant_id,
             )
-            .all()
-        )
+        ).all()
 
         return documents
 
@@ -981,13 +972,14 @@ class DocumentService:
         # Check if document_ids is not empty to avoid WHERE false condition
         if not document_ids or len(document_ids) == 0:
             return
-        documents = db.session.query(Document).where(Document.id.in_(document_ids)).all()
+        documents = db.session.scalars(select(Document).where(Document.id.in_(document_ids))).all()
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
             for document in documents
             if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
-        batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
+        if dataset.doc_form is not None:
+            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
         for document in documents:
             db.session.delete(document)
@@ -2420,16 +2412,14 @@ class SegmentService:
         if not segment_ids or len(segment_ids) == 0:
             return
         if action == "enable":
-            segments = (
-                db.session.query(DocumentSegment)
-                .where(
+            segments = db.session.scalars(
+                select(DocumentSegment).where(
                     DocumentSegment.id.in_(segment_ids),
                     DocumentSegment.dataset_id == dataset.id,
                     DocumentSegment.document_id == document.id,
                     DocumentSegment.enabled == False,
                 )
-                .all()
-            )
+            ).all()
             if not segments:
                 return
             real_deal_segment_ids = []
@@ -2447,16 +2437,14 @@ class SegmentService:
 
             enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         elif action == "disable":
-            segments = (
-                db.session.query(DocumentSegment)
-                .where(
+            segments = db.session.scalars(
+                select(DocumentSegment).where(
                     DocumentSegment.id.in_(segment_ids),
                     DocumentSegment.dataset_id == dataset.id,
                     DocumentSegment.document_id == document.id,
                     DocumentSegment.enabled == True,
                 )
-                .all()
-            )
+            ).all()
             if not segments:
                 return
             real_deal_segment_ids = []
@@ -2528,16 +2516,13 @@ class SegmentService:
         dataset: Dataset,
     ) -> list[ChildChunk]:
         assert isinstance(current_user, Account)
-
-        child_chunks = (
-            db.session.query(ChildChunk)
-            .where(
+        child_chunks = db.session.scalars(
+            select(ChildChunk).where(
                 ChildChunk.dataset_id == dataset.id,
                 ChildChunk.document_id == document.id,
                 ChildChunk.segment_id == segment.id,
             )
-            .all()
-        )
+        ).all()
         child_chunks_map = {chunk.id: chunk for chunk in child_chunks}
 
         new_child_chunks, update_child_chunks, delete_child_chunks, new_child_chunks_args = [], [], [], []
@@ -2689,56 +2674,6 @@ class SegmentService:
         return paginated_segments.items, paginated_segments.total
 
     @classmethod
-    def update_segment_by_id(
-        cls, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, segment_data: dict, user_id: str
-    ) -> tuple[DocumentSegment, Document]:
-        """Update a segment by its ID with validation and checks."""
-        # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-        if not dataset:
-            raise NotFound("Dataset not found.")
-
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
-
-        # check document
-        document = DocumentService.get_document(dataset_id, document_id)
-        if not document:
-            raise NotFound("Document not found.")
-
-        # check embedding model setting if high quality
-        if dataset.indexing_technique == "high_quality":
-            try:
-                model_manager = ModelManager()
-                model_manager.get_model_instance(
-                    tenant_id=user_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
-                )
-            except LLMBadRequestError:
-                raise ValueError(
-                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
-            except ProviderTokenNotInitError as ex:
-                raise ValueError(ex.description)
-
-        # check segment
-        segment = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
-        )
-        if not segment:
-            raise NotFound("Segment not found.")
-
-        # validate and update segment
-        cls.segment_create_args_validate(segment_data, document)
-        updated_segment = cls.update_segment(SegmentUpdateArgs(**segment_data), segment, document, dataset)
-
-        return updated_segment, document
-
-    @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
         """Get a segment by its ID."""
         result = (
@@ -2797,19 +2732,13 @@ class DatasetCollectionBindingService:
 class DatasetPermissionService:
     @classmethod
     def get_dataset_partial_member_list(cls, dataset_id):
-        user_list_query = (
-            db.session.query(
+        user_list_query = db.session.scalars(
+            select(
                 DatasetPermission.account_id,
-            )
-            .where(DatasetPermission.dataset_id == dataset_id)
-            .all()
-        )
+            ).where(DatasetPermission.dataset_id == dataset_id)
+        ).all()
 
-        user_list = []
-        for user in user_list_query:
-            user_list.append(user.account_id)
-
-        return user_list
+        return user_list_query
 
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):

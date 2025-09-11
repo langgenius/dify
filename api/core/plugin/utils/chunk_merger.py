@@ -82,7 +82,9 @@ def merge_blob_chunks(
                 message_class = type(resp)
                 merged_message = message_class(
                     type=ToolInvokeMessage.MessageType.BLOB,
-                    message=ToolInvokeMessage.BlobMessage(blob=files[chunk_id].data[: files[chunk_id].bytes_written]),
+                    message=ToolInvokeMessage.BlobMessage(
+                        blob=bytes(files[chunk_id].data[: files[chunk_id].bytes_written])
+                    ),
                     meta=resp.meta,
                 )
                 yield cast(MessageType, merged_message)
