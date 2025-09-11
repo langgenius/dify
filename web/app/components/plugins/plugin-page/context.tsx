@@ -28,7 +28,7 @@ export type PluginPageContextValue = {
 }
 
 export const PluginPageContext = createContext<PluginPageContextValue>({
-  containerRef: { current: null as HTMLDivElement | null },
+  containerRef: { current: null },
   currentPluginID: undefined,
   setCurrentPluginID: noop,
   filters: {
