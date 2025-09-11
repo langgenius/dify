@@ -11,6 +11,6 @@ test('Input renders correctly as password type with no autocomplete', () => {
   )
   const input = getByPlaceholderText('API Key')
   expect(input).toHaveAttribute('type', 'password')
-  expect(input).not.toHaveAttribute('autocomplete', 'off')
+  expect(input).toHaveAttribute('autocomplete', 'off')
   expect(asFragment()).toMatchSnapshot()
 })
