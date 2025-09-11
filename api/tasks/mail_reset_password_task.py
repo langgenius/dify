@@ -83,9 +83,6 @@ def send_reset_password_mail_task_when_account_not_exist(
                 email_type=EmailType.RESET_PASSWORD_WHEN_ACCOUNT_NOT_EXIST_NO_REGISTER,
                 language_code=language,
                 to=to,
-                template_context={
-                    "account_name": account_name,
-                },
             )
 
         end_at = time.perf_counter()
