@@ -339,6 +339,7 @@ const translation = {
     childMaxTokens: 'Copil',
     parentMaxTokens: 'Părinte',
     pause: 'Pauză',
+    waiting: 'Așteptând încorporarea...',
   },
   segment: {
     paragraphs: 'Paragrafe',

@@ -339,6 +339,7 @@ const translation = {
     childMaxTokens: 'Otrok',
     pause: 'Zaustavi',
     parentMaxTokens: 'Starš',
+    waiting: 'Čakanje na zajemanje...',
   },
   segment: {
     paragraphs: 'Odstavki',

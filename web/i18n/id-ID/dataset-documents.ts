@@ -338,6 +338,7 @@ const translation = {
     stop: 'Hentikan pemrosesan',
     custom: 'Adat',
     resume: 'Melanjutkan',
+    waiting: 'Menunggu embedding...',
   },
   segment: {
     searchResults_one: 'HASIL',

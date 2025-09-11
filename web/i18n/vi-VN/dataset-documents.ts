@@ -338,6 +338,7 @@ const translation = {
     pause: 'Tạm dừng',
     childMaxTokens: 'Con',
     hierarchical: 'Cha mẹ-con cái',
+    waiting: 'Đang chờ nhúng...',
   },
   segment: {
     paragraphs: 'Đoạn văn',

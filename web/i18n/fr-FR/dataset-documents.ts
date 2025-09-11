@@ -340,6 +340,7 @@ const translation = {
     hierarchical: 'Parent-enfant',
     pause: 'Pause',
     parentMaxTokens: 'Parent',
+    waiting: 'En attente d\'incorporation...',
   },
   segment: {
     paragraphs: 'Paragraphes',

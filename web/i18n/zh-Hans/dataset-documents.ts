@@ -317,6 +317,7 @@ const translation = {
     },
   },
   embedding: {
+    waiting: '嵌入等待中...',
     processing: '嵌入处理中...',
     paused: '嵌入已停止',
     completed: '嵌入已完成',

@@ -338,6 +338,7 @@ const translation = {
     parentMaxTokens: '父母',
     childMaxTokens: '孩子',
     pause: '暫停',
+    waiting: '嵌入等待中...',
   },
   segment: {
     paragraphs: '段落',

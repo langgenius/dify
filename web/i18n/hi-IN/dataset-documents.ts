@@ -340,6 +340,7 @@ const translation = {
     pause: 'रुकना',
     hierarchical: 'माता-पिता का बच्चा',
     childMaxTokens: 'बच्चा',
+    waiting: 'इनपुट की प्रतीक्षा कर रहा हूं...',
   },
   segment: {
     paragraphs: 'पैराग्राफ',
