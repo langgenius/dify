@@ -109,7 +109,7 @@ const Debug: FC<IDebug> = ({
       setIsShowFormattingChangeConfirm(true)
   }, [formattingChanged])
 
-  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType>(null)
+  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType | null>(null)
   const handleClearConversation = () => {
     debugWithSingleModelRef.current?.handleRestart()
   }
