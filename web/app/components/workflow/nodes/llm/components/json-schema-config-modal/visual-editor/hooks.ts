@@ -238,7 +238,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       }
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         schema.items.properties = {
-          ...(schema.items.properties ?? {}),
+          ...schema.items.properties,
           '': {
             type: Type.string,
           },
