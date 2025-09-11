@@ -3,6 +3,7 @@ from flask_restx import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -20,6 +21,7 @@ from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService
+from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 
@@ -42,6 +44,9 @@ class EmailRegisterSendEmailApi(Resource):
             language = "zh-Hans"
         else:
             language = "en-US"
+
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
+            raise AccountInFreezeError()
 
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
