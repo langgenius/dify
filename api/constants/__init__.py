@@ -36,6 +36,8 @@ else:
         "docx",
         "csv",
         "vtt",
-        "properties",
+        "properties"
+        "pptx",
+        "ppt"
     ]
     DOCUMENT_EXTENSIONS.extend([ext.upper() for ext in DOCUMENT_EXTENSIONS])
