@@ -51,10 +51,9 @@ jobs:
         working-directory: ./web
         run: pnpm install --frozen-lockfile
 
-      - name: Web style check
+      - name: oxlint
         working-directory: ./web
         run: |
-          pnpm run fix
           pnpx oxlint --fix
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
