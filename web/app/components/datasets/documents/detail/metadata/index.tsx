@@ -138,9 +138,9 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   const [editStatus, setEditStatus] = useState(!doc_type) // if no documentType, in editing status by default
   // the initial values are according to the documentType
   const [metadataParams, setMetadataParams] = useState<any>({
-  documentType: doc_type !== 'others' ? doc_type : undefined,
-  metadata: doc_metadata || {},
-})
+    documentType: doc_type !== 'others' ? doc_type : undefined,
+    metadata: doc_metadata || {},
+  })
   const [showDocTypes, setShowDocTypes] = useState(!doc_type) // whether show doc types
   const [tempDocType, setTempDocType] = useState<DocType | undefined | ''>('') // for remember icon click
   const [saveLoading, setSaveLoading] = useState(false)

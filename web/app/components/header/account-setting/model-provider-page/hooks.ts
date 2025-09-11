@@ -31,6 +31,7 @@ import {
   getPayUrl,
 } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
+import { useModalContextSelector } from '@/context/modal-context'
 import {
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
@@ -357,10 +358,7 @@ export const useRefreshModel = () => {
 }
 
 export const useModelModalHandler = () => {
-
-  
   const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
-
 
   return (
     provider: ModelProvider,
@@ -386,7 +384,6 @@ export const useModelModalHandler = () => {
       },
       onSaveCallback: (newPayload, formValues) => {
         extra.onUpdate?.(newPayload, formValues)
-
       },
     })
   }

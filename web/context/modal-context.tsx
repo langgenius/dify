@@ -30,7 +30,6 @@ import dynamic from 'next/dynamic'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-
 type ModalContextProviderProps = {
   children: React.ReactNode
 }
@@ -128,10 +127,11 @@ const ModalContext = createContext<ModalContextState>({
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
-export const useProviderContextSelector = <T,>(selector: (state: ProviderContextState) => T): T => {
-  const context = use(ProviderContext)
+export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T => {
+  const context = use(ModalContext)
   return selector(context)
 }
+
 export const ModalContextProvider = ({
   children,
 }: ModalContextProviderProps) => {
