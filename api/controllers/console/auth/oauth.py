@@ -192,7 +192,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                     )
                 )
             else:
-                raise AccountNotFoundError()
+                raise AccountRegisterError(description=("Invalid email or password"))
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
