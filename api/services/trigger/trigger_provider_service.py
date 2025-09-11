@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Mapping
 from typing import Any, Optional
 
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -29,6 +29,7 @@ from core.trigger.utils.encryption import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient, TriggerSubscription
+from models.workflow import WorkflowPluginTrigger
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,9 @@ class TriggerProviderService:
     ) -> list[TriggerProviderSubscriptionApiEntity]:
         """List all trigger subscriptions for the current tenant"""
         subscriptions: list[TriggerProviderSubscriptionApiEntity] = []
+        workflows_in_use_map: dict[str, int] = {}
         with Session(db.engine, autoflush=False) as session:
+            # Get all subscriptions
             subscriptions_db = (
                 session.query(TriggerSubscription)
                 .filter_by(tenant_id=tenant_id, provider_id=str(provider_id))
@@ -62,6 +65,24 @@ class TriggerProviderService:
             )
             subscriptions = [subscription.to_api_entity() for subscription in subscriptions_db]
 
+            # Get distinct app count for each subscription
+            if subscriptions:
+                usage_counts = (
+                    session.query(
+                        WorkflowPluginTrigger.subscription_id,
+                        func.count(func.distinct(WorkflowPluginTrigger.app_id)).label("app_count"),
+                    )
+                    .filter(
+                        WorkflowPluginTrigger.tenant_id == tenant_id,
+                        WorkflowPluginTrigger.subscription_id.in_([s.id for s in subscriptions]),
+                    )
+                    .group_by(WorkflowPluginTrigger.subscription_id)
+                    .all()
+                )
+                # Convert query result to dictionary: subscription_id -> distinct app count
+                workflows_in_use_map = {str(row.subscription_id): int(row.app_count) for row in usage_counts}
+
+        # Process subscriptions and mask credentials
         provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
         for subscription in subscriptions:
             encrypter, _ = create_trigger_provider_encrypter_for_subscription(
@@ -70,6 +91,10 @@ class TriggerProviderService:
                 subscription=subscription,
             )
             subscription.credentials = encrypter.mask_credentials(subscription.credentials)
+            # Set workflows_in_use count, default to 0 if not found
+            count = workflows_in_use_map.get(subscription.id)
+            subscription.workflows_in_use = count if count is not None else 0
+
         return subscriptions
 
     @classmethod
