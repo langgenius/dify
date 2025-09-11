@@ -31,7 +31,8 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        super().__init__(description=self.description.format(minutes=int(minutes)))
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailRegisterRateLimitExceededError(BaseHTTPException):
@@ -40,7 +41,8 @@ class EmailRegisterRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        super().__init__(description=self.description.format(minutes=int(minutes)))
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailChangeRateLimitExceededError(BaseHTTPException):
@@ -49,7 +51,8 @@ class EmailChangeRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        super().__init__(description=self.description.format(minutes=int(minutes)))
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class OwnerTransferRateLimitExceededError(BaseHTTPException):
@@ -58,7 +61,8 @@ class OwnerTransferRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        super().__init__(description=self.description.format(minutes=int(minutes)))
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailCodeError(BaseHTTPException):
@@ -91,7 +95,8 @@ class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        super().__init__(description=self.description.format(minutes=int(minutes)))
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
@@ -100,7 +105,8 @@ class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        super().__init__(description=self.description.format(minutes=int(minutes)))
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailPasswordResetLimitError(BaseHTTPException):
