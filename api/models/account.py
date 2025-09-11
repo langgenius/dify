@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, reconstructor
+from typing_extensions import deprecated
 
 from models.base import Base
 
@@ -187,9 +188,9 @@ class Account(UserMixin, Base):
         return TenantAccountRole.is_admin_role(self.role)
 
     @property
+    @deprecated("Use has_edit_permission instead.")
     def is_editor(self):
-        # TODO: Rename this property to `has_editing_permission`.
-        """Determines if the account has editing permissions in their current tenant (workspace).
+        """Determines if the account has edit permissions in their current tenant (workspace).
 
         This property checks if the current role has editing privileges, which includes:
         - `OWNER`
@@ -197,6 +198,17 @@ class Account(UserMixin, Base):
         - `EDITOR`
 
         Note: This checks for any role with editing permission, not just the 'EDITOR' role specifically.
+        """
+        return self.has_edit_permission
+
+    @property
+    def has_edit_permission(self):
+        """Determines if the account has editing permissions in their current tenant (workspace).
+
+        This property checks if the current role has editing privileges, which includes:
+        - `OWNER`
+        - `ADMIN`
+        - `EDITOR`
         """
         return TenantAccountRole.is_editing_role(self.role)
 
