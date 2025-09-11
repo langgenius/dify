@@ -1,5 +1,5 @@
 import { type Context, type Provider, createContext, use } from 'react'
-import * as selector from 'react'
+// import * as selector from 'react'
 
 const createCreateCtxFunction = (
   useImpl: typeof use,
@@ -40,6 +40,6 @@ type CreateCtxReturn<T> = [Provider<T>, () => T, Context<T>] & {
 export const createCtx = createCreateCtxFunction(use, createContext)
 
 export const createSelectorCtx = createCreateCtxFunction(
-  selector.use,
-  selector.createContext as typeof createContext,
+  use,
+  createContext,
 )
