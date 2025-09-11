@@ -87,7 +87,7 @@ class AccountService:
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
-        prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
+        prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
     )
     email_code_account_deletion_rate_limiter = RateLimiter(
         prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
