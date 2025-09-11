@@ -41,7 +41,7 @@ const Input: FC<InputProps> = ({
     <div className='relative'>
       <input
         tabIndex={0}
-        // Do not set autoComplete for security - prevents browser from storing sensitive API keys
+        autoComplete="off"
         className={`
           block h-8 w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm
           text-components-input-text-filled caret-primary-600 outline-none
