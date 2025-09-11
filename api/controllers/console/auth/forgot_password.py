@@ -6,7 +6,6 @@ from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constants.languages import languages
 from controllers.console import api, console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
