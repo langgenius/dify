@@ -94,7 +94,7 @@ class MCPToolProviderController(ToolProviderController):
             provider_id=db_provider.server_identifier or "",
             tenant_id=db_provider.tenant_id or "",
             server_url=db_provider.decrypted_server_url,
-            headers={},  # TODO: get headers from db provider
+            headers=db_provider.decrypted_headers or {},
             timeout=db_provider.timeout,
             sse_read_timeout=db_provider.sse_read_timeout,
         )

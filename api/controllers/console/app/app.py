@@ -115,6 +115,10 @@ class AppListApi(Resource):
             raise BadRequest("mode is required")
 
         app_service = AppService()
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
+        if current_user.current_tenant_id is None:
+            raise ValueError("current_user.current_tenant_id cannot be None")
         app = app_service.create_app(current_user.current_tenant_id, args, current_user)
 
         return app, 201
@@ -161,14 +165,26 @@ class AppApi(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        app_model = app_service.update_app(app_model, args)
+        # Construct ArgsDict from parsed arguments
+        from services.app_service import AppService as AppServiceType
+
+        args_dict: AppServiceType.ArgsDict = {
+            "name": args["name"],
+            "description": args.get("description", ""),
+            "icon_type": args.get("icon_type", ""),
+            "icon": args.get("icon", ""),
+            "icon_background": args.get("icon_background", ""),
+            "use_icon_as_answer_icon": args.get("use_icon_as_answer_icon", False),
+            "max_active_requests": args.get("max_active_requests", 0),
+        }
+        app_model = app_service.update_app(app_model, args_dict)
 
         return app_model
 
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def delete(self, app_model):
         """Delete app"""
         # The role of the current user in the ta table must be admin, owner, or editor
@@ -224,10 +240,10 @@ class AppCopyApi(Resource):
 
 
 class AppExportApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         """Export app"""
         # The role of the current user in the ta table must be admin, owner, or editor
@@ -263,7 +279,7 @@ class AppNameApi(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        app_model = app_service.update_app_name(app_model, args.get("name"))
+        app_model = app_service.update_app_name(app_model, args["name"])
 
         return app_model
 
@@ -285,7 +301,7 @@ class AppIconApi(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        app_model = app_service.update_app_icon(app_model, args.get("icon"), args.get("icon_background"))
+        app_model = app_service.update_app_icon(app_model, args.get("icon") or "", args.get("icon_background") or "")
 
         return app_model
 
@@ -306,7 +322,7 @@ class AppSiteStatus(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        app_model = app_service.update_app_site_status(app_model, args.get("enable_site"))
+        app_model = app_service.update_app_site_status(app_model, args["enable_site"])
 
         return app_model
 
@@ -327,7 +343,7 @@ class AppApiStatus(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        app_model = app_service.update_app_api_status(app_model, args.get("enable_api"))
+        app_model = app_service.update_app_api_status(app_model, args["enable_api"])
 
         return app_model
 

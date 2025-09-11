@@ -246,6 +246,8 @@ class AccountService:
         account.name = name
 
         if password:
+            valid_password(password)
+
             # generate password salt
             salt = secrets.token_bytes(16)
             base64_salt = base64.b64encode(salt).decode()
@@ -1318,7 +1320,7 @@ class RegisterService:
     def get_invitation_if_token_valid(
         cls, workspace_id: Optional[str], email: str, token: str
     ) -> Optional[dict[str, Any]]:
-        invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
+        invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
 
@@ -1355,7 +1357,7 @@ class RegisterService:
         }
 
     @classmethod
-    def _get_invitation_by_token(
+    def get_invitation_by_token(
         cls, token: str, workspace_id: Optional[str] = None, email: Optional[str] = None
     ) -> Optional[dict[str, str]]:
         if workspace_id is not None and email is not None:
