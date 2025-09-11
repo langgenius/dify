@@ -251,8 +251,8 @@ class SubscriptionBuilderUpdater(BaseModel):
             subscription_builder.expires_at = self.expires_at
 
 
-class TriggerDebugEventData(BaseModel):
-    """Debug event data dispatched to debug sessions."""
+class TriggerEventData(BaseModel):
+    """Event data dispatched to trigger sessions."""
 
     subscription_id: str
     triggers: list[str]
@@ -270,7 +270,7 @@ class TriggerInputs(BaseModel):
     subscription_id: str
 
     @classmethod
-    def from_trigger_data(cls, trigger_data: TriggerDebugEventData) -> "TriggerInputs":
+    def from_trigger_data(cls, trigger_data: TriggerEventData) -> "TriggerInputs":
         """Create from debug event data."""
         return cls(
             request_id=trigger_data.request_id,
@@ -298,9 +298,9 @@ __all__ = [
     "RequestLog",
     "Subscription",
     "SubscriptionBuilder",
-    "TriggerDebugEventData",
     "TriggerDescription",
     "TriggerEntity",
+    "TriggerEventData",
     "TriggerIdentity",
     "TriggerInputs",
     "TriggerParameter",

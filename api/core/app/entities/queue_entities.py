@@ -51,12 +51,10 @@ class QueueEvent(StrEnum):
     PING = "ping"
     STOP = "stop"
     RETRY = "retry"
-    # Trigger debug events
-    TRIGGER_DEBUG_LISTENING_STARTED = "trigger_debug_listening_started"
-    TRIGGER_DEBUG_RECEIVED = "trigger_debug_received"
-    TRIGGER_DEBUG_NODE_FINISHED = "trigger_debug_node_finished"
-    TRIGGER_DEBUG_WORKFLOW_STARTED = "trigger_debug_workflow_started"
-    TRIGGER_DEBUG_TIMEOUT = "trigger_debug_timeout"
+    TRIGGER_LISTENING_STARTED = "trigger_listening_started"
+    TRIGGER_TRIGGERED = "trigger_triggered"
+    TRIGGER_NODE_FINISHED = "trigger_node_finished"
+    TRIGGER_LISTENING_TIMEOUT = "trigger_listening_timeout"
 
 
 class AppQueueEvent(BaseModel):
@@ -724,35 +722,35 @@ class QueueParallelBranchRunSucceededEvent(AppQueueEvent):
     """loop id if node is in loop"""
 
 
-class QueueTriggerDebugListeningStartedEvent(AppQueueEvent):
+class QueueTriggerListeningStartedEvent(AppQueueEvent):
     """
-    QueueTriggerDebugListeningStartedEvent entity
+    QueueTriggerListeningStartedEvent entity
     """
 
-    event: QueueEvent = QueueEvent.TRIGGER_DEBUG_LISTENING_STARTED
+    event: QueueEvent = QueueEvent.TRIGGER_LISTENING_STARTED
     session_id: str
     webhook_url: str
     timeout: int
 
 
-class QueueTriggerDebugReceivedEvent(AppQueueEvent):
+class QueueTriggerTriggeredEvent(AppQueueEvent):
     """
-    QueueTriggerDebugReceivedEvent entity
+    QueueTriggerTriggeredEvent entity
     """
 
-    event: QueueEvent = QueueEvent.TRIGGER_DEBUG_RECEIVED
+    event: QueueEvent = QueueEvent.TRIGGER_TRIGGERED
     subscription_id: str
     triggers: list[str]
     request_id: str
     timestamp: float
 
 
-class QueueTriggerDebugNodeFinishedEvent(AppQueueEvent):
+class QueueTriggerNodeFinishedEvent(AppQueueEvent):
     """
-    QueueTriggerDebugNodeFinishedEvent entity
+    QueueTriggerNodeFinishedEvent entity
     """
 
-    event: QueueEvent = QueueEvent.TRIGGER_DEBUG_NODE_FINISHED
+    event: QueueEvent = QueueEvent.TRIGGER_NODE_FINISHED
     id: str
     node_id: str
     node_type: str
@@ -763,23 +761,12 @@ class QueueTriggerDebugNodeFinishedEvent(AppQueueEvent):
     execution_metadata: Optional[Mapping[str, Any]] = None
 
 
-class QueueTriggerDebugWorkflowStartedEvent(AppQueueEvent):
+class QueueTriggerListeningTimeoutEvent(AppQueueEvent):
     """
-    QueueTriggerDebugWorkflowStartedEvent entity
-    """
-
-    event: QueueEvent = QueueEvent.TRIGGER_DEBUG_WORKFLOW_STARTED
-    subscription_id: str
-    triggers: list[str]
-    request_id: str
-
-
-class QueueTriggerDebugTimeoutEvent(AppQueueEvent):
-    """
-    QueueTriggerDebugTimeoutEvent entity
+    QueueTriggerListeningTimeoutEvent entity
     """
 
-    event: QueueEvent = QueueEvent.TRIGGER_DEBUG_TIMEOUT
+    event: QueueEvent = QueueEvent.TRIGGER_LISTENING_TIMEOUT
     error: str = "Timeout waiting for trigger"
 
 

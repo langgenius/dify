@@ -64,25 +64,22 @@ class TriggerProviderService:
                 .all()
             )
             subscriptions = [subscription.to_api_entity() for subscription in subscriptions_db]
-
-            # Get distinct app count for each subscription
-            if subscriptions:
-                usage_counts = (
-                    session.query(
-                        WorkflowPluginTrigger.subscription_id,
-                        func.count(func.distinct(WorkflowPluginTrigger.app_id)).label("app_count"),
-                    )
-                    .filter(
-                        WorkflowPluginTrigger.tenant_id == tenant_id,
-                        WorkflowPluginTrigger.subscription_id.in_([s.id for s in subscriptions]),
-                    )
-                    .group_by(WorkflowPluginTrigger.subscription_id)
-                    .all()
+            if not subscriptions:
+                return []
+            usage_counts = (
+                session.query(
+                    WorkflowPluginTrigger.subscription_id,
+                    func.count(func.distinct(WorkflowPluginTrigger.app_id)).label("app_count"),
                 )
-                # Convert query result to dictionary: subscription_id -> distinct app count
-                workflows_in_use_map = {str(row.subscription_id): int(row.app_count) for row in usage_counts}
+                .filter(
+                    WorkflowPluginTrigger.tenant_id == tenant_id,
+                    WorkflowPluginTrigger.subscription_id.in_([s.id for s in subscriptions]),
+                )
+                .group_by(WorkflowPluginTrigger.subscription_id)
+                .all()
+            )
+            workflows_in_use_map = {str(row.subscription_id): int(row.app_count) for row in usage_counts}
 
-        # Process subscriptions and mask credentials
         provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
         for subscription in subscriptions:
             encrypter, _ = create_trigger_provider_encrypter_for_subscription(
@@ -91,7 +88,6 @@ class TriggerProviderService:
                 subscription=subscription,
             )
             subscription.credentials = encrypter.mask_credentials(subscription.credentials)
-            # Set workflows_in_use count, default to 0 if not found
             count = workflows_in_use_map.get(subscription.id)
             subscription.workflows_in_use = count if count is not None else 0
 

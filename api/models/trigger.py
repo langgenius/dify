@@ -84,6 +84,7 @@ class TriggerSubscription(Base):
             properties=self.properties,
             credential_type=CredentialType(self.credential_type),
             credentials=self.credentials,
+            workflows_in_use=-1,
         )
 
 

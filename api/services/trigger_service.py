@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.utils.http_parser import serialize_request
-from core.trigger.entities.entities import TriggerDebugEventData, TriggerEntity, TriggerInputs
+from core.trigger.entities.entities import TriggerEntity, TriggerEventData, TriggerInputs
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -133,7 +133,7 @@ class TriggerService:
         """
         try:
             # Prepare streamlined event data using Pydantic model
-            debug_data = TriggerDebugEventData(
+            debug_data = TriggerEventData(
                 subscription_id=subscription_id,
                 triggers=triggers,
                 request_id=request_id,

@@ -11,7 +11,6 @@ import time
 import uuid
 from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Any
 
 from flask import request
 from werkzeug.exceptions import NotFound
@@ -19,11 +18,12 @@ from werkzeug.exceptions import NotFound
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
     PingStreamResponse,
-    TriggerDebugListeningStartedResponse,
-    TriggerDebugReceivedResponse,
-    TriggerDebugTimeoutResponse,
+    StreamResponse,
+    TriggerListeningStartedResponse,
+    TriggerListeningTimeoutResponse,
+    TriggerTriggeredResponse,
 )
-from core.trigger.entities.entities import TriggerDebugEventData
+from core.trigger.entities.entities import TriggerEventData
 from extensions.ext_redis import redis_client
 from models.model import App
 from services.trigger.trigger_provider_service import TriggerProviderService
@@ -92,7 +92,7 @@ class TriggerDebugService:
         if not node_config:
             raise NotFound(f"Node {node_id} not found")
 
-        if node_config.get("data", {}).get("type") != "plugin":
+        if node_config.get("data", {}).get("type") != "trigger-plugin":
             raise ValueError("Node is not a trigger plugin node")
 
         subscription_id = node_config.get("data", {}).get("subscription_id")
@@ -134,7 +134,7 @@ class TriggerDebugService:
         node_id: str,
         user_id: str,
         timeout: int = __DEFAULT_LISTEN_TIMEOUT__,
-    ) -> Generator[dict[str, Any], None, None]:
+    ) -> Generator[StreamResponse, None, None]:
         """
         Listen for trigger events only.
 
@@ -165,7 +165,7 @@ class TriggerDebugService:
             yield event
 
             # If we received a trigger, listening is complete
-            if isinstance(event, dict) and event.get("event") == "trigger_debug_received":
+            if isinstance(event, dict) and event.get("event") == "trigger_triggered":
                 break
 
     @classmethod
@@ -209,7 +209,7 @@ class TriggerDebugService:
     @classmethod
     def listen_for_events(
         cls, session_id: str, webhook_url: str, timeout: int = __DEFAULT_LISTEN_TIMEOUT__
-    ) -> Generator[dict[str, Any], None, None]:
+    ) -> Generator[StreamResponse, None, None]:
         """
         Listen for events using Redis Pub/Sub and generate structured events.
 
@@ -222,12 +222,12 @@ class TriggerDebugService:
             Structured AppQueueEvent objects
         """
         # Send initial listening started event
-        yield TriggerDebugListeningStartedResponse(
+        yield TriggerListeningStartedResponse(
             task_id="",  # Will be set by the caller if needed
             session_id=session_id,
             webhook_url=webhook_url,
             timeout=timeout,
-        ).to_dict()
+        )
         pubsub = redis_client.pubsub()
         channel = f"{cls.PUBSUB_CHANNEL_PREFIX}{session_id}"
 
@@ -251,39 +251,39 @@ class TriggerDebugService:
                         logger.info("Received trigger event for session %s", session_id)
 
                         # Create structured trigger received event
-                        trigger_data = TriggerDebugEventData(
+                        trigger_data = TriggerEventData(
                             subscription_id=event_data["subscription_id"],
                             triggers=event_data["triggers"],
                             request_id=event_data["request_id"],
                             timestamp=event_data.get("timestamp", time.time()),
                         )
-                        yield TriggerDebugReceivedResponse(
+                        yield TriggerTriggeredResponse(
                             task_id="",
                             subscription_id=trigger_data.subscription_id,
                             triggers=trigger_data.triggers,
                             request_id=trigger_data.request_id,
                             timestamp=trigger_data.timestamp,
-                        ).to_dict()
+                        )
                         break  # End listening after receiving event
                     except (json.JSONDecodeError, KeyError) as e:
                         logger.exception("Failed to parse trigger event")
                         yield ErrorStreamResponse(
                             task_id="", err=Exception(f"Failed to parse trigger event: {str(e)}")
-                        ).to_dict()
+                        )
                         break
 
                 # Send periodic heartbeat
                 if time.time() - last_heartbeat > 5:
-                    yield PingStreamResponse(task_id="").to_dict()
+                    yield PingStreamResponse(task_id="")
                     last_heartbeat = time.time()
 
             # Timeout
             if time.time() - start_time >= timeout:
-                yield TriggerDebugTimeoutResponse(task_id="").to_dict()
+                yield TriggerListeningTimeoutResponse(task_id="")
 
         except Exception as e:
             logger.exception("Error in listen_for_events", exc_info=e)
-            yield ErrorStreamResponse(task_id="", err=e).to_dict()
+            yield ErrorStreamResponse(task_id="", err=e)
 
         finally:
             # Clean up resources
@@ -320,7 +320,7 @@ class TriggerDebugService:
             logger.exception("Error closing session %s", session_id, exc_info=e)
 
     @classmethod
-    def dispatch_to_debug_sessions(cls, subscription_id: str, event_data: TriggerDebugEventData) -> int:
+    def dispatch_to_debug_sessions(cls, subscription_id: str, event_data: TriggerEventData) -> int:
         """
         Dispatch events to debug sessions using Pub/Sub only.
 

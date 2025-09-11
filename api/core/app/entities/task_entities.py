@@ -83,11 +83,10 @@ class StreamEvent(Enum):
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
     # Trigger debug events
-    TRIGGER_DEBUG_LISTENING_STARTED = "trigger_debug_listening_started"
-    TRIGGER_DEBUG_RECEIVED = "trigger_debug_received"
-    TRIGGER_DEBUG_NODE_FINISHED = "trigger_debug_node_finished"
-    TRIGGER_DEBUG_WORKFLOW_STARTED = "trigger_debug_workflow_started"
-    TRIGGER_DEBUG_TIMEOUT = "trigger_debug_timeout"
+    TRIGGER_LISTENING_STARTED = "trigger_listening_started"
+    TRIGGER_LISTENING_TIMEOUT = "trigger_listening_timeout"
+    TRIGGER_TRIGGERED = "trigger_triggered"
+    TRIGGER_NODE_FINISHED = "trigger_node_finished"
 
 
 class StreamResponse(BaseModel):
@@ -846,35 +845,35 @@ class AgentLogStreamResponse(StreamResponse):
 
 
 # Trigger Debug Stream Responses
-class TriggerDebugListeningStartedResponse(StreamResponse):
+class TriggerListeningStartedResponse(StreamResponse):
     """
-    TriggerDebugListeningStartedResponse entity
+    TriggerListeningStartedResponse entity
     """
 
-    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_LISTENING_STARTED
+    event: StreamEvent = StreamEvent.TRIGGER_LISTENING_STARTED
     session_id: str
     webhook_url: str
     timeout: int
 
 
-class TriggerDebugReceivedResponse(StreamResponse):
+class TriggerTriggeredResponse(StreamResponse):
     """
-    TriggerDebugReceivedResponse entity
+    TriggerTriggeredResponse entity
     """
 
-    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_RECEIVED
+    event: StreamEvent = StreamEvent.TRIGGER_TRIGGERED
     subscription_id: str
     triggers: list[str]
     request_id: str
     timestamp: float
 
 
-class TriggerDebugNodeFinishedResponse(StreamResponse):
+class TriggerNodeFinishedResponse(StreamResponse):
     """
-    TriggerDebugNodeFinishedResponse entity
+    TriggerNodeFinishedResponse entity
     """
 
-    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_NODE_FINISHED
+    event: StreamEvent = StreamEvent.TRIGGER_NODE_FINISHED
     id: str
     node_id: str
     node_type: str
@@ -885,21 +884,10 @@ class TriggerDebugNodeFinishedResponse(StreamResponse):
     execution_metadata: Optional[Mapping[str, Any]] = None
 
 
-class TriggerDebugWorkflowStartedResponse(StreamResponse):
+class TriggerListeningTimeoutResponse(StreamResponse):
     """
-    TriggerDebugWorkflowStartedResponse entity
-    """
-
-    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_WORKFLOW_STARTED
-    subscription_id: str
-    triggers: list[str]
-    request_id: str
-
-
-class TriggerDebugTimeoutResponse(StreamResponse):
-    """
-    TriggerDebugTimeoutResponse entity
+    TriggerListeningTimeoutResponse entity
     """
 
-    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_TIMEOUT
+    event: StreamEvent = StreamEvent.TRIGGER_LISTENING_TIMEOUT
     error: str = "Timeout waiting for trigger"

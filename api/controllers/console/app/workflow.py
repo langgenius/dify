@@ -22,6 +22,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import ErrorStreamResponse, TriggerNodeFinishedResponse, TriggerTriggeredResponse
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
 from extensions.ext_database import db
@@ -827,8 +828,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         parser.add_argument("timeout", type=int, default=300, location="json")
         args = parser.parse_args()
 
-        from core.trigger.entities.entities import TriggerDebugEventData, TriggerInputs
-        from services.trigger.trigger_debug_events import TriggerDebugEventGenerator
+        from core.trigger.entities.entities import TriggerEventData, TriggerInputs
         from services.trigger_debug_service import TriggerDebugService
         from services.workflow_service import WorkflowService
 
@@ -841,16 +841,16 @@ class DraftWorkflowTriggerNodeApi(Resource):
                 user_id=current_user.id,
                 timeout=args.get("timeout", 300),
             ):
-                yield event  # Pass through all listening events
+                yield event.to_dict()  # Pass through all listening events
 
                 # Check if we received the trigger
-                if isinstance(event, dict) and event.get("event") == "trigger_debug_received":
+                if isinstance(event, TriggerTriggeredResponse):
                     # Save trigger data and exit listening loop
-                    trigger_data = TriggerDebugEventData(
-                        subscription_id=event["subscription_id"],
-                        triggers=event["triggers"],
-                        request_id=event["request_id"],
-                        timestamp=event["timestamp"],
+                    trigger_data = TriggerEventData(
+                        subscription_id=event.subscription_id,
+                        triggers=event.triggers,
+                        request_id=event.request_id,
+                        timestamp=event.timestamp,
                     )
                     break
 
@@ -858,8 +858,6 @@ class DraftWorkflowTriggerNodeApi(Resource):
             if trigger_data:
                 # Create trigger inputs
                 trigger_inputs = TriggerInputs.from_trigger_data(trigger_data)
-                event_generator = TriggerDebugEventGenerator()
-
                 try:
                     # Get workflow and execute node
                     workflow_service = WorkflowService()
@@ -878,10 +876,20 @@ class DraftWorkflowTriggerNodeApi(Resource):
                     )
 
                     # Generate node finished event
-                    yield event_generator.generate_node_finished(node_execution).to_dict()
+                    yield TriggerNodeFinishedResponse(
+                        task_id="",
+                        id=node_execution.id,
+                        node_id=node_execution.node_id,
+                        node_type=node_execution.node_type,
+                        status=node_execution.status,
+                        outputs=node_execution.outputs_dict,
+                        error=node_execution.error,
+                        elapsed_time=node_execution.elapsed_time,
+                        execution_metadata=node_execution.execution_metadata_dict,
+                    ).to_dict()
 
                 except Exception as e:
-                    yield event_generator.generate_error(str(e)).to_dict()
+                    yield ErrorStreamResponse(task_id="", err=e).to_dict()
 
         # Use standard response format
         from core.app.apps.base_app_generator import BaseAppGenerator
@@ -912,9 +920,8 @@ class DraftWorkflowTriggerRunApi(Resource):
         args = parser.parse_args()
 
         from core.app.entities.app_invoke_entities import InvokeFrom
-        from core.trigger.entities.entities import TriggerDebugEventData, TriggerInputs
+        from core.trigger.entities.entities import TriggerEventData, TriggerInputs
         from services.app_generate_service import AppGenerateService
-        from services.trigger.trigger_debug_events import TriggerDebugEventGenerator
         from services.trigger_debug_service import TriggerDebugService
 
         def generate(current_user: Account):
@@ -926,26 +933,21 @@ class DraftWorkflowTriggerRunApi(Resource):
                 user_id=current_user.id,
                 timeout=args.get("timeout", 300),
             ):
-                yield event  # Pass through all listening events
+                yield event.to_dict()
 
                 # Check if we received the trigger
-                if isinstance(event, dict) and event.get("event") == "trigger_debug_received":
+                if isinstance(event, TriggerTriggeredResponse):
                     # Save trigger data and exit listening loop
-                    trigger_data = TriggerDebugEventData(
-                        subscription_id=event["subscription_id"],
-                        triggers=event["triggers"],
-                        request_id=event["request_id"],
-                        timestamp=event["timestamp"],
+                    trigger_data = TriggerEventData(
+                        subscription_id=event.subscription_id,
+                        triggers=event.triggers,
+                        request_id=event.request_id,
+                        timestamp=event.timestamp,
                     )
                     break
 
             # Phase 2: Execute workflow if trigger was received
             if trigger_data:
-                event_generator = TriggerDebugEventGenerator()
-
-                # Yield workflow started event
-                yield event_generator.generate_workflow_started(trigger_data).to_dict()
-
                 # Create trigger inputs and convert to workflow args
                 trigger_inputs = TriggerInputs.from_trigger_data(trigger_data)
                 combined_args = trigger_inputs.to_workflow_args()
@@ -964,7 +966,7 @@ class DraftWorkflowTriggerRunApi(Resource):
                     yield from workflow_response
 
                 except Exception as e:
-                    yield event_generator.generate_error(str(e)).to_dict()
+                    yield ErrorStreamResponse(task_id="", err=e).to_dict()
 
         # Use standard response format
         from core.app.apps.base_app_generator import BaseAppGenerator
