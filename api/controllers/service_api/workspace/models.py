@@ -19,7 +19,7 @@ class ModelProviderAvailableModelApi(Resource):
         }
     )
     @validate_dataset_token
-    def get(self, _, model_type):
+    def get(self, _, model_type: str):
         """Get available models by model type.
 
         Returns a list of available models for the specified model type.

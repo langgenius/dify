@@ -2,8 +2,8 @@ import json
 from typing import cast
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource
+from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -13,7 +13,8 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models.account import Account
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
@@ -25,6 +26,13 @@ class ModelConfigResource(Resource):
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
         """Modify app model config"""
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+
+        assert current_user.current_tenant_id is not None, "The tenant information should be loaded."
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_user.current_tenant_id,

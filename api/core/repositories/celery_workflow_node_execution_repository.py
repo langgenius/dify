@@ -94,10 +94,10 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # In-memory cache for workflow node executions
-        self._execution_cache: dict[str, WorkflowNodeExecution] = {}
+        self._execution_cache = {}
 
         # Cache for mapping workflow_execution_ids to execution IDs for efficient retrieval
-        self._workflow_execution_mapping: dict[str, list[str]] = {}
+        self._workflow_execution_mapping = {}
 
         logger.info(
             "Initialized CeleryWorkflowNodeExecutionRepository for tenant %s, app %s, triggered_from %s",
