@@ -809,7 +809,7 @@ class LoggingMessageNotificationParams(NotificationParams):
     """The severity of this log message."""
     logger: str | None = None
     """An optional name of the logger issuing this message."""
-    data: Any
+    data: Any = None
     """
     The data to be logged, such as a string message or an object. Any JSON serializable
     type is allowed here.

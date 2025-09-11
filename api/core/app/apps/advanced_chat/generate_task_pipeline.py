@@ -73,7 +73,6 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
-from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Conversation, EndUser, Message, MessageFile
@@ -102,7 +101,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
-    ) -> None:
+    ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -175,7 +174,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
 
-        if self._base_task_pipeline._stream:
+        if self._base_task_pipeline.stream:
             return self._to_stream_response(generator)
         else:
             return self._to_blocking_response(generator)
@@ -290,7 +289,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 session.rollback()
                 raise
 
-    def _ensure_workflow_initialized(self) -> None:
+    def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
         if not self._workflow_run_id:
             raise ValueError("workflow run not initialized.")
@@ -303,21 +302,16 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""
-        yield self._base_task_pipeline._ping_stream_response()
+        yield self._base_task_pipeline.ping_stream_response()
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse, None, None]:
         """Handle error events."""
         with self._database_session() as session:
-            err = self._base_task_pipeline._handle_error(event=event, session=session, message_id=self._message_id)
-        yield self._base_task_pipeline._error_to_stream_response(err)
+            err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
-    def _handle_workflow_started_event(
-        self, event: QueueWorkflowStartedEvent, *, graph_runtime_state: Optional[GraphRuntimeState] = None, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_workflow_started_event(self, *args, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle workflow started events."""
-        # Override graph runtime state - this is a side effect but necessary
-        graph_runtime_state = event.graph_runtime_state
-
         with self._database_session() as session:
             workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start()
             self._workflow_run_id = workflow_execution.id_
@@ -338,15 +332,14 @@ class AdvancedChatAppGenerateTaskPipeline:
         """Handle node retry events."""
         self._ensure_workflow_initialized()
 
-        with self._database_session() as session:
-            workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
-                workflow_execution_id=self._workflow_run_id, event=event
-            )
-            node_retry_resp = self._workflow_response_converter.workflow_node_retry_to_stream_response(
-                event=event,
-                task_id=self._application_generate_entity.task_id,
-                workflow_node_execution=workflow_node_execution,
-            )
+        workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
+            workflow_execution_id=self._workflow_run_id, event=event
+        )
+        node_retry_resp = self._workflow_response_converter.workflow_node_retry_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+            workflow_node_execution=workflow_node_execution,
+        )
 
         if node_retry_resp:
             yield node_retry_resp
@@ -380,13 +373,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
 
-        with self._database_session() as session:
-            workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(event=event)
-            node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
-                event=event,
-                task_id=self._application_generate_entity.task_id,
-                workflow_node_execution=workflow_node_execution,
-            )
+        workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(event=event)
+        node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+            workflow_node_execution=workflow_node_execution,
+        )
 
         self._save_output_for_event(event, workflow_node_execution.id)
 
@@ -635,10 +627,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                 workflow_execution=workflow_execution,
             )
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {workflow_execution.error_message}"))
-            err = self._base_task_pipeline._handle_error(event=err_event, session=session, message_id=self._message_id)
+            err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
 
         yield workflow_finish_resp
-        yield self._base_task_pipeline._error_to_stream_response(err)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_stop_event(
         self,
@@ -691,7 +683,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         """Handle advanced chat message end events."""
         self._ensure_graph_runtime_initialized(graph_runtime_state)
 
-        output_moderation_answer = self._base_task_pipeline._handle_output_moderation_when_task_finished(
+        output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
             self._task_state.answer
         )
         if output_moderation_answer:
@@ -896,7 +888,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
+    def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None):
         message = self._get_message(session=session)
 
         # If there are assistant files, remove markdown image links from answer
@@ -907,7 +899,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         message.answer = answer_text
         message.updated_at = naive_utc_now()
-        message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
+        message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
         message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
             MessageFile(
@@ -939,10 +931,6 @@ class AdvancedChatAppGenerateTaskPipeline:
             self._task_state.metadata.usage = usage
         else:
             self._task_state.metadata.usage = LLMUsage.empty_usage()
-        message_was_created.send(
-            message,
-            application_generate_entity=self._application_generate_entity,
-        )
 
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """
@@ -967,9 +955,9 @@ class AdvancedChatAppGenerateTaskPipeline:
         :param text: text
         :return: True if output moderation should direct output, otherwise False
         """
-        if self._base_task_pipeline._output_moderation_handler:
-            if self._base_task_pipeline._output_moderation_handler.should_direct_output():
-                self._task_state.answer = self._base_task_pipeline._output_moderation_handler.get_final_output()
+        if self._base_task_pipeline.output_moderation_handler:
+            if self._base_task_pipeline.output_moderation_handler.should_direct_output():
+                self._task_state.answer = self._base_task_pipeline.output_moderation_handler.get_final_output()
                 self._base_task_pipeline.queue_manager.publish(
                     QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
                 )
@@ -979,7 +967,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
                 return True
             else:
-                self._base_task_pipeline._output_moderation_handler.append_new_token(text)
+                self._base_task_pipeline.output_moderation_handler.append_new_token(text)
 
         return False
 

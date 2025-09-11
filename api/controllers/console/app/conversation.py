@@ -22,7 +22,7 @@ from fields.conversation_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models import Conversation, EndUser, Message, MessageAnnotation
+from models import Account, Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
@@ -117,13 +117,15 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, app_model, conversation_id):
         if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -282,6 +284,8 @@ class ChatConversationDetailApi(Resource):
         conversation_id = str(conversation_id)
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

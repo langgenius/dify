@@ -10,7 +10,7 @@ export type IRadioProps = {
   labelClassName?: string
   children?: string | ReactNode
   checked?: boolean
-  value?: string | number
+  value?: string | number | boolean
   disabled?: boolean
   onChange?: (e?: IRadioProps['value']) => void
 }

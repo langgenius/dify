@@ -470,6 +470,12 @@ const translation = {
         apply: 'Aplicar',
         required: 'obrigatório',
       },
+      reasoningFormat: {
+        tagged: 'Mantenha as tags de pensamento',
+        title: 'Ativar separação de tags de raciocínio',
+        separated: 'Separe as tags de pensamento',
+        tooltip: 'Extraia o conteúdo das tags de pensamento e armazene-o no campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variável de consulta',
@@ -997,6 +1003,10 @@ const translation = {
     noLastRunFound: 'Nenhuma execução anterior encontrada.',
     copyLastRun: 'Copiar Última Execução',
     lastOutput: 'Última Saída',
+  },
+  sidebar: {
+    exportWarning: 'Exportar a versão salva atual',
+    exportWarningDesc: 'Isto irá exportar a versão atual salva do seu fluxo de trabalho. Se você tiver alterações não salvas no editor, por favor, salve-as primeiro utilizando a opção de exportação na tela do fluxo de trabalho.',
   },
 }
 

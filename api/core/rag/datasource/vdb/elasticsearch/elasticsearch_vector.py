@@ -43,7 +43,7 @@ class ElasticSearchConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         use_cloud = values.get("use_cloud", False)
         cloud_url = values.get("cloud_url")
 
@@ -138,7 +138,7 @@ class ElasticSearchVector(BaseVector):
             if not client.ping():
                 raise ConnectionError("Failed to connect to Elasticsearch")
 
-        except requests.exceptions.ConnectionError as e:
+        except requests.ConnectionError as e:
             raise ConnectionError(f"Vector database connection error: {str(e)}")
         except Exception as e:
             raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}")
@@ -174,20 +174,20 @@ class ElasticSearchVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         return bool(self._client.exists(index=self._collection_name, id=id))
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
             self._client.delete(index=self._collection_name, id=id)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
         results = self._client.search(index=self._collection_name, body=query_str)
         ids = [hit["_id"] for hit in results["hits"]["hits"]]
         if ids:
             self.delete_by_ids(ids)
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -216,7 +216,7 @@ class ElasticSearchVector(BaseVector):
         docs = []
         for doc, score in docs_and_scores:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if score > score_threshold:
+            if score >= score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
                     docs.append(doc)

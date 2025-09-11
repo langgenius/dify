@@ -257,7 +257,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
-        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickSettings}>
+        <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickSettings}>
           <span className='system-sm-regular text-text-secondary'>{t('app.editApp')}</span>
         </button>
         <Divider className="my-1" />
@@ -279,12 +279,21 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </>
         )}
         {
-          (isGettingUserCanAccessApp || !userCanAccessApp?.result) ? null : <>
-            <Divider className="my-1" />
-            <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
-              <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
-            </button>
-          </>
+          (!systemFeatures.webapp_auth.enabled)
+            ? <>
+              <Divider className="my-1" />
+              <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+                <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+              </button>
+            </>
+            : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
+              <>
+                <Divider className="my-1" />
+                <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+                  <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+                </button>
+              </>
+            )
         }
         <Divider className="my-1" />
         {
