@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
@@ -45,9 +46,11 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-                if 0 < vector_space.limit <= vector_space.size:
+                current = int(getattr(vector_space, "size", 0) or 0)
+                limit = int(getattr(vector_space, "limit", 0) or 0)
+                if limit > 0 and (current + count) > limit:
                     raise ValueError(
-                        "Your total number of documents plus the number of uploads have over the limit of "
+                        "Your total number of documents plus the number of uploads have exceeded the limit of "
                         "your subscription."
                     )
         except Exception as e:
@@ -77,7 +80,9 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
                 index_type = document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-                segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                ).all()
                 if segments:
                     index_node_ids = [segment.index_node_id for segment in segments]
 

@@ -67,7 +67,7 @@ class DraftVarLoader(VariableLoader):
         app_id: str,
         tenant_id: str,
         fallback_variables: Sequence[Variable] | None = None,
-    ) -> None:
+    ):
         self._engine = engine
         self._app_id = app_id
         self._tenant_id = tenant_id
@@ -117,7 +117,7 @@ class DraftVarLoader(VariableLoader):
 class WorkflowDraftVariableService:
     _session: Session
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session):
         """
         Initialize the WorkflowDraftVariableService with a SQLAlchemy session.
 
@@ -438,7 +438,7 @@ def _batch_upsert_draft_variable(
     session: Session,
     draft_vars: Sequence[WorkflowDraftVariable],
     policy: _UpsertPolicy = _UpsertPolicy.OVERWRITE,
-) -> None:
+):
     if not draft_vars:
         return None
     # Although we could use SQLAlchemy ORM operations here, we choose not to for several reasons:

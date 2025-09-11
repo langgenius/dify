@@ -1,8 +1,8 @@
 {
   "name": "dify-web",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
-  "packageManager": "pnpm@10.15.0",
+  "packageManager": "pnpm@10.15.1",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -24,7 +24,7 @@
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
     "lint": "npx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint-only-show-error": "npm oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
+    "lint-only-show-error": "npx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
     "fix": "eslint --fix .",
     "eslint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "eslint-fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
@@ -35,6 +35,8 @@
     "uglify-embed": "node ./bin/uglify-embed",
     "check-i18n": "node ./i18n-config/check-i18n.js",
     "auto-gen-i18n": "node ./i18n-config/auto-gen-i18n.js",
+    "gen:i18n-types": "node ./i18n-config/generate-i18n-types.js",
+    "check:i18n-types": "node ./i18n-config/check-i18n-sync.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
@@ -104,6 +106,7 @@
     "mitt": "^3.0.1",
     "negotiator": "^0.6.3",
     "next": "15.5.0",
+    "next-pwa": "^5.6.0",
     "next-themes": "^0.4.3",
     "pinyin-pro": "^3.25.0",
     "qrcode.react": "^4.2.0",
@@ -153,6 +156,8 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.0.0",
+    "@babel/core": "^7.28.3",
+    "@babel/preset-env": "^7.28.3",
     "@chromatic-com/storybook": "^3.1.0",
     "@eslint-react/eslint-plugin": "^1.15.0",
     "@eslint/eslintrc": "^3.1.0",
@@ -196,6 +201,7 @@
     "@types/sortablejs": "^1.15.1",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
+    "babel-loader": "^10.0.0",
     "bing-translate-api": "^4.0.2",
     "code-inspector-plugin": "^0.18.1",
     "cross-env": "^7.0.3",

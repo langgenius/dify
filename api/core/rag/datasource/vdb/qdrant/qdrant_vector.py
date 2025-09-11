@@ -18,6 +18,7 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
+from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -39,6 +40,19 @@ if TYPE_CHECKING:
     MetadataFilter = Union[DictFilter, common_types.Filter]
 
 
+class PathQdrantParams(BaseModel):
+    path: str
+
+
+class UrlQdrantParams(BaseModel):
+    url: str
+    api_key: Optional[str]
+    timeout: float
+    verify: bool
+    grpc_port: int
+    prefer_grpc: bool
+
+
 class QdrantConfig(BaseModel):
     endpoint: str
     api_key: Optional[str] = None
@@ -49,7 +63,7 @@ class QdrantConfig(BaseModel):
     replication_factor: int = 1
     write_consistency_factor: int = 1
 
-    def to_qdrant_params(self):
+    def to_qdrant_params(self) -> PathQdrantParams | UrlQdrantParams:
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
@@ -57,30 +71,30 @@ class QdrantConfig(BaseModel):
                     raise ValueError("Root path is not set")
                 path = os.path.join(self.root_path, path)
 
-            return {"path": path}
+            return PathQdrantParams(path=path)
         else:
-            return {
-                "url": self.endpoint,
-                "api_key": self.api_key,
-                "timeout": self.timeout,
-                "verify": self.endpoint.startswith("https"),
-                "grpc_port": self.grpc_port,
-                "prefer_grpc": self.prefer_grpc,
-            }
+            return UrlQdrantParams(
+                url=self.endpoint,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                verify=self.endpoint.startswith("https"),
+                grpc_port=self.grpc_port,
+                prefer_grpc=self.prefer_grpc,
+            )
 
 
 class QdrantVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config: QdrantConfig, distance_func: str = "Cosine"):
         super().__init__(collection_name)
         self._client_config = config
-        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params())
+        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params().model_dump())
         self._distance_func = distance_func.upper()
         self._group_id = group_id
 
     def get_type(self) -> str:
         return VectorType.QDRANT
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -291,7 +305,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
@@ -445,11 +459,8 @@ class QdrantVector(BaseVector):
 class QdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
         if dataset.collection_binding_id:
-            dataset_collection_binding = (
-                db.session.query(DatasetCollectionBinding)
-                .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-                .one_or_none()
-            )
+            stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)
+            dataset_collection_binding = db.session.scalars(stmt).one_or_none()
             if dataset_collection_binding:
                 collection_name = dataset_collection_binding.collection_name
             else:

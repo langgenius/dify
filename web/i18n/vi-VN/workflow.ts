@@ -470,6 +470,12 @@ const translation = {
         addChildField: 'Thêm trường trẻ em',
         title: 'Sơ đồ đầu ra có cấu trúc',
       },
+      reasoningFormat: {
+        tagged: 'Giữ lại thẻ suy nghĩ',
+        tooltip: 'Trích xuất nội dung từ các thẻ think và lưu nó vào trường reasoning_content.',
+        separated: 'Tách biệt các thẻ suy nghĩ',
+        title: 'Bật chế độ phân tách nhãn lý luận',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Biến truy vấn',
@@ -997,6 +1003,10 @@ const translation = {
     copyLastRun: 'Sao chép lần chạy cuối',
     copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
     lastOutput: 'Đầu ra cuối cùng',
+  },
+  sidebar: {
+    exportWarning: 'Xuất Phiên Bản Đã Lưu Hiện Tại',
+    exportWarningDesc: 'Điều này sẽ xuất phiên bản hiện tại đã được lưu của quy trình làm việc của bạn. Nếu bạn có những thay đổi chưa được lưu trong trình soạn thảo, vui lòng lưu chúng trước bằng cách sử dụng tùy chọn xuất trong bản vẽ quy trình.',
   },
 }
 

@@ -403,7 +403,7 @@ class StorageKeyLoader:
     This loader is batched, the database query count is constant regardless of the input size.
     """
 
-    def __init__(self, session: Session, tenant_id: str) -> None:
+    def __init__(self, session: Session, tenant_id: str):
         self._session = session
         self._tenant_id = tenant_id
 
@@ -462,9 +462,9 @@ class StorageKeyLoader:
                 upload_file_row = upload_files.get(model_id)
                 if upload_file_row is None:
                     raise ValueError(f"Upload file not found for id: {model_id}")
-                file._storage_key = upload_file_row.key
+                file.storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
                 tool_file_row = tool_files.get(model_id)
                 if tool_file_row is None:
                     raise ValueError(f"Tool file not found for id: {model_id}")
-                file._storage_key = tool_file_row.file_key
+                file.storage_key = tool_file_row.file_key

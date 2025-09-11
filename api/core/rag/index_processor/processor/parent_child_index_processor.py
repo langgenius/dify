@@ -36,7 +36,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
         rules = Rule(**process_rule.get("rules"))
-        all_documents = []  # type: ignore
+        all_documents: list[Document] = []
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
             if not rules.segmentation:
@@ -130,13 +130,16 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 if delete_child_chunks:
                     db.session.query(ChildChunk).where(
                         ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
-                    ).delete()
+                    ).delete(synchronize_session=False)
                     db.session.commit()
             else:
                 vector.delete()
 
                 if delete_child_chunks:
-                    db.session.query(ChildChunk).where(ChildChunk.dataset_id == dataset.id).delete()
+                    # Use existing compound index: (tenant_id, dataset_id, ...)
+                    db.session.query(ChildChunk).where(
+                        ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
+                    ).delete(synchronize_session=False)
                     db.session.commit()
 
     def retrieve(

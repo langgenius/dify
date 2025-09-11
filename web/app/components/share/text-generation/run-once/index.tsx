@@ -26,7 +26,7 @@ export type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
   inputs: Record<string, any>
-  inputsRef: React.MutableRefObject<Record<string, any>>
+  inputsRef: React.RefObject<Record<string, any>>
   onInputsChange: (inputs: Record<string, any>) => void
   onSend: () => void
   visionConfig: VisionSettings

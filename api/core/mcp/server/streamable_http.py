@@ -38,6 +38,7 @@ def handle_mcp_request(
     """
 
     request_type = type(request.root)
+    request_root = request.root
 
     def create_success_response(result_data: mcp_types.Result) -> mcp_types.JSONRPCResponse:
         """Create success response with business result data"""
@@ -58,21 +59,20 @@ def handle_mcp_request(
             error=error_data,
         )
 
-    # Request handler mapping using functional approach
-    request_handlers = {
-        mcp_types.InitializeRequest: lambda: handle_initialize(mcp_server.description),
-        mcp_types.ListToolsRequest: lambda: handle_list_tools(
-            app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
-        ),
-        mcp_types.CallToolRequest: lambda: handle_call_tool(app, request, user_input_form, end_user),
-        mcp_types.PingRequest: lambda: handle_ping(),
-    }
-
     try:
-        # Dispatch request to appropriate handler
-        handler = request_handlers.get(request_type)
-        if handler:
-            return create_success_response(handler())
+        # Dispatch request to appropriate handler based on instance type
+        if isinstance(request_root, mcp_types.InitializeRequest):
+            return create_success_response(handle_initialize(mcp_server.description))
+        elif isinstance(request_root, mcp_types.ListToolsRequest):
+            return create_success_response(
+                handle_list_tools(
+                    app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
+                )
+            )
+        elif isinstance(request_root, mcp_types.CallToolRequest):
+            return create_success_response(handle_call_tool(app, request, user_input_form, end_user))
+        elif isinstance(request_root, mcp_types.PingRequest):
+            return create_success_response(handle_ping())
         else:
             return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
 
@@ -258,5 +258,5 @@ def convert_input_form_to_parameters(
             parameters[item.variable]["type"] = "string"
             parameters[item.variable]["enum"] = item.options
         elif item.type == VariableEntityType.NUMBER:
-            parameters[item.variable]["type"] = "float"
+            parameters[item.variable]["type"] = "number"
     return parameters, required

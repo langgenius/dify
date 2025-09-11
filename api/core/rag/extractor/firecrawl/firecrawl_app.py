@@ -22,7 +22,6 @@ class FirecrawlApp:
             "formats": ["markdown"],
             "onlyMainContent": True,
             "timeout": 30000,
-            "integration": "dify",
         }
         if params:
             json_data.update(params)
@@ -40,7 +39,7 @@ class FirecrawlApp:
     def crawl_url(self, url, params=None) -> str:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/crawl-post
         headers = self._prepare_headers()
-        json_data = {"url": url, "integration": "dify"}
+        json_data = {"url": url}
         if params:
             json_data.update(params)
         response = self._post_request(f"{self.base_url}/v1/crawl", json_data, headers)
@@ -123,7 +122,7 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _handle_error(self, response, action) -> None:
+    def _handle_error(self, response, action):
         error_message = response.json().get("error", "Unknown error occurred")
         raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  # type: ignore[return]
 
@@ -138,7 +137,6 @@ class FirecrawlApp:
             "timeout": 60000,
             "ignoreInvalidURLs": False,
             "scrapeOptions": {},
-            "integration": "dify",
         }
         if params:
             json_data.update(params)

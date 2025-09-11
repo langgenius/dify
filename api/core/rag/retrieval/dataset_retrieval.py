@@ -7,9 +7,8 @@ from collections.abc import Generator, Mapping
 from typing import Any, Optional, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Float, and_, or_, text
+from sqlalchemy import Float, and_, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
-from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -135,7 +134,8 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             # pass if dataset is not available
             if not dataset:
@@ -240,15 +240,12 @@ class DatasetRetrieval:
                     for record in records:
                         segment = record.segment
                         dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                        document = (
-                            db.session.query(DatasetDocument)
-                            .where(
-                                DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
-                            )
-                            .first()
+                        dataset_document_stmt = select(DatasetDocument).where(
+                            DatasetDocument.id == segment.document_id,
+                            DatasetDocument.enabled == True,
+                            DatasetDocument.archived == False,
                         )
+                        document = db.session.scalar(dataset_document_stmt)
                         if dataset and document:
                             source = RetrievalSourceMetadata(
                                 dataset_id=dataset.id,
@@ -327,7 +324,8 @@ class DatasetRetrieval:
 
         if dataset_id:
             # get retrieval model config
-            dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
             if dataset:
                 results = []
                 if dataset.provider == "external":
@@ -509,29 +507,25 @@ class DatasetRetrieval:
 
     def _on_retrieval_end(
         self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
-    ) -> None:
+    ):
         """Handle retrieval end."""
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
             if document.metadata is not None:
-                dataset_document = (
-                    db.session.query(DatasetDocument)
-                    .where(DatasetDocument.id == document.metadata["document_id"])
-                    .first()
+                dataset_document_stmt = select(DatasetDocument).where(
+                    DatasetDocument.id == document.metadata["document_id"]
                 )
+                dataset_document = db.session.scalar(dataset_document_stmt)
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                        child_chunk = (
-                            db.session.query(ChildChunk)
-                            .where(
-                                ChildChunk.index_node_id == document.metadata["doc_id"],
-                                ChildChunk.dataset_id == dataset_document.dataset_id,
-                                ChildChunk.document_id == dataset_document.id,
-                            )
-                            .first()
+                        child_chunk_stmt = select(ChildChunk).where(
+                            ChildChunk.index_node_id == document.metadata["doc_id"],
+                            ChildChunk.dataset_id == dataset_document.dataset_id,
+                            ChildChunk.document_id == dataset_document.id,
                         )
+                        child_chunk = db.session.scalar(child_chunk_stmt)
                         if child_chunk:
-                            segment = (
+                            _ = (
                                 db.session.query(DocumentSegment)
                                 .where(DocumentSegment.id == child_chunk.segment_id)
                                 .update(
@@ -539,7 +533,6 @@ class DatasetRetrieval:
                                     synchronize_session=False,
                                 )
                             )
-                            db.session.commit()
                     else:
                         query = db.session.query(DocumentSegment).where(
                             DocumentSegment.index_node_id == document.metadata["doc_id"]
@@ -567,7 +560,7 @@ class DatasetRetrieval:
                 )
             )
 
-    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
+    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
         """
         Handle query.
         """
@@ -599,8 +592,8 @@ class DatasetRetrieval:
         metadata_condition: Optional[MetadataCondition] = None,
     ):
         with flask_app.app_context():
-            with Session(db.engine) as session:
-                dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             if not dataset:
                 return []
@@ -685,7 +678,8 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             # pass if dataset is not available
             if not dataset:
@@ -958,7 +952,8 @@ class DatasetRetrieval:
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
     ) -> Optional[list[dict[str, Any]]]:
         # get all metadata field
-        metadata_fields = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
+        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_fields = db.session.scalars(metadata_stmt).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         # get metadata model config
         if metadata_model_config is None:
@@ -990,7 +985,7 @@ class DatasetRetrieval:
             )
 
             # handle invoke result
-            result_text, usage = self._handle_invoke_result(invoke_result=invoke_result)
+            result_text, _ = self._handle_invoke_result(invoke_result=invoke_result)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
             automatic_metadata_filters = []
@@ -1005,7 +1000,7 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
+        except Exception:
             return None
         return automatic_metadata_filters
 

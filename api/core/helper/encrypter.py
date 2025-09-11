@@ -11,6 +11,10 @@ def obfuscated_token(token: str) -> str:
     return token[:6] + "*" * 12 + token[-2:]
 
 
+def full_mask_token(token_length=20):
+    return "*" * token_length
+
+
 def encrypt_token(tenant_id: str, token: str):
     from models.account import Tenant
     from models.engine import db

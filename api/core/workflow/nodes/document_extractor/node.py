@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 import chardet
 import docx
@@ -47,7 +47,7 @@ class DocumentExtractorNode(BaseNode):
 
     _node_data: DocumentExtractorNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = DocumentExtractorNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -428,9 +428,9 @@ def _download_file_content(file: File) -> bytes:
                 raise FileDownloadError("Missing URL for remote file")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
-            return cast(bytes, response.content)
+            return response.content
         else:
-            return cast(bytes, file_manager.download(file))
+            return file_manager.download(file)
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
