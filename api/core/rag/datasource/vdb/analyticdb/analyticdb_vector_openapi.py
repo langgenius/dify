@@ -26,7 +26,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["access_key_id"]:
             raise ValueError("config ANALYTICDB_KEY_ID is required")
         if not values["access_key_secret"]:
@@ -65,7 +65,7 @@ class AnalyticdbVectorOpenAPI:
         self._client = Client(self._client_config)
         self._initialize()
 
-    def _initialize(self) -> None:
+    def _initialize(self):
         cache_key = f"vector_initialize_{self.config.instance_id}"
         lock_name = f"{cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):
@@ -76,7 +76,7 @@ class AnalyticdbVectorOpenAPI:
             self._create_namespace_if_not_exists()
             redis_client.set(database_exist_cache_key, 1, ex=3600)
 
-    def _initialize_vector_database(self) -> None:
+    def _initialize_vector_database(self):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models  # type: ignore
 
         request = gpdb_20160503_models.InitVectorDatabaseRequest(
@@ -87,7 +87,7 @@ class AnalyticdbVectorOpenAPI:
         )
         self._client.init_vector_database(request)
 
-    def _create_namespace_if_not_exists(self) -> None:
+    def _create_namespace_if_not_exists(self):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         from Tea.exceptions import TeaException  # type: ignore
 
@@ -192,15 +192,15 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             metrics=self.config.metrics,
             include_values=True,
-            vector=None,
-            content=None,
+            vector=None,  # ty: ignore [invalid-argument-type]
+            content=None,  # ty: ignore [invalid-argument-type]
             top_k=1,
             filter=f"ref_doc_id='{id}'",
         )
         response = self._client.query_collection_data(request)
         return len(response.body.matches.match) > 0
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
         ids_str = ",".join(f"'{id}'" for id in ids)
@@ -211,12 +211,12 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
+            collection_data=None,  # ty: ignore [invalid-argument-type]
             collection_data_filter=f"ref_doc_id IN {ids_str}",
         )
         self._client.delete_collection_data(request)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
         request = gpdb_20160503_models.DeleteCollectionDataRequest(
@@ -225,7 +225,7 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
+            collection_data=None,  # ty: ignore [invalid-argument-type]
             collection_data_filter=f"metadata_ ->> '{key}' = '{value}'",
         )
         self._client.delete_collection_data(request)
@@ -249,7 +249,7 @@ class AnalyticdbVectorOpenAPI:
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
             vector=query_vector,
-            content=None,
+            content=None,  # ty: ignore [invalid-argument-type]
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
         )
@@ -285,7 +285,7 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
-            vector=None,
+            vector=None,  # ty: ignore [invalid-argument-type]
             content=query,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
@@ -305,7 +305,7 @@ class AnalyticdbVectorOpenAPI:
         documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
-    def delete(self) -> None:
+    def delete(self):
         try:
             from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 

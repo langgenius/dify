@@ -42,7 +42,7 @@ def batch_fetch_plugin_manifests_ignore_deserialization_error(
     for plugin in response.json()["data"]["plugins"]:
         try:
             result.append(MarketplacePluginDeclaration(**plugin))
-        except Exception as e:
+        except Exception:
             pass
 
     return result

@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+from collections.abc import Iterable
 from typing import Any, Optional
 
 import tablestore  # type: ignore
@@ -29,7 +30,7 @@ class TableStoreConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["access_key_id"]:
             raise ValueError("config ACCESS_KEY_ID is required")
         if not values["access_key_secret"]:
@@ -71,7 +72,7 @@ class TableStoreVector(BaseVector):
         table_result = result.get_result_by_table(self._table_name)
         for item in table_result:
             if item.is_ok and item.row:
-                kv = {k: v for k, v, t in item.row.attribute_columns}
+                kv = {k: v for k, v, _ in item.row.attribute_columns}
                 docs.append(
                     Document(
                         page_content=kv[Field.CONTENT_KEY.value], metadata=json.loads(kv[Field.METADATA_KEY.value])
@@ -102,13 +103,16 @@ class TableStoreVector(BaseVector):
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        _, return_row, _ = self._tablestore_client.get_row(
+        result = self._tablestore_client.get_row(
             table_name=self._table_name, primary_key=[("id", id)], columns_to_get=["id"]
         )
+        assert isinstance(result, tuple | list)
+        # Unpack the tuple result
+        _, return_row, _ = result
 
         return return_row is not None
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
@@ -117,7 +121,7 @@ class TableStoreVector(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         return self._search_by_metadata(key, value)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
@@ -139,7 +143,7 @@ class TableStoreVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._search_by_full_text(query, filtered_list, top_k, score_threshold)
 
-    def delete(self) -> None:
+    def delete(self):
         self._delete_table_if_exist()
 
     def _create_collection(self, dimension: int):
@@ -154,7 +158,7 @@ class TableStoreVector(BaseVector):
             self._create_search_index_if_not_exist(dimension)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def _create_table_if_not_exist(self) -> None:
+    def _create_table_if_not_exist(self):
         table_list = self._tablestore_client.list_table()
         if self._table_name in table_list:
             logger.info("Tablestore system table[%s] already exists", self._table_name)
@@ -167,8 +171,9 @@ class TableStoreVector(BaseVector):
         self._tablestore_client.create_table(table_meta, table_options, reserved_throughput)
         logger.info("Tablestore create table[%s] successfully.", self._table_name)
 
-    def _create_search_index_if_not_exist(self, dimension: int) -> None:
+    def _create_search_index_if_not_exist(self, dimension: int):
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
+        assert isinstance(search_index_list, Iterable)
         if self._index_name in [t[1] for t in search_index_list]:
             logger.info("Tablestore system index[%s] already exists", self._index_name)
             return None
@@ -212,6 +217,7 @@ class TableStoreVector(BaseVector):
 
     def _delete_table_if_exist(self):
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
+        assert isinstance(search_index_list, Iterable)
         for resp_tuple in search_index_list:
             self._tablestore_client.delete_search_index(resp_tuple[0], resp_tuple[1])
             logger.info("Tablestore delete index[%s] successfully.", self._index_name)
@@ -219,11 +225,11 @@ class TableStoreVector(BaseVector):
         self._tablestore_client.delete_table(self._table_name)
         logger.info("Tablestore delete system table[%s] successfully.", self._index_name)
 
-    def _delete_search_index(self) -> None:
+    def _delete_search_index(self):
         self._tablestore_client.delete_search_index(self._table_name, self._index_name)
         logger.info("Tablestore delete index[%s] successfully.", self._index_name)
 
-    def _write_row(self, primary_key: str, attributes: dict[str, Any]) -> None:
+    def _write_row(self, primary_key: str, attributes: dict[str, Any]):
         pk = [("id", primary_key)]
 
         tags = []
@@ -242,7 +248,7 @@ class TableStoreVector(BaseVector):
         row = tablestore.Row(pk, attribute_columns)
         self._tablestore_client.put_row(self._table_name, row)
 
-    def _delete_row(self, id: str) -> None:
+    def _delete_row(self, id: str):
         primary_key = [("id", id)]
         row = tablestore.Row(primary_key)
         self._tablestore_client.delete_row(self._table_name, row, None)
@@ -269,7 +275,7 @@ class TableStoreVector(BaseVector):
             )
 
             if search_response is not None:
-                rows.extend([row[0][0][1] for row in search_response.rows])
+                rows.extend([row[0][0][1] for row in list(search_response.rows)])
 
             if search_response is None or search_response.next_token == b"":
                 break

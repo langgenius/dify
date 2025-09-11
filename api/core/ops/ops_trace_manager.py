@@ -323,14 +323,11 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if enabled:
-            try:
+        try:
+            if enabled or tracing_provider is not None:
                 provider_config_map[tracing_provider]
-            except KeyError:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
-        else:
-            if tracing_provider is None:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+        except KeyError:
+            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: Optional[App] = db.session.query(App).where(App.id == app_id).first()
         if not app_config:
@@ -849,7 +846,7 @@ class TraceQueueManager:
             if self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
-        except Exception as e:
+        except Exception:
             logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
         finally:
             self.start_timer()
@@ -868,7 +865,7 @@ class TraceQueueManager:
             tasks = self.collect_tasks()
             if tasks:
                 self.send_to_celery(tasks)
-        except Exception as e:
+        except Exception:
             logger.exception("Error processing trace tasks")
 
     def start_timer(self):

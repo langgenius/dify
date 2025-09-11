@@ -284,11 +284,11 @@ function Form<
             </div>
             <Radio.Group
               className='flex items-center'
-              value={value[variable] === null ? undefined : (value[variable] ? 1 : 0)}
-              onChange={val => handleFormChange(variable, val === 1)}
+              value={value[variable]}
+              onChange={val => handleFormChange(variable, val)}
             >
-              <Radio value={1} className='!mr-1'>True</Radio>
-              <Radio value={0}>False</Radio>
+              <Radio value={true} className='!mr-1'>True</Radio>
+              <Radio value={false}>False</Radio>
             </Radio.Group>
           </div>
           {fieldMoreInfo?.(formSchema)}

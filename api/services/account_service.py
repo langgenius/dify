@@ -105,14 +105,14 @@ class AccountService:
         return f"{ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
 
     @staticmethod
-    def _store_refresh_token(refresh_token: str, account_id: str) -> None:
+    def _store_refresh_token(refresh_token: str, account_id: str):
         redis_client.setex(AccountService._get_refresh_token_key(refresh_token), REFRESH_TOKEN_EXPIRY, account_id)
         redis_client.setex(
             AccountService._get_account_refresh_token_key(account_id), REFRESH_TOKEN_EXPIRY, refresh_token
         )
 
     @staticmethod
-    def _delete_refresh_token(refresh_token: str, account_id: str) -> None:
+    def _delete_refresh_token(refresh_token: str, account_id: str):
         redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
 
@@ -145,7 +145,10 @@ class AccountService:
         if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = naive_utc_now()
             db.session.commit()
-
+        # NOTE: make sure account is accessible outside of a db session
+        # This ensures that it will work correctly after upgrading to Flask version 3.1.2
+        db.session.refresh(account)
+        db.session.close()
         return account
 
     @staticmethod
@@ -211,6 +214,7 @@ class AccountService:
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
+        db.session.add(account)
         db.session.commit()
         return account
 
@@ -242,6 +246,8 @@ class AccountService:
         account.name = name
 
         if password:
+            valid_password(password)
+
             # generate password salt
             salt = secrets.token_bytes(16)
             base64_salt = base64.b64encode(salt).decode()
@@ -308,12 +314,12 @@ class AccountService:
         return True
 
     @staticmethod
-    def delete_account(account: Account) -> None:
+    def delete_account(account: Account):
         """Delete account. This method only adds a task to the queue for deletion."""
         delete_account_task.delay(account.id)
 
     @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
+    def link_account_integrate(provider: str, open_id: str, account: Account):
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
@@ -340,7 +346,7 @@ class AccountService:
             raise LinkAccountIntegrateError("Failed to link account.") from e
 
     @staticmethod
-    def close_account(account: Account) -> None:
+    def close_account(account: Account):
         """Close account"""
         account.status = AccountStatus.CLOSED.value
         db.session.commit()
@@ -348,6 +354,7 @@ class AccountService:
     @staticmethod
     def update_account(account, **kwargs):
         """Update account fields"""
+        account = db.session.merge(account)
         for field, value in kwargs.items():
             if hasattr(account, field):
                 setattr(account, field, value)
@@ -369,7 +376,7 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_login_info(account: Account, *, ip_address: str) -> None:
+    def update_login_info(account: Account, *, ip_address: str):
         """Update last login time and ip"""
         account.last_login_at = naive_utc_now()
         account.last_login_ip = ip_address
@@ -393,7 +400,7 @@ class AccountService:
         return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
     @staticmethod
-    def logout(*, account: Account) -> None:
+    def logout(*, account: Account):
         refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account.id))
         if refresh_token:
             AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
@@ -700,7 +707,7 @@ class AccountService:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def add_login_error_rate_limit(email: str) -> None:
+    def add_login_error_rate_limit(email: str):
         key = f"login_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
@@ -729,7 +736,7 @@ class AccountService:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def add_forgot_password_error_rate_limit(email: str) -> None:
+    def add_forgot_password_error_rate_limit(email: str):
         key = f"forgot_password_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
@@ -758,7 +765,7 @@ class AccountService:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def add_change_email_error_rate_limit(email: str) -> None:
+    def add_change_email_error_rate_limit(email: str):
         key = f"change_email_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
@@ -786,7 +793,7 @@ class AccountService:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def add_owner_transfer_error_rate_limit(email: str) -> None:
+    def add_owner_transfer_error_rate_limit(email: str):
         key = f"owner_transfer_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
@@ -965,7 +972,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: Optional[str] = None) -> None:
+    def switch_tenant(account: Account, tenant_id: Optional[str] = None):
         """Switch the current workspace for the account"""
 
         # Ensure tenant_id is provided
@@ -1062,7 +1069,7 @@ class TenantService:
         return cast(int, db.session.query(func.count(Tenant.id)).scalar())
 
     @staticmethod
-    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str) -> None:
+    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str):
         """Check member permission"""
         perms = {
             "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
@@ -1082,7 +1089,7 @@ class TenantService:
             raise NoPermissionError(f"No permission to {action} member.")
 
     @staticmethod
-    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account) -> None:
+    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
         """Remove member from tenant"""
         if operator.id == account.id:
             raise CannotOperateSelfError("Cannot operate self.")
@@ -1097,7 +1104,7 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account) -> None:
+    def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
         """Update member role"""
         TenantService.check_member_permission(tenant, operator, member, "update")
 
@@ -1124,7 +1131,7 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def get_custom_config(tenant_id: str) -> dict:
+    def get_custom_config(tenant_id: str):
         tenant = db.get_or_404(Tenant, tenant_id)
 
         return tenant.custom_config_dict
@@ -1145,7 +1152,7 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
-    def setup(cls, email: str, name: str, password: str, ip_address: str) -> None:
+    def setup(cls, email: str, name: str, password: str, ip_address: str):
         """
         Setup dify
 
@@ -1313,7 +1320,7 @@ class RegisterService:
     def get_invitation_if_token_valid(
         cls, workspace_id: Optional[str], email: str, token: str
     ) -> Optional[dict[str, Any]]:
-        invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
+        invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
 
@@ -1350,7 +1357,7 @@ class RegisterService:
         }
 
     @classmethod
-    def _get_invitation_by_token(
+    def get_invitation_by_token(
         cls, token: str, workspace_id: Optional[str] = None, email: Optional[str] = None
     ) -> Optional[dict[str, str]]:
         if workspace_id is not None and email is not None:

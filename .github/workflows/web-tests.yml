@@ -47,6 +47,11 @@ jobs:
         working-directory: ./web
         run: pnpm install --frozen-lockfile
 
+      - name: Check i18n types synchronization
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run check:i18n-types
+
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web

@@ -6,7 +6,7 @@ class LLMError(ValueError):
 
     description: Optional[str] = None
 
-    def __init__(self, description: Optional[str] = None) -> None:
+    def __init__(self, description: Optional[str] = None):
         self.description = description
 
 

@@ -1,8 +1,9 @@
+from collections.abc import Callable
 from functools import wraps
-from typing import cast
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 import flask_login
-from flask import request
+from flask import jsonify, request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -15,10 +16,14 @@ from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType,
 
 from .. import api
 
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
-def oauth_server_client_id_required(view):
+
+def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderApp, P], R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
         parser = reqparse.RequestParser()
         parser.add_argument("client_id", type=str, required=True, location="json")
         parsed_args = parser.parse_args()
@@ -30,43 +35,53 @@ def oauth_server_client_id_required(view):
         if not oauth_provider_app:
             raise NotFound("client_id is invalid")
 
-        kwargs["oauth_provider_app"] = oauth_provider_app
-
-        return view(*args, **kwargs)
+        return view(self, oauth_provider_app, *args, **kwargs)
 
     return decorated
 
 
-def oauth_server_access_token_required(view):
+def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProviderApp, Account, P], R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
-        oauth_provider_app = kwargs.get("oauth_provider_app")
-        if not oauth_provider_app or not isinstance(oauth_provider_app, OAuthProviderApp):
+    def decorated(self: T, oauth_provider_app: OAuthProviderApp, *args: P.args, **kwargs: P.kwargs):
+        if not isinstance(oauth_provider_app, OAuthProviderApp):
             raise BadRequest("Invalid oauth_provider_app")
 
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
-            raise BadRequest("Authorization header is required")
+            response = jsonify({"error": "Authorization header is required"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
-        parts = authorization_header.strip().split(" ")
+        parts = authorization_header.strip().split(None, 1)
         if len(parts) != 2:
-            raise BadRequest("Invalid Authorization header format")
+            response = jsonify({"error": "Invalid Authorization header format"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
         token_type = parts[0].strip()
         if token_type.lower() != "bearer":
-            raise BadRequest("token_type is invalid")
+            response = jsonify({"error": "token_type is invalid"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
         access_token = parts[1].strip()
         if not access_token:
-            raise BadRequest("access_token is required")
+            response = jsonify({"error": "access_token is required"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
         account = OAuthServerService.validate_oauth_access_token(oauth_provider_app.client_id, access_token)
         if not account:
-            raise BadRequest("access_token or client_id is invalid")
+            response = jsonify({"error": "access_token or client_id is invalid"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
 
-        kwargs["account"] = account
-
-        return view(*args, **kwargs)
+        return view(self, oauth_provider_app, account, *args, **kwargs)
 
     return decorated
 

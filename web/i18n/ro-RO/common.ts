@@ -490,6 +490,7 @@ const translation = {
       providerManagedTip: 'Configurarea curentă este găzduită de furnizor.',
       modelCredentials: 'Credențiale model',
       specifyModelCredentialTip: 'Utilizați un acreditiv de model configurat.',
+      addNewModelCredential: 'Adăugați acreditive noi pentru model',
     },
   },
   dataSource: {
