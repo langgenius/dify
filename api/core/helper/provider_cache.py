@@ -1,9 +1,12 @@
 import json
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from extensions.ext_redis import redis_client
+
+if TYPE_CHECKING:
+    from core.entities.provider_configuration import ProviderConfigurations
 
 
 class ProviderCredentialsCache(ABC):
@@ -82,3 +85,36 @@ class NoOpProviderCredentialCache:
     def delete(self):
         """Delete cached provider credentials"""
         pass
+
+
+provider_configurations_cache: dict[str, "ProviderConfigurations"] = {}
+
+
+class ProviderConfigurationsCache:
+    def __init__(self, tenant_id: str):
+        self.cache_key = f"provider_configurations:tenant_id:{tenant_id}"
+
+    def get(self):
+        """
+        Get cached provider configurations.
+
+        :return:
+        """
+        return provider_configurations_cache.get(self.cache_key)
+
+    def set(self, configurations: "ProviderConfigurations") -> None:
+        """
+        Cache provider configurations.
+
+        :param configurations: provider configurations
+        :return:
+        """
+        provider_configurations_cache[self.cache_key] = configurations
+
+    def delete(self) -> None:
+        """
+        Delete cached provider configurations.
+
+        :return:
+        """
+        provider_configurations_cache.pop(self.cache_key, None)
