@@ -108,7 +108,7 @@ class ChatMessageApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
