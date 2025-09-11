@@ -119,9 +119,6 @@ class DraftRagPipelineApi(Resource):
         else:
             abort(415)
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         try:
             environment_variables_list = args.get("environment_variables") or []
             environment_variables = [
@@ -164,9 +161,6 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
         if not isinstance(current_user, Account) or not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -199,9 +193,6 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not isinstance(current_user, Account) or not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -238,9 +229,6 @@ class DraftRagPipelineRunApi(Resource):
         if not isinstance(current_user, Account) or not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("datasource_type", type=str, required=True, location="json")
@@ -273,9 +261,6 @@ class PublishedRagPipelineRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not isinstance(current_user, Account) or not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -396,10 +381,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not isinstance(current_user, Account) or not current_user.is_editor:
             raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
+    
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("datasource_type", type=str, required=True, location="json")

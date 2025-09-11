@@ -33,6 +33,7 @@ from core.rag.entities.event import (
     DatasourceErrorEvent,
     DatasourceProcessingEvent,
 )
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables.variables import Variable
@@ -54,7 +55,13 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import Document, Pipeline, PipelineCustomizedTemplate, PipelineRecommendedPlugin  # type: ignore
+from models.dataset import (  # type: ignore
+    Dataset,
+    Document,
+    Pipeline,
+    PipelineCustomizedTemplate,
+    PipelineRecommendedPlugin,
+)
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
@@ -480,7 +487,7 @@ class RagPipelineService:
         self,
         pipeline: Pipeline,
         node_id: str,
-        user_inputs: dict,
+        user_inputs: Mapping[str, Any],
         account: Account,
         datasource_type: str,
         is_published: bool,
@@ -1312,7 +1319,7 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def get_datasource_plugins(self, dataset_id: str, is_published: bool) -> list[dict]:
+    def get_datasource_plugins(self, tenant_id: str, dataset_id: str, is_published: bool) -> list[dict]:
         """
         Get datasource plugins
         """
@@ -1325,9 +1332,9 @@ class RagPipelineService:
 
         workflow: Workflow | None = None
         if is_published:
-            workflow: Workflow | None = self.get_published_workflow(pipeline=pipeline)
+            workflow = self.get_published_workflow(pipeline=pipeline)
         else:
-            workflow: Workflow | None = self.get_draft_workflow(pipeline=pipeline)
+            workflow = self.get_draft_workflow(pipeline=pipeline)
         if not pipeline or not workflow:    
             raise ValueError("Pipeline or workflow not found")
 
@@ -1338,33 +1345,68 @@ class RagPipelineService:
                 datasource_node_data = datasource_node.get("data", {})
                 if not datasource_node_data:
                     continue
-                
-            datasource_parameters = datasource_node_data.get("datasource_parameters", {})
-            user_input_variables_keys = []
-            user_input_variables = []
 
-            for _, value in datasource_parameters.items():
-                if value.get("value") and isinstance(value.get("value"), str):
-                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
-                    match = re.match(pattern, value["value"])
-                    if match:
-                        full_path = match.group(1)
-                        last_part = full_path.split(".")[-1]
+                variables = workflow.rag_pipeline_variables
+                if variables:
+                    variables_map = {item["variable"]: item for item in variables}
+                else:
+                    variables_map = {}
+                
+                datasource_parameters = datasource_node_data.get("datasource_parameters", {})
+                user_input_variables_keys = []
+                user_input_variables = []
+
+                for _, value in datasource_parameters.items():
+                    if value.get("value") and isinstance(value.get("value"), str):
+                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        match = re.match(pattern, value["value"])
+                        if match:
+                            full_path = match.group(1)
+                            last_part = full_path.split(".")[-1]
+                            user_input_variables_keys.append(last_part)
+                    elif value.get("value") and isinstance(value.get("value"), list):
+                        last_part = value.get("value")[-1]
                         user_input_variables_keys.append(last_part)
-                elif value.get("value") and isinstance(value.get("value"), list):
-                    last_part = value.get("value")[-1]
-                    user_input_variables_keys.append(last_part)
-            for key, value in variables_map.items():
-                if key in user_input_variables_keys:
-                    user_input_variables.append(value)
+                for key, value in variables_map.items():
+                    if key in user_input_variables_keys:
+                        user_input_variables.append(value)
+                
+                # get credentials
+                datasource_provider_service: DatasourceProviderService = DatasourceProviderService()
+                credentials: list[dict[Any, Any]] = datasource_provider_service.list_datasource_credentials(
+                    tenant_id=tenant_id, 
+                    provider=datasource_node_data.get("provider_name"), 
+                    plugin_id=datasource_node_data.get("plugin_id")
+                )
+                credential_info_list: list[Any] = []
+                for credential in credentials:
+                    credential_info_list.append({
+                        "id": credential.get("id"),
+                        "name": credential.get("name"),
+                        "type": credential.get("type"),
+                        "is_default": credential.get("is_default"),
+                    })
 
                 datasource_plugins.append({
                     "node_id": datasource_node.get("id"),
                     "plugin_id": datasource_node_data.get("plugin_id"),
                     "provider_name": datasource_node_data.get("provider_name"),
-                    "provider_type": datasource_node_data.get("provider_type"),
+                    "datasource_type": datasource_node_data.get("provider_type"),
                     "title": datasource_node_data.get("title"),
                     "user_input_variables": user_input_variables,
+                    "credentials": credential_info_list,
                 })
 
         return datasource_plugins
+
+    def get_pipeline(self, tenant_id: str, dataset_id: str) -> Pipeline:
+        """
+        Get pipeline
+        """
+        dataset: Dataset | None = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError("Dataset not found")
+        pipeline: Pipeline | None = db.session.query(Pipeline).filter(Pipeline.id == dataset.pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+        return pipeline

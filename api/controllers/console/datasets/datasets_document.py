@@ -145,7 +145,7 @@ class DatasetDocumentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: str):
         dataset_id = str(dataset_id)
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
@@ -153,7 +153,7 @@ class DatasetDocumentListApi(Resource):
         sort = request.args.get("sort", default="-created_at", type=str)
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
-            fetch_val = request.args.get("fetch", default="false")
+            fetch_val = request.args.get("fetch", default=False)
             if isinstance(fetch_val, bool):
                 fetch = fetch_val
             else:
@@ -250,7 +250,7 @@ class DatasetDocumentListApi(Resource):
     @marshal_with(dataset_and_document_fields)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self, dataset_id):
+    def post(self, dataset_id: str):
         dataset_id = str(dataset_id)
 
         dataset = DatasetService.get_dataset(dataset_id)
@@ -308,7 +308,7 @@ class DatasetDocumentListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def delete(self, dataset_id):
+    def delete(self, dataset_id: str):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:

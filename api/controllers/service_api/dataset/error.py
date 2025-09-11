@@ -47,3 +47,8 @@ class DatasetInUseError(BaseHTTPException):
     error_code = "dataset_in_use"
     description = "The dataset is being used by some apps. Please remove the dataset from the apps before deleting it."
     code = 409
+
+class PipelineRunError(BaseHTTPException):
+    error_code = "pipeline_run_error"
+    description = "Pipeline run error."
+    code = 400

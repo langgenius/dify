@@ -200,7 +200,7 @@ class DatasetListApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    def get(self, tenant_id):
+    def get(self, tenant_id: str):
         """Resource for getting datasets."""
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
