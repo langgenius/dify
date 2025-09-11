@@ -48,102 +48,54 @@ class TestChatMessageApiPermissions:
         account._current_tenant = tenant
         return account
 
-    @pytest.fixture
-    def request_data(self):
-        """Valid request data for chat message API."""
-        return {
-            "inputs": {},
-            "query": "Hello, world!",
-            "model_config": {"model": {"provider": "openai", "name": "gpt-4", "mode": "chat", "completion_params": {}}},
-            "response_mode": "blocking",
-        }
+    @pytest.mark.parametrize(
+        ("role", "status"),
+        [
+            (TenantAccountRole.OWNER, 200),
+            (TenantAccountRole.ADMIN, 200),
+            (TenantAccountRole.EDITOR, 200),
+            (TenantAccountRole.NORMAL, 403),
+            (TenantAccountRole.DATASET_OPERATOR, 403),
+        ],
+    )
+    def test_post_with_owner_role_succeeds(
+        self,
+        test_client: FlaskClient,
+        auth_header,
+        monkeypatch,
+        mock_app_model,
+        mock_account,
+        role: TenantAccountRole,
+        status: int,
+    ):
+        """Test that OWNER role can access chat-messages endpoint."""
 
-    def _setup_mocks(self, monkeypatch, mock_app_model, mock_user, mock_generate_response=None):
         """Setup common mocks for testing."""
         # Mock app loading
+
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
         monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         # Mock current user
-        monkeypatch.setattr(completion_api, "current_user", mock_user)
+        monkeypatch.setattr(completion_api, "current_user", mock_account)
 
-        # Mock AppGenerateService.generate
-        if mock_generate_response is None:
-            mock_generate_response = {"message": "Test response"}
-        mock_generate = mock.Mock(return_value=mock_generate_response)
+        mock_generate = mock.Mock(return_value={"message": "Test response"})
         monkeypatch.setattr(AppGenerateService, "generate", mock_generate)
 
-    def test_post_with_owner_role_succeeds(
-        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account, request_data
-    ):
-        """Test that OWNER role can access chat-messages endpoint."""
         # Set user role to OWNER
-        mock_account.role = TenantAccountRole.OWNER
-
-        self._setup_mocks(monkeypatch, mock_app_model, mock_account)
+        mock_account.role = role
 
         response = test_client.post(
-            f"/console/api/apps/{mock_app_model.id}/chat-messages", headers=auth_header, json=request_data
+            f"/console/api/apps/{mock_app_model.id}/chat-messages",
+            headers=auth_header,
+            json={
+                "inputs": {},
+                "query": "Hello, world!",
+                "model_config": {
+                    "model": {"provider": "openai", "name": "gpt-4", "mode": "chat", "completion_params": {}}
+                },
+                "response_mode": "blocking",
+            },
         )
 
-        assert response.status_code == 200
-
-    def test_post_with_admin_role_succeeds(
-        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account, request_data
-    ):
-        """Test that ADMIN role can access chat-messages endpoint."""
-        # Set user role to ADMIN
-        mock_account.role = TenantAccountRole.ADMIN
-
-        self._setup_mocks(monkeypatch, mock_app_model, mock_account)
-
-        response = test_client.post(
-            f"/console/api/apps/{mock_app_model.id}/chat-messages", headers=auth_header, json=request_data
-        )
-
-        assert response.status_code == 200
-
-    def test_post_with_editor_role_succeeds(
-        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account, request_data
-    ):
-        """Test that EDITOR role can access chat-messages endpoint."""
-        # Set user role to EDITOR
-        mock_account.role = TenantAccountRole.EDITOR
-
-        self._setup_mocks(monkeypatch, mock_app_model, mock_account)
-
-        response = test_client.post(
-            f"/console/api/apps/{mock_app_model.id}/chat-messages", headers=auth_header, json=request_data
-        )
-
-        assert response.status_code == 200
-
-    def test_post_with_normal_role_forbidden(
-        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account, request_data
-    ):
-        """Test that NORMAL role gets 403 Forbidden from chat-messages endpoint."""
-        # Set user role to NORMAL
-        mock_account.role = TenantAccountRole.NORMAL
-
-        self._setup_mocks(monkeypatch, mock_app_model, mock_account)
-
-        response = test_client.post(
-            f"/console/api/apps/{mock_app_model.id}/chat-messages", headers=auth_header, json=request_data
-        )
-
-        assert response.status_code == 403
-
-    def test_post_with_dataset_operator_role_forbidden(
-        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account, request_data
-    ):
-        """Test that DATASET_OPERATOR role gets 403 Forbidden from chat-messages endpoint."""
-        # Set user role to DATASET_OPERATOR
-        mock_account.role = TenantAccountRole.DATASET_OPERATOR
-
-        self._setup_mocks(monkeypatch, mock_app_model, mock_account)
-
-        response = test_client.post(
-            f"/console/api/apps/{mock_app_model.id}/chat-messages", headers=auth_header, json=request_data
-        )
-
-        assert response.status_code == 403
+        assert response.status_code == status
