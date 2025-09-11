@@ -38,6 +38,6 @@ else:
         "vtt",
         "properties",
         "pptx",
-        "ppt"
+        "ppt",
     ]
 DOCUMENT_EXTENSIONS = _doc_extensions + [ext.upper() for ext in _doc_extensions]
