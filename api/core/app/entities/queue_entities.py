@@ -432,8 +432,8 @@ class QueueAgentLogEvent(AppQueueEvent):
     id: str
     label: str
     node_execution_id: str
-    parent_id: str | None
-    error: str | None
+    parent_id: str | None = None
+    error: str | None = None
     status: str
     data: Mapping[str, Any]
     metadata: Optional[Mapping[str, Any]] = None
