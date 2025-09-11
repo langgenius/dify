@@ -105,6 +105,9 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     def post(self, app_model):
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
         if not current_user.is_editor:
             raise Forbidden()
 
