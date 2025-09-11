@@ -466,7 +466,6 @@ class AccountService:
                 language=language,
                 to=account_email,
                 is_allow_register=is_allow_register,
-                account_name=account.name,
             )
         cls.reset_password_rate_limiter.increment_rate_limit(account_email)
         return token
