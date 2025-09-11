@@ -492,6 +492,7 @@ class AccountService:
             send_email_register_mail_task_when_account_exist.delay(
                 language=language,
                 to=account_email,
+                account_name=account.name,
             )
 
         else:
