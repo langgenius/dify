@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { RiSettings2Line } from '@remixicon/react'
 import ConfigCredentials from './config-credentials'
 import { AuthType, type Credential, type CustomCollectionBackend, type CustomParamSchema } from '@/app/components/tools/types'
@@ -27,7 +27,7 @@ const TestApi: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const language = getLanguage(locale)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [tempCredential, setTempCredential] = React.useState<Credential>(customCollection.credentials)

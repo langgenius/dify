@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, use } from 'react'
+import { useContextSelector } from 'use-context-selector'
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
@@ -58,6 +59,7 @@ type ProviderContextState = {
       size: number
       limit: number
     }
+
   },
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
@@ -109,7 +111,8 @@ const ProviderContext = createContext<ProviderContextState>({
   isAllowTransferWorkspace: false,
 })
 
-export const useProviderContext = () => useContext(ProviderContext)
+export { ProviderContext }
+export type { ProviderContextState }
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
@@ -240,10 +243,12 @@ export const ProviderContextProvider = ({
       licenseLimit,
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
+
     }}>
       {children}
     </ProviderContext.Provider>
   )
 }
 
+export const useProviderContext = () => use(ProviderContext)
 export default ProviderContext

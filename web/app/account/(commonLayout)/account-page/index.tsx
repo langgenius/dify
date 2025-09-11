@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import DeleteAccount from '../delete-account'
 import AvatarWithEdit from './AvatarWithEdit'
 import Collapse from '@/app/components/header/account-setting/collapse'
@@ -40,7 +40,7 @@ export default function AccountPage() {
   const apps = appList?.data || []
   const { mutateUserProfile, userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
   const [editing, setEditing] = useState(false)

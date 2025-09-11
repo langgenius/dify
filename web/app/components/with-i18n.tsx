@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import I18NContext from '@/context/i18n'
 
 export type II18NHocProps = {
@@ -10,7 +10,7 @@ export type II18NHocProps = {
 
 const withI18N = (Component: any) => {
   return (props: any) => {
-    const { i18n } = useContext(I18NContext)
+    const { i18n } = use(I18NContext)
     return (
       <Component {...props} i18n={i18n} />
     )

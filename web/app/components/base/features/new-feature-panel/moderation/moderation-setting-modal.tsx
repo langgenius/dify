@@ -1,7 +1,7 @@
 import type { ChangeEvent, FC } from 'react'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import ModerationContent from './moderation-content'
@@ -49,7 +49,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const { data: modelProviders, isLoading, mutate } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const { setShowAccountSettingModal } = useModalContext()

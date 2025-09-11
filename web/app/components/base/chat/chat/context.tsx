@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'react'
 import type { ChatProps } from './index'
 
 export type ChatContextValue = Pick<ChatProps, 'config'
@@ -61,6 +61,6 @@ export const ChatContextProvider = ({
   )
 }
 
-export const useChatContext = () => useContext(ChatContext)
+export const useChatContext = () => use(ChatContext)
 
 export default ChatContext

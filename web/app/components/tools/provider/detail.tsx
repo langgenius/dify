@@ -1,7 +1,7 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -41,11 +41,11 @@ import {
   updateCustomCollection,
 } from '@/service/tools'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
+import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
   collection: Collection
@@ -59,7 +59,7 @@ const ProviderDetail = ({
   onRefreshData,
 }: Props) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const language = getLanguage(locale)
 
   const needAuth = collection.allow_delete || collection.type === CollectionType.model
@@ -120,7 +120,7 @@ const ProviderDetail = ({
   const getCustomProvider = useCallback(async () => {
     setIsDetailLoading(true)
     const res = await fetchCustomCollection(collection.name)
-    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+    if (res.credentials.auth_type === AuthType.apiKeyHeader && !res.credentials.api_key_header_prefix) {
       if (res.credentials.api_key_value)
         res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
     }

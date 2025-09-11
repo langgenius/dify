@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { noop } from 'lodash-es'
 
@@ -16,6 +16,6 @@ const DatasetsContext = createContext<DatasetsContextValue>({
   currentDataset: undefined,
 })
 
-export const useDatasetsContext = () => useContext(DatasetsContext)
+export const useDatasetsContext = () => use(DatasetsContext)
 
 export default DatasetsContext

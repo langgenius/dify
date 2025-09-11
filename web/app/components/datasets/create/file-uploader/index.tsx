@@ -1,7 +1,7 @@
 'use client'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import useSWR from 'swr'
 import { RiDeleteBinLine, RiUploadCloud2Line } from '@remixicon/react'
 import DocumentFileIcon from '../../common/document-file-icon'
@@ -41,8 +41,8 @@ const FileUploader = ({
   notSupportBatchUpload,
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
-  const { locale } = useContext(I18n)
+  const { notify } = use(ToastContext)
+  const { locale } = use(I18n)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)

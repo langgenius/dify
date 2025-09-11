@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -40,7 +40,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
-  const { modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const { modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = use(ConfigContext)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()

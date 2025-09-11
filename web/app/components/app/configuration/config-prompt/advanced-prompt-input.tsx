@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useBoolean } from 'ahooks'
 import produce from 'immer'
 import {
@@ -72,7 +72,7 @@ const AdvancedPromptInput: FC<Props> = ({
     dataSets,
     showSelectDataSet,
     externalDataToolsConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {

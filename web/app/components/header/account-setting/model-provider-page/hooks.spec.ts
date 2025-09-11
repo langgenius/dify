@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { useLanguage } from './hooks'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { after } from 'node:test'
 
 jest.mock('swr', () => ({
@@ -9,9 +9,9 @@ jest.mock('swr', () => ({
   useSWRConfig: jest.fn(),
 }))
 
-// mock use-context-selector
-jest.mock('use-context-selector', () => ({
-  useContext: jest.fn(),
+// mock react
+jest.mock('react', () => ({
+  use: jest.fn(),
 }))
 
 // mock service/common functions
@@ -59,7 +59,7 @@ after(() => {
 
 describe('useLanguage', () => {
   it('should replace hyphen with underscore in locale', () => {
-    (useContext as jest.Mock).mockReturnValue({
+    (use as jest.Mock).mockReturnValue({
       locale: 'en-US',
     })
     const { result } = renderHook(() => useLanguage())
@@ -67,7 +67,7 @@ describe('useLanguage', () => {
   })
 
   it('should return locale as is if no hyphen exists', () => {
-    (useContext as jest.Mock).mockReturnValue({
+    (use as jest.Mock).mockReturnValue({
       locale: 'enUS',
     })
 
@@ -77,7 +77,7 @@ describe('useLanguage', () => {
 
   it('should handle multiple hyphens', () => {
     // Mock the I18n context return value
-    (useContext as jest.Mock).mockReturnValue({
+    (use as jest.Mock).mockReturnValue({
       locale: 'zh-Hans-CN',
     })
 

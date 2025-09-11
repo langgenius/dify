@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { CrawlOptions, CustomFile } from '@/models/datasets'
@@ -25,7 +25,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
-  const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
+  const { indexingTechnique, dataset } = use(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   const invalidDocumentDetail = useInvalidDocumentDetailKey()

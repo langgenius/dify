@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import AppCard from '@/app/components/app/overview/app-card'
 import Loading from '@/app/components/base/loading'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
@@ -28,7 +28,7 @@ export type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
 

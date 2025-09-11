@@ -1,6 +1,6 @@
 'use client'
 
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,7 +32,7 @@ const DatasetCard = ({
   onSuccess,
 }: DatasetCardProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { push } = useRouter()
   const EXTERNAL_PROVIDER = 'external' as const
 
@@ -61,10 +61,10 @@ const DatasetCard = ({
 
       // Clear SWR cache to prevent stale data in knowledge retrieval nodes
       mutate(
-        (key) => {
+        (key: string | { url?: string }) => {
           if (typeof key === 'string') return key.includes('/datasets')
-          if (typeof key === 'object' && key !== null)
-            return key.url === '/datasets' || key.url?.includes('/datasets')
+          if (typeof key === 'object' && key !== null && 'url' in key)
+            return (key as { url?: string }).url?.includes('/datasets')
           return false
         },
         undefined,

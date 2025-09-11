@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import type { ContextMenuProps } from './index'
 
-const useContextMenu = (props: ContextMenuProps) => {
+const useMenu = (props: ContextMenuProps) => {
   const {
     isNamedVersion,
   } = props
@@ -42,4 +42,4 @@ const useContextMenu = (props: ContextMenuProps) => {
   }
 }
 
-export default useContextMenu
+export default useMenu

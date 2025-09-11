@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import useSWR from 'swr'
 import { useDebounceFn } from 'ahooks'
 import { RiRobot2Line } from '@remixicon/react'
@@ -46,7 +46,7 @@ const Apps = ({
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { push } = useRouter()
-  const { hasEditPermission } = useContext(ExploreContext)
+  const { hasEditPermission } = use(ExploreContext)
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')

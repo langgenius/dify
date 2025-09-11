@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import produce from 'immer'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
@@ -70,7 +70,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     hasSetBlockStatus,
     showSelectDataSet,
     externalDataToolsConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {

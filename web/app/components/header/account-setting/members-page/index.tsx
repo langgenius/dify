@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InviteModal from './invite-modal'
@@ -36,7 +36,7 @@ const MembersPage = () => {
     dataset_operator: t('common.members.datasetOperator'),
     normal: t('common.members.normal'),
   }
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR(
@@ -53,7 +53,7 @@ const MembersPage = () => {
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)

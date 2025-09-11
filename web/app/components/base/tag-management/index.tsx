@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import { useStore as useTagStore } from './store'
@@ -20,7 +20,7 @@ type TagManagementModalProps = {
 
 const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
   const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)

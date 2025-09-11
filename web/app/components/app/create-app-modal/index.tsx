@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
@@ -40,7 +40,7 @@ type CreateAppProps = {
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
 
   const [appMode, setAppMode] = useState<AppMode>('advanced-chat')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })

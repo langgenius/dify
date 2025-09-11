@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'react'
 import type {
   Callback,
   ChatConfig,
@@ -96,4 +96,4 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   allInputsHidden: false,
   initUserVariables: {},
 })
-export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)
+export const useChatWithHistoryContext = () => use(ChatWithHistoryContext)

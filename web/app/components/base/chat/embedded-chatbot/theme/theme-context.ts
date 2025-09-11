@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'react'
 import { hexToRGBA } from './utils'
 
 export class Theme {
@@ -70,4 +70,4 @@ export class ThemeBuilder {
 }
 
 const ThemeContext = createContext<ThemeBuilder>(new ThemeBuilder())
-export const useThemeContext = () => useContext(ThemeContext)
+export const useThemeContext = () => use(ThemeContext)

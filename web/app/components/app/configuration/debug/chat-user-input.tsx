@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import ConfigContext from '@/context/debug-configuration'
 import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
@@ -18,7 +18,7 @@ const ChatUserInput = ({
   inputs,
 }: Props) => {
   const { t } = useTranslation()
-  const { modelConfig, setInputs } = useContext(ConfigContext)
+  const { modelConfig, setInputs } = use(ConfigContext)
 
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()

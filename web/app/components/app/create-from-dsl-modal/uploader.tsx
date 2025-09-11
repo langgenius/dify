@@ -6,7 +6,7 @@ import {
   RiUploadCloud2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { formatFileSize } from '@/utils/format'
 import cn from '@/utils/classnames'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
@@ -25,7 +25,7 @@ const Uploader: FC<Props> = ({
   className,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)

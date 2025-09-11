@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 
 import { Document } from '@/app/components/base/icons/src/vender/features'
 import Tooltip from '@/app/components/base/tooltip'
@@ -16,7 +16,7 @@ const ConfigDocument: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
-  const { isShowDocumentConfig } = useContext(ConfigContext)
+  const { isShowDocumentConfig } = use(ConfigContext)
 
   const isDocumentEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.document) ?? false
 

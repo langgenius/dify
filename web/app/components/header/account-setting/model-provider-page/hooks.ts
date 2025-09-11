@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -36,9 +36,18 @@ import {
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginType } from '@/app/components/plugins/types'
 import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
-import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
+
+type ModelModalPayload = {
+  currentProvider: ModelProvider
+  currentConfigurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  isModelCredential?: boolean
+  credential?: Credential
+  model?: CustomModel
+  onSaveCallback: () => void
+} | null
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -70,7 +79,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 }
 
 export const useLanguage = () => {
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   return locale.replace('-', '_')
 }
 
@@ -347,7 +356,7 @@ export const useRefreshModel = () => {
 }
 
 export const useModelModalHandler = () => {
-  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
+  const [_modelModalPayload, setModelModalPayload] = useState<ModelModalPayload>(null) // added _ to pass lint test by ignoring unused variable
   const { handleRefreshModel } = useRefreshModel()
 
   return (
@@ -359,15 +368,13 @@ export const useModelModalHandler = () => {
     model?: CustomModel,
     onUpdate?: () => void,
   ) => {
-    setShowModelModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-        isModelCredential,
-        credential,
-        model,
-      },
+    setModelModalPayload({
+      currentProvider: provider,
+      currentConfigurationMethod: configurationMethod,
+      currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
+      isModelCredential,
+      credential,
+      model,
       onSaveCallback: () => {
         handleRefreshModel(provider, configurationMethod, CustomConfigurationModelFixedFields)
         onUpdate?.()

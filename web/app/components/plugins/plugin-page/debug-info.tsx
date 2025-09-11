@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import I18n from '@/context/i18n'
 import {
   RiArrowRightUpLine,
@@ -18,7 +18,7 @@ const i18nPrefix = 'plugin.debugInfo'
 
 const DebugInfo: FC = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const { data: info, isLoading } = useDebugKey()
 
   // info.key likes 4580bdb7-b878-471c-a8a4-bfd760263a53 mask the middle part using *.

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import produce from 'immer'
 import {
   RiAddLine,
@@ -47,7 +47,7 @@ const Prompt: FC<IPromptProps> = ({
     modelModeType,
     dataSets,
     hasSetBlockStatus,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
 
   const handleMessageTypeChange = (index: number, role: PromptRole) => {
     const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {

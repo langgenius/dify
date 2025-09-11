@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useDocumentContext } from '../index'
 import { ProcessStatus } from '../segment-add'
@@ -48,6 +48,11 @@ import {
 import { useInvalid } from '@/service/use-base'
 import { noop } from 'lodash-es'
 
+const useDocumentSelector = (selector: (context: any) => any) => {
+  const context = useDocumentContext()
+  return selector(context)
+}
+
 const DEFAULT_LIMIT = 10
 
 type CurrSegmentType = {
@@ -77,8 +82,8 @@ const SegmentListContext = createContext<SegmentListContextValue>({
   currChildChunk: { showModal: false },
 })
 
-export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
-  return useContextSelector(SegmentListContext, selector)
+export const useSegmentListContext = () => {
+  return use(SegmentListContext)
 }
 
 type ICompletedProps = {
@@ -100,13 +105,13 @@ const Completed: FC<ICompletedProps> = ({
   archived,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const pathname = usePathname()
-  const datasetId = useDocumentContext(s => s.datasetId) || ''
-  const documentId = useDocumentContext(s => s.documentId) || ''
-  const docForm = useDocumentContext(s => s.docForm)
-  const mode = useDocumentContext(s => s.mode)
-  const parentMode = useDocumentContext(s => s.parentMode)
+  const datasetId = useDocumentSelector(s => s.datasetId) || ''
+  const documentId = useDocumentSelector(s => s.documentId) || ''
+  const docForm = useDocumentSelector(s => s.docForm)
+  const mode = useDocumentSelector(s => s.mode)
+  const parentMode = useDocumentSelector(s => s.parentMode)
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
   const [currChildChunk, setCurrChildChunk] = useState<CurrChildChunkType>({ showModal: false })

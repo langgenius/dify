@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import Action from './action'
 import type { Plugin } from '@/app/components/plugins/types.ts'
@@ -27,7 +27,7 @@ const Item: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
   const [isShowInstallModal, {

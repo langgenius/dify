@@ -2,7 +2,7 @@ import React, { type FC, useCallback } from 'react'
 import { RiMoreFill } from '@remixicon/react'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import MenuItem from './menu-item'
-import useContextMenu from './use-context-menu'
+import useMenu from './use-context-menu'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -24,7 +24,7 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
   const {
     deleteOperation,
     options,
-  } = useContextMenu(props)
+  } = useMenu(props)
 
   const handleClickTrigger = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()

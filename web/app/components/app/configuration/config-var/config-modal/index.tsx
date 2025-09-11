@@ -2,7 +2,7 @@
 import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import produce from 'immer'
 import ModalFoot from '../modal-foot'
 import ConfigSelect from '../config-select'
@@ -51,7 +51,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   onConfirm,
   supportFile,
 }) => {
-  const { modelConfig } = useContext(ConfigContext)
+  const { modelConfig } = use(ConfigContext)
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload

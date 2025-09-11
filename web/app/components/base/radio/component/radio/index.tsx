@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useId } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
 import cn from '@/utils/classnames'
@@ -24,7 +24,7 @@ export default function Radio({
   disabled,
   onChange,
 }: IRadioProps): React.JSX.Element {
-  const groupContext = useContext(RadioGroupContext)
+  const groupContext = use(RadioGroupContext)
   const labelId = useId()
   const handleChange = (e: IRadioProps['value']) => {
     if (disabled)

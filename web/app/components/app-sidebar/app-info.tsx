@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import React, { useCallback, useState } from 'react'
 import {
   RiDeleteBinLine,
@@ -60,7 +60,7 @@ export type IAppInfoProps = {
 
 const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)

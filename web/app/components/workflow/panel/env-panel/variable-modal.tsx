@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine } from '@remixicon/react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
@@ -23,7 +23,7 @@ const VariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const envList = useStore(s => s.environmentVariables)
   const envSecrets = useStore(s => s.envSecrets)
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')

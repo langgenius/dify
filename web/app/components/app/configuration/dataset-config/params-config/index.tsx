@@ -1,7 +1,7 @@
 'use client'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { RiEqualizer2Line } from '@remixicon/react'
 import ConfigContent from './config-content'
 import cn from '@/utils/classnames'
@@ -33,7 +33,7 @@ const ParamsConfig = ({
     setDatasetConfigs,
     rerankSettingModalOpen,
     setRerankSettingModalOpen,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
 
   useEffect(() => {

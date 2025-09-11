@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import produce from 'immer'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -46,7 +46,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const {
     mode,
     dataSets,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 
   const hasVar = promptVariables.length > 0

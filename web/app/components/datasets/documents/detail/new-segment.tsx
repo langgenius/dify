@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
@@ -36,15 +36,14 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   viewNewlyAddedChunk,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [keywords, setKeywords] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
-  const fullScreen = useSegmentListContext(s => s.fullScreen)
-  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
+  const { fullScreen, toggleFullScreen } = useSegmentListContext()
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
@@ -168,9 +167,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
               <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
           )}
-          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
+          <div
+            className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5'
+            onClick={() => toggleFullScreen()}
+          >
             <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />
           </div>
+
           <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={handleCancel.bind(null, 'esc')}>
             <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>

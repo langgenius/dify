@@ -8,7 +8,7 @@ import {
   RiDeleteBinLine,
   RiMoreFill,
 } from '@remixicon/react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
@@ -44,7 +44,7 @@ const HeaderOptions: FC<Props> = ({
   controlUpdateList,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0

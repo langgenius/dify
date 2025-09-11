@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
@@ -56,7 +56,7 @@ const ChatVariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const varList = useStore(s => s.conversationVariables)
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)

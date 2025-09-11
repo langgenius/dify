@@ -9,7 +9,7 @@ import {
   RiEqualizer2Line,
   RiSparklingFill,
 } from '@remixicon/react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
@@ -90,7 +90,7 @@ const Debug: FC<IDebug> = ({
     completionParams,
     hasSetContextVar,
     datasetConfigs,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   useEffect(() => {
@@ -109,7 +109,7 @@ const Debug: FC<IDebug> = ({
       setIsShowFormattingChangeConfirm(true)
   }, [formattingChanged])
 
-  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType | null>(null)
+  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType>(null)
   const handleClearConversation = () => {
     debugWithSingleModelRef.current?.handleRestart()
   }
@@ -135,7 +135,7 @@ const Debug: FC<IDebug> = ({
     setFormattingChanged(false)
   }
 
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const logError = useCallback((message: string) => {
     notify({ type: 'error', message })
   }, [notify])
@@ -494,7 +494,7 @@ const Debug: FC<IDebug> = ({
             {mode !== AppType.completion && (
               <div className='h-0 grow overflow-hidden'>
                 <DebugWithSingleModel
-                  ref={debugWithSingleModelRef}
+                  ref={debugWithSingleModelRef as React.RefObject<DebugWithSingleModelRefType>}
                   checkCanSend={checkCanSend}
                 />
               </div>

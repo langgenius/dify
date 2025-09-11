@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import produce from 'immer'
 import {
   RiAddLine,
@@ -43,7 +43,7 @@ const AddToolModal: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const [currentType, setCurrentType] = useState('builtin')
   const [currentCategory, setCurrentCategory] = useState('')
   const [keywords, setKeywords] = useState<string>('')
@@ -104,7 +104,7 @@ const AddToolModal: FC<Props> = ({
   const {
     modelConfig,
     setModelConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
 
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {

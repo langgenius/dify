@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import ParamConfig from './param-config'
 import { Vision } from '@/app/components/base/icons/src/vender/features'
 import Tooltip from '@/app/components/base/tooltip'
@@ -16,7 +16,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
-  const { isShowVisionConfig, isAllowVideoUpload } = useContext(ConfigContext)
+  const { isShowVisionConfig, isAllowVideoUpload } = use(ConfigContext)
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
 

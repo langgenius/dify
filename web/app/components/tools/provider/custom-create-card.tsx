@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import {
   RiAddCircleFill,
   RiArrowRightUpLine,
@@ -22,7 +22,7 @@ type Props = {
 
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const language = getLanguage(locale)
   const { isCurrentWorkspaceManager } = useAppContext()
 

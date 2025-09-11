@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { useMemo, useState } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUnmount } from 'ahooks'
 import { RiAddLine } from '@remixicon/react'
@@ -35,7 +35,7 @@ type PanelProps = {
 
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)

@@ -12,8 +12,8 @@ import {
 } from 'react'
 import {
   createContext,
-  useContextSelector,
-} from 'use-context-selector'
+  use,
+} from 'react'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import type { Plugin } from '../types'
 import {
@@ -101,7 +101,7 @@ type MarketplaceContextProviderProps = {
 }
 
 export function useMarketplaceContext(selector: (value: MarketplaceContextValue) => any) {
-  return useContextSelector(MarketplaceContext, selector)
+  return selector(use(MarketplaceContext))
 }
 
 export const MarketplaceContextProvider = ({
@@ -175,7 +175,6 @@ export const MarketplaceContextProvider = ({
         })
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryPlugins, queryMarketplaceCollectionsAndPlugins, isSuccess, exclude])
 
   const handleQueryMarketplaceCollectionsAndPlugins = useCallback(() => {

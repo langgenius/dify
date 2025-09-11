@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
@@ -22,7 +22,7 @@ export type RunProps = {
 
 const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const appDetail = useAppStore(state => state.appDetail)
   const [loading, setLoading] = useState<boolean>(true)

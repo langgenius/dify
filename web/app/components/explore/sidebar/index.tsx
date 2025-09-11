@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
 import Toast from '../../base/toast'
@@ -49,7 +49,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = lastSegment === 'apps'
-  const { installedApps, setInstalledApps, setIsFetchingInstalledApps } = useContext(ExploreContext)
+  const { installedApps, setInstalledApps, setIsFetchingInstalledApps } = use(ExploreContext)
   const { isFetching: isFetchingInstalledApps, data: ret, refetch: fetchInstalledAppList } = useGetInstalledApps()
   const { mutateAsync: uninstallApp } = useUninstallApp()
   const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()

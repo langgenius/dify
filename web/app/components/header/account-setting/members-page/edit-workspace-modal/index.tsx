@@ -4,7 +4,7 @@ import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import s from './index.module.css'
 import Button from '@/app/components/base/button'
 import { RiCloseLine } from '@remixicon/react'
@@ -20,7 +20,7 @@ const EditWorkspaceModal = ({
   onCancel,
 }: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
   const [name, setName] = useState<string>(currentWorkspace.name)
 

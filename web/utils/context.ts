@@ -1,24 +1,24 @@
-import { type Context, type Provider, createContext, useContext } from 'react'
-import * as selector from 'use-context-selector'
+import { type Context, type Provider, createContext, use } from 'react'
+import * as selector from 'react'
 
 const createCreateCtxFunction = (
-  useContextImpl: typeof useContext,
+  useImpl: typeof use,
   createContextImpl: typeof createContext) => {
   return function<T>({ name, defaultValue }: CreateCtxOptions<T> = {}): CreateCtxReturn<T> {
     const emptySymbol = Symbol(`empty ${name}`)
     // @ts-expect-error it's ok here
     const context = createContextImpl<T>(defaultValue ?? emptySymbol)
-    const useContextValue = () => {
-      const ctx = useContextImpl(context)
+    const useValue = () => {
+      const ctx = useImpl(context)
       if (ctx === emptySymbol)
         throw new Error(`No ${name ?? 'related'} context found.`)
 
       return ctx
     }
-    const result = [context.Provider, useContextValue, context] as CreateCtxReturn<T>
+    const result = [context.Provider, useValue, context] as CreateCtxReturn<T>
     result.context = context
     result.provider = context.Provider
-    result.useContextValue = useContextValue
+    result.useValue = useValue
     return result
   }
 }
@@ -31,15 +31,15 @@ type CreateCtxOptions<T> = {
 type CreateCtxReturn<T> = [Provider<T>, () => T, Context<T>] & {
   context: Context<T>
   provider: Provider<T>
-  useContextValue: () => T
+  useValue: () => T
 }
 
 // example
 // const [AppProvider, useApp, AppContext] = createCtx<AppContextValue>()
 
-export const createCtx = createCreateCtxFunction(useContext, createContext)
+export const createCtx = createCreateCtxFunction(use, createContext)
 
 export const createSelectorCtx = createCreateCtxFunction(
-  selector.useContext,
+  selector.use,
   selector.createContext as typeof createContext,
 )

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { ToastContext } from '@/app/components/base/toast'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
@@ -32,7 +32,7 @@ const ObjectValueItem: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const [isFocus, setIsFocus] = useState(false)
 
   const handleKeyChange = useCallback((index: number) => {

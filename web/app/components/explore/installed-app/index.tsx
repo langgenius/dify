@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useEffect } from 'react'
 import React from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import ExploreContext from '@/context/explore-context'
 import TextGenerationApp from '@/app/components/share/text-generation'
 import Loading from '@/app/components/base/loading'
@@ -20,7 +20,7 @@ export type IInstalledAppProps = {
 const InstalledApp: FC<IInstalledAppProps> = ({
   id,
 }) => {
-  const { installedApps, isFetchingInstalledApps } = useContext(ExploreContext)
+  const { installedApps, isFetchingInstalledApps } = use(ExploreContext)
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const installedApp = installedApps.find(item => item.id === id)
   const updateWebAppAccessMode = useWebAppStore(s => s.updateWebAppAccessMode)

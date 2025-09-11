@@ -3,7 +3,7 @@
 import type { MouseEventHandler } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
@@ -46,7 +46,7 @@ export enum CreateFromDSLModalTab {
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
@@ -84,7 +84,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       handleFile(droppedFile)
   }, [droppedFile])
 
-  const onCreate: MouseEventHandler = async () => {
+  const onCreate = async () => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
       return
     if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue)

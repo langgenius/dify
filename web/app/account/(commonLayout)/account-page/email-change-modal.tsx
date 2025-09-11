@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { ToastContext } from '@/app/components/base/toast'
 import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
@@ -33,7 +33,7 @@ enum STEP {
 
 const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const router = useRouter()
   const [step, setStep] = useState<STEP>(STEP.start)
   const [code, setCode] = useState<string>('')

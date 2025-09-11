@@ -8,8 +8,8 @@ import {
 } from 'react'
 import {
   createContext,
-  useContextSelector,
-} from 'use-context-selector'
+  use,
+} from 'react'
 import type { FilterState } from './filter-management'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { noop } from 'lodash-es'
@@ -17,7 +17,7 @@ import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type PluginPageContextValue = {
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
   currentPluginID: string | undefined
   setCurrentPluginID: (pluginID?: string) => void
   filters: FilterState
@@ -28,7 +28,7 @@ export type PluginPageContextValue = {
 }
 
 export const PluginPageContext = createContext<PluginPageContextValue>({
-  containerRef: { current: null },
+  containerRef: { current: null as HTMLDivElement | null },
   currentPluginID: undefined,
   setCurrentPluginID: noop,
   filters: {
@@ -47,7 +47,7 @@ type PluginPageContextProviderProps = {
 }
 
 export function usePluginPageContext(selector: (value: PluginPageContextValue) => any) {
-  return useContextSelector(PluginPageContext, selector)
+  return selector(use(PluginPageContext))
 }
 
 export const PluginPageContextProvider = ({
@@ -87,3 +87,5 @@ export const PluginPageContextProvider = ({
     </PluginPageContext.Provider>
   )
 }
+
+export const usePluginPageContextValue = () => use(PluginPageContext)

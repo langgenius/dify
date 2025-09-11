@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'react'
 import useSWR from 'swr'
 import { fetchWorkspaces } from '@/service/common'
 import type { IWorkspace } from '@/models/common'
@@ -31,6 +31,6 @@ export const WorkspaceProvider = ({
   )
 }
 
-export const useWorkspacesContext = () => useContext(WorkspacesContext)
+export const useWorkspacesContext = () => use(WorkspacesContext)
 
 export default WorkspacesContext

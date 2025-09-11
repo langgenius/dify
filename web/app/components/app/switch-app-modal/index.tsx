@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import AppIconPicker from '../../base/app-icon-picker'
@@ -36,7 +36,7 @@ type SwitchAppModalProps = {
 const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const setAppDetail = useAppStore(s => s.setAppDetail)
 
   const { isCurrentWorkspaceEditor } = useAppContext()

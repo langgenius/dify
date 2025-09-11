@@ -2,7 +2,7 @@
 import type { FC, PropsWithChildren } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import {
   RiAlertFill,
   RiArrowLeftLine,
@@ -148,7 +148,7 @@ const StepTwo = ({
 }: StepTwoProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 

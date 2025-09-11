@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, use } from 'react'
 import type { FC, ReactNode } from 'react'
 import { fetchCurrentWorkspace, fetchLangGeniusVersion, fetchUserProfile } from '@/service/common'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
@@ -19,7 +19,6 @@ export type AppContextValue = {
   isCurrentWorkspaceDatasetOperator: boolean
   mutateCurrentWorkspace: VoidFunction
   langGeniusVersionInfo: LangGeniusVersionResponse
-  useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
 }
 
@@ -62,14 +61,15 @@ const AppContext = createContext<AppContextValue>({
   mutateUserProfile: noop,
   mutateCurrentWorkspace: noop,
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
-  useSelector,
+
   isLoadingCurrentWorkspace: false,
 })
 
-export function useSelector<T>(selector: (value: AppContextValue) => T): T {
-  return useContextSelector(AppContext, selector)
-}
+export const useAppContext = () => use(AppContext)
 
+export const useAppContextSelector = <T,>(selector: (value: AppContextValue) => T): T => {
+  return selector(use(AppContext))
+}
 export type AppContextProviderProps = {
   children: ReactNode
 }
@@ -121,7 +121,6 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       userProfile,
       mutateUserProfile,
       langGeniusVersionInfo,
-      useSelector,
       currentWorkspace,
       isCurrentWorkspaceManager,
       isCurrentWorkspaceOwner,
@@ -139,7 +138,5 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     </AppContext.Provider>
   )
 }
-
-export const useAppContext = () => useContext(AppContext)
 
 export default AppContext

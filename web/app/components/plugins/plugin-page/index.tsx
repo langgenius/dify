@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import Link from 'next/link'
 import {
   RiBookOpenLine,
@@ -56,7 +56,7 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   useDocumentTitle(t('plugin.metadata.title'))

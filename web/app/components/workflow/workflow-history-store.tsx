@@ -1,4 +1,4 @@
-import { type ReactNode, createContext, useContext, useMemo, useState } from 'react'
+import { type ReactNode, createContext, use, useMemo, useState } from 'react'
 import { type StoreApi, create } from 'zustand'
 import { type TemporalState, temporal } from 'zundo'
 import isDeepEqual from 'fast-deep-equal'
@@ -40,7 +40,7 @@ export function useWorkflowHistoryStore() {
     store,
     shortcutsEnabled,
     setShortcutsEnabled,
-  } = useContext(WorkflowHistoryStoreContext)
+  } = use(WorkflowHistoryStoreContext)
   if (store === null)
     throw new Error('useWorkflowHistoryStoreApi must be used within a WorkflowHistoryProvider')
 

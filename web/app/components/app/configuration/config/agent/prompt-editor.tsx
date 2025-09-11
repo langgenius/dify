@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import copy from 'copy-to-clipboard'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import {
@@ -42,7 +42,7 @@ const Editor: FC<Props> = ({
     showSelectDataSet,
     externalDataToolsConfig,
     setExternalDataToolsConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const promptVariables = modelConfig.configs.prompt_variables
   const { setShowExternalDataToolModal } = useModalContext()
   const isFirstPrompt = type === 'first-prompt'

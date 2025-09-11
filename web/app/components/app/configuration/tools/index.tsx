@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import copy from 'copy-to-clipboard'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -28,7 +28,7 @@ const Tools = () => {
     externalDataToolsConfig,
     setExternalDataToolsConfig,
     modelConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const [expanded, setExpanded] = useState(true)
   const [copied, setCopied] = useState(false)
 

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import I18n from '@/context/i18n'
 import { PortalSelect } from '@/app/components/base/select'
@@ -16,7 +16,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
   value,
   onChange,
 }) => {
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
 
   const handleFormChange = (type: string, v: string) => {
     onChange({ ...value, [type]: v })

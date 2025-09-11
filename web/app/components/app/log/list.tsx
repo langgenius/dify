@@ -11,7 +11,7 @@ import { get } from 'lodash-es'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import type { ChatItemInTree } from '../../base/chat/types'
@@ -199,8 +199,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const SCROLL_DEBOUNCE_MS = 200
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
-  const { onClose, appDetail } = useContext(DrawerContext)
-  const { notify } = useContext(ToastContext)
+  const { onClose, appDetail } = use(DrawerContext)
+  const { notify } = use(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -805,7 +805,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   // Text Generator App Session Details Including Message List
   const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
   const { data: conversationDetail, mutate: conversationDetailMutate } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchCompletionConversationDetail)
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
@@ -850,7 +850,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
 const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
   const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {

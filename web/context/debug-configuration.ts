@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'react'
 import { PromptMode } from '@/models/debug'
 import type {
   AnnotationReplyConfig,
@@ -241,7 +241,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     },
   },
   datasetConfigsRef: {
-    current: null,
+    current: {} as DatasetConfigs,
   },
   setDatasetConfigs: noop,
   hasSetContextVar: false,
@@ -260,6 +260,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setRerankSettingModalOpen: noop,
 })
 
-export const useDebugConfigurationContext = () => useContext(DebugConfigurationContext)
+export const useDebugConfigurationContext = () => use(DebugConfigurationContext)
 
 export default DebugConfigurationContext

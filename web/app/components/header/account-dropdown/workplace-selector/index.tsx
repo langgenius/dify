@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
@@ -13,7 +13,7 @@ import type { Plan } from '@/app/components/billing/type'
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWorkspace = workspaces.find(v => v.current)
 

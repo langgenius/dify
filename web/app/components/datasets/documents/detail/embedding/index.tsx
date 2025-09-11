@@ -1,13 +1,12 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import Image from 'next/image'
 import { FieldInfo } from '../metadata'
-import { useDocumentContext } from '../index'
 import { IndexingType } from '../../../create/step-two'
 import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
 import EmbeddingSkeleton from './skeleton'
@@ -25,6 +24,7 @@ import {
   pauseDocIndexing,
   resumeDocIndexing,
 } from '@/service/datasets'
+import { DocumentContext } from '@/app/components/datasets/documents/detail'
 
 type IEmbeddingDetailProps = {
   datasetId?: string
@@ -159,10 +159,11 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
   retrievalMethod,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
 
-  const datasetId = useDocumentContext(s => s.datasetId)
-  const documentId = useDocumentContext(s => s.documentId)
+  const context = use(DocumentContext) as any
+  const datasetId = context?.datasetId || ''
+  const documentId = context?.documentId || ''
   const localDatasetId = dstId ?? datasetId
   const localDocumentId = docId ?? documentId
 

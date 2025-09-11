@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
@@ -34,7 +34,7 @@ const InviteModal = ({
   const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
   const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const [isLimited, setIsLimited] = useState(false)
   const [isLimitExceeded, setIsLimitExceeded] = useState(false)
   const [usedSize, setUsedSize] = useState(licenseLimit.workspace_members.size ?? 0)
@@ -46,7 +46,7 @@ const InviteModal = ({
     setIsLimitExceeded(limited && (used > licenseLimit.workspace_members.limit))
   }, [licenseLimit, emails])
 
-  const { locale } = useContext(I18n)
+  const { locale } = use(I18n)
   const [role, setRole] = useState<string>('normal')
 
   const handleSend = useCallback(async () => {

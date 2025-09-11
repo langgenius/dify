@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useMount } from 'ahooks'
-import { useContext } from 'use-context-selector'
+import { use } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
@@ -48,10 +48,10 @@ const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
 const Form = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = useContext(ToastContext)
+  const { notify } = use(ToastContext)
   const { mutate } = useSWRConfig()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
+  const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = use(DatasetDetailContext)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
