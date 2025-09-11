@@ -42,19 +42,16 @@ jobs:
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
-        if: steps.changed-files.outputs.any_changed == 'true'
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: ./web/package.json
 
       - name: Web dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Web style check
-        if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
           pnpm run fix
