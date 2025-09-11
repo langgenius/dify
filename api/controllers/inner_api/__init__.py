@@ -10,7 +10,6 @@ api = ExternalApi(
     version="1.0",
     title="Inner API",
     description="Internal APIs for enterprise features, billing, and plugin communication",
-    doc="/docs",  # Enable Swagger UI at /inner/api/docs
 )
 
 # Create namespace
