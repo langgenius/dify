@@ -2,12 +2,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import {
-  RiAddLine,
-  RiBookOpenLine,
-  RiWebhookLine,
-} from '@remixicon/react'
-import { useDocLink } from '@/context/i18n'
+import { RiAddLine } from '@remixicon/react'
 import SubscriptionCard from './subscription-card'
 import SubscriptionAddModal from './subscription-add-modal'
 import AddTypeDropdown from './add-type-dropdown'
@@ -26,13 +21,10 @@ type SubscriptionAddType = 'api-key' | 'oauth' | 'manual'
 
 export const SubscriptionList = ({ detail }: Props) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const showTopBorder = detail.declaration.tool || detail.declaration.endpoint
 
-  // Fetch subscriptions
   const { data: subscriptions, isLoading, refetch } = useTriggerSubscriptions(`${detail.plugin_id}/${detail.declaration.name}`)
 
-  // Modal states
   const [isShowAddModal, {
     setTrue: showAddModal,
     setFalse: hideAddModal,
@@ -40,7 +32,6 @@ export const SubscriptionList = ({ detail }: Props) => {
 
   const [selectedAddType, setSelectedAddType] = React.useState<SubscriptionAddType | null>(null)
 
-  // Dropdown state for add button
   const [isShowAddDropdown, {
     setTrue: showAddDropdown,
     setFalse: hideAddDropdown,
@@ -90,55 +81,27 @@ export const SubscriptionList = ({ detail }: Props) => {
             <AddTypeDropdown
               onSelect={handleAddTypeSelect}
               onClose={hideAddDropdown}
-              position='bottom'
             />
           )}
         </div>
       ) : (
-        // List state with header and secondary add button
         <>
-          <div className='system-sm-semibold-uppercase mb-3 flex items-center justify-between'>
+          <div className='system-sm-semibold-uppercase relative mb-3 flex items-center justify-between'>
             <div className='flex items-center gap-1'>
               <span className='system-sm-semibold text-text-secondary'>
                 {t('pluginTrigger.subscription.listNum', { num: subscriptions?.length || 0 })}
               </span>
-              <Tooltip
-                position='right'
-                popupClassName='w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border'
-                popupContent={
-                  <div className='flex flex-col gap-2'>
-                    <div className='flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle'>
-                      <RiWebhookLine className='h-4 w-4 text-text-tertiary' />
-                    </div>
-                    <div className='system-xs-regular text-text-tertiary'>
-                      {t('pluginTrigger.subscription.list.tooltip')}
-                    </div>
-                    <a
-                      href={docLink('/plugins/schema-definition/trigger')}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                    >
-                      <div className='system-xs-regular inline-flex cursor-pointer items-center gap-1 text-text-accent'>
-                        <RiBookOpenLine className='h-3 w-3' />
-                        {t('pluginTrigger.subscription.list.tooltip.viewDocument')}
-                      </div>
-                    </a>
-                  </div>
-                }
+              <Tooltip popupContent={t('pluginTrigger.subscription.list.tip')} />
+            </div>
+            <ActionButton onClick={showAddDropdown}>
+              <RiAddLine className='h-4 w-4' />
+            </ActionButton>
+            {isShowAddDropdown && (
+              <AddTypeDropdown
+                onSelect={handleAddTypeSelect}
+                onClose={hideAddDropdown}
               />
-            </div>
-            <div className='relative'>
-              <ActionButton onClick={showAddDropdown}>
-                <RiAddLine className='h-4 w-4' />
-              </ActionButton>
-              {isShowAddDropdown && (
-                <AddTypeDropdown
-                  onSelect={handleAddTypeSelect}
-                  onClose={hideAddDropdown}
-                  position='right'
-                />
-              )}
-            </div>
+            )}
           </div>
 
           <div className='flex flex-col gap-1'>

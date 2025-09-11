@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, post } from './base'
 import type {
+  TriggerLogEntity,
   TriggerOAuthClientParams,
   TriggerOAuthConfig,
   TriggerProviderApiEntity,
@@ -169,10 +170,12 @@ export const useBuildTriggerSubscription = () => {
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
+      params?: Record<string, any>
     }) => {
-      const { provider, subscriptionBuilderId } = payload
+      const { provider, subscriptionBuilderId, ...body } = payload
       return post(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/build/${subscriptionBuilderId}`,
+        { body },
       )
     },
   })
@@ -199,7 +202,7 @@ export const useTriggerSubscriptionBuilderLogs = (
 ) => {
   const { enabled = true, refetchInterval = false } = options
 
-  return useQuery<Record<string, any>[]>({
+  return useQuery<{ logs: TriggerLogEntity[] }>({
     queryKey: [NAME_SPACE, 'subscription-builder-logs', provider, subscriptionBuilderId],
     queryFn: () => get(
       `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/logs/${subscriptionBuilderId}`,
@@ -250,7 +253,7 @@ export const useInitiateTriggerOAuth = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'initiate-oauth'],
     mutationFn: (provider: string) => {
-      return get<{ authorization_url: string; subscription_builder: any }>(
+      return get<{ authorization_url: string; subscription_builder: TriggerSubscriptionBuilder }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
       )
     },

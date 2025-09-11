@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiClipboardLine,
   RiCloseLine,
-  RiExternalLinkLine,
+  RiInformation2Fill,
 } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -13,12 +14,13 @@ import Form from '@/app/components/base/form/form-scenarios/auth'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import {
   useBuildTriggerSubscription,
-  useConfigureTriggerOAuth,
   useInitiateTriggerOAuth,
+  useTriggerOAuthConfig,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
+import ActionButton from '@/app/components/base/action-button'
+import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
   pluginDetail: PluginDetail
@@ -26,37 +28,56 @@ type Props = {
   onSuccess: () => void
 }
 
-type OAuthStep = 'setup' | 'authorize' | 'configuration'
+enum OAuthStepEnum {
+  Setup = 'setup',
+  Configuration = 'configuration',
+}
+
+enum AuthorizationStatusEnum {
+  Pending = 'pending',
+  Success = 'success',
+  Failed = 'failed',
+}
 
 const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
   const { t } = useTranslation()
 
-  // State
-  const [currentStep, setCurrentStep] = useState<OAuthStep>('setup')
+  const [currentStep, setCurrentStep] = useState<OAuthStepEnum>(OAuthStepEnum.Setup)
   const [subscriptionName, setSubscriptionName] = useState('')
   const [authorizationUrl, setAuthorizationUrl] = useState('')
-  const [subscriptionBuilder, setSubscriptionBuilder] = useState<any>(null)
-  const [redirectUrl, setRedirectUrl] = useState('')
-  const [authorizationStatus, setAuthorizationStatus] = useState<'pending' | 'success' | 'failed'>('pending')
+  const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>()
+  const [authorizationStatus, setAuthorizationStatus] = useState<AuthorizationStatusEnum>()
 
-  // Form refs
   const clientFormRef = React.useRef<FormRefObject>(null)
   const parametersFormRef = React.useRef<FormRefObject>(null)
 
-  // API mutations
-  const { mutate: initiateOAuth, isPending: isInitiating } = useInitiateTriggerOAuth()
-  const { mutate: configureOAuth, isPending: isConfiguring } = useConfigureTriggerOAuth()
-  const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
-  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
-
-  // Get provider name and schemas
   const providerName = `${pluginDetail.plugin_id}/${pluginDetail.declaration.name}`
   const clientSchema = pluginDetail.declaration.trigger?.oauth_schema?.client_schema || []
   const parametersSchema = pluginDetail.declaration.trigger?.subscription_schema?.parameters_schema || []
 
-  // Poll for authorization status
+  const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
+  const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
+  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
+
+  const { data: oauthConfig } = useTriggerOAuthConfig(providerName)
+
   useEffect(() => {
-    if (currentStep === 'authorize' && subscriptionBuilder && authorizationStatus === 'pending') {
+    initiateOAuth(providerName, {
+      onSuccess: (response) => {
+        setAuthorizationUrl(response.authorization_url)
+        setSubscriptionBuilder(response.subscription_builder)
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('pluginTrigger.modal.errors.authFailed'),
+        })
+      },
+    })
+  }, [initiateOAuth, providerName, t])
+
+  useEffect(() => {
+    if (currentStep === OAuthStepEnum.Setup && subscriptionBuilder && authorizationStatus === AuthorizationStatusEnum.Pending) {
       const pollInterval = setInterval(() => {
         verifyBuilder(
           {
@@ -65,12 +86,13 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
           },
           {
             onSuccess: () => {
-              setAuthorizationStatus('success')
-              setCurrentStep('configuration')
+              setAuthorizationStatus(AuthorizationStatusEnum.Success)
+              setCurrentStep(OAuthStepEnum.Configuration)
               Toast.notify({
                 type: 'success',
                 message: t('pluginTrigger.modal.oauth.authorization.authSuccess'),
               })
+              clearInterval(pollInterval)
             },
             onError: () => {
               // Continue polling - auth might still be in progress
@@ -83,7 +105,7 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     }
   }, [currentStep, subscriptionBuilder, authorizationStatus, verifyBuilder, providerName, t])
 
-  const handleSetupOAuth = () => {
+  const handleAuthorize = () => {
     const clientFormValues = clientFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
     const clientParams = clientFormValues.values
 
@@ -94,48 +116,7 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
       })
       return
     }
-
-    // First configure OAuth client
-    configureOAuth(
-      {
-        provider: providerName,
-        client_params: clientParams as any,
-        enabled: true,
-      },
-      {
-        onSuccess: () => {
-          // Then get redirect URL and initiate OAuth
-          const baseUrl = window.location.origin
-          const redirectPath = `/plugins/oauth/callback/${providerName}`
-          const fullRedirectUrl = `${baseUrl}${redirectPath}`
-          setRedirectUrl(fullRedirectUrl)
-
-          // Initiate OAuth flow
-          initiateOAuth(providerName, {
-            onSuccess: (response) => {
-              setAuthorizationUrl(response.authorization_url)
-              setSubscriptionBuilder(response.subscription_builder)
-              setCurrentStep('authorize')
-            },
-            onError: (error: any) => {
-              Toast.notify({
-                type: 'error',
-                message: error?.message || t('pluginTrigger.modal.errors.authFailed'),
-              })
-            },
-          })
-        },
-        onError: (error: any) => {
-          Toast.notify({
-            type: 'error',
-            message: error?.message || t('pluginTrigger.modal.errors.authFailed'),
-          })
-        },
-      },
-    )
-  }
-
-  const handleAuthorize = () => {
+    setAuthorizationStatus(AuthorizationStatusEnum.Pending)
     if (authorizationUrl) {
       // Open authorization URL in new window
       window.open(authorizationUrl, '_blank', 'width=500,height=600')
@@ -154,10 +135,16 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     if (!subscriptionBuilder)
       return
 
+    const parameters = parametersFormRef.current?.getFormValues({})?.values
+
     buildSubscription(
       {
         provider: providerName,
         subscriptionBuilderId: subscriptionBuilder.id,
+        params: {
+          name: subscriptionName,
+          parameters,
+        } as Record<string, any>,
       },
       {
         onSuccess: () => {
@@ -182,121 +169,61 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     <Modal
       isShow
       onClose={onClose}
-      className='!max-w-[520px] !p-0'
+      className='!max-w-[520px] p-6'
       wrapperClassName='!z-[1002]'
     >
-      <div className='flex items-center justify-between border-b border-divider-subtle p-6 pb-4'>
+      <div className='flex items-center justify-between pb-3'>
         <h3 className='text-lg font-semibold text-text-primary'>
           {t('pluginTrigger.modal.oauth.title')}
         </h3>
-        <Button variant='ghost' size='small' onClick={onClose}>
+        <ActionButton onClick={onClose}>
           <RiCloseLine className='h-4 w-4' />
-        </Button>
+        </ActionButton>
       </div>
 
-      <div className='p-6'>
-        {currentStep === 'setup' && (
-          <div>
-            <div className='mb-4'>
-              <h4 className='system-sm-semibold mb-2 text-text-primary'>
-                {t('pluginTrigger.modal.oauth.authorization.title')}
-              </h4>
-              <p className='system-xs-regular text-text-secondary'>
-                {t('pluginTrigger.modal.oauth.authorization.description')}
-              </p>
-            </div>
+      <div className='py-3'>
+        {currentStep === OAuthStepEnum.Setup && (
+          <>
+            {oauthConfig?.redirect_uri && (
+              <div className='mb-4 flex items-start gap-3 rounded-xl bg-background-section-burn p-4'>
+                <div className='rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-2 shadow-xs shadow-shadow-shadow-3'>
+                  <RiInformation2Fill className='h-5 w-5 shrink-0 text-text-accent' />
+                </div>
+                <div className='flex-1 text-text-secondary'>
+                  <div className='system-sm-regular whitespace-pre-wrap leading-4'>
+                    {t('pluginTrigger.modal.oauthRedirectInfo')}
+                  </div>
+                  <div className='system-sm-medium my-1.5 break-all leading-4'>
+                    {oauthConfig.redirect_uri}
+                  </div>
+                  <Button
+                    variant='secondary'
+                    size='small'
+                    onClick={() => {
+                      navigator.clipboard.writeText(oauthConfig.redirect_uri)
+                      Toast.notify({
+                        type: 'success',
+                        message: t('common.actionMsg.copySuccessfully'),
+                      })
+                    }}>
+                    <RiClipboardLine className='mr-1 h-[14px] w-[14px]' />
+                    {t('common.operation.copy')}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {clientSchema.length > 0 && (
-              <div className='mb-4'>
-                <Form
-                  formSchemas={clientSchema}
-                  ref={clientFormRef}
-                />
-              </div>
+              <Form
+                formSchemas={clientSchema}
+                ref={clientFormRef}
+              />
             )}
-          </div>
+          </>
         )}
 
-        {currentStep === 'authorize' && (
+        {currentStep === OAuthStepEnum.Configuration && (
           <div>
-            <div className='mb-4'>
-              <h4 className='system-sm-semibold mb-2 text-text-primary'>
-                {t('pluginTrigger.modal.oauth.authorization.title')}
-              </h4>
-              <p className='system-xs-regular mb-4 text-text-secondary'>
-                {t('pluginTrigger.modal.oauth.authorization.description')}
-              </p>
-            </div>
-
-            {/* Redirect URL */}
-            {redirectUrl && (
-              <div className='mb-4'>
-                <label className='system-sm-medium mb-2 block text-text-primary'>
-                  {t('pluginTrigger.modal.oauth.authorization.redirectUrl')}
-                </label>
-                <div className='relative'>
-                  <Input
-                    value={redirectUrl}
-                    readOnly
-                    className='bg-background-section pr-12'
-                  />
-                  <CopyFeedbackNew
-                    content={redirectUrl}
-                    className='absolute right-1 top-1/2 -translate-y-1/2 text-text-tertiary'
-                  />
-                </div>
-                <div className='system-xs-regular mt-1 text-text-tertiary'>
-                  {t('pluginTrigger.modal.oauth.authorization.redirectUrlHelp')}
-                </div>
-              </div>
-            )}
-
-            {/* Authorization Status */}
-            <div className='mb-4 rounded-lg bg-background-section p-4'>
-              {authorizationStatus === 'pending' && (
-                <div className='system-sm-regular text-text-secondary'>
-                  {t('pluginTrigger.modal.oauth.authorization.waitingAuth')}
-                </div>
-              )}
-              {authorizationStatus === 'success' && (
-                <div className='system-sm-regular text-text-success'>
-                  {t('pluginTrigger.modal.oauth.authorization.authSuccess')}
-                </div>
-              )}
-              {authorizationStatus === 'failed' && (
-                <div className='system-sm-regular text-text-destructive'>
-                  {t('pluginTrigger.modal.oauth.authorization.authFailed')}
-                </div>
-              )}
-            </div>
-
-            {/* Authorize Button */}
-            {authorizationStatus === 'pending' && (
-              <Button
-                variant='primary'
-                onClick={handleAuthorize}
-                disabled={!authorizationUrl}
-                className='w-full'
-              >
-                <RiExternalLinkLine className='mr-2 h-4 w-4' />
-                {t('pluginTrigger.modal.oauth.authorization.authorizeButton', { provider: providerName })}
-              </Button>
-            )}
-          </div>
-        )}
-
-        {currentStep === 'configuration' && (
-          <div>
-            <div className='mb-4'>
-              <h4 className='system-sm-semibold mb-2 text-text-primary'>
-                {t('pluginTrigger.modal.oauth.configuration.title')}
-              </h4>
-              <p className='system-xs-regular text-text-secondary'>
-                {t('pluginTrigger.modal.oauth.configuration.description')}
-              </p>
-            </div>
-
-            {/* Subscription Name */}
             <div className='mb-4'>
               <label className='system-sm-medium mb-2 block text-text-primary'>
                 {t('pluginTrigger.modal.form.subscriptionName.label')}
@@ -308,7 +235,6 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
               />
             </div>
 
-            {/* Callback URL (read-only) */}
             {subscriptionBuilder?.endpoint && (
               <div className='mb-4'>
                 <label className='system-sm-medium mb-2 block text-text-primary'>
@@ -325,37 +251,32 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
               </div>
             )}
 
-            {/* Dynamic Parameters Form */}
             {parametersSchema.length > 0 && (
-              <div className='mb-4'>
-                <Form
-                  formSchemas={parametersSchema}
-                  ref={parametersFormRef}
-                />
-              </div>
+              <Form
+                formSchemas={parametersSchema}
+                ref={parametersFormRef}
+              />
             )}
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      <div className='flex justify-end gap-2 border-t border-divider-subtle p-6 pt-4'>
+      <div className='flex justify-end gap-2 pt-5'>
         <Button variant='secondary' onClick={onClose}>
           {t('pluginTrigger.modal.common.cancel')}
         </Button>
 
-        {currentStep === 'setup' && (
+        {currentStep === OAuthStepEnum.Setup && (
           <Button
             variant='primary'
-            onClick={handleSetupOAuth}
-            loading={isConfiguring || isInitiating}
-            // disabled={clientSchema.length > 0}
+            onClick={handleAuthorize}
+            loading={authorizationStatus === AuthorizationStatusEnum.Pending}
           >
-            {(isConfiguring || isInitiating) ? t('pluginTrigger.modal.common.authorizing') : t('pluginTrigger.modal.common.authorize')}
+            {authorizationStatus === AuthorizationStatusEnum.Pending ? t('pluginTrigger.modal.common.authorizing') : t('pluginTrigger.modal.common.authorize')}
           </Button>
         )}
 
-        {currentStep === 'configuration' && (
+        {currentStep === OAuthStepEnum.Configuration && (
           <Button
             variant='primary'
             onClick={handleCreate}

@@ -10,6 +10,7 @@ const translation = {
     list: {
       title: 'Subscriptions',
       addButton: 'Add',
+      tip: 'Receive events via Subscription',
       item: {
         enabled: 'Enabled',
         disabled: 'Disabled',
@@ -32,6 +33,8 @@ const translation = {
           active: 'Active',
           inactive: 'Inactive',
         },
+        usedByNum: 'Used by {{num}} workflows',
+        noUsed: 'No workflow used',
       },
     },
     addType: {
@@ -48,7 +51,7 @@ const translation = {
         },
         manual: {
           title: 'Manual Setup',
-          description: 'Manually configure webhook URL and settings',
+          description: 'Paste URL to create a new subscription',
           tip: 'Configure URL on third-party platform manually',
         },
       },
@@ -70,6 +73,7 @@ const translation = {
       verifying: 'Verifying...',
       authorizing: 'Authorizing...',
     },
+    oauthRedirectInfo: 'As no system client secrets found for this tool provider, setup it manually is required, for redirect_uri, please use',
     apiKey: {
       title: 'Create via API Key',
       verify: {

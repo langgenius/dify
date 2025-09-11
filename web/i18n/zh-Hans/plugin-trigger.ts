@@ -10,6 +10,7 @@ const translation = {
     list: {
       title: '订阅列表',
       addButton: '添加',
+      tip: '通过订阅接收事件',
       item: {
         enabled: '已启用',
         disabled: '已禁用',
@@ -32,6 +33,8 @@ const translation = {
           active: '活跃',
           inactive: '非活跃',
         },
+        usedByNum: '被 {{num}} 个工作流使用',
+        noUsed: '未被工作流使用',
       },
     },
     addType: {
@@ -39,16 +42,16 @@ const translation = {
       description: '选择创建触发器订阅的方式',
       options: {
         apiKey: {
-          title: '通过API密钥',
+          title: '通过 API Key',
           description: '使用API凭据自动创建订阅',
         },
         oauth: {
-          title: '通过OAuth',
+          title: '通过 OAuth',
           description: '与第三方平台授权以创建订阅',
         },
         manual: {
           title: '手动设置',
-          description: '手动配置Webhook URL和设置',
+          description: '粘贴 URL 以创建新订阅',
           tip: '手动配置 URL 到第三方平台',
         },
       },
@@ -70,6 +73,7 @@ const translation = {
       verifying: '验证中...',
       authorizing: '授权中...',
     },
+    oauthRedirectInfo: '由于未找到此工具提供方的系统客户端密钥，需要手动设置，对于 redirect_uri，请使用',
     apiKey: {
       title: '通过API密钥创建',
       verify: {

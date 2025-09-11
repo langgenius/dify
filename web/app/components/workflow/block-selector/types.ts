@@ -184,6 +184,7 @@ type TriggerSubscriptionStructure = {
   endpoint: string
   parameters: TriggerSubParameters
   properties: TriggerSubProperties
+  workflows_in_use: number
 }
 
 export type TriggerSubscription = TriggerSubscriptionStructure
@@ -212,6 +213,7 @@ export type TriggerOAuthConfig = {
   configured: boolean
   custom_configured: boolean
   custom_enabled: boolean
+  redirect_uri: string
   params: {
     client_id: string
     client_secret: string
@@ -229,4 +231,49 @@ export type TriggerOAuthClientParams = {
 export type TriggerOAuthResponse = {
   authorization_url: string
   subscription_builder: TriggerSubscriptionBuilder
+}
+
+export type TriggerLogEntity = {
+  id: string
+  endpoint: string
+  request: LogRequest
+  response: LogResponse
+  created_at: string
+}
+
+export type LogRequest = {
+  method: string
+  url: string
+  headers: LogRequestHeaders
+  data: string
+}
+
+export type LogRequestHeaders = {
+  'Host': string
+  'User-Agent': string
+  'Content-Length': string
+  'Accept': string
+  'Content-Type': string
+  'X-Forwarded-For': string
+  'X-Forwarded-Host': string
+  'X-Forwarded-Proto': string
+  'X-Github-Delivery': string
+  'X-Github-Event': string
+  'X-Github-Hook-Id': string
+  'X-Github-Hook-Installation-Target-Id': string
+  'X-Github-Hook-Installation-Target-Type': string
+  'Accept-Encoding': string
+  [key: string]: string
+}
+
+export type LogResponse = {
+  status_code: number
+  headers: LogResponseHeaders
+  data: string
+}
+
+export type LogResponseHeaders = {
+  'Content-Type': string
+  'Content-Length': string
+  [key: string]: string
 }

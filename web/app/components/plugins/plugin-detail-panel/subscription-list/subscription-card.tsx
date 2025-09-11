@@ -90,7 +90,7 @@ const SubscriptionCard = ({ data, onRefresh }: Props) => {
           </div>
           <div className="mx-2 text-xs text-text-tertiary opacity-30">·</div>
           <div className='system-xs-regular shrink-0 text-text-tertiary'>
-            {isActive ? 'Used by 3 workflows' : 'No workflow used'}
+            {data.workflows_in_use > 0 ? t('pluginTrigger.subscription.list.item.usedByNum', { num: data.workflows_in_use }) : t('pluginTrigger.subscription.list.item.noUsed')}
           </div>
         </div>
       </div>
