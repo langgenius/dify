@@ -113,7 +113,7 @@ class AppAnnotationSettingUpdateApi(Resource):
         return result, 200
 
 
-@console_ns.route("/apps/<uuid:app_id>/annotation-reply-action-status/<uuid:job_id>/<string:action>")
+@console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>")
 class AnnotationReplyActionStatusApi(Resource):
     @api.doc("get_annotation_reply_action_status")
     @api.doc(description="Get status of annotation reply action job")
