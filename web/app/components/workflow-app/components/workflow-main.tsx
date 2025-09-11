@@ -27,7 +27,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useCollaboration } from '@/app/components/workflow/collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { useStoreApi } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -39,6 +39,7 @@ const WorkflowMain = ({
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
   const containerRef = useRef<HTMLDivElement>(null)
+  const reactFlow = useReactFlow()
 
   const store = useStoreApi()
   const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId, store)
@@ -55,12 +56,12 @@ const WorkflowMain = ({
 
   useEffect(() => {
     if (containerRef.current)
-      startCursorTracking(containerRef as React.RefObject<HTMLElement>)
+      startCursorTracking(containerRef as React.RefObject<HTMLElement>, reactFlow)
 
     return () => {
       stopCursorTracking()
     }
-  }, [startCursorTracking, stopCursorTracking])
+  }, [startCursorTracking, stopCursorTracking, reactFlow])
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {

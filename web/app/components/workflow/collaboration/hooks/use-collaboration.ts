@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactFlowInstance } from 'reactflow'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 import type { CollaborationState } from '../types/collaboration'
@@ -62,11 +63,11 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     }
   }, [appId, reactFlowStore])
 
-  const startCursorTracking = (containerRef: React.RefObject<HTMLElement>) => {
+  const startCursorTracking = (containerRef: React.RefObject<HTMLElement>, reactFlowInstance?: ReactFlowInstance) => {
     if (cursorServiceRef.current) {
       cursorServiceRef.current.startTracking(containerRef, (position) => {
         collaborationManager.emitCursorMove(position)
-      })
+      }, reactFlowInstance)
     }
   }
 

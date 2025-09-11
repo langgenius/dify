@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useViewport } from 'reactflow'
 import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types'
 import { getUserColor } from '../utils/user-color'
 
@@ -13,6 +14,15 @@ const UserCursors: FC<UserCursorsProps> = ({
   myUserId,
   onlineUsers,
 }) => {
+  const viewport = useViewport()
+
+  const convertToScreenCoordinates = (cursor: CursorPosition) => {
+    // Convert world coordinates to screen coordinates using current viewport
+    const screenX = cursor.x * viewport.zoom + viewport.x
+    const screenY = cursor.y * viewport.zoom + viewport.y
+
+    return { x: screenX, y: screenY }
+  }
   return (
     <>
       {Object.entries(cursors || {}).map(([userId, cursor]) => {
@@ -22,14 +32,15 @@ const UserCursors: FC<UserCursorsProps> = ({
         const userInfo = onlineUsers.find(user => user.user_id === userId)
         const userName = userInfo?.username || `User ${userId.slice(-4)}`
         const userColor = getUserColor(userId)
+        const screenPos = convertToScreenCoordinates(cursor)
 
         return (
           <div
             key={userId}
             className="pointer-events-none absolute z-[10000] transition-all duration-150 ease-out"
             style={{
-              left: cursor.x,
-              top: cursor.y,
+              left: screenPos.x,
+              top: screenPos.y,
             }}
           >
             <svg
