@@ -3,7 +3,7 @@ import contextlib
 import enum
 from collections.abc import Mapping
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
@@ -183,11 +183,11 @@ class ToolInvokeMessage(BaseModel):
 
         id: str
         label: str = Field(..., description="The label of the log")
-        parent_id: Optional[str] = Field(default=None, description="Leave empty for root log")
-        error: Optional[str] = Field(default=None, description="The error message")
+        parent_id: str | None = Field(default=None, description="Leave empty for root log")
+        error: str | None = Field(default=None, description="The error message")
         status: LogStatus = Field(..., description="The status of the log")
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
-        metadata: Optional[Mapping[str, Any]] = Field(default=None, description="The metadata of the log")
+        metadata: Mapping[str, Any] = Field(default_factory=dict, description="The metadata of the log")
 
     class RetrieverResourceMessage(BaseModel):
         retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
@@ -242,7 +242,7 @@ class ToolInvokeMessage(BaseModel):
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
-    file_var: Optional[dict[str, Any]] = None
+    file_var: dict[str, Any] | None = None
 
 
 class ToolParameter(PluginParameter):
@@ -286,11 +286,11 @@ class ToolParameter(PluginParameter):
         LLM = "llm"  # will be set by LLM
 
     type: ToolParameterType = Field(..., description="The type of the parameter")
-    human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
+    human_description: I18nObject | None = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
-    llm_description: Optional[str] = None
+    llm_description: str | None = None
     # MCP object and array type parameters use this field to store the schema
-    input_schema: Optional[dict] = None
+    input_schema: dict | None = None
 
     @classmethod
     def get_simple_instance(
@@ -299,7 +299,7 @@ class ToolParameter(PluginParameter):
         llm_description: str,
         typ: ToolParameterType,
         required: bool,
-        options: Optional[list[str]] = None,
+        options: list[str] | None = None,
     ) -> "ToolParameter":
         """
         get a simple tool parameter
@@ -340,9 +340,9 @@ class ToolProviderIdentity(BaseModel):
     name: str = Field(..., description="The name of the tool")
     description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
-    icon_dark: Optional[str] = Field(default=None, description="The dark icon of the tool")
+    icon_dark: str | None = Field(default=None, description="The dark icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
-    tags: Optional[list[ToolLabelEnum]] = Field(
+    tags: list[ToolLabelEnum] | None = Field(
         default=[],
         description="The tags of the tool",
     )
@@ -353,7 +353,7 @@ class ToolIdentity(BaseModel):
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
     provider: str = Field(..., description="The provider of the tool")
-    icon: Optional[str] = None
+    icon: str | None = None
 
 
 class ToolDescription(BaseModel):
@@ -363,9 +363,9 @@ class ToolDescription(BaseModel):
 
 class ToolEntity(BaseModel):
     identity: ToolIdentity
-    parameters: list[ToolParameter] = Field(default_factory=list)
-    description: Optional[ToolDescription] = None
-    output_schema: Optional[dict] = None
+    parameters: list[ToolParameter] = Field(default_factory=list[ToolParameter])
+    description: ToolDescription | None = None
+    output_schema: Mapping[str, object] = Field(default_factory=dict)
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
     # pydantic configs
@@ -378,21 +378,23 @@ class ToolEntity(BaseModel):
 
 
 class OAuthSchema(BaseModel):
-    client_schema: list[ProviderConfig] = Field(default_factory=list, description="The schema of the OAuth client")
+    client_schema: list[ProviderConfig] = Field(
+        default_factory=list[ProviderConfig], description="The schema of the OAuth client"
+    )
     credentials_schema: list[ProviderConfig] = Field(
-        default_factory=list, description="The schema of the OAuth credentials"
+        default_factory=list[ProviderConfig], description="The schema of the OAuth credentials"
     )
 
 
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
-    plugin_id: Optional[str] = None
-    credentials_schema: list[ProviderConfig] = Field(default_factory=list)
-    oauth_schema: Optional[OAuthSchema] = None
+    plugin_id: str | None = None
+    credentials_schema: list[ProviderConfig] = Field(default_factory=list[ProviderConfig])
+    oauth_schema: OAuthSchema | None = None
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):
-    tools: list[ToolEntity] = Field(default_factory=list)
+    tools: list[ToolEntity] = Field(default_factory=list[ToolEntity])
 
 
 class WorkflowToolParameterConfiguration(BaseModel):
@@ -411,8 +413,8 @@ class ToolInvokeMeta(BaseModel):
     """
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
-    error: Optional[str] = None
-    tool_config: Optional[dict] = None
+    error: str | None = None
+    tool_config: dict | None = None
 
     @classmethod
     def empty(cls) -> "ToolInvokeMeta":
@@ -464,11 +466,11 @@ class ToolSelector(BaseModel):
         type: ToolParameter.ToolParameterType = Field(..., description="The type of the parameter")
         required: bool = Field(..., description="Whether the parameter is required")
         description: str = Field(..., description="The description of the parameter")
-        default: Optional[Union[int, float, str]] = None
-        options: Optional[list[PluginParameterOption]] = None
+        default: Union[int, float, str] | None = None
+        options: list[PluginParameterOption] | None = None
 
     provider_id: str = Field(..., description="The id of the provider")
-    credential_id: Optional[str] = Field(default=None, description="The id of the credential")
+    credential_id: str | None = Field(default=None, description="The id of the credential")
     tool_name: str = Field(..., description="The name of the tool")
     tool_description: str = Field(..., description="The description of the tool")
     tool_configuration: Mapping[str, Any] = Field(..., description="Configuration, type form")

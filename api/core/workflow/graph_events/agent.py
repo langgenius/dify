@@ -14,4 +14,4 @@ class NodeRunAgentLogEvent(GraphAgentNodeEventBase):
     error: str | None = Field(..., description="error")
     status: str = Field(..., description="status")
     data: Mapping[str, Any] = Field(..., description="data")
-    metadata: Mapping[str, Any] | None = Field(default=None, description="metadata")
+    metadata: Mapping[str, object] = Field(default_factory=dict)

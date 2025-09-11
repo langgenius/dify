@@ -2,12 +2,12 @@ import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.entities import AgentNodeStrategyInit, GraphInitParams, GraphRuntimeState
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_events import (
     GraphNodeEventBase,
     NodeRunAgentLogEvent,
@@ -45,11 +45,6 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 
 from .entities import BaseNodeData, RetryConfig
-
-if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams, GraphRuntimeState
-    from core.workflow.enums import ErrorStrategy, NodeType
-    from core.workflow.node_events import NodeRunResult
 
 logger = logging.getLogger(__name__)
 

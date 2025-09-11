@@ -12,7 +12,6 @@ from .base import GraphNodeEventBase
 class NodeRunStartedEvent(GraphNodeEventBase):
     node_title: str
     predecessor_node_id: str | None = None
-    parallel_mode_run_id: str | None = None
     agent_strategy: AgentNodeStrategyInit | None = None
     start_at: datetime = Field(..., description="node start time")
 

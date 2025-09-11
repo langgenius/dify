@@ -14,5 +14,5 @@ class AgentLogEvent(NodeEventBase):
     error: str | None = Field(..., description="error")
     status: str = Field(..., description="status")
     data: Mapping[str, Any] = Field(..., description="data")
-    metadata: Mapping[str, Any] | None = Field(default=None, description="metadata")
+    metadata: Mapping[str, Any] = Field(default_factory=dict, description="metadata")
     node_id: str = Field(..., description="node id")

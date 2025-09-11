@@ -886,7 +886,7 @@ class ToolManager:
         )
 
     @classmethod
-    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str):
+    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str]:
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
@@ -897,13 +897,13 @@ class ToolManager:
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            icon: dict = json.loads(workflow_provider.icon)
+            icon = json.loads(workflow_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str):
+    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str]:
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)
@@ -914,13 +914,13 @@ class ToolManager:
             if api_provider is None:
                 raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
-            icon: dict = json.loads(api_provider.icon)
+            icon = json.loads(api_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict[str, str] | str:
+    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str] | str:
         try:
             mcp_provider: MCPToolProvider | None = (
                 db.session.query(MCPToolProvider)
@@ -941,7 +941,7 @@ class ToolManager:
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
-    ) -> Union[str, dict[str, Any]]:
+    ) -> str | Mapping[str, str]:
         """
         get the tool icon
 
@@ -966,11 +966,10 @@ class ToolManager:
             return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.PLUGIN:
             provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
-            if isinstance(provider, PluginToolProviderController):
-                try:
-                    return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
-                except Exception:
-                    return {"background": "#252525", "content": "\ud83d\ude01"}
+            try:
+                return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
+            except Exception:
+                return {"background": "#252525", "content": "\ud83d\ude01"}
             raise ValueError(f"plugin provider {provider_id} not found")
         elif provider_type == ToolProviderType.MCP:
             return cls.generate_mcp_tool_icon_url(tenant_id, provider_id)

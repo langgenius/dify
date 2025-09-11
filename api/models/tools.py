@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import urlparse
@@ -314,11 +315,11 @@ class MCPToolProvider(Base):
         return [MCPTool(**tool) for tool in json.loads(self.tools)]
 
     @property
-    def provider_icon(self) -> dict[str, str] | str:
+    def provider_icon(self) -> Mapping[str, str] | str:
         from core.file import helpers as file_helpers
 
         try:
-            return cast(dict[str, str], json.loads(self.icon))
+            return json.loads(self.icon)
         except json.JSONDecodeError:
             return file_helpers.get_signed_file_url(self.icon)
 
