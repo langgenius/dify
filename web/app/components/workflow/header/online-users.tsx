@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useReactFlow } from 'reactflow'
 import Avatar from '@/app/components/base/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { useStore } from '../store'
@@ -49,12 +50,22 @@ const useAvatarUrls = (users: any[]) => {
 
 const OnlineUsers = () => {
   const appId = useStore(s => s.appId)
-  const { onlineUsers } = useCollaboration(appId)
+  const { onlineUsers, cursors } = useCollaboration(appId)
   const { userProfile } = useAppContext()
+  const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
   const currentUserId = userProfile?.id
+
+  // Function to jump to user's cursor position
+  const jumpToUserCursor = (userId: string) => {
+    const cursor = cursors[userId]
+    if (!cursor) return
+
+    // Convert world coordinates to center the view on the cursor
+    reactFlow.setCenter(cursor.x, cursor.y, { zoom: 1, duration: 800 })
+  }
 
   if (!onlineUsers || onlineUsers.length === 0)
     return null
@@ -92,8 +103,12 @@ const OnlineUsers = () => {
                 asChild
               >
                 <div
-                  className="relative cursor-pointer"
+                  className={cn(
+                    'relative',
+                    !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
+                  )}
                   style={{ zIndex: visibleUsers.length - index }}
+                  onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
                 >
                   <Avatar
                     name={user.username || 'User'}
@@ -147,14 +162,20 @@ const OnlineUsers = () => {
                     return (
                       <div
                         key={user.sid}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover"
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg px-3 py-2',
+                          !isCurrentUser && 'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
+                        )}
+                        onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
                       >
-                        <Avatar
-                          name={user.username || 'User'}
-                          avatar={getAvatarUrl(user)}
-                          size={24}
-                          backgroundColor={userColor}
-                        />
+                        <div className="relative">
+                          <Avatar
+                            name={user.username || 'User'}
+                            avatar={getAvatarUrl(user)}
+                            size={24}
+                            backgroundColor={userColor}
+                          />
+                        </div>
                         <span className="text-sm text-text-secondary">
                           {displayName}
                         </span>
