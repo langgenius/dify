@@ -36,7 +36,7 @@ else:
         "docx",
         "csv",
         "vtt",
-        "properties"
+        "properties",
         "pptx",
         "ppt"
     ]
