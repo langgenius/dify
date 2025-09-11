@@ -55,5 +55,6 @@ jobs:
         working-directory: ./web
         run: |
           pnpm run fix
+          pnpx oxlint --fix
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
