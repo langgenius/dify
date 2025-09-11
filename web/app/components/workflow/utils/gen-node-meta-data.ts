@@ -8,6 +8,11 @@ export type GenNodeMetaDataParams = {
   title?: string
   author?: string
   helpLinkUri?: string
+  isRequired?: boolean
+  isUndeletable?: boolean
+  isStart?: boolean
+  isSingleton?: boolean
+  isTypeFixed?: boolean
 }
 export const genNodeMetaData = ({
   classification = BlockClassificationEnum.Default,
@@ -16,6 +21,11 @@ export const genNodeMetaData = ({
   title = '',
   author = 'Dify',
   helpLinkUri,
+  isRequired = false,
+  isUndeletable = false,
+  isStart = false,
+  isSingleton = false,
+  isTypeFixed = false,
 }: GenNodeMetaDataParams) => {
   return {
     classification,
@@ -24,5 +34,10 @@ export const genNodeMetaData = ({
     title,
     author,
     helpLinkUri: helpLinkUri || type,
+    isRequired,
+    isUndeletable,
+    isStart,
+    isSingleton,
+    isTypeFixed,
   }
 }
