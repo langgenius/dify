@@ -11,7 +11,6 @@ from celery import shared_task
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
-from core.plugin.utils.http_parser import deserialize_request
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -54,10 +53,12 @@ def dispatch_triggered_workflows_async(
             request_id,
         )
 
-        # Load request from storage
+        # Verify request exists in storage
         try:
             serialized_request = storage.load_once(f"triggers/{request_id}")
-            request = deserialize_request(serialized_request)
+            # Just verify it exists, we don't need to deserialize it here
+            if not serialized_request:
+                raise ValueError("Request not found in storage")
         except Exception as e:
             logger.exception("Failed to load request %s", request_id, exc_info=e)
             return {"status": "failed", "error": f"Failed to load request: {str(e)}"}
@@ -107,7 +108,6 @@ def dispatch_triggered_workflows_async(
             try:
                 debug_dispatched = TriggerService.dispatch_debugging_sessions(
                     subscription_id=subscription_id,
-                    request=request,
                     triggers=triggers,
                     request_id=request_id,
                 )

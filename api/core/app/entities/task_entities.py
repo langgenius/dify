@@ -82,6 +82,12 @@ class StreamEvent(Enum):
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
+    # Trigger debug events
+    TRIGGER_DEBUG_LISTENING_STARTED = "trigger_debug_listening_started"
+    TRIGGER_DEBUG_RECEIVED = "trigger_debug_received"
+    TRIGGER_DEBUG_NODE_FINISHED = "trigger_debug_node_finished"
+    TRIGGER_DEBUG_WORKFLOW_STARTED = "trigger_debug_workflow_started"
+    TRIGGER_DEBUG_TIMEOUT = "trigger_debug_timeout"
 
 
 class StreamResponse(BaseModel):
@@ -837,3 +843,63 @@ class AgentLogStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.AGENT_LOG
     data: Data
+
+
+# Trigger Debug Stream Responses
+class TriggerDebugListeningStartedResponse(StreamResponse):
+    """
+    TriggerDebugListeningStartedResponse entity
+    """
+
+    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_LISTENING_STARTED
+    session_id: str
+    webhook_url: str
+    timeout: int
+
+
+class TriggerDebugReceivedResponse(StreamResponse):
+    """
+    TriggerDebugReceivedResponse entity
+    """
+
+    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_RECEIVED
+    subscription_id: str
+    triggers: list[str]
+    request_id: str
+    timestamp: float
+
+
+class TriggerDebugNodeFinishedResponse(StreamResponse):
+    """
+    TriggerDebugNodeFinishedResponse entity
+    """
+
+    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_NODE_FINISHED
+    id: str
+    node_id: str
+    node_type: str
+    status: str
+    outputs: Optional[Mapping[str, Any]] = None
+    error: Optional[str] = None
+    elapsed_time: float
+    execution_metadata: Optional[Mapping[str, Any]] = None
+
+
+class TriggerDebugWorkflowStartedResponse(StreamResponse):
+    """
+    TriggerDebugWorkflowStartedResponse entity
+    """
+
+    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_WORKFLOW_STARTED
+    subscription_id: str
+    triggers: list[str]
+    request_id: str
+
+
+class TriggerDebugTimeoutResponse(StreamResponse):
+    """
+    TriggerDebugTimeoutResponse entity
+    """
+
+    event: StreamEvent = StreamEvent.TRIGGER_DEBUG_TIMEOUT
+    error: str = "Timeout waiting for trigger"

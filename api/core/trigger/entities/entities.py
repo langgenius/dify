@@ -262,6 +262,36 @@ class TriggerDebugEventData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
+class TriggerInputs(BaseModel):
+    """Standard inputs for trigger nodes."""
+
+    request_id: str
+    trigger_name: str
+    subscription_id: str
+
+    @classmethod
+    def from_trigger_data(cls, trigger_data: TriggerDebugEventData) -> "TriggerInputs":
+        """Create from debug event data."""
+        return cls(
+            request_id=trigger_data.request_id,
+            trigger_name=trigger_data.triggers[0] if trigger_data.triggers else "",
+            subscription_id=trigger_data.subscription_id,
+        )
+
+    @classmethod
+    def from_trigger_entity(cls, request_id: str, subscription_id: str, trigger: TriggerEntity) -> "TriggerInputs":
+        """Create from trigger entity (for production)."""
+        return cls(request_id=request_id, trigger_name=trigger.identity.name, subscription_id=subscription_id)
+
+    def to_workflow_args(self) -> dict[str, Any]:
+        """Convert to workflow arguments format."""
+        return {"inputs": self.model_dump(), "files": []}
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict (alias for model_dump)."""
+        return self.model_dump()
+
+
 # Export all entities
 __all__ = [
     "OAuthSchema",
@@ -272,6 +302,7 @@ __all__ = [
     "TriggerDescription",
     "TriggerEntity",
     "TriggerIdentity",
+    "TriggerInputs",
     "TriggerParameter",
     "TriggerParameterType",
     "TriggerProviderEntity",

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.utils.http_parser import serialize_request
-from core.trigger.entities.entities import TriggerDebugEventData, TriggerEntity
+from core.trigger.entities.entities import TriggerDebugEventData, TriggerEntity, TriggerInputs
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -87,6 +87,11 @@ class TriggerService:
                     )
                     continue
 
+                # Create trigger inputs using new structure
+                trigger_inputs = TriggerInputs.from_trigger_entity(
+                    request_id=request_id, subscription_id=subscription.id, trigger=trigger
+                )
+
                 # Create trigger data for async execution
                 trigger_data = PluginTriggerData(
                     app_id=plugin_trigger.app_id,
@@ -96,11 +101,7 @@ class TriggerService:
                     trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
                     plugin_id=subscription.provider_id,
                     endpoint_id=subscription.endpoint_id,
-                    inputs={
-                        "request_id": request_id,
-                        "trigger_name": trigger.identity.name,
-                        "subscription_id": subscription.id,
-                    },
+                    inputs=trigger_inputs.to_dict(),
                 )
 
                 # Trigger async workflow
@@ -121,15 +122,12 @@ class TriggerService:
             return dispatched_count
 
     @classmethod
-    def dispatch_debugging_sessions(
-        cls, subscription_id: str, request: Request, triggers: list[str], request_id: str
-    ) -> int:
+    def dispatch_debugging_sessions(cls, subscription_id: str, triggers: list[str], request_id: str) -> int:
         """
         Dispatch to debug sessions - simplified version.
 
         Args:
             subscription_id: Subscription ID
-            request: Original request
             triggers: List of trigger names
             request_id: Request ID for storage reference
         """

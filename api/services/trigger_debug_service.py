@@ -10,11 +10,39 @@ import logging
 import time
 import uuid
 from collections.abc import Generator
+from dataclasses import dataclass
+from typing import Any
 
+from flask import request
+from werkzeug.exceptions import NotFound
+
+from core.app.entities.task_entities import (
+    ErrorStreamResponse,
+    PingStreamResponse,
+    TriggerDebugListeningStartedResponse,
+    TriggerDebugReceivedResponse,
+    TriggerDebugTimeoutResponse,
+)
 from core.trigger.entities.entities import TriggerDebugEventData
 from extensions.ext_redis import redis_client
+from models.model import App
+from services.trigger.trigger_provider_service import TriggerProviderService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TriggerDebuggingContext:
+    """Context for trigger debugging session."""
+
+    session_id: str
+    subscription_id: str
+    webhook_url: str
+    node_id: str
+    app_id: str
+    user_id: str
+    timeout: int
 
 
 class TriggerDebugService:
@@ -27,9 +55,122 @@ class TriggerDebugService:
     SUBSCRIPTION_DEBUG_PREFIX = "trigger_debug_subscription:"
     PUBSUB_CHANNEL_PREFIX = "trigger_debug_channel:"
 
+    __DEFAULT_LISTEN_TIMEOUT__ = 300
+
+    @classmethod
+    def build_debugging_context(
+        cls,
+        app_model: App,
+        node_id: str,
+        user_id: str,
+        timeout: int = __DEFAULT_LISTEN_TIMEOUT__,
+    ) -> TriggerDebuggingContext:
+        """
+        Build debugging context for trigger node.
+
+        Args:
+            app_model: Application model
+            node_id: Node ID to debug
+            user_id: User ID creating the session
+            timeout: Session timeout in seconds
+
+        Returns:
+            TriggerDebuggingContext with all debugging information
+
+        Raises:
+            NotFound: If workflow or node not found
+            ValueError: If node is not a trigger plugin or has no subscription
+        """
+        # Get and validate workflow
+        workflow_service = WorkflowService()
+        draft_workflow = workflow_service.get_draft_workflow(app_model)
+        if not draft_workflow:
+            raise NotFound("Workflow not found")
+
+        # Get and validate node
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        if not node_config:
+            raise NotFound(f"Node {node_id} not found")
+
+        if node_config.get("data", {}).get("type") != "plugin":
+            raise ValueError("Node is not a trigger plugin node")
+
+        subscription_id = node_config.get("data", {}).get("subscription_id")
+        if not subscription_id:
+            raise ValueError("No subscription configured for this trigger node")
+
+        # Create debug session
+        app_id = str(app_model.id)
+        session_id = cls.create_debug_session(
+            app_id=app_id,
+            node_id=node_id,
+            subscription_id=subscription_id,
+            user_id=user_id,
+            timeout=timeout,
+        )
+
+        # Get webhook URL
+        subscription = TriggerProviderService.get_subscription_by_id(
+            tenant_id=app_model.tenant_id, subscription_id=subscription_id
+        )
+        webhook_url = (
+            f"{request.host_url.rstrip('/')}/trigger/plugin/{subscription.endpoint}" if subscription else "Unknown"
+        )
+
+        return TriggerDebuggingContext(
+            session_id=session_id,
+            subscription_id=subscription_id,
+            webhook_url=webhook_url,
+            node_id=node_id,
+            app_id=app_id,
+            user_id=user_id,
+            timeout=timeout,
+        )
+
+    @classmethod
+    def waiting_for_triggered(
+        cls,
+        app_model: App,
+        node_id: str,
+        user_id: str,
+        timeout: int = __DEFAULT_LISTEN_TIMEOUT__,
+    ) -> Generator[dict[str, Any], None, None]:
+        """
+        Listen for trigger events only.
+
+        This method sets up a debug session and listens for incoming trigger events.
+        It yields events as they occur and returns when a trigger is received or timeout occurs.
+
+        Args:
+            app_model: Application model
+            node_id: Node ID to debug
+            user_id: User ID creating the session
+            timeout: Timeout in seconds
+
+        Yields:
+            Event dictionaries including:
+            - listening_started: Initial event with webhook URL
+            - ping: Periodic heartbeat events
+            - trigger_debug_received: When trigger is received
+            - timeout: When timeout occurs
+            - error: On any errors
+        """
+        # Build debugging context
+        context = cls.build_debugging_context(app_model, node_id, user_id, timeout)
+
+        # Listen for events and pass them through
+        for event in cls.listen_for_events(
+            session_id=context.session_id, webhook_url=context.webhook_url, timeout=context.timeout
+        ):
+            yield event
+
+            # If we received a trigger, listening is complete
+            if isinstance(event, dict) and event.get("event") == "trigger_debug_received":
+                break
+
     @classmethod
     def create_debug_session(
-        cls, app_id: str, node_id: str, subscription_id: str, user_id: str, timeout: int = 300
+        cls, app_id: str, node_id: str, subscription_id: str, user_id: str, timeout: int = __DEFAULT_LISTEN_TIMEOUT__
     ) -> str:
         """
         Create a debug session.
@@ -66,17 +207,27 @@ class TriggerDebugService:
         return session_id
 
     @classmethod
-    def listen_for_events(cls, session_id: str, timeout: int = 300) -> Generator:
+    def listen_for_events(
+        cls, session_id: str, webhook_url: str, timeout: int = __DEFAULT_LISTEN_TIMEOUT__
+    ) -> Generator[dict[str, Any], None, None]:
         """
-        Listen for events using Redis Pub/Sub.
+        Listen for events using Redis Pub/Sub and generate structured events.
 
         Args:
             session_id: Debug session ID
+            webhook_url: Webhook URL for the trigger
             timeout: Timeout in seconds
 
         Yields:
-            Event data or heartbeat messages
+            Structured AppQueueEvent objects
         """
+        # Send initial listening started event
+        yield TriggerDebugListeningStartedResponse(
+            task_id="",  # Will be set by the caller if needed
+            session_id=session_id,
+            webhook_url=webhook_url,
+            timeout=timeout,
+        ).to_dict()
         pubsub = redis_client.pubsub()
         channel = f"{cls.PUBSUB_CHANNEL_PREFIX}{session_id}"
 
@@ -94,24 +245,45 @@ class TriggerDebugService:
                 message = pubsub.get_message(timeout=1.0)
 
                 if message and message["type"] == "message":
-                    # Received trigger event
-                    event_data = json.loads(message["data"])
-                    logger.info("Received trigger event for session %s", session_id)
-                    yield event_data
-                    break  # End listening after receiving event
+                    # Received trigger event - parse and create structured event
+                    try:
+                        event_data = json.loads(message["data"])
+                        logger.info("Received trigger event for session %s", session_id)
+
+                        # Create structured trigger received event
+                        trigger_data = TriggerDebugEventData(
+                            subscription_id=event_data["subscription_id"],
+                            triggers=event_data["triggers"],
+                            request_id=event_data["request_id"],
+                            timestamp=event_data.get("timestamp", time.time()),
+                        )
+                        yield TriggerDebugReceivedResponse(
+                            task_id="",
+                            subscription_id=trigger_data.subscription_id,
+                            triggers=trigger_data.triggers,
+                            request_id=trigger_data.request_id,
+                            timestamp=trigger_data.timestamp,
+                        ).to_dict()
+                        break  # End listening after receiving event
+                    except (json.JSONDecodeError, KeyError) as e:
+                        logger.exception("Failed to parse trigger event")
+                        yield ErrorStreamResponse(
+                            task_id="", err=Exception(f"Failed to parse trigger event: {str(e)}")
+                        ).to_dict()
+                        break
 
                 # Send periodic heartbeat
                 if time.time() - last_heartbeat > 5:
-                    yield {"type": "heartbeat", "remaining": int(timeout - (time.time() - start_time))}
+                    yield PingStreamResponse(task_id="").to_dict()
                     last_heartbeat = time.time()
 
             # Timeout
             if time.time() - start_time >= timeout:
-                yield {"type": "timeout"}
+                yield TriggerDebugTimeoutResponse(task_id="").to_dict()
 
         except Exception as e:
             logger.exception("Error in listen_for_events", exc_info=e)
-            yield {"type": "error", "message": str(e)}
+            yield ErrorStreamResponse(task_id="", err=e).to_dict()
 
         finally:
             # Clean up resources
