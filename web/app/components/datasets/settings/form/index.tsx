@@ -33,6 +33,10 @@ import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { useDocLink } from '@/context/i18n'
+import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import useEditDatasetMetadata from '../../metadata/hooks/use-edit-dataset-metadata'
+import DatasetMetadataDrawer from '../../metadata/metadata-dataset/dataset-metadata-drawer'
+import { RiDraftLine } from '@remixicon/react'
 
 const rowClass = 'flex'
 const labelClass = `
@@ -170,6 +174,28 @@ const Form = () => {
     }
   }
 
+  const dataset = currentDataset
+  const datasetId = dataset!.id
+
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
+
+  const {
+    isShowEditModal: isShowEditMetadataModal,
+    showEditModal: showEditMetadataModal,
+    hideEditModal: hideEditMetadataModal,
+    datasetMetaData,
+    handleAddMetaData,
+    handleRename,
+    handleDeleteMetaData,
+    builtInEnabled,
+    setBuiltInEnabled,
+    builtInMetaData,
+  } = useEditDatasetMetadata({
+    datasetId,
+    dataset,
+    onUpdateDocList: invalidDocumentList,
+  })
+
   return (
     <div className='flex w-full flex-col gap-y-4 px-14 py-8 sm:w-[880px]'>
       <div className={rowClass}>
@@ -301,6 +327,15 @@ const Form = () => {
               </div>
             </div>
           </div>
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='system-sm-semibold text-text-secondary'>{t('dataset.metadata.metadata')}</div>
+            </div>
+            <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>
+              <RiDraftLine className='mr-1 size-4' />
+              {t('dataset.metadata.metadata')}
+            </Button>
+          </div>
         </>
         : indexMethod
           ? <>
@@ -358,6 +393,18 @@ const Form = () => {
           </Button>
         </div>
       </div>
+      {isShowEditMetadataModal && (
+        <DatasetMetadataDrawer
+          userMetadata={datasetMetaData || []}
+          onClose={hideEditMetadataModal}
+          onAdd={handleAddMetaData}
+          onRename={handleRename}
+          onRemove={handleDeleteMetaData}
+          builtInMetadata={builtInMetaData || []}
+          isBuiltInEnabled={!!builtInEnabled}
+          onIsBuiltInEnabledChange={setBuiltInEnabled}
+        />
+      )}
     </div>
   )
 }
