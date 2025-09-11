@@ -6,6 +6,11 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const metaData = genNodeMetaData({
   sort: 0.1,
   type: BlockEnum.Start,
+  isStart: true,
+  isRequired: true,
+  isUndeletable: true,
+  isSingleton: true,
+  isTypeFixed: true,
 })
 const nodeDefault: NodeDefault<StartNodeType> = {
   metaData,
