@@ -5,7 +5,7 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import Item from './dataset-item'
 import type { DataSet } from '@/models/datasets'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useAppContextSelector } from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
 
 type Props = {
