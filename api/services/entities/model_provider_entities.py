@@ -34,6 +34,8 @@ class CustomConfigurationStatus(Enum):
 
     ACTIVE = "active"
     NO_CONFIGURE = "no-configure"
+    CANCELED = "canceled"
+    REMOVED = "removed"
 
 
 class CustomConfigurationResponse(BaseModel):

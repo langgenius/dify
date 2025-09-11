@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from functools import cached_property
 from typing import Optional
 
@@ -40,6 +40,11 @@ class ProviderQuotaType(Enum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+    
+class CredentialStatus(StrEnum):
+    ACTIVE = "active"
+    CANCELED = "canceled"
+    REMOVED = "removed"
 
 
 class Provider(Base):
@@ -65,6 +70,9 @@ class Provider(Base):
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
     last_used: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     credential_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    credential_status: Mapped[Optional[str]] = mapped_column(
+      String(20), nullable=True, server_default=text("'active'::character varying")
+    )  
 
     quota_type: Mapped[Optional[str]] = mapped_column(
         String(40), nullable=True, server_default=text("''::character varying")

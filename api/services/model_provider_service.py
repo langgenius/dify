@@ -89,9 +89,7 @@ class ModelProviderService:
                 model_credential_schema=provider_configuration.provider.model_credential_schema,
                 preferred_provider_type=provider_configuration.preferred_provider_type,
                 custom_configuration=CustomConfigurationResponse(
-                    status=CustomConfigurationStatus.ACTIVE
-                    if provider_configuration.is_custom_configuration_available()
-                    else CustomConfigurationStatus.NO_CONFIGURE,
+                    status=provider_configuration.get_custom_configuration_status(),
                     current_credential_id=getattr(provider_config, "current_credential_id", None),
                     current_credential_name=getattr(provider_config, "current_credential_name", None),
                     available_credentials=getattr(provider_config, "available_credentials", []),
@@ -213,6 +211,16 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.switch_active_provider_credential(credential_id=credential_id)
+
+    def cancel_provider_credential(self, tenant_id: str, provider: str):
+        """
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param credential_id: credential id
+        :return:
+        """
+        provider_configuration = self._get_provider_configuration(tenant_id, provider)
+        provider_configuration.cancel_provider_credential()
 
     def get_model_credential(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str | None

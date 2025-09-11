@@ -175,6 +175,22 @@ class ModelProviderCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
+class ModelProviderCredentialCancelApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider: str):
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        service = ModelProviderService()
+        service.cancel_provider_credential(
+            tenant_id=current_user.current_tenant_id,
+            provider=provider,
+        )
+        return {"result": "success"}
+    
+    
 class ModelProviderValidateApi(Resource):
     @setup_required
     @login_required
@@ -288,6 +304,9 @@ api.add_resource(ModelProviderListApi, "/workspaces/current/model-providers")
 api.add_resource(ModelProviderCredentialApi, "/workspaces/current/model-providers/<path:provider>/credentials")
 api.add_resource(
     ModelProviderCredentialSwitchApi, "/workspaces/current/model-providers/<path:provider>/credentials/switch"
+)
+api.add_resource(
+    ModelProviderCredentialCancelApi, "/workspaces/current/model-providers/<path:provider>/credentials/cancel"
 )
 api.add_resource(ModelProviderValidateApi, "/workspaces/current/model-providers/<path:provider>/credentials/validate")
 

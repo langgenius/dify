@@ -33,6 +33,7 @@ from core.plugin.entities.plugin import ModelProviderID
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.provider import (
+    CredentialStatus,
     LoadBalancingModelConfig,
     Provider,
     ProviderCredential,
@@ -43,6 +44,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from services.enterprise.plugin_manager_service import PluginCredentialType
+from services.entities.model_provider_entities import CustomConfigurationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +190,18 @@ class ProviderConfiguration(BaseModel):
             if current_quota_configuration.is_valid
             else SystemConfigurationStatus.QUOTA_EXCEEDED
         )
+    
+    def get_custom_configuration_status(self) -> Optional[CustomConfigurationStatus]:
+        """
+        Get custom configuration status.
+        :return:
+        """
+        if not self.is_custom_configuration_available():
+            return CustomConfigurationStatus.NO_CONFIGURE
+        elif self.custom_configuration.provider.current_credential_status:
+            return self.custom_configuration.provider.current_credential_status
+
+        return CustomConfigurationStatus.ACTIVE
 
     def is_custom_configuration_available(self) -> bool:
         """
@@ -643,6 +657,7 @@ class ProviderConfiguration(BaseModel):
                     self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
                 elif provider_record and provider_record.credential_id == credential_id:
                     provider_record.credential_id = None
+                    provider_record.credential_status = CredentialStatus.REMOVED.value
                     provider_record.updated_at = naive_utc_now()
 
                     provider_model_credentials_cache = ProviderCredentialsCache(
@@ -681,6 +696,34 @@ class ProviderConfiguration(BaseModel):
 
             try:
                 provider_record.credential_id = credential_record.id
+                provider_record.credential_status = CredentialStatus.ACTIVE.value
+                provider_record.updated_at = naive_utc_now()
+                session.commit()
+
+                provider_model_credentials_cache = ProviderCredentialsCache(
+                    tenant_id=self.tenant_id,
+                    identity_id=provider_record.id,
+                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+                )
+                provider_model_credentials_cache.delete()
+                self.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
+            except Exception:
+                session.rollback()
+                raise
+
+    def cancel_provider_credential(self):
+        """
+        Cancel select the active provider credential.
+        :return:
+        """
+        with Session(db.engine) as session:
+            provider_record = self._get_provider_record(session)
+            if not provider_record:
+                raise ValueError("Provider record not found.")
+
+            try:
+                provider_record.credential_id = None
+                provider_record.credential_status = CredentialStatus.CANCEL.value
                 provider_record.updated_at = naive_utc_now()
                 session.commit()
 

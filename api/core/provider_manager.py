@@ -711,6 +711,7 @@ class ProviderManager:
             credentials=provider_credentials,
             current_credential_name=custom_provider_record.credential_name,
             current_credential_id=custom_provider_record.credential_id,
+            current_credential_status=custom_provider_record.credential_status,
             available_credentials=self.get_provider_available_credentials(
                 tenant_id, custom_provider_record.provider_name
             ),

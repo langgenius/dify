@@ -11,6 +11,7 @@ from core.entities.parameter_entities import (
 )
 from core.model_runtime.entities.model_entities import ModelType
 from core.tools.entities.common_entities import I18nObject
+from models.provider import CredentialStatus
 
 
 class ProviderQuotaType(Enum):
@@ -97,6 +98,7 @@ class CustomProviderConfiguration(BaseModel):
     credentials: dict
     current_credential_id: Optional[str] = None
     current_credential_name: Optional[str] = None
+    current_credential_status: Optional[CredentialStatus] = None
     available_credentials: list[CredentialConfiguration] = []
 
 
