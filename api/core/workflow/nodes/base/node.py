@@ -144,6 +144,8 @@ class Node:
                 elif isinstance(event, GraphNodeEventBase) and not event.in_iteration_id and not event.in_loop_id:  # pyright: ignore[reportUnnecessaryIsInstance]
                     event.id = self._node_execution_id
                     yield event
+                else:
+                    yield event
         except Exception as e:
             logger.exception("Node %s failed to run", self._node_id)
             result = NodeRunResult(
