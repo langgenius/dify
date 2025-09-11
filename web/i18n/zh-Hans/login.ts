@@ -1,6 +1,6 @@
 const translation = {
-  pageTitle: '登录Dify',
-  welcome: '👋欢迎！请登录以开始使用。',
+  pageTitle: '登录 Dify',
+  welcome: '👋 欢迎！请登录以开始使用。',
   email: '邮箱',
   emailPlaceholder: '输入邮箱地址',
   password: '密码',
@@ -115,7 +115,7 @@ const translation = {
     noAccount: '没有账户？',
     signUp: '立即注册',
     createAccount: '创建您的账户',
-    welcome: '👋欢迎！请填写信息以开始使用。',
+    welcome: '👋 欢迎！请填写信息以开始使用。',
     verifyMail: '发送验证码',
     haveAccount: '已有账户？',
     signIn: '立即登录',
