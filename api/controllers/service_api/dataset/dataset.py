@@ -559,7 +559,7 @@ class DatasetTagsApi(DatasetApiResource):
     def post(self, _, dataset_id):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_create_parser.parse_args()
@@ -583,7 +583,7 @@ class DatasetTagsApi(DatasetApiResource):
     @validate_dataset_token
     def patch(self, _, dataset_id):
         assert isinstance(current_user, Account)
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_update_parser.parse_args()
@@ -610,7 +610,7 @@ class DatasetTagsApi(DatasetApiResource):
     def delete(self, _, dataset_id):
         """Delete a knowledge type tag."""
         assert isinstance(current_user, Account)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
         args = tag_delete_parser.parse_args()
         TagService.delete_tag(args.get("tag_id"))
@@ -634,7 +634,7 @@ class DatasetTagBindingApi(DatasetApiResource):
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_binding_parser.parse_args()
@@ -660,7 +660,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_unbinding_parser.parse_args()
