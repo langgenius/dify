@@ -136,6 +136,7 @@ const ConfigPromptItem: FC<Props> = ({
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
       nodeId={nodeId}
+      editorId={id}
       isSupportPromptGenerator
       onGenerated={handleGenerated}
       modelConfig={modelConfig}
