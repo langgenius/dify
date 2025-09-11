@@ -1,5 +1,5 @@
-from enum import StrEnum, auto
 import json
+from enum import StrEnum, auto
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
