@@ -92,7 +92,7 @@ class WorkflowAppGenerateTaskPipeline:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
-    ) -> None:
+    ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -137,7 +137,7 @@ class WorkflowAppGenerateTaskPipeline:
         self._application_generate_entity = application_generate_entity
         self._workflow_features_dict = workflow.features_dict
         self._workflow_run_id = ""
-        self._invoke_from = queue_manager._invoke_from
+        self._invoke_from = queue_manager.invoke_from
         self._draft_var_saver_factory = draft_var_saver_factory
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -146,7 +146,7 @@ class WorkflowAppGenerateTaskPipeline:
         :return:
         """
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
-        if self._base_task_pipeline._stream:
+        if self._base_task_pipeline.stream:
             return self._to_stream_response(generator)
         else:
             return self._to_blocking_response(generator)
@@ -263,7 +263,7 @@ class WorkflowAppGenerateTaskPipeline:
                 session.rollback()
                 raise
 
-    def _ensure_workflow_initialized(self) -> None:
+    def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
         if not self._workflow_run_id:
             raise ValueError("workflow run not initialized.")
@@ -276,12 +276,12 @@ class WorkflowAppGenerateTaskPipeline:
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""
-        yield self._base_task_pipeline._ping_stream_response()
+        yield self._base_task_pipeline.ping_stream_response()
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse, None, None]:
         """Handle error events."""
-        err = self._base_task_pipeline._handle_error(event=event)
-        yield self._base_task_pipeline._error_to_stream_response(err)
+        err = self._base_task_pipeline.handle_error(event=event)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_workflow_started_event(
         self, event: QueueWorkflowStartedEvent, **kwargs
@@ -744,7 +744,7 @@ class WorkflowAppGenerateTaskPipeline:
         if tts_publisher:
             tts_publisher.publish(None)
 
-    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution) -> None:
+    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution):
         invoke_from = self._application_generate_entity.invoke_from
         if invoke_from == InvokeFrom.SERVICE_API:
             created_from = WorkflowAppLogCreatedFrom.SERVICE_API

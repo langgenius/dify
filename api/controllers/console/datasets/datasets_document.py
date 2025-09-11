@@ -1,5 +1,6 @@
 import logging
 from argparse import ArgumentTypeError
+from collections.abc import Sequence
 from typing import Literal, cast
 
 from flask import request
@@ -79,7 +80,7 @@ class DocumentResource(Resource):
 
         return document
 
-    def get_batch_documents(self, dataset_id: str, batch: str) -> list[Document]:
+    def get_batch_documents(self, dataset_id: str, batch: str) -> Sequence[Document]:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -475,6 +476,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             data_source_info = document.data_source_info_dict
 
             if document.data_source_type == "upload_file":
+                if not data_source_info:
+                    continue
                 file_id = data_source_info["upload_file_id"]
                 file_detail = (
                     db.session.query(UploadFile)
@@ -491,6 +494,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 extract_settings.append(extract_setting)
 
             elif document.data_source_type == "notion_import":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION.value,
                     notion_info={
@@ -503,6 +508,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 )
                 extract_settings.append(extract_setting)
             elif document.data_source_type == "website_crawl":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.WEBSITE.value,
                     website_info={

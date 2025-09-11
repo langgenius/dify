@@ -59,7 +59,7 @@ class ProviderManager:
     ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.decoding_rsa_key = None
         self.decoding_cipher_rsa = None
 
@@ -1129,6 +1129,7 @@ class ProviderManager:
                                 name=load_balancing_model_config.name,
                                 credentials=provider_model_credentials,
                                 credential_source_type=load_balancing_model_config.credential_source_type,
+                                credential_id=load_balancing_model_config.credential_id,
                             )
                         )
 

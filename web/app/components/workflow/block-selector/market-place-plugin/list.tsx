@@ -1,5 +1,5 @@
 'use client'
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
@@ -17,18 +17,20 @@ export type ListProps = {
   tags: string[]
   toolContentClassName?: string
   disableMaxWidth?: boolean
+  ref?: React.Ref<ListRef>
 }
 
 export type ListRef = { handleScroll: () => void }
 
-const List = forwardRef<ListRef, ListProps>(({
+const List = ({
   wrapElemRef,
   searchText,
   tags,
   list,
   toolContentClassName,
   disableMaxWidth = false,
-}, ref) => {
+  ref,
+}: ListProps) => {
   const { t } = useTranslation()
   const hasFilter = !searchText
   const hasRes = list.length > 0
@@ -125,7 +127,7 @@ const List = forwardRef<ListRef, ListProps>(({
       </div>
     </>
   )
-})
+}
 
 List.displayName = 'List'
 

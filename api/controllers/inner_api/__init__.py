@@ -10,14 +10,13 @@ api = ExternalApi(
     version="1.0",
     title="Inner API",
     description="Internal APIs for enterprise features, billing, and plugin communication",
-    doc="/docs",  # Enable Swagger UI at /inner/api/docs
 )
 
 # Create namespace
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
-from . import mail
-from .plugin import plugin
-from .workspace import workspace
+from . import mail as _mail  # pyright: ignore[reportUnusedImport]
+from .plugin import plugin as _plugin  # pyright: ignore[reportUnusedImport]
+from .workspace import workspace as _workspace  # pyright: ignore[reportUnusedImport]
 
 api.add_namespace(inner_api_ns)
