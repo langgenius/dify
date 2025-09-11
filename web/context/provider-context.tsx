@@ -61,8 +61,7 @@ type ProviderContextState = {
       size: number
       limit: number
     }
-
-  },
+  }
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
 }
