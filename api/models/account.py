@@ -188,6 +188,16 @@ class Account(UserMixin, Base):
 
     @property
     def is_editor(self):
+        # TODO: Rename this property to `has_editing_permission`.
+        """Determines if the account has editing permissions in their current tenant (workspace).
+
+        This property checks if the current role has editing privileges, which includes:
+        - `OWNER`
+        - `ADMIN`
+        - `EDITOR`
+
+        Note: This checks for any role with editing permission, not just the 'EDITOR' role specifically.
+        """
         return TenantAccountRole.is_editing_role(self.role)
 
     @property
