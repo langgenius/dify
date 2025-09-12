@@ -342,4 +342,3 @@ def test_http_request_node_form_with_multiple_files(monkeypatch: pytest.MonkeyPa
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs["body"] == '{"status":"success"}'
-    print(result.outputs["body"])

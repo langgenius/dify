@@ -1706,57 +1706,6 @@ ___
 <hr style={{ marginLeft: 0, marginRight: 0, width: '100%', maxWidth: '100%' }} />
 
 <Heading
-  url='/datasets/{dataset_id}/documents/{document_id}/upload-file'
-  method='GET'
-  title='アップロードファイルを取得'
-  name='#get_upload_file'
-/>
-<Row>
-  <Col>
-    ### パス
-    <Properties>
-      <Property name='dataset_id' type='string' key='dataset_id'>
-        ナレッジ ID
-      </Property>
-      <Property name='document_id' type='string' key='document_id'>
-        ドキュメント ID
-      </Property>
-    </Properties>
-  </Col>
-  <Col sticky>
-    <CodeGroup
-      title="リクエスト"
-      tag="GET"
-      label="/datasets/{dataset_id}/documents/{document_id}/upload-file"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/upload-file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/upload-file' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json'
-    ```
-    </CodeGroup>
-    <CodeGroup title="レスポンス">
-    ```json {{ title: 'Response' }}
-    {
-      "id": "file_id",
-      "name": "file_name",
-      "size": 1024,
-      "extension": "txt",
-      "url": "preview_url",
-      "download_url": "download_url",
-      "mime_type": "text/plain",
-      "created_by": "user_id",
-      "created_at": 1728734540,
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
-<hr style={{ marginLeft: 0, marginRight: 0, width: '100%', maxWidth: '100%' }} />
-
-<Heading
   url='/datasets/{dataset_id}/retrieve'
   method='POST'
   title='ナレッジベースからチャンクを取得'
@@ -2594,4 +2543,3 @@ ___
   </tbody>
 </table>
 <div className="pb-4" />
-

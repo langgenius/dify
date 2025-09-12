@@ -55,6 +55,7 @@ const translation = {
     passwordInvalid: '비밀번호는 문자와 숫자를 포함하고 8 자 이상이어야 합니다.',
     passwordLengthInValid: '비밀번호는 8 자 이상이어야 합니다.',
     registrationNotAllowed: '계정을 찾을 수 없습니다. 등록하려면 시스템 관리자에게 문의하십시오.',
+    invalidEmailOrPassword: '유효하지 않은 이메일이나 비밀번호입니다.',
   },
   license: {
     tip: 'Dify Community Edition 을 시작하기 전에 GitHub 의',
@@ -109,6 +110,15 @@ const translation = {
     disabled: '웹앱 인증이 비활성화되었습니다. 이를 활성화하려면 시스템 관리자에게 문의하십시오. 앱을 직접 사용해 볼 수 있습니다.',
     noLoginMethodTip: '인증 방법을 추가하려면 시스템 관리자에게 연락하십시오.',
     login: '로그인',
+  },
+  signup: {
+    signIn: '로그인',
+    signUp: '가입하기',
+    haveAccount: '이미 계정이 있으신가요?',
+    createAccount: '계정을 생성하세요',
+    verifyMail: '인증 코드로 계속 진행하세요',
+    noAccount: '계정이 없으신가요?',
+    welcome: '👋 환영합니다! 시작하려면 세부 정보를 입력해 주세요.',
   },
 }
 
