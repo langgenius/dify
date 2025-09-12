@@ -13,7 +13,7 @@ import {
   useWorkflowRun,
 } from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
-import { useWorkflowStore } from '../../store'
+import { useStore, useWorkflowStore } from '../../store'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import type {
   ChatItem,
@@ -63,6 +63,8 @@ export const useChat = (
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
+  const conversationVariables = useStore(s => s.conversationVariables)
+  const setConversationVariables = useStore(s => s.setConversationVariables)
   const {
     setIterTimes,
     setLoopTimes,
@@ -498,6 +500,18 @@ export const useChat = (
               parentId: params.parent_message_id,
             })
           }
+        },
+        onMemoryUpdate: ({ data }) => {
+          const currentMemoryIndex = conversationVariables.findIndex(item => item.id === data.memory_id)
+          const newList = produce(conversationVariables, (draft) => {
+            if (currentMemoryIndex > -1) {
+              draft[currentMemoryIndex] = {
+                ...draft[currentMemoryIndex],
+                ...data,
+              }
+            }
+          })
+          setConversationVariables(newList)
         },
       },
     )

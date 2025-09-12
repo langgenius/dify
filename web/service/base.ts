@@ -12,6 +12,7 @@ import type {
   LoopFinishedResponse,
   LoopNextResponse,
   LoopStartedResponse,
+  MemoryUpdateResponse,
   NodeFinishedResponse,
   NodeStartedResponse,
   ParallelBranchFinishedResponse,
@@ -62,6 +63,7 @@ export type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
 export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
+export type IOnMemoryUpdate = (memory: MemoryUpdateResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
@@ -97,6 +99,7 @@ export type IOtherOptions = {
   onLoopNext?: IOnLoopNext
   onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
+  onMemoryUpdate?: IOnMemoryUpdate
 }
 
 function unicodeToChar(text: string) {
@@ -152,6 +155,7 @@ const handleStream = (
   onTTSEnd?: IOnTTSEnd,
   onTextReplace?: IOnTextReplace,
   onAgentLog?: IOnAgentLog,
+  onMemoryUpdate?: IOnMemoryUpdate,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -270,6 +274,9 @@ const handleStream = (
             else if (bufferObj.event === 'tts_message_end') {
               onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
             }
+            else if (bufferObj.event === 'memory_update') {
+              onMemoryUpdate?.(bufferObj as MemoryUpdateResponse)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -363,6 +370,7 @@ export const ssePost = async (
     onLoopStart,
     onLoopNext,
     onLoopFinish,
+    onMemoryUpdate,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -465,6 +473,7 @@ export const ssePost = async (
       onTTSEnd,
       onTextReplace,
       onAgentLog,
+      onMemoryUpdate,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))

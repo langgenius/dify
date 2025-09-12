@@ -290,6 +290,15 @@ export type AgentLogResponse = {
   data: AgentLogItemWithChildren
 }
 
+export type MemoryUpdateResponse = {
+  task_id: string
+  event: string
+  data: {
+    memory_id: string
+    memory: any // TODO
+  }
+}
+
 export type WorkflowRunHistory = {
   id: string
   version: string
