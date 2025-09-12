@@ -93,6 +93,7 @@ from .auth import (
     activate,  # pyright: ignore[reportUnusedImport]
     data_source_bearer_auth,  # pyright: ignore[reportUnusedImport]
     data_source_oauth,  # pyright: ignore[reportUnusedImport]
+    email_register,  # pyright: ignore[reportUnusedImport]
     forgot_password,  # pyright: ignore[reportUnusedImport]
     login,  # pyright: ignore[reportUnusedImport]
     oauth,  # pyright: ignore[reportUnusedImport]

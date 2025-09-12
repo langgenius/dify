@@ -3,7 +3,7 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from core.plugin.entities.plugin import GenericProviderID
@@ -62,9 +62,9 @@ class AppMode(StrEnum):
         raise ValueError(f"invalid mode value {value}")
 
 
-class IconType(Enum):
-    IMAGE = "image"
-    EMOJI = "emoji"
+class IconType(StrEnum):
+    IMAGE = auto()
+    EMOJI = auto()
 
 
 class App(Base):
@@ -149,15 +149,15 @@ class App(Base):
         if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
-            self.mode = AppMode.AGENT_CHAT.value
+            self.mode = AppMode.AGENT_CHAT
             db.session.commit()
             return True
         return False
 
     @property
     def mode_compatible_with_agent(self) -> str:
-        if self.mode == AppMode.CHAT.value and self.is_agent:
-            return AppMode.AGENT_CHAT.value
+        if self.mode == AppMode.CHAT and self.is_agent:
+            return AppMode.AGENT_CHAT
 
         return str(self.mode)
 
@@ -713,7 +713,7 @@ class Conversation(Base):
         model_config = {}
         app_model_config: Optional[AppModelConfig] = None
 
-        if self.mode == AppMode.ADVANCED_CHAT.value:
+        if self.mode == AppMode.ADVANCED_CHAT:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
                 model_config = override_model_configs
@@ -812,7 +812,7 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        messages = db.session.query(Message).where(Message.conversation_id == self.id).all()
+        messages = db.session.scalars(select(Message).where(Message.conversation_id == self.id)).all()
         status_counts = {
             WorkflowExecutionStatus.RUNNING: 0,
             WorkflowExecutionStatus.SUCCEEDED: 0,
@@ -1090,7 +1090,7 @@ class Message(Base):
 
     @property
     def feedbacks(self):
-        feedbacks = db.session.query(MessageFeedback).where(MessageFeedback.message_id == self.id).all()
+        feedbacks = db.session.scalars(select(MessageFeedback).where(MessageFeedback.message_id == self.id)).all()
         return feedbacks
 
     @property
@@ -1145,7 +1145,7 @@ class Message(Base):
     def message_files(self) -> list[dict[str, Any]]:
         from factories import file_factory
 
-        message_files = db.session.query(MessageFile).where(MessageFile.message_id == self.id).all()
+        message_files = db.session.scalars(select(MessageFile).where(MessageFile.message_id == self.id)).all()
         current_app = db.session.query(App).where(App.id == self.app_id).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
@@ -1457,6 +1457,14 @@ class OperationLog(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     created_ip: Mapped[str] = mapped_column(String(255), nullable=False)
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class DefaultEndUserSessionID(StrEnum):
+    """
+    End User Session ID enum.
+    """
+
+    DEFAULT_SESSION_ID = "DEFAULT-USER"
 
 
 class EndUser(Base, UserMixin):
