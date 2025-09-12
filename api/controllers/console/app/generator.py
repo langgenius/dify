@@ -1,9 +1,8 @@
 from collections.abc import Sequence
 
 from flask_login import current_user
-from flask_restx import Resource, reqparse
-from sqlalchemy import select
 from flask_restx import Resource, fields, reqparse
+from sqlalchemy import select
 
 from controllers.console import api, console_ns
 from controllers.console.app.error import (

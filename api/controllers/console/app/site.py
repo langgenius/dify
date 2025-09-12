@@ -1,7 +1,6 @@
 from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
-from sqlalchemy import select
 from flask_restx import Resource, fields, marshal_with, reqparse
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 from constants.languages import supported_language
