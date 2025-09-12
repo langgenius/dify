@@ -71,7 +71,7 @@ def main() -> None:
     """Run all setup scripts in order."""
 
     log = Logger("Setup")
-    log.box("Dify Benchmark Setup - Full Installation")
+    log.box("Dify Stress Test Setup - Full Installation")
 
     # Check if required services are running
     log.step("Checking required services...")
@@ -85,7 +85,7 @@ def main() -> None:
     mock_running = check_port("localhost", 5004, "Mock OpenAI server")
     if not mock_running:
         log.info("To start Mock OpenAI server:")
-        log.list_item("Run: python scripts/benchmark/setup/mock_openai_server.py")
+        log.list_item("Run: python scripts/stress-test/setup/mock_openai_server.py")
 
     if not dify_running or not mock_running:
         print("\n⚠️  Both services must be running before proceeding.")
@@ -145,11 +145,11 @@ def main() -> None:
         log.info("Next steps:")
         log.list_item("Test the workflow:")
         log.info(
-            '   python scripts/benchmark/setup/run_workflow.py "Your question here"',
+            '   python scripts/stress-test/setup/run_workflow.py "Your question here"',
             indent=4,
         )
         log.list_item("To clean up and start over:")
-        log.info("   python scripts/benchmark/setup/cleanup.py", indent=4)
+        log.info("   python scripts/stress-test/cleanup.py", indent=4)
 
         # Optionally run a test
         log.separator()

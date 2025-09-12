@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-SSE (Server-Sent Events) Benchmark for Dify Workflow API
+SSE (Server-Sent Events) Stress Test for Dify Workflow API
 
-This script benchmarks the streaming performance of Dify's workflow execution API,
+This script stress tests the streaming performance of Dify's workflow execution API,
 measuring key metrics like connection rate, event throughput, and time to first event (TTFE).
 """
 
@@ -22,7 +22,7 @@ from locust import HttpUser, task, between, events, constant
 from typing import TypedDict, Literal, TypeAlias
 import requests.exceptions
 
-# Add the benchmark directory to path to import common modules
+# Add the stress-test directory to path to import common modules
 sys.path.insert(0, str(Path(__file__).parent))
 from common.config_helper import ConfigHelper  # type: ignore[import-not-found]
 
@@ -673,47 +673,53 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
     logger.info(f"Test Duration: {test_duration:.1f} seconds")
     logger.info("-" * 80)
 
-    logger.info(f"\n{'CONNECTIONS':<30}")
-    logger.info(f"  {'Total Connections:':<25} {stats.total_connections:>10,d}")
-    logger.info(f"  {'Final Active:':<25} {stats.active_connections:>10,d}")
-    logger.info(f"  {'Average Rate:':<25} {stats.overall_conn_rate:>10.2f} conn/s")
+    logger.info("")
+    logger.info("CONNECTIONS")
+    logger.info(f"  {'Total Connections:':<30} {stats.total_connections:>10,d}")
+    logger.info(f"  {'Final Active:':<30} {stats.active_connections:>10,d}")
+    logger.info(f"  {'Average Rate:':<30} {stats.overall_conn_rate:>10.2f} conn/s")
 
-    logger.info(f"\n{'EVENTS':<30}")
-    logger.info(f"  {'Total Events Received:':<25} {stats.total_events:>10,d}")
+    logger.info("")
+    logger.info("EVENTS")
+    logger.info(f"  {'Total Events Received:':<30} {stats.total_events:>10,d}")
     logger.info(
-        f"  {'Average Throughput:':<25} {stats.overall_event_rate:>10.2f} events/s"
+        f"  {'Average Throughput:':<30} {stats.overall_event_rate:>10.2f} events/s"
     )
     logger.info(
-        f"  {'Final Rate (10s window):':<25} {stats.event_rate:>10.2f} events/s"
+        f"  {'Final Rate (10s window):':<30} {stats.event_rate:>10.2f} events/s"
     )
 
-    logger.info(f"\n{'STREAM METRICS':<30}")
-    logger.info(f"  {'Avg Stream Duration:':<25} {stats.stream_duration_avg:>10.1f} ms")
-    logger.info(f"  {'P50 Stream Duration:':<25} {stats.stream_duration_p50:>10.1f} ms")
-    logger.info(f"  {'P95 Stream Duration:':<25} {stats.stream_duration_p95:>10.1f} ms")
+    logger.info("")
+    logger.info("STREAM METRICS")
+    logger.info(f"  {'Avg Stream Duration:':<30} {stats.stream_duration_avg:>10.1f} ms")
+    logger.info(f"  {'P50 Stream Duration:':<30} {stats.stream_duration_p50:>10.1f} ms")
+    logger.info(f"  {'P95 Stream Duration:':<30} {stats.stream_duration_p95:>10.1f} ms")
     logger.info(
-        f"  {'Avg Events per Stream:':<25} {stats.events_per_stream_avg:>10.1f}"
+        f"  {'Avg Events per Stream:':<30} {stats.events_per_stream_avg:>10.1f}"
     )
 
-    logger.info(f"\n{'INTER-EVENT LATENCY':<30}")
-    logger.info(f"  {'Average:':<25} {stats.inter_event_latency_avg:>10.1f} ms")
-    logger.info(f"  {'Median (P50):':<25} {stats.inter_event_latency_p50:>10.1f} ms")
-    logger.info(f"  {'95th Percentile:':<25} {stats.inter_event_latency_p95:>10.1f} ms")
+    logger.info("")
+    logger.info("INTER-EVENT LATENCY")
+    logger.info(f"  {'Average:':<30} {stats.inter_event_latency_avg:>10.1f} ms")
+    logger.info(f"  {'Median (P50):':<30} {stats.inter_event_latency_p50:>10.1f} ms")
+    logger.info(f"  {'95th Percentile:':<30} {stats.inter_event_latency_p95:>10.1f} ms")
 
-    logger.info(f"\n{'TIME TO FIRST EVENT (ms)':<30}")
-    logger.info(f"  {'Average:':<25} {stats.ttfe_avg:>10.1f} ms")
-    logger.info(f"  {'Median (P50):':<25} {stats.ttfe_p50:>10.1f} ms")
-    logger.info(f"  {'95th Percentile:':<25} {stats.ttfe_p95:>10.1f} ms")
-    logger.info(f"  {'Minimum:':<25} {stats.ttfe_min:>10.1f} ms")
-    logger.info(f"  {'Maximum:':<25} {stats.ttfe_max:>10.1f} ms")
-    logger.info(f"  {'Total Samples:':<25} {stats.ttfe_samples:>10,d}")
+    logger.info("")
+    logger.info("TIME TO FIRST EVENT (ms)")
+    logger.info(f"  {'Average:':<30} {stats.ttfe_avg:>10.1f} ms")
+    logger.info(f"  {'Median (P50):':<30} {stats.ttfe_p50:>10.1f} ms")
+    logger.info(f"  {'95th Percentile:':<30} {stats.ttfe_p95:>10.1f} ms")
+    logger.info(f"  {'Minimum:':<30} {stats.ttfe_min:>10.1f} ms")
+    logger.info(f"  {'Maximum:':<30} {stats.ttfe_max:>10.1f} ms")
+    logger.info(f"  {'Total Samples:':<30} {stats.ttfe_samples:>10,d}")
 
     # Error summary
     if any(stats.error_counts.values()):
-        logger.info(f"\n{'ERRORS':<30}")
+        logger.info("")
+        logger.info("ERRORS")
         for error_type, count in stats.error_counts.items():
             if isinstance(count, int) and count > 0:
-                logger.info(f"  {error_type:<25} {count:>10,d}")
+                logger.info(f"  {error_type:<30} {count:>10,d}")
 
     logger.info("=" * 80 + "\n")
 

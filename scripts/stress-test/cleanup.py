@@ -8,10 +8,10 @@ from common import Logger
 
 
 def cleanup() -> None:
-    """Clean up all configuration files and reports created during setup and benchmarking."""
+    """Clean up all configuration files and reports created during setup and stress testing."""
 
     log = Logger("Cleanup")
-    log.header("Benchmark Cleanup")
+    log.header("Stress Test Cleanup")
 
     config_dir = Path(__file__).parent / "setup" / "config"
     reports_dir = Path(__file__).parent / "reports"
@@ -26,7 +26,7 @@ def cleanup() -> None:
         log.success("No directories to clean. Everything is already clean.")
         return
 
-    log.info("Cleaning up benchmark data...")
+    log.info("Cleaning up stress test data...")
     log.info("This will remove:")
     for dir_path in dirs_to_clean:
         log.list_item(str(dir_path))

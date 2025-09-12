@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Run Dify SSE Benchmark using Locust
+# Run Dify SSE Stress Test using Locust
 
 set -e
 
@@ -9,7 +9,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Go to project root first, then to script dir
 PROJECT_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
 cd "${PROJECT_ROOT}"
-BENCHMARK_DIR="scripts/benchmark"
+STRESS_TEST_DIR="scripts/stress-test"
 
 # Colors for output
 RED='\033[0;31m'
@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-REPORT_DIR="${BENCHMARK_DIR}/reports"
+REPORT_DIR="${STRESS_TEST_DIR}/reports"
 CSV_PREFIX="${REPORT_DIR}/locust_${TIMESTAMP}"
 HTML_REPORT="${REPORT_DIR}/locust_report_${TIMESTAMP}.html"
 SUMMARY_REPORT="${REPORT_DIR}/locust_summary_${TIMESTAMP}.txt"
@@ -30,7 +30,7 @@ SUMMARY_REPORT="${REPORT_DIR}/locust_summary_${TIMESTAMP}.txt"
 mkdir -p "${REPORT_DIR}"
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║             DIFY SSE WORKFLOW BENCHMARK (LOCUST)               ║${NC}"
+echo -e "${BLUE}║             DIFY SSE WORKFLOW STRESS TEST (LOCUST)             ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo
 
@@ -67,33 +67,33 @@ if curl -s -f http://localhost:5004/v1/models > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Mock OpenAI server is running${NC}"
 else
     echo -e "${RED}✗ Mock OpenAI server is not running on port 5004${NC}"
-    echo -e "${YELLOW}  Start it with: python scripts/benchmark/setup/mock_openai_server.py${NC}"
+    echo -e "${YELLOW}  Start it with: python scripts/stress-test/setup/mock_openai_server.py${NC}"
     exit 1
 fi
 
 # Check API token exists
-if [ ! -f "${BENCHMARK_DIR}/setup/config/benchmark_state.json" ]; then
-    echo -e "${RED}✗ Benchmark configuration not found${NC}"
-    echo -e "${YELLOW}  Run setup first: python scripts/benchmark/setup_all.py${NC}"
+if [ ! -f "${STRESS_TEST_DIR}/setup/config/stress_test_state.json" ]; then
+    echo -e "${RED}✗ Stress test configuration not found${NC}"
+    echo -e "${YELLOW}  Run setup first: python scripts/stress-test/setup_all.py${NC}"
     exit 1
 fi
 
-API_TOKEN=$(python3 -c "import json; state = json.load(open('${BENCHMARK_DIR}/setup/config/benchmark_state.json')); print(state.get('api_key', {}).get('token', ''))" 2>/dev/null)
+API_TOKEN=$(python3 -c "import json; state = json.load(open('${STRESS_TEST_DIR}/setup/config/stress_test_state.json')); print(state.get('api_key', {}).get('token', ''))" 2>/dev/null)
 if [ -z "$API_TOKEN" ]; then
-    echo -e "${RED}✗ Failed to read API token from benchmark state${NC}"
+    echo -e "${RED}✗ Failed to read API token from stress test state${NC}"
     exit 1
 fi
 echo -e "${GREEN}✓ API token found: ${API_TOKEN:0:10}...${NC}"
 
 echo
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${CYAN}                     BENCHMARK PARAMETERS                       ${NC}"
+echo -e "${CYAN}                   STRESS TEST PARAMETERS                       ${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
 
 # Parse configuration
-USERS=$(grep "^users" ${BENCHMARK_DIR}/locust.conf | cut -d'=' -f2 | tr -d ' ')
-SPAWN_RATE=$(grep "^spawn-rate" ${BENCHMARK_DIR}/locust.conf | cut -d'=' -f2 | tr -d ' ')
-RUN_TIME=$(grep "^run-time" ${BENCHMARK_DIR}/locust.conf | cut -d'=' -f2 | tr -d ' ')
+USERS=$(grep "^users" ${STRESS_TEST_DIR}/locust.conf | cut -d'=' -f2 | tr -d ' ')
+SPAWN_RATE=$(grep "^spawn-rate" ${STRESS_TEST_DIR}/locust.conf | cut -d'=' -f2 | tr -d ' ')
+RUN_TIME=$(grep "^run-time" ${STRESS_TEST_DIR}/locust.conf | cut -d'=' -f2 | tr -d ' ')
 
 echo -e "  ${YELLOW}Users:${NC}       $USERS concurrent users"
 echo -e "  ${YELLOW}Spawn Rate:${NC}  $SPAWN_RATE users/second"
@@ -109,8 +109,8 @@ echo -n "Choice [1]: "
 read -t 10 choice || choice="1"
 echo
 
-# Use SSE benchmark script
-LOCUST_SCRIPT="${BENCHMARK_DIR}/sse_benchmark.py"
+# Use SSE stress test script
+LOCUST_SCRIPT="${STRESS_TEST_DIR}/sse_benchmark.py"
 
 # Prepare Locust command
 if [ "$choice" = "2" ]; then
@@ -124,7 +124,7 @@ if [ "$choice" = "2" ]; then
         --host http://localhost:5001 \
         --web-port 8089
 else
-    echo -e "${BLUE}Starting benchmark in headless mode...${NC}"
+    echo -e "${BLUE}Starting stress test in headless mode...${NC}"
     echo
     
     # Run in headless mode with CSV output
@@ -142,7 +142,7 @@ else
     
     echo
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}                    BENCHMARK COMPLETE                         ${NC}"
+    echo -e "${GREEN}                   STRESS TEST COMPLETE                        ${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
     echo
     echo -e "${BLUE}Reports generated:${NC}"

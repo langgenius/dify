@@ -18,7 +18,7 @@ class ConfigHelper:
             # Default to config directory in setup folder
             base_dir = Path(__file__).parent.parent / "setup" / "config"
         self.base_dir = base_dir
-        self.state_file = "benchmark_state.json"
+        self.state_file = "stress_test_state.json"
 
     def ensure_config_dir(self) -> None:
         """Ensure the config directory exists."""
@@ -138,7 +138,7 @@ class ConfigHelper:
             return False
 
     def read_state(self) -> dict[str, Any] | None:
-        """Read the entire benchmark state.
+        """Read the entire stress test state.
 
         Returns:
             Dictionary containing all state data, or None if file doesn't exist
@@ -155,7 +155,7 @@ class ConfigHelper:
             return None
 
     def write_state(self, data: dict[str, Any]) -> bool:
-        """Write the entire benchmark state.
+        """Write the entire stress test state.
 
         Args:
             data: Dictionary containing all state data to save
@@ -175,7 +175,7 @@ class ConfigHelper:
             return False
 
     def update_state_section(self, section: str, data: dict[str, Any]) -> bool:
-        """Update a specific section of the benchmark state.
+        """Update a specific section of the stress test state.
 
         Args:
             section: Name of the section to update (e.g., 'admin', 'auth', 'app', 'api_key')
@@ -189,7 +189,7 @@ class ConfigHelper:
         return self.write_state(state)
 
     def get_state_section(self, section: str) -> dict[str, Any] | None:
-        """Get a specific section from the benchmark state.
+        """Get a specific section from the stress test state.
 
         Args:
             section: Name of the section to get (e.g., 'admin', 'auth', 'app', 'api_key')

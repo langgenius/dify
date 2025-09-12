@@ -1,10 +1,10 @@
-# Dify Benchmark Suite
+# Dify Stress Test Suite
 
-A high-performance benchmark suite for Dify workflow execution using **Locust** - optimized for measuring Server-Sent Events (SSE) streaming performance.
+A high-performance stress test suite for Dify workflow execution using **Locust** - optimized for measuring Server-Sent Events (SSE) streaming performance.
 
 ## Key Metrics Tracked
 
-The benchmark focuses on four critical SSE performance indicators:
+The stress test focuses on four critical SSE performance indicators:
 
 1. **Active SSE Connections** - Real-time count of open SSE connections
 2. **New Connection Rate** - Connections per second (conn/sec)
@@ -28,11 +28,11 @@ The benchmark focuses on four critical SSE performance indicators:
 
 ## What Gets Measured
 
-The benchmark focuses on SSE streaming performance with these key metrics:
+The stress test focuses on SSE streaming performance with these key metrics:
 
 ### Primary Endpoint: `/v1/workflows/run`
 
-The benchmark tests a single endpoint with comprehensive SSE metrics tracking:
+The stress test tests a single endpoint with comprehensive SSE metrics tracking:
 
 - **Request Type**: POST request to workflow execution API
 - **Response Type**: Server-Sent Events (SSE) stream
@@ -92,12 +92,12 @@ The benchmark tests a single endpoint with comprehensive SSE metrics tracking:
 
    ```bash
    # Run the complete setup
-   python scripts/benchmark/setup_all.py
+   python scripts/stress-test/setup_all.py
    ```
 
 3. **Ensure services are running**:
 
-   **IMPORTANT**: For accurate benchmarking, run the API server with Gunicorn in production mode:
+   **IMPORTANT**: For accurate stress testing, run the API server with Gunicorn in production mode:
 
    ```bash
    # Run from the api directory
@@ -120,42 +120,42 @@ The benchmark tests a single endpoint with comprehensive SSE metrics tracking:
    - `--timeout 120`: Worker timeout for long-running requests
    - `--keep-alive 5`: Keep connections alive for SSE streaming
 
-   **NOT RECOMMENDED for benchmarking**:
+   **NOT RECOMMENDED for stress testing**:
 
    ```bash
-   # Debug mode - DO NOT use for benchmarking (slow performance)
+   # Debug mode - DO NOT use for stress testing (slow performance)
    ./dev/start-api  # This runs Flask in debug mode with single-threaded execution
    ```
 
    **Also start the Mock OpenAI server**:
 
    ```bash
-   python scripts/benchmark/setup/mock_openai_server.py
+   python scripts/stress-test/setup/mock_openai_server.py
    ```
 
-## Running the Benchmark
+## Running the Stress Test
 
 ```bash
 # Run with default configuration (headless mode)
-./scripts/benchmark/run_locust_benchmark.sh
+./scripts/stress-test/run_locust_stress_test.sh
 
 # Or run directly with uv
-uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py --host http://localhost:5001
+uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001
 
 # Run with Web UI (access at http://localhost:8089)
-uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py --host http://localhost:5001 --web-port 8089
+uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001 --web-port 8089
 ```
 
 The script will:
 
 1. Validate that all required services are running
 2. Check API token availability
-3. Execute the Locust benchmark with SSE support
+3. Execute the Locust stress test with SSE support
 4. Generate comprehensive reports in the `reports/` directory
 
 ## Configuration
 
-The benchmark configuration is in `locust.conf`:
+The stress test configuration is in `locust.conf`:
 
 ```ini
 users = 10           # Number of concurrent users
@@ -180,7 +180,7 @@ self.questions = [
 
 ### Report Structure
 
-After running the benchmark, you'll find these files in the `reports/` directory:
+After running the stress test, you'll find these files in the `reports/` directory:
 
 - `locust_summary_YYYYMMDD_HHMMSS.txt` - Complete console output with metrics
 - `locust_report_YYYYMMDD_HHMMSS.html` - Interactive HTML report with charts
@@ -211,7 +211,7 @@ After running the benchmark, you'll find these files in the `reports/` directory
 
 ```text
 ============================================================
-DIFY SSE BENCHMARK
+DIFY SSE STRESS TEST
 ============================================================
 
 [2025-09-12 15:45:44,468] Starting test run with 10 users at 2 users/sec
@@ -376,7 +376,7 @@ uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-c
 
    ```bash
    # Run setup
-   python scripts/benchmark/setup_all.py
+   python scripts/stress-test/setup_all.py
    ```
 
 3. **Services not running**:
@@ -387,7 +387,7 @@ uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-c
    uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent app:app
    
    # Start Mock OpenAI server
-   python scripts/benchmark/setup/mock_openai_server.py
+   python scripts/stress-test/setup/mock_openai_server.py
    ```
 
 4. **High error rate**:
@@ -407,10 +407,10 @@ uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-c
 ### Running Multiple Iterations
 
 ```bash
-# Run benchmark 3 times with 60-second intervals
+# Run stress test 3 times with 60-second intervals
 for i in {1..3}; do
     echo "Run $i of 3"
-    ./run_benchmark.sh
+    ./run_locust_stress_test.sh
     sleep 60
 done
 ```
@@ -421,23 +421,23 @@ Run Locust directly with custom options:
 
 ```bash
 # With specific user count and spawn rate
-uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py \
+uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py \
   --host http://localhost:5001 --users 50 --spawn-rate 5
 
 # Generate CSV reports
-uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py \
+uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py \
   --host http://localhost:5001 --csv reports/results
 
 # Run for specific duration
-uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py \
+uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py \
   --host http://localhost:5001 --run-time 5m --headless
 ```
 
 ### Comparing Results
 
 ```bash
-# Compare multiple benchmark runs
-ls -la reports/benchmark_*.txt | tail -5
+# Compare multiple stress test runs
+ls -la reports/stress_test_*.txt | tail -5
 ```
 
 ## Interpreting Performance Issues
@@ -471,7 +471,7 @@ Investigate:
 
 ## Why Locust?
 
-Locust was chosen over Drill for this benchmark because:
+Locust was chosen over Drill for this stress test because:
 
 1. **Proper SSE Support**: Correctly handles streaming responses without premature closure
 2. **Custom Metrics**: Can track SSE-specific metrics like TTFE and stream duration
@@ -481,9 +481,9 @@ Locust was chosen over Drill for this benchmark because:
 
 ## Contributing
 
-To improve the benchmark suite:
+To improve the stress test suite:
 
-1. Edit `benchmark.yml` for configuration changes
-2. Modify `run_benchmark.sh` for workflow improvements
+1. Edit `stress_test.yml` for configuration changes
+2. Modify `run_locust_stress_test.sh` for workflow improvements
 3. Update question sets for better coverage
 4. Add new metrics or analysis features
