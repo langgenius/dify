@@ -361,6 +361,7 @@ docker compose -f docker/docker-compose.middleware.yaml up -d db
 ```
 
 **Note**: Each connection uses ~10MB of RAM. Ensure your database server has sufficient memory:
+
 - 100 connections: ~1GB RAM
 - 200 connections: ~2GB RAM
 - 500 connections: ~5GB RAM
