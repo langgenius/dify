@@ -26,11 +26,6 @@ def delete_segment_from_index_task(
     logger.info(click.style("Start delete segment from index", fg="green"))
     start_at = time.perf_counter()
     try:
-        # Early return if no index_node_ids to process
-        if not index_node_ids:
-            logging.info("No index node IDs to process, skipping")
-            return
-
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             logging.warning("Dataset %s not found, skipping index cleanup", dataset_id)
