@@ -35,7 +35,8 @@ const PlanComp: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const { userProfile } = useAppContext()
-  const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
+  const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
+  const isAboutToExpire = allowRefreshEducationVerify
   const {
     type,
   } = plan
@@ -81,7 +82,7 @@ const PlanComp: FC<Props> = ({
             <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
           </div>
           <div className='flex shrink-0 items-center gap-1'>
-            {enableEducationPlan && !isEducationAccount && (
+            {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant='ghost' onClick={handleVerify}>
                 <RiGraduationCapLine className='mr-1 h-4 w-4'/>
                 {t('education.toVerified')}

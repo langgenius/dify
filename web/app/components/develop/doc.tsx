@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { RiListUnordered } from '@remixicon/react'
+import { RiCloseLine, RiListUnordered } from '@remixicon/react'
 import TemplateEn from './template/template.en.mdx'
 import TemplateZh from './template/template.zh.mdx'
 import TemplateJa from './template/template.ja.mdx'
@@ -30,6 +30,7 @@ const Doc = ({ appDetail }: IDocProps) => {
   const { t } = useTranslation()
   const [toc, setToc] = useState<Array<{ href: string; text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)
+  const [activeSection, setActiveSection] = useState<string>('')
   const { theme } = useTheme()
 
   const variables = appDetail?.model_config?.configs?.prompt_variables || []
@@ -59,12 +60,42 @@ const Doc = ({ appDetail }: IDocProps) => {
           return null
         }).filter((item): item is { href: string; text: string } => item !== null)
         setToc(tocItems)
+        if (tocItems.length > 0)
+          setActiveSection(tocItems[0].href.replace('#', ''))
       }
     }
 
-    // Run after component has rendered
     setTimeout(extractTOC, 0)
   }, [appDetail, locale])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollContainer = document.querySelector('.overflow-auto')
+      if (!scrollContainer || toc.length === 0)
+        return
+
+      let currentSection = ''
+      toc.forEach((item) => {
+        const targetId = item.href.replace('#', '')
+        const element = document.getElementById(targetId)
+        if (element) {
+          const rect = element.getBoundingClientRect()
+          if (rect.top <= window.innerHeight / 2)
+            currentSection = targetId
+        }
+      })
+
+      if (currentSection && currentSection !== activeSection)
+        setActiveSection(currentSection)
+    }
+
+    const scrollContainer = document.querySelector('.overflow-auto')
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll)
+      handleScroll()
+      return () => scrollContainer.removeEventListener('scroll', handleScroll)
+    }
+  }, [toc, activeSection])
 
   const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: { href: string; text: string }) => {
     e.preventDefault()
@@ -82,94 +113,128 @@ const Doc = ({ appDetail }: IDocProps) => {
       }
     }
   }
+
+  const Template = useMemo(() => {
+    if (appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') {
+      switch (locale) {
+        case LanguagesSupported[1]:
+          return <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
+        case LanguagesSupported[7]:
+          return <TemplateChatJa appDetail={appDetail} variables={variables} inputs={inputs} />
+        default:
+          return <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
+      }
+    }
+    if (appDetail?.mode === 'advanced-chat') {
+      switch (locale) {
+        case LanguagesSupported[1]:
+          return <TemplateAdvancedChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
+        case LanguagesSupported[7]:
+          return <TemplateAdvancedChatJa appDetail={appDetail} variables={variables} inputs={inputs} />
+        default:
+          return <TemplateAdvancedChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
+      }
+    }
+    if (appDetail?.mode === 'workflow') {
+      switch (locale) {
+        case LanguagesSupported[1]:
+          return <TemplateWorkflowZh appDetail={appDetail} variables={variables} inputs={inputs} />
+        case LanguagesSupported[7]:
+          return <TemplateWorkflowJa appDetail={appDetail} variables={variables} inputs={inputs} />
+        default:
+          return <TemplateWorkflowEn appDetail={appDetail} variables={variables} inputs={inputs} />
+      }
+    }
+    if (appDetail?.mode === 'completion') {
+      switch (locale) {
+        case LanguagesSupported[1]:
+          return <TemplateZh appDetail={appDetail} variables={variables} inputs={inputs} />
+        case LanguagesSupported[7]:
+          return <TemplateJa appDetail={appDetail} variables={variables} inputs={inputs} />
+        default:
+          return <TemplateEn appDetail={appDetail} variables={variables} inputs={inputs} />
+      }
+    }
+    return null
+  }, [appDetail, locale, variables, inputs])
+
   return (
     <div className="flex">
-      <div className={`fixed right-8 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
+      <div className={`fixed right-20 top-32 z-10 transition-all duration-150 ease-out ${isTocExpanded ? 'w-[280px]' : 'w-11'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc max-h-[calc(100vh-150px)] w-full overflow-y-auto rounded-lg bg-components-panel-bg p-4 shadow-md">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-text-primary">{t('appApi.develop.toc')}</h3>
+            <nav className="toc flex max-h-[calc(100vh-150px)] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-default-hover shadow-xl">
+              <div className="relative z-10 flex items-center justify-between border-b border-components-panel-border-subtle bg-background-default-hover px-4 py-2.5">
+                <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                  {t('appApi.develop.toc')}
+                </span>
                 <button
                   onClick={() => setIsTocExpanded(false)}
-                  className="text-text-tertiary hover:text-text-secondary"
+                  className="group flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-state-base-hover"
+                  aria-label="Close"
                 >
-                  ✕
+                  <RiCloseLine className="h-3 w-3 text-text-quaternary transition-colors group-hover:text-text-secondary" />
                 </button>
               </div>
-              <ul className="space-y-2">
-                {toc.map((item, index) => (
-                  <li key={index}>
-                    <a
-                      href={item.href}
-                      className="text-text-secondary transition-colors duration-200 hover:text-text-primary hover:underline"
-                      onClick={e => handleTocClick(e, item)}
-                    >
-                      {item.text}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+
+              <div className="from-components-panel-border-subtle/20 pointer-events-none absolute left-0 right-0 top-[41px] z-10 h-2 bg-gradient-to-b to-transparent"></div>
+              <div className="pointer-events-none absolute left-0 right-0 top-[43px] z-10 h-3 bg-gradient-to-b from-background-default-hover to-transparent"></div>
+
+              <div className="relative flex-1 overflow-y-auto px-3 py-3 pt-1">
+                {toc.length === 0 ? (
+                  <div className="px-2 py-8 text-center text-xs text-text-quaternary">
+                    {t('appApi.develop.noContent')}
+                  </div>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {toc.map((item, index) => {
+                      const isActive = activeSection === item.href.replace('#', '')
+                      return (
+                        <li key={index}>
+                          <a
+                            href={item.href}
+                            onClick={e => handleTocClick(e, item)}
+                            className={cn(
+                              'group relative flex items-center rounded-md px-3 py-2 text-[13px] transition-all duration-200',
+                              isActive
+                                ? 'bg-state-base-hover font-medium text-text-primary'
+                                : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'mr-2 h-1.5 w-1.5 rounded-full transition-all duration-200',
+                                isActive
+                                  ? 'scale-100 bg-text-accent'
+                                  : 'scale-75 bg-components-panel-border',
+                              )}
+                            />
+                            <span className="flex-1 truncate">
+                              {item.text}
+                            </span>
+                          </a>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-4 rounded-b-xl bg-gradient-to-t from-background-default-hover to-transparent"></div>
             </nav>
           )
           : (
             <button
               onClick={() => setIsTocExpanded(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-components-button-secondary-bg shadow-md transition-colors duration-200 hover:bg-components-button-secondary-bg-hover"
+              className="group flex h-11 w-11 items-center justify-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-all duration-150 hover:bg-background-default-hover hover:shadow-xl"
+              aria-label="Open table of contents"
             >
-              <RiListUnordered className="h-6 w-6 text-components-button-secondary-text" />
+              <RiListUnordered className="h-5 w-5 text-text-tertiary transition-colors group-hover:text-text-secondary" />
             </button>
           )}
       </div>
-      <article className={cn('prose-xl prose', theme === Theme.dark && 'prose-invert')} >
-        {(appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') && (
-          (() => {
-            switch (locale) {
-              case LanguagesSupported[1]:
-                return <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
-              case LanguagesSupported[7]:
-                return <TemplateChatJa appDetail={appDetail} variables={variables} inputs={inputs} />
-              default:
-                return <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
-            }
-          })()
-        )}
-        {appDetail?.mode === 'advanced-chat' && (
-          (() => {
-            switch (locale) {
-              case LanguagesSupported[1]:
-                return <TemplateAdvancedChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
-              case LanguagesSupported[7]:
-                return <TemplateAdvancedChatJa appDetail={appDetail} variables={variables} inputs={inputs} />
-              default:
-                return <TemplateAdvancedChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
-            }
-          })()
-        )}
-        {appDetail?.mode === 'workflow' && (
-          (() => {
-            switch (locale) {
-              case LanguagesSupported[1]:
-                return <TemplateWorkflowZh appDetail={appDetail} variables={variables} inputs={inputs} />
-              case LanguagesSupported[7]:
-                return <TemplateWorkflowJa appDetail={appDetail} variables={variables} inputs={inputs} />
-              default:
-                return <TemplateWorkflowEn appDetail={appDetail} variables={variables} inputs={inputs} />
-            }
-          })()
-        )}
-        {appDetail?.mode === 'completion' && (
-          (() => {
-            switch (locale) {
-              case LanguagesSupported[1]:
-                return <TemplateZh appDetail={appDetail} variables={variables} inputs={inputs} />
-              case LanguagesSupported[7]:
-                return <TemplateJa appDetail={appDetail} variables={variables} inputs={inputs} />
-              default:
-                return <TemplateEn appDetail={appDetail} variables={variables} inputs={inputs} />
-            }
-          })()
-        )}
+      <article className={cn('prose-xl prose', theme === Theme.dark && 'prose-invert')}>
+        {Template}
       </article>
     </div>
   )

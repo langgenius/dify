@@ -16,6 +16,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
 from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.trace import Link, SpanContext, TraceFlags
 
 from configs import dify_config
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
@@ -71,7 +72,7 @@ class TraceClient:
             else:
                 logger.debug("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
-        except requests.exceptions.RequestException as e:
+        except requests.RequestException as e:
             logger.debug("AliyunTrace API check failed: %s", str(e))
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
@@ -166,6 +167,16 @@ class SpanBuilder:
         return span
 
 
+def create_link(trace_id_str: str) -> Link:
+    placeholder_span_id = 0x0000000000000000
+    trace_id = int(trace_id_str, 16)
+    span_context = SpanContext(
+        trace_id=trace_id, span_id=placeholder_span_id, is_remote=False, trace_flags=TraceFlags(TraceFlags.SAMPLED)
+    )
+
+    return Link(span_context)
+
+
 def generate_span_id() -> int:
     span_id = random.getrandbits(64)
     while span_id == INVALID_SPAN_ID:
@@ -181,15 +192,21 @@ def convert_to_trace_id(uuid_v4: Optional[str]) -> int:
         raise ValueError(f"Invalid UUID input: {e}")
 
 
+def convert_string_to_id(string: Optional[str]) -> int:
+    if not string:
+        return generate_span_id()
+    hash_bytes = hashlib.sha256(string.encode("utf-8")).digest()
+    id = int.from_bytes(hash_bytes[:8], byteorder="big", signed=False)
+    return id
+
+
 def convert_to_span_id(uuid_v4: Optional[str], span_type: str) -> int:
     try:
         uuid_obj = uuid.UUID(uuid_v4)
     except Exception as e:
         raise ValueError(f"Invalid UUID input: {e}")
     combined_key = f"{uuid_obj.hex}-{span_type}"
-    hash_bytes = hashlib.sha256(combined_key.encode("utf-8")).digest()
-    span_id = int.from_bytes(hash_bytes[:8], byteorder="big", signed=False)
-    return span_id
+    return convert_string_to_id(combined_key)
 
 
 def convert_datetime_to_nanoseconds(start_time_a: Optional[datetime]) -> Optional[int]:

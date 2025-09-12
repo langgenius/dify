@@ -62,12 +62,12 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
   }, [appSidebarExpand, setAppSiderbarExpand])
 
   if (inWorkflowCanvas && hideHeader) {
- return (
+    return (
       <div className='flex w-0 shrink-0'>
         <AppSidebarDropdown navigation={navigation} />
       </div>
     )
-}
+  }
 
   return (
     <div
@@ -107,7 +107,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
         )}
       </div>
       <div className='px-4'>
-        <div className={cn('mx-auto mt-1 h-[1px] bg-divider-subtle', !expand && 'w-6')} />
+        <div className={cn('mx-auto mt-1 h-px bg-divider-subtle', !expand && 'w-6')} />
       </div>
       <nav
         className={`
@@ -124,10 +124,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
       {
         !isMobile && (
           <div
-            className={`
-              shrink-0 py-3
-              ${expand ? 'px-6' : 'px-4'}
-            `}
+            className="shrink-0 px-4 py-3"
           >
             <div
               className='flex h-6 w-6 cursor-pointer items-center justify-center'

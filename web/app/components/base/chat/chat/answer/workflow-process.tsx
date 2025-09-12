@@ -39,6 +39,8 @@ const WorkflowProcessItem = ({
     setCollapse(!expand)
   }, [expand])
 
+  if (readonly) return null
+
   return (
     <div
       className={cn(
@@ -51,8 +53,8 @@ const WorkflowProcessItem = ({
       )}
     >
       <div
-        className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5', readonly && 'cursor-default')}
-        onClick={() => !readonly && setCollapse(!collapse)}
+        className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5')}
+        onClick={() => setCollapse(!collapse)}
       >
         {
           running && (
@@ -72,10 +74,10 @@ const WorkflowProcessItem = ({
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('workflow.common.workflowProcess')}
         </div>
-        {!readonly && <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />}
+        <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />
       </div>
       {
-        !collapse && !readonly && (
+        !collapse && (
           <div className='mt-1.5'>
             {
               <TracingPanel

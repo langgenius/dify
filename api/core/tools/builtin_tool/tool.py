@@ -20,8 +20,6 @@ class BuiltinTool(Tool):
     :param meta: the meta data of a tool call processing
     """
 
-    provider: str
-
     def __init__(self, provider: str, **kwargs):
         super().__init__(**kwargs)
         self.provider = provider

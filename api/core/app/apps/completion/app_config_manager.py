@@ -66,7 +66,7 @@ class CompletionAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict) -> dict:
+    def config_validate(cls, tenant_id: str, config: dict):
         """
         Validate for completion app model config
 

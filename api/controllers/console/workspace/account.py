@@ -1,7 +1,9 @@
+from datetime import datetime
+
 import pytz
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,14 +11,13 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.auth.error import (
-    AccountInFreezeError,
     EmailAlreadyInUseError,
     EmailChangeLimitError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -48,6 +49,8 @@ class AccountInitApi(Resource):
     @setup_required
     @login_required
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         if account.status == "active":
@@ -101,6 +104,8 @@ class AccountProfileApi(Resource):
     @marshal_with(account_fields)
     @enterprise_license_required
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         return current_user
 
 
@@ -110,6 +115,8 @@ class AccountNameApi(Resource):
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -129,6 +136,8 @@ class AccountAvatarApi(Resource):
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("avatar", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -144,6 +153,8 @@ class AccountInterfaceLanguageApi(Resource):
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("interface_language", type=supported_language, required=True, location="json")
         args = parser.parse_args()
@@ -159,6 +170,8 @@ class AccountInterfaceThemeApi(Resource):
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("interface_theme", type=str, choices=["light", "dark"], required=True, location="json")
         args = parser.parse_args()
@@ -174,6 +187,8 @@ class AccountTimezoneApi(Resource):
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("timezone", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -193,6 +208,8 @@ class AccountPasswordApi(Resource):
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("password", type=str, required=False, location="json")
         parser.add_argument("new_password", type=str, required=True, location="json")
@@ -227,9 +244,13 @@ class AccountIntegrateApi(Resource):
     @account_initialization_required
     @marshal_with(integrate_list_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
-        account_integrates = db.session.query(AccountIntegrate).where(AccountIntegrate.account_id == account.id).all()
+        account_integrates = db.session.scalars(
+            select(AccountIntegrate).where(AccountIntegrate.account_id == account.id)
+        ).all()
 
         base_url = request.url_root.rstrip("/")
         oauth_base_path = "/console/api/oauth/login"
@@ -267,6 +288,8 @@ class AccountDeleteVerifyApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         token, code = AccountService.generate_account_deletion_verification_code(account)
@@ -280,6 +303,8 @@ class AccountDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         parser = reqparse.RequestParser()
@@ -320,6 +345,8 @@ class EducationVerifyApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(verify_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         return BillingService.EducationIdentity.verify(account.id, account.email)
@@ -328,6 +355,9 @@ class EducationVerifyApi(Resource):
 class EducationApi(Resource):
     status_fields = {
         "result": fields.Boolean,
+        "is_student": fields.Boolean,
+        "expire_at": TimestampField,
+        "allow_refresh": fields.Boolean,
     }
 
     @setup_required
@@ -336,6 +366,8 @@ class EducationApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         parser = reqparse.RequestParser()
@@ -353,9 +385,15 @@ class EducationApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(status_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
-        return BillingService.EducationIdentity.is_active(account.id)
+        res = BillingService.EducationIdentity.status(account.id)
+        # convert expire_at to UTC timestamp from isoformat
+        if res and "expire_at" in res:
+            res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
+        return res
 
 
 class EducationAutoCompleteApi(Resource):
@@ -413,6 +451,8 @@ class ChangeEmailSendEmailApi(Resource):
                 raise InvalidTokenError()
             user_email = reset_data.get("email", "")
 
+            if not isinstance(current_user, Account):
+                raise ValueError("Invalid user account")
             if user_email != current_user.email:
                 raise InvalidEmailError()
         else:
@@ -493,10 +533,12 @@ class ChangeEmailResetApi(Resource):
         AccountService.revoke_change_email_token(args["token"])
 
         old_email = reset_data.get("old_email", "")
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         if current_user.email != old_email:
             raise AccountNotFound()
 
-        updated_account = AccountService.update_account(current_user, email=args["new_email"])
+        updated_account = AccountService.update_account_email(current_user, email=args["new_email"])
 
         AccountService.send_change_email_completed_notify_email(
             email=args["new_email"],

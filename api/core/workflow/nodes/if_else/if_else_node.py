@@ -19,7 +19,7 @@ class IfElseNode(BaseNode):
 
     _node_data: IfElseNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = IfElseNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -83,7 +83,7 @@ class IfElseNode(BaseNode):
             else:
                 # TODO: Update database then remove this
                 # Fallback to old structure if cases are not defined
-                input_conditions, group_result, final_result = _should_not_use_old_function(
+                input_conditions, group_result, final_result = _should_not_use_old_function(  # ty: ignore [deprecated]
                     condition_processor=condition_processor,
                     variable_pool=self.graph_runtime_state.variable_pool,
                     conditions=self._node_data.conditions or [],

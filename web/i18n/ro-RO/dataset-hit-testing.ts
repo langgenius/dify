@@ -2,7 +2,6 @@ const translation = {
   title: 'Testarea Recuperării',
   desc: 'Testați efectul de atingere al Cunoștințelor pe baza textului interogat dat.',
   dateTimeFormat: 'DD/MM/YYYY hh:mm A',
-  recents: 'Recente',
   table: {
     header: {
       source: 'Sursă',

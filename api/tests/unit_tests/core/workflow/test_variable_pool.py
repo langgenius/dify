@@ -69,8 +69,12 @@ def test_get_file_attribute(pool, file):
 
 
 def test_use_long_selector(pool):
-    pool.add(("node_1", "part_1", "part_2"), StringSegment(value="test_value"))
+    # The add method now only accepts 2-element selectors (node_id, variable_name)
+    # Store nested data as an ObjectSegment instead
+    nested_data = {"part_2": "test_value"}
+    pool.add(("node_1", "part_1"), ObjectSegment(value=nested_data))
 
+    # The get method supports longer selectors for nested access
     result = pool.get(("node_1", "part_1", "part_2"))
     assert result is not None
     assert result.value == "test_value"
@@ -280,8 +284,10 @@ class TestVariablePoolSerialization:
             pool.add((self._NODE2_ID, "array_file"), ArrayFileSegment(value=[test_file]))
         pool.add((self._NODE2_ID, "array_any"), ArrayAnySegment(value=["mixed", 123, {"key": "value"}]))
 
-        # Add nested variables
-        pool.add((self._NODE3_ID, "nested", "deep", "var"), StringSegment(value="deep_value"))
+        # Add nested variables as ObjectSegment
+        # The add method only accepts 2-element selectors
+        nested_obj = {"deep": {"var": "deep_value"}}
+        pool.add((self._NODE3_ID, "nested"), ObjectSegment(value=nested_obj))
 
     def test_system_variables(self):
         sys_vars = SystemVariable(
@@ -373,7 +379,7 @@ class TestVariablePoolSerialization:
         self._assert_pools_equal(reconstructed_dict, reconstructed_json)
         # TODO: assert the data for file object...
 
-    def _assert_pools_equal(self, pool1: VariablePool, pool2: VariablePool) -> None:
+    def _assert_pools_equal(self, pool1: VariablePool, pool2: VariablePool):
         """Assert that two VariablePools contain equivalent data"""
 
         # Compare system variables

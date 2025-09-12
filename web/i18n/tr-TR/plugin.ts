@@ -246,6 +246,9 @@ const translation = {
     addApi: 'API Anahtarını Ekle',
     saveAndAuth: 'Kaydet ve Yetkilendir',
     clientInfo: 'Bu araç sağlayıcı için sistem istemci gizlilikleri bulunmadığından, manuel olarak ayar yapılması gerekmektedir. redirect_uri için lütfen şu adresi kullanın',
+    unavailable: 'Kullanılamıyor',
+    customCredentialUnavailable: 'Özel kimlik bilgileri şu anda mevcut değil.',
+    credentialUnavailable: 'Kimlik bilgileri şu anda mevcut değil. Lütfen yönetici ile iletişime geçin.',
   },
   deprecated: 'Kaldırılmış',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         selectedDescription: 'Sadece yamanın versiyonları için otomatik güncelleme',
         name: 'Sadece Düzelt',
+        description: 'Yalnızca yamanın sürüm güncellemeleri için otomatik güncelleme (örneğin, 1.0.1 → 1.0.2). Küçük sürüm değişiklikleri güncellemeleri tetiklemez.',
       },
       latest: {
         name: 'Son',

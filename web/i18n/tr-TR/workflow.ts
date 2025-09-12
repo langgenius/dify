@@ -109,13 +109,13 @@ const translation = {
     exitVersions: 'Çıkış Sürümleri',
     versionHistory: 'Sürüm Geçmişi',
     exportJPEG: 'JPEG olarak dışa aktar',
-    noExist: 'Böyle bir değişken yok',
     exportSVG: 'SVG olarak dışa aktar',
-    referenceVar: 'Referans Değişken',
     addBlock: 'Düğüm Ekle',
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
     tagBound: 'Bu etiketi kullanan uygulama sayısı',
+    currentView: 'Geçerli Görünüm',
+    currentWorkflow: 'Mevcut İş Akışı',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Araçlar',
     'allTool': 'Hepsi',
-    'builtInTool': 'Yerleşik',
     'customTool': 'Özel',
     'workflowTool': 'Workflow',
     'question-understand': 'Soruyu Anlama',
@@ -290,6 +289,18 @@ const translation = {
     zoomTo50: '%50 Yakınlaştır',
     zoomTo100: '%100 Yakınlaştır',
     zoomToFit: 'Sığdıracak Şekilde Yakınlaştır',
+    alignCenter: 'Orta',
+    alignMiddle: 'Orta',
+    alignLeft: 'Sol',
+    alignNodes: 'Düğümleri Hizala',
+    vertical: 'Dikey',
+    alignRight: 'Sağ',
+    alignTop: 'Üst',
+    alignBottom: 'Alt',
+    selectionAlignment: 'Seçim Hizalama',
+    distributeHorizontal: 'Yatay Dağıt',
+    horizontal: 'Yatay',
+    distributeVertical: 'Dikey Dağıt',
   },
   panel: {
     userInputField: 'Kullanıcı Giriş Alanı',
@@ -459,6 +470,12 @@ const translation = {
         addChildField: 'Çocuk Alanı Ekle',
         resultTip: 'İşte oluşturulan sonuç. Eğer memnun değilseniz, geri dönüp isteminizi değiştirebilirsiniz.',
       },
+      reasoningFormat: {
+        separated: 'Ayrı düşünce etiketleri',
+        title: 'Akıl yürütme etiket ayrımını etkinleştir',
+        tagged: 'Etiketleri düşünmeye devam et',
+        tooltip: 'Düşünce etiketlerinden içeriği çıkarın ve bunu reasoning_content alanında saklayın.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Sorgu Değişkeni',
@@ -497,6 +514,7 @@ const translation = {
           datePlaceholder: 'Bir zaman seçin...',
         },
         title: 'Meta Verileri Filtreleme',
+        tip: 'Metadata filtreleme, bir sistem içinde ilgili bilgilerin alınmasını ince ayar ve kontrol etmek için metadata özniteliklerini (etiketler, kategoriler veya erişim izinleri gibi) kullanma sürecidir.',
       },
     },
     http: {
@@ -587,7 +605,6 @@ const translation = {
         'not empty': 'boş değil',
         'null': 'null',
         'not null': 'null değil',
-        'regex match': 'normal ifade maçı',
         'in': 'içinde',
         'not exists': 'mevcut değil',
         'all of': 'Tümü',
@@ -610,7 +627,6 @@ const translation = {
       },
       addSubVariable: 'Alt Değişken',
       select: 'Seçmek',
-      condition: 'Koşul',
     },
     variableAssigner: {
       title: 'Değişken ata',
@@ -833,6 +849,7 @@ const translation = {
           url: 'Resim url\'si',
         },
         text: 'Temsilci Tarafından Oluşturulan İçerik',
+        usage: 'Model Kullanım Bilgileri',
         json: 'Aracı tarafından oluşturulan JSON',
       },
       checkList: {
@@ -932,6 +949,7 @@ const translation = {
       updateFailure: 'Sürüm güncellenemedi',
       updateSuccess: 'Sürüm güncellendi',
       deleteSuccess: 'Sürüm silindi',
+      copyIdSuccess: 'Kimlik panoya kopyalandı',
     },
     latest: 'Sonuncu',
     currentDraft: 'Mevcut Taslak',
@@ -942,6 +960,7 @@ const translation = {
     releaseNotesPlaceholder: 'Değişen şeyleri tanımlayın',
     nameThisVersion: 'Bu versiyona isim ver',
     deletionTip: 'Silme işlemi geri alınamaz, lütfen onaylayın.',
+    copyId: 'ID Kopyala',
   },
   debug: {
     noData: {
@@ -971,6 +990,24 @@ const translation = {
     },
     lastRunTab: 'Son Koşu',
     settingsTab: 'Ayarlar',
+    relations: {
+      noDependents: 'Bakmakla yükümlü olunan kişi yok',
+      dependentsDescription: 'Bu düğüme dayanan düğümler',
+      dependenciesDescription: 'Bu düğümün dayandığı düğümler',
+      dependencies: 'Bağımlılık',
+      dependents: 'Bağımlı',
+      noDependencies: 'Bağımlılık yok',
+    },
+    relationsTab: 'Ilişkiler',
+    copyLastRun: 'Son Çalışmayı Kopyala',
+    noLastRunFound: 'Önceki çalışmaya rastlanmadı.',
+    noMatchingInputsFound: 'Son çalışmadan eşleşen giriş bulunamadı.',
+    copyLastRunError: 'Son çalışma girdilerini kopyalamak başarısız oldu.',
+    lastOutput: 'Son Çıktı',
+  },
+  sidebar: {
+    exportWarning: 'Mevcut Kaydedilmiş Versiyonu Dışa Aktar',
+    exportWarningDesc: 'Bu, çalışma akışınızın mevcut kaydedilmiş sürümünü dışa aktaracaktır. Editörde kaydedilmemiş değişiklikleriniz varsa, lütfen önce bunları çalışma akışı alanındaki dışa aktarma seçeneğini kullanarak kaydedin.',
   },
 }
 

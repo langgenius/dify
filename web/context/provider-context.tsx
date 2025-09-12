@@ -27,6 +27,8 @@ import {
   useEducationStatus,
 } from '@/service/use-education'
 import { noop } from 'lodash-es'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { ZENDESK_FIELD_IDS } from '@/config'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -48,6 +50,10 @@ type ProviderContextState = {
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
   isEducationAccount: boolean
+  allowRefreshEducationVerify: boolean
+  educationAccountExpireAt: number | null
+  isLoadingEducationAccountInfo: boolean
+  isFetchingEducationAccountInfo: boolean
   webappCopyrightEnabled: boolean
   licenseLimit: {
     workspace_members: {
@@ -90,6 +96,10 @@ const ProviderContext = createContext<ProviderContextState>({
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,
+  allowRefreshEducationVerify: false,
+  educationAccountExpireAt: null,
+  isLoadingEducationAccountInfo: false,
+  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {
@@ -135,7 +145,7 @@ export const ProviderContextProvider = ({
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const { data: isEducationAccount } = useEducationStatus(!enableEducationPlan)
+  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
 
   const fetchPlan = async () => {
@@ -181,6 +191,17 @@ export const ProviderContextProvider = ({
     fetchPlan()
   }, [])
 
+  // #region Zendesk conversation fields
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.PLAN,
+        value: `${plan.type}-plan`,
+      }])
+    }
+  }, [plan.type])
+  // #endregion Zendesk conversation fields
+
   const { t } = useTranslation()
   useEffect(() => {
     if (localStorage.getItem('anthropic_quota_notice') === 'true')
@@ -223,7 +244,11 @@ export const ProviderContextProvider = ({
       datasetOperatorEnabled,
       enableEducationPlan,
       isEducationWorkspace,
-      isEducationAccount: isEducationAccount?.result || false,
+      isEducationAccount: educationAccountInfo?.is_student || false,
+      allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
+      educationAccountExpireAt: educationAccountInfo?.expire_at || null,
+      isLoadingEducationAccountInfo,
+      isFetchingEducationAccountInfo,
       webappCopyrightEnabled,
       licenseLimit,
       refreshLicenseLimit: fetchPlan,

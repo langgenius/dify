@@ -67,14 +67,13 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        external_trace_id = trace_info.metadata.get("external_trace_id")
-        trace_id = external_trace_id or trace_info.workflow_run_id
+        trace_id = trace_info.trace_id or trace_info.workflow_run_id
         user_id = trace_info.metadata.get("user_id")
         metadata = trace_info.metadata
         metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
 
         if trace_info.message_id:
-            trace_id = external_trace_id or trace_info.message_id
+            trace_id = trace_info.trace_id or trace_info.message_id
             name = TraceTaskName.MESSAGE_TRACE.value
             trace_data = LangfuseTrace(
                 id=trace_id,
@@ -250,8 +249,10 @@ class LangFuseDataTrace(BaseTraceInstance):
                 user_id = end_user_data.session_id
                 metadata["user_id"] = user_id
 
+        trace_id = trace_info.trace_id or message_id
+
         trace_data = LangfuseTrace(
-            id=message_id,
+            id=trace_id,
             user_id=user_id,
             name=TraceTaskName.MESSAGE_TRACE.value,
             input={
@@ -285,7 +286,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         langfuse_generation_data = LangfuseGeneration(
             name="llm",
-            trace_id=message_id,
+            trace_id=trace_id,
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             model=message_data.model_id,
@@ -311,7 +312,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 "preset_response": trace_info.preset_response,
                 "inputs": trace_info.inputs,
             },
-            trace_id=trace_info.message_id,
+            trace_id=trace_info.trace_id or trace_info.message_id,
             start_time=trace_info.start_time or trace_info.message_data.created_at,
             end_time=trace_info.end_time or trace_info.message_data.created_at,
             metadata=trace_info.metadata,
@@ -334,7 +335,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             input=trace_info.inputs,
             output=str(trace_info.suggested_question),
-            trace_id=trace_info.message_id,
+            trace_id=trace_info.trace_id or trace_info.message_id,
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             metadata=trace_info.metadata,
@@ -352,7 +353,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             input=trace_info.inputs,
             output={"documents": trace_info.documents},
-            trace_id=trace_info.message_id,
+            trace_id=trace_info.trace_id or trace_info.message_id,
             start_time=trace_info.start_time or trace_info.message_data.created_at,
             end_time=trace_info.end_time or trace_info.message_data.updated_at,
             metadata=trace_info.metadata,
@@ -365,7 +366,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             name=trace_info.tool_name,
             input=trace_info.tool_inputs,
             output=trace_info.tool_outputs,
-            trace_id=trace_info.message_id,
+            trace_id=trace_info.trace_id or trace_info.message_id,
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             metadata=trace_info.metadata,

@@ -60,6 +60,7 @@ const translation = {
     format: 'Formato',
     deSelectAll: 'Deseleccionar todo',
     selectAll: 'Seleccionar todo',
+    config: 'Config',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -201,7 +202,6 @@ const translation = {
     showAppLength: 'Mostrar {{length}} apps',
     delete: 'Eliminar cuenta',
     deleteTip: 'Eliminar tu cuenta borrará permanentemente todos tus datos y no se podrán recuperar.',
-    deleteConfirmTip: 'Para confirmar, por favor envía lo siguiente desde tu correo electrónico registrado a ',
     account: 'Cuenta',
     myAccount: 'Mi Cuenta',
     studio: 'Estudio Dify',
@@ -473,6 +473,28 @@ const translation = {
     emptyProviderTip: 'Instale primero un proveedor de modelos.',
     installProvider: 'Instalación de proveedores de modelos',
     emptyProviderTitle: 'Proveedor de modelos no configurado',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Agregar modelo',
+        title: 'Configuración de Autorización de Clave API',
+        desc: 'Después de configurar las credenciales, todos los miembros dentro del espacio de trabajo pueden usar este modelo al orquestar aplicaciones.',
+      },
+      configModel: 'Modelo de configuración',
+      authorizationError: 'Error de autorización',
+      specifyModelCredential: 'Especificar las credenciales del modelo',
+      addModelCredential: 'Agregar credenciales del modelo',
+      authRemoved: 'Autorización retirada',
+      unAuthorized: 'No autorizado',
+      addApiKey: 'Agregar clave API',
+      apiKeys: 'Claves de API',
+      providerManagedTip: 'La configuración actual es hospedada por el proveedor.',
+      providerManaged: 'Proveedor gestionado',
+      specifyModelCredentialTip: 'Utiliza una credencial de modelo configurada.',
+      addNewModel: 'Agregar nuevo modelo',
+      modelCredentials: 'Credenciales del modelo',
+      addCredential: 'Agregar credencial',
+      configLoadBalancing: 'Configuración de balanceo de carga',
+    },
   },
   dataSource: {
     add: 'Agregar una fuente de datos',
@@ -716,6 +738,16 @@ const translation = {
     dropImageHere: 'Deja tu imagen aquí, o',
   },
   you: 'Tú',
+  avatar: {
+    deleteTitle: 'Eliminar Avatar',
+    deleteDescription: '¿Estás seguro de que deseas eliminar tu foto de perfil? Tu cuenta usará el avatar inicial predeterminado.',
+  },
+  feedback: {
+    title: 'Proporcionar retroalimentación',
+    subtitle: 'Por favor, díganos qué salió mal con esta respuesta.',
+    placeholder: 'Por favor, describe qué salió mal o cómo podemos mejorar...',
+    content: 'Contenido de retroalimentación',
+  },
 }
 
 export default translation

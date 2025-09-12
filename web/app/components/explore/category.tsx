@@ -36,7 +36,7 @@ const Category: FC<ICategoryProps> = ({
   )
 
   return (
-    <div className={cn(className, 'flex flex-wrap space-x-1 text-[13px]')}>
+    <div className={cn(className, 'flex flex-wrap gap-1 text-[13px]')}>
       <div
         className={itemClassName(isAllCategories)}
         onClick={() => onChange(allCategoriesEn)}

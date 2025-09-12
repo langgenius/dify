@@ -2,9 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytz
+import sqlalchemy as sa
 from flask import jsonify
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -17,10 +18,10 @@ from models.model import AppMode
 
 
 class WorkflowDailyRunsStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -71,7 +72,7 @@ WHERE
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "runs": i.runs})
 
@@ -79,10 +80,10 @@ WHERE
 
 
 class WorkflowDailyTerminalsStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -133,7 +134,7 @@ WHERE
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "terminal_count": i.terminal_count})
 
@@ -141,10 +142,10 @@ WHERE
 
 
 class WorkflowDailyTokenCostStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -195,7 +196,7 @@ WHERE
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append(
                     {
@@ -277,7 +278,7 @@ GROUP BY
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append(
                     {"date": str(i.date), "interactions": float(i.interactions.quantize(Decimal("0.01")))}

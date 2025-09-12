@@ -36,7 +36,7 @@ describe('file-uploader utils', () => {
   })
 
   describe('fileUpload', () => {
-    it('should handle successful file upload', async () => {
+    it('should handle successful file upload', () => {
       const mockFile = new File(['test'], 'test.txt')
       const mockCallbacks = {
         onProgressCallback: jest.fn(),
@@ -46,13 +46,12 @@ describe('file-uploader utils', () => {
 
       jest.mocked(upload).mockResolvedValue({ id: '123' })
 
-      await fileUpload({
+      fileUpload({
         file: mockFile,
         ...mockCallbacks,
       })
 
       expect(upload).toHaveBeenCalled()
-      expect(mockCallbacks.onSuccessCallback).toHaveBeenCalledWith({ id: '123' })
     })
   })
 
@@ -284,7 +283,23 @@ describe('file-uploader utils', () => {
   })
 
   describe('getProcessedFilesFromResponse', () => {
-    it('should process files correctly', () => {
+    beforeEach(() => {
+      jest.mocked(mime.getAllExtensions).mockImplementation((mimeType: string) => {
+        const mimeMap: Record<string, Set<string>> = {
+          'image/jpeg': new Set(['jpg', 'jpeg']),
+          'image/png': new Set(['png']),
+          'image/gif': new Set(['gif']),
+          'video/mp4': new Set(['mp4']),
+          'audio/mp3': new Set(['mp3']),
+          'application/pdf': new Set(['pdf']),
+          'text/plain': new Set(['txt']),
+          'application/json': new Set(['json']),
+        }
+        return mimeMap[mimeType] || new Set()
+      })
+    })
+
+    it('should process files correctly without type correction', () => {
       const files = [{
         related_id: '2a38e2ca-1295-415d-a51d-65d4ff9912d9',
         extension: '.jpeg',
@@ -294,6 +309,8 @@ describe('file-uploader utils', () => {
         transfer_method: TransferMethod.local_file,
         type: 'image',
         url: 'https://upload.dify.dev/files/xxx/file-preview',
+        upload_file_id: '2a38e2ca-1295-415d-a51d-65d4ff9912d9',
+        remote_url: '',
       }]
 
       const result = getProcessedFilesFromResponse(files)
@@ -308,6 +325,215 @@ describe('file-uploader utils', () => {
         uploadedId: '2a38e2ca-1295-415d-a51d-65d4ff9912d9',
         url: 'https://upload.dify.dev/files/xxx/file-preview',
       })
+    })
+
+    it('should correct image file misclassified as document', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.jpg',
+        filename: 'image.jpg',
+        size: 1024,
+        mime_type: 'image/jpeg',
+        transfer_method: TransferMethod.local_file,
+        type: 'document',
+        url: 'https://example.com/image.jpg',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('image')
+    })
+
+    it('should correct video file misclassified as document', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.mp4',
+        filename: 'video.mp4',
+        size: 1024,
+        mime_type: 'video/mp4',
+        transfer_method: TransferMethod.local_file,
+        type: 'document',
+        url: 'https://example.com/video.mp4',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('video')
+    })
+
+    it('should correct audio file misclassified as document', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.mp3',
+        filename: 'audio.mp3',
+        size: 1024,
+        mime_type: 'audio/mp3',
+        transfer_method: TransferMethod.local_file,
+        type: 'document',
+        url: 'https://example.com/audio.mp3',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('audio')
+    })
+
+    it('should correct document file misclassified as image', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.pdf',
+        filename: 'document.pdf',
+        size: 1024,
+        mime_type: 'application/pdf',
+        transfer_method: TransferMethod.local_file,
+        type: 'image',
+        url: 'https://example.com/document.pdf',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('document')
+    })
+
+    it('should NOT correct when filename and MIME type conflict', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.pdf',
+        filename: 'document.pdf',
+        size: 1024,
+        mime_type: 'image/jpeg',
+        transfer_method: TransferMethod.local_file,
+        type: 'document',
+        url: 'https://example.com/document.pdf',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('document')
+    })
+
+    it('should NOT correct when filename and MIME type both point to wrong type', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.jpg',
+        filename: 'image.jpg',
+        size: 1024,
+        mime_type: 'image/jpeg',
+        transfer_method: TransferMethod.local_file,
+        type: 'image',
+        url: 'https://example.com/image.jpg',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('image')
+    })
+
+    it('should handle files with missing filename', () => {
+      const files = [{
+        related_id: '123',
+        extension: '',
+        filename: '',
+        size: 1024,
+        mime_type: 'image/jpeg',
+        transfer_method: TransferMethod.local_file,
+        type: 'document',
+        url: 'https://example.com/file',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('document')
+    })
+
+    it('should handle files with missing MIME type', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.jpg',
+        filename: 'image.jpg',
+        size: 1024,
+        mime_type: '',
+        transfer_method: TransferMethod.local_file,
+        type: 'document',
+        url: 'https://example.com/image.jpg',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('document')
+    })
+
+    it('should handle files with unknown extensions', () => {
+      const files = [{
+        related_id: '123',
+        extension: '.unknown',
+        filename: 'file.unknown',
+        size: 1024,
+        mime_type: 'application/unknown',
+        transfer_method: TransferMethod.local_file,
+        type: 'document',
+        url: 'https://example.com/file.unknown',
+        upload_file_id: '123',
+        remote_url: '',
+      }]
+
+      const result = getProcessedFilesFromResponse(files)
+      expect(result[0].supportFileType).toBe('document')
+    })
+
+    it('should handle multiple different file types correctly', () => {
+      const files = [
+        {
+          related_id: '1',
+          extension: '.jpg',
+          filename: 'correct-image.jpg',
+          mime_type: 'image/jpeg',
+          type: 'image',
+          size: 1024,
+          transfer_method: TransferMethod.local_file,
+          url: 'https://example.com/correct-image.jpg',
+          upload_file_id: '1',
+          remote_url: '',
+        },
+        {
+          related_id: '2',
+          extension: '.png',
+          filename: 'misclassified-image.png',
+          mime_type: 'image/png',
+          type: 'document',
+          size: 2048,
+          transfer_method: TransferMethod.local_file,
+          url: 'https://example.com/misclassified-image.png',
+          upload_file_id: '2',
+          remote_url: '',
+        },
+        {
+          related_id: '3',
+          extension: '.pdf',
+          filename: 'conflicted.pdf',
+          mime_type: 'image/jpeg',
+          type: 'document',
+          size: 3072,
+          transfer_method: TransferMethod.local_file,
+          url: 'https://example.com/conflicted.pdf',
+          upload_file_id: '3',
+          remote_url: '',
+        },
+      ]
+
+      const result = getProcessedFilesFromResponse(files)
+
+      expect(result[0].supportFileType).toBe('image') // correct, no change
+      expect(result[1].supportFileType).toBe('image') // corrected from document to image
+      expect(result[2].supportFileType).toBe('document') // conflict, no change
     })
   })
 

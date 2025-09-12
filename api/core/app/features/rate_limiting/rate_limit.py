@@ -19,7 +19,7 @@ class RateLimit:
     _ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL = 5 * 60  # recalculate request_count from request_detail every 5 minutes
     _instance_dict: dict[str, "RateLimit"] = {}
 
-    def __new__(cls: type["RateLimit"], client_id: str, max_active_requests: int):
+    def __new__(cls, client_id: str, max_active_requests: int):
         if client_id not in cls._instance_dict:
             instance = super().__new__(cls)
             cls._instance_dict[client_id] = instance
@@ -96,7 +96,11 @@ class RateLimit:
         if isinstance(generator, Mapping):
             return generator
         else:
-            return RateLimitGenerator(rate_limit=self, generator=generator, request_id=request_id)
+            return RateLimitGenerator(
+                rate_limit=self,
+                generator=generator,  # ty: ignore [invalid-argument-type]
+                request_id=request_id,
+            )
 
 
 class RateLimitGenerator:

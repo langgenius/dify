@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict, Union
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +18,26 @@ class LLMMode(StrEnum):
 
     COMPLETION = "completion"
     CHAT = "chat"
+
+
+class LLMUsageMetadata(TypedDict, total=False):
+    """
+    TypedDict for LLM usage metadata.
+    All fields are optional.
+    """
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    prompt_unit_price: Union[float, str]
+    completion_unit_price: Union[float, str]
+    total_price: Union[float, str]
+    currency: str
+    prompt_price_unit: Union[float, str]
+    completion_price_unit: Union[float, str]
+    prompt_price: Union[float, str]
+    completion_price: Union[float, str]
+    latency: float
 
 
 class LLMUsage(ModelUsage):
@@ -54,23 +76,27 @@ class LLMUsage(ModelUsage):
         )
 
     @classmethod
-    def from_metadata(cls, metadata: dict) -> "LLMUsage":
+    def from_metadata(cls, metadata: LLMUsageMetadata) -> LLMUsage:
         """
         Create LLMUsage instance from metadata dictionary with default values.
 
         Args:
-            metadata: Dictionary containing usage metadata
+            metadata: TypedDict containing usage metadata
 
         Returns:
             LLMUsage instance with values from metadata or defaults
         """
-        total_tokens = metadata.get("total_tokens", 0)
+        prompt_tokens = metadata.get("prompt_tokens", 0)
         completion_tokens = metadata.get("completion_tokens", 0)
-        if total_tokens > 0 and completion_tokens == 0:
-            completion_tokens = total_tokens
+        total_tokens = metadata.get("total_tokens", 0)
+
+        # If total_tokens is not provided but prompt and completion tokens are,
+        # calculate total_tokens
+        if total_tokens == 0 and (prompt_tokens > 0 or completion_tokens > 0):
+            total_tokens = prompt_tokens + completion_tokens
 
         return cls(
-            prompt_tokens=metadata.get("prompt_tokens", 0),
+            prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
             prompt_unit_price=Decimal(str(metadata.get("prompt_unit_price", 0))),
@@ -84,7 +110,7 @@ class LLMUsage(ModelUsage):
             latency=metadata.get("latency", 0.0),
         )
 
-    def plus(self, other: "LLMUsage") -> "LLMUsage":
+    def plus(self, other: LLMUsage) -> LLMUsage:
         """
         Add two LLMUsage instances together.
 
@@ -109,7 +135,7 @@ class LLMUsage(ModelUsage):
                 latency=self.latency + other.latency,
             )
 
-    def __add__(self, other: "LLMUsage") -> "LLMUsage":
+    def __add__(self, other: LLMUsage) -> LLMUsage:
         """
         Overload the + operator to add two LLMUsage instances.
 
@@ -130,6 +156,7 @@ class LLMResult(BaseModel):
     message: AssistantPromptMessage
     usage: LLMUsage
     system_fingerprint: Optional[str] = None
+    reasoning_content: Optional[str] = None
 
 
 class LLMStructuredOutput(BaseModel):

@@ -19,5 +19,5 @@ class I18nObject(BaseModel):
         self.pt_BR = self.pt_BR or self.en_US
         self.ja_JP = self.ja_JP or self.en_US
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {"zh_Hans": self.zh_Hans, "en_US": self.en_US, "pt_BR": self.pt_BR, "ja_JP": self.ja_JP}

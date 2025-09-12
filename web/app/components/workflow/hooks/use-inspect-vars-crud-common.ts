@@ -54,9 +54,9 @@ export const useInspectVarsCrudCommon = ({
     if (!node)
       return undefined
     const varId = node.vars.find((varItem) => {
-        return varItem.selector[1] === varName
-      })?.id
-      return varId
+      return varItem.selector[1] === varName
+    })?.id
+    return varId
   }, [getNodeInspectVars])
 
   const getInspectVar = useCallback((nodeId: string, name: string): VarInInspect | undefined => {
@@ -71,16 +71,16 @@ export const useInspectVarsCrudCommon = ({
   }, [getNodeInspectVars])
 
   const hasSetInspectVar = useCallback((nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => {
-      const isEnv = isENV([nodeId])
-      if (isEnv) // always have value
-        return true
-      const isSys = isSystemVar([nodeId])
-      if (isSys)
-        return sysVars.some(varItem => varItem.selector?.[1]?.replace('sys.', '') === name)
-      const isChatVar = isConversationVar([nodeId])
-      if (isChatVar)
-        return conversationVars.some(varItem => varItem.selector?.[1] === name)
-      return getInspectVar(nodeId, name) !== undefined
+    const isEnv = isENV([nodeId])
+    if (isEnv) // always have value
+      return true
+    const isSys = isSystemVar([nodeId])
+    if (isSys)
+      return sysVars.some(varItem => varItem.selector?.[1]?.replace('sys.', '') === name)
+    const isChatVar = isConversationVar([nodeId])
+    if (isChatVar)
+      return conversationVars.some(varItem => varItem.selector?.[1] === name)
+    return getInspectVar(nodeId, name) !== undefined
   }, [getInspectVar])
 
   const hasNodeInspectVars = useCallback((nodeId: string) => {
@@ -115,23 +115,23 @@ export const useInspectVarsCrudCommon = ({
     } = workflowStore.getState()
     const nodes = produce(nodesWithInspectVars, (draft) => {
       const nodeInfo = allNodes.find(node => node.id === nodeId)
-        if (nodeInfo) {
-          const index = draft.findIndex(node => node.nodeId === nodeId)
-          if (index === -1) {
-            draft.unshift({
-              nodeId,
-              nodeType: nodeInfo.data.type,
-              title: nodeInfo.data.title,
-              vars: payload,
-              nodePayload: nodeInfo.data,
-            })
-          }
-          else {
-            draft[index].vars = payload
-            // put the node to the topAdd commentMore actions
-            draft.unshift(draft.splice(index, 1)[0])
-          }
+      if (nodeInfo) {
+        const index = draft.findIndex(node => node.nodeId === nodeId)
+        if (index === -1) {
+          draft.unshift({
+            nodeId,
+            nodeType: nodeInfo.data.type,
+            title: nodeInfo.data.title,
+            vars: payload,
+            nodePayload: nodeInfo.data,
+          })
         }
+        else {
+          draft[index].vars = payload
+            // put the node to the topAdd commentMore actions
+          draft.unshift(draft.splice(index, 1)[0])
+        }
+      }
     })
     setNodesWithInspectVars(nodes)
     handleCancelNodeSuccessStatus(nodeId)

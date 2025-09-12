@@ -128,7 +128,7 @@ class ToolTransformService:
             )
         }
 
-        for name, value in schema.items():
+        for name in schema:
             if result.masked_credentials:
                 result.masked_credentials[name] = ""
 
@@ -237,6 +237,10 @@ class ToolTransformService:
             label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
             description=I18nObject(en_US="", zh_Hans=""),
             server_identifier=db_provider.server_identifier,
+            timeout=db_provider.timeout,
+            sse_read_timeout=db_provider.sse_read_timeout,
+            masked_headers=db_provider.masked_headers,
+            original_headers=db_provider.decrypted_headers,
         )
 
     @staticmethod

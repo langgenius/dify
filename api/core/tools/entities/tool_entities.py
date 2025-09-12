@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import enum
 from collections.abc import Mapping
 from enum import Enum
@@ -108,10 +109,18 @@ class ApiProviderAuthType(Enum):
         :param value: mode value
         :return: mode
         """
+        # 'api_key' deprecated in PR #21656
+        # normalize & tiny alias for backward compatibility
+        v = (value or "").strip().lower()
+        if v == "api_key":
+            v = cls.API_KEY_HEADER.value
+
         for mode in cls:
-            if mode.value == value:
+            if mode.value == v:
                 return mode
-        raise ValueError(f"invalid mode value {value}")
+
+        valid = ", ".join(m.value for m in cls)
+        raise ValueError(f"invalid mode value '{value}', expected one of: {valid}")
 
 
 class ToolInvokeMessage(BaseModel):
@@ -141,7 +150,7 @@ class ToolInvokeMessage(BaseModel):
 
         @model_validator(mode="before")
         @classmethod
-        def transform_variable_value(cls, values) -> Any:
+        def transform_variable_value(cls, values):
             """
             Only basic types and lists are allowed.
             """
@@ -219,10 +228,8 @@ class ToolInvokeMessage(BaseModel):
     @classmethod
     def decode_blob_message(cls, v):
         if isinstance(v, dict) and "blob" in v:
-            try:
+            with contextlib.suppress(Exception):
                 v["blob"] = base64.b64decode(v["blob"])
-            except Exception:
-                pass
         return v
 
     @field_serializer("message")
@@ -421,7 +428,7 @@ class ToolInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "time_cost": self.time_cost,
             "error": self.error,

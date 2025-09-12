@@ -6,7 +6,7 @@ class InvokeError(Exception):
 
     description: Optional[str] = None
 
-    def __init__(self, description: Optional[str] = None) -> None:
+    def __init__(self, description: Optional[str] = None):
         self.description = description
 
     def __str__(self):

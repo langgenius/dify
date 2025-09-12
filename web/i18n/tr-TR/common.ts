@@ -60,6 +60,7 @@ const translation = {
     downloadFailed: 'İndirme başarısız oldu. Lütfen daha sonra tekrar deneyin.',
     selectAll: 'Hepsini Seç',
     deSelectAll: 'Hepsini Seçme',
+    config: 'Konfigürasyon',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -201,7 +202,6 @@ const translation = {
     showAppLength: '{{length}} uygulamayı göster',
     delete: 'Hesabı Sil',
     deleteTip: 'Hesabınızı silmek tüm verilerinizi kalıcı olarak siler ve geri alınamaz.',
-    deleteConfirmTip: 'Onaylamak için, kayıtlı e-postanızdan şu adrese e-posta gönderin: ',
     account: 'Hesap',
     myAccount: 'Hesabım',
     studio: 'Dify Stüdyo',
@@ -473,6 +473,28 @@ const translation = {
     emptyProviderTitle: 'Model sağlayıcı ayarlanmadı',
     discoverMore: 'Daha fazlasını keşfedin',
     configureTip: 'Api-key\'i ayarlayın veya kullanmak için model ekleyin',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Model ekle',
+        title: 'API Anahtar Yetkilendirme Yapılandırması',
+        desc: 'Kimlik bilgileri yapılandırıldıktan sonra, çalışma alanındaki tüm üyeler bu modeli uygulamaları düzenlerken kullanabilir.',
+      },
+      unAuthorized: 'Yetkisiz',
+      authRemoved: 'Yazar kaldırıldı',
+      providerManaged: 'Sağlayıcı yönetimi',
+      configModel: 'Modeli yapılandır',
+      apiKeys: 'API Anahtarları',
+      addApiKey: 'API Anahtarını Ekle',
+      addCredential: 'Kimlik bilgisi ekle',
+      addNewModel: 'Yeni model ekle',
+      providerManagedTip: 'Mevcut yapılandırma sağlayıcı tarafından barındırılmaktadır.',
+      modelCredentials: 'Model kimlik bilgileri',
+      specifyModelCredentialTip: 'Yapılandırılmış bir model kimliği kullanın.',
+      configLoadBalancing: 'Yük Dengeleme Yapılandırması',
+      addModelCredential: 'Model kimlik bilgisi ekle',
+      specifyModelCredential: 'Model kimlik bilgilerini belirtin',
+      authorizationError: 'Yetkilendirme hatası',
+    },
   },
   dataSource: {
     add: 'Bir veri kaynağı ekle',
@@ -716,6 +738,16 @@ const translation = {
     browse: 'tarayıcı',
   },
   you: 'Sen',
+  avatar: {
+    deleteTitle: 'Avatarı kaldır',
+    deleteDescription: 'Profil resminizi kaldırmak istediğinize emin misiniz? Hesabınız varsayılan başlangıç avatarını kullanacaktır.',
+  },
+  feedback: {
+    content: 'Geri Bildirim İçeriği',
+    subtitle: 'Lütfen bu yanıtla ilgili neyin yanlış gittiğini bize bildirin',
+    title: 'Geri Bildirim Sağla',
+    placeholder: 'Lütfen neyin yanlış gittiğini veya nasıl iyileşebileceğimizi açıklayın...',
+  },
 }
 
 export default translation

@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 import chardet
 import docx
@@ -47,7 +47,7 @@ class DocumentExtractorNode(BaseNode):
 
     _node_data: DocumentExtractorNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = DocumentExtractorNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -168,7 +168,57 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
-        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
+        case (
+            ".txt"
+            | ".markdown"
+            | ".md"
+            | ".html"
+            | ".htm"
+            | ".xml"
+            | ".c"
+            | ".h"
+            | ".cpp"
+            | ".hpp"
+            | ".cc"
+            | ".cxx"
+            | ".c++"
+            | ".py"
+            | ".js"
+            | ".ts"
+            | ".jsx"
+            | ".tsx"
+            | ".java"
+            | ".php"
+            | ".rb"
+            | ".go"
+            | ".rs"
+            | ".swift"
+            | ".kt"
+            | ".scala"
+            | ".sh"
+            | ".bash"
+            | ".bat"
+            | ".ps1"
+            | ".sql"
+            | ".r"
+            | ".m"
+            | ".pl"
+            | ".lua"
+            | ".vim"
+            | ".asm"
+            | ".s"
+            | ".css"
+            | ".scss"
+            | ".less"
+            | ".sass"
+            | ".ini"
+            | ".cfg"
+            | ".conf"
+            | ".toml"
+            | ".env"
+            | ".log"
+            | ".vtt"
+        ):
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
@@ -194,8 +244,6 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_eml(file_content)
         case ".msg":
             return _extract_text_from_msg(file_content)
-        case ".vtt":
-            return _extract_text_from_vtt(file_content)
         case ".properties":
             return _extract_text_from_properties(file_content)
         case _:
@@ -254,12 +302,12 @@ def _extract_text_from_yaml(file_content: bytes) -> str:
             encoding = "utf-8"
 
         yaml_data = yaml.safe_load_all(file_content.decode(encoding, errors="ignore"))
-        return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
     except (UnicodeDecodeError, LookupError, yaml.YAMLError) as e:
         # If decoding fails, try with utf-8 as last resort
         try:
             yaml_data = yaml.safe_load_all(file_content.decode("utf-8", errors="ignore"))
-            return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+            return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
         except (UnicodeDecodeError, yaml.YAMLError):
             raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
@@ -380,9 +428,9 @@ def _download_file_content(file: File) -> bytes:
                 raise FileDownloadError("Missing URL for remote file")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
-            return cast(bytes, response.content)
+            return response.content
         else:
-            return cast(bytes, file_manager.download(file))
+            return file_manager.download(file)
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
@@ -467,14 +515,14 @@ def _extract_text_from_excel(file_content: bytes) -> str:
                 df.dropna(how="all", inplace=True)
 
                 # Combine multi-line text in each cell into a single line
-                df = df.applymap(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)  # type: ignore
+                df = df.map(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)
 
                 # Combine multi-line text in column names into a single line
                 df.columns = pd.Index([" ".join(str(col).splitlines()) for col in df.columns])
 
                 # Manually construct the Markdown table
                 markdown_table += _construct_markdown_table(df) + "\n\n"
-            except Exception as e:
+            except Exception:
                 continue
         return markdown_table
     except Exception as e:
@@ -597,7 +645,7 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
 
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
-            if spk == None:
+            if spk is None:
                 merged_results.append((None, current_text))
                 continue
 

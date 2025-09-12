@@ -32,11 +32,11 @@ Vergessen Sie nicht, in der PR-Beschreibung ein bestehendes Issue zu verlinken o
 
 Unsere Priorisierung:
 
-  | Fehlertyp                                                    | Priorität       |
-  | ------------------------------------------------------------ | --------------- |
-  | Fehler in Kernfunktionen (Cloud-Service, Login nicht möglich, Anwendungen funktionieren nicht, Sicherheitslücken) | Kritisch        |
-  | Nicht-kritische Fehler, Leistungsverbesserungen              | Mittlere Priorität |
-  | Kleinere Korrekturen (Tippfehler, verwirrende aber funktionierende UI) | Niedrige Priorität |
+| Fehlertyp | Priorität |
+| ------------------------------------------------------------ | --------------- |
+| Fehler in Kernfunktionen (Cloud-Service, Login nicht möglich, Anwendungen funktionieren nicht, Sicherheitslücken) | Kritisch |
+| Nicht-kritische Fehler, Leistungsverbesserungen | Mittlere Priorität |
+| Kleinere Korrekturen (Tippfehler, verwirrende aber funktionierende UI) | Niedrige Priorität |
 
 ### Feature-Anfragen
 
@@ -50,24 +50,24 @@ Unsere Priorisierung:
 
 Unsere Priorisierung:
 
-  | Feature-Typ                                                  | Priorität       |
-  | ------------------------------------------------------------ | --------------- |
-  | Hochprioritäre Features (durch Teammitglied gekennzeichnet)  | Hohe Priorität  |
-  | Beliebte Feature-Anfragen aus unserem [Community-Feedback-Board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Mittlere Priorität |
-  | Nicht-Kernfunktionen und kleinere Verbesserungen             | Niedrige Priorität |
-  | Wertvoll, aber nicht dringend                                | Zukunfts-Feature |
+| Feature-Typ | Priorität |
+| ------------------------------------------------------------ | --------------- |
+| Hochprioritäre Features (durch Teammitglied gekennzeichnet) | Hohe Priorität |
+| Beliebte Feature-Anfragen aus unserem [Community-Feedback-Board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Mittlere Priorität |
+| Nicht-Kernfunktionen und kleinere Verbesserungen | Niedrige Priorität |
+| Wertvoll, aber nicht dringend | Zukunfts-Feature |
 
 ## Einreichen Ihres PRs
 
 ### Pull-Request-Prozess
 
 1. Repository forken
-2. Vor dem Erstellen eines PRs bitte ein Issue zur Diskussion der Änderungen erstellen
-3. Einen neuen Branch für Ihre Änderungen erstellen
-4. Tests für Ihre Änderungen hinzufügen
-5. Sicherstellen, dass Ihr Code die bestehenden Tests besteht
-6. Issue in der PR-Beschreibung verlinken (`fixes #<issue_number>`)
-7. Auf den Merge warten!
+1. Vor dem Erstellen eines PRs bitte ein Issue zur Diskussion der Änderungen erstellen
+1. Einen neuen Branch für Ihre Änderungen erstellen
+1. Tests für Ihre Änderungen hinzufügen
+1. Sicherstellen, dass Ihr Code die bestehenden Tests besteht
+1. Issue in der PR-Beschreibung verlinken (`fixes #<issue_number>`)
+1. Auf den Merge warten!
 
 ### Projekt einrichten
 
@@ -82,6 +82,7 @@ Für die Einrichtung des Backend-Service folgen Sie bitte unseren detaillierten 
 #### Weitere Hinweise
 
 Wir empfehlen, dieses Dokument sorgfältig zu lesen, da es wichtige Informationen enthält über:
+
 - Voraussetzungen und Abhängigkeiten
 - Installationsschritte
 - Konfigurationsdetails
@@ -92,4 +93,3 @@ Bei Problemen während der Einrichtung können Sie sich gerne an uns wenden.
 ## Hilfe bekommen
 
 Wenn Sie beim Mitwirken Fragen haben oder nicht weiterkommen, stellen Sie Ihre Fragen einfach im entsprechenden GitHub Issue oder besuchen Sie unseren [Discord](https://discord.gg/8Tpq4AcN9c) für einen schnellen Austausch.
-

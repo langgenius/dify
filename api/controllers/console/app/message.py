@@ -1,11 +1,10 @@
 import logging
 
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx.inputs import int_range
+from sqlalchemy import exists, select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
 from controllers.console import api
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -27,12 +26,15 @@ from extensions.ext_database import db
 from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from libs.login import login_required
-from models.model import AppMode, Conversation, Message, MessageAnnotation
+from libs.login import current_user, login_required
+from models.account import Account
+from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class ChatMessageListApi(Resource):
@@ -93,21 +95,22 @@ class ChatMessageListApi(Resource):
                 .all()
             )
 
-        has_more = False
+        # Initialize has_more based on whether we have a full page
         if len(history_messages) == args["limit"]:
             current_page_first_message = history_messages[-1]
-            rest_count = (
-                db.session.query(Message)
-                .where(
-                    Message.conversation_id == conversation.id,
-                    Message.created_at < current_page_first_message.created_at,
-                    Message.id != current_page_first_message.id,
+            # Check if there are more messages before the current page
+            has_more = db.session.scalar(
+                select(
+                    exists().where(
+                        Message.conversation_id == conversation.id,
+                        Message.created_at < current_page_first_message.created_at,
+                        Message.id != current_page_first_message.id,
+                    )
                 )
-                .count()
             )
-
-            if rest_count > 0:
-                has_more = True
+        else:
+            # If we don't have a full page, there are no more messages
+            has_more = False
 
         history_messages = list(reversed(history_messages))
 
@@ -115,26 +118,46 @@ class ChatMessageListApi(Resource):
 
 
 class MessageFeedbackApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def post(self, app_model):
+        if current_user is None:
+            raise Forbidden()
+
         parser = reqparse.RequestParser()
         parser.add_argument("message_id", required=True, type=uuid_value, location="json")
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         args = parser.parse_args()
 
-        try:
-            MessageService.create_feedback(
-                app_model=app_model,
-                message_id=str(args["message_id"]),
-                user=current_user,
-                rating=args.get("rating"),
-                content=None,
-            )
-        except services.errors.message.MessageNotExistsError:
+        message_id = str(args["message_id"])
+
+        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+
+        if not message:
             raise NotFound("Message Not Exists.")
+
+        feedback = message.admin_feedback
+
+        if not args["rating"] and feedback:
+            db.session.delete(feedback)
+        elif args["rating"] and feedback:
+            feedback.rating = args["rating"]
+        elif not args["rating"] and not feedback:
+            raise ValueError("rating cannot be None when feedback not exists")
+        else:
+            feedback = MessageFeedback(
+                app_id=app_model.id,
+                conversation_id=message.conversation_id,
+                message_id=message.id,
+                rating=args["rating"],
+                from_source="admin",
+                from_account_id=current_user.id,
+            )
+            db.session.add(feedback)
+
+        db.session.commit()
 
         return {"result": "success"}
 
@@ -147,7 +170,9 @@ class MessageAnnotationApi(Resource):
     @get_app_model
     @marshal_with(annotation_fields)
     def post(self, app_model):
-        if not current_user.is_editor:
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -162,10 +187,10 @@ class MessageAnnotationApi(Resource):
 
 
 class MessageAnnotationCountApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
 
@@ -199,7 +224,7 @@ class MessageSuggestedQuestionApi(Resource):
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}

@@ -28,7 +28,7 @@ const Footer = () => {
   const { t } = useTranslation()
 
   return (
-    <footer className='shrink-0 grow-0 px-12 py-6'>
+    <footer className='relative shrink-0 grow-0 px-12 py-2'>
       <h3 className='text-gradient text-xl font-semibold leading-tight'>{t('app.join')}</h3>
       <p className='system-sm-regular mt-1 text-text-tertiary'>{t('app.communityIntro')}</p>
       <div className='mt-3 flex items-center gap-2'>

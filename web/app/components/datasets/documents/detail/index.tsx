@@ -17,7 +17,7 @@ import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
-import type { ChunkingMode, ParentMode, ProcessMode } from '@/models/datasets'
+import type { ChunkingMode, FileItem, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -111,12 +111,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
-  const runBatch = async (csv: File) => {
-    const formData = new FormData()
-    formData.append('file', csv)
+  const runBatch = async (csv: FileItem) => {
     await segmentBatchImport({
       url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
-      body: formData,
+      body: { upload_file_id: csv.file.id! },
     }, {
       onSuccess: (res) => {
         setImportStatus(res.job_status)
@@ -141,7 +139,12 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   })
 
   const backToPrev = () => {
-    router.push(`/datasets/${datasetId}/documents`)
+    // Preserve pagination and filter states when navigating back
+    const searchParams = new URLSearchParams(window.location.search)
+    const queryString = searchParams.toString()
+    const separator = queryString ? '?' : ''
+    const backPath = `/datasets/${datasetId}/documents${separator}${queryString}`
+    router.push(backPath)
   }
 
   const isDetailLoading = !documentDetail && !error

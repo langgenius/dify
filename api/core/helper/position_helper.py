@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Any
+from typing import TypeVar
 
 from configs import dify_config
 from core.tools.utils.yaml_utils import load_yaml_file
@@ -72,11 +72,14 @@ def pin_position_map(original_position_map: dict[str, int], pin_list: list[str])
     return position_map
 
 
+T = TypeVar("T")
+
+
 def is_filtered(
     include_set: set[str],
     exclude_set: set[str],
-    data: Any,
-    name_func: Callable[[Any], str],
+    data: T,
+    name_func: Callable[[T], str],
 ) -> bool:
     """
     Check if the object should be filtered out.
@@ -103,9 +106,9 @@ def is_filtered(
 
 def sort_by_position_map(
     position_map: dict[str, int],
-    data: list[Any],
-    name_func: Callable[[Any], str],
-) -> list[Any]:
+    data: list[T],
+    name_func: Callable[[T], str],
+):
     """
     Sort the objects by the position map.
     If the name of the object is not in the position map, it will be put at the end.
@@ -122,9 +125,9 @@ def sort_by_position_map(
 
 def sort_to_dict_by_position_map(
     position_map: dict[str, int],
-    data: list[Any],
-    name_func: Callable[[Any], str],
-) -> OrderedDict[str, Any]:
+    data: list[T],
+    name_func: Callable[[T], str],
+):
     """
     Sort the objects into a ordered dict by the position map.
     If the name of the object is not in the position map, it will be put at the end.
@@ -134,4 +137,4 @@ def sort_to_dict_by_position_map(
     :return: an OrderedDict with the sorted pairs of name and object
     """
     sorted_items = sort_by_position_map(position_map, data, name_func)
-    return OrderedDict([(name_func(item), item) for item in sorted_items])
+    return OrderedDict((name_func(item), item) for item in sorted_items)

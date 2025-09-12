@@ -16,7 +16,7 @@ const translation = {
     indexMethodHighQuality: '高質量',
     indexMethodHighQualityTip: '使用 Embedding 模型進行處理，以在使用者查詢時提供更高的準確度。',
     indexMethodEconomy: '經濟',
-    indexMethodEconomyTip: '使用離線的向量引擎、關鍵詞索引等方式，降低了準確度但無需花費 Token',
+    indexMethodEconomyTip: '每個區塊使用 10 個關鍵字進行檢索，不會消耗 tokens，但可能會降低檢索的準確度。',
     embeddingModel: 'Embedding 模型',
     embeddingModelTip: '修改 Embedding 模型，請去',
     embeddingModelTipLink: '設定',

@@ -16,7 +16,7 @@ class WorkflowExecutionRepository(Protocol):
     application domains or deployment scenarios.
     """
 
-    def save(self, execution: WorkflowExecution) -> None:
+    def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution instance.
 

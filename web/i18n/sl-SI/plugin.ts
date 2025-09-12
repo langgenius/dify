@@ -246,6 +246,9 @@ const translation = {
     oauthClientSettings: 'Nastavitve odjemalca OAuth',
     clientInfo: 'Ker za tega ponudnika orodij niso bili najdeni klientski skrivnosti sistema, je potrebna ročna nastavitev, za redirect_uri prosimo uporabite',
     useApiAuthDesc: 'Po konfiguraciji poverilnic lahko vsi člani v delovnem prostoru uporabljajo to orodje pri orkestraciji aplikacij.',
+    unavailable: 'Nedostopno',
+    customCredentialUnavailable: 'Trenutno niso na voljo prilagojene prijave.',
+    credentialUnavailable: 'Trenutno niso na voljo poverilnice. Prosimo, kontaktirajte administratorja.',
   },
   deprecated: 'Zastaran',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         name: 'Popravi samo',
         selectedDescription: 'Samodejno posodabljanje samo za različice popravkov',
+        description: 'Samodejno posodabljanje samo za različice popravkov (npr. 1.0.1 → 1.0.2). Spremembe manjših različic ne bodo povzročile posodobitev.',
       },
       latest: {
         selectedDescription: 'Vedno posodobite na najnovejšo različico',

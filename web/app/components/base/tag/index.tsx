@@ -31,10 +31,10 @@ const COLOR_MAP = {
 export default function Tag({ children, color = 'green', className = '', bordered = false, hideBg = false }: ITagProps) {
   return (
     <div className={
-      classNames('px-2.5 py-px text-xs leading-5 rounded-md inline-flex items-center flex-shrink-0',
+      classNames('inline-flex shrink-0 items-center rounded-md px-2.5 py-px text-xs leading-5',
         COLOR_MAP[color] ? `${COLOR_MAP[color].text} ${COLOR_MAP[color].bg}` : '',
         bordered ? 'border-[1px]' : '',
-        hideBg ? 'bg-opacity-0' : '',
+        hideBg ? 'bg-transparent' : '',
         className)} >
       {children}
     </div>

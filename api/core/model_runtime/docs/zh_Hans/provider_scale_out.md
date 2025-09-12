@@ -5,7 +5,7 @@
 - `predefined-model  ` 预定义模型
 
   表示用户只需要配置统一的供应商凭据即可使用供应商下的预定义模型。
-  
+
 - `customizable-model` 自定义模型
 
   用户需要新增每个模型的凭据配置，如 Xinference，它同时支持 LLM 和 Text Embedding，但是每个模型都有唯一的**model_uid**，如果想要将两者同时接入，就需要为每个模型配置一个**model_uid**。
@@ -23,9 +23,11 @@
 ### 介绍
 
 #### 名词解释
- - `module`: 一个`module`即为一个 Python Package，或者通俗一点，称为一个文件夹，里面包含了一个`__init__.py`文件，以及其他的`.py`文件。
+
+- `module`: 一个`module`即为一个 Python Package，或者通俗一点，称为一个文件夹，里面包含了一个`__init__.py`文件，以及其他的`.py`文件。
 
 #### 步骤
+
 新增一个供应商主要分为几步，这里简单列出，帮助大家有一个大概的认识，具体的步骤会在下面详细介绍。
 
 - 创建供应商 yaml 文件，根据[ProviderSchema](./schema.md#provider)编写
@@ -117,7 +119,7 @@ model_credential_schema:
       en_US: Enter your API Base
 ```
 
-也可以参考  `model_providers` 目录下其他供应商目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#provider)。
+也可以参考 `model_providers` 目录下其他供应商目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#provider)。
 
 #### 实现供应商代码
 
@@ -155,12 +157,14 @@ def validate_provider_credentials(self, credentials: dict) -> None:
 #### 增加模型
 
 #### [增加预定义模型 👈🏻](./predefined_model_scale_out.md)
+
 对于预定义模型，我们可以通过简单定义一个 yaml，并通过实现调用代码来接入。
 
 #### [增加自定义模型 👈🏻](./customizable_model_scale_out.md)
+
 对于自定义模型，我们只需要实现调用代码即可接入，但是它需要处理的参数可能会更加复杂。
 
----
+______________________________________________________________________
 
 ### 测试
 

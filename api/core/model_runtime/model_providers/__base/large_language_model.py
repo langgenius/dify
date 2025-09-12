@@ -354,7 +354,7 @@ class LargeLanguageModel(AIModel):
             )
         return 0
 
-    def _calc_response_usage(
+    def calc_response_usage(
         self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int
     ) -> LLMUsage:
         """
@@ -408,7 +408,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger before invoke callbacks
 
@@ -456,7 +456,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger new chunk callbacks
 
@@ -503,7 +503,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger after invoke callbacks
 
@@ -553,7 +553,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+    ):
         """
         Trigger invoke error callbacks
 

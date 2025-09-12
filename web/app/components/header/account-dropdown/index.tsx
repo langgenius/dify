@@ -59,6 +59,11 @@ export default function AppSelector() {
     localStorage.removeItem('console_token')
     localStorage.removeItem('refresh_token')
 
+    // To avoid use other account's education notice info
+    localStorage.removeItem('education-reverify-prev-expire-at')
+    localStorage.removeItem('education-reverify-has-noticed')
+    localStorage.removeItem('education-expired-has-noticed')
+
     router.push('/signin')
   }
 

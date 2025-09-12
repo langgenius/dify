@@ -40,13 +40,13 @@ type CategoryItemProps = {
 }
 function CategoryItem({ category, active, onClick }: CategoryItemProps) {
   return <li
-    className={classNames('p-1 pl-3 h-8 rounded-lg flex items-center gap-2 group cursor-pointer hover:bg-state-base-hover [&.active]:bg-state-base-active', active && 'active')}
+    className={classNames('group flex h-8 cursor-pointer items-center gap-2 rounded-lg p-1 pl-3 hover:bg-state-base-hover [&.active]:bg-state-base-active', active && 'active')}
     onClick={() => { onClick?.(category) }}>
     {category === AppCategories.RECOMMENDED && <div className='inline-flex h-5 w-5 items-center justify-center rounded-md'>
       <RiThumbUpLine className='h-4 w-4 text-components-menu-item-text group-[.active]:text-components-menu-item-text-active' />
     </div>}
     <AppCategoryLabel category={category}
-      className={classNames('system-sm-medium text-components-menu-item-text group-[.active]:text-components-menu-item-text-active group-hover:text-components-menu-item-text-hover', active && 'system-sm-semibold')} />
+      className={classNames('system-sm-medium text-components-menu-item-text group-hover:text-components-menu-item-text-hover group-[.active]:text-components-menu-item-text-active', active && 'system-sm-semibold')} />
   </li >
 }
 

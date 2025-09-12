@@ -342,7 +342,6 @@ const translation = {
     keywords: 'Palabras clave',
     addKeyWord: 'Agregar palabra clave',
     keywordError: 'La longitud máxima de la palabra clave es 20',
-    characters: 'caracteres',
     hitCount: 'Cantidad de recuperación',
     vectorHash: 'Hash de vector: ',
     questionPlaceholder: 'agregar pregunta aquí',

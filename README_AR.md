@@ -52,7 +52,7 @@
 مشروع Dify هو منصة تطوير تطبيقات الذكاء الصناعي مفتوحة المصدر. تجمع واجهته البديهية بين سير العمل الذكي بالذكاء الاصطناعي وخط أنابيب RAG وقدرات الوكيل وإدارة النماذج وميزات الملاحظة وأكثر من ذلك، مما يتيح لك الانتقال بسرعة من المرحلة التجريبية إلى الإنتاج. إليك قائمة بالميزات الأساسية:
 </br> </br>
 
-**1. سير العمل**:  قم ببناء واختبار سير عمل الذكاء الاصطناعي القوي على قماش بصري، مستفيدًا من جميع الميزات التالية وأكثر.
+**1. سير العمل**: قم ببناء واختبار سير عمل الذكاء الاصطناعي القوي على قماش بصري، مستفيدًا من جميع الميزات التالية وأكثر.
 
 **2. الدعم الشامل للنماذج**: تكامل سلس مع مئات من LLMs الخاصة / مفتوحة المصدر من عشرات من موفري التحليل والحلول المستضافة ذاتيًا، مما يغطي GPT و Mistral و Llama3 وأي نماذج متوافقة مع واجهة OpenAI API. يمكن العثور على قائمة كاملة بمزودي النموذج المدعومين [هنا](https://docs.dify.ai/getting-started/readme/model-providers).
 
@@ -68,88 +68,20 @@
 
 **7.الواجهة الخلفية (Backend) كخدمة**: تأتي جميع عروض Dify مع APIs مطابقة، حتى يمكنك دمج Dify بسهولة في منطق أعمالك الخاص.
 
-## مقارنة الميزات
-
-<table style="width: 100%;">
-  <tr>
-    <th align="center">الميزة</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">OpenAI Assistants API</th>
-  </tr>
-  <tr>
-    <td align="center">نهج البرمجة</td>
-    <td align="center">موجّه لـ تطبيق + واجهة برمجة تطبيق (API)</td>
-    <td align="center">برمجة Python</td>
-    <td align="center">موجه لتطبيق</td>
-    <td align="center">واجهة برمجة تطبيق (API)</td>
-  </tr>
-  <tr>
-    <td align="center">LLMs المدعومة</td>
-    <td align="center">تنوع غني</td>
-    <td align="center">تنوع غني</td>
-    <td align="center">تنوع غني</td>
-    <td align="center">فقط OpenAI</td>
-  </tr>
-  <tr>
-    <td align="center">محرك RAG</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">الوكيل</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">سير العمل</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">الملاحظة</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">ميزات الشركات (SSO / مراقبة الوصول)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">نشر محلي</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
-
 ## استخدام Dify
 
 - **سحابة </br>**
-نحن نستضيف [خدمة Dify Cloud](https://dify.ai) لأي شخص لتجربتها بدون أي إعدادات. توفر كل قدرات النسخة التي تمت استضافتها ذاتيًا، وتتضمن 200 أمر GPT-4 مجانًا في خطة الصندوق الرملي.
+  نحن نستضيف [خدمة Dify Cloud](https://dify.ai) لأي شخص لتجربتها بدون أي إعدادات. توفر كل قدرات النسخة التي تمت استضافتها ذاتيًا، وتتضمن 200 أمر GPT-4 مجانًا في خطة الصندوق الرملي.
 
 - **استضافة ذاتية لنسخة المجتمع Dify</br>**
-ابدأ سريعًا في تشغيل Dify في بيئتك باستخدام [دليل البدء السريع](#البدء السريع).
-استخدم [توثيقنا](https://docs.dify.ai) للمزيد من المراجع والتعليمات الأعمق.
+  ابدأ سريعًا في تشغيل Dify في بيئتك باستخدام \[دليل البدء السريع\](#البدء السريع).
+  استخدم [توثيقنا](https://docs.dify.ai) للمزيد من المراجع والتعليمات الأعمق.
 
 - **مشروع Dify للشركات / المؤسسات</br>**
-نحن نوفر ميزات إضافية مركزة على الشركات. [جدول اجتماع معنا](https://cal.com/guchenhe/30min) أو [أرسل لنا بريدًا إلكترونيًا](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) لمناقشة احتياجات الشركات. </br>
+  نحن نوفر ميزات إضافية مركزة على الشركات. [جدول اجتماع معنا](https://cal.com/guchenhe/30min) أو [أرسل لنا بريدًا إلكترونيًا](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) لمناقشة احتياجات الشركات. </br>
 
 > بالنسبة للشركات الناشئة والشركات الصغيرة التي تستخدم خدمات AWS، تحقق من [Dify Premium على AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) ونشرها في شبكتك الخاصة على AWS VPC بنقرة واحدة. إنها عرض AMI بأسعار معقولة مع خيار إنشاء تطبيقات بشعار وعلامة تجارية مخصصة.
->
+
 ## البقاء قدمًا
 
 قم بإضافة نجمة إلى Dify على GitHub وتلق تنبيهًا فوريًا بالإصدارات الجديدة.
@@ -157,11 +89,11 @@
 ![نجمنا](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
 
 ## البداية السريعة
->
+
 > قبل تثبيت Dify، تأكد من أن جهازك يلبي الحد الأدنى من متطلبات النظام التالية:
 >
->- معالج >= 2 نواة
->- ذاكرة وصول عشوائي (RAM) >= 4 جيجابايت
+> - معالج >= 2 نواة
+> - ذاكرة وصول عشوائي (RAM) >= 4 جيجابايت
 
 </br>
 
@@ -208,22 +140,27 @@ docker compose up -d
 
 ##### AWS
 
-- [AWS CDK بواسطة @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK بواسطة @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+- [AWS CDK بواسطة @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### استخدام Alibaba Cloud للنشر
- [بسرعة نشر Dify إلى سحابة علي بابا مع عش الحوسبة السحابية علي بابا](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
- 
+
+[بسرعة نشر Dify إلى سحابة علي بابا مع عش الحوسبة السحابية علي بابا](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
 #### استخدام Alibaba Cloud Data Management للنشر
 
 انشر ​​Dify على علي بابا كلاود بنقرة واحدة باستخدام [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
 
+#### استخدام Azure Devops Pipeline للنشر على AKS
+
+انشر Dify على AKS بنقرة واحدة باستخدام [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
 ## المساهمة
 
 لأولئك الذين يرغبون في المساهمة، انظر إلى [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) لدينا.
 في الوقت نفسه، يرجى النظر في دعم Dify عن طريق مشاركته على وسائل التواصل الاجتماعي وفي الفعاليات والمؤتمرات.
 
-> نحن نبحث عن مساهمين لمساعدة في ترجمة Dify إلى لغات أخرى غير اللغة الصينية المندرين أو الإنجليزية. إذا كنت مهتمًا بالمساعدة، يرجى الاطلاع على [README للترجمة](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) لمزيد من المعلومات، واترك لنا تعليقًا في قناة `global-users` على [خادم المجتمع على Discord](https://discord.gg/8Tpq4AcN9c).
+> نحن نبحث عن مساهمين لمساعدة في ترجمة Dify إلى لغات أخرى غير اللغة الصينية المندرين أو الإنجليزية. إذا كنت مهتمًا بالمساعدة، يرجى الاطلاع على [README للترجمة](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) لمزيد من المعلومات، واترك لنا تعليقًا في قناة `global-users` على [خادم المجتمع على Discord](https://discord.gg/8Tpq4AcN9c).
 
 **المساهمون**
 
@@ -232,6 +169,7 @@ docker compose up -d
 </a>
 
 ## المجتمع والاتصال
+
 - [مناقشة GitHub](https://github.com/langgenius/dify/discussions). الأفضل لـ: مشاركة التعليقات وطرح الأسئلة.
 - [المشكلات على GitHub](https://github.com/langgenius/dify/issues). الأفضل لـ: الأخطاء التي تواجهها في استخدام Dify.AI، واقتراحات الميزات. انظر [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 - [Discord](https://discord.gg/FngNHpbcY7). الأفضل لـ: مشاركة تطبيقاتك والترفيه مع المجتمع.

@@ -123,7 +123,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         for result in results:
             metadata = result.metadata
             metadata["score"] = result.score
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs

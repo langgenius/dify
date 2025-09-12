@@ -2,7 +2,6 @@ const translation = {
   title: 'Kiểm tra truy vấn',
   desc: 'Kiểm tra hiệu quả truy xuất của Kiến thức dựa trên văn bản truy vấn đã cho.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Gần đây',
   table: {
     header: {
       source: 'Nguồn',

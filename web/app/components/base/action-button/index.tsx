@@ -32,6 +32,7 @@ export type ActionButtonProps = {
   size?: 'xs' | 's' | 'm' | 'l' | 'xl'
   state?: ActionButtonState
   styleCss?: CSSProperties
+  ref?: React.Ref<HTMLButtonElement>
 } & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof actionButtonVariants>
 
 function getActionButtonState(state: ActionButtonState) {
@@ -49,24 +50,22 @@ function getActionButtonState(state: ActionButtonState) {
   }
 }
 
-const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
-  ({ className, size, state = ActionButtonState.Default, styleCss, children, ...props }, ref) => {
-    return (
-      <button
-        type='button'
-        className={classNames(
-          actionButtonVariants({ className, size }),
-          getActionButtonState(state),
-        )}
-        ref={ref}
-        style={styleCss}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  },
-)
+const ActionButton = ({ className, size, state = ActionButtonState.Default, styleCss, children, ref, ...props }: ActionButtonProps) => {
+  return (
+    <button
+      type='button'
+      className={classNames(
+        actionButtonVariants({ className, size }),
+        getActionButtonState(state),
+      )}
+      ref={ref}
+      style={styleCss}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
 ActionButton.displayName = 'ActionButton'
 
 export default ActionButton

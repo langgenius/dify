@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_login import current_user
-from flask_restful import (
+from flask_restx import (
     Resource,
     reqparse,
 )
@@ -95,7 +95,6 @@ class ToolBuiltinProviderInfoApi(Resource):
     def get(self, provider):
         user = current_user
 
-        user_id = user.id
         tenant_id = user.current_tenant_id
 
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
@@ -862,6 +861,11 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("timeout", type=float, required=False, nullable=False, location="json", default=30)
+        parser.add_argument(
+            "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
+        )
+        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
         args = parser.parse_args()
         user = current_user
         if not is_valid_url(args["server_url"]):
@@ -876,6 +880,9 @@ class ToolProviderMCPApi(Resource):
                 icon_background=args["icon_background"],
                 user_id=user.id,
                 server_identifier=args["server_identifier"],
+                timeout=args["timeout"],
+                sse_read_timeout=args["sse_read_timeout"],
+                headers=args["headers"],
             )
         )
 
@@ -891,6 +898,9 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
+        parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
+        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json")
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
@@ -906,6 +916,9 @@ class ToolProviderMCPApi(Resource):
             icon_type=args["icon_type"],
             icon_background=args["icon_background"],
             server_identifier=args["server_identifier"],
+            timeout=args.get("timeout"),
+            sse_read_timeout=args.get("sse_read_timeout"),
+            headers=args.get("headers"),
         )
         return {"result": "success"}
 
@@ -942,6 +955,9 @@ class ToolMCPAuthApi(Resource):
                 authed=False,
                 authorization_code=args["authorization_code"],
                 for_list=True,
+                headers=provider.decrypted_headers,
+                timeout=provider.timeout,
+                sse_read_timeout=provider.sse_read_timeout,
             ):
                 MCPToolManageService.update_mcp_provider_credentials(
                     mcp_provider=provider,

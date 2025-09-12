@@ -6,7 +6,7 @@ from core.model_runtime.entities.provider_entities import CredentialFormSchema, 
 class CommonValidator:
     def _validate_and_filter_credential_form_schemas(
         self, credential_form_schemas: list[CredentialFormSchema], credentials: dict
-    ) -> dict:
+    ):
         need_validate_credential_form_schema_map = {}
         for credential_form_schema in credential_form_schemas:
             if not credential_form_schema.show_on:
@@ -68,7 +68,7 @@ class CommonValidator:
         if credential_form_schema.max_length:
             if len(value) > credential_form_schema.max_length:
                 raise ValueError(
-                    f"Variable {credential_form_schema.variable} length should not"
+                    f"Variable {credential_form_schema.variable} length should not be"
                     f" greater than {credential_form_schema.max_length}"
                 )
 

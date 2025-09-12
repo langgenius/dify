@@ -246,6 +246,9 @@ const translation = {
     addOAuth: 'Adicionar OAuth',
     useApiAuthDesc: 'Após configurar as credenciais, todos os membros dentro do espaço de trabalho podem usar esta ferramenta ao orquestrar aplicações.',
     clientInfo: 'Como não foram encontrados segredos de cliente do sistema para este provedor de ferramentas, é necessário configurá-lo manualmente. Para redirect_uri, use',
+    customCredentialUnavailable: 'Credenciais personalizadas atualmente indisponíveis',
+    unavailable: 'Indisponível',
+    credentialUnavailable: 'Credenciais atualmente indisponíveis. Por favor, contate o administrador.',
   },
   deprecated: 'Obsoleto',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         selectedDescription: 'Atualização automática apenas para versões de patch',
         name: 'Reparar Apenas',
+        description: 'Atualização automática apenas para versões de patch (por exemplo, 1.0.1 → 1.0.2). Mudanças de versão menor não ativarão atualizações.',
       },
       latest: {
         description: 'Sempre atualize para a versão mais recente',

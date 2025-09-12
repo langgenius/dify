@@ -9,8 +9,6 @@ const translation = {
   table: {
     header: {
       question: '提问',
-      match: '匹配',
-      response: '回复',
       answer: '答案',
       createdAt: '创建时间',
       hits: '命中次数',
@@ -59,6 +57,16 @@ const translation = {
     error: '导入出错',
     ok: '确定',
   },
+  list: {
+    delete: {
+      title: '确定删除吗？',
+    },
+  },
+  batchAction: {
+    selected: '已选择',
+    delete: '删除',
+    cancel: '取消',
+  },
   errorMessage: {
     answerRequired: '回复不能为空',
     queryRequired: '提问不能为空',
@@ -71,7 +79,6 @@ const translation = {
     noHitHistory: '没有命中历史',
   },
   hitHistoryTable: {
-    question: '问题',
     query: '提问',
     match: '匹配',
     response: '回复',

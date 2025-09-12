@@ -36,7 +36,7 @@ class CouchbaseConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values.get("connection_string"):
             raise ValueError("config COUCHBASE_CONNECTION_STRING is required")
         if not values.get("user"):
@@ -212,10 +212,10 @@ class CouchbaseVector(BaseVector):
 
         documents_to_insert = [
             {"text": text, "embedding": vector, "metadata": metadata}
-            for id, text, vector, metadata in zip(uuids, texts, embeddings, metadatas)
+            for _, text, vector, metadata in zip(uuids, texts, embeddings, metadatas)
         ]
         for doc, id in zip(documents_to_insert, uuids):
-            result = self._scope.collection(self._collection_name).upsert(id, doc)
+            _ = self._scope.collection(self._collection_name).upsert(id, doc)
 
         doc_ids.extend(uuids)
 
@@ -234,14 +234,14 @@ class CouchbaseVector(BaseVector):
             return bool(row["count"] > 0)
         return False  # Return False if no rows are returned
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         query = f"""
             DELETE FROM `{self._bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE META().id IN $doc_ids;
             """
         try:
             self._cluster.query(query, named_parameters={"doc_ids": ids}).execute()
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to delete documents, ids: %s", ids)
 
     def delete_by_document_id(self, document_id: str):
@@ -261,7 +261,7 @@ class CouchbaseVector(BaseVector):
     #     result = self._cluster.query(query, named_parameters={'value':value})
     #     return [row['id'] for row in result.rows()]
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         query = f"""
             DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE metadata.{key} = $value;
@@ -304,9 +304,9 @@ class CouchbaseVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        top_k = kwargs.get("top_k", 2)
+        top_k = kwargs.get("top_k", 4)
         try:
-            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))
+            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # ty: ignore [too-many-positional-arguments]
             search_iter = self._scope.search(
                 self._collection_name + "_search", CBrequest, SearchOptions(limit=top_k, fields=["*"])
             )

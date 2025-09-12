@@ -13,7 +13,7 @@ export const SliceContainer: FC<SliceContainerProps> = (
 ) => {
   const { className, ...rest } = props
   return <span {...rest} ref={ref} className={classNames(
-    'group align-bottom mr-1 select-none text-sm',
+    'group mr-1 select-none align-bottom text-sm',
     className,
   )} />
 }
@@ -30,7 +30,7 @@ export const SliceLabel: FC<SliceLabelProps> = (
   const { className, children, labelInnerClassName, ...rest } = props
   return <span {...rest} ref={ref} className={classNames(
     baseStyle,
-    'px-1 bg-state-base-hover-alt group-hover:bg-state-accent-solid group-hover:text-text-primary-on-surface uppercase text-text-tertiary',
+    'bg-state-base-hover-alt px-1 uppercase text-text-tertiary group-hover:bg-state-accent-solid group-hover:text-text-primary-on-surface',
     className,
   )}>
     <span className={classNames('text-nowrap', labelInnerClassName)}>
@@ -51,7 +51,7 @@ export const SliceContent: FC<SliceContentProps> = (
   const { className, children, ...rest } = props
   return <span {...rest} ref={ref} className={classNames(
     baseStyle,
-    'px-1 bg-state-base-hover group-hover:bg-state-accent-hover-alt group-hover:text-text-primary leading-7 whitespace-pre-line break-all',
+    'whitespace-pre-line break-all bg-state-base-hover px-1 leading-7 group-hover:bg-state-accent-hover-alt group-hover:text-text-primary',
     className,
   )}>
     {children}
@@ -70,7 +70,7 @@ export const SliceDivider: FC<SliceDividerProps> = (
   const { className, ...rest } = props
   return <span {...rest} ref={ref} className={classNames(
     baseStyle,
-    'bg-state-base-active group-hover:bg-state-accent-solid text-sm px-[1px]',
+    'bg-state-base-active px-[1px] text-sm group-hover:bg-state-accent-solid',
     className,
   )}>
     {/* use a zero-width space to make the hover area bigger */}

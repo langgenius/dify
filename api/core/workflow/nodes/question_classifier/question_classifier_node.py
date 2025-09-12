@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -63,7 +63,7 @@ class QuestionClassifierNode(BaseNode):
         thread_pool_id: Optional[str] = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
-    ) -> None:
+    ):
         super().__init__(
             id=id,
             config=config,
@@ -83,7 +83,7 @@ class QuestionClassifierNode(BaseNode):
             )
         self._llm_file_saver = llm_file_saver
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = QuestionClassifierNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -109,7 +109,7 @@ class QuestionClassifierNode(BaseNode):
         return "1"
 
     def _run(self):
-        node_data = cast(QuestionClassifierNodeData, self._node_data)
+        node_data = self._node_data
         variable_pool = self.graph_runtime_state.variable_pool
 
         # extract variables
@@ -275,7 +275,7 @@ class QuestionClassifierNode(BaseNode):
         return variable_mapping
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict] = None):
         """
         Get default config of node.
         :param filters: filter by node config parameters.

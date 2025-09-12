@@ -4,41 +4,23 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiErrorWarningFill,
-} from '@remixicon/react'
 import type {
-  CredentialFormSchema,
-  CredentialFormSchemaRadio,
-  CredentialFormSchemaSelect,
   CustomConfigurationModelFixedFields,
-  FormValue,
-  ModelLoadBalancingConfig,
-  ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
 import {
   ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
   FormTypeEnum,
+  ModelModalModeEnum,
 } from '../declarations'
 import {
-  genModelNameFormSchema,
-  genModelTypeFormSchema,
-  removeCredentials,
-  saveCredentials,
-} from '../utils'
-import {
   useLanguage,
-  useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
-import { useValidate } from '../../key-validator/hooks'
-import { ValidatedStatus } from '../../key-validator/declarations'
-import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
-import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -46,16 +28,39 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
 import { useAppContext } from '@/context/app-context'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
+import { useModelFormSchemas } from '../model-auth/hooks'
+import type {
+  Credential,
+  CustomModel,
+} from '../declarations'
+import Loading from '@/app/components/base/loading'
+import {
+  useAuth,
+  useCredentialData,
+} from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import Badge from '@/app/components/base/badge'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { CredentialSelector } from '../model-auth'
 
 type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   onCancel: () => void
-  onSave: () => void
+  onSave: (formValues?: Record<string, any>) => void
+  onRemove: (formValues?: Record<string, any>) => void
+  model?: CustomModel
+  credential?: Credential
+  isModelCredential?: boolean
+  mode?: ModelModalModeEnum
 }
 
 const ModelModal: FC<ModelModalProps> = ({
@@ -64,331 +69,374 @@ const ModelModal: FC<ModelModalProps> = ({
   currentCustomConfigurationModelFixedFields,
   onCancel,
   onSave,
+  model,
+  credential,
+  isModelCredential,
+  mode = ModelModalModeEnum.configProviderCredential,
 }) => {
+  const renderI18nObject = useRenderI18nObject()
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const {
-    credentials: formSchemasValue,
-    loadBalancing: originalConfig,
-    mutate,
-  } = useProviderCredentialsAndLoadBalancing(
-    provider.provider,
+    isLoading,
+    credentialData,
+  } = useCredentialData(provider, providerFormSchemaPredefined, isModelCredential, credential, model)
+  const {
+    handleSaveCredential,
+    handleConfirmDelete,
+    deleteCredentialId,
+    closeConfirmDelete,
+    openConfirmDelete,
+    doingAction,
+    handleActiveCredential,
+  } = useAuth(
+    provider,
     configurateMethod,
-    providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigurationModelFixedFields,
+    {
+      isModelCredential,
+      mode,
+    },
   )
+  const {
+    credentials: formSchemasValue,
+    available_credentials,
+  } = credentialData as any
+
   const { isCurrentWorkspaceManager } = useAppContext()
-  const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const language = useLanguage()
-  const [loading, setLoading] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
+  const {
+    formSchemas,
+    formValues,
+    modelNameAndTypeFormSchemas,
+    modelNameAndTypeFormValues,
+  } = useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
+  const formRef1 = useRef<FormRefObject>(null)
+  const [selectedCredential, setSelectedCredential] = useState<Credential & { addNewCredential?: boolean } | undefined>()
+  const formRef2 = useRef<FormRefObject>(null)
+  const isEditMode = !!Object.keys(formValues).filter((key) => {
+    return key !== '__model_name' && key !== '__model_type' && !!formValues[key]
+  }).length && isCurrentWorkspaceManager
 
-  const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
-  const originalConfigMap = useMemo(() => {
-    if (!originalConfig)
-      return {}
-    return originalConfig?.configs.reduce((prev, config) => {
-      if (config.id)
-        prev[config.id] = config
-      return prev
-    }, {} as Record<string, ModelLoadBalancingConfigEntry>)
-  }, [originalConfig])
-  useEffect(() => {
-    if (originalConfig && !draftConfig)
-      setDraftConfig(originalConfig)
-  }, [draftConfig, originalConfig])
+  const handleSave = useCallback(async () => {
+    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential?.addNewCredential) {
+      handleActiveCredential(selectedCredential, model)
+      onCancel()
+      return
+    }
 
-  const formSchemas = useMemo(() => {
-    return providerFormSchemaPredefined
-      ? provider.provider_credential_schema.credential_form_schemas
-      : [
-        genModelTypeFormSchema(provider.supported_model_types),
-        genModelNameFormSchema(provider.model_credential_schema?.model),
-        ...(draftConfig?.enabled ? [] : provider.model_credential_schema.credential_form_schemas),
-      ]
-  }, [
-    providerFormSchemaPredefined,
-    provider.provider_credential_schema?.credential_form_schemas,
-    provider.supported_model_types,
-    provider.model_credential_schema?.credential_form_schemas,
-    provider.model_credential_schema?.model,
-    draftConfig?.enabled,
-  ])
-  const [
-    requiredFormSchemas,
-    defaultFormSchemaValue,
-    showOnVariableMap,
-  ] = useMemo(() => {
-    const requiredFormSchemas: CredentialFormSchema[] = []
-    const defaultFormSchemaValue: Record<string, string | number> = {}
-    const showOnVariableMap: Record<string, string[]> = {}
+    let modelNameAndTypeIsCheckValidated = true
+    let modelNameAndTypeValues: Record<string, any> = {}
 
-    formSchemas.forEach((formSchema) => {
-      if (formSchema.required)
-        requiredFormSchemas.push(formSchema)
+    if (mode === ModelModalModeEnum.configCustomModel) {
+      const formResult = formRef1.current?.getFormValues({
+        needCheckValidatedValues: true,
+      }) || { isCheckValidated: false, values: {} }
+      modelNameAndTypeIsCheckValidated = formResult.isCheckValidated
+      modelNameAndTypeValues = formResult.values
+    }
 
-      if (formSchema.default)
-        defaultFormSchemaValue[formSchema.variable] = formSchema.default
-
-      if (formSchema.show_on.length) {
-        formSchema.show_on.forEach((showOnItem) => {
-          if (!showOnVariableMap[showOnItem.variable])
-            showOnVariableMap[showOnItem.variable] = []
-
-          if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-            showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-        })
+    if (mode === ModelModalModeEnum.configModelCredential && model) {
+      modelNameAndTypeValues = {
+        __model_name: model.model,
+        __model_type: model.model_type,
       }
+    }
 
-      if (formSchema.type === FormTypeEnum.select || formSchema.type === FormTypeEnum.radio) {
-        (formSchema as (CredentialFormSchemaRadio | CredentialFormSchemaSelect)).options.forEach((option) => {
-          if (option.show_on.length) {
-            option.show_on.forEach((showOnItem) => {
-              if (!showOnVariableMap[showOnItem.variable])
-                showOnVariableMap[showOnItem.variable] = []
-
-              if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-                showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-            })
-          }
-        })
+    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential && model) {
+      modelNameAndTypeValues = {
+        __model_name: model.model,
+        __model_type: model.model_type,
       }
-    })
+    }
+    const {
+      isCheckValidated,
+      values,
+    } = formRef2.current?.getFormValues({
+      needCheckValidatedValues: true,
+      needTransformWhenSecretFieldIsPristine: true,
+    }) || { isCheckValidated: false, values: {} }
+    if (!isCheckValidated || !modelNameAndTypeIsCheckValidated)
+      return
 
-    return [
-      requiredFormSchemas,
-      defaultFormSchemaValue,
-      showOnVariableMap,
-    ]
-  }, [formSchemas])
-  const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
-    return {
-      ...defaultFormSchemaValue,
-      ...formSchemasValue,
-    } as unknown as Record<string, string | number>
-  }, [formSchemasValue, defaultFormSchemaValue])
-  const [value, setValue] = useState(initialFormSchemasValue)
-  useEffect(() => {
-    setValue(initialFormSchemasValue)
-  }, [initialFormSchemasValue])
-  const [_, validating, validatedStatusState] = useValidate(value)
-  const filteredRequiredFormSchemas = requiredFormSchemas.filter((requiredFormSchema) => {
-    if (requiredFormSchema.show_on.length && requiredFormSchema.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
-      return true
+    const {
+      __model_name,
+      __model_type,
+    } = modelNameAndTypeValues
+    const {
+      __authorization_name__,
+      ...rest
+    } = values
+    if (__model_name && __model_type) {
+      await handleSaveCredential({
+        credential_id: credential?.credential_id,
+        credentials: rest,
+        name: __authorization_name__,
+        model: __model_name,
+        model_type: __model_type,
+      })
+    }
+    else {
+      await handleSaveCredential({
+        credential_id: credential?.credential_id,
+        credentials: rest,
+        name: __authorization_name__,
+      })
+    }
+    onSave(values)
+  }, [handleSaveCredential, credential?.credential_id, model, onSave, mode, selectedCredential, handleActiveCredential])
 
-    if (!requiredFormSchema.show_on.length)
-      return true
+  const modalTitle = useMemo(() => {
+    let label = t('common.modelProvider.auth.apiKeyModal.title')
 
-    return false
-  })
+    if (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.addCustomModelToModelList)
+      label = t('common.modelProvider.auth.addModel')
+    if (mode === ModelModalModeEnum.configModelCredential) {
+      if (credential)
+        label = t('common.modelProvider.auth.editModelCredential')
+      else
+        label = t('common.modelProvider.auth.addModelCredential')
+    }
 
-  const handleValueChange = (v: FormValue) => {
-    setValue(v)
-  }
+    return (
+      <div className='title-2xl-semi-bold text-text-primary'>
+        {label}
+      </div>
+    )
+  }, [t, mode, credential])
 
-  const extendedSecretFormSchemas = useMemo(
-    () =>
-      (providerFormSchemaPredefined
-        ? provider.provider_credential_schema.credential_form_schemas
-        : [
-          genModelTypeFormSchema(provider.supported_model_types),
-          genModelNameFormSchema(provider.model_credential_schema?.model),
-          ...provider.model_credential_schema.credential_form_schemas,
-        ]).filter(({ type }) => type === FormTypeEnum.secretInput),
-    [
-      provider.model_credential_schema?.credential_form_schemas,
-      provider.model_credential_schema?.model,
-      provider.provider_credential_schema?.credential_form_schemas,
-      provider.supported_model_types,
-      providerFormSchemaPredefined,
-    ],
-  )
-
-  const encodeSecretValues = useCallback((v: FormValue) => {
-    const result = { ...v }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (result[variable] === formSchemasValue?.[variable] && result[variable] !== undefined)
-        result[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, formSchemasValue])
-
-  const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
-    const result = { ...entry }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (entry.id && result.credentials[variable] === originalConfigMap[entry.id]?.credentials?.[variable])
-        result.credentials[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, originalConfigMap])
-
-  const handleSave = async () => {
-    try {
-      setLoading(true)
-      const res = await saveCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        encodeSecretValues(value),
-        {
-          ...draftConfig,
-          enabled: Boolean(draftConfig?.enabled),
-          configs: draftConfig?.configs.map(encodeConfigEntrySecretValues) || [],
-        },
+  const modalDesc = useMemo(() => {
+    if (providerFormSchemaPredefined) {
+      return (
+        <div className='system-xs-regular mt-1 text-text-tertiary'>
+          {t('common.modelProvider.auth.apiKeyModal.desc')}
+        </div>
       )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
-        onSave()
+    }
+
+    return null
+  }, [providerFormSchemaPredefined, t])
+
+  const modalModel = useMemo(() => {
+    if (mode === ModelModalModeEnum.configCustomModel) {
+      return (
+        <div className='mt-2 flex items-center'>
+          <ModelIcon
+            className='mr-2 h-4 w-4 shrink-0'
+            provider={provider}
+          />
+          <div className='system-md-regular mr-1 text-text-secondary'>{renderI18nObject(provider.label)}</div>
+        </div>
+      )
+    }
+    if (model && (mode === ModelModalModeEnum.configModelCredential || mode === ModelModalModeEnum.addCustomModelToModelList)) {
+      return (
+        <div className='mt-2 flex items-center'>
+          <ModelIcon
+            className='mr-2 h-4 w-4 shrink-0'
+            provider={provider}
+            modelName={model.model}
+          />
+          <div className='system-md-regular mr-1 text-text-secondary'>{model.model}</div>
+          <Badge>{model.model_type}</Badge>
+        </div>
+      )
+    }
+
+    return null
+  }, [model, provider, mode, renderI18nObject])
+
+  const showCredentialLabel = useMemo(() => {
+    if (mode === ModelModalModeEnum.configCustomModel)
+      return true
+    if (mode === ModelModalModeEnum.addCustomModelToModelList)
+      return selectedCredential?.addNewCredential
+  }, [mode, selectedCredential])
+  const showCredentialForm = useMemo(() => {
+    if (mode !== ModelModalModeEnum.addCustomModelToModelList)
+      return true
+    return selectedCredential?.addNewCredential
+  }, [mode, selectedCredential])
+  const saveButtonText = useMemo(() => {
+    if (mode === ModelModalModeEnum.addCustomModelToModelList || mode === ModelModalModeEnum.configCustomModel)
+      return t('common.operation.add')
+    return t('common.operation.save')
+  }, [mode, t])
+
+  const handleDeleteCredential = useCallback(() => {
+    handleConfirmDelete()
+    onCancel()
+  }, [handleConfirmDelete])
+
+  const handleModelNameAndTypeChange = useCallback((field: string, value: any) => {
+    const {
+      getForm,
+    } = formRef2.current as FormRefObject || {}
+    if (getForm())
+      getForm()?.setFieldValue(field, value)
+  }, [])
+  const notAllowCustomCredential = provider.allow_custom_token === false
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
         onCancel()
       }
     }
-    finally {
-      setLoading(false)
-    }
-  }
 
-  const handleRemove = async () => {
-    try {
-      setLoading(true)
-
-      const res = await removeCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        value,
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
-        onSave()
-        onCancel()
-      }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
     }
-    finally {
-      setLoading(false)
-    }
-  }
-
-  const renderTitlePrefix = () => {
-    const prefix = isEditMode ? t('common.operation.setup') : t('common.operation.add')
-    return `${prefix} ${provider.label[language] || provider.label.en_US}`
-  }
+  }, [onCancel])
 
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] overflow-auto rounded-2xl bg-components-panel-bg shadow-xl'>
-            <div className='px-8 pt-8'>
-              <div className='mb-2 flex items-center'>
-                <div className='text-xl font-semibold text-text-primary'>{renderTitlePrefix()}</div>
-              </div>
-
-              <div className='max-h-[calc(100vh-320px)] overflow-y-auto'>
-                <Form
-                  value={value}
-                  onChange={handleValueChange}
-                  formSchemas={formSchemas}
-                  validating={validating}
-                  validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
-                  showOnVariableMap={showOnVariableMap}
-                  isEditMode={isEditMode}
-                />
-                <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
-                <ModelLoadBalancingConfigs withSwitch {...{
-                  draftConfig,
-                  setDraftConfig,
-                  provider,
-                  currentCustomConfigurationModelFixedFields,
-                  configurationMethod: configurateMethod,
-                }} />
-              </div>
-
-              <div className='sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-between gap-y-2 bg-components-panel-bg px-2 pb-6 pt-4'>
-                {
-                  (provider.help && (provider.help.title || provider.help.url))
-                    ? (
-                      <a
-                        href={provider.help?.url[language] || provider.help?.url.en_US}
-                        target='_blank' rel='noopener noreferrer'
-                        className='inline-flex items-center text-xs text-primary-600'
-                        onClick={e => !provider.help.url && e.preventDefault()}
-                      >
-                        {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                        <LinkExternal02 className='ml-1 h-3 w-3' />
-                      </a>
-                    )
-                    : <div />
-                }
-                <div>
-                  {
-                    isEditMode && (
-                      <Button
-                        variant='warning'
-                        size='large'
-                        className='mr-2'
-                        onClick={() => setShowConfirm(true)}
-                      >
-                        {t('common.operation.remove')}
-                      </Button>
-                    )
-                  }
-                  <Button
-                    size='large'
-                    className='mr-2'
-                    onClick={onCancel}
-                  >
-                    {t('common.operation.cancel')}
-                  </Button>
-                  <Button
-                    size='large'
-                    variant='primary'
-                    onClick={handleSave}
-                    disabled={
-                      loading
-                      || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)
-                      || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
-                    }
-
-                  >
-                    {t('common.operation.save')}
-                  </Button>
-                </div>
-              </div>
+          <div className='relative w-[640px] rounded-2xl bg-components-panel-bg shadow-xl'>
+            <div
+              className='absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center'
+              onClick={onCancel}
+            >
+              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
             </div>
-            <div className='border-t-[0.5px] border-t-divider-regular'>
+            <div className='p-6 pb-3'>
+              {modalTitle}
+              {modalDesc}
+              {modalModel}
+            </div>
+            <div className='max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-3'>
               {
-                (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
-                  ? (
-                    <div className='flex bg-background-section-burn px-[10px] py-3 text-xs text-[#D92D20]'>
-                      <RiErrorWarningFill className='mr-2 mt-[1px] h-[14px] w-[14px]' />
-                      {validatedStatusState.message}
-                    </div>
-                  )
-                  : (
-                    <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
-                      <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
-                      {t('common.modelProvider.encrypted.front')}
-                      <a
-                        className='mx-1 text-text-accent'
-                        target='_blank' rel='noopener noreferrer'
-                        href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-                      >
-                        PKCS1_OAEP
-                      </a>
-                      {t('common.modelProvider.encrypted.back')}
-                    </div>
-                  )
+                mode === ModelModalModeEnum.configCustomModel && (
+                  <AuthForm
+                    formSchemas={modelNameAndTypeFormSchemas.map((formSchema) => {
+                      return {
+                        ...formSchema,
+                        name: formSchema.variable,
+                      }
+                    }) as FormSchema[]}
+                    defaultValues={modelNameAndTypeFormValues}
+                    inputClassName='justify-start'
+                    ref={formRef1}
+                    onChange={handleModelNameAndTypeChange}
+                  />
+                )
+              }
+              {
+                mode === ModelModalModeEnum.addCustomModelToModelList && (
+                  <CredentialSelector
+                    credentials={available_credentials || []}
+                    onSelect={setSelectedCredential}
+                    selectedCredential={selectedCredential}
+                    disabled={isLoading}
+                    notAllowAddNewCredential={notAllowCustomCredential}
+                  />
+                )
+              }
+              {
+                showCredentialLabel && (
+                  <div className='system-xs-medium-uppercase mb-3 mt-6 flex items-center text-text-tertiary'>
+                    {t('common.modelProvider.auth.modelCredential')}
+                    <div className='ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent' />
+                  </div>
+                )
+              }
+              {
+                isLoading && (
+                  <div className='mt-3 flex items-center justify-center'>
+                    <Loading />
+                  </div>
+                )
+              }
+              {
+                !isLoading
+                && showCredentialForm
+                && (
+                  <AuthForm
+                    formSchemas={formSchemas.map((formSchema) => {
+                      return {
+                        ...formSchema,
+                        name: formSchema.variable,
+                        showRadioUI: formSchema.type === FormTypeEnum.radio,
+                      }
+                    }) as FormSchema[]}
+                    defaultValues={formValues}
+                    inputClassName='justify-start'
+                    ref={formRef2}
+                  />
+                )
               }
             </div>
+            <div className='flex justify-between p-6 pt-5'>
+              {
+                (provider.help && (provider.help.title || provider.help.url))
+                  ? (
+                    <a
+                      href={provider.help?.url[language] || provider.help?.url.en_US}
+                      target='_blank' rel='noopener noreferrer'
+                      className='system-xs-regular mt-2 inline-flex items-center text-text-accent'
+                      onClick={e => !provider.help.url && e.preventDefault()}
+                    >
+                      {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
+                      <LinkExternal02 className='ml-1 h-3 w-3' />
+                    </a>
+                  )
+                  : <div />
+              }
+              <div className='flex items-center justify-end space-x-2'>
+                {
+                  isEditMode && (
+                    <Button
+                      variant='warning'
+                      onClick={() => openConfirmDelete(credential, model)}
+                    >
+                      {t('common.operation.remove')}
+                    </Button>
+                  )
+                }
+                <Button
+                  onClick={onCancel}
+                >
+                  {t('common.operation.cancel')}
+                </Button>
+                <Button
+                  variant='primary'
+                  onClick={handleSave}
+                  disabled={isLoading || doingAction}
+                >
+                  {saveButtonText}
+                </Button>
+              </div>
+            </div>
+            {
+              (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.configProviderCredential) && (
+                <div className='border-t-[0.5px] border-t-divider-regular'>
+                  <div className='flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary'>
+                    <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
+                    {t('common.modelProvider.encrypted.front')}
+                    <a
+                      className='mx-1 text-text-accent'
+                      target='_blank' rel='noopener noreferrer'
+                      href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
+                    >
+                      PKCS1_OAEP
+                    </a>
+                    {t('common.modelProvider.encrypted.back')}
+                  </div>
+                </div>
+              )
+            }
           </div>
           {
-            showConfirm && (
+            deleteCredentialId && (
               <Confirm
+                isShow
                 title={t('common.modelProvider.confirmDelete')}
-                isShow={showConfirm}
-                onCancel={() => setShowConfirm(false)}
-                onConfirm={handleRemove}
+                isDisabled={doingAction}
+                onCancel={closeConfirmDelete}
+                onConfirm={handleDeleteCredential}
               />
             )
           }

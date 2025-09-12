@@ -246,6 +246,9 @@ const translation = {
     clientInfo: 'Da keine System-Client-Geheimnisse für diesen Tool-Anbieter gefunden wurden, ist eine manuelle Einrichtung erforderlich. Bitte verwenden Sie für redirect_uri',
     useApiAuthDesc: 'Nachdem die Anmeldeinformationen konfiguriert wurden, können alle Mitglieder des Arbeitsbereichs dieses Tool beim Orchestrieren von Anwendungen verwenden.',
     authRemoved: 'Die Authentifizierung wurde entfernt.',
+    unavailable: 'Nicht verfügbar',
+    credentialUnavailable: 'Anmeldeinformationen derzeit nicht verfügbar. Bitte kontaktieren Sie den Administrator.',
+    customCredentialUnavailable: 'Benutzerdefinierte Anmeldeinformationen derzeit nicht verfügbar',
   },
   deprecated: 'Abgelehnt',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         name: 'Nur fixieren',
         selectedDescription: 'Auto-Update nur für Patch-Versionen',
+        description: 'Automatische Aktualisierung nur für Patchversionen (z. B. 1.0.1 → 1.0.2). Kleinere Versionsänderungen lösen keine Aktualisierungen aus.',
       },
       latest: {
         description: 'Immer auf die neueste Version aktualisieren',

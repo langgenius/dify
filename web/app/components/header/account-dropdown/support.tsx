@@ -42,7 +42,7 @@ export default function Support() {
           >
             <MenuItems
               className={cn(
-                `absolute top-[1px] z-10 max-h-[70vh] w-[216px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-scroll
+                `absolute top-[1px] z-10 max-h-[70vh] w-[216px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-auto
                 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus:outline-none
               `,
               )}

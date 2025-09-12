@@ -8,7 +8,7 @@ from yaml import YAMLError
 logger = logging.getLogger(__name__)
 
 
-def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any = {}) -> Any:
+def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any = {}):
     """
     Safe loading a YAML file
     :param file_path: the path of the YAML file

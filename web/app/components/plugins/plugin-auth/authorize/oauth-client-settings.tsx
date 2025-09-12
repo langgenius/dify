@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
 } from 'react'
-import { RiExternalLinkLine } from '@remixicon/react'
 import {
   useForm,
   useStore,
@@ -24,7 +23,6 @@ import type {
 } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -129,8 +127,6 @@ const OAuthClientSettings = ({
     defaultValues: editValues || defaultValues,
   })
   const __oauth_client__ = useStore(form.store, s => s.values.__oauth_client__)
-  const helpField = schemas.find(schema => schema.url && schema.help)
-  const renderI18nObject = useRenderI18nObject()
   return (
     <Modal
       title={t('plugin.auth.oauthClientSettings')}
@@ -167,19 +163,6 @@ const OAuthClientSettings = ({
           defaultValues={editValues || defaultValues}
           disabled={disabled}
         />
-        {
-          helpField && __oauth_client__ === 'custom' && (
-          <a
-            className='system-xs-regular mt-4 flex items-center text-text-accent'
-            href={helpField?.url}
-            target='_blank'
-          >
-            <span className='break-all'>
-              {renderI18nObject(helpField?.help as any)}
-            </span>
-            <RiExternalLinkLine className='ml-1 h-3 w-3' />
-          </a>
-        )}
       </>
     </Modal>
   )

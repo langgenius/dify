@@ -19,7 +19,7 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
     def get_type(self) -> str:
         return RecommendAppType.BUILDIN
 
-    def get_recommended_apps_and_categories(self, language: str) -> dict:
+    def get_recommended_apps_and_categories(self, language: str):
         result = self.fetch_recommended_apps_from_builtin(language)
         return result
 
@@ -28,7 +28,7 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         return result
 
     @classmethod
-    def _get_builtin_data(cls) -> dict:
+    def _get_builtin_data(cls):
         """
         Get builtin data.
         :return:
@@ -44,7 +44,7 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         return cls.builtin_data or {}
 
     @classmethod
-    def fetch_recommended_apps_from_builtin(cls, language: str) -> dict:
+    def fetch_recommended_apps_from_builtin(cls, language: str):
         """
         Fetch recommended apps from builtin.
         :param language: language

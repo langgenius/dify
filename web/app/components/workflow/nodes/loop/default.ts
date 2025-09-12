@@ -1,4 +1,4 @@
-import { BlockEnum } from '../../types'
+import { BlockEnum, VarType } from '../../types'
 import type { NodeDefault } from '../../types'
 import { ComparisonOperator, LogicalOperator, type LoopNodeType } from './types'
 import { isEmptyRelatedOperator } from './utils'
@@ -55,7 +55,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
             errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
         }
         else {
-          if (!isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
+          if (!isEmptyRelatedOperator(condition.comparison_operator!) && (condition.varType === VarType.boolean ? condition.value === undefined : !condition.value))
             errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
         }
       }

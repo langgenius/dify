@@ -27,7 +27,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         model_config: ParameterExtractorModelConfig,
         instruction: str,
         query: str,
-    ) -> dict:
+    ):
         """
         Invoke parameter extractor node.
 
@@ -78,7 +78,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         classes: list[ClassConfig],
         instruction: str,
         query: str,
-    ) -> dict:
+    ):
         """
         Invoke question classifier node.
 

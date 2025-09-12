@@ -3,8 +3,8 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import psycopg2.extras  # type: ignore
-import psycopg2.pool  # type: ignore
+import psycopg2.extras
+import psycopg2.pool
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -28,7 +28,7 @@ class VastbaseVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config VASTBASE_HOST is required")
         if not values["port"]:
@@ -133,7 +133,7 @@ class VastbaseVector(BaseVector):
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         # Avoiding crashes caused by performing delete operations on empty lists in certain scenarios
         # Scenario 1: extract a document fails, resulting in a table not being created.
         # Then clicking the retry button triggers a delete operation on an empty list.
@@ -142,7 +142,7 @@ class VastbaseVector(BaseVector):
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE meta->>%s = %s", (key, value))
 
@@ -170,7 +170,7 @@ class VastbaseVector(BaseVector):
                 metadata, text, distance = record
                 score = 1 - distance
                 metadata["score"] = score
-                if score > score_threshold:
+                if score >= score_threshold:
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
@@ -199,7 +199,7 @@ class VastbaseVector(BaseVector):
 
         return docs
 
-    def delete(self) -> None:
+    def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 

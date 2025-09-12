@@ -20,12 +20,18 @@ import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
-import { fetchAppDetail } from '@/service/apps'
+import { fetchAppDetailDirect } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { App } from '@/types/app'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import dynamic from 'next/dynamic'
+
+const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
+  ssr: false,
+})
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -48,6 +54,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setAppDetail: state.setAppDetail,
     setAppSiderbarExpand: state.setAppSiderbarExpand,
   })))
+  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
   const [navigation, setNavigation] = useState<Array<{
@@ -111,7 +118,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     setAppDetail()
     setIsLoadingAppDetail(true)
-    fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
+    fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
       setAppDetailRes(res)
     }).catch((e: any) => {
       if (e.status === 404)
@@ -163,6 +170,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       <div className="grow overflow-hidden bg-components-panel-bg">
         {children}
       </div>
+      {showTagManagementModal && (
+        <TagManagementModal type='app' show={showTagManagementModal} />
+      )}
     </div>
   )
 }

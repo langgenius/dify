@@ -32,6 +32,13 @@ const translation = {
     pickTime: 'Choisir le temps',
   },
   defaultPlaceholder: 'Choisissez un moment...',
+  dateFormats: {
+    display: 'MMMM D, AAAA',
+    output: 'AAAA-MM-JJ',
+    input: 'AAAA-MM-JJ',
+    displayWithTime: 'MMMM D, YYYY hh:mm A',
+    outputWithTime: 'AAAA-MM-JJTHH:mm:ss.SSSZ',
+  },
 }
 
 export default translation

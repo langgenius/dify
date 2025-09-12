@@ -11,7 +11,7 @@ from .exc import VariableOperatorNodeError
 class ConversationVariableUpdaterImpl:
     _engine: Engine | None
 
-    def __init__(self, engine: Engine | None = None) -> None:
+    def __init__(self, engine: Engine | None = None):
         self._engine = engine
 
     def _get_engine(self) -> Engine:

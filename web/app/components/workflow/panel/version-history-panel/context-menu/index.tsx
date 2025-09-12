@@ -64,7 +64,7 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
           {
             isShowDelete && (
               <>
-                <Divider type='horizontal' className='my-0 h-[1px] bg-divider-subtle' />
+                <Divider type='horizontal' className='my-0 h-px bg-divider-subtle' />
                 <div className='p-1'>
                   <MenuItem
                     item={deleteOperation}

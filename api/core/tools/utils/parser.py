@@ -6,7 +6,7 @@ from typing import Optional
 
 from flask import request
 from requests import get
-from yaml import YAMLError, safe_load  # type: ignore
+from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -104,6 +104,29 @@ class ApiBasedToolSchemaParser:
                                 root = root[ref]
                             # overwrite the content
                             interface["operation"]["requestBody"]["content"][content_type]["schema"] = root
+
+                            # handle allOf reference in schema properties
+                            for prop_dict in root.get("properties", {}).values():
+                                for item in prop_dict.get("allOf", []):
+                                    if "$ref" in item:
+                                        ref_schema = openapi
+                                        reference = item["$ref"].split("/")[1:]
+                                        for ref in reference:
+                                            ref_schema = ref_schema[ref]
+                                    else:
+                                        ref_schema = item
+                                    for key, value in ref_schema.items():
+                                        if isinstance(value, list):
+                                            if key not in prop_dict:
+                                                prop_dict[key] = []
+                                            # extends list field
+                                            if isinstance(prop_dict[key], list):
+                                                prop_dict[key].extend(value)
+                                        elif key not in prop_dict:
+                                            # add new field
+                                            prop_dict[key] = value
+                                if "allOf" in prop_dict:
+                                    del prop_dict["allOf"]
 
                     # parse body parameters
                     if "schema" in interface["operation"]["requestBody"]["content"][content_type]:
@@ -219,7 +242,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None) -> dict:
+    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None):
         warning = warning or {}
         """
         parse swagger to openapi

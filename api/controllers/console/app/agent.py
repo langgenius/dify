@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model

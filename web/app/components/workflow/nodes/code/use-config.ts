@@ -60,7 +60,6 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       })
       syncOutputKeyOrders(defaultConfig.outputs)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleCodeChange = useCallback((code: string) => {
@@ -85,7 +84,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   }, [allLanguageDefault, inputs, setInputs])
 
   const handleSyncFunctionSignature = useCallback(() => {
-      const generateSyncSignatureCode = (code: string) => {
+    const generateSyncSignatureCode = (code: string) => {
       let mainDefRe
       let newMainDef
       if (inputs.code_language === CodeLanguage.javascript) {
@@ -159,7 +158,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   })
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.secret, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return [VarType.string, VarType.number, VarType.boolean, VarType.secret, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.arrayBoolean, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
   const handleCodeAndVarsChange = useCallback((code: string, inputVariables: Variable[], outputVariables: OutputVar) => {

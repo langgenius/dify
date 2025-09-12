@@ -144,7 +144,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
           varType: varItem.type,
           variable_selector: valueSelector,
           comparison_operator: getOperators(varItem.type, getIsVarFileAttribute(valueSelector) ? { key: valueSelector.slice(-1)[0] } : undefined)[0],
-          value: '',
+          value: (varItem.type === VarType.boolean || varItem.type === VarType.arrayBoolean) ? false : '',
         })
       }
     })

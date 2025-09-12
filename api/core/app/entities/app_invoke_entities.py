@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -9,10 +9,9 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAp
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.ops.ops_trace_manager import TraceQueueManager
 
 
-class InvokeFrom(Enum):
+class InvokeFrom(StrEnum):
     """
     Invoke From.
     """
@@ -96,7 +95,7 @@ class AppGenerateEntity(BaseModel):
     task_id: str
 
     # app config
-    app_config: Any
+    app_config: Any = None
     file_upload_config: Optional[FileUploadConfig] = None
 
     inputs: Mapping[str, Any]
@@ -114,7 +113,8 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional[TraceQueueManager] = None
+    # Using Any to avoid circular import with TraceQueueManager
+    trace_manager: Optional[Any] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -123,7 +123,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: EasyUIBasedAppConfig
+    app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
     query: Optional[str] = None
@@ -186,7 +186,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
     workflow_run_id: Optional[str] = None
     query: str
@@ -218,7 +218,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
 
     class SingleIterationRunEntity(BaseModel):

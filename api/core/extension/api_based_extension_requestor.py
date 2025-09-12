@@ -10,11 +10,11 @@ class APIBasedExtensionRequestor:
     timeout: tuple[int, int] = (5, 60)
     """timeout for request connect and read"""
 
-    def __init__(self, api_endpoint: str, api_key: str) -> None:
+    def __init__(self, api_endpoint: str, api_key: str):
         self.api_endpoint = api_endpoint
         self.api_key = api_key
 
-    def request(self, point: APIBasedExtensionPoint, params: dict) -> dict:
+    def request(self, point: APIBasedExtensionPoint, params: dict):
         """
         Request the api.
 
@@ -43,9 +43,9 @@ class APIBasedExtensionRequestor:
                 timeout=self.timeout,
                 proxies=proxies,
             )
-        except requests.exceptions.Timeout:
+        except requests.Timeout:
             raise ValueError("request timeout")
-        except requests.exceptions.ConnectionError:
+        except requests.ConnectionError:
             raise ValueError("request connection error")
 
         if response.status_code != 200:

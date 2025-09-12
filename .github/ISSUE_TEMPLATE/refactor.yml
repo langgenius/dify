@@ -1,0 +1,44 @@
+name: "✨ Refactor"
+description: Refactor existing code for improved readability and maintainability.
+title: "[Chore/Refactor] "
+labels:
+  - refactor
+body:
+  - type: checkboxes
+    attributes:
+      label: Self Checks
+      description: "To make sure we get to you in time, please check the following :)"
+      options:
+        - label: I have read the [Contributing Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) and [Language Policy](https://github.com/langgenius/dify/issues/1542).
+          required: true
+        - label: This is only for refactoring, if you would like to ask a question, please head to [Discussions](https://github.com/langgenius/dify/discussions/categories/general).
+          required: true
+        - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
+          required: true
+        - label: I confirm that I am using English to submit this report, otherwise it will be closed.
+          required: true
+        - label: 【中文用户 & Non English User】请使用英语提交，否则会被关闭 ：）
+          required: true
+        - label: "Please do not modify this template :) and fill in all the required fields."
+          required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: "Describe the refactor you are proposing."
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      placeholder: "Explain why this refactor is necessary."
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      placeholder: "Add any other context or screenshots about the request here."
+    validations:
+      required: false

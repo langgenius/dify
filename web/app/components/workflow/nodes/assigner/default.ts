@@ -33,7 +33,7 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
         if (value.operation === WriteMode.set || value.operation === WriteMode.increment
           || value.operation === WriteMode.decrement || value.operation === WriteMode.multiply
           || value.operation === WriteMode.divide) {
-          if (!value.value && typeof value.value !== 'number')
+          if (!value.value && value.value !== false && typeof value.value !== 'number')
             errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.variable') })
         }
         else if (!value.value?.length) {

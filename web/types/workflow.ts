@@ -4,7 +4,7 @@ import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 
 export type AgentLogItem = {
   node_execution_id: string,
@@ -363,7 +363,7 @@ export type PanelProps = {
   getInputVars: (textList: string[]) => InputVar[]
   toVarInputs: (variables: Variable[]) => InputVar[]
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   setRunInputData: (data: Record<string, any>) => void
   runResult: any
 }

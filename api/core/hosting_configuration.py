@@ -44,11 +44,11 @@ class HostingConfiguration:
     provider_map: dict[str, HostingProvider]
     moderation_config: Optional[HostedModerationConfig] = None
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.provider_map = {}
         self.moderation_config = None
 
-    def init_app(self, app: Flask) -> None:
+    def init_app(self, app: Flask):
         if dify_config.EDITION != "CLOUD":
             return
 

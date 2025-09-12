@@ -176,7 +176,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         return db_model
 
-    def save(self, execution: WorkflowExecution) -> None:
+    def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution domain entity to the database.
 

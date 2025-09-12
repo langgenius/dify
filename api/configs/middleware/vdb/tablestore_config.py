@@ -28,3 +28,8 @@ class TableStoreConfig(BaseSettings):
         description="AccessKey secret for the instance name",
         default=None,
     )
+
+    TABLESTORE_NORMALIZE_FULLTEXT_BM25_SCORE: bool = Field(
+        description="Whether to normalize full-text search scores to [0, 1]",
+        default=False,
+    )

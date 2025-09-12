@@ -341,7 +341,6 @@ const translation = {
     keywords: 'Từ khóa',
     addKeyWord: 'Thêm từ khóa',
     keywordError: 'Độ dài tối đa của từ khóa là 20',
-    characters: 'ký tự',
     hitCount: 'Số lần truy vấn',
     vectorHash: 'Mã băm vector: ',
     questionPlaceholder: 'thêm câu hỏi ở đây',

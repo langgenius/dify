@@ -5,6 +5,7 @@ import os
 import time
 
 from configs import dify_config
+from core.file.constants import DEFAULT_SERVICE_API_USER_ID
 
 
 def get_signed_file_url(upload_file_id: str) -> str:
@@ -26,7 +27,7 @@ def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str,
     url = f"{base_url}/files/upload/for-plugin"
 
     if user_id is None:
-        user_id = "DEFAULT-USER"
+        user_id = DEFAULT_SERVICE_API_USER_ID
 
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
@@ -42,7 +43,7 @@ def verify_plugin_file_signature(
     *, filename: str, mimetype: str, tenant_id: str, user_id: str | None, timestamp: str, nonce: str, sign: str
 ) -> bool:
     if user_id is None:
-        user_id = "DEFAULT-USER"
+        user_id = DEFAULT_SERVICE_API_USER_ID
 
     data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
     secret_key = dify_config.SECRET_KEY.encode()

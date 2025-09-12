@@ -93,16 +93,15 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         with (
             patch("services.dataset_service.DocumentService.get_document") as mock_get_doc,
             patch("extensions.ext_database.db.session") as mock_db,
-            patch("services.dataset_service.datetime") as mock_datetime,
+            patch("services.dataset_service.naive_utc_now") as mock_naive_utc_now,
         ):
             current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
-            mock_datetime.datetime.now.return_value = current_time
-            mock_datetime.UTC = datetime.UTC
+            mock_naive_utc_now.return_value = current_time
 
             yield {
                 "get_document": mock_get_doc,
                 "db_session": mock_db,
-                "datetime": mock_datetime,
+                "naive_utc_now": mock_naive_utc_now,
                 "current_time": current_time,
             }
 
@@ -120,21 +119,21 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         assert document.enabled == True
         assert document.disabled_at is None
         assert document.disabled_by is None
-        assert document.updated_at == current_time.replace(tzinfo=None)
+        assert document.updated_at == current_time
 
     def _assert_document_disabled(self, document: Mock, user_id: str, current_time: datetime.datetime):
         """Helper method to verify document was disabled correctly."""
         assert document.enabled == False
-        assert document.disabled_at == current_time.replace(tzinfo=None)
+        assert document.disabled_at == current_time
         assert document.disabled_by == user_id
-        assert document.updated_at == current_time.replace(tzinfo=None)
+        assert document.updated_at == current_time
 
     def _assert_document_archived(self, document: Mock, user_id: str, current_time: datetime.datetime):
         """Helper method to verify document was archived correctly."""
         assert document.archived == True
-        assert document.archived_at == current_time.replace(tzinfo=None)
+        assert document.archived_at == current_time
         assert document.archived_by == user_id
-        assert document.updated_at == current_time.replace(tzinfo=None)
+        assert document.updated_at == current_time
 
     def _assert_document_unarchived(self, document: Mock):
         """Helper method to verify document was unarchived correctly."""
@@ -430,7 +429,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         # Verify document attributes were updated correctly
         self._assert_document_unarchived(archived_doc)
-        assert archived_doc.updated_at == mock_document_service_dependencies["current_time"].replace(tzinfo=None)
+        assert archived_doc.updated_at == mock_document_service_dependencies["current_time"]
 
         # Verify Redis cache was set (because document is enabled)
         redis_mock.setex.assert_called_once_with("document_doc-1_indexing", 600, 1)
@@ -495,9 +494,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         # Verify document was unarchived
         self._assert_document_unarchived(archived_disabled_doc)
-        assert archived_disabled_doc.updated_at == mock_document_service_dependencies["current_time"].replace(
-            tzinfo=None
-        )
+        assert archived_disabled_doc.updated_at == mock_document_service_dependencies["current_time"]
 
         # Verify no Redis cache was set (document is disabled)
         redis_mock.setex.assert_not_called()

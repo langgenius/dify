@@ -29,15 +29,17 @@ const DatasetInfo: FC<Props> = ({
       <div className='mr-3 shrink-0'>
         <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />
       </div>
-      {expand && (
-        <div className='mt-2'>
-          <div className='system-md-semibold text-text-secondary'>
-            {name}
-          </div>
-          <div className='system-2xs-medium-uppercase mt-1 text-text-tertiary'>{isExternal ? t('dataset.externalTag') : t('dataset.localDocs')}</div>
-          <div className='system-xs-regular  my-3 text-text-tertiary first-letter:capitalize'>{description}</div>
+      <div className={`transition-all duration-200 ease-in-out ${
+        expand
+          ? 'mt-2 w-auto opacity-100'
+          : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0'
+      }`}>
+        <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>
+          {name}
         </div>
-      )}
+        <div className='system-2xs-medium-uppercase mt-1 whitespace-nowrap text-text-tertiary'>{isExternal ? t('dataset.externalTag') : t('dataset.localDocs')}</div>
+        <div className='system-xs-regular my-3 whitespace-nowrap text-text-tertiary first-letter:capitalize'>{description}</div>
+      </div>
       {extraInfo}
     </div>
   )

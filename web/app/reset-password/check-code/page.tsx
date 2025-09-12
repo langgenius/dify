@@ -70,7 +70,10 @@ export default function CheckCode() {
     <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
       <p className='body-md-regular mt-2 text-text-secondary'>
-        <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
+        <span>
+          {t('login.checkCode.tipsPrefix')}
+          <strong>{email}</strong>
+        </span>
         <br />
         {t('login.checkCode.validTime')}
       </p>
@@ -79,7 +82,7 @@ export default function CheckCode() {
     <form action="">
       <input type='text' className='hidden' />
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+      <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>

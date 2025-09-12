@@ -88,7 +88,7 @@ const WorkflowPreview = () => {
     <div className={
       'relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
     }
-      style={{ width: `${panelWidth}px` }}
+    style={{ width: `${panelWidth}px` }}
     >
       <div
         className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"

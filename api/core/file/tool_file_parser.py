@@ -7,6 +7,6 @@ if TYPE_CHECKING:
 _tool_file_manager_factory: Callable[[], "ToolFileManager"] | None = None
 
 
-def set_tool_file_manager_factory(factory: Callable[[], "ToolFileManager"]) -> None:
+def set_tool_file_manager_factory(factory: Callable[[], "ToolFileManager"]):
     global _tool_file_manager_factory
     _tool_file_manager_factory = factory

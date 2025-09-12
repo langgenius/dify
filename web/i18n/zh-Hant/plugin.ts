@@ -246,6 +246,9 @@ const translation = {
     useApi: '使用 API 金鑰',
     clientInfo: '由於未找到此工具提供者的系統客戶端秘密，因此需要手動設置，對於 redirect_uri，請使用',
     useApiAuthDesc: '配置完憑證後，工作區內的所有成員在協調應用程式時都可以使用此工具。',
+    unavailable: '無法使用',
+    customCredentialUnavailable: '自訂憑證目前無法使用',
+    credentialUnavailable: '凭證目前無法使用。請聯繫管理員。',
   },
   deprecated: '不推薦使用的',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         name: '僅修理',
         selectedDescription: '僅限於修補版本的自動更新',
+        description: '僅為補丁版本自動更新（例如：1.0.1 → 1.0.2）。次要版本變更不會觸發更新。',
       },
       latest: {
         description: '始終更新至最新版本',

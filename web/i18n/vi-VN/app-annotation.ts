@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'Nhập hàng loạt',
       bulkExport: 'Xuất hàng loạt',
       clearAll: 'Xóa tất cả chú thích',
+      clearAllConfirm: 'Xóa tất cả các chú thích?',
     },
   },
   editModal: {
@@ -82,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Lưu',
   },
   embeddingModelSwitchTip: 'Mô hình vector hóa văn bản chú thích, việc chuyển đổi mô hình sẽ dẫn đến việc nhúng lại, có thể phát sinh thêm chi phí.',
+  list: {
+    delete: {
+      title: 'Bạn có chắc chắn muốn xóa không?',
+    },
+  },
+  batchAction: {
+    delete: 'Xóa',
+    cancel: 'Hủy',
+    selected: 'Được chọn',
+  },
 }
 
 export default translation

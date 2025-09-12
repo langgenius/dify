@@ -143,7 +143,7 @@ def test_uuidv7_with_custom_timestamp():
     assert extracted_timestamp == custom_timestamp  # Exact match for integer milliseconds
 
 
-def test_uuidv7_with_none_timestamp(monkeypatch):
+def test_uuidv7_with_none_timestamp(monkeypatch: pytest.MonkeyPatch):
     """Test UUID generation with None timestamp uses current time."""
     mock_time = 1609459200
     mock_time_func = mock.Mock(return_value=mock_time)

@@ -32,7 +32,7 @@ const AccessControlDialog = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-background-overlay bg-opacity-25" />
+          <div className="bg-background-overlay/25 fixed inset-0" />
         </Transition.Child>
 
         <div className="fixed inset-0 flex items-center justify-center">

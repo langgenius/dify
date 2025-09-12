@@ -112,7 +112,7 @@ class WorkflowNodeExecution(BaseModel):
         process_data: Optional[Mapping[str, Any]] = None,
         outputs: Optional[Mapping[str, Any]] = None,
         metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None,
-    ) -> None:
+    ):
         """
         Update the model from mappings.
 

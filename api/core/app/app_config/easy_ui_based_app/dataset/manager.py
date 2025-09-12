@@ -158,7 +158,7 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict) -> dict:
+    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict):
         """
         Extract dataset config for legacy compatibility
 

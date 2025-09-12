@@ -11,6 +11,7 @@ import type { FC, PropsWithChildren } from 'react'
 import { useEffect } from 'react'
 import { useState } from 'react'
 import { create } from 'zustand'
+import { useGlobalPublicStore } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null
@@ -56,27 +57,26 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
+  const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrlParam = searchParams.get('redirect_url')
-  const session = searchParams.get('session')
-  const sysUserId = searchParams.get('sys.user_id')
-  const [shareCode, setShareCode] = useState<string | null>(null)
+
+  // Compute shareCode directly
+  const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
   useEffect(() => {
-    const shareCodeFromRedirect = getShareCodeFromRedirectUrl(redirectUrlParam)
-    const shareCodeFromPathname = getShareCodeFromPathname(pathname)
-    const newShareCode = shareCodeFromRedirect || shareCodeFromPathname
-    setShareCode(newShareCode)
-    updateShareCode(newShareCode)
-  }, [pathname, redirectUrlParam, updateShareCode])
+    updateShareCode(shareCode)
+  }, [shareCode, updateShareCode])
+
   const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
   const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(true)
+
   useEffect(() => {
     if (accessModeResult?.accessMode) {
       updateWebAppAccessMode(accessModeResult.accessMode)
-      if (accessModeResult?.accessMode === AccessMode.PUBLIC && session && sysUserId) {
+      if (accessModeResult.accessMode === AccessMode.PUBLIC) {
         setIsFetchingAccessToken(true)
         checkOrSetAccessToken(shareCode).finally(() => {
           setIsFetchingAccessToken(false)
@@ -86,8 +86,9 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
         setIsFetchingAccessToken(false)
       }
     }
-  }, [accessModeResult, updateWebAppAccessMode, setIsFetchingAccessToken, shareCode, session, sysUserId])
-  if (isFetching || isFetchingAccessToken) {
+  }, [accessModeResult, updateWebAppAccessMode, shareCode])
+
+  if (isGlobalPending || isFetching || isFetchingAccessToken) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />
     </div>

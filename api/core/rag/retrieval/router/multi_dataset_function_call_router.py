@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
@@ -28,18 +28,15 @@ class FunctionCallMultiDatasetRouter:
                 SystemPromptMessage(content="You are a helpful AI assistant."),
                 UserPromptMessage(content=query),
             ]
-            result = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=prompt_messages,
-                    tools=dataset_tools,
-                    stream=False,
-                    model_parameters={"temperature": 0.2, "top_p": 0.3, "max_tokens": 1500},
-                ),
+            result: LLMResult = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                tools=dataset_tools,
+                stream=False,
+                model_parameters={"temperature": 0.2, "top_p": 0.3, "max_tokens": 1500},
             )
             if result.message.tool_calls:
                 # get retrieval model config
                 return result.message.tool_calls[0].function.name
             return None
-        except Exception as e:
+        except Exception:
             return None

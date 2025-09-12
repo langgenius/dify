@@ -65,8 +65,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        external_trace_id = trace_info.metadata.get("external_trace_id")
-        trace_id = external_trace_id or trace_info.message_id or trace_info.workflow_run_id
+        trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
         if trace_info.start_time is None:
             trace_info.start_time = datetime.now()
         message_dotted_order = (
@@ -290,7 +289,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             parent_run_id=None,
         )
@@ -319,7 +318,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             id=str(uuid.uuid4()),
         )
@@ -351,7 +350,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -381,7 +380,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -410,7 +409,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -440,7 +439,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error=trace_info.error or "",
         )
@@ -465,7 +464,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],

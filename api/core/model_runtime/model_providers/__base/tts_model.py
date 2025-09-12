@@ -56,7 +56,7 @@ class TTSModel(AIModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
-    def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list[dict]:
+    def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None):
         """
         Retrieves the list of voices supported by a given text-to-speech (TTS) model.
 

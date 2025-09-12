@@ -33,7 +33,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 
   const toggleCollapse = (id: string) => {

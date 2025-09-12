@@ -24,7 +24,7 @@ export const EditTitle: FC<{ className?: string; title: string }> = ({ className
     <RiEditFill className='mr-1 h-3.5 w-3.5' />
     <div>{title}</div>
     <div
-      className='ml-2 h-[1px] grow'
+      className='ml-2 h-px grow'
       style={{
         background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.05) -1.65%, rgba(0, 0, 0, 0.00) 100%)',
       }}

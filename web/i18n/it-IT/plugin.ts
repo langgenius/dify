@@ -246,6 +246,9 @@ const translation = {
     oauthClientSettings: 'Impostazioni del client OAuth',
     useApiAuth: 'Configurazione dell\'autorizzazione della chiave API',
     clientInfo: 'Poiché non sono stati trovati segreti client di sistema per questo fornitore di strumenti, è necessario configurarlo manualmente. Per redirect_uri, si prega di utilizzare',
+    unavailable: 'Non disponibile',
+    customCredentialUnavailable: 'Le credenziali personalizzate attualmente non sono disponibili',
+    credentialUnavailable: 'Credenziali attualmente non disponibili. Si prega di contattare l\'amministratore.',
   },
   deprecated: 'Deprecato',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         name: 'Ripara solo',
         selectedDescription: 'Aggiornamento automatico solo per versioni patch',
+        description: 'Aggiornamento automatico solo per le versioni patch (ad es., 1.0.1 → 1.0.2). Le modifiche delle versioni minori non attiveranno aggiornamenti.',
       },
       latest: {
         selectedDescription: 'Aggiorna sempre all\'ultima versione',

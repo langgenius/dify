@@ -1,190 +1,185 @@
-# from core.entities.provider_entities import ModelSettings
-# from core.model_runtime.entities.model_entities import ModelType
-# from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-# from core.provider_manager import ProviderManager
-# from models.provider import LoadBalancingModelConfig, ProviderModelSetting
+import pytest
+
+from core.entities.provider_entities import ModelSettings
+from core.model_runtime.entities.model_entities import ModelType
+from core.provider_manager import ProviderManager
+from models.provider import LoadBalancingModelConfig, ProviderModelSetting
 
 
-# def test__to_model_settings(mocker):
-#     # Get all provider entities
-#     model_provider_factory = ModelProviderFactory("test_tenant")
-#     provider_entities = model_provider_factory.get_providers()
+@pytest.fixture
+def mock_provider_entity(mocker):
+    mock_entity = mocker.Mock()
+    mock_entity.provider = "openai"
+    mock_entity.configurate_methods = ["predefined-model"]
+    mock_entity.supported_model_types = [ModelType.LLM]
 
-#     provider_entity = None
-#     for provider in provider_entities:
-#         if provider.provider == "openai":
-#             provider_entity = provider
+    mock_entity.model_credential_schema = mocker.Mock()
+    mock_entity.model_credential_schema.credential_form_schemas = []
 
-#     # Mocking the inputs
-#     provider_model_settings = [
-#         ProviderModelSetting(
-#             id="id",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             enabled=True,
-#             load_balancing_enabled=True,
-#         )
-#     ]
-#     load_balancing_model_configs = [
-#         LoadBalancingModelConfig(
-#             id="id1",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             name="__inherit__",
-#             encrypted_config=None,
-#             enabled=True,
-#         ),
-#         LoadBalancingModelConfig(
-#             id="id2",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             name="first",
-#             encrypted_config='{"openai_api_key": "fake_key"}',
-#             enabled=True,
-#         ),
-#     ]
-
-#     mocker.patch(
-#         "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
-#     )
-
-#     provider_manager = ProviderManager()
-
-#     # Running the method
-#     result = provider_manager._to_model_settings(provider_entity,
-#  provider_model_settings, load_balancing_model_configs)
-
-#     # Asserting that the result is as expected
-#     assert len(result) == 1
-#     assert isinstance(result[0], ModelSettings)
-#     assert result[0].model == "gpt-4"
-#     assert result[0].model_type == ModelType.LLM
-#     assert result[0].enabled is True
-#     assert len(result[0].load_balancing_configs) == 2
-#     assert result[0].load_balancing_configs[0].name == "__inherit__"
-#     assert result[0].load_balancing_configs[1].name == "first"
+    return mock_entity
 
 
-# def test__to_model_settings_only_one_lb(mocker):
-#     # Get all provider entities
-#     model_provider_factory = ModelProviderFactory("test_tenant")
-#     provider_entities = model_provider_factory.get_providers()
+def test__to_model_settings(mocker, mock_provider_entity):
+    # Mocking the inputs
+    provider_model_settings = [
+        ProviderModelSetting(
+            id="id",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            enabled=True,
+            load_balancing_enabled=True,
+        )
+    ]
+    load_balancing_model_configs = [
+        LoadBalancingModelConfig(
+            id="id1",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            name="__inherit__",
+            encrypted_config=None,
+            enabled=True,
+        ),
+        LoadBalancingModelConfig(
+            id="id2",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            name="first",
+            encrypted_config='{"openai_api_key": "fake_key"}',
+            enabled=True,
+        ),
+    ]
 
-#     provider_entity = None
-#     for provider in provider_entities:
-#         if provider.provider == "openai":
-#             provider_entity = provider
+    mocker.patch(
+        "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
+    )
 
-#     # Mocking the inputs
-#     provider_model_settings = [
-#         ProviderModelSetting(
-#             id="id",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             enabled=True,
-#             load_balancing_enabled=True,
-#         )
-#     ]
-#     load_balancing_model_configs = [
-#         LoadBalancingModelConfig(
-#             id="id1",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             name="__inherit__",
-#             encrypted_config=None,
-#             enabled=True,
-#         )
-#     ]
+    provider_manager = ProviderManager()
 
-#     mocker.patch(
-#         "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
-#     )
+    # Running the method
+    result = provider_manager._to_model_settings(
+        provider_entity=mock_provider_entity,
+        provider_model_settings=provider_model_settings,
+        load_balancing_model_configs=load_balancing_model_configs,
+    )
 
-#     provider_manager = ProviderManager()
-
-#     # Running the method
-#     result = provider_manager._to_model_settings(
-#     provider_entity, provider_model_settings, load_balancing_model_configs)
-
-#     # Asserting that the result is as expected
-#     assert len(result) == 1
-#     assert isinstance(result[0], ModelSettings)
-#     assert result[0].model == "gpt-4"
-#     assert result[0].model_type == ModelType.LLM
-#     assert result[0].enabled is True
-#     assert len(result[0].load_balancing_configs) == 0
+    # Asserting that the result is as expected
+    assert len(result) == 1
+    assert isinstance(result[0], ModelSettings)
+    assert result[0].model == "gpt-4"
+    assert result[0].model_type == ModelType.LLM
+    assert result[0].enabled is True
+    assert len(result[0].load_balancing_configs) == 2
+    assert result[0].load_balancing_configs[0].name == "__inherit__"
+    assert result[0].load_balancing_configs[1].name == "first"
 
 
-# def test__to_model_settings_lb_disabled(mocker):
-#     # Get all provider entities
-#     model_provider_factory = ModelProviderFactory("test_tenant")
-#     provider_entities = model_provider_factory.get_providers()
+def test__to_model_settings_only_one_lb(mocker, mock_provider_entity):
+    # Mocking the inputs
+    provider_model_settings = [
+        ProviderModelSetting(
+            id="id",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            enabled=True,
+            load_balancing_enabled=True,
+        )
+    ]
+    load_balancing_model_configs = [
+        LoadBalancingModelConfig(
+            id="id1",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            name="__inherit__",
+            encrypted_config=None,
+            enabled=True,
+        )
+    ]
 
-#     provider_entity = None
-#     for provider in provider_entities:
-#         if provider.provider == "openai":
-#             provider_entity = provider
+    mocker.patch(
+        "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
+    )
 
-#     # Mocking the inputs
-#     provider_model_settings = [
-#         ProviderModelSetting(
-#             id="id",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             enabled=True,
-#             load_balancing_enabled=False,
-#         )
-#     ]
-#     load_balancing_model_configs = [
-#         LoadBalancingModelConfig(
-#             id="id1",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             name="__inherit__",
-#             encrypted_config=None,
-#             enabled=True,
-#         ),
-#         LoadBalancingModelConfig(
-#             id="id2",
-#             tenant_id="tenant_id",
-#             provider_name="openai",
-#             model_name="gpt-4",
-#             model_type="text-generation",
-#             name="first",
-#             encrypted_config='{"openai_api_key": "fake_key"}',
-#             enabled=True,
-#         ),
-#     ]
+    provider_manager = ProviderManager()
 
-#     mocker.patch(
-#         "core.helper.model_provider_cache.ProviderCredentialsCache.get",
-#  return_value={"openai_api_key": "fake_key"}
-#     )
+    # Running the method
+    result = provider_manager._to_model_settings(
+        provider_entity=mock_provider_entity,
+        provider_model_settings=provider_model_settings,
+        load_balancing_model_configs=load_balancing_model_configs,
+    )
 
-#     provider_manager = ProviderManager()
+    # Asserting that the result is as expected
+    assert len(result) == 1
+    assert isinstance(result[0], ModelSettings)
+    assert result[0].model == "gpt-4"
+    assert result[0].model_type == ModelType.LLM
+    assert result[0].enabled is True
+    assert len(result[0].load_balancing_configs) == 0
 
-#     # Running the method
-#     result = provider_manager._to_model_settings(provider_entity,
-# provider_model_settings, load_balancing_model_configs)
 
-#     # Asserting that the result is as expected
-#     assert len(result) == 1
-#     assert isinstance(result[0], ModelSettings)
-#     assert result[0].model == "gpt-4"
-#     assert result[0].model_type == ModelType.LLM
-#     assert result[0].enabled is True
-#     assert len(result[0].load_balancing_configs) == 0
+def test__to_model_settings_lb_disabled(mocker, mock_provider_entity):
+    # Mocking the inputs
+    provider_model_settings = [
+        ProviderModelSetting(
+            id="id",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            enabled=True,
+            load_balancing_enabled=False,
+        )
+    ]
+    load_balancing_model_configs = [
+        LoadBalancingModelConfig(
+            id="id1",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            name="__inherit__",
+            encrypted_config=None,
+            enabled=True,
+        ),
+        LoadBalancingModelConfig(
+            id="id2",
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="text-generation",
+            name="first",
+            encrypted_config='{"openai_api_key": "fake_key"}',
+            enabled=True,
+        ),
+    ]
+
+    mocker.patch(
+        "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
+    )
+
+    provider_manager = ProviderManager()
+
+    # Running the method
+    result = provider_manager._to_model_settings(
+        provider_entity=mock_provider_entity,
+        provider_model_settings=provider_model_settings,
+        load_balancing_model_configs=load_balancing_model_configs,
+    )
+
+    # Asserting that the result is as expected
+    assert len(result) == 1
+    assert isinstance(result[0], ModelSettings)
+    assert result[0].model == "gpt-4"
+    assert result[0].model_type == ModelType.LLM
+    assert result[0].enabled is True
+    assert len(result[0].load_balancing_configs) == 0

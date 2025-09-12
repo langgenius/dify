@@ -14,6 +14,7 @@ class BaseTraceInfo(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     metadata: dict[str, Any]
+    trace_id: Optional[str] = None
 
     @field_validator("inputs", "outputs")
     @classmethod
@@ -34,7 +35,7 @@ class BaseTraceInfo(BaseModel):
 
 
 class WorkflowTraceInfo(BaseTraceInfo):
-    workflow_data: Any
+    workflow_data: Any = None
     conversation_id: Optional[str] = None
     workflow_app_log_id: Optional[str] = None
     workflow_id: str
@@ -88,7 +89,7 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
 
 
 class DatasetRetrievalTraceInfo(BaseTraceInfo):
-    documents: Any
+    documents: Any = None
 
 
 class ToolTraceInfo(BaseTraceInfo):
@@ -96,12 +97,12 @@ class ToolTraceInfo(BaseTraceInfo):
     tool_inputs: dict[str, Any]
     tool_outputs: str
     metadata: dict[str, Any]
-    message_file_data: Any
+    message_file_data: Any = None
     error: Optional[str] = None
     tool_config: dict[str, Any]
     time_cost: Union[int, float]
     tool_parameters: dict[str, Any]
-    file_url: Union[str, None, list]
+    file_url: Union[str, None, list] = None
 
 
 class GenerateNameTraceInfo(BaseTraceInfo):
@@ -112,7 +113,7 @@ class GenerateNameTraceInfo(BaseTraceInfo):
 class TaskData(BaseModel):
     app_id: str
     trace_info_type: str
-    trace_info: Any
+    trace_info: Any = None
 
 
 trace_info_info_map = {

@@ -3,7 +3,7 @@ import json
 from core.llm_generator.output_parser.errors import OutputParserError
 
 
-def parse_json_markdown(json_string: str) -> dict:
+def parse_json_markdown(json_string: str):
     # Get json from the backticks/braces
     json_string = json_string.strip()
     starts = ["```json", "```", "``", "`", "{"]
@@ -33,7 +33,7 @@ def parse_json_markdown(json_string: str) -> dict:
     return parsed
 
 
-def parse_and_check_json_markdown(text: str, expected_keys: list[str]) -> dict:
+def parse_and_check_json_markdown(text: str, expected_keys: list[str]):
     try:
         json_obj = parse_json_markdown(text)
     except json.JSONDecodeError as e:

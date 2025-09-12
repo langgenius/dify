@@ -246,6 +246,9 @@ const translation = {
     setDefault: 'Définir comme par défaut',
     authorization: 'Autorisation',
     useApi: 'Utilisez la clé API',
+    customCredentialUnavailable: 'Les identifiants personnalisés ne sont actuellement pas disponibles.',
+    credentialUnavailable: 'Les informations d\'identification ne sont actuellement pas disponibles. Veuillez contacter l\'administrateur.',
+    unavailable: 'Non disponible',
   },
   deprecated: 'Obsolète',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         selectedDescription: 'Mise à jour automatique uniquement pour les versions de correctif',
         name: 'Réparer seulement',
+        description: 'Mise à jour automatique uniquement pour les versions de correctif (par exemple, 1.0.1 → 1.0.2). Les changements de version mineure ne déclencheront pas de mises à jour.',
       },
       latest: {
         name: 'Dernier',

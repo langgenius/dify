@@ -1,7 +1,7 @@
 const translation = {
   title: 'लॉग्स',
   description: 'लॉग्स एप्लिकेशन के रनिंग स्टेटस को रिकॉर्ड करते हैं, जिसमें यूजर इनपुट और एआई रिप्लाईज़ शामिल हैं।',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'अपडेट का समय',
@@ -90,17 +90,12 @@ const translation = {
   viewLog: 'व्यू लॉग',
   agentLogDetail: {
     agentMode: 'एजेंट मोड',
-    startTime: 'शुरू करने का समय',
-    endTime: 'समाप्ति समय',
-    duration: 'अवधि',
-    promptTemplate: 'प्रॉम्प्ट टेम्पलेट',
-    promptInput: 'प्रॉम्प्ट इनपुट',
-    response: 'प्रतिक्रिया',
     iterations: 'पुनरूक्तियाँ',
     toolUsed: 'प्रयुक्त उपकरण',
     finalProcessing: 'अंतिम प्रसंस्करण',
     iteration: 'चलना',
   },
+  dateFormat: 'MM/DD/YYYY',
 }
 
 export default translation

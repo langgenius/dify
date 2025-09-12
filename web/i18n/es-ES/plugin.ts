@@ -246,6 +246,9 @@ const translation = {
     clientInfo: 'Como no se encontraron secretos de cliente del sistema para este proveedor de herramientas, se requiere configurarlo manualmente. Para redirect_uri, por favor utiliza',
     oauthClientSettings: 'Configuración del cliente OAuth',
     default: 'Predeterminado',
+    customCredentialUnavailable: 'Las credenciales personalizadas no están disponibles actualmente.',
+    unavailable: 'No disponible',
+    credentialUnavailable: 'Credenciales actualmente no disponibles. Por favor, contacte al administrador.',
   },
   deprecated: 'Obsoleto',
   autoUpdate: {
@@ -257,6 +260,7 @@ const translation = {
       fixOnly: {
         name: 'Arreglar Solo',
         selectedDescription: 'Actualización automática solo para versiones de parches',
+        description: 'Actualización automática solo para versiones de parche (por ejemplo, 1.0.1 → 1.0.2). Los cambios de versión menor no activarán actualizaciones.',
       },
       latest: {
         selectedDescription: 'Siempre actualiza a la última versión',

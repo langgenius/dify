@@ -1,5 +1,5 @@
 import type { EndNodeType } from './types'
 
-export const checkNodeValid = (payload: EndNodeType) => {
+export const checkNodeValid = (_payload: EndNodeType) => {
   return true
 }

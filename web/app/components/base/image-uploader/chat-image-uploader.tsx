@@ -93,9 +93,9 @@ const UploaderButton: FC<UploaderButtonProps> = ({
           {hasUploadFromLocal && (
             <>
               <div className="mt-2 flex items-center px-2 text-xs font-medium text-gray-400">
-                <div className="mr-3 h-[1px] w-[93px] bg-gradient-to-l from-[#F3F4F6]" />
+                <div className="mr-3 h-px w-[93px] bg-gradient-to-l from-[#F3F4F6]" />
                 OR
-                <div className="ml-3 h-[1px] w-[93px] bg-gradient-to-r from-[#F3F4F6]" />
+                <div className="ml-3 h-px w-[93px] bg-gradient-to-r from-[#F3F4F6]" />
               </div>
               <Uploader
                 onUpload={handleUpload}

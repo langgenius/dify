@@ -134,7 +134,8 @@ const CustomEdge = ({
         style={{
           stroke,
           strokeWidth: 2,
-          opacity: data._waitingRun ? 0.7 : 1,
+          opacity: data._dimmed ? 0.3 : (data._waitingRun ? 0.7 : 1),
+          strokeDasharray: data._isTemp ? '8 8' : undefined,
         }}
       />
       <EdgeLabelRenderer>

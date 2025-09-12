@@ -23,6 +23,7 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
+from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class ModelInstance:
     Model instance class
     """
 
-    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str) -> None:
+    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
         self.provider_model_bundle = provider_model_bundle
         self.model = model
         self.provider = provider_model_bundle.configuration.provider.provider
@@ -46,7 +47,7 @@ class ModelInstance:
         )
 
     @staticmethod
-    def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str) -> dict:
+    def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str):
         """
         Fetch credentials from provider model bundle
         :param provider_model_bundle: provider model bundle
@@ -158,8 +159,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
-
-        self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
         return cast(
             Union[LLMResult, Generator],
             self._round_robin_invoke(
@@ -188,8 +187,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
-
-        self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
         return cast(
             int,
             self._round_robin_invoke(
@@ -214,8 +211,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
-
-        self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
         return cast(
             TextEmbeddingResult,
             self._round_robin_invoke(
@@ -237,8 +232,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
-
-        self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
         return cast(
             list[int],
             self._round_robin_invoke(
@@ -269,8 +262,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, RerankModel):
             raise Exception("Model type instance is not RerankModel")
-
-        self.model_type_instance = cast(RerankModel, self.model_type_instance)
         return cast(
             RerankResult,
             self._round_robin_invoke(
@@ -295,8 +286,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, ModerationModel):
             raise Exception("Model type instance is not ModerationModel")
-
-        self.model_type_instance = cast(ModerationModel, self.model_type_instance)
         return cast(
             bool,
             self._round_robin_invoke(
@@ -318,8 +307,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, Speech2TextModel):
             raise Exception("Model type instance is not Speech2TextModel")
-
-        self.model_type_instance = cast(Speech2TextModel, self.model_type_instance)
         return cast(
             str,
             self._round_robin_invoke(
@@ -343,8 +330,6 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
-
-        self.model_type_instance = cast(TTSModel, self.model_type_instance)
         return cast(
             Iterable[bytes],
             self._round_robin_invoke(
@@ -358,7 +343,7 @@ class ModelInstance:
             ),
         )
 
-    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs) -> Any:
+    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
         """
         Round-robin invoke
         :param function: function to invoke
@@ -378,6 +363,23 @@ class ModelInstance:
                 else:
                     raise last_exception
 
+            # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
+            try:
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                if lb_config.credential_id:
+                    check_credential_policy_compliance(
+                        credential_id=lb_config.credential_id,
+                        provider=self.provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Load balancing config %s failed policy compliance check in round-robin: %s", lb_config.id, str(e)
+                )
+                self.load_balancing_manager.cooldown(lb_config, expire=60)
+                continue
+
             try:
                 if "credentials" in kwargs:
                     del kwargs["credentials"]
@@ -395,7 +397,7 @@ class ModelInstance:
             except Exception as e:
                 raise e
 
-    def get_tts_voices(self, language: Optional[str] = None) -> list:
+    def get_tts_voices(self, language: Optional[str] = None):
         """
         Invoke large language tts model voices
 
@@ -404,15 +406,13 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
-
-        self.model_type_instance = cast(TTSModel, self.model_type_instance)
         return self.model_type_instance.get_tts_model_voices(
             model=self.model, credentials=self.credentials, language=language
         )
 
 
 class ModelManager:
-    def __init__(self) -> None:
+    def __init__(self):
         self._provider_manager = ProviderManager()
 
     def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
@@ -471,7 +471,7 @@ class LBModelManager:
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
         managed_credentials: Optional[dict] = None,
-    ) -> None:
+    ):
         """
         Load balancing model manager
         :param tenant_id: tenant_id
@@ -533,6 +533,24 @@ class LBModelManager:
 
                 continue
 
+            # Check policy compliance for the selected configuration
+            try:
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                if config.credential_id:
+                    check_credential_policy_compliance(
+                        credential_id=config.credential_id,
+                        provider=self._provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+            except Exception as e:
+                logger.warning("Load balancing config %s failed policy compliance check: %s", config.id, str(e))
+                cooldown_load_balancing_configs.append(config)
+                if len(cooldown_load_balancing_configs) >= len(self._load_balancing_configs):
+                    # all configs are in cooldown or failed policy compliance
+                    return None
+                continue
+
             if dify_config.DEBUG:
                 logger.info(
                     """Model LB
@@ -552,7 +570,7 @@ model: %s""",
 
             return config
 
-    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60) -> None:
+    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60):
         """
         Cooldown model load balancing config
         :param config: model load balancing config

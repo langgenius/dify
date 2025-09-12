@@ -9,6 +9,8 @@ import { v4 as uuid4 } from 'uuid'
 import { ReactSortable } from 'react-sortablejs'
 import { RiDraggable } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { hasDuplicateStr } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   readonly: boolean
@@ -28,7 +30,26 @@ const VarList: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index] = payload
       })
+      let errorMsgKey = ''
+      let typeName = ''
+      if (hasDuplicateStr(newList.map(item => item.variable))) {
+        errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+        typeName = 'appDebug.variableConfig.varName'
+      }
+      else if (hasDuplicateStr(newList.map(item => item.label as string))) {
+        errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+        typeName = 'appDebug.variableConfig.labelName'
+      }
+
+      if (errorMsgKey) {
+        Toast.notify({
+          type: 'error',
+          message: t(errorMsgKey, { key: t(typeName) }),
+        })
+        return false
+      }
       onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)
+      return true
     }
   }, [list, onChange])
 

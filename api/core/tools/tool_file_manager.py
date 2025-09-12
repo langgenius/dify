@@ -98,6 +98,7 @@ class ToolFileManager:
                 mimetype=mimetype,
                 name=present_filename,
                 size=len(file_binary),
+                original_url=None,
             )
 
             session.add(tool_file)
@@ -131,7 +132,6 @@ class ToolFileManager:
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
-
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file = ToolFile(
                 user_id=user_id,

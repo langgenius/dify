@@ -90,3 +90,49 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
     return DEFAULT_OFFSET_STR
   return `UTC${tzItem.name.charAt(0)}${tzItem.name.charAt(2)}`
 }
+
+// Parse date with multiple format support
+export const parseDateWithFormat = (dateString: string, format?: string): Dayjs | null => {
+  if (!dateString) return null
+
+  // If format is specified, use it directly
+  if (format) {
+    const parsed = dayjs(dateString, format, true)
+    return parsed.isValid() ? parsed : null
+  }
+
+  // Try common date formats
+  const formats = [
+    'YYYY-MM-DD', // Standard format
+    'YYYY/MM/DD', // Slash format
+    'DD-MM-YYYY', // European format
+    'DD/MM/YYYY', // European slash format
+    'MM-DD-YYYY', // US format
+    'MM/DD/YYYY', // US slash format
+    'YYYY-MM-DDTHH:mm:ss.SSSZ', // ISO format
+    'YYYY-MM-DDTHH:mm:ssZ', // ISO format (no milliseconds)
+    'YYYY-MM-DD HH:mm:ss', // Standard datetime format
+  ]
+
+  for (const fmt of formats) {
+    const parsed = dayjs(dateString, fmt, true)
+    if (parsed.isValid())
+      return parsed
+  }
+
+  return null
+}
+
+// Format date output with localization support
+export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, locale: string = 'en-US'): string => {
+  if (!date || !date.isValid()) return ''
+
+  if (includeTime) {
+    // Output format with time
+    return date.format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+  }
+  else {
+    // Date-only output format without timezone
+    return date.format('YYYY-MM-DD')
+  }
+}

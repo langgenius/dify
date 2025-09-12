@@ -12,7 +12,7 @@ class WorkspaceService:
     def get_tenant_info(cls, tenant: Tenant):
         if not tenant:
             return None
-        tenant_info = {
+        tenant_info: dict[str, object] = {
             "id": tenant.id,
             "name": tenant.name,
             "plan": tenant.plan,

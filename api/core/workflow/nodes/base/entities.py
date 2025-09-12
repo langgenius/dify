@@ -23,12 +23,12 @@ NumberType = Union[int, float]
 
 
 class DefaultValue(BaseModel):
-    value: Any
+    value: Any = None
     type: DefaultValueType
     key: str
 
     @staticmethod
-    def _parse_json(value: str) -> Any:
+    def _parse_json(value: str):
         """Unified JSON parsing handler"""
         try:
             return json.loads(value)

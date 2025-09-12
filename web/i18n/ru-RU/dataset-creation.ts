@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Создать базу знаний',
-      update: 'Добавить данные',
       fallbackRoute: 'Знание',
     },
     one: 'Выберите источник данных',
@@ -28,6 +26,7 @@ const translation = {
     uploader: {
       title: 'Загрузить файл',
       button: 'Перетащите файлы или папки или',
+      buttonSingleFile: 'Перетащите файл или',
       browse: 'Обзор',
       tip: 'Поддерживаются {{supportTypes}}. Максимум {{size}} МБ каждый.',
       validation: {

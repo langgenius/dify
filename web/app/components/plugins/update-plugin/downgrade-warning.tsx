@@ -20,7 +20,7 @@ const DowngradeWarningModal = ({
       <div className='flex flex-col items-start gap-2 self-stretch'>
         <div className='title-2xl-semi-bold text-text-primary'>{t(`${i18nPrefix}.title`)}</div>
         <div className='system-md-regular text-text-secondary'>
-        {t(`${i18nPrefix}.description`)}
+          {t(`${i18nPrefix}.description`)}
         </div>
       </div>
       <div className='mt-9 flex items-start justify-end space-x-2 self-stretch'>

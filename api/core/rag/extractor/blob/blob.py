@@ -107,7 +107,7 @@ class Blob(BaseModel):
             Blob instance
         """
         if mime_type is None and guess_type:
-            _mimetype = mimetypes.guess_type(path)[0] if guess_type else None
+            _mimetype = mimetypes.guess_type(path)[0]
         else:
             _mimetype = mime_type
         # We do not load the data immediately, instead we treat the blob as a

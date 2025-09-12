@@ -82,9 +82,7 @@ const PluginTypeSwitch = ({
   }, [showSearchParams, handleActivePluginTypeChange])
 
   useEffect(() => {
-    window.addEventListener('popstate', () => {
-      handlePopState()
-    })
+    window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }

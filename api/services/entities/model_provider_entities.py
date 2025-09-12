@@ -8,7 +8,13 @@ from core.entities.model_entities import (
     ModelWithProviderEntity,
     ProviderModelWithStatusEntity,
 )
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration
+from core.entities.provider_entities import (
+    CredentialConfiguration,
+    CustomModelConfiguration,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    UnaddedModelConfiguration,
+)
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import (
@@ -36,6 +42,11 @@ class CustomConfigurationResponse(BaseModel):
     """
 
     status: CustomConfigurationStatus
+    current_credential_id: Optional[str] = None
+    current_credential_name: Optional[str] = None
+    available_credentials: Optional[list[CredentialConfiguration]] = None
+    custom_models: Optional[list[CustomModelConfiguration]] = None
+    can_added_models: Optional[list[UnaddedModelConfiguration]] = None
 
 
 class SystemConfigurationResponse(BaseModel):
@@ -72,7 +83,7 @@ class ProviderResponse(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -102,7 +113,7 @@ class ProviderWithModelsResponse(BaseModel):
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -126,7 +137,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
 
     tenant_id: str
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -163,7 +174,7 @@ class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
 
     provider: SimpleProviderEntityResponse
 
-    def __init__(self, tenant_id: str, model: ModelWithProviderEntity) -> None:
+    def __init__(self, tenant_id: str, model: ModelWithProviderEntity):
         dump_model = model.model_dump()
         dump_model["provider"]["tenant_id"] = tenant_id
         super().__init__(**dump_model)

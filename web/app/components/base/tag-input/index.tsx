@@ -14,6 +14,7 @@ type TagInputProps = {
   customizedConfirmKey?: 'Enter' | 'Tab'
   isInWorkflow?: boolean
   placeholder?: string
+  required?: boolean
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -24,6 +25,7 @@ const TagInput: FC<TagInputProps> = ({
   customizedConfirmKey = 'Enter',
   isInWorkflow,
   placeholder,
+  required = false,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -42,7 +44,8 @@ const TagInput: FC<TagInputProps> = ({
   const handleNewTag = useCallback((value: string) => {
     const valueTrimmed = value.trim()
     if (!valueTrimmed) {
-      notify({ type: 'error', message: t('datasetDocuments.segment.keywordEmpty') })
+      if (required)
+        notify({ type: 'error', message: t('datasetDocuments.segment.keywordEmpty') })
       return
     }
 
@@ -60,7 +63,7 @@ const TagInput: FC<TagInputProps> = ({
     setTimeout(() => {
       setValue('')
     })
-  }, [items, onChange, notify, t])
+  }, [items, onChange, notify, t, required])
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isSpecialMode && e.key === 'Enter')

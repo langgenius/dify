@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 export enum TabType {
   settings = 'settings',
   lastRun = 'lastRun',
+  relations = 'relations',
 }
 
 type Props = {

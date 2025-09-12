@@ -24,7 +24,7 @@ class PluginDaemonBasicResponse(BaseModel, Generic[T]):
 
     code: int
     message: str
-    data: Optional[T]
+    data: Optional[T] = None
 
 
 class InstallPluginMessage(BaseModel):

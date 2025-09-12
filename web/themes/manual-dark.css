@@ -53,8 +53,8 @@ html[data-theme="dark"] {
     --color-dataset-option-card-orange-gradient: linear-gradient(90deg, #2B2322 0%, #1E1E21 100%);
     --color-dataset-chunk-list-mask-bg: linear-gradient(180deg, rgba(34, 34, 37, 0.00) 0%, #222225 100%);
     --mask-top2bottom-gray-50-to-transparent: linear-gradient(180deg,
-            rgba(24, 24, 27, 0.08) 0%,
-            rgba(0, 0, 0, 0) 100%);
+            rgba(29, 29, 32, 0.9) 0%,
+            rgba(29, 29, 32, 0.08) 100%);
     --color-line-divider-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.14) 0%, rgba(0, 0, 0, 0) 100%);
     --color-access-app-icon-mask-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.03) 100%);
     --color-premium-yearly-tip-text-background: linear-gradient(91deg, #FDB022 2.18%, #F79009 108.79%);

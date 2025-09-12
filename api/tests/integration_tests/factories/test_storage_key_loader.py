@@ -84,17 +84,17 @@ class TestStorageKeyLoader(unittest.TestCase):
         if tenant_id is None:
             tenant_id = self.tenant_id
 
-        tool_file = ToolFile()
+        tool_file = ToolFile(
+            user_id=self.user_id,
+            tenant_id=tenant_id,
+            conversation_id=self.conversation_id,
+            file_key=file_key,
+            mimetype="text/plain",
+            original_url="http://example.com/file.txt",
+            name="test_tool_file.txt",
+            size=2048,
+        )
         tool_file.id = file_id
-        tool_file.user_id = self.user_id
-        tool_file.tenant_id = tenant_id
-        tool_file.conversation_id = self.conversation_id
-        tool_file.file_key = file_key
-        tool_file.mimetype = "text/plain"
-        tool_file.original_url = "http://example.com/file.txt"
-        tool_file.name = "test_tool_file.txt"
-        tool_file.size = 2048
-
         self.session.add(tool_file)
         self.session.flush()
         self.test_tool_files.append(tool_file)

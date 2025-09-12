@@ -28,8 +28,8 @@
   - `url` (object) help link, i18n
     - `zh_Hans` (string) [optional] Chinese link
     - `en_US` (string) English link
-- `supported_model_types` (array[[ModelType](#ModelType)]) Supported model types
-- `configurate_methods` (array[[ConfigurateMethod](#ConfigurateMethod)]) Configuration methods
+- `supported_model_types` (array\[[ModelType](#ModelType)\]) Supported model types
+- `configurate_methods` (array\[[ConfigurateMethod](#ConfigurateMethod)\]) Configuration methods
 - `provider_credential_schema` ([ProviderCredentialSchema](#ProviderCredentialSchema)) Provider credential specification
 - `model_credential_schema` ([ModelCredentialSchema](#ModelCredentialSchema)) Model credential specification
 
@@ -40,23 +40,23 @@
   - `zh_Hans` (string) [optional] Chinese label name
   - `en_US` (string) English label name
 - `model_type` ([ModelType](#ModelType)) Model type
-- `features` (array[[ModelFeature](#ModelFeature)]) [optional] Supported feature list
+- `features` (array\[[ModelFeature](#ModelFeature)\]) [optional] Supported feature list
 - `model_properties` (object) Model properties
   - `mode` ([LLMMode](#LLMMode)) Mode (available for model type `llm`)
   - `context_size` (int) Context size (available for model types `llm`, `text-embedding`)
   - `max_chunks` (int) Maximum number of chunks (available for model types `text-embedding`, `moderation`)
   - `file_upload_limit` (int) Maximum file upload limit, in MB (available for model type `speech2text`)
   - `supported_file_extensions` (string) Supported file extension formats, e.g., mp3, mp4 (available for model type `speech2text`)
-  - `default_voice` (string)  default voice, e.g.：alloy,echo,fable,onyx,nova,shimmer（available for model type `tts`）
-  - `voices` (list)  List of available voice.（available for model type `tts`）
-    - `mode` (string)  voice model.（available for model type `tts`）
-    - `name` (string)  voice model display name.（available for model type `tts`）
-    - `language` (string)  the voice model supports languages.（available for model type `tts`）
-  - `word_limit` (int)  Single conversion word limit, paragraph-wise by default（available for model type `tts`）
-  - `audio_type` (string)  Support audio file extension format, e.g.：mp3,wav（available for model type `tts`）
-  - `max_workers` (int)  Number of concurrent workers supporting text and audio conversion（available for model type`tts`）
+  - `default_voice` (string) default voice, e.g.：alloy,echo,fable,onyx,nova,shimmer（available for model type `tts`）
+  - `voices` (list) List of available voice.（available for model type `tts`）
+    - `mode` (string) voice model.（available for model type `tts`）
+    - `name` (string) voice model display name.（available for model type `tts`）
+    - `language` (string) the voice model supports languages.（available for model type `tts`）
+  - `word_limit` (int) Single conversion word limit, paragraph-wise by default（available for model type `tts`）
+  - `audio_type` (string) Support audio file extension format, e.g.：mp3,wav（available for model type `tts`）
+  - `max_workers` (int) Number of concurrent workers supporting text and audio conversion（available for model type`tts`）
   - `max_characters_per_chunk` (int) Maximum characters per chunk (available for model type `moderation`)
-- `parameter_rules` (array[[ParameterRule](#ParameterRule)]) [optional] Model invocation parameter rules
+- `parameter_rules` (array\[[ParameterRule](#ParameterRule)\]) [optional] Model invocation parameter rules
 - `pricing` ([PriceConfig](#PriceConfig)) [optional] Pricing information
 - `deprecated` (bool) Whether deprecated. If deprecated, the model will no longer be displayed in the list, but those already configured can continue to be used. Default False.
 
@@ -74,6 +74,7 @@
 - `predefined-model` Predefined model
 
   Indicates that users can use the predefined models under the provider by configuring the unified provider credentials.
+
 - `customizable-model` Customizable model
 
   Users need to add credential configuration for each model.
@@ -103,6 +104,7 @@
 ### ParameterRule
 
 - `name` (string) Actual model invocation parameter name
+
 - `use_template` (string) [optional] Using template
 
   By default, 5 variable content configuration templates are preset:
@@ -112,7 +114,7 @@
   - `frequency_penalty`
   - `presence_penalty`
   - `max_tokens`
-  
+
   In use_template, you can directly set the template variable name, which will use the default configuration in entities.defaults.PARAMETER_RULE_TEMPLATE
   No need to set any parameters other than `name` and `use_template`. If additional configuration parameters are set, they will override the default configuration.
   Refer to `openai/llm/gpt-3.5-turbo.yaml`.
@@ -155,7 +157,7 @@
 
 ### ProviderCredentialSchema
 
-- `credential_form_schemas` (array[[CredentialFormSchema](#CredentialFormSchema)]) Credential form standard
+- `credential_form_schemas` (array\[[CredentialFormSchema](#CredentialFormSchema)\]) Credential form standard
 
 ### ModelCredentialSchema
 
@@ -166,7 +168,7 @@
   - `placeholder` (object) Model prompt content
     - `en_US`(string) English
     - `zh_Hans`(string) [optional] Chinese
-- `credential_form_schemas` (array[[CredentialFormSchema](#CredentialFormSchema)]) Credential form standard
+- `credential_form_schemas` (array\[[CredentialFormSchema](#CredentialFormSchema)\]) Credential form standard
 
 ### CredentialFormSchema
 
@@ -177,12 +179,12 @@
 - `type` ([FormType](#FormType)) Form item type
 - `required` (bool) Whether required
 - `default`(string) Default value
-- `options` (array[[FormOption](#FormOption)]) Specific property of form items of type `select` or `radio`, defining dropdown content
+- `options` (array\[[FormOption](#FormOption)\]) Specific property of form items of type `select` or `radio`, defining dropdown content
 - `placeholder`(object) Specific property of form items of type `text-input`, placeholder content
   - `en_US`(string) English
   - `zh_Hans` (string) [optional] Chinese
 - `max_length` (int) Specific property of form items of type `text-input`, defining maximum input length, 0 for no limit.
-- `show_on` (array[[FormShowOnObject](#FormShowOnObject)]) Displayed when other form item values meet certain conditions, displayed always if empty.
+- `show_on` (array\[[FormShowOnObject](#FormShowOnObject)\]) Displayed when other form item values meet certain conditions, displayed always if empty.
 
 ### FormType
 
@@ -198,7 +200,7 @@
   - `en_US`(string) English
   - `zh_Hans`(string) [optional] Chinese
 - `value` (string) Dropdown option value
-- `show_on` (array[[FormShowOnObject](#FormShowOnObject)]) Displayed when other form item values meet certain conditions, displayed always if empty.
+- `show_on` (array\[[FormShowOnObject](#FormShowOnObject)\]) Displayed when other form item values meet certain conditions, displayed always if empty.
 
 ### FormShowOnObject
 

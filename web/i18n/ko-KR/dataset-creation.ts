@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: '지식 생성',
-      update: '데이터 추가',
       fallbackRoute: '지식',
     },
     one: '데이터 소스 선택',
@@ -23,6 +21,7 @@ const translation = {
     uploader: {
       title: '텍스트 파일 업로드',
       button: '파일이나 폴더를 끌어서 놓기',
+      buttonSingleFile: '파일을 끌어서 놓기',
       browse: '찾아보기',
       tip: '{{supportTypes}}을 (를) 지원합니다. 파일당 최대 크기는 {{size}}MB 입니다.',
       validation: {

@@ -23,20 +23,14 @@ const translation = {
     contractSales: '영업팀에 문의하기',
     contractOwner: '팀 관리자에게 문의하기',
     startForFree: '무료로 시작하기',
-    getStartedWith: '시작하기 ',
     contactSales: '영업팀에 문의하기',
     talkToSales: '영업팀과 상담하기',
     modelProviders: '모델 제공자',
-    teamMembers: '팀 멤버',
     buildApps: '앱 만들기',
     vectorSpace: '벡터 공간',
-    vectorSpaceBillingTooltip:
-      '1MB 당 약 120 만 글자의 벡터화된 데이터를 저장할 수 있습니다 (OpenAI Embeddings 을 기반으로 추정되며 모델에 따라 다릅니다).',
     vectorSpaceTooltip:
       '벡터 공간은 LLM 이 데이터를 이해하는 데 필요한 장기 기억 시스템입니다.',
     documentProcessingPriority: '문서 처리 우선순위',
-    documentProcessingPriorityTip:
-      '더 높은 문서 처리 우선순위를 원하시면 요금제를 업그레이드하세요.',
     documentProcessingPriorityUpgrade:
       '더 높은 정확성과 빠른 속도로 데이터를 처리합니다.',
     priority: {
@@ -85,7 +79,6 @@ const translation = {
       'Dify 의 지식베이스 처리 기능을 호출하는 API 호출 수를 나타냅니다.',
     receiptInfo: '팀 소유자 및 팀 관리자만 구독 및 청구 정보를 볼 수 있습니다',
     annotationQuota: 'Annotation Quota(주석 할당량)',
-    documentsUploadQuota: '문서 업로드 할당량',
     freeTrialTipPrefix: '요금제에 가입하고 ',
     comparePlanAndFeatures: '계획 및 기능 비교',
     documents: '{{count,number}} 지식 문서',
@@ -114,20 +107,17 @@ const translation = {
     sandbox: {
       name: '샌드박스',
       description: 'GPT 무료 체험 200 회',
-      includesTitle: '포함된 항목:',
       for: '핵심 기능 무료 체험',
     },
     professional: {
       name: '프로페셔널',
       description:
         '개인 및 소규모 팀을 위해 더 많은 파워를 저렴한 가격에 제공합니다.',
-      includesTitle: '무료 플랜에 추가로 포함된 항목:',
       for: '1인 개발자/소규모 팀을 위한',
     },
     team: {
       name: '팀',
       description: '제한 없이 협업하고 최고의 성능을 누리세요.',
-      includesTitle: '프로페셔널 플랜에 추가로 포함된 항목:',
       for: '중간 규모 팀을 위한',
     },
     enterprise: {
@@ -135,42 +125,36 @@ const translation = {
       description:
         '대규모 미션 크리티컬 시스템을 위한 완전한 기능과 지원을 제공합니다.',
       includesTitle: '팀 플랜에 추가로 포함된 항목:',
-      features: {
-        2: '독점 기업 기능',
-        1: '상업적 라이선스 승인',
-        3: '다중 작업 공간 및 기업 관리',
-        4: 'SSO',
-        5: 'Dify 파트너에 의해 협상된 SLA',
-        6: '고급 보안 및 제어',
-        0: '기업급 확장 가능한 배포 솔루션',
-        7: '디피 공식 업데이트 및 유지 관리',
-        8: '전문 기술 지원',
-      },
       price: '맞춤형',
       btnText: '판매 문의하기',
       for: '대규모 팀을 위해',
       priceTip: '연간 청구 전용',
+      features: [
+        '엔터프라이즈급 확장 가능한 배포 솔루션',
+        '상업용 라이선스 인증',
+        '전용 엔터프라이즈 기능',
+        '다중 워크스페이스 및 엔터프라이즈 관리',
+        'SSO(싱글 사인온)',
+        'Dify 파트너와의 협상을 통한 SLA',
+        '고급 보안 및 제어 기능',
+        'Dify의 공식 업데이트 및 유지 관리',
+        '전문 기술 지원',
+      ],
     },
     community: {
-      features: {
-        0: '모든 핵심 기능이 공개 저장소에 릴리스됨',
-        2: 'Dify 오픈 소스 라이선스를 준수합니다.',
-        1: '단일 작업 공간',
-      },
       btnText: '커뮤니티 시작하기',
       description: '개인 사용자, 소규모 팀 또는 비상업적 프로젝트를 위한',
       name: '커뮤니티',
       price: '무료',
       includesTitle: '무료 기능:',
       for: '개인 사용자, 소규모 팀 또는 비상업적 프로젝트를 위한',
+      features: [
+        '모든 핵심 기능이 공개 저장소에 공개됨',
+        '단일 워크스페이스',
+        'Dify 오픈소스 라이선스를 준수함',
+      ],
     },
     premium: {
-      features: {
-        1: '단일 작업 공간',
-        2: '웹앱 로고 및 브랜딩 맞춤화',
-        3: '우선 이메일 및 채팅 지원',
-        0: '다양한 클라우드 제공업체에 의한 자율 관리 신뢰성',
-      },
       btnText: '프리미엄 받기',
       priceTip: '클라우드 마켓플레이스를 기반으로',
       name: '프리미엄',
@@ -179,6 +163,12 @@ const translation = {
       price: '확장 가능',
       for: '중규모 조직 및 팀을 위한',
       includesTitle: '커뮤니티의 모든 것, 여기에 추가로:',
+      features: [
+        '다양한 클라우드 제공업체를 통한 자가 관리 신뢰성',
+        '단일 워크스페이스',
+        '웹앱 로고 및 브랜딩 커스터마이징',
+        '우선 이메일 및 채팅 지원',
+      ],
     },
   },
   vectorSpace: {
@@ -186,8 +176,6 @@ const translation = {
     fullSolution: '더 많은 공간을 얻으려면 요금제를 업그레이드하세요.',
   },
   apps: {
-    fullTipLine1: '더 많은 앱을 생성하려면,',
-    fullTipLine2: '요금제를 업그레이드하세요.',
     contactUs: '문의하기',
     fullTip1: '업그레이드하여 더 많은 앱을 만들기',
     fullTip2: '계획 한도에 도달했습니다.',

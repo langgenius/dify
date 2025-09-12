@@ -32,9 +32,9 @@ class VikingDBConfig(BaseModel):
     scheme: str
     connection_timeout: int
     socket_timeout: int
-    index_type: str = IndexType.HNSW
-    distance: str = DistanceType.L2
-    quant: str = QuantType.Float
+    index_type: str = str(IndexType.HNSW)
+    distance: str = str(DistanceType.L2)
+    quant: str = str(QuantType.Float)
 
 
 class VikingDBVector(BaseVector):
@@ -144,7 +144,7 @@ class VikingDBVector(BaseVector):
             return True
         return False
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         self._client.get_collection(self._collection_name).delete_data(ids)
 
     def get_ids_by_metadata_field(self, key: str, value: str):
@@ -168,7 +168,7 @@ class VikingDBVector(BaseVector):
                     ids.append(result.id)
         return ids
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
@@ -192,7 +192,7 @@ class VikingDBVector(BaseVector):
             metadata = result.fields.get(vdb_Field.METADATA_KEY.value)
             if metadata is not None:
                 metadata = json.loads(metadata)
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(page_content=result.fields.get(vdb_Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)
@@ -202,7 +202,7 @@ class VikingDBVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
-    def delete(self) -> None:
+    def delete(self):
         if self._has_index():
             self._client.drop_index(self._collection_name, self._index_name)
         if self._has_collection():

@@ -17,9 +17,12 @@ import { activateMember, invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { noop } from 'lodash-es'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -58,7 +61,8 @@ export default function InviteSettingsPage() {
         localStorage.setItem('console_token', res.data.access_token)
         localStorage.setItem('refresh_token', res.data.refresh_token)
         await setLocaleOnClient(language, false)
-        router.replace('/apps')
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        router.replace(redirectUrl || '/apps')
       }
     }
     catch {
@@ -72,7 +76,7 @@ export default function InviteSettingsPage() {
     return <div className="flex flex-col md:w-[400px]">
       <div className="mx-auto w-full">
         <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
-        <h2 className="title-4xl-semi-bold">{t('login.invalid')}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.invalid')}</h2>
       </div>
       <div className="mx-auto mt-6 w-full">
         <Button variant='primary' className='w-full !text-sm'>
@@ -87,11 +91,11 @@ export default function InviteSettingsPage() {
       <RiAccountCircleLine className='h-6 w-6 text-2xl text-text-accent-light-mode-only' />
     </div>
     <div className='pb-4 pt-2'>
-      <h2 className='title-4xl-semi-bold'>{t('login.setYourAccount')}</h2>
+      <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.setYourAccount')}</h2>
     </div>
     <form onSubmit={noop}>
       <div className='mb-5'>
-        <label htmlFor="name" className="system-md-semibold my-2">
+        <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
           {t('login.name')}
         </label>
         <div className="mt-1">
@@ -112,7 +116,7 @@ export default function InviteSettingsPage() {
         </div>
       </div>
       <div className='mb-5'>
-        <label htmlFor="name" className="system-md-semibold my-2">
+        <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
           {t('login.interfaceLanguage')}
         </label>
         <div className="mt-1">
@@ -127,7 +131,7 @@ export default function InviteSettingsPage() {
       </div>
       {/* timezone */}
       <div className='mb-5'>
-        <label htmlFor="timezone" className="system-md-semibold">
+        <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
           {t('login.timezone')}
         </label>
         <div className="mt-1">
@@ -150,7 +154,7 @@ export default function InviteSettingsPage() {
         </Button>
       </div>
     </form>
-    <div className="system-xs-regular mt-2 block w-full">
+    {!systemFeatures.branding.enabled && <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
       {t('login.license.tip')}
       &nbsp;
       <Link
@@ -158,6 +162,6 @@ export default function InviteSettingsPage() {
         target='_blank' rel='noopener noreferrer'
         href={docLink('/policies/open-source')}
       >{t('login.license.link')}</Link>
-    </div>
+    </div>}
   </div>
 }

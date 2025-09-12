@@ -10,6 +10,7 @@ import { login } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -74,7 +75,8 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         else {
           localStorage.setItem('console_token', res.data.access_token)
           localStorage.setItem('refresh_token', res.data.refresh_token)
-          router.replace('/apps')
+          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          router.replace(redirectUrl || '/apps')
         }
       }
       else if (res.code === 'account_not_found') {

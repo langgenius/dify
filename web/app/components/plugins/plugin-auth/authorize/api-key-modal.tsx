@@ -6,7 +6,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiExternalLinkLine } from '@remixicon/react'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Modal from '@/app/components/base/modal/modal'
 import { CredentialTypeEnum } from '../types'
@@ -21,7 +20,6 @@ import {
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
@@ -64,8 +62,6 @@ const ApiKeyModal = ({
       acc[schema.name] = schema.default
     return acc
   }, {} as Record<string, any>)
-  const helpField = formSchemas.find(schema => schema.url && schema.help)
-  const renderI18nObject = useRenderI18nObject()
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
@@ -125,18 +121,7 @@ const ApiKeyModal = ({
       onClose={onClose}
       onCancel={onClose}
       footerSlot={
-        helpField && (
-          <a
-            className='system-xs-regular mr-2 flex items-center py-2 text-text-accent'
-            href={helpField?.url}
-            target='_blank'
-          >
-            <span className='break-all'>
-              {renderI18nObject(helpField?.help as any)}
-            </span>
-            <RiExternalLinkLine className='ml-1 h-3 w-3' />
-          </a>
-        )
+        (<div></div>)
       }
       bottomSlot={
         <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>

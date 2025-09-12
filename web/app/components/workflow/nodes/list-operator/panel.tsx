@@ -78,6 +78,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
                 varType={itemVarType}
                 hasSubVariable={hasSubVariable}
                 readOnly={readOnly}
+                nodeId={id}
               />
             )
             : null}

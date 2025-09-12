@@ -41,7 +41,7 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict, only_structure_validate: bool = False) -> dict:
+    def config_validate(cls, tenant_id: str, config: dict, only_structure_validate: bool = False):
         """
         Validate for advanced chat app model config
 

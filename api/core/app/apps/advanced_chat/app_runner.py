@@ -54,7 +54,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         app: App,
-    ) -> None:
+    ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
@@ -68,11 +68,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self.system_user_id = system_user_id
         self._app = app
 
-    def run(self) -> None:
+    def run(self):
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
-        app_record = db.session.query(App).where(App.id == app_config.app_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            app_record = session.scalar(select(App).where(App.id == app_config.app_id))
+
         if not app_record:
             raise ValueError("App not found")
 
@@ -118,26 +120,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ):
                 return
 
-            # Init conversation variables
-            stmt = select(ConversationVariable).where(
-                ConversationVariable.app_id == self.conversation.app_id,
-                ConversationVariable.conversation_id == self.conversation.id,
-            )
-            with Session(db.engine) as session:
-                db_conversation_variables = session.scalars(stmt).all()
-                if not db_conversation_variables:
-                    # Create conversation variables if they don't exist.
-                    db_conversation_variables = [
-                        ConversationVariable.from_variable(
-                            app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
-                        )
-                        for variable in self._workflow.conversation_variables
-                    ]
-                    session.add_all(db_conversation_variables)
-                # Convert database entities to variables.
-                conversation_variables = [item.to_variable() for item in db_conversation_variables]
-
-                session.commit()
+            # Initialize conversation variables
+            conversation_variables = self._initialize_conversation_variables()
 
             # Create a variable pool.
             system_inputs = SystemVariable(
@@ -158,7 +142,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 environment_variables=self._workflow.environment_variables,
                 # Based on the definition of `VariableUnion`,
                 # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
-                conversation_variables=cast(list[VariableUnion], conversation_variables),
+                conversation_variables=conversation_variables,
             )
 
             # init graph
@@ -237,7 +221,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         return False
 
-    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy) -> None:
+    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy):
         """
         Direct output
         """
@@ -292,3 +276,100 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             message_id=message_id,
             trace_manager=app_generate_entity.trace_manager,
         )
+
+    def _initialize_conversation_variables(self) -> list[VariableUnion]:
+        """
+        Initialize conversation variables for the current conversation.
+
+        This method:
+        1. Loads existing variables from the database
+        2. Creates new variables if none exist
+        3. Syncs missing variables from the workflow definition
+
+        :return: List of conversation variables ready for use
+        """
+        with Session(db.engine) as session:
+            existing_variables = self._load_existing_conversation_variables(session)
+
+            if not existing_variables:
+                # First time initialization - create all variables
+                existing_variables = self._create_all_conversation_variables(session)
+            else:
+                # Check and add any missing variables from the workflow
+                existing_variables = self._sync_missing_conversation_variables(session, existing_variables)
+
+            # Convert to Variable objects for use in the workflow
+            conversation_variables = [var.to_variable() for var in existing_variables]
+
+            session.commit()
+            return cast(list[VariableUnion], conversation_variables)
+
+    def _load_existing_conversation_variables(self, session: Session) -> list[ConversationVariable]:
+        """
+        Load existing conversation variables from the database.
+
+        :param session: Database session
+        :return: List of existing conversation variables
+        """
+        stmt = select(ConversationVariable).where(
+            ConversationVariable.app_id == self.conversation.app_id,
+            ConversationVariable.conversation_id == self.conversation.id,
+        )
+        return list(session.scalars(stmt).all())
+
+    def _create_all_conversation_variables(self, session: Session) -> list[ConversationVariable]:
+        """
+        Create all conversation variables for a new conversation.
+
+        :param session: Database session
+        :return: List of created conversation variables
+        """
+        new_variables = [
+            ConversationVariable.from_variable(
+                app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
+            )
+            for variable in self._workflow.conversation_variables
+        ]
+
+        if new_variables:
+            session.add_all(new_variables)
+
+        return new_variables
+
+    def _sync_missing_conversation_variables(
+        self, session: Session, existing_variables: list[ConversationVariable]
+    ) -> list[ConversationVariable]:
+        """
+        Sync missing conversation variables from the workflow definition.
+
+        This handles the case where new variables are added to a workflow
+        after conversations have already been created.
+
+        :param session: Database session
+        :param existing_variables: List of existing conversation variables
+        :return: Updated list including any newly created variables
+        """
+        # Get IDs of existing and workflow variables
+        existing_ids = {var.id for var in existing_variables}
+        workflow_variables = {var.id: var for var in self._workflow.conversation_variables}
+
+        # Find missing variable IDs
+        missing_ids = set(workflow_variables.keys()) - existing_ids
+
+        if not missing_ids:
+            return existing_variables
+
+        # Create missing variables with their default values
+        new_variables = [
+            ConversationVariable.from_variable(
+                app_id=self.conversation.app_id,
+                conversation_id=self.conversation.id,
+                variable=workflow_variables[var_id],
+            )
+            for var_id in missing_ids
+        ]
+
+        session.add_all(new_variables)
+
+        # Return combined list
+        return existing_variables + new_variables

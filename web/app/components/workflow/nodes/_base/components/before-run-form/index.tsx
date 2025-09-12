@@ -32,6 +32,8 @@ export type BeforeRunFormProps = {
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
+  if(type === InputVarType.checkbox)
+    return !!value
   if(value === undefined || value === null)
     return value
   if (type === InputVarType.number)
@@ -87,7 +89,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
       form.inputs.forEach((input) => {
         const value = form.values[input.variable] as any
-        if (!errMsg && input.required && !(input.variable in existVarValuesInForm) && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
+        if (!errMsg && input.required && (input.type !== InputVarType.checkbox) && !(input.variable in existVarValuesInForm) && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
           errMsg = t('workflow.errorMsg.fieldRequired', { field: typeof input.label === 'object' ? input.label.variable : input.label })
 
         if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {

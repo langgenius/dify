@@ -35,9 +35,9 @@ const useNodesAvailableVarList = (nodes: Node[], {
   hideChatVar = false,
   passedInAvailableNodes,
 }: Params = {
-    onlyLeafNodeVar: false,
-    filterVar: () => true,
-  }) => {
+  onlyLeafNodeVar: false,
+  filterVar: () => true,
+}) => {
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()

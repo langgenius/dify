@@ -2,7 +2,7 @@ import traceback
 import typing
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.helper import marketplace
 from core.helper.marketplace import MarketplacePluginDeclaration
@@ -146,7 +146,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                                 fg="green",
                             )
                         )
-                        task_start_resp = manager.upgrade_plugin(
+                        _ = manager.upgrade_plugin(
                             tenant_id,
                             original_unique_identifier,
                             new_unique_identifier,

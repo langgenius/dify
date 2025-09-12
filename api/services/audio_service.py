@@ -12,7 +12,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.enums import MessageStatus
-from models.model import App, AppMode, AppModelConfig, Message
+from models.model import App, AppMode, Message
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -40,7 +40,9 @@ class AudioService:
             if "speech_to_text" not in features_dict or not features_dict["speech_to_text"].get("enabled"):
                 raise ValueError("Speech to text is not enabled")
         else:
-            app_model_config: AppModelConfig = app_model.app_model_config
+            app_model_config = app_model.app_model_config
+            if not app_model_config:
+                raise ValueError("Speech to text is not enabled")
 
             if not app_model_config.speech_to_text_dict["enabled"]:
                 raise ValueError("Speech to text is not enabled")

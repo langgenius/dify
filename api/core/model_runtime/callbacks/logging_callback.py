@@ -24,7 +24,7 @@ class LoggingCallback(Callback):
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Before invoke callback
 
@@ -110,7 +110,7 @@ class LoggingCallback(Callback):
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-    ) -> None:
+    ):
         """
         After invoke callback
 
@@ -151,7 +151,7 @@ class LoggingCallback(Callback):
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Invoke error callback
 

@@ -34,7 +34,7 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import TooltipPlus from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
-import { promptVariablesToUserInputsForm } from '@/utils/model-config'
+import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import type { Inputs } from '@/models/debug'
@@ -259,7 +259,7 @@ const Debug: FC<IDebug> = ({
     }
 
     const data: Record<string, any> = {
-      inputs,
+      inputs: formatBooleanInputs(modelConfig.configs.prompt_variables, inputs),
       model_config: postModelConfig,
     }
 
