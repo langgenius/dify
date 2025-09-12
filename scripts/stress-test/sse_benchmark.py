@@ -136,6 +136,7 @@ class MetricsSnapshot:
     ttfe_p50: float
     ttfe_p95: float
     ttfe_samples: int
+    ttfe_total_samples: int  # Total TTFE samples collected (not limited by window)
     error_counts: ErrorCounts
     stream_duration_avg: float
     stream_duration_p50: float
@@ -157,6 +158,7 @@ class MetricsTracker:
         # Enhanced metrics with memory limits
         self.max_samples = 10000  # Prevent unbounded growth
         self.ttfe_samples: deque[float] = deque(maxlen=self.max_samples)
+        self.ttfe_total_count = 0  # Track total TTFE samples collected
 
         # For rate calculations - no maxlen to avoid artificial limits
         self.connection_times: deque[float] = deque()
@@ -193,6 +195,7 @@ class MetricsTracker:
     def record_ttfe(self, ttfe_ms: float) -> None:
         with self.lock:
             self.ttfe_samples.append(ttfe_ms)  # deque handles maxlen
+            self.ttfe_total_count += 1  # Increment total counter
 
     def record_stream_metrics(self, metrics: StreamMetrics) -> None:
         with self.lock:
@@ -306,6 +309,7 @@ class MetricsTracker:
                 ttfe_p50=p50_ttfe,
                 ttfe_p95=p95_ttfe,
                 ttfe_samples=len(self.ttfe_samples),
+                ttfe_total_samples=self.ttfe_total_count,  # Return total count
                 error_counts=ErrorCounts(**self.error_counts),
                 stream_duration_avg=stream_duration_avg,
                 stream_duration_p50=stream_duration_p50,
@@ -619,7 +623,8 @@ def on_test_start(environment: object, **kwargs: object) -> None:
                     logger.info(
                         f"{'(TTFE in ms)':<25} {stats.ttfe_avg:>15.1f} {stats.ttfe_p50:>10.1f} {stats.ttfe_p95:>10.1f} {stats.ttfe_min:>10.1f} {stats.ttfe_max:>10.1f}"
                     )
-                    logger.info(f"{'Samples':<25} {stats.ttfe_samples:>15,d}")
+                    logger.info(f"{'Window Samples':<25} {stats.ttfe_samples:>15,d} (last {min(10000, stats.ttfe_total_samples):,d} samples)")
+                    logger.info(f"{'Total Samples':<25} {stats.ttfe_total_samples:>15,d}")
 
                     # Inter-event latency
                     if stats.inter_event_latency_avg > 0:
@@ -711,7 +716,8 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
     logger.info(f"  {'95th Percentile:':<30} {stats.ttfe_p95:>10.1f} ms")
     logger.info(f"  {'Minimum:':<30} {stats.ttfe_min:>10.1f} ms")
     logger.info(f"  {'Maximum:':<30} {stats.ttfe_max:>10.1f} ms")
-    logger.info(f"  {'Total Samples:':<30} {stats.ttfe_samples:>10,d}")
+    logger.info(f"  {'Window Samples:':<30} {stats.ttfe_samples:>10,d} (last {min(10000, stats.ttfe_total_samples):,d})")
+    logger.info(f"  {'Total Samples:':<30} {stats.ttfe_total_samples:>10,d}")
 
     # Error summary
     if any(stats.error_counts.values()):
