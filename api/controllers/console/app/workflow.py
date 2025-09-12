@@ -22,6 +22,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import ErrorStreamResponse, TriggerNodeFinishedResponse, TriggerTriggeredResponse
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
 from extensions.ext_database import db
@@ -807,69 +808,171 @@ class DraftWorkflowNodeLastRunApi(Resource):
 
 
 class DraftWorkflowTriggerNodeApi(Resource):
+    """
+    Single node debug - Listen for trigger events and execute single Trigger node
+    Path: /apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger
+    """
+
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App, node_id: str):
         """
-        Debug trigger node by creating a debug session and listening for events.
+        Debug trigger node by listening for events and executing the node
         """
-        srv = WorkflowService()
-        workflow = srv.get_draft_workflow(app_model)
-        if not workflow:
-            raise NotFound("Workflow not found")
+        if not isinstance(current_user, Account) or not current_user.is_editor:
+            raise Forbidden()
 
-        # Get node configuration
-        node_config = workflow.get_node_config_by_id(node_id)
-        if not node_config:
-            raise NotFound(f"Node {node_id} not found in workflow")
+        parser = reqparse.RequestParser()
+        parser.add_argument("timeout", type=int, default=300, location="json")
+        args = parser.parse_args()
 
-        # Validate it's a trigger plugin node
-        if node_config.get("data", {}).get("type") != "plugin":
-            raise ValueError("Node is not a trigger plugin node")
+        from core.trigger.entities.entities import TriggerEventData, TriggerInputs
+        from services.trigger_debug_service import TriggerDebugService
+        from services.workflow_service import WorkflowService
 
-        # Get subscription ID from node config
-        subscription_id = node_config.get("data", {}).get("subscription_id")
-        if not subscription_id:
-            raise ValueError("No subscription ID configured for this trigger node")
+        def generate(current_user: Account):
+            # Phase 1: Listen for trigger events
+            trigger_data = None
+            for event in TriggerDebugService.waiting_for_triggered(
+                app_model=app_model,
+                node_id=node_id,
+                user_id=current_user.id,
+                timeout=args.get("timeout", 300),
+            ):
+                yield event.to_dict()  # Pass through all listening events
 
-        # Create debug session
+                # Check if we received the trigger
+                if isinstance(event, TriggerTriggeredResponse):
+                    # Save trigger data and exit listening loop
+                    trigger_data = TriggerEventData(
+                        subscription_id=event.subscription_id,
+                        triggers=event.triggers,
+                        request_id=event.request_id,
+                        timestamp=event.timestamp,
+                    )
+                    break
+
+            # Phase 2: Execute node if trigger was received
+            if trigger_data:
+                # Create trigger inputs
+                trigger_inputs = TriggerInputs.from_trigger_data(trigger_data)
+                try:
+                    # Get workflow and execute node
+                    workflow_service = WorkflowService()
+                    draft_workflow = workflow_service.get_draft_workflow(app_model)
+                    if not draft_workflow:
+                        raise ValueError("Workflow not found")
+
+                    node_execution = workflow_service.run_draft_workflow_node(
+                        app_model=app_model,
+                        draft_workflow=draft_workflow,
+                        node_id=node_id,
+                        user_inputs=trigger_inputs.to_dict(),
+                        account=current_user,
+                        query="",
+                        files=[],
+                    )
+
+                    # Generate node finished event
+                    yield TriggerNodeFinishedResponse(
+                        task_id="",
+                        id=node_execution.id,
+                        node_id=node_execution.node_id,
+                        node_type=node_execution.node_type,
+                        status=node_execution.status,
+                        outputs=node_execution.outputs_dict,
+                        error=node_execution.error,
+                        elapsed_time=node_execution.elapsed_time,
+                        execution_metadata=node_execution.execution_metadata_dict,
+                    ).to_dict()
+
+                except Exception as e:
+                    yield ErrorStreamResponse(task_id="", err=e).to_dict()
+
+        # Use standard response format
+        from core.app.apps.base_app_generator import BaseAppGenerator
+
+        response = BaseAppGenerator.convert_to_event_stream(generate(current_user))
+        return helper.compact_generate_response(response)
+
+
+class DraftWorkflowTriggerRunApi(Resource):
+    """
+    Full workflow debug - Listen for trigger events and execute complete workflow
+    Path: /apps/<uuid:app_id>/workflows/draft/trigger/run
+    """
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Debug trigger workflow by listening for events and running full workflow
+        """
+        if not isinstance(current_user, Account) or not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="json")
+        parser.add_argument("timeout", type=int, default=300, location="json")
+        args = parser.parse_args()
+
+        from core.app.entities.app_invoke_entities import InvokeFrom
+        from core.trigger.entities.entities import TriggerEventData, TriggerInputs
+        from services.app_generate_service import AppGenerateService
         from services.trigger_debug_service import TriggerDebugService
 
-        assert isinstance(current_user, Account)
-        session_id = TriggerDebugService.create_debug_session(
-            app_id=str(app_model.id),
-            node_id=node_id,
-            subscription_id=subscription_id,
-            user_id=current_user.id,
-            timeout=300,
-        )
+        def generate(current_user: Account):
+            # Phase 1: Listen for trigger events
+            trigger_data = None
+            for event in TriggerDebugService.waiting_for_triggered(
+                app_model=app_model,
+                node_id=args["node_id"],
+                user_id=current_user.id,
+                timeout=args.get("timeout", 300),
+            ):
+                yield event.to_dict()
 
-        # Stream events to client
-        def generate():
-            for event_data in TriggerDebugService.listen_for_events(session_id):
-                if isinstance(event_data, dict):
-                    if event_data.get("type") == "heartbeat":
-                        yield f"event: heartbeat\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_data.get("type") == "timeout":
-                        yield f"event: timeout\ndata: {json.dumps({'message': 'Session timed out'})}\n\n"
-                        break
-                    elif event_data.get("type") == "error":
-                        yield f"event: error\ndata: {json.dumps(event_data)}\n\n"
-                        break
-                    else:
-                        # Trigger event - prepare for workflow execution
-                        yield f"event: trigger\ndata: {json.dumps(event_data)}\n\n"
+                # Check if we received the trigger
+                if isinstance(event, TriggerTriggeredResponse):
+                    # Save trigger data and exit listening loop
+                    trigger_data = TriggerEventData(
+                        subscription_id=event.subscription_id,
+                        triggers=event.triggers,
+                        request_id=event.request_id,
+                        timestamp=event.timestamp,
+                    )
+                    break
 
-                        # TODO: Execute workflow with trigger data if needed
-                        # This would involve extracting trigger data and running the workflow
-                        # For now, just send the trigger event
-                        break
+            # Phase 2: Execute workflow if trigger was received
+            if trigger_data:
+                # Create trigger inputs and convert to workflow args
+                trigger_inputs = TriggerInputs.from_trigger_data(trigger_data)
+                combined_args = trigger_inputs.to_workflow_args()
 
-        from flask import Response
+                try:
+                    # Execute workflow
+                    workflow_response = AppGenerateService.generate(
+                        app_model=app_model,
+                        user=current_user,
+                        args=combined_args,
+                        invoke_from=InvokeFrom.DEBUGGER,
+                        streaming=True,
+                    )
 
-        return Response(generate(), mimetype="text/event-stream")
+                    # Pass through workflow's standard event stream
+                    yield from workflow_response
+
+                except Exception as e:
+                    yield ErrorStreamResponse(task_id="", err=e).to_dict()
+
+        # Use standard response format
+        from core.app.apps.base_app_generator import BaseAppGenerator
+
+        response = BaseAppGenerator.convert_to_event_stream(generate(current_user))
+        return helper.compact_generate_response(response)
 
 
 api.add_resource(
@@ -899,6 +1002,10 @@ api.add_resource(
 api.add_resource(
     DraftWorkflowTriggerNodeApi,
     "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger",
+)
+api.add_resource(
+    DraftWorkflowTriggerRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/trigger/run",
 )
 api.add_resource(
     AdvancedChatDraftRunIterationNodeApi,

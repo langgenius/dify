@@ -130,7 +130,7 @@ class TestWebhookService:
             node_id="webhook_node",
             tenant_id=tenant.id,
             webhook_id=webhook_id,
-            triggered_by="production",
+            created_by=account.id,
         )
         db_session_with_containers.add(webhook_trigger)
         db_session_with_containers.commit()

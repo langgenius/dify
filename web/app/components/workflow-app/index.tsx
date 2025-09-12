@@ -45,8 +45,8 @@ const WorkflowAppWithAdditionalContext = () => {
   const { setTriggerStatuses } = useTriggerStatusStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id
-  const { data: triggersResponse } = useAppTriggers(appId, {
-    enabled: !!appId,
+  const isWorkflowMode = appDetail?.mode === 'workflow'
+  const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false,
   })

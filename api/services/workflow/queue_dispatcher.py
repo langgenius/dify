@@ -5,7 +5,6 @@ Implements an ABC-based pattern for handling different subscription tiers
 with appropriate queue routing and rate limiting.
 """
 
-import os
 from abc import ABC, abstractmethod
 from enum import StrEnum
 
@@ -78,7 +77,7 @@ class ProfessionalQueueDispatcher(BaseQueueDispatcher):
         return QueuePriority.PROFESSIONAL
 
     def get_daily_limit(self) -> int:
-        return int(os.getenv("PROFESSIONAL_DAILY_LIMIT", "1000"))
+        return int(1e9)
 
     def get_priority(self) -> int:
         return 100
@@ -91,7 +90,7 @@ class TeamQueueDispatcher(BaseQueueDispatcher):
         return QueuePriority.TEAM
 
     def get_daily_limit(self) -> int:
-        return int(os.getenv("TEAM_DAILY_LIMIT", "100"))
+        return int(1e9)
 
     def get_priority(self) -> int:
         return 50
@@ -104,7 +103,7 @@ class SandboxQueueDispatcher(BaseQueueDispatcher):
         return QueuePriority.SANDBOX
 
     def get_daily_limit(self) -> int:
-        return int(os.getenv("SANDBOX_DAILY_LIMIT", "10"))
+        return dify_config.APP_DAILY_RATE_LIMIT
 
     def get_priority(self) -> int:
         return 10

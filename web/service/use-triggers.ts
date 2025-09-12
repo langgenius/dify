@@ -95,7 +95,7 @@ export const useInvalidateAllTriggerPlugins = () => {
 // ===== Trigger Subscriptions Management =====
 export const useTriggerSubscriptions = (provider: string, enabled = true) => {
   return useQuery<TriggerSubscription[]>({
-    queryKey: [NAME_SPACE, 'subscriptions', provider],
+    queryKey: [NAME_SPACE, 'list-subscriptions', provider],
     queryFn: () => get<TriggerSubscription[]>(`/workspaces/current/trigger-provider/${provider}/subscriptions/list`),
     enabled: enabled && !!provider,
   })
@@ -115,8 +115,7 @@ export const useCreateTriggerSubscriptionBuilder = () => {
     mutationKey: [NAME_SPACE, 'create-subscription-builder'],
     mutationFn: (payload: {
       provider: string
-      name?: string
-      credentials?: Record<string, any>
+      credential_type?: string
     }) => {
       const { provider, ...body } = payload
       return post<{ subscription_builder: TriggerSubscriptionBuilder }>(
@@ -153,10 +152,12 @@ export const useVerifyTriggerSubscriptionBuilder = () => {
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
+      credentials?: Record<string, any>
     }) => {
-      const { provider, subscriptionBuilderId } = payload
+      const { provider, subscriptionBuilderId, ...body } = payload
       return post(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify/${subscriptionBuilderId}`,
+        { body },
       )
     },
   })

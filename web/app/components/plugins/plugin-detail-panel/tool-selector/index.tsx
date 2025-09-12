@@ -118,7 +118,7 @@ const ToolSelector: FC<Props> = ({
       provider_name: tool.provider_id,
       provider_show_name: tool.provider_name,
       type: tool.provider_type,
-      tool_name: tool.trigger_name,
+      tool_name: tool.tool_name,
       tool_label: tool.tool_label,
       tool_description: tool.tool_description,
       settings: settingValues,

@@ -21,6 +21,5 @@ webhook_trigger_fields = {
     "webhook_url": fields.String,
     "webhook_debug_url": fields.String,
     "node_id": fields.String,
-    "triggered_by": fields.String,
     "created_at": fields.DateTime(dt_format="iso8601"),
 }

@@ -67,7 +67,6 @@ class TriggerPluginNode(BaseNode):
         and makes them available to downstream nodes.
         """
 
-
         # Get trigger data passed when workflow was triggered
         trigger_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
 

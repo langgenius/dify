@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.utils.http_parser import serialize_request
-from core.trigger.entities.entities import TriggerDebugEventData, TriggerEntity
+from core.trigger.entities.entities import TriggerEntity, TriggerEventData, TriggerInputs
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -28,6 +28,8 @@ class TriggerService:
     __TEMPORARY_ENDPOINT_EXPIRE_MS__ = 5 * 60 * 1000
     __ENDPOINT_REQUEST_CACHE_COUNT__ = 10
     __ENDPOINT_REQUEST_CACHE_EXPIRE_MS__ = 5 * 60 * 1000
+
+    __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
 
     @classmethod
     def dispatch_triggered_workflows(
@@ -85,6 +87,11 @@ class TriggerService:
                     )
                     continue
 
+                # Create trigger inputs using new structure
+                trigger_inputs = TriggerInputs.from_trigger_entity(
+                    request_id=request_id, subscription_id=subscription.id, trigger=trigger
+                )
+
                 # Create trigger data for async execution
                 trigger_data = PluginTriggerData(
                     app_id=plugin_trigger.app_id,
@@ -94,11 +101,7 @@ class TriggerService:
                     trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
                     plugin_id=subscription.provider_id,
                     endpoint_id=subscription.endpoint_id,
-                    inputs={
-                        "request_id": request_id,
-                        "trigger_name": trigger.identity.name,
-                        "subscription_id": subscription.id,
-                    },
+                    inputs=trigger_inputs.to_dict(),
                 )
 
                 # Trigger async workflow
@@ -119,21 +122,18 @@ class TriggerService:
             return dispatched_count
 
     @classmethod
-    def dispatch_debugging_sessions(
-        cls, subscription_id: str, request: Request, triggers: list[str], request_id: str
-    ) -> int:
+    def dispatch_debugging_sessions(cls, subscription_id: str, triggers: list[str], request_id: str) -> int:
         """
         Dispatch to debug sessions - simplified version.
 
         Args:
             subscription_id: Subscription ID
-            request: Original request
             triggers: List of trigger names
             request_id: Request ID for storage reference
         """
         try:
             # Prepare streamlined event data using Pydantic model
-            debug_data = TriggerDebugEventData(
+            debug_data = TriggerEventData(
                 subscription_id=subscription_id,
                 triggers=triggers,
                 request_id=request_id,
@@ -150,7 +150,13 @@ class TriggerService:
 
     @classmethod
     def process_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
-        """Extract and process data from incoming endpoint request."""
+        """
+        Extract and process data from incoming endpoint request.
+
+        Args:
+            endpoint_id: Endpoint ID
+            request: Request
+        """
         subscription = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
         if not subscription:
             return None
@@ -192,7 +198,14 @@ class TriggerService:
     def get_subscriber_triggers(
         cls, tenant_id: str, subscription_id: str, trigger_name: str
     ) -> list[WorkflowPluginTrigger]:
-        """Get WorkflowPluginTriggers for a subscription and trigger."""
+        """
+        Get WorkflowPluginTriggers for a subscription and trigger.
+
+        Args:
+            tenant_id: Tenant ID
+            subscription_id: Subscription ID
+            trigger_name: Trigger name
+        """
         with Session(db.engine, expire_on_commit=False) as session:
             subscribers = session.scalars(
                 select(WorkflowPluginTrigger).where(

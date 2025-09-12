@@ -3,11 +3,14 @@ import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n-config'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
+import type { FormTypeEnum } from '../base/form/types'
+
 export enum PluginType {
   tool = 'tool',
   model = 'model',
   extension = 'extension',
   agent = 'agent-strategy',
+  trigger = 'trigger',
 }
 
 export enum PluginSource {
@@ -80,6 +83,103 @@ export type PluginDeclaration = {
   tags: string[]
   agent_strategy: any
   meta: PluginDeclarationMeta
+  trigger: PluginTriggerDefinition
+}
+
+export type PluginTriggerDefinition = {
+  identity: Identity
+  credentials_schema: CredentialsSchema[]
+  oauth_schema: OauthSchema
+  subscription_schema: SubscriptionSchema
+  triggers: Trigger[]
+}
+
+export type CredentialsSchema = {
+  name: string
+  label: Record<Locale, string>
+  description: Record<Locale, string>
+  type: FormTypeEnum
+  scope: any
+  required: boolean
+  default: any
+  options: any
+  help: Record<Locale, string>
+  url: string
+  placeholder: Record<Locale, string>
+}
+
+export type OauthSchema = {
+  client_schema: CredentialsSchema[]
+  credentials_schema: CredentialsSchema[]
+}
+
+export type SubscriptionSchema = {
+  parameters_schema: ParametersSchema[]
+  properties_schema: PropertiesSchema[]
+}
+
+export type ParametersSchema = {
+  name: string
+  label: Record<Locale, string>
+  type: FormTypeEnum
+  auto_generate: any
+  template: any
+  scope: any
+  required: boolean
+  multiple: boolean
+  default?: string[]
+  min: any
+  max: any
+  precision: any
+  options?: Array<{
+    value: string
+    label: Record<Locale, string>
+    icon?: string
+  }>
+  description: Record<Locale, string>
+}
+
+export type PropertiesSchema = {
+  type: FormTypeEnum
+  name: string
+  scope: any
+  required: boolean
+  default: any
+  options: Array<{
+    value: string
+    label: Record<Locale, string>
+    icon?: string
+  }>
+  label: Record<Locale, string>
+  help: Record<Locale, string>
+  url: any
+  placeholder: any
+}
+
+export type Trigger = {
+  identity: Identity
+  description: Record<Locale, string>
+  parameters: {
+    name: string
+    label: Record<Locale, string>
+    type: string
+    auto_generate: any
+    template: any
+    scope: any
+    required: boolean
+    multiple: boolean
+    default: any
+    min: any
+    max: any
+    precision: any
+    options?: Array<{
+      value: string
+      label: Record<Locale, string>
+      icon?: string
+    }>
+    description?: Record<Locale, string>
+  }[]
+  output_schema: Record<string, any>
 }
 
 export type PluginManifestInMarket = {
@@ -461,15 +561,18 @@ export type StrategyDetail = {
   features: AgentFeature[]
 }
 
+export type Identity = {
+  author: string
+  name: string
+  label: Record<Locale, string>
+  description: Record<Locale, string>
+  icon: string
+  icon_dark?: string
+  tags: string[]
+}
+
 export type StrategyDeclaration = {
-  identity: {
-    author: string
-    name: string
-    description: Record<Locale, string>
-    icon: string
-    label: Record<Locale, string>
-    tags: string[]
-  },
+  identity: Identity,
   plugin_id: string
   strategies: StrategyDetail[]
 }

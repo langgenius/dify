@@ -28,8 +28,6 @@ export type PluginDefaultValue = {
   provider_id: string
   provider_type: string
   provider_name: string
-  plugin_name: string
-  plugin_label: string
 }
 
 export type TriggerDefaultValue = PluginDefaultValue & {
@@ -46,10 +44,7 @@ export type TriggerDefaultValue = PluginDefaultValue & {
 }
 
 export type ToolDefaultValue = PluginDefaultValue & {
-  provider_id: string
-  provider_type: string
-  provider_name: string
-  trigger_name: string
+  tool_name: string
   tool_label: string
   tool_description: string
   title: string
@@ -81,7 +76,7 @@ export type TriggerParameter = {
   label: TypeWithI18N
   description?: TypeWithI18N
   type: 'string' | 'number' | 'boolean' | 'select' | 'file' | 'files'
-        | 'model-selector' | 'app-selector' | 'object' | 'array' | 'dynamic-select'
+  | 'model-selector' | 'app-selector' | 'object' | 'array' | 'dynamic-select'
   auto_generate?: {
     type: string
     value?: any
@@ -105,7 +100,7 @@ export type TriggerParameter = {
 
 export type TriggerCredentialField = {
   type: 'secret-input' | 'text-input' | 'select' | 'boolean'
-        | 'app-selector' | 'model-selector' | 'tools-selector'
+  | 'app-selector' | 'model-selector' | 'tools-selector'
   name: string
   scope?: string | null
   required: boolean
@@ -173,27 +168,44 @@ export type TriggerWithProvider = Collection & {
 // ===== API Service Types =====
 
 // Trigger subscription instance types
-export type TriggerSubscription = {
-  id: string
-  name: string
-  provider: string
-  credential_type: 'api_key' | 'oauth2' | 'unauthorized'
-  credentials: Record<string, any>
-  endpoint: string
-  parameters: Record<string, any>
-  properties: Record<string, any>
+
+export enum TriggerCredentialTypeEnum {
+  ApiKey = 'api-key',
+  Oauth2 = 'oauth2',
+  Unauthorized = 'unauthorized',
 }
 
-export type TriggerSubscriptionBuilder = {
+type TriggerSubscriptionStructure = {
   id: string
   name: string
   provider: string
+  credential_type: TriggerCredentialTypeEnum
+  credentials: TriggerSubCredentials
   endpoint: string
-  parameters: Record<string, any>
-  properties: Record<string, any>
-  credentials: Record<string, any>
-  credential_type: 'api_key' | 'oauth2' | 'unauthorized'
+  parameters: TriggerSubParameters
+  properties: TriggerSubProperties
 }
+
+export type TriggerSubscription = TriggerSubscriptionStructure
+
+export type TriggerSubCredentials = {
+  access_tokens: string
+}
+
+export type TriggerSubParameters = {
+  repository: string
+  webhook_secret?: string
+}
+
+export type TriggerSubProperties = {
+  active: boolean
+  events: string[]
+  external_id: string
+  repository: string
+  webhook_secret?: string
+}
+
+export type TriggerSubscriptionBuilder = TriggerSubscriptionStructure
 
 // OAuth configuration types
 export type TriggerOAuthConfig = {

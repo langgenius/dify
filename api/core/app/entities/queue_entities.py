@@ -51,6 +51,10 @@ class QueueEvent(StrEnum):
     PING = "ping"
     STOP = "stop"
     RETRY = "retry"
+    TRIGGER_LISTENING_STARTED = "trigger_listening_started"
+    TRIGGER_TRIGGERED = "trigger_triggered"
+    TRIGGER_NODE_FINISHED = "trigger_node_finished"
+    TRIGGER_LISTENING_TIMEOUT = "trigger_listening_timeout"
 
 
 class AppQueueEvent(BaseModel):
@@ -716,6 +720,54 @@ class QueueParallelBranchRunSucceededEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: Optional[str] = None
     """loop id if node is in loop"""
+
+
+class QueueTriggerListeningStartedEvent(AppQueueEvent):
+    """
+    QueueTriggerListeningStartedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.TRIGGER_LISTENING_STARTED
+    session_id: str
+    webhook_url: str
+    timeout: int
+
+
+class QueueTriggerTriggeredEvent(AppQueueEvent):
+    """
+    QueueTriggerTriggeredEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.TRIGGER_TRIGGERED
+    subscription_id: str
+    triggers: list[str]
+    request_id: str
+    timestamp: float
+
+
+class QueueTriggerNodeFinishedEvent(AppQueueEvent):
+    """
+    QueueTriggerNodeFinishedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.TRIGGER_NODE_FINISHED
+    id: str
+    node_id: str
+    node_type: str
+    status: str
+    outputs: Optional[Mapping[str, Any]] = None
+    error: Optional[str] = None
+    elapsed_time: Optional[float] = None
+    execution_metadata: Optional[Mapping[str, Any]] = None
+
+
+class QueueTriggerListeningTimeoutEvent(AppQueueEvent):
+    """
+    QueueTriggerListeningTimeoutEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.TRIGGER_LISTENING_TIMEOUT
+    error: str = "Timeout waiting for trigger"
 
 
 class QueueParallelBranchRunFailedEvent(AppQueueEvent):

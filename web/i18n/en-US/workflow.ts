@@ -1173,6 +1173,11 @@ const translation = {
     back: 'Back',
     learnMore: 'Learn more',
     aboutStartNode: 'about start node.',
+    escTip: {
+      press: 'Press',
+      key: 'esc',
+      toDismiss: 'to dismiss',
+    },
   },
 }
 

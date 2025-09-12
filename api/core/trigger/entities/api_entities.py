@@ -23,6 +23,7 @@ class TriggerProviderSubscriptionApiEntity(BaseModel):
     endpoint: str = Field(description="The endpoint of the subscription")
     parameters: dict = Field(description="The parameters of the subscription")
     properties: dict = Field(description="The properties of the subscription")
+    workflows_in_use: int = Field(description="The number of workflows using this subscription")
 
 
 class TriggerApiEntity(BaseModel):

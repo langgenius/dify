@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -288,6 +288,54 @@ class Workflow(Base):
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
+
+    def walk_nodes(
+        self, specific_node_type: NodeType | None = None
+    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+        """
+        Walk through the workflow nodes, yield each node configuration.
+
+        Each node configuration is a tuple containing the node's id and the node's properties.
+
+        Node properties example:
+        {
+            "type": "llm",
+            "title": "LLM",
+            "desc": "",
+            "variables": [],
+            "model":
+              {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": { "temperature": 0.7 },
+              },
+            "prompt_template": [{ "role": "system", "text": "" }],
+            "context": { "enabled": false, "variable_selector": [] },
+            "vision": { "enabled": false },
+            "memory":
+              {
+                "window": { "enabled": false, "size": 10 },
+                "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+                "role_prefix": { "user": "", "assistant": "" },
+              },
+            "selected": false,
+        }
+
+        For specific node type, refer to `core.workflow.nodes`
+        """
+        graph_dict = self.graph_dict
+        if "nodes" not in graph_dict:
+            raise WorkflowDataError("nodes not found in workflow graph")
+
+        if specific_node_type:
+            yield from (
+                (node["id"], node["data"])
+                for node in graph_dict["nodes"]
+                if node["data"]["type"] == specific_node_type.value
+            )
+        else:
+            yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
 
     def user_input_form(self, to_old_structure: bool = False) -> list:
         # get start node from graph
@@ -1396,7 +1444,6 @@ class WorkflowWebhookTrigger(Base):
     - node_id (varchar) Node ID which node in the workflow
     - tenant_id (uuid) Workspace ID
     - webhook_id (varchar) Webhook ID for URL: https://api.dify.ai/triggers/webhook/:webhook_id
-    - triggered_by (varchar) Environment: debugger or production
     - created_by (varchar) User ID of the creator
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time
@@ -1406,7 +1453,7 @@ class WorkflowWebhookTrigger(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_webhook_trigger_pkey"),
         sa.Index("workflow_webhook_trigger_tenant_idx", "tenant_id"),
-        sa.UniqueConstraint("app_id", "node_id", "triggered_by", name="uniq_node"),
+        sa.UniqueConstraint("app_id", "node_id", name="uniq_node"),
         sa.UniqueConstraint("webhook_id", name="uniq_webhook_id"),
     )
 
@@ -1415,7 +1462,6 @@ class WorkflowWebhookTrigger(Base):
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
-    triggered_by: Mapped[str] = mapped_column(String(16), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
@@ -1525,3 +1571,60 @@ class AppTrigger(Base):
         default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
     )
+
+
+class WorkflowSchedulePlan(Base):
+    """
+    Workflow Schedule Configuration
+
+    Store schedule configurations for time-based workflow triggers.
+    Uses cron expressions with timezone support for flexible scheduling.
+
+    Attributes:
+    - id (uuid) Primary key
+    - app_id (uuid) App ID to bind to a specific app
+    - node_id (varchar) Starting node ID for workflow execution
+    - tenant_id (uuid) Workspace ID for multi-tenancy
+    - cron_expression (varchar) Cron expression defining schedule pattern
+    - timezone (varchar) Timezone for cron evaluation (e.g., 'Asia/Shanghai')
+    - next_run_at (timestamp) Next scheduled execution time
+    - created_at (timestamp) Creation timestamp
+    - updated_at (timestamp) Last update timestamp
+    """
+
+    __tablename__ = "workflow_schedule_plans"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_schedule_plan_pkey"),
+        sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node"),
+        sa.Index("workflow_schedule_plan_next_idx", "next_run_at"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+    # Schedule configuration
+    cron_expression: Mapped[str] = mapped_column(String(255), nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    # Schedule control
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary representation"""
+        return {
+            "id": self.id,
+            "app_id": self.app_id,
+            "node_id": self.node_id,
+            "tenant_id": self.tenant_id,
+            "cron_expression": self.cron_expression,
+            "timezone": self.timezone,
+            "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }

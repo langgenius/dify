@@ -1173,6 +1173,11 @@ const translation = {
     back: '戻る',
     learnMore: '詳細を見る',
     aboutStartNode: '開始ノードについて。',
+    escTip: {
+      press: '',
+      key: 'esc',
+      toDismiss: 'キーで閉じる',
+    },
   },
 }
 

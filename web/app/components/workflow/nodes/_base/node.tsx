@@ -304,13 +304,13 @@ const BaseNode: FC<BaseNodeProps> = ({
         </div>
         {
           data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
-            cloneElement(children, { data } as any)
+            cloneElement(children, { id, data } as any)
           )
         }
         {
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && (
             <div className='grow pb-1 pl-1 pr-1'>
-              {cloneElement(children, { data } as any)}
+              {cloneElement(children, { id, data } as any)}
             </div>
           )
         }

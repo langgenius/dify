@@ -1,10 +1,12 @@
 import json
 import logging
 import mimetypes
+import secrets
 from collections.abc import Mapping
 from typing import Any
 
 from flask import request
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -13,10 +15,13 @@ from configs import dify_config
 from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.types import SegmentType
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import file_factory
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
+from models.model import App
 from models.workflow import AppTrigger, AppTriggerStatus, AppTriggerType, Workflow, WorkflowWebhookTrigger
 from services.async_workflow_service import AsyncWorkflowService
 from services.workflow.entities import TriggerData
@@ -26,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 class WebhookService:
     """Service for handling webhook operations."""
+
+    __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
+    MAX_WEBHOOK_NODES_PER_WORKFLOW = 5  # Maximum allowed webhook nodes per workflow
 
     @classmethod
     def get_webhook_trigger_and_workflow(
@@ -88,7 +96,7 @@ class WebhookService:
         }
 
         # Extract and normalize content type
-        content_type = cls._extract_content_type(request.headers)
+        content_type = cls._extract_content_type(dict(request.headers))
 
         # Route to appropriate extractor based on content type
         extractors = {
@@ -436,7 +444,7 @@ class WebhookService:
             }
 
             # Get validator for the type
-            validator_info = type_validators.get(param_type)
+            validator_info = type_validators.get(SegmentType(param_type))
             if not validator_info:
                 logger.warning("Unknown parameter type: %s for parameter %s", param_type, param_name)
                 return {"valid": True}
@@ -482,7 +490,7 @@ class WebhookService:
             }
 
             # Get validator for the type
-            validator_info = form_validators.get(param_type)
+            validator_info = form_validators.get(SegmentType(param_type))
             if not validator_info:
                 # Unsupported type for form data
                 return {
@@ -591,3 +599,98 @@ class WebhookService:
             response_data = {"message": response_body or "Webhook processed successfully"}
 
         return response_data, status_code
+
+    @classmethod
+    def sync_webhook_relationships(cls, app: App, workflow: Workflow):
+        """
+        Sync webhook relationships in DB.
+
+        1. Check if the workflow has any webhook trigger nodes
+        2. Fetch the nodes from DB, see if there were any webhook records already
+        3. Diff the nodes and the webhook records, create/update/delete the webhook records as needed
+
+        Approach:
+        Frequent DB operations may cause performance issues, using Redis to cache it instead.
+        If any record exists, cache it.
+
+        Limits:
+        - Maximum 5 webhook nodes per workflow
+        """
+
+        class Cache(BaseModel):
+            """
+            Cache model for webhook nodes
+            """
+
+            record_id: str
+            node_id: str
+            webhook_id: str
+
+        nodes_id_in_graph = [node_id for node_id, _ in workflow.walk_nodes(NodeType.TRIGGER_WEBHOOK)]
+
+        # Check webhook node limit
+        if len(nodes_id_in_graph) > cls.MAX_WEBHOOK_NODES_PER_WORKFLOW:
+            raise ValueError(
+                f"Workflow exceeds maximum webhook node limit. "
+                f"Found {len(nodes_id_in_graph)} webhook nodes, maximum allowed is {cls.MAX_WEBHOOK_NODES_PER_WORKFLOW}"
+            )
+
+        not_found_in_cache: list[str] = []
+        for node_id in nodes_id_in_graph:
+            # firstly check if the node exists in cache
+            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}"):
+                not_found_in_cache.append(node_id)
+                continue
+
+        with Session(db.engine) as session:
+            try:
+                # lock the concurrent webhook trigger creation
+                redis_client.lock(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
+                # fetch the non-cached nodes from DB
+                all_records = session.scalars(
+                    select(WorkflowWebhookTrigger).where(
+                        WorkflowWebhookTrigger.app_id == app.id,
+                        WorkflowWebhookTrigger.tenant_id == app.tenant_id,
+                    )
+                ).all()
+
+                nodes_id_in_db = {node.node_id: node for node in all_records}
+
+                # get the nodes not found both in cache and DB
+                nodes_not_found = [node_id for node_id in not_found_in_cache if node_id not in nodes_id_in_db]
+
+                # create new webhook records
+                for node_id in nodes_not_found:
+                    webhook_record = WorkflowWebhookTrigger(
+                        app_id=app.id,
+                        tenant_id=app.tenant_id,
+                        node_id=node_id,
+                        webhook_id=cls.generate_webhook_id(),
+                        created_by=app.created_by,
+                    )
+                    session.add(webhook_record)
+                    cache = Cache(record_id=webhook_record.id, node_id=node_id, webhook_id=webhook_record.webhook_id)
+                    redis_client.set(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}", cache.model_dump_json(), ex=60 * 60)
+                session.commit()
+
+                # delete the nodes not found in the graph
+                for node_id in nodes_id_in_db:
+                    if node_id not in nodes_id_in_graph:
+                        session.delete(nodes_id_in_db[node_id])
+                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}")
+                session.commit()
+            except Exception:
+                logger.exception("Failed to sync webhook relationships for app %s", app.id)
+                raise
+            finally:
+                redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock")
+
+    @classmethod
+    def generate_webhook_id(cls) -> str:
+        """
+        Generate unique 24-character webhook ID
+
+        Deduplication is not needed, DB already has unique constraint on webhook_id.
+        """
+        # Generate 24-character random string
+        return secrets.token_urlsafe(18)[:24]  # token_urlsafe gives base64url, take first 24 chars

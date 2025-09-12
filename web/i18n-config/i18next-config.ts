@@ -36,6 +36,7 @@ const NAMESPACES = [
   'login',
   'oauth',
   'plugin-tags',
+  'plugin-trigger',
   'plugin',
   'register',
   'run-log',
