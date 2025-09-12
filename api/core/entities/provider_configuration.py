@@ -196,8 +196,8 @@ class ProviderConfiguration(BaseModel):
         Get custom configuration status.
         :return:
         """
-        if not self.is_custom_configuration_available():
-            return CustomConfigurationStatus.NO_CONFIGURE
+        if self.is_custom_configuration_available():
+            return CustomConfigurationStatus.ACTIVE
 
         provider = self.custom_configuration.provider
         if provider and hasattr(provider, "current_credential_status"):
@@ -205,7 +205,7 @@ class ProviderConfiguration(BaseModel):
             if status:
                 return status
 
-        return CustomConfigurationStatus.ACTIVE
+        return CustomConfigurationStatus.NO_CONFIGURE
 
     def is_custom_configuration_available(self) -> bool:
         """
