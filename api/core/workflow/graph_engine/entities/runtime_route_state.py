@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum, auto
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -11,12 +11,12 @@ from libs.datetime_utils import naive_utc_now
 
 
 class RouteNodeState(BaseModel):
-    class Status(Enum):
-        RUNNING = "running"
-        SUCCESS = "success"
-        FAILED = "failed"
-        PAUSED = "paused"
-        EXCEPTION = "exception"
+    class Status(StrEnum):
+        RUNNING = auto()
+        SUCCESS = auto()
+        FAILED = auto()
+        PAUSED = auto()
+        EXCEPTION = auto()
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     """node state id"""

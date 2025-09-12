@@ -3,7 +3,7 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from sqlalchemy import select
@@ -64,9 +64,9 @@ class AppMode(StrEnum):
         raise ValueError(f"invalid mode value {value}")
 
 
-class IconType(Enum):
-    IMAGE = "image"
-    EMOJI = "emoji"
+class IconType(StrEnum):
+    IMAGE = auto()
+    EMOJI = auto()
 
 
 class App(Base):
@@ -153,15 +153,15 @@ class App(Base):
         if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
-            self.mode = AppMode.AGENT_CHAT.value
+            self.mode = AppMode.AGENT_CHAT
             db.session.commit()
             return True
         return False
 
     @property
     def mode_compatible_with_agent(self) -> str:
-        if self.mode == AppMode.CHAT.value and self.is_agent:
-            return AppMode.AGENT_CHAT.value
+        if self.mode == AppMode.CHAT and self.is_agent:
+            return AppMode.AGENT_CHAT
 
         return str(self.mode)
 
@@ -717,7 +717,7 @@ class Conversation(Base):
         model_config = {}
         app_model_config: Optional[AppModelConfig] = None
 
-        if self.mode == AppMode.ADVANCED_CHAT.value:
+        if self.mode == AppMode.ADVANCED_CHAT:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
                 model_config = override_model_configs
@@ -1467,6 +1467,14 @@ class OperationLog(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     created_ip: Mapped[str] = mapped_column(String(255), nullable=False)
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class DefaultEndUserSessionID(StrEnum):
+    """
+    End User Session ID enum.
+    """
+
+    DEFAULT_SESSION_ID = "DEFAULT-USER"
 
 
 class EndUser(Base, UserMixin):

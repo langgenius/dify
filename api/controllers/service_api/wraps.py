@@ -13,14 +13,13 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
-from core.file.constants import DEFAULT_SERVICE_API_USER_ID
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, EndUser
+from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
 from services.feature_service import FeatureService
 
 P = ParamSpec("P")
@@ -273,7 +272,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     Create or update session terminal based on user ID.
     """
     if not user_id:
-        user_id = DEFAULT_SERVICE_API_USER_ID
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 
     with Session(db.engine, expire_on_commit=False) as session:
         end_user = session.scalars(
@@ -292,7 +291,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type="service_api",
-                is_anonymous=user_id == DEFAULT_SERVICE_API_USER_ID,
+                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value,
                 session_id=user_id,
             )
             session.add(end_user)

@@ -1,8 +1,8 @@
-import enum
 import importlib.util
 import json
 import logging
 import os
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import Any, Optional
 
@@ -13,9 +13,9 @@ from core.helper.position_helper import sort_to_dict_by_position_map
 logger = logging.getLogger(__name__)
 
 
-class ExtensionModule(enum.Enum):
-    MODERATION = "moderation"
-    EXTERNAL_DATA_TOOL = "external_data_tool"
+class ExtensionModule(StrEnum):
+    MODERATION = auto()
+    EXTERNAL_DATA_TOOL = auto()
 
 
 class ModuleExtension(BaseModel):

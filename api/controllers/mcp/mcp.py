@@ -153,7 +153,7 @@ class MCPAppApi(Resource):
     def _get_user_input_form(self, app: App) -> list[VariableEntity]:
         """Get and convert user input form"""
         # Get raw user input form based on app mode
-        if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             if not app.workflow:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
             raw_user_input_form = app.workflow.user_input_form(to_old_structure=True)
