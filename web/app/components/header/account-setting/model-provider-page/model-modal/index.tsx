@@ -114,7 +114,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const formRef1 = useRef<FormRefObject>(null)
   const [selectedCredential, setSelectedCredential] = useState<Credential & { addNewCredential?: boolean } | undefined>()
   const formRef2 = useRef<FormRefObject>(null)
-  const isEditMode = !!Object.keys(formSchemasValue || {}).filter((key) => {
+  const isEditMode = !!credential && !!Object.keys(formSchemasValue || {}).filter((key) => {
     return key !== '__model_name' && key !== '__model_type' && !!formValues[key]
   }).length && isCurrentWorkspaceManager
 
