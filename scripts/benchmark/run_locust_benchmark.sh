@@ -40,9 +40,25 @@ echo -e "${YELLOW}Checking services...${NC}"
 # Check Dify API
 if curl -s -f http://localhost:5001/health > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Dify API is running${NC}"
+    
+    # Warn if running in debug mode (check for werkzeug in process)
+    if ps aux | grep -v grep | grep -q "werkzeug.*5001\|flask.*run.*5001"; then
+        echo -e "${YELLOW}⚠ WARNING: API appears to be running in debug mode (Flask development server)${NC}"
+        echo -e "${YELLOW}  This will give inaccurate benchmark results!${NC}"
+        echo -e "${YELLOW}  For accurate benchmarking, restart with Gunicorn:${NC}"
+        echo -e "${CYAN}  cd api && uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent app:app${NC}"
+        echo
+        echo -n "Continue anyway? (not recommended) [y/N]: "
+        read -t 10 continue_debug || continue_debug="n"
+        if [ "$continue_debug" != "y" ] && [ "$continue_debug" != "Y" ]; then
+            echo -e "${RED}Benchmark cancelled. Please restart API with Gunicorn.${NC}"
+            exit 1
+        fi
+    fi
 else
     echo -e "${RED}✗ Dify API is not running on port 5001${NC}"
-    echo -e "${YELLOW}  Start it with: ./dev/start-api${NC}"
+    echo -e "${YELLOW}  Start it with Gunicorn for accurate benchmarking:${NC}"
+    echo -e "${CYAN}  cd api && uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent app:app${NC}"
     exit 1
 fi
 
@@ -93,6 +109,9 @@ echo -n "Choice [1]: "
 read -t 10 choice || choice="1"
 echo
 
+# Use SSE benchmark script
+LOCUST_SCRIPT="${BENCHMARK_DIR}/sse_benchmark.py"
+
 # Prepare Locust command
 if [ "$choice" = "2" ]; then
     echo -e "${BLUE}Starting Locust with Web UI...${NC}"
@@ -101,7 +120,7 @@ if [ "$choice" = "2" ]; then
     
     # Run with web UI
     uv --project api run locust \
-        -f ${BENCHMARK_DIR}/locust_sse_benchmark.py \
+        -f ${LOCUST_SCRIPT} \
         --host http://localhost:5001 \
         --web-port 8089
 else
@@ -110,7 +129,7 @@ else
     
     # Run in headless mode with CSV output
     uv --project api run locust \
-        -f ${BENCHMARK_DIR}/locust_sse_benchmark.py \
+        -f ${LOCUST_SCRIPT} \
         --host http://localhost:5001 \
         --users $USERS \
         --spawn-rate $SPAWN_RATE \

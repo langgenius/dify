@@ -26,62 +26,61 @@ The benchmark focuses on four critical SSE performance indicators:
 - **Detailed Reports**: Final statistics with overall rates and averages
 - **Easy Configuration**: Uses existing API key configuration from setup
 
-## Test Types Explained
+## What Gets Measured
 
-The benchmark suite includes 4 different test measurements:
+The benchmark focuses on SSE streaming performance with these key metrics:
 
-### 1. **Workflow SSE Stream** (POST)
+### Primary Endpoint: `/v1/workflows/run`
 
-- **Purpose**: Tests individual SSE streaming requests with full event processing
-- **What it does**:
-  - Sends a workflow request with a random question
-  - Establishes SSE connection and waits for response
-  - Processes every event in the stream until completion
-  - Tracks detailed metrics for each event
-- **Metrics captured**:
-  - Initial connection time
-  - Full processing of all SSE events
-  - Total data volume received
-- **Use case**: Measuring end-to-end streaming performance under normal conditions
+The benchmark tests a single endpoint with comprehensive SSE metrics tracking:
 
-### 2. **Workflow SSE Burst** (POST)
+- **Request Type**: POST request to workflow execution API
+- **Response Type**: Server-Sent Events (SSE) stream
+- **Payload**: Random questions from a configurable pool
+- **Concurrency**: Configurable from 1 to 1000+ simultaneous users
 
-- **Purpose**: Stress tests the system with rapid-fire requests
-- **What it does**:
-  - Sends 3 consecutive requests without waiting between them
-  - Simulates burst traffic patterns
-  - Consumes events but with minimal processing
-  - Tests system's ability to handle concurrent streams
-- **Metrics captured**:
-  - Connection establishment time under load
-  - System behavior during traffic spikes
-- **Use case**: Testing system resilience and concurrent connection handling
+### Key Performance Metrics
 
-### 3. **Time to First Event** (SSE_METRICS)
+#### 1. **Active Connections**
 
-- **Purpose**: Measures initial response latency for SSE streams
-- **What it measures**:
-  - Time from request sent to first SSE event received
-  - Critical for user experience (perceived responsiveness)
-  - Indicates server processing overhead before streaming begins
-- **Why it matters**:
-  - Users see activity faster with lower TTFE
-  - Helps identify bottlenecks in request processing
-  - Key metric for streaming applications
-- **Good values**: < 100ms excellent, < 500ms acceptable
+- **What it measures**: Number of concurrent SSE connections open at any moment
+- **Why it matters**: Shows system's ability to handle parallel streams
+- **Good values**: Should remain stable under load without drops
 
-### 4. **Stream Duration** (SSE_METRICS)
+#### 2. **Connection Rate (conn/sec)**
 
-- **Purpose**: Measures total time for complete SSE stream transmission
-- **What it measures**:
-  - Time from first event to last event (workflow_finished)
-  - Total duration of active streaming
-  - Excludes initial connection time
-- **Why it matters**:
-  - Indicates actual content generation/transmission time
-  - Helps identify if streams are taking too long
-  - Important for timeout configuration
-- **Expected values**: Varies by workflow complexity (500ms - 5s typical)
+- **What it measures**: How fast new SSE connections are established
+- **Why it matters**: Indicates system's ability to handle connection spikes
+- **Good values**:
+  - Light load: 5-10 conn/sec
+  - Medium load: 20-50 conn/sec  
+  - Heavy load: 100+ conn/sec
+
+#### 3. **Time to First Event (TTFE)**
+
+- **What it measures**: Latency from request sent to first SSE event received
+- **Why it matters**: Critical for user experience - faster TTFE = better perceived performance
+- **Good values**:
+  - Excellent: < 50ms
+  - Good: 50-100ms
+  - Acceptable: 100-500ms
+  - Poor: > 500ms
+
+#### 4. **Event Throughput (events/sec)**
+
+- **What it measures**: Rate of SSE events being delivered across all connections
+- **Why it matters**: Shows actual data delivery performance
+- **Expected values**: Depends on workflow complexity and number of connections
+  - Single connection: 10-20 events/sec
+  - 10 connections: 50-100 events/sec
+  - 100 connections: 200-500 events/sec
+
+#### 5. **Request/Response Times**
+
+- **P50 (Median)**: 50% of requests complete within this time
+- **P95**: 95% of requests complete within this time  
+- **P99**: 99% of requests complete within this time
+- **Min/Max**: Best and worst case response times
 
 ## Prerequisites
 
@@ -97,8 +96,42 @@ The benchmark suite includes 4 different test measurements:
    ```
 
 3. **Ensure services are running**:
-   - Dify API server on port 5001 (`./dev/start-api`)
-   - Mock OpenAI server on port 5004 (`python scripts/benchmark/setup/mock_openai_server.py`)
+
+   **IMPORTANT**: For accurate benchmarking, run the API server with Gunicorn in production mode:
+
+   ```bash
+   # Run from the api directory
+   cd api
+   uv run gunicorn \
+     --bind 0.0.0.0:5001 \
+     --workers 4 \
+     --worker-class gevent \
+     --timeout 120 \
+     --keep-alive 5 \
+     --log-level info \
+     --access-logfile - \
+     --error-logfile - \
+     app:app
+   ```
+
+   **Configuration options explained**:
+   - `--workers 4`: Number of worker processes (adjust based on CPU cores)
+   - `--worker-class gevent`: Async worker for handling concurrent connections
+   - `--timeout 120`: Worker timeout for long-running requests
+   - `--keep-alive 5`: Keep connections alive for SSE streaming
+
+   **NOT RECOMMENDED for benchmarking**:
+
+   ```bash
+   # Debug mode - DO NOT use for benchmarking (slow performance)
+   ./dev/start-api  # This runs Flask in debug mode with single-threaded execution
+   ```
+
+   **Also start the Mock OpenAI server**:
+
+   ```bash
+   python scripts/benchmark/setup/mock_openai_server.py
+   ```
 
 ## Running the Benchmark
 
@@ -107,10 +140,10 @@ The benchmark suite includes 4 different test measurements:
 ./scripts/benchmark/run_locust_benchmark.sh
 
 # Or run directly with uv
-uv run --project api python -m locust -f scripts/benchmark/locust_sse_benchmark.py --host http://localhost:5001
+uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py --host http://localhost:5001
 
 # Run with Web UI (access at http://localhost:8089)
-uv run --project api python -m locust -f scripts/benchmark/locust_sse_benchmark.py --host http://localhost:5001 --web-port 8089
+uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py --host http://localhost:5001 --web-port 8089
 ```
 
 The script will:
@@ -133,7 +166,7 @@ headless = true      # Run without web UI
 
 ### Custom Question Sets
 
-Modify the questions list in `locust_sse_benchmark.py`:
+Modify the questions list in `sse_benchmark.py`:
 
 ```python
 self.questions = [
@@ -147,10 +180,12 @@ self.questions = [
 
 ### Report Structure
 
-After running the benchmark, you'll find two files in the `reports/` directory:
+After running the benchmark, you'll find these files in the `reports/` directory:
 
-- `benchmark_YYYYMMDD_HHMMSS.txt` - Human-readable report with analysis
-- `benchmark_YYYYMMDD_HHMMSS.json` - Raw statistics from drill
+- `locust_summary_YYYYMMDD_HHMMSS.txt` - Complete console output with metrics
+- `locust_report_YYYYMMDD_HHMMSS.html` - Interactive HTML report with charts
+- `locust_YYYYMMDD_HHMMSS_stats.csv` - CSV with detailed statistics
+- `locust_YYYYMMDD_HHMMSS_stats_history.csv` - Time-series data
 
 ### Key Metrics
 
@@ -174,74 +209,78 @@ After running the benchmark, you'll find two files in the `reports/` directory:
 
 ### Example Output
 
-```
-======================================================================
-Starting Dify SSE Benchmark with Locust
-Target Metrics:
-  - Active SSE connections
-  - New connection rate (conn/sec)
-  - Time to first event (TTFE)
-  - Event throughput (events/sec)
-======================================================================
+```text
+============================================================
+DIFY SSE BENCHMARK
+============================================================
 
-📊 Live Metrics:
-  Active Connections: 8
-  Connection Rate:    2.41 conn/sec
-  Event Throughput:   45.82 events/sec
-  Avg TTFE:          42 ms
-  Total Connections: 24
-  Total Events:      458
+[2025-09-12 15:45:44,468] Starting test run with 10 users at 2 users/sec
+
+============================================================
+SSE Metrics | Active:   8 | Total Conn:   142 | Events:   2841
+Rates: 2.4 conn/s | 47.3 events/s | TTFE: 43ms
+============================================================
 
 Type     Name                          # reqs  # fails |    Avg     Min     Max    Med | req/s  failures/s
 ---------|------------------------------|--------|--------|--------|--------|--------|--------|--------|-----------
-SSE_METRICS  Stream Duration                10   0(0.00%) |    663     523     812    645 |   0.11        0.00
-SSE_METRICS  Time to First Event            10   0(0.00%) |     42      38      51     41 |   0.11        0.00
-POST     Workflow SSE Stream                10   0(0.00%) |     41      38      51     41 |   0.11        0.00
-POST     Workflow SSE Burst                30   0(0.00%) |     45      20     192     38 |   1.38        0.00
+POST     /v1/workflows/run                  142   0(0.00%) |     41      18     192     38 |   2.37        0.00
+---------|------------------------------|--------|--------|--------|--------|--------|--------|--------|-----------
+         Aggregated                         142   0(0.00%) |     41      18     192     38 |   2.37        0.00
 
-======================================================================
-FINAL BENCHMARK RESULTS
-======================================================================
-
-📈 Final Metrics:
-  Total Connections:  156
-  Total Events:       2964
-  Average TTFE:       42 ms
-  TTFE Samples:       156
-
-📊 Overall Rates:
-  Connection Rate:    2.60 conn/sec
-  Event Throughput:   49.40 events/sec
+============================================================
+FINAL RESULTS
+============================================================
+Total Connections: 142
+Total Events:      2841
+Average TTFE:      43 ms
+============================================================
 ```
 
 ### How to Read the Results
 
-**Live Metrics (Updates every 5 seconds):**
+**Live SSE Metrics Box (Updates every 10 seconds):**
 
-- **Active Connections**: Current number of open SSE connections
-- **Connection Rate**: New connections being established per second
-- **Event Throughput**: SSE events being processed per second
-- **Avg TTFE**: Average time to first event across all connections
-- **Total Connections**: Cumulative connection count
-- **Total Events**: Cumulative event count
+```text
+SSE Metrics | Active:   8 | Total Conn:   142 | Events:   2841
+Rates: 2.4 conn/s | 47.3 events/s | TTFE: 43ms
+```
 
-**Standard Locust Metrics:**
+- **Active**: Current number of open SSE connections
+- **Total Conn**: Cumulative connections established
+- **Events**: Total SSE events received
+- **conn/s**: Connection establishment rate
+- **events/s**: Event delivery rate
+- **TTFE**: Average time to first event
 
-- **Type**: Request type (POST for HTTP requests, SSE_METRICS for custom SSE measurements)
-- **Name**: Test name identifying what's being measured
-- **# reqs**: Total number of requests made
-- **# fails**: Number and percentage of failed requests
-- **Avg/Min/Max/Med**: Response time statistics in milliseconds
-- **req/s**: Requests per second throughput
-- **failures/s**: Failed requests per second
+**Standard Locust Table:**
 
-**Key Performance Indicators:**
+```text
+Type     Name                # reqs  # fails |    Avg     Min     Max    Med | req/s
+POST     /v1/workflows/run      142   0(0.00%) |     41      18     192     38 |   2.37
+```
 
-1. **Active Connections** - Should remain stable under load
-2. **Connection Rate** - Higher is better, shows system can handle new connections
-3. **Event Throughput** - Critical metric for streaming performance
-4. **TTFE < 100ms** - Excellent user experience
-5. **Zero failures** - System stability indicator
+- **Type**: Always POST for our SSE requests
+- **Name**: The API endpoint being tested
+- **# reqs**: Total requests made
+- **# fails**: Failed requests (should be 0)
+- **Avg/Min/Max/Med**: Response time percentiles (ms)
+- **req/s**: Request throughput
+
+**Performance Targets:**
+
+✅ **Good Performance**:
+
+- Zero failures (0.00%)
+- TTFE < 100ms
+- Stable active connections
+- Consistent event throughput
+
+⚠️ **Warning Signs**:
+
+- Failures > 1%
+- TTFE > 500ms
+- Dropping active connections
+- Declining event rate over time
 
 ## Test Scenarios
 
@@ -274,6 +313,27 @@ iterations: 10000
 ```
 
 ## Performance Tuning
+
+### API Server Optimization
+
+**Gunicorn Tuning for Different Load Levels**:
+
+```bash
+# Light load (10-50 concurrent users)
+uv run gunicorn --bind 0.0.0.0:5001 --workers 2 --worker-class gevent app:app
+
+# Medium load (50-200 concurrent users)
+uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent --worker-connections 1000 app:app
+
+# Heavy load (200-1000 concurrent users)
+uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-connections 2000 --max-requests 1000 app:app
+```
+
+**Worker calculation formula**:
+
+- Workers = (2 × CPU cores) + 1
+- For SSE/WebSocket: Use gevent worker class
+- For CPU-bound tasks: Use sync workers
 
 ### System Optimizations
 
@@ -322,8 +382,9 @@ iterations: 10000
 3. **Services not running**:
 
    ```bash
-   # Start Dify API
-   ./dev/start-api
+   # Start Dify API with Gunicorn (production mode)
+   cd api
+   uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent app:app
    
    # Start Mock OpenAI server
    python scripts/benchmark/setup/mock_openai_server.py
@@ -360,15 +421,15 @@ Run Locust directly with custom options:
 
 ```bash
 # With specific user count and spawn rate
-uv run --project api python -m locust -f scripts/benchmark/locust_sse_benchmark.py \
+uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py \
   --host http://localhost:5001 --users 50 --spawn-rate 5
 
 # Generate CSV reports
-uv run --project api python -m locust -f scripts/benchmark/locust_sse_benchmark.py \
+uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py \
   --host http://localhost:5001 --csv reports/results
 
 # Run for specific duration
-uv run --project api python -m locust -f scripts/benchmark/locust_sse_benchmark.py \
+uv run --project api python -m locust -f scripts/benchmark/sse_benchmark.py \
   --host http://localhost:5001 --run-time 5m --headless
 ```
 

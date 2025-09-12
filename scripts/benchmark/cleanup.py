@@ -21,7 +21,7 @@ def cleanup() -> None:
         dirs_to_clean.append(config_dir)
     if reports_dir.exists():
         dirs_to_clean.append(reports_dir)
-    
+
     if not dirs_to_clean:
         log.success("No directories to clean. Everything is already clean.")
         return
@@ -39,7 +39,7 @@ def cleanup() -> None:
             log.info("Config files to be removed:")
             for file in config_files:
                 log.list_item(file.name)
-    
+
     if reports_dir.exists():
         report_files = list(reports_dir.glob("*"))
         if report_files:

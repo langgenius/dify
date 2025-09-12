@@ -39,7 +39,7 @@ class ConfigHelper:
 
     def read_config(self, filename: str) -> dict[str, Any] | None:
         """Read a configuration file.
-        
+
         DEPRECATED: Use read_state() or get_state_section() for new code.
         This method provides backward compatibility.
 
@@ -55,10 +55,10 @@ class ConfigHelper:
                 "admin_config": "admin",
                 "token_config": "auth",
                 "app_config": "app",
-                "api_key_config": "api_key"
+                "api_key_config": "api_key",
             }
             return self.get_state_section(section_map[filename])
-        
+
         config_path = self.get_config_path(filename)
 
         if not config_path.exists():
@@ -73,7 +73,7 @@ class ConfigHelper:
 
     def write_config(self, filename: str, data: dict[str, Any]) -> bool:
         """Write data to a configuration file.
-        
+
         DEPRECATED: Use write_state() or update_state_section() for new code.
         This method provides backward compatibility.
 
@@ -90,10 +90,10 @@ class ConfigHelper:
                 "admin_config": "admin",
                 "token_config": "auth",
                 "app_config": "app",
-                "api_key_config": "api_key"
+                "api_key_config": "api_key",
             }
             return self.update_state_section(section_map[filename], data)
-        
+
         self.ensure_config_dir()
         config_path = self.get_config_path(filename)
 
@@ -146,7 +146,7 @@ class ConfigHelper:
         state_path = self.get_config_path(self.state_file)
         if not state_path.exists():
             return None
-        
+
         try:
             with open(state_path, "r") as f:
                 return json.load(f)
@@ -165,7 +165,7 @@ class ConfigHelper:
         """
         self.ensure_config_dir()
         state_path = self.get_config_path(self.state_file)
-        
+
         try:
             with open(state_path, "w") as f:
                 json.dump(data, f, indent=2)
