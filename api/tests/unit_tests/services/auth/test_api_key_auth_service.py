@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
 
