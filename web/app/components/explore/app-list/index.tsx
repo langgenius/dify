@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { useDebounceFn } from 'ahooks'
 import s from './style.module.css'
@@ -36,7 +36,7 @@ const Apps = ({
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { hasEditPermission } = use(ExploreContext)
+  const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
 
   const [keywords, setKeywords] = useState('')

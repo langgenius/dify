@@ -5,7 +5,7 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import cn from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
@@ -28,7 +28,7 @@ const CSVUploader: FC<Props> = ({
   updateFile,
 }) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)

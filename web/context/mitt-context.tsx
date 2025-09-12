@@ -1,4 +1,4 @@
-import { createContext, use } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useMitt } from '@/hooks/use-mitt'
 import { noop } from 'lodash-es'
 
@@ -19,9 +19,9 @@ export const MittProvider = ({ children }: { children: React.ReactNode }) => {
 }
 
 export const useMittContext = () => {
-  return use(MittContext)
+  return useContext(MittContext)
 }
 
 export function useMittContextSelector<T>(selector: (value: ContextValueType) => T): T {
-  return selector(use(MittContext))
+  return useContextSelector(MittContext, selector)
 }

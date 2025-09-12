@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { intersectionBy } from 'lodash-es'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { v4 as uuid4 } from 'uuid'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
@@ -21,7 +21,7 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import type {
@@ -39,7 +39,7 @@ import {
 
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const { userProfile } = useContext(AppContext)
   const {
     mode,
     dataSets: dataSet,
@@ -52,7 +52,7 @@ const DatasetConfig: FC = () => {
     datasetConfigsRef,
     setDatasetConfigs,
     setRerankSettingModalOpen,
-  } = use(ConfigContext)
+  } = useContext(ConfigContext)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const hasData = dataSet.length > 0

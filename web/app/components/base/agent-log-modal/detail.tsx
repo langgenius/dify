@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { flatten, uniq } from 'lodash-es'
 import ResultPanel from './result'
@@ -28,7 +28,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   log,
 }) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const appDetail = useAppStore(s => s.appDetail)
   const [loading, setLoading] = useState<boolean>(true)

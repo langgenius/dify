@@ -5,7 +5,7 @@ import {
   useCSVDownloader,
 } from 'react-papaparse'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -24,7 +24,7 @@ const CSV_TEMPLATE_QA_CN = [
 const CSVDownload: FC = () => {
   const { t } = useTranslation()
 
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const { CSVDownloader, Type } = useCSVDownloader()
 
   const getTemplate = () => {

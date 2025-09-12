@@ -3,7 +3,7 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import Countdown from '@/app/components/signin/countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -21,7 +21,7 @@ export default function CheckCode() {
   const token = decodeURIComponent(searchParams.get('token') as string)
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
-  const { locale } = use(I18NContext)
+  const { locale } = useContext(I18NContext)
   const redirectUrl = searchParams.get('redirect_url')
 
   const getAppCodeFromRedirectUrl = useCallback(() => {

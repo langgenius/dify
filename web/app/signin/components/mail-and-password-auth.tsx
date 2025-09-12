@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
@@ -22,7 +22,7 @@ const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const { locale } = use(I18NContext)
+  const { locale } = useContext(I18NContext)
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)

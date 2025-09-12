@@ -3,7 +3,7 @@
 import type { MouseEventHandler } from 'react'
 import { useState } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
@@ -24,7 +24,7 @@ type RenameDatasetModalProps = {
 
 const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDatasetModalProps) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
   const [description, setDescription] = useState<string>(dataset.description)

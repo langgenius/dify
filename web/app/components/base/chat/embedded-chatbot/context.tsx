@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { createContext, use } from 'react'
+import { createContext, useContext } from 'use-context-selector'
 import type {
   ChatConfig,
   ChatItem,
@@ -87,4 +87,4 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   allInputsHidden: false,
   initUserVariables: {},
 })
-export const useEmbeddedChatbotContext = () => use(EmbeddedChatbotContext)
+export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

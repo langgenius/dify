@@ -1,4 +1,4 @@
-import { createContext, use } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import type { DataSet } from '@/models/datasets'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 
@@ -9,9 +9,9 @@ type DatasetDetailContextValue = {
 }
 const DatasetDetailContext = createContext<DatasetDetailContextValue>({})
 
-export const useDatasetDetailContext = () => use(DatasetDetailContext)
+export const useDatasetDetailContext = () => useContext(DatasetDetailContext)
 
 export const useDatasetDetailContextWithSelector = (selector: (value: DatasetDetailContextValue) => any) => {
-  return selector(use(DatasetDetailContext))
+  return useContextSelector(DatasetDetailContext, selector)
 }
 export default DatasetDetailContext

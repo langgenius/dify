@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, use } from 'react'
+import { createContext, useContext } from 'use-context-selector'
 import type { ModelAndParameter } from '../types'
 import { noop } from 'lodash-es'
 
@@ -16,7 +16,7 @@ const DebugWithMultipleModelContext = createContext<DebugWithMultipleModelContex
   onDebugWithMultipleModelChange: noop,
 })
 
-export const useDebugWithMultipleModelContext = () => use(DebugWithMultipleModelContext)
+export const useDebugWithMultipleModelContext = () => useContext(DebugWithMultipleModelContext)
 
 type DebugWithMultipleModelContextProviderProps = {
   children: React.ReactNode

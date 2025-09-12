@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import Modal from '@/app/components/base/modal'
@@ -43,7 +43,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { data: codeBasedExtensionList } = useSWR(

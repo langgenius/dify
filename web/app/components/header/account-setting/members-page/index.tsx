@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InviteModal from './invite-modal'
@@ -12,7 +12,7 @@ import Operation from './operation'
 import TransferOwnership from './operation/transfer-ownership'
 import { fetchMembers } from '@/service/common'
 import I18n from '@/context/i18n'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
 import type { InvitationResult } from '@/models/common'
 import { useProviderContext } from '@/context/provider-context'
@@ -36,9 +36,9 @@ const MembersPage = () => {
     dataset_operator: t('common.members.datasetOperator'),
     normal: t('common.members.normal'),
   }
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useContext(AppContext)
   const { data, mutate } = useSWR(
     {
       url: '/workspaces/current/members',

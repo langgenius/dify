@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
-import { useAppContext } from '@/context/app-context'
+import { useContext } from 'use-context-selector'
+import AppContext from '@/context/app-context'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { Item } from '@/app/components/base/select'
 import { updateUserProfile } from '@/service/common'
@@ -17,9 +17,9 @@ const titleClassName = `
 `
 
 export default function LanguagePage() {
-  const { locale, setLocaleOnClient } = use(I18n)
-  const { userProfile, mutateUserProfile } = useAppContext()
-  const { notify } = use(ToastContext)
+  const { locale, setLocaleOnClient } = useContext(I18n)
+  const { userProfile, mutateUserProfile } = useContext(AppContext)
+  const { notify } = useContext(ToastContext)
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
 

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import React, { useCallback, useState } from 'react'
 import {
   RiDeleteBinLine,
@@ -14,7 +14,7 @@ import {
 import AppIcon from '../base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
@@ -60,7 +60,7 @@ export type IAppInfoProps = {
 
 const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -201,7 +201,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     setShowConfirmDelete(false)
   }, [appDetail, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useContext(AppContext)
 
   if (!appDetail)
     return null

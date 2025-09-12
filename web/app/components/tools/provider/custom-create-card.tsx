@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import {
   RiAddCircleFill,
   RiArrowRightUpLine,
@@ -13,7 +13,7 @@ import { getLanguage } from '@/i18n-config/language'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { createCustomCollection } from '@/service/tools'
 import Toast from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 
 type Props = {
@@ -22,9 +22,9 @@ type Props = {
 
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const language = getLanguage(locale)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceManager } = useContext(AppContext)
 
   const docLink = useDocLink()
   const linkUrl = useMemo(() => {

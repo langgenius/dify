@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -81,7 +81,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 }
 
 export const useLanguage = () => {
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   return locale.replace('-', '_')
 }
 

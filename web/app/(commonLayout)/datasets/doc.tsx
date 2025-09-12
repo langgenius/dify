@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine, RiListUnordered } from '@remixicon/react'
 import TemplateEn from './template/template.en.mdx'
@@ -18,7 +18,7 @@ type DocProps = {
 }
 
 const Doc = ({ apiBaseUrl }: DocProps) => {
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const [toc, setToc] = useState<Array<{ href: string; text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)

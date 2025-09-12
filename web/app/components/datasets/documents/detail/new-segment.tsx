@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
@@ -36,14 +36,15 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   viewNewlyAddedChunk,
 }) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [keywords, setKeywords] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
-  const { fullScreen, toggleFullScreen } = useSegmentListContext()
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,

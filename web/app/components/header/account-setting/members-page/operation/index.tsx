@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment, useMemo } from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { useProviderContext } from '@/context/provider-context'
@@ -45,7 +45,7 @@ const Operation = ({
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
   const handleDeleteMemberOrCancelInvitation = async () => {
     try {

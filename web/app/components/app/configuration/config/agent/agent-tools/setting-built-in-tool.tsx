@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -56,7 +56,7 @@ const SettingBuiltInTool: FC<Props> = ({
   credentialId,
   onAuthorizationItemClick,
 }) => {
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const language = getLanguage(locale)
   const { t } = useTranslation()
   const passedTools = (collection as ToolWithProvider).tools

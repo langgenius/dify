@@ -5,7 +5,7 @@ import {
   RiEditLine,
 } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useStore as useTagStore } from './store'
 import Confirm from '@/app/components/base/confirm'
@@ -25,7 +25,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
   tag,
 }) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
 

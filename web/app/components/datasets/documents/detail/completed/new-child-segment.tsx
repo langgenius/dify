@@ -1,11 +1,11 @@
 import { memo, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
-import { useDocumentContext } from '../index'
+import { DocumentContext } from '../index'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
@@ -34,16 +34,17 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   viewNewlyAddedChildChunk,
 }) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const [content, setContent] = useState('')
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
-  const { fullScreen, toggleFullScreen } = useSegmentListContext()
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
-  const { parentMode } = useDocumentContext()
+  const { parentMode } = useContext(DocumentContext)
 
   const refreshTimer = useRef<any>(null)
 

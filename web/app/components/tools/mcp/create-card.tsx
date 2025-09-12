@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import {
   RiAddCircleFill,
   RiArrowRightUpLine,
@@ -10,7 +10,7 @@ import {
 import MCPModal from './modal'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useCreateMCP } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 
@@ -20,9 +20,9 @@ type Props = {
 
 const NewMCPCard = ({ handleCreate }: Props) => {
   const { t } = useTranslation()
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const language = getLanguage(locale)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceManager } = useContext(AppContext)
 
   const { mutateAsync: createMCP } = useCreateMCP()
 

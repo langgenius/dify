@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { omit } from 'lodash-es'
 import { useBoolean } from 'ahooks'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { RiApps2Line, RiFocus2Line, RiHistoryLine } from '@remixicon/react'
 import Textarea from './textarea'
 import s from './style.module.css'
@@ -63,7 +63,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const total = recordsRes?.total || 0
 
-  const { dataset: currentDataset } = use(DatasetDetailContext)
+  const { dataset: currentDataset } = useContext(DatasetDetailContext)
   const isExternal = currentDataset?.provider === 'external'
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)

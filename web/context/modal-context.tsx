@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useState } from 'react'
-import { createContext, use } from 'react'
+import { createContext, useContextSelector } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type {
   ConfigurationMethodEnum,
@@ -30,9 +30,6 @@ import dynamic from 'next/dynamic'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-type ModalContextProviderProps = {
-  children: React.ReactNode
-}
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
 })
@@ -127,9 +124,11 @@ const ModalContext = createContext<ModalContextState>({
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
-export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T => {
-  const context = use(ModalContext)
-  return selector(context)
+export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T =>
+  useContextSelector(ModalContext, selector)
+
+type ModalContextProviderProps = {
+  children: React.ReactNode
 }
 
 export const ModalContextProvider = ({
@@ -394,5 +393,4 @@ export const ModalContextProvider = ({
   )
 }
 
-export const useModalContext = () => use(ModalContext)
 export default ModalContext

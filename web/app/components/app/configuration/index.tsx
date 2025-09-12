@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { basePath } from '@/utils/var'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import produce from 'immer'
@@ -51,7 +51,7 @@ import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, Trans
 import { PromptMode } from '@/models/debug'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -82,7 +82,7 @@ import { MittProvider } from '@/context/mitt-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
 import { fetchCollectionList } from '@/service/tools'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 type PublishConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
@@ -90,8 +90,8 @@ type PublishConfig = {
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { notify } = useContext(ToastContext)
+  const { isLoadingCurrentWorkspace, currentWorkspace } = useContext(AppContext)
 
   const { appDetail, showAppConfigureFeaturesModal, setAppSiderbarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -103,7 +103,7 @@ const Configuration: FC = () => {
 
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
-  const { setShowAccountSettingModal } = useModalContext()
+  const { setShowAccountSettingModal } = useContext(ModalContext)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
   const pathname = usePathname()

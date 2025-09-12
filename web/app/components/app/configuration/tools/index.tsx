@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import copy from 'copy-to-clipboard'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -15,7 +15,7 @@ import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import {
   Settings01,
 } from '@/app/components/base/icons/src/vender/line/general'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import AppIcon from '@/app/components/base/app-icon'
 import { useToastContext } from '@/app/components/base/toast'
@@ -23,12 +23,12 @@ import { useToastContext } from '@/app/components/base/toast'
 const Tools = () => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const { setShowExternalDataToolModal } = useModalContext()
+  const { setShowExternalDataToolModal } = useContext(ModalContext)
   const {
     externalDataToolsConfig,
     setExternalDataToolsConfig,
     modelConfig,
-  } = use(ConfigContext)
+  } = useContext(ConfigContext)
   const [expanded, setExpanded] = useState(true)
   const [copied, setCopied] = useState(false)
 
@@ -76,7 +76,12 @@ const Tools = () => {
   const handleOpenExternalDataToolModal = (payload: ExternalDataTool, index: number) => {
     setShowExternalDataToolModal({
       payload,
-      onSaveCallback: (externalDataTool: ExternalDataTool) => handleSaveExternalDataToolModal(externalDataTool, index),
+      onSaveCallback: (externalDataTool?: ExternalDataTool, _formValues?: Record<string, any>) => {
+        if (externalDataTool)
+          handleSaveExternalDataToolModal(externalDataTool, index)
+
+      // handle else if required.
+      },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => handleValidateBeforeSaveExternalDataToolModal(newExternalDataTool, index),
     })
   }

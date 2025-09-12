@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
@@ -159,9 +159,9 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
   retrievalMethod,
 }) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
 
-  const context = use(DocumentContext) as any
+  const context = useContext(DocumentContext) as any
   const datasetId = context?.datasetId || ''
   const documentId = context?.documentId || ''
   const localDatasetId = dstId ?? datasetId

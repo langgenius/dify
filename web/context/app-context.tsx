@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { createContext, use } from 'react'
+import { createContext, useContextSelector } from 'use-context-selector'
 import type { FC, ReactNode } from 'react'
 import { fetchCurrentWorkspace, fetchLangGeniusVersion, fetchUserProfile } from '@/service/common'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
@@ -67,10 +67,8 @@ const AppContext = createContext<AppContextValue>({
   isLoadingCurrentWorkspace: false,
 })
 
-export const useAppContext = () => use(AppContext)
-
-export const useAppContextSelector = <T,>(selector: (value: AppContextValue) => T): T => {
-  return selector(use(AppContext))
+export function useSelector<T>(selector: (value: AppContextValue) => T): T {
+  return useContextSelector(AppContext, selector)
 }
 export type AppContextProviderProps = {
   children: ReactNode

@@ -12,8 +12,8 @@ import {
 } from 'react'
 import {
   createContext,
-  use,
-} from 'react'
+  useContextSelector,
+} from 'use-context-selector'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import type { Plugin } from '../types'
 import {
@@ -101,7 +101,7 @@ type MarketplaceContextProviderProps = {
 }
 
 export function useMarketplaceContext(selector: (value: MarketplaceContextValue) => any) {
-  return selector(use(MarketplaceContext))
+  return useContextSelector(MarketplaceContext, selector)
 }
 
 export const MarketplaceContextProvider = ({

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import copy from 'copy-to-clipboard'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import {
@@ -12,7 +12,7 @@ import {
 import PromptEditor from '@/app/components/base/prompt-editor'
 import type { ExternalDataTool } from '@/models/common'
 import ConfigContext from '@/context/debug-configuration'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import { useToastContext } from '@/app/components/base/toast'
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
 import { noop } from 'lodash-es'
@@ -42,17 +42,18 @@ const Editor: FC<Props> = ({
     showSelectDataSet,
     externalDataToolsConfig,
     setExternalDataToolsConfig,
-  } = use(ConfigContext)
+  } = useContext(ConfigContext)
   const promptVariables = modelConfig.configs.prompt_variables
-  const { setShowExternalDataToolModal } = useModalContext()
+  const { setShowExternalDataToolModal } = useContext(ModalContext)
   const isFirstPrompt = type === 'first-prompt'
   const editorHeight = isFirstPrompt ? 'h-[336px]' : 'h-[52px]'
 
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool, _formValues?: Record<string, any>) => {
+        if (newExternalDataTool)
+          setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {

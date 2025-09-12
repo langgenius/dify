@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { createContext, use } from 'react'
+import { createContext, useContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
 import type {
   AnnotationReplyConfig,
@@ -272,6 +272,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setRerankSettingModalOpen: noop,
 })
 
-export const useDebugConfigurationContext = () => use(DebugConfigurationContext)
+export const useDebugConfigurationContext = () => useContext(DebugConfigurationContext)
 
 export default DebugConfigurationContext

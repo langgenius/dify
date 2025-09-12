@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import type { Tool } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
@@ -14,7 +14,7 @@ type Props = {
 const MCPToolItem = ({
   tool,
 }: Props) => {
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const language = getLanguage(locale)
 
   return (

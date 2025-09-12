@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import LocaleSigninSelect from '@/app/components/base/select/locale-signin'
 import Divider from '@/app/components/base/divider'
 import { languages } from '@/i18n-config/language'
@@ -20,7 +20,7 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 })
 
 const Header = () => {
-  const { locale, setLocaleOnClient } = use(I18n)
+  const { locale, setLocaleOnClient } = useContext(I18n)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   return (

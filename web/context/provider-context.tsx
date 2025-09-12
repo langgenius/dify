@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, use } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
@@ -111,13 +111,12 @@ const ProviderContext = createContext<ProviderContextState>({
   isAllowTransferWorkspace: false,
 })
 
-export { ProviderContext }
-export type { ProviderContextState }
+export const useProviderContext = () => useContext(ProviderContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
 export const useProviderContextSelector = <T,>(selector: (state: ProviderContextState) => T): T =>
-  selector(use(ProviderContext))
+  useContextSelector(ProviderContext, selector)
 
 type ProviderContextProviderProps = {
   children: React.ReactNode
@@ -261,5 +260,4 @@ export const ProviderContextProvider = ({
   )
 }
 
-export const useProviderContext = () => use(ProviderContext)
 export default ProviderContext

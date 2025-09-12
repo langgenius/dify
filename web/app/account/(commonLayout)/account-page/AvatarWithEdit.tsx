@@ -3,7 +3,7 @@
 import type { Area } from 'react-easy-crop'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
 import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
@@ -22,7 +22,7 @@ type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
 const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
 
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)

@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import produce from 'immer'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
@@ -17,7 +17,7 @@ import type { GenRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -70,21 +70,24 @@ const Prompt: FC<ISimplePromptInput> = ({
     hasSetBlockStatus,
     showSelectDataSet,
     externalDataToolsConfig,
-  } = use(ConfigContext)
+  } = useContext(ConfigContext)
   const { notify } = useToastContext()
-  const { setShowExternalDataToolModal } = useModalContext()
+  const { setShowExternalDataToolModal } = useContext(ModalContext)
+
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        eventEmitter?.emit({
-          type: ADD_EXTERNAL_DATA_TOOL,
-          payload: newExternalDataTool,
-        } as any)
-        eventEmitter?.emit({
-          type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-          payload: newExternalDataTool.variable,
-        } as any)
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool, _formValues?: Record<string, any>) => {
+        if (newExternalDataTool) {
+          eventEmitter?.emit({
+            type: ADD_EXTERNAL_DATA_TOOL,
+            payload: newExternalDataTool,
+          } as any)
+          eventEmitter?.emit({
+            type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+            payload: newExternalDataTool.variable,
+          } as any)
+        }
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
@@ -93,7 +96,6 @@ const Prompt: FC<ISimplePromptInput> = ({
             return false
           }
         }
-
         return true
       },
     })

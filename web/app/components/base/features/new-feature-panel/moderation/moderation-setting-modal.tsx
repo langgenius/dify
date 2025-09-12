@@ -1,7 +1,7 @@
 import type { ChangeEvent, FC } from 'react'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import ModerationContent from './moderation-content'
@@ -21,7 +21,7 @@ import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
@@ -49,10 +49,10 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const { data: modelProviders, isLoading, mutate } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
-  const { setShowAccountSettingModal } = useModalContext()
+  const { setShowAccountSettingModal } = useContext(ModalContext)
   const handleOpenSettingsModal = () => {
     setShowAccountSettingModal({
       payload: 'provider',

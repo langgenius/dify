@@ -1,6 +1,6 @@
 'use client'
 import React, { useState } from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import type { Collection, Tool } from '../types'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
@@ -22,7 +22,7 @@ const ToolItem = ({
   isBuiltIn,
   isModel,
 }: Props) => {
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const language = getLanguage(locale)
   const [showDetail, setShowDetail] = useState(false)
 

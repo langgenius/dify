@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { createContext, use } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
-import { useDocumentContext } from '../index'
+import { DocumentContext } from '../index'
 import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import SegmentList from './segment-list'
@@ -49,7 +49,7 @@ import { useInvalid } from '@/service/use-base'
 import { noop } from 'lodash-es'
 
 const useDocumentSelector = (selector: (context: any) => any) => {
-  const context = useDocumentContext()
+  const context = useContext(DocumentContext)
   return selector(context)
 }
 
@@ -82,8 +82,8 @@ const SegmentListContext = createContext<SegmentListContextValue>({
   currChildChunk: { showModal: false },
 })
 
-export const useSegmentListContext = () => {
-  return use(SegmentListContext)
+export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
+  return useContextSelector(SegmentListContext, selector)
 }
 
 type ICompletedProps = {
@@ -105,7 +105,7 @@ const Completed: FC<ICompletedProps> = ({
   archived,
 }) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const pathname = usePathname()
   const datasetId = useDocumentSelector(s => s.datasetId) || ''
   const documentId = useDocumentSelector(s => s.documentId) || ''

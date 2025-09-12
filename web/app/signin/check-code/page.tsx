@@ -3,7 +3,7 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import Countdown from '@/app/components/signin/countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -21,7 +21,7 @@ export default function CheckCode() {
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
-  const { locale } = use(I18NContext)
+  const { locale } = useContext(I18NContext)
 
   const verify = async () => {
     try {

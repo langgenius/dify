@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { RiAccountCircleLine } from '@remixicon/react'
@@ -27,7 +27,7 @@ export default function InviteSettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
-  const { setLocaleOnClient } = use(I18n)
+  const { setLocaleOnClient } = useContext(I18n)
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')

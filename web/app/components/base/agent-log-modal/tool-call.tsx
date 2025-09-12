@@ -5,7 +5,7 @@ import {
   RiCheckboxCircleLine,
   RiErrorWarningLine,
 } from '@remixicon/react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -26,7 +26,7 @@ type Props = {
 
 const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, observation, finalAnswer }) => {
   const [collapseState, setCollapseState] = useState<boolean>(true)
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const toolName = isLLM ? 'LLM' : (toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')])
 
   const getTime = (time: number) => {

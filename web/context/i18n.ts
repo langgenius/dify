@@ -1,7 +1,7 @@
 import {
   createContext,
-  use,
-} from 'react'
+  useContext,
+} from 'use-context-selector'
 import type { Locale } from '@/i18n-config'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
 import { noop } from 'lodash-es'
@@ -20,7 +20,7 @@ const I18NContext = createContext<II18NContext>({
   },
 })
 
-export const useI18N = () => use(I18NContext)
+export const useI18N = () => useContext(I18NContext)
 export const useGetLanguage = () => {
   const { locale } = useI18N()
 
@@ -46,5 +46,4 @@ export const useDocLink = (baseUrl?: string): ((path?: string, pathMap?: { [inde
   }
 }
 
-export const useI18nContext = () => use(I18NContext)
 export default I18NContext

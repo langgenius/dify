@@ -1,10 +1,10 @@
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useStore } from 'zustand'
 import { FeaturesContext } from './context'
 import type { FeatureStoreState } from './store'
 
 export function useFeatures<T>(selector: (state: FeatureStoreState) => T): T {
-  const store = use(FeaturesContext)
+  const store = useContext(FeaturesContext)
   if (!store)
     throw new Error('Missing FeaturesContext.Provider in the tree')
 
@@ -12,5 +12,5 @@ export function useFeatures<T>(selector: (state: FeatureStoreState) => T): T {
 }
 
 export function useFeaturesStore() {
-  return use(FeaturesContext)
+  return useContext(FeaturesContext)
 }

@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { useDebounceFn } from 'ahooks'
 import { RiRobot2Line } from '@remixicon/react'
@@ -22,7 +22,7 @@ import AppTypeSelector from '@/app/components/app/type-selector'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
 import Input from '@/app/components/base/input'
 import type { AppMode } from '@/types/app'
@@ -44,9 +44,9 @@ const Apps = ({
   onCreateFromBlank,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useContext(AppContext)
   const { push } = useRouter()
-  const { hasEditPermission } = use(ExploreContext)
+  const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')

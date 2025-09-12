@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import {
   RiAlertFill,
@@ -52,7 +52,7 @@ const UpdateDSLModal = ({
   onImport,
 }: UpdateDSLModalProps) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(s => s.appDetail)
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()

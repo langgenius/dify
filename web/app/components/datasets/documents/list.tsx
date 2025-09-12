@@ -14,7 +14,7 @@ import {
   RiPauseCircleLine,
   RiPlayCircleLine,
 } from '@remixicon/react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
@@ -92,7 +92,7 @@ export const StatusItem: FC<{
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const { enabled = false, archived = false, id = '' } = detail || {}
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
@@ -191,7 +191,7 @@ export const OperationAction: FC<{
   const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
   const { mutateAsync: archiveDocument } = useDocumentArchive()

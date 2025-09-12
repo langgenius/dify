@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
 import produce from 'immer'
 import {
@@ -37,7 +37,7 @@ type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const { modelConfig, setModelConfig } = use(ConfigContext)
+  const { modelConfig, setModelConfig } = useContext(ConfigContext)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()

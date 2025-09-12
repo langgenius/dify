@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import React from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import Split from '../_base/components/split'
@@ -22,7 +22,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const link = useNodeHelpLink(BlockEnum.DocExtractor)
   const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []

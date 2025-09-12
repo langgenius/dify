@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
@@ -15,7 +15,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { basePath } from '@/utils/var'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
@@ -40,7 +40,7 @@ type CreateAppProps = {
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
 
   const [appMode, setAppMode] = useState<AppMode>('advanced-chat')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
@@ -51,7 +51,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useContext(AppContext)
 
   const isCreatingRef = useRef(false)
 

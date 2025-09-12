@@ -3,7 +3,7 @@ import type { FC, ReactNode } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { PencilIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { get } from 'lodash-es'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
@@ -23,7 +23,7 @@ import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import type { inputType, metadataType } from '@/hooks/use-metadata'
 import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataMap, usePersonalDocCategories } from '@/hooks/use-metadata'
-import { DocumentContext } from '@/app/components/datasets/documents/detail'
+import { useDocumentContext } from '@/app/components/datasets/documents/detail'
 
 const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
@@ -145,10 +145,9 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   const [tempDocType, setTempDocType] = useState<DocType | undefined | ''>('') // for remember icon click
   const [saveLoading, setSaveLoading] = useState(false)
 
-  const { notify } = use(ToastContext)
-  const context = use(DocumentContext) as any
-  const datasetId = context?.datasetId || ''
-  const documentId = context?.documentId || ''
+  const { notify } = useContext(ToastContext)
+  const datasetId = useDocumentContext(s => s.datasetId)
+  const documentId = useDocumentContext(s => s.documentId)
 
   useEffect(() => {
     if (docDetail?.doc_type) {

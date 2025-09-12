@@ -44,6 +44,7 @@ export type UserProfileResponse = {
   last_active_at?: string
   last_login_ip?: string
   created_at?: string
+  account_type?: string // Added to fix TS error
 }
 
 export type UserProfileOriginResponse = {

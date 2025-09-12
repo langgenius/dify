@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useMount } from 'ahooks'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
@@ -20,7 +20,7 @@ import { updateDatasetSetting } from '@/service/datasets'
 import { type DataSetListResponse, DatasetPermission } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
@@ -48,10 +48,10 @@ const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
 const Form = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { mutate } = useSWRConfig()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = use(DatasetDetailContext)
+  const { isCurrentWorkspaceDatasetOperator } = useContext(AppContext)
+  const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')

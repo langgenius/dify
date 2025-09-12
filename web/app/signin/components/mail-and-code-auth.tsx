@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import { emailRegex } from '@/config'
@@ -22,7 +22,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
-  const { locale } = use(I18NContext)
+  const { locale } = useContext(I18NContext)
 
   const handleGetEMailVerificationCode = async () => {
     try {

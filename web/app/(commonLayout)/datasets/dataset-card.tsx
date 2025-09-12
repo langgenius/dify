@@ -1,6 +1,6 @@
 'use client'
 
-import { use } from 'react'
+import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +20,7 @@ import RenameDatasetModal from '@/app/components/datasets/rename-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import CornerLabel from '@/app/components/base/corner-label'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 
 export type DatasetCardProps = {
   dataset: DataSet
@@ -32,11 +32,11 @@ const DatasetCard = ({
   onSuccess,
 }: DatasetCardProps) => {
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { push } = useRouter()
   const EXTERNAL_PROVIDER = 'external' as const
 
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const isCurrentWorkspaceDatasetOperator = useContextSelector(AppContext, v => v.isCurrentWorkspaceDatasetOperator)
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
 
   const [showRenameModal, setShowRenameModal] = useState(false)

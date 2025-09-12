@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import produce from 'immer'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { ContentModeration } from '@/app/components/base/icons/src/vender/features'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
@@ -11,7 +11,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { fetchCodeBasedExtensionList } from '@/service/common'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import I18n from '@/context/i18n'
 
 type Props = {
@@ -24,8 +24,8 @@ const Moderation = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { setShowModerationSettingModal } = useModalContext()
-  const { locale } = use(I18n)
+  const { setShowModerationSettingModal } = useContext(ModalContext)
+  const { locale } = useContext(I18n)
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures(s => s.features.moderation)
   const { data: codeBasedExtensionList } = useSWR(

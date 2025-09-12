@@ -1,7 +1,7 @@
 'use client'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { useMount } from 'ahooks'
 import cn from '@/utils/classnames'
 import { Apps02 } from '@/app/components/base/icons/src/vender/line/others'
@@ -37,7 +37,7 @@ const Category = ({
   onSelect,
 }: Props) => {
   const { t } = useTranslation()
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const language = getLanguage(locale)
   const labelList = useLabelStore(s => s.labelList) as any[]
   const setLabelList = useLabelStore(s => s.setLabelList)

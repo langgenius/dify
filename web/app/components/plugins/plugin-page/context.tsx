@@ -8,8 +8,8 @@ import {
 } from 'react'
 import {
   createContext,
-  use,
-} from 'react'
+  useContextSelector,
+} from 'use-context-selector'
 import type { FilterState } from './filter-management'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { noop } from 'lodash-es'
@@ -47,7 +47,7 @@ type PluginPageContextProviderProps = {
 }
 
 export function usePluginPageContext(selector: (value: PluginPageContextValue) => any) {
-  return selector(use(PluginPageContext))
+  return useContextSelector(PluginPageContext, selector)
 }
 
 export const PluginPageContextProvider = ({
@@ -87,5 +87,3 @@ export const PluginPageContextProvider = ({
     </PluginPageContext.Provider>
   )
 }
-
-export const usePluginPageContextValue = () => use(PluginPageContext)

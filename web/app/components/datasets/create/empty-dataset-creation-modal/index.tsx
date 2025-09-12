@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
@@ -23,7 +23,7 @@ const EmptyDatasetCreationModal = ({
 }: IProps) => {
   const [inputValue, setInputValue] = useState('')
   const { t } = useTranslation()
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const router = useRouter()
 
   const submit = async () => {

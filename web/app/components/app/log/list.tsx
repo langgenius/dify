@@ -11,7 +11,7 @@ import { get } from 'lodash-es'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-import { createContext, use } from 'react'
+import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import type { ChatItemInTree } from '../../base/chat/types'
@@ -32,7 +32,7 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
@@ -197,10 +197,10 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
   const SCROLL_THRESHOLD_PX = 50
   const SCROLL_DEBOUNCE_MS = 200
-  const { userProfile: { timezone } } = useAppContext()
+  const { userProfile: { timezone } } = useContext(AppContext)
   const { formatTime } = useTimestamp()
-  const { onClose, appDetail } = use(DrawerContext)
-  const { notify } = use(ToastContext)
+  const { onClose, appDetail } = useContext(DrawerContext)
+  const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -805,7 +805,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   // Text Generator App Session Details Including Message List
   const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
   const { data: conversationDetail, mutate: conversationDetailMutate } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchCompletionConversationDetail)
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
@@ -850,7 +850,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
 const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
   const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {

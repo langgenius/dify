@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
-import { createContext, use } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
@@ -35,8 +35,8 @@ type DocumentContextValue = {
 
 export const DocumentContext = createContext<DocumentContextValue>({ docForm: '' })
 
-export const useDocumentContext = () => {
-  return use(DocumentContext)
+export const useDocumentContext = (selector: (value: DocumentContextValue) => any) => {
+  return useContextSelector(DocumentContext, selector)
 }
 
 type DocumentTitleProps = {
@@ -82,7 +82,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { notify } = use(ToastContext)
+  const { notify } = useContext(ToastContext)
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
   const [showMetadata, setShowMetadata] = useState(!isMobile)

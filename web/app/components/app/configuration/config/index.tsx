@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
 import DatasetConfig from '../dataset-config'
@@ -28,7 +28,7 @@ const Config: FC = () => {
     modelConfig,
     setModelConfig,
     setPrevPromptConfig,
-  } = use(ConfigContext)
+  } = useContext(ConfigContext)
   const isChatApp = ['advanced-chat', 'agent-chat', 'chat'].includes(mode)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 

@@ -1,7 +1,7 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -40,10 +40,10 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -59,20 +59,20 @@ const ProviderDetail = ({
   onRefreshData,
 }: Props) => {
   const { t } = useTranslation()
-  const { locale } = use(I18n)
+  const { locale } = useContext(I18n)
   const language = getLanguage(locale)
 
   const needAuth = collection.allow_delete || collection.type === CollectionType.model
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceManager } = useContext(AppContext)
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
-  const { setShowModelModal } = useModalContext()
+  const { setShowModelModal } = useContext(ModalContext)
   const { modelProviders: providers } = useProviderContext()
   const showSettingAuthModal = () => {
     if (isModel) {

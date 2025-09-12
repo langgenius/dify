@@ -9,7 +9,7 @@ import {
   RiErrorWarningFill,
   RiInformation2Fill,
 } from '@remixicon/react'
-import { createContext, use } from 'react'
+import { createContext, useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import classNames from '@/utils/classnames'
 import { noop } from 'lodash-es'
@@ -34,7 +34,7 @@ export type ToastHandle = {
 }
 
 export const ToastContext = createContext<IToastContext>({} as IToastContext)
-export const useToastContext = () => use(ToastContext)
+export const useToastContext = () => useContext(ToastContext)
 const Toast = ({
   type = 'info',
   size = 'md',

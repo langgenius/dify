@@ -4,7 +4,7 @@ import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { use } from 'react'
+import { useContext } from 'use-context-selector'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
@@ -22,7 +22,7 @@ export default function CheckCode() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
-  const { locale } = use(I18NContext)
+  const { locale } = useContext(I18NContext)
 
   const handleGetEMailVerificationCode = async () => {
     try {
