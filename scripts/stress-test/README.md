@@ -7,9 +7,9 @@ A high-performance stress test suite for Dify workflow execution using **Locust*
 The stress test focuses on four critical SSE performance indicators:
 
 1. **Active SSE Connections** - Real-time count of open SSE connections
-2. **New Connection Rate** - Connections per second (conn/sec)
-3. **Time to First Event (TTFE)** - Latency until first SSE event arrives
-4. **Event Throughput** - Events per second (events/sec)
+1. **New Connection Rate** - Connections per second (conn/sec)
+1. **Time to First Event (TTFE)** - Latency until first SSE event arrives
+1. **Event Throughput** - Events per second (events/sec)
 
 ## Features
 
@@ -53,7 +53,7 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
 - **Why it matters**: Indicates system's ability to handle connection spikes
 - **Good values**:
   - Light load: 5-10 conn/sec
-  - Medium load: 20-50 conn/sec  
+  - Medium load: 20-50 conn/sec
   - Heavy load: 100+ conn/sec
 
 #### 3. **Time to First Event (TTFE)**
@@ -78,24 +78,25 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
 #### 5. **Request/Response Times**
 
 - **P50 (Median)**: 50% of requests complete within this time
-- **P95**: 95% of requests complete within this time  
+- **P95**: 95% of requests complete within this time
 - **P99**: 99% of requests complete within this time
 - **Min/Max**: Best and worst case response times
 
 ## Prerequisites
 
 1. **Dependencies are automatically installed** when running setup:
+
    - Locust (load testing framework)
    - sseclient-py (SSE client library)
 
-2. **Complete Dify setup**:
+1. **Complete Dify setup**:
 
    ```bash
    # Run the complete setup
    python scripts/stress-test/setup_all.py
    ```
 
-3. **Ensure services are running**:
+1. **Ensure services are running**:
 
    **IMPORTANT**: For accurate stress testing, run the API server with Gunicorn in production mode:
 
@@ -115,6 +116,7 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
    ```
 
    **Configuration options explained**:
+
    - `--workers 4`: Number of worker processes (adjust based on CPU cores)
    - `--worker-class gevent`: Async worker for handling concurrent connections
    - `--timeout 120`: Worker timeout for long-running requests
@@ -149,9 +151,9 @@ uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py --
 The script will:
 
 1. Validate that all required services are running
-2. Check API token availability
-3. Execute the Locust stress test with SSE support
-4. Generate comprehensive reports in the `reports/` directory
+1. Check API token availability
+1. Execute the Locust stress test with SSE support
+1. Generate comprehensive reports in the `reports/` directory
 
 ## Configuration
 
@@ -343,18 +345,18 @@ uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-c
    ulimit -n 65536
    ```
 
-2. **TCP tuning for high concurrency** (Linux):
+1. **TCP tuning for high concurrency** (Linux):
 
    ```bash
    # Increase TCP buffer sizes
    sudo sysctl -w net.core.rmem_max=134217728
    sudo sysctl -w net.core.wmem_max=134217728
-   
+
    # Enable TCP fast open
    sudo sysctl -w net.ipv4.tcp_fastopen=3
    ```
 
-3. **macOS specific**:
+1. **macOS specific**:
 
    ```bash
    # Increase maximum connections
@@ -372,31 +374,32 @@ uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-c
    uv --project api add --dev locust sseclient-py
    ```
 
-2. **"API key configuration not found"**:
+1. **"API key configuration not found"**:
 
    ```bash
    # Run setup
    python scripts/stress-test/setup_all.py
    ```
 
-3. **Services not running**:
+1. **Services not running**:
 
    ```bash
    # Start Dify API with Gunicorn (production mode)
    cd api
    uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent app:app
-   
+
    # Start Mock OpenAI server
    python scripts/stress-test/setup/mock_openai_server.py
    ```
 
-4. **High error rate**:
+1. **High error rate**:
+
    - Reduce concurrency level
    - Check system resources (CPU, memory)
    - Review API server logs for errors
    - Increase timeout values if needed
 
-5. **Permission denied running script**:
+1. **Permission denied running script**:
 
    ```bash
    chmod +x run_benchmark.sh
@@ -474,16 +477,16 @@ Investigate:
 Locust was chosen over Drill for this stress test because:
 
 1. **Proper SSE Support**: Correctly handles streaming responses without premature closure
-2. **Custom Metrics**: Can track SSE-specific metrics like TTFE and stream duration
-3. **Web UI**: Real-time monitoring and control via web interface
-4. **Python Integration**: Seamlessly integrates with existing Python setup code
-5. **Extensibility**: Easy to customize for specific testing scenarios
+1. **Custom Metrics**: Can track SSE-specific metrics like TTFE and stream duration
+1. **Web UI**: Real-time monitoring and control via web interface
+1. **Python Integration**: Seamlessly integrates with existing Python setup code
+1. **Extensibility**: Easy to customize for specific testing scenarios
 
 ## Contributing
 
 To improve the stress test suite:
 
 1. Edit `stress_test.yml` for configuration changes
-2. Modify `run_locust_stress_test.sh` for workflow improvements
-3. Update question sets for better coverage
-4. Add new metrics or analysis features
+1. Modify `run_locust_stress_test.sh` for workflow improvements
+1. Update question sets for better coverage
+1. Add new metrics or analysis features
