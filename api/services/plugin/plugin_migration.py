@@ -257,7 +257,7 @@ class PluginMigration:
                 return []
 
             agent_app_model_config_ids = [
-                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT.value
+                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT
             ]
 
             rs = session.query(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids)).all()

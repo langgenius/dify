@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.tools.utils.yaml_utils import load_yaml_file
+from core.tools.utils.yaml_utils import _load_yaml_file
 from core.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -713,4 +713,4 @@ def _load_fixture(fixture_path: Path, fixture_name: str) -> dict[str, Any]:
     if not fixture_path.exists():
         raise FileNotFoundError(f"Fixture file not found: {fixture_path}")
 
-    return load_yaml_file(str(fixture_path), ignore_error=False)
+    return _load_yaml_file(file_path=str(fixture_path))

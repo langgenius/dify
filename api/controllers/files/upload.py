@@ -86,7 +86,7 @@ class PluginUploadFileApi(Resource):
             filename=filename,
             mimetype=mimetype,
             tenant_id=tenant_id,
-            user_id=user_id,
+            user_id=user.id,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,

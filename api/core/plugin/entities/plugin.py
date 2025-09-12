@@ -1,6 +1,6 @@
 import datetime
-import enum
 from collections.abc import Mapping
+from enum import StrEnum, auto
 from typing import Any, Optional
 
 from packaging.version import InvalidVersion, Version
@@ -14,11 +14,11 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
 
 
-class PluginInstallationSource(enum.StrEnum):
-    Github = "github"
-    Marketplace = "marketplace"
-    Package = "package"
-    Remote = "remote"
+class PluginInstallationSource(StrEnum):
+    Github = auto()
+    Marketplace = auto()
+    Package = auto()
+    Remote = auto()
 
 
 class PluginResourceRequirements(BaseModel):
@@ -56,10 +56,10 @@ class PluginResourceRequirements(BaseModel):
     permission: Optional[Permission] = Field(default=None)
 
 
-class PluginCategory(enum.StrEnum):
-    Tool = "tool"
-    Model = "model"
-    Extension = "extension"
+class PluginCategory(StrEnum):
+    Tool = auto()
+    Model = auto()
+    Extension = auto()
     AgentStrategy = "agent-strategy"
 
 
@@ -155,10 +155,10 @@ class PluginEntity(PluginInstallation):
 
 
 class PluginDependency(BaseModel):
-    class Type(enum.StrEnum):
-        Github = PluginInstallationSource.Github.value
-        Marketplace = PluginInstallationSource.Marketplace.value
-        Package = PluginInstallationSource.Package.value
+    class Type(StrEnum):
+        Github = PluginInstallationSource.Github
+        Marketplace = PluginInstallationSource.Marketplace
+        Package = PluginInstallationSource.Package
 
     class Github(BaseModel):
         repo: str

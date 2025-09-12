@@ -131,11 +131,11 @@ class MetadataService:
     @staticmethod
     def get_built_in_fields():
         return [
-            {"name": BuiltInField.document_name.value, "type": "string"},
-            {"name": BuiltInField.uploader.value, "type": "string"},
-            {"name": BuiltInField.upload_date.value, "type": "time"},
-            {"name": BuiltInField.last_update_date.value, "type": "time"},
-            {"name": BuiltInField.source.value, "type": "string"},
+            {"name": BuiltInField.document_name, "type": "string"},
+            {"name": BuiltInField.uploader, "type": "string"},
+            {"name": BuiltInField.upload_date, "type": "time"},
+            {"name": BuiltInField.last_update_date, "type": "time"},
+            {"name": BuiltInField.source, "type": "string"},
         ]
 
     @staticmethod
@@ -153,11 +153,11 @@ class MetadataService:
                         doc_metadata = {}
                     else:
                         doc_metadata = copy.deepcopy(document.doc_metadata)
-                    doc_metadata[BuiltInField.document_name.value] = document.name
-                    doc_metadata[BuiltInField.uploader.value] = document.uploader
-                    doc_metadata[BuiltInField.upload_date.value] = document.upload_date.timestamp()
-                    doc_metadata[BuiltInField.last_update_date.value] = document.last_update_date.timestamp()
-                    doc_metadata[BuiltInField.source.value] = MetadataDataSource[document.data_source_type].value
+                    doc_metadata[BuiltInField.document_name] = document.name
+                    doc_metadata[BuiltInField.uploader] = document.uploader
+                    doc_metadata[BuiltInField.upload_date] = document.upload_date.timestamp()
+                    doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
+                    doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
             dataset.built_in_field_enabled = True
@@ -183,11 +183,11 @@ class MetadataService:
                         doc_metadata = {}
                     else:
                         doc_metadata = copy.deepcopy(document.doc_metadata)
-                    doc_metadata.pop(BuiltInField.document_name.value, None)
-                    doc_metadata.pop(BuiltInField.uploader.value, None)
-                    doc_metadata.pop(BuiltInField.upload_date.value, None)
-                    doc_metadata.pop(BuiltInField.last_update_date.value, None)
-                    doc_metadata.pop(BuiltInField.source.value, None)
+                    doc_metadata.pop(BuiltInField.document_name, None)
+                    doc_metadata.pop(BuiltInField.uploader, None)
+                    doc_metadata.pop(BuiltInField.upload_date, None)
+                    doc_metadata.pop(BuiltInField.last_update_date, None)
+                    doc_metadata.pop(BuiltInField.source, None)
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
                     document_ids.append(document.id)
@@ -211,11 +211,11 @@ class MetadataService:
                 for metadata_value in operation.metadata_list:
                     doc_metadata[metadata_value.name] = metadata_value.value
                 if dataset.built_in_field_enabled:
-                    doc_metadata[BuiltInField.document_name.value] = document.name
-                    doc_metadata[BuiltInField.uploader.value] = document.uploader
-                    doc_metadata[BuiltInField.upload_date.value] = document.upload_date.timestamp()
-                    doc_metadata[BuiltInField.last_update_date.value] = document.last_update_date.timestamp()
-                    doc_metadata[BuiltInField.source.value] = MetadataDataSource[document.data_source_type].value
+                    doc_metadata[BuiltInField.document_name] = document.name
+                    doc_metadata[BuiltInField.uploader] = document.uploader
+                    doc_metadata[BuiltInField.upload_date] = document.upload_date.timestamp()
+                    doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
+                    doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
                 db.session.commit()
