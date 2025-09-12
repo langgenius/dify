@@ -73,7 +73,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace(redirectUrl || '/apps')
         }
       }
-      else if(res.code === 'authentication_failed') {
+      else if (res.code === 'authentication_failed') {
         Toast.notify({
           type: 'error',
           message: t('login.error.invalidEmailOrPassword'),
