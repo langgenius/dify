@@ -203,7 +203,6 @@ class TestBatchCleanDocumentTask:
             UploadFile: Created upload file instance
         """
         fake = Faker()
-        from datetime import datetime
 
         from models.enums import CreatorUserRole
 

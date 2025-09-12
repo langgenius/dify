@@ -12,9 +12,7 @@ def patch_file_helpers(monkeypatch):
     Patch file_helpers.get_signed_file_url to a deterministic stub.
     """
     model_module = importlib.import_module("models.model")
-    dummy = types.SimpleNamespace(
-        get_signed_file_url=lambda fid: f"https://signed.example/{fid}"
-    )
+    dummy = types.SimpleNamespace(get_signed_file_url=lambda fid: f"https://signed.example/{fid}")
     # Inject/override file_helpers on models.model
     monkeypatch.setattr(model_module, "file_helpers", dummy, raising=False)
 
