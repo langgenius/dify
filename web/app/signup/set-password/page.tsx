@@ -66,7 +66,7 @@ const ChangePasswordForm = () => {
     catch (error) {
       console.error(error)
     }
-  }, [password, token, valid, confirmPassword])
+  }, [password, token, valid, confirmPassword, register])
 
   return (
     <div className={
