@@ -197,17 +197,40 @@ class MessageService:
 
     @classmethod
     def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
-        message = (
-            db.session.query(Message)
-            .where(
-                Message.id == message_id,
-                Message.app_id == app_model.id,
-                Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Message.from_account_id == (user.id if isinstance(user, Account) else None),
+        if not user:
+            raise MessageNotExistsError()
+
+        # Check if this is the default user created by API key validation
+        is_default_user = isinstance(user, EndUser) and user.session_id == "DEFAULT-USER" and user.type == "service_api"
+
+        if is_default_user:
+            # BYPASS EXPLANATION: When using API keys for authentication, a default user is created
+            # with session_id="DEFAULT-USER" and type="service_api". This user represents the API client
+            # rather than a specific end user. In this case, we need to bypass the normal user-based
+            # filtering because:
+            # 1. The API client should have access to all messages created via API calls
+            # 2. The default user's ID doesn't correspond to actual message ownership
+            # 3. API-based access should be tenant-scoped rather than user-scoped
+            # This ensures API clients can retrieve messages they created without being restricted
+            # by the artificial default user identity.
+            message = (
+                db.session.query(Message)
+                .where(Message.id == message_id, Message.app_id == app_model.id, Message.from_source == "api")
+                .first()
             )
-            .first()
-        )
+        else:
+            # For specific users, apply user-based filtering
+            message = (
+                db.session.query(Message)
+                .where(
+                    Message.id == message_id,
+                    Message.app_id == app_model.id,
+                    Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                    Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                    Message.from_account_id == (None if isinstance(user, EndUser) else user.id),
+                )
+                .first()
+            )
 
         if not message:
             raise MessageNotExistsError()
