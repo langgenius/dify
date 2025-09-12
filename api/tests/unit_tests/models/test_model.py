@@ -52,8 +52,8 @@ def test_file_preview_misspelled_not_replaced_after_fix():
     msg = Message(answer=original)
 
     out = msg.re_sign_file_url_answer
-    # Expect NO replacement after the regex is fixed
-    assert out == original, "Should not rewrite misspelled file-previe URL after fix"
+    # Expect NO replacement, Should not rewrite misspelled file-previe URL
+    assert out == original
 
 
 def test_image_preview_valid_replaced():
@@ -79,4 +79,5 @@ def test_image_preview_misspelled_not_replaced_after_fix():
     msg = Message(answer=original)
 
     out = msg.re_sign_file_url_answer
-    assert out == original, "Should not rewrite misspelled image-previe URL after fix"
+    # Expect NO replacement, Should not rewrite misspelled image-previe URL
+    assert out == original
