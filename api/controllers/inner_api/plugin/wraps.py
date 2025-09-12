@@ -7,6 +7,7 @@ from flask_login import user_logged_in
 from flask_restx import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 
 from extensions.ext_database import db
 from libs.login import current_user
@@ -25,7 +26,8 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     As a result, it could only be considered as an end user id.
     """
     try:
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             if not user_id:
                 user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 

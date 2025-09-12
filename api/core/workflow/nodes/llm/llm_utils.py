@@ -3,6 +3,7 @@ from typing import Optional, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -136,7 +137,8 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             used_quota = 1
 
     if used_quota is not None and system_configuration.current_quota_type is not None:
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             stmt = (
                 update(Provider)
                 .where(
