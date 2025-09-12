@@ -53,7 +53,7 @@ const ChangePasswordForm = () => {
         password_confirm: confirmPassword,
       })
       const { result, data } = res as MailRegisterResponse
-      if(result === 'success') {
+      if (result === 'success') {
         Toast.notify({
           type: 'success',
           message: t('common.api.actionSuccess'),
