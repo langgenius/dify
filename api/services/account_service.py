@@ -1369,7 +1369,7 @@ class RegisterService:
 
         """Invite new member"""
         with Session(db.engine) as session:
-            account = session.query(Account).filter_by(email=email).first()
+            account = session.scalars(select(Account).filter_by(email=email).limit(1)).first()
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")

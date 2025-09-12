@@ -1205,10 +1205,8 @@ class TestRegisterService:
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
 
-            # Mock the db.session.query for TenantAccountJoin
-            mock_db_query = MagicMock()
-            mock_db_query.filter_by.return_value.first.return_value = None  # No existing member
-            mock_db_dependencies["db"].session.query.return_value = mock_db_query
+            # Mock the db.session.scalars for TenantAccountJoin existence check
+            mock_db_dependencies["db"].session.scalars.return_value.first.return_value = None  # No existing member
 
             # Mock TenantService methods
             with (
