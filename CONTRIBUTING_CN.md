@@ -63,6 +63,15 @@
 
 ### 项目设置
 
+### Coding Agents 规则
+
+请参考 [AGENTS.md](https://agents.md/) 文件中的规则。
+
+通过`symlink`将主流Coding Agents规则文件链接到 [AGENTS.md](https://agents.md/),只需要维护一份规则即可。
+
+`symlink`在不同平台底层实现不一样，对于Windows用户需要重新生成一次`symlink`，可以通过运行
+`npx rule-link create --list "Claude Code" Augment Cline Windsurf -F` 快速生成。
+
 ### PR 提交流程
 
 1. Fork 本仓库

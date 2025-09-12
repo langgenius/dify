@@ -92,6 +92,15 @@ Kuruluma geçmeden önce bu belgeyi dikkatlice incelemenizi öneririz, çünkü 
 
 Kurulum süreci sırasında herhangi bir sorunla karşılaşırsanız bizimle iletişime geçmekten çekinmeyin.
 
+### Coding Agents Kuralları
+
+Lütfen [AGENTS.md](https://agents.md/) dosyasındaki kurallara bakın.
+
+Ana Coding Agents kural dosyalarını [AGENTS.md](https://agents.md/) ile sembolik bağlantı kullanarak bağlayın, böylece sadece bir kural kümesi korumak zorunda kalırsınız.
+
+Sembolik bağlantılar farklı platformlarda farklı şekilde uygulanır. Windows kullanıcıları için sembolik bağlantıyı yeniden oluşturmanız gerekir, bu şu komutu çalıştırarak hızlı bir şekilde yapılabilir:
+`npx rule-link create --list "Claude Code" Augment Cline Windsurf -F`
+
 ## Yardım Almak
 
 Katkıda bulunurken takılırsanız veya yanıcı bir sorunuz olursa, sorularınızı ilgili GitHub sorunu aracılığıyla bize gönderin veya hızlı bir sohbet için [Discord'umuza](https://discord.gg/8Tpq4AcN9c) katılın.
