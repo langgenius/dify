@@ -1,6 +1,5 @@
 import contextvars
 import threading
-from typing import Optional
 
 import pytest
 from flask import Flask
@@ -29,7 +28,7 @@ def login_app(app: Flask) -> Flask:
     login_manager.init_app(app)
 
     @login_manager.user_loader
-    def load_user(user_id: str) -> Optional[User]:
+    def load_user(user_id: str) -> User | None:
         if user_id == "test_user":
             return User("test_user")
         return None

@@ -5,8 +5,6 @@ from decimal import Decimal
 from json import dumps
 
 # import monkeypatch
-from typing import Optional
-
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
@@ -113,8 +111,8 @@ class MockModelClass(PluginModelClient):
 
     @staticmethod
     def generate_function_call(
-        tools: Optional[list[PromptMessageTool]],
-    ) -> Optional[AssistantPromptMessage.ToolCall]:
+        tools: list[PromptMessageTool] | None,
+    ) -> AssistantPromptMessage.ToolCall | None:
         if not tools or len(tools) == 0:
             return None
         function: PromptMessageTool = tools[0]
@@ -157,7 +155,7 @@ class MockModelClass(PluginModelClient):
     def mocked_chat_create_sync(
         model: str,
         prompt_messages: list[PromptMessage],
-        tools: Optional[list[PromptMessageTool]] = None,
+        tools: list[PromptMessageTool] | None = None,
     ) -> LLMResult:
         tool_call = MockModelClass.generate_function_call(tools=tools)
 
@@ -186,7 +184,7 @@ class MockModelClass(PluginModelClient):
     def mocked_chat_create_stream(
         model: str,
         prompt_messages: list[PromptMessage],
-        tools: Optional[list[PromptMessageTool]] = None,
+        tools: list[PromptMessageTool] | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         tool_call = MockModelClass.generate_function_call(tools=tools)
 
@@ -241,9 +239,9 @@ class MockModelClass(PluginModelClient):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        model_parameters: dict | None = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
         stream: bool = True,
     ):
         return MockModelClass.mocked_chat_create_stream(model=model, prompt_messages=prompt_messages, tools=tools)

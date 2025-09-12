@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -281,7 +281,7 @@ class ProviderManager:
             model_type_instance=model_type_instance,
         )
 
-    def get_default_model(self, tenant_id: str, model_type: ModelType) -> Optional[DefaultModelEntity]:
+    def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
         Get default model.
 
@@ -1036,8 +1036,8 @@ class ProviderManager:
     def _to_model_settings(
         self,
         provider_entity: ProviderEntity,
-        provider_model_settings: Optional[list[ProviderModelSetting]] = None,
-        load_balancing_model_configs: Optional[list[LoadBalancingModelConfig]] = None,
+        provider_model_settings: list[ProviderModelSetting] | None = None,
+        load_balancing_model_configs: list[LoadBalancingModelConfig] | None = None,
     ) -> list[ModelSettings]:
         """
         Convert to model settings.

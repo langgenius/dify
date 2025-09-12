@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
@@ -27,7 +26,7 @@ class DataSourceOauthBinding(Base):
     source_info = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    disabled: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
+    disabled: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
 
 
 class DataSourceApiKeyAuthBinding(Base):
@@ -45,7 +44,7 @@ class DataSourceApiKeyAuthBinding(Base):
     credentials = mapped_column(sa.Text, nullable=True)  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    disabled: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
+    disabled: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
 
     def to_dict(self):
         return {

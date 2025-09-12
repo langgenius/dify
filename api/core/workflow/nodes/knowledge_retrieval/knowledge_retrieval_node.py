@@ -4,7 +4,7 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import Float, and_, func, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
@@ -26,6 +26,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
+from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import (
@@ -55,7 +56,8 @@ from core.workflow.nodes.llm.node import LLMNode
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
+from models.dataset import Dataset, DatasetMetadata, RateLimitLog
+from models.dataset import Document as DatasetDocument
 from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData
@@ -101,8 +103,8 @@ class KnowledgeRetrievalNode(BaseNode):
         graph_init_params: "GraphInitParams",
         graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
-        thread_pool_id: Optional[str] = None,
+        previous_node_id: str | None = None,
+        thread_pool_id: str | None = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -128,7 +130,7 @@ class KnowledgeRetrievalNode(BaseNode):
     def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = KnowledgeRetrievalNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -137,7 +139,7 @@ class KnowledgeRetrievalNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -226,15 +228,17 @@ class KnowledgeRetrievalNode(BaseNode):
 
         # Subquery: Count the number of available documents for each dataset
         subquery = (
-            db.session.query(Document.dataset_id, func.count(Document.id).label("available_document_count"))
-            .where(
-                Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
-                Document.dataset_id.in_(dataset_ids),
+            db.session.query(
+                DatasetDocument.dataset_id, func.count(DatasetDocument.id).label("available_document_count")
             )
-            .group_by(Document.dataset_id)
-            .having(func.count(Document.id) > 0)
+            .where(
+                DatasetDocument.indexing_status == "completed",
+                DatasetDocument.enabled == True,
+                DatasetDocument.archived == False,
+                DatasetDocument.dataset_id.in_(dataset_ids),
+            )
+            .group_by(DatasetDocument.dataset_id)
+            .having(func.count(DatasetDocument.id) > 0)
             .subquery()
         )
 
@@ -257,7 +261,7 @@ class KnowledgeRetrievalNode(BaseNode):
         metadata_filter_document_ids, metadata_condition = self._get_metadata_filter_condition(
             [dataset.id for dataset in available_datasets], query, node_data
         )
-        all_documents = []
+        all_documents: list[Document] = []
         dataset_retrieval = DatasetRetrieval()
         if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # fetch model config
@@ -341,7 +345,7 @@ class KnowledgeRetrievalNode(BaseNode):
             )
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
-        retrieval_resource_list = []
+        retrieval_resource_list: list[dict[str, Any]] = []
         # deal with external documents
         for item in external_documents:
             source = {
@@ -367,10 +371,10 @@ class KnowledgeRetrievalNode(BaseNode):
                 for record in records:
                     segment = record.segment
                     dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
-                    stmt = select(Document).where(
-                        Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
+                    stmt = select(DatasetDocument).where(
+                        DatasetDocument.id == segment.document_id,
+                        DatasetDocument.enabled == True,
+                        DatasetDocument.archived == False,
                     )
                     document = db.session.scalar(stmt)
                     if dataset and document:
@@ -410,21 +414,22 @@ class KnowledgeRetrievalNode(BaseNode):
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
                 retrieval_resource_list,
-                key=lambda x: x["metadata"]["score"] if x["metadata"].get("score") is not None else 0.0,
+                key=lambda x: float(x.get("metadata", {}).get("score", 0.0)),
                 reverse=True,
             )
-            for position, item in enumerate(retrieval_resource_list, start=1):
-                item["metadata"]["position"] = position
+            for position, resource_item in enumerate(retrieval_resource_list, start=1):
+                if "metadata" in resource_item:
+                    resource_item["metadata"]["position"] = position
         return retrieval_resource_list
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
-        document_query = db.session.query(Document).where(
-            Document.dataset_id.in_(dataset_ids),
-            Document.indexing_status == "completed",
-            Document.enabled == True,
-            Document.archived == False,
+    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
+        document_query = db.session.query(DatasetDocument).where(
+            DatasetDocument.dataset_id.in_(dataset_ids),
+            DatasetDocument.indexing_status == "completed",
+            DatasetDocument.enabled == True,
+            DatasetDocument.archived == False,
         )
         filters = []  # type: ignore
         metadata_condition = None
@@ -576,7 +581,7 @@ class KnowledgeRetrievalNode(BaseNode):
         return automatic_metadata_filters
 
     def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
+        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
             return
@@ -632,26 +637,26 @@ class KnowledgeRetrievalNode(BaseNode):
                 )
             case "=" | "is":
                 if isinstance(value, str):
-                    filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
+                    filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == value)
+                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == value)
             case "is not" | "≠":
                 if isinstance(value, str):
-                    filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
+                    filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != value)
+                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value)
             case "empty":
-                filters.append(Document.doc_metadata[metadata_name].is_(None))
+                filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
             case "not empty":
-                filters.append(Document.doc_metadata[metadata_name].isnot(None))
+                filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) < value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) < value)
             case "after" | ">":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) > value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) > value)
             case "≤" | "<=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) <= value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) <= value)
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) >= value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) >= value)
             case _:
                 pass
         return filters

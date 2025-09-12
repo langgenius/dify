@@ -1,5 +1,3 @@
-from typing import Optional
-
 from configs import dify_config
 from core.mcp.types import (
     OAuthClientInformation,
@@ -37,7 +35,7 @@ class OAuthClientProvider:
             client_uri="https://github.com/langgenius/dify",
         )
 
-    def client_information(self) -> Optional[OAuthClientInformation]:
+    def client_information(self) -> OAuthClientInformation | None:
         """Loads information about this OAuth client."""
         client_information = self.mcp_provider.decrypted_credentials.get("client_information", {})
         if not client_information:
@@ -51,7 +49,7 @@ class OAuthClientProvider:
             {"client_information": client_information.model_dump()},
         )
 
-    def tokens(self) -> Optional[OAuthTokens]:
+    def tokens(self) -> OAuthTokens | None:
         """Loads any existing OAuth tokens for the current session."""
         credentials = self.mcp_provider.decrypted_credentials
         if not credentials:

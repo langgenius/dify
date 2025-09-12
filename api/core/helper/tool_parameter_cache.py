@@ -1,7 +1,6 @@
 import json
 from enum import StrEnum
 from json import JSONDecodeError
-from typing import Optional
 
 from extensions.ext_redis import redis_client
 
@@ -19,7 +18,7 @@ class ToolParameterCache:
             f":identity_id:{identity_id}"
         )
 
-    def get(self) -> Optional[dict]:
+    def get(self) -> dict | None:
         """
         Get cached model provider credentials.
 

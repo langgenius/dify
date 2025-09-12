@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 from enum import StrEnum
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 
 from httpx import Timeout, post
 from pydantic import BaseModel
@@ -24,8 +24,8 @@ class CodeExecutionError(Exception):
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
-        stdout: Optional[str] = None
-        error: Optional[str] = None
+        stdout: str | None = None
+        error: str | None = None
 
     code: int
     message: str

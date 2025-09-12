@@ -1,6 +1,5 @@
 import os
 from collections import UserDict
-from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,7 +21,7 @@ class MockBaiduVectorDBClass:
     def mock_vector_db_client(
         self,
         config=None,
-        adapter: Optional[HTTPAdapter] = None,
+        adapter: HTTPAdapter | None = None,
     ):
         self.conn = MagicMock()
         self._config = MagicMock()

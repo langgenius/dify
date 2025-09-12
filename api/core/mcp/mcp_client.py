@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from core.mcp.client.sse_client import sse_client
@@ -21,11 +21,11 @@ class MCPClient:
         provider_id: str,
         tenant_id: str,
         authed: bool = True,
-        authorization_code: Optional[str] = None,
+        authorization_code: str | None = None,
         for_list: bool = False,
-        headers: Optional[dict[str, str]] = None,
-        timeout: Optional[float] = None,
-        sse_read_timeout: Optional[float] = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        sse_read_timeout: float | None = None,
     ):
         # Initialize info
         self.provider_id = provider_id
@@ -46,9 +46,9 @@ class MCPClient:
             self.token = self.provider.tokens()
 
         # Initialize session and client objects
-        self._session: Optional[ClientSession] = None
-        self._streams_context: Optional[AbstractContextManager[Any]] = None
-        self._session_context: Optional[ClientSession] = None
+        self._session: ClientSession | None = None
+        self._streams_context: AbstractContextManager[Any] | None = None
+        self._session_context: ClientSession | None = None
         self._exit_stack = ExitStack()
 
         # Whether the client has been initialized
@@ -59,9 +59,7 @@ class MCPClient:
         self._initialized = True
         return self
 
-    def __exit__(
-        self, exc_type: Optional[type], exc_value: Optional[BaseException], traceback: Optional[TracebackType]
-    ):
+    def __exit__(self, exc_type: type | None, exc_value: BaseException | None, traceback: TracebackType | None):
         self.cleanup()
 
     def _initialize(

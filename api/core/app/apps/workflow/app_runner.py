@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, cast
+from typing import cast
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -31,7 +31,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         application_generate_entity: WorkflowAppGenerateEntity,
         queue_manager: AppQueueManager,
         variable_loader: VariableLoader,
-        workflow_thread_pool_id: Optional[str] = None,
+        workflow_thread_pool_id: str | None = None,
         workflow: Workflow,
         system_user_id: str,
     ):

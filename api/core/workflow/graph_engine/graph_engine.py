@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from flask import Flask, current_app
 
@@ -103,7 +103,7 @@ class GraphEngine:
         graph_runtime_state: GraphRuntimeState,
         max_execution_steps: int,
         max_execution_time: int,
-        thread_pool_id: Optional[str] = None,
+        thread_pool_id: str | None = None,
     ):
         thread_pool_max_submit_count = dify_config.MAX_SUBMIT_COUNT
         thread_pool_max_workers = 10
@@ -223,9 +223,9 @@ class GraphEngine:
     def _run(
         self,
         start_node_id: str,
-        in_parallel_id: Optional[str] = None,
-        parent_parallel_id: Optional[str] = None,
-        parent_parallel_start_node_id: Optional[str] = None,
+        in_parallel_id: str | None = None,
+        parent_parallel_id: str | None = None,
+        parent_parallel_start_node_id: str | None = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent, None, None]:
         parallel_start_node_id = None
@@ -233,7 +233,7 @@ class GraphEngine:
             parallel_start_node_id = start_node_id
 
         next_node_id = start_node_id
-        previous_route_node_state: Optional[RouteNodeState] = None
+        previous_route_node_state: RouteNodeState | None = None
         while True:
             # max steps reached
             if self.graph_runtime_state.node_run_steps > self.max_execution_steps:
@@ -444,8 +444,8 @@ class GraphEngine:
     def _run_parallel_branches(
         self,
         edge_mappings: list[GraphEdge],
-        in_parallel_id: Optional[str] = None,
-        parallel_start_node_id: Optional[str] = None,
+        in_parallel_id: str | None = None,
+        parallel_start_node_id: str | None = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent | str, None, None]:
         # if nodes has no run conditions, parallel run all nodes
@@ -534,8 +534,8 @@ class GraphEngine:
         q: queue.Queue,
         parallel_id: str,
         parallel_start_node_id: str,
-        parent_parallel_id: Optional[str] = None,
-        parent_parallel_start_node_id: Optional[str] = None,
+        parent_parallel_id: str | None = None,
+        parent_parallel_start_node_id: str | None = None,
         handle_exceptions: list[str] = [],
     ):
         """
@@ -600,10 +600,10 @@ class GraphEngine:
         self,
         node: BaseNode,
         route_node_state: RouteNodeState,
-        parallel_id: Optional[str] = None,
-        parallel_start_node_id: Optional[str] = None,
-        parent_parallel_id: Optional[str] = None,
-        parent_parallel_start_node_id: Optional[str] = None,
+        parallel_id: str | None = None,
+        parallel_start_node_id: str | None = None,
+        parent_parallel_id: str | None = None,
+        parent_parallel_start_node_id: str | None = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent, None, None]:
         """

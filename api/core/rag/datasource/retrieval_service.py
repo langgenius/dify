@@ -1,6 +1,5 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -39,11 +38,11 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float] = 0.0,
-        reranking_model: Optional[dict] = None,
+        score_threshold: float | None = 0.0,
+        reranking_model: dict | None = None,
         reranking_mode: str = "reranking_model",
-        weights: Optional[dict] = None,
-        document_ids_filter: Optional[list[str]] = None,
+        weights: dict | None = None,
+        document_ids_filter: list[str] | None = None,
     ):
         if not query:
             return []
@@ -125,8 +124,8 @@ class RetrievalService:
         cls,
         dataset_id: str,
         query: str,
-        external_retrieval_model: Optional[dict] = None,
-        metadata_filtering_conditions: Optional[dict] = None,
+        external_retrieval_model: dict | None = None,
+        metadata_filtering_conditions: dict | None = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
         dataset = db.session.scalar(stmt)
@@ -145,7 +144,7 @@ class RetrievalService:
         return all_documents
 
     @classmethod
-    def _get_dataset(cls, dataset_id: str) -> Optional[Dataset]:
+    def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
             return session.query(Dataset).where(Dataset.id == dataset_id).first()
 
@@ -158,7 +157,7 @@ class RetrievalService:
         top_k: int,
         all_documents: list,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -182,12 +181,12 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
+        score_threshold: float | None,
+        reranking_model: dict | None,
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -235,12 +234,12 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
+        score_threshold: float | None,
+        reranking_model: dict | None,
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
