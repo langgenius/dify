@@ -189,8 +189,8 @@ class ModelProviderCredentialCancelApi(Resource):
             provider=provider,
         )
         return {"result": "success"}
-    
-    
+
+
 class ModelProviderValidateApi(Resource):
     @setup_required
     @login_required

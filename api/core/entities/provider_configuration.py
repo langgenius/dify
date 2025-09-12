@@ -190,7 +190,7 @@ class ProviderConfiguration(BaseModel):
             if current_quota_configuration.is_valid
             else SystemConfigurationStatus.QUOTA_EXCEEDED
         )
-    
+
     def get_custom_configuration_status(self) -> Optional[CustomConfigurationStatus]:
         """
         Get custom configuration status.
@@ -198,8 +198,12 @@ class ProviderConfiguration(BaseModel):
         """
         if not self.is_custom_configuration_available():
             return CustomConfigurationStatus.NO_CONFIGURE
-        elif self.custom_configuration.provider.current_credential_status:
-            return self.custom_configuration.provider.current_credential_status
+
+        provider = self.custom_configuration.provider
+        if provider and hasattr(provider, "current_credential_status"):
+            status = provider.current_credential_status
+            if status:
+                return status
 
         return CustomConfigurationStatus.ACTIVE
 

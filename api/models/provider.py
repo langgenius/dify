@@ -40,7 +40,8 @@ class ProviderQuotaType(Enum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
-    
+
+
 class CredentialStatus(StrEnum):
     ACTIVE = "active"
     CANCELED = "canceled"
@@ -71,8 +72,8 @@ class Provider(Base):
     last_used: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     credential_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     credential_status: Mapped[Optional[str]] = mapped_column(
-      String(20), nullable=True, server_default=text("'active'::character varying")
-    )  
+        String(20), nullable=True, server_default=text("'active'::character varying")
+    )
 
     quota_type: Mapped[Optional[str]] = mapped_column(
         String(40), nullable=True, server_default=text("''::character varying")
