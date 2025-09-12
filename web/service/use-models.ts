@@ -153,3 +153,9 @@ export const useUpdateModelLoadBalancingConfig = (provider: string) => {
     }),
   })
 }
+
+export const useDeselectModelCredential = (provider: string) => {
+  return useMutation({
+    mutationFn: () => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/credentials/cancel`),
+  })
+}

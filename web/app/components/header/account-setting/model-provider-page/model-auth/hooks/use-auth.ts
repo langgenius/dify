@@ -18,7 +18,10 @@ import {
   useModelModalHandler,
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useDeleteModel } from '@/service/use-models'
+import {
+  useDeleteModel,
+  useDeselectModelCredential,
+} from '@/service/use-models'
 
 export const useAuth = (
   provider: ModelProvider,
@@ -46,6 +49,7 @@ export const useAuth = (
     getAddCredentialService,
   } = useAuthService(provider.provider)
   const { mutateAsync: deleteModelService } = useDeleteModel(provider.provider)
+  const { mutateAsync: deselectModelCredentialService } = useDeselectModelCredential(provider.provider)
   const handleOpenModelModal = useModelModalHandler()
   const { handleRefreshModel } = useRefreshModel()
   const pendingOperationCredentialId = useRef<string | null>(null)
@@ -177,6 +181,11 @@ export const useAuth = (
     mode,
   ])
 
+  const handleDeselect = useCallback(async () => {
+    await deselectModelCredentialService()
+    handleRefreshModel(provider, configurationMethod, undefined)
+  }, [deselectModelCredentialService, handleRefreshModel, provider, configurationMethod])
+
   return {
     pendingOperationCredentialId,
     pendingOperationModel,
@@ -189,5 +198,6 @@ export const useAuth = (
     deleteModel,
     handleSaveCredential,
     handleOpenModal,
+    handleDeselect,
   }
 }

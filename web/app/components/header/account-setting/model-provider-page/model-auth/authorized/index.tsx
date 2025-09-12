@@ -64,6 +64,7 @@ type AuthorizedProps = {
   showModelTitle?: boolean
   disableDeleteButShowAction?: boolean
   disableDeleteTip?: string
+  showDeselect?: boolean
 }
 const Authorized = ({
   provider,
@@ -88,6 +89,7 @@ const Authorized = ({
   showModelTitle,
   disableDeleteButShowAction,
   disableDeleteTip,
+  showDeselect,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
@@ -112,6 +114,7 @@ const Authorized = ({
     handleConfirmDelete,
     deleteCredentialId,
     handleOpenModal,
+    handleDeselect,
   } = useAuth(
     provider,
     configurationMethod,
@@ -171,8 +174,15 @@ const Authorized = ({
           )}>
             {
               popupTitle && (
-                <div className='system-xs-medium px-3 pb-0.5 pt-[10px] text-text-tertiary'>
+                <div className='system-xs-medium flex items-center justify-between px-3 pb-0.5 pt-[10px] text-text-tertiary'>
                   {popupTitle}
+                  {
+                    showDeselect && (
+                      <div onClick={() => handleDeselect()} className='cursor-pointer'>
+                        {t('common.modelProvider.auth.deselect')}
+                      </div>
+                    )
+                  }
                 </div>
               )
             }

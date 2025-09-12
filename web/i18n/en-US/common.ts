@@ -523,6 +523,7 @@ const translation = {
       removeModel: 'Remove Model',
       selectModelCredential: 'Select a model credential',
       customModelCredentialsDeleteTip: 'Credential is in use and cannot be deleted',
+      deselect: 'Deselect',
     },
   },
   dataSource: {

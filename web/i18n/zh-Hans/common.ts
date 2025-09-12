@@ -517,6 +517,7 @@ const translation = {
       removeModel: '移除模型',
       selectModelCredential: '选择模型凭据',
       customModelCredentialsDeleteTip: '模型凭据正在使用中，无法删除',
+      deselect: '取消选择',
     },
   },
   dataSource: {

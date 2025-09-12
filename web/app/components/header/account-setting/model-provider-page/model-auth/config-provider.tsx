@@ -29,10 +29,11 @@ const ConfigProvider = ({
   const { t } = useTranslation()
   const {
     hasCredential,
-    authorized,
     current_credential_id,
     current_credential_name,
     available_credentials,
+    authorized,
+    unAuthorized,
   } = useCredentialStatus(provider)
   const notAllowCustomCredential = provider.allow_custom_token === false
 
@@ -41,11 +42,11 @@ const ConfigProvider = ({
       <Button
         className='grow'
         size='small'
-        variant={!authorized ? 'secondary-accent' : 'secondary'}
+        variant={unAuthorized ? 'secondary-accent' : 'secondary'}
       >
         <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
-        {hasCredential && t('common.operation.config')}
-        {!hasCredential && t('common.operation.setup')}
+        {!unAuthorized && t('common.operation.config')}
+        {unAuthorized && t('common.operation.setup')}
       </Button>
     )
     if (notAllowCustomCredential && !hasCredential) {
@@ -59,7 +60,7 @@ const ConfigProvider = ({
       )
     }
     return Item
-  }, [authorized, hasCredential, notAllowCustomCredential, t])
+  }, [hasCredential, notAllowCustomCredential, t])
 
   return (
     <Authorized
@@ -68,7 +69,6 @@ const ConfigProvider = ({
       currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       items={[
         {
-          title: t('common.modelProvider.auth.apiKeys'),
           credentials: available_credentials ?? [],
           selectedCredential: {
             credential_id: current_credential_id ?? '',
@@ -77,9 +77,10 @@ const ConfigProvider = ({
         },
       ]}
       showItemSelectedIcon
-      showModelTitle
       renderTrigger={renderTrigger}
       triggerOnlyOpenModal={!hasCredential && !notAllowCustomCredential}
+      showDeselect={authorized}
+      popupTitle={t('common.modelProvider.auth.apiKeys')}
     />
   )
 }

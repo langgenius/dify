@@ -45,6 +45,7 @@ const CredentialPanel = ({
     authRemoved,
     current_credential_name,
     notAllowedToUse,
+    unAuthorized,
   } = useCredentialStatus(provider)
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
@@ -70,23 +71,23 @@ const CredentialPanel = ({
     }
   }
   const credentialLabel = useMemo(() => {
-    if (!hasCredential)
+    if (unAuthorized)
       return t('common.modelProvider.auth.unAuthorized')
-    if (authorized)
-      return current_credential_name
     if (authRemoved)
       return t('common.modelProvider.auth.authRemoved')
+    if (authorized)
+      return current_credential_name
 
     return ''
-  }, [authorized, authRemoved, current_credential_name, hasCredential])
+  }, [authorized, authRemoved, current_credential_name, unAuthorized])
 
   const color = useMemo(() => {
-    if (authRemoved || !hasCredential)
+    if (authRemoved || !hasCredential || unAuthorized)
       return 'red'
     if (notAllowedToUse)
       return 'gray'
     return 'green'
-  }, [authRemoved, notAllowedToUse, hasCredential])
+  }, [authRemoved, notAllowedToUse, hasCredential, unAuthorized])
 
   return (
     <>

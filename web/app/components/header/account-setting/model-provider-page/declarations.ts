@@ -107,6 +107,8 @@ export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
 export enum CustomConfigurationStatusEnum {
   active = 'active',
   noConfigure = 'no-configure',
+  canceled = 'canceled',
+  removed = 'removed',
 }
 
 export type FormShowOnObject = {
