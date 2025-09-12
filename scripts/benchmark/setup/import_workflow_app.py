@@ -100,7 +100,7 @@ def import_workflow_app() -> None:
 
                         if config_helper.write_config("app_config", app_config):
                             log.info(
-                                f"App config saved to: {config_helper.get_config_path('app_config')}"
+                                f"App config saved to: {config_helper.get_config_path('benchmark_state')}"
                             )
                     else:
                         log.error("Import completed but no app_id received")

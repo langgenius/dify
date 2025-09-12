@@ -227,3 +227,7 @@ web/public/fallback-*.js
 .roo/
 api/.env.backup
 /clickzetta
+
+# Benchmark
+scripts/benchmark/setup/config/
+scripts/benchmark/reports/

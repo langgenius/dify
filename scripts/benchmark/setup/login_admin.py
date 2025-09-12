@@ -78,7 +78,7 @@ def login_admin() -> None:
                 # Save token config
                 if config_helper.write_config("token_config", token_config):
                     log.info(
-                        f"Token saved to: {config_helper.get_config_path('token_config')}"
+                        f"Token saved to: {config_helper.get_config_path('benchmark_state')}"
                     )
 
                 # Show truncated token for verification

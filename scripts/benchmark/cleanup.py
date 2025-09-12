@@ -8,34 +8,51 @@ from common import Logger
 
 
 def cleanup() -> None:
-    """Clean up all configuration files created during setup."""
+    """Clean up all configuration files and reports created during setup and benchmarking."""
 
     log = Logger("Cleanup")
-    log.header("Configuration Cleanup")
+    log.header("Benchmark Cleanup")
 
     config_dir = Path(__file__).parent / "setup" / "config"
+    reports_dir = Path(__file__).parent / "reports"
 
-    if not config_dir.exists():
-        log.success("Config directory does not exist. Nothing to clean.")
+    dirs_to_clean = []
+    if config_dir.exists():
+        dirs_to_clean.append(config_dir)
+    if reports_dir.exists():
+        dirs_to_clean.append(reports_dir)
+    
+    if not dirs_to_clean:
+        log.success("No directories to clean. Everything is already clean.")
         return
 
-    log.info("Cleaning up configuration files...")
-    log.info(f"This will remove: {config_dir}")
+    log.info("Cleaning up benchmark data...")
+    log.info("This will remove:")
+    for dir_path in dirs_to_clean:
+        log.list_item(str(dir_path))
 
     # List files that will be deleted
-    config_files = list(config_dir.glob("*.json"))
-    if config_files:
-        log.separator()
-        log.info("Files to be removed:")
-        for file in config_files:
-            log.list_item(file.name)
+    log.separator()
+    if config_dir.exists():
+        config_files = list(config_dir.glob("*.json"))
+        if config_files:
+            log.info("Config files to be removed:")
+            for file in config_files:
+                log.list_item(file.name)
+    
+    if reports_dir.exists():
+        report_files = list(reports_dir.glob("*"))
+        if report_files:
+            log.info("Report files to be removed:")
+            for file in report_files:
+                log.list_item(file.name)
 
     # Ask for confirmation if running interactively
     if sys.stdin.isatty():
         log.separator()
         log.warning("This action cannot be undone!")
         confirmation = input(
-            "Are you sure you want to remove all config files? (yes/no): "
+            "Are you sure you want to remove all config and report files? (yes/no): "
         )
 
         if confirmation.lower() not in ["yes", "y"]:
@@ -43,24 +60,27 @@ def cleanup() -> None:
             return
 
     try:
-        # Remove the config directory and all its contents
-        shutil.rmtree(config_dir)
-        log.success("Config directory removed successfully!")
+        # Remove directories and all their contents
+        for dir_path in dirs_to_clean:
+            shutil.rmtree(dir_path)
+            log.success(f"{dir_path.name} directory removed successfully!")
 
         log.separator()
-        log.info("To run the setup again, execute the scripts in this order:")
-        log.list_item("python mock_openai_server.py (in a separate terminal)")
-        log.list_item("python setup_admin.py")
-        log.list_item("python login_admin.py")
-        log.list_item("python install_openai_plugin.py")
-        log.list_item("python configure_openai_plugin.py")
-        log.list_item("python import_workflow_app.py")
-        log.list_item("python create_api_key.py")
-        log.list_item("python publish_workflow.py")
-        log.list_item("python run_workflow.py")
+        log.info("To run the setup again, execute:")
+        log.list_item("python setup_all.py")
+        log.info("Or run scripts individually in this order:")
+        log.list_item("python setup/mock_openai_server.py (in a separate terminal)")
+        log.list_item("python setup/setup_admin.py")
+        log.list_item("python setup/login_admin.py")
+        log.list_item("python setup/install_openai_plugin.py")
+        log.list_item("python setup/configure_openai_plugin.py")
+        log.list_item("python setup/import_workflow_app.py")
+        log.list_item("python setup/create_api_key.py")
+        log.list_item("python setup/publish_workflow.py")
+        log.list_item("python setup/run_workflow.py")
 
-    except PermissionError:
-        log.error("Permission denied. Unable to remove config directory.")
+    except PermissionError as e:
+        log.error(f"Permission denied: {e}")
         log.info("Try running with appropriate permissions.")
     except Exception as e:
         log.error(f"An error occurred during cleanup: {e}")

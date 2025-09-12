@@ -18,6 +18,7 @@ class ConfigHelper:
             # Default to config directory in setup folder
             base_dir = Path(__file__).parent.parent / "setup" / "config"
         self.base_dir = base_dir
+        self.state_file = "benchmark_state.json"
 
     def ensure_config_dir(self) -> None:
         """Ensure the config directory exists."""
@@ -38,6 +39,9 @@ class ConfigHelper:
 
     def read_config(self, filename: str) -> dict[str, Any] | None:
         """Read a configuration file.
+        
+        DEPRECATED: Use read_state() or get_state_section() for new code.
+        This method provides backward compatibility.
 
         Args:
             filename: Name of the config file to read
@@ -45,6 +49,16 @@ class ConfigHelper:
         Returns:
             Dictionary containing config data, or None if file doesn't exist
         """
+        # Provide backward compatibility for old config names
+        if filename in ["admin_config", "token_config", "app_config", "api_key_config"]:
+            section_map = {
+                "admin_config": "admin",
+                "token_config": "auth",
+                "app_config": "app",
+                "api_key_config": "api_key"
+            }
+            return self.get_state_section(section_map[filename])
+        
         config_path = self.get_config_path(filename)
 
         if not config_path.exists():
@@ -59,6 +73,9 @@ class ConfigHelper:
 
     def write_config(self, filename: str, data: dict[str, Any]) -> bool:
         """Write data to a configuration file.
+        
+        DEPRECATED: Use write_state() or update_state_section() for new code.
+        This method provides backward compatibility.
 
         Args:
             filename: Name of the config file to write
@@ -67,6 +84,16 @@ class ConfigHelper:
         Returns:
             True if successful, False otherwise
         """
+        # Provide backward compatibility for old config names
+        if filename in ["admin_config", "token_config", "app_config", "api_key_config"]:
+            section_map = {
+                "admin_config": "admin",
+                "token_config": "auth",
+                "app_config": "app",
+                "api_key_config": "api_key"
+            }
+            return self.update_state_section(section_map[filename], data)
+        
         self.ensure_config_dir()
         config_path = self.get_config_path(filename)
 
@@ -110,37 +137,102 @@ class ConfigHelper:
             print(f"❌ Error deleting {filename}: {e}")
             return False
 
+    def read_state(self) -> dict[str, Any] | None:
+        """Read the entire benchmark state.
+
+        Returns:
+            Dictionary containing all state data, or None if file doesn't exist
+        """
+        state_path = self.get_config_path(self.state_file)
+        if not state_path.exists():
+            return None
+        
+        try:
+            with open(state_path, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"❌ Error reading {self.state_file}: {e}")
+            return None
+
+    def write_state(self, data: dict[str, Any]) -> bool:
+        """Write the entire benchmark state.
+
+        Args:
+            data: Dictionary containing all state data to save
+
+        Returns:
+            True if successful, False otherwise
+        """
+        self.ensure_config_dir()
+        state_path = self.get_config_path(self.state_file)
+        
+        try:
+            with open(state_path, "w") as f:
+                json.dump(data, f, indent=2)
+            return True
+        except IOError as e:
+            print(f"❌ Error writing {self.state_file}: {e}")
+            return False
+
+    def update_state_section(self, section: str, data: dict[str, Any]) -> bool:
+        """Update a specific section of the benchmark state.
+
+        Args:
+            section: Name of the section to update (e.g., 'admin', 'auth', 'app', 'api_key')
+            data: Dictionary containing section data to save
+
+        Returns:
+            True if successful, False otherwise
+        """
+        state = self.read_state() or {}
+        state[section] = data
+        return self.write_state(state)
+
+    def get_state_section(self, section: str) -> dict[str, Any] | None:
+        """Get a specific section from the benchmark state.
+
+        Args:
+            section: Name of the section to get (e.g., 'admin', 'auth', 'app', 'api_key')
+
+        Returns:
+            Dictionary containing section data, or None if not found
+        """
+        state = self.read_state()
+        if state:
+            return state.get(section)
+        return None
+
     def get_token(self) -> str | None:
-        """Get the access token from token config.
+        """Get the access token from auth section.
 
         Returns:
             Access token string or None if not found
         """
-        token_config = self.read_config("token_config")
-        if token_config:
-            return token_config.get("access_token")
+        auth = self.get_state_section("auth")
+        if auth:
+            return auth.get("access_token")
         return None
 
     def get_app_id(self) -> str | None:
-        """Get the app ID from app config.
+        """Get the app ID from app section.
 
         Returns:
             App ID string or None if not found
         """
-        app_config = self.read_config("app_config")
-        if app_config:
-            return app_config.get("app_id")
+        app = self.get_state_section("app")
+        if app:
+            return app.get("app_id")
         return None
 
     def get_api_key(self) -> str | None:
-        """Get the API key token from api_key config.
+        """Get the API key token from api_key section.
 
         Returns:
             API key token string or None if not found
         """
-        api_key_config = self.read_config("api_key_config")
-        if api_key_config:
-            return api_key_config.get("token")
+        api_key = self.get_state_section("api_key")
+        if api_key:
+            return api_key.get("token")
         return None
 
 

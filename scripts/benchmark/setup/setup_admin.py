@@ -25,7 +25,7 @@ def setup_admin_account() -> None:
     # Save credentials to config file
     if config_helper.write_config("admin_config", admin_config):
         log.info(
-            f"Admin credentials saved to: {config_helper.get_config_path('admin_config')}"
+            f"Admin credentials saved to: {config_helper.get_config_path('benchmark_state')}"
         )
 
     # API setup endpoint

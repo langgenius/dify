@@ -91,7 +91,7 @@ def create_api_key() -> None:
 
                     if config_helper.write_config("api_key_config", api_key_config):
                         log.info(
-                            f"API key saved to: {config_helper.get_config_path('api_key_config')}"
+                            f"API key saved to: {config_helper.get_config_path('benchmark_state')}"
                         )
                 else:
                     log.error("No API token received")
