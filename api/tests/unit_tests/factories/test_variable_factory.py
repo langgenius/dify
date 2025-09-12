@@ -487,7 +487,7 @@ def _scalar_value() -> st.SearchStrategy[int | float | str | File | None]:
     return st.one_of(
         st.none(),
         st.integers(min_value=-10**6, max_value=10**6),
-        st.floats(allow_nan=True, allow_infinity=False, width=32),
+        st.floats(allow_nan=True, allow_infinity=False),
         st.text(max_size=50),
         _generate_file(),
     )
