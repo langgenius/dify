@@ -337,6 +337,34 @@ uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-c
 - For SSE/WebSocket: Use gevent worker class
 - For CPU-bound tasks: Use sync workers
 
+### Database Optimization
+
+**PostgreSQL Connection Pool Tuning**:
+
+For high-concurrency stress testing, increase the PostgreSQL max connections in `docker/middleware.env`:
+
+```bash
+# Edit docker/middleware.env
+POSTGRES_MAX_CONNECTIONS=200  # Default is 100
+
+# Recommended values for different load levels:
+# Light load (10-50 users): 100 (default)
+# Medium load (50-200 users): 200
+# Heavy load (200-1000 users): 500
+```
+
+After changing, restart the PostgreSQL container:
+
+```bash
+docker compose -f docker/docker-compose.middleware.yaml down db
+docker compose -f docker/docker-compose.middleware.yaml up -d db
+```
+
+**Note**: Each connection uses ~10MB of RAM. Ensure your database server has sufficient memory:
+- 100 connections: ~1GB RAM
+- 200 connections: ~2GB RAM
+- 500 connections: ~5GB RAM
+
 ### System Optimizations
 
 1. **Increase file descriptor limits**:
