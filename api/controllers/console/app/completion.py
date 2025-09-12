@@ -2,7 +2,7 @@ import logging
 
 from flask import request
 from flask_restx import Resource, reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api
@@ -105,6 +105,12 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     def post(self, app_model):
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, required=True, location="json")
