@@ -19,6 +19,7 @@ import RestoringTitle from './restoring-title'
 import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
@@ -58,6 +59,9 @@ const HeaderInRestoring = ({
           type: 'success',
           message: t('workflow.versionHistory.action.restoreSuccess'),
         })
+        // Notify other collaboration clients about the workflow restore
+        if (appDetail)
+          collaborationManager.emitWorkflowUpdate(appDetail.id)
       },
       onError: () => {
         Toast.notify({
@@ -71,7 +75,7 @@ const HeaderInRestoring = ({
     })
     deleteAllInspectVars()
     invalidAllLastRun()
-  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled, appDetail])
 
   return (
     <>
