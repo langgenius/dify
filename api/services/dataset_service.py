@@ -917,6 +917,17 @@ class DatasetService:
         )
 
     @staticmethod
+    def update_dataset_api_status(dataset_id: str, status: bool):
+        dataset = DatasetService.get_dataset(dataset_id)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        dataset.enable_api = status
+        dataset.updated_by = current_user.id
+        dataset.updated_at = naive_utc_now()
+        db.session.commit()
+
+
+    @staticmethod
     def get_dataset_auto_disable_logs(dataset_id: str):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None

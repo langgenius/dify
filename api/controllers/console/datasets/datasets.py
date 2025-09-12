@@ -650,6 +650,17 @@ class DatasetApiDeleteApi(Resource):
 
         return {"result": "success"}, 204
 
+class DatasetEnableApiApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id, status):
+        dataset_id_str = str(dataset_id)
+
+        DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")
+
+        return {"result": "success"}, 200
+
 
 class DatasetApiBaseUrlApi(Resource):
     @setup_required
@@ -816,6 +827,7 @@ api.add_resource(DatasetRelatedAppListApi, "/datasets/<uuid:dataset_id>/related-
 api.add_resource(DatasetIndexingStatusApi, "/datasets/<uuid:dataset_id>/indexing-status")
 api.add_resource(DatasetApiKeyApi, "/datasets/api-keys")
 api.add_resource(DatasetApiDeleteApi, "/datasets/api-keys/<uuid:api_key_id>")
+api.add_resource(DatasetEnableApiApi, "/datasets/<uuid:dataset_id>/<string:status>")
 api.add_resource(DatasetApiBaseUrlApi, "/datasets/api-base-info")
 api.add_resource(DatasetRetrievalSettingApi, "/datasets/retrieval-setting")
 api.add_resource(DatasetRetrievalSettingMockApi, "/datasets/retrieval-setting/<string:vector_type>")
