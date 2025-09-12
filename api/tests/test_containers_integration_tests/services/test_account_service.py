@@ -961,7 +961,8 @@ class TestAccountService:
         Test getting user through non-existent email.
         """
         fake = Faker()
-        non_existent_email = fake.email()
+        domain = f"test-{fake.random_letters(10)}.com"
+        non_existent_email = fake.email(domain=domain)
         found_user = AccountService.get_user_through_email(non_existent_email)
         assert found_user is None
 
