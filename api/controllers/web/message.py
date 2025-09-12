@@ -4,7 +4,7 @@ from flask_restx import fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
@@ -38,6 +38,7 @@ from services.message_service import MessageService
 logger = logging.getLogger(__name__)
 
 
+@web_ns.route("/messages")
 class MessageListApi(WebApiResource):
     message_fields = {
         "id": fields.String,
@@ -62,6 +63,30 @@ class MessageListApi(WebApiResource):
         "data": fields.List(fields.Nested(message_fields)),
     }
 
+    @web_ns.doc("Get Message List")
+    @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
+    @web_ns.doc(
+        params={
+            "conversation_id": {"description": "Conversation UUID", "type": "string", "required": True},
+            "first_id": {"description": "First message ID for pagination", "type": "string", "required": False},
+            "limit": {
+                "description": "Number of messages to return (1-100)",
+                "type": "integer",
+                "required": False,
+                "default": 20,
+            },
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Conversation Not Found or Not a Chat App",
+            500: "Internal Server Error",
+        }
+    )
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
@@ -84,11 +109,36 @@ class MessageListApi(WebApiResource):
             raise NotFound("First Message Not Exists.")
 
 
+@web_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(WebApiResource):
     feedback_response_fields = {
         "result": fields.String,
     }
 
+    @web_ns.doc("Create Message Feedback")
+    @web_ns.doc(description="Submit feedback (like/dislike) for a specific message.")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        params={
+            "rating": {
+                "description": "Feedback rating",
+                "type": "string",
+                "enum": ["like", "dislike"],
+                "required": False,
+            },
+            "content": {"description": "Feedback content/comment", "type": "string", "required": False},
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Feedback submitted successfully",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Message Not Found",
+            500: "Internal Server Error",
+        }
+    )
     @marshal_with(feedback_response_fields)
     def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
@@ -112,7 +162,31 @@ class MessageFeedbackApi(WebApiResource):
         return {"result": "success"}
 
 
+@web_ns.route("/messages/<uuid:message_id>/more-like-this")
 class MessageMoreLikeThisApi(WebApiResource):
+    @web_ns.doc("Generate More Like This")
+    @web_ns.doc(description="Generate a new completion similar to an existing message (completion apps only).")
+    @web_ns.doc(
+        params={
+            "message_id": {"description": "Message UUID", "type": "string", "required": True},
+            "response_mode": {
+                "description": "Response mode",
+                "type": "string",
+                "enum": ["blocking", "streaming"],
+                "required": True,
+            },
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request - Not a completion app or feature disabled",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Message Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def get(self, app_model, end_user, message_id):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -156,11 +230,25 @@ class MessageMoreLikeThisApi(WebApiResource):
             raise InternalServerError()
 
 
+@web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
     suggested_questions_response_fields = {
         "data": fields.List(fields.String),
     }
 
+    @web_ns.doc("Get Suggested Questions")
+    @web_ns.doc(description="Get suggested follow-up questions after a message (chat apps only).")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request - Not a chat app or feature disabled",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Message Not Found or Conversation Not Found",
+            500: "Internal Server Error",
+        }
+    )
     @marshal_with(suggested_questions_response_fields)
     def get(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
@@ -192,9 +280,3 @@ class MessageSuggestedQuestionApi(WebApiResource):
             raise InternalServerError()
 
         return {"data": questions}
-
-
-api.add_resource(MessageListApi, "/messages")
-api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
-api.add_resource(MessageMoreLikeThisApi, "/messages/<uuid:message_id>/more-like-this")
-api.add_resource(MessageSuggestedQuestionApi, "/messages/<uuid:message_id>/suggested-questions")
