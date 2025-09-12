@@ -177,6 +177,20 @@ class TestAccountService:
         query_results = {("Account", "email", "test@example.com"): mock_account}
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
+        # Ensure select(...).where(...).order_by(...).limit(...).first() returns None for both checks
+        select_result = MagicMock()
+        mock_db_dependencies["db"].session.scalars.return_value = select_result
+
+        def _make_chain_none():
+            chain = MagicMock()
+            chain.order_by.return_value = chain
+            chain.limit.return_value = chain
+            chain.first.return_value = None
+            return chain
+
+        # First None for available_ta check; second None for existing tenant member check
+        select_result.where.side_effect = [_make_chain_none(), _make_chain_none()]
+
         mock_password_dependencies["compare_password"].return_value = True
 
         # scalars(select(Account).filter_by(email=...)).first() should return the mock account
