@@ -1,7 +1,7 @@
-import enum
 import json
 import os
 from collections.abc import Mapping, Sequence
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from core.app.app_config.entities import PromptTemplateEntity
@@ -25,9 +25,9 @@ if TYPE_CHECKING:
     from core.file.models import File
 
 
-class ModelMode(enum.StrEnum):
-    COMPLETION = "completion"
-    CHAT = "chat"
+class ModelMode(StrEnum):
+    COMPLETION = auto()
+    CHAT = auto()
 
 
 prompt_file_contents: dict[str, Any] = {}

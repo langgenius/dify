@@ -27,6 +27,8 @@ import {
   useEducationStatus,
 } from '@/service/use-education'
 import { noop } from 'lodash-es'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { ZENDESK_FIELD_IDS } from '@/config'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -188,6 +190,17 @@ export const ProviderContextProvider = ({
   useEffect(() => {
     fetchPlan()
   }, [])
+
+  // #region Zendesk conversation fields
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.PLAN,
+        value: `${plan.type}-plan`,
+      }])
+    }
+  }, [plan.type])
+  // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()
   useEffect(() => {

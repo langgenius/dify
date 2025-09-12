@@ -1,11 +1,11 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
+from flask_restx import Resource, fields, reqparse
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -38,7 +38,27 @@ logger = logging.getLogger(__name__)
 
 
 # define completion message api for user
+@console_ns.route("/apps/<uuid:app_id>/completion-messages")
 class CompletionMessageApi(Resource):
+    @api.doc("create_completion_message")
+    @api.doc(description="Generate completion message for debugging")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "CompletionMessageRequest",
+            {
+                "inputs": fields.Raw(required=True, description="Input variables"),
+                "query": fields.String(description="Query text", default=""),
+                "files": fields.List(fields.Raw(), description="Uploaded files"),
+                "model_config": fields.Raw(required=True, description="Model configuration"),
+                "response_mode": fields.String(enum=["blocking", "streaming"], description="Response mode"),
+                "retriever_from": fields.String(default="dev", description="Retriever source"),
+            },
+        )
+    )
+    @api.response(200, "Completion generated successfully")
+    @api.response(400, "Invalid request parameters")
+    @api.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -86,7 +106,12 @@ class CompletionMessageApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
 class CompletionMessageStopApi(Resource):
+    @api.doc("stop_completion_message")
+    @api.doc(description="Stop a running completion message generation")
+    @api.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @api.response(200, "Task stopped successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -99,12 +124,40 @@ class CompletionMessageStopApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageApi(Resource):
+    @api.doc("create_chat_message")
+    @api.doc(description="Generate chat message for debugging")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "ChatMessageRequest",
+            {
+                "inputs": fields.Raw(required=True, description="Input variables"),
+                "query": fields.String(required=True, description="User query"),
+                "files": fields.List(fields.Raw(), description="Uploaded files"),
+                "model_config": fields.Raw(required=True, description="Model configuration"),
+                "conversation_id": fields.String(description="Conversation ID"),
+                "parent_message_id": fields.String(description="Parent message ID"),
+                "response_mode": fields.String(enum=["blocking", "streaming"], description="Response mode"),
+                "retriever_from": fields.String(default="dev", description="Retriever source"),
+            },
+        )
+    )
+    @api.response(200, "Chat message generated successfully")
+    @api.response(400, "Invalid request parameters")
+    @api.response(404, "App or conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     def post(self, app_model):
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, required=True, location="json")
@@ -155,7 +208,12 @@ class ChatMessageApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
 class ChatMessageStopApi(Resource):
+    @api.doc("stop_chat_message")
+    @api.doc(description="Stop a running chat message generation")
+    @api.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @api.response(200, "Task stopped successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -166,9 +224,3 @@ class ChatMessageStopApi(Resource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {"result": "success"}, 200
-
-
-api.add_resource(CompletionMessageApi, "/apps/<uuid:app_id>/completion-messages")
-api.add_resource(CompletionMessageStopApi, "/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
-api.add_resource(ChatMessageApi, "/apps/<uuid:app_id>/chat-messages")
-api.add_resource(ChatMessageStopApi, "/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")

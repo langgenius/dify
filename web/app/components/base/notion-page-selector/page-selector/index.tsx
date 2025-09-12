@@ -229,7 +229,7 @@ const PageSelector = ({
     if (current.expand) {
       current.expand = false
 
-      newDataList = [...dataList.filter(item => !descendantsIds.includes(item.page_id))]
+      newDataList = dataList.filter(item => !descendantsIds.includes(item.page_id))
     }
     else {
       current.expand = true
@@ -246,7 +246,7 @@ const PageSelector = ({
     setDataList(newDataList)
   }
 
-  const copyValue = new Set([...value])
+  const copyValue = new Set(value)
   const handleCheck = (index: number) => {
     const current = currentDataList[index]
     const pageId = current.page_id
@@ -269,7 +269,7 @@ const PageSelector = ({
       copyValue.add(pageId)
     }
 
-    onSelect(new Set([...copyValue]))
+    onSelect(new Set(copyValue))
   }
 
   const handlePreview = (index: number) => {

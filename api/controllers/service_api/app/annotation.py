@@ -165,7 +165,7 @@ class AnnotationUpdateDeleteApi(Resource):
     def put(self, app_model: App, annotation_id):
         """Update an existing annotation."""
         assert isinstance(current_user, Account)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         annotation_id = str(annotation_id)
@@ -189,7 +189,7 @@ class AnnotationUpdateDeleteApi(Resource):
         """Delete an annotation."""
         assert isinstance(current_user, Account)
 
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         annotation_id = str(annotation_id)

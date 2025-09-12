@@ -255,7 +255,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Try to create metadata with built-in field name
-        built_in_field_name = BuiltInField.document_name.value
+        built_in_field_name = BuiltInField.document_name
         metadata_args = MetadataArgs(type="string", name=built_in_field_name)
 
         # Act & Assert: Verify proper error handling
@@ -375,7 +375,7 @@ class TestMetadataService:
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Try to update with built-in field name
-        built_in_field_name = BuiltInField.document_name.value
+        built_in_field_name = BuiltInField.document_name
 
         with pytest.raises(ValueError, match="Metadata name already exists in Built-in fields."):
             MetadataService.update_metadata_name(dataset.id, metadata.id, built_in_field_name)
@@ -540,11 +540,11 @@ class TestMetadataService:
         field_names = [field["name"] for field in result]
         field_types = [field["type"] for field in result]
 
-        assert BuiltInField.document_name.value in field_names
-        assert BuiltInField.uploader.value in field_names
-        assert BuiltInField.upload_date.value in field_names
-        assert BuiltInField.last_update_date.value in field_names
-        assert BuiltInField.source.value in field_names
+        assert BuiltInField.document_name in field_names
+        assert BuiltInField.uploader in field_names
+        assert BuiltInField.upload_date in field_names
+        assert BuiltInField.last_update_date in field_names
+        assert BuiltInField.source in field_names
 
         # Verify field types
         assert "string" in field_types
@@ -682,11 +682,11 @@ class TestMetadataService:
 
         # Set document metadata with built-in fields
         document.doc_metadata = {
-            BuiltInField.document_name.value: document.name,
-            BuiltInField.uploader.value: "test_uploader",
-            BuiltInField.upload_date.value: 1234567890.0,
-            BuiltInField.last_update_date.value: 1234567890.0,
-            BuiltInField.source.value: "test_source",
+            BuiltInField.document_name: document.name,
+            BuiltInField.uploader: "test_uploader",
+            BuiltInField.upload_date: 1234567890.0,
+            BuiltInField.last_update_date: 1234567890.0,
+            BuiltInField.source: "test_source",
         }
         db.session.add(document)
         db.session.commit()

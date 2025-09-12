@@ -482,6 +482,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       return resp
     const errResp: Response = err as any
     if (errResp.status === 401) {
+      if(/\/login/.test(url)) {
+        const clonedResponse = errResp.clone()
+        const bodyJson = await clonedResponse.json() as Promise<ResponseError>
+        return bodyJson
+      }
+
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
       const loginUrl = `${globalThis.location.origin}${basePath}/signin`
       if (parseErr) {

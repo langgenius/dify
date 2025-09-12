@@ -12,7 +12,7 @@ from controllers.console.auth.oauth import (
 )
 from libs.oauth import OAuthUserInfo
 from models.account import AccountStatus
-from services.errors.account import AccountNotFoundError
+from services.errors.account import AccountRegisterError
 
 
 class TestGetOAuthProviders:
@@ -451,7 +451,7 @@ class TestAccountGeneration:
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             if not allow_register and not existing_account:
-                with pytest.raises(AccountNotFoundError):
+                with pytest.raises(AccountRegisterError):
                     _generate_account("github", user_info)
             else:
                 result = _generate_account("github", user_info)

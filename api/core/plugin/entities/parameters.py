@@ -1,5 +1,5 @@
-import enum
 import json
+from enum import StrEnum, auto
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
@@ -25,44 +25,44 @@ class PluginParameterOption(BaseModel):
             return value
 
 
-class PluginParameterType(enum.StrEnum):
+class PluginParameterType(StrEnum):
     """
     all available parameter types
     """
 
-    STRING = CommonParameterType.STRING.value
-    NUMBER = CommonParameterType.NUMBER.value
-    BOOLEAN = CommonParameterType.BOOLEAN.value
-    SELECT = CommonParameterType.SELECT.value
-    SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
-    FILE = CommonParameterType.FILE.value
-    FILES = CommonParameterType.FILES.value
-    APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
-    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
-    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
-    ANY = CommonParameterType.ANY.value
-    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT.value
+    STRING = CommonParameterType.STRING
+    NUMBER = CommonParameterType.NUMBER
+    BOOLEAN = CommonParameterType.BOOLEAN
+    SELECT = CommonParameterType.SELECT
+    SECRET_INPUT = CommonParameterType.SECRET_INPUT
+    FILE = CommonParameterType.FILE
+    FILES = CommonParameterType.FILES
+    APP_SELECTOR = CommonParameterType.APP_SELECTOR
+    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+    ANY = CommonParameterType.ANY
+    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT
 
     # deprecated, should not use.
-    SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
+    SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
 
     # MCP object and array type parameters
-    ARRAY = CommonParameterType.ARRAY.value
-    OBJECT = CommonParameterType.OBJECT.value
+    ARRAY = CommonParameterType.ARRAY
+    OBJECT = CommonParameterType.OBJECT
 
 
-class MCPServerParameterType(enum.StrEnum):
+class MCPServerParameterType(StrEnum):
     """
     MCP server got complex parameter types
     """
 
-    ARRAY = "array"
-    OBJECT = "object"
+    ARRAY = auto()
+    OBJECT = auto()
 
 
 class PluginParameterAutoGenerate(BaseModel):
-    class Type(enum.StrEnum):
-        PROMPT_INSTRUCTION = "prompt_instruction"
+    class Type(StrEnum):
+        PROMPT_INSTRUCTION = auto()
 
     type: Type
 
@@ -93,7 +93,7 @@ class PluginParameter(BaseModel):
         return v
 
 
-def as_normal_type(typ: enum.StrEnum):
+def as_normal_type(typ: StrEnum):
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
@@ -102,7 +102,7 @@ def as_normal_type(typ: enum.StrEnum):
     return typ.value
 
 
-def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
+def cast_parameter_value(typ: StrEnum, value: Any, /):
     try:
         match typ.value:
             case PluginParameterType.STRING | PluginParameterType.SECRET_INPUT | PluginParameterType.SELECT:
@@ -190,7 +190,7 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
         raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
 
 
-def init_frontend_parameter(rule: PluginParameter, type: enum.StrEnum, value: Any):
+def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     """
     init frontend parameter by rule
     """

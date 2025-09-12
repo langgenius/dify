@@ -7,6 +7,7 @@ const translation = {
     registrationNotAllowed: 'Akun tidak ditemukan. Silakan hubungi admin sistem untuk mendaftar.',
     passwordInvalid: 'Kata sandi harus berisi huruf dan angka, dan panjangnya harus lebih besar dari 8',
     passwordEmpty: 'Kata sandi diperlukan',
+    invalidEmailOrPassword: 'Email atau kata sandi tidak valid.',
   },
   license: {
     tip: 'Sebelum memulai Edisi Komunitas Dify, baca GitHub',
@@ -110,6 +111,15 @@ const translation = {
   forget: 'Lupa Kata Sandi Anda?',
   backToLogin: 'Kembali ke halaman masuk',
   oneMoreStep: 'Satu langkah lagi',
+  signup: {
+    signIn: 'Masuk',
+    signUp: 'Daftar',
+    createAccount: 'Buat akun Anda',
+    haveAccount: 'Sudah memiliki akun?',
+    verifyMail: 'Lanjutkan dengan kode verifikasi',
+    noAccount: 'Tidak punya akun?',
+    welcome: '👋 Selamat datang! Silakan isi detail untuk memulai.',
+  },
 }
 
 export default translation

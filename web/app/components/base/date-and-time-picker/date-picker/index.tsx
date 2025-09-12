@@ -42,7 +42,14 @@ const DatePicker = ({
   const [view, setView] = useState(ViewType.date)
   const containerRef = useRef<HTMLDivElement>(null)
   const isInitial = useRef(true)
-  const inputValue = useRef(value ? value.tz(timezone) : undefined).current
+
+  // Normalize the value to ensure that all subsequent uses are Day.js objects.
+  const normalizedValue = useMemo(() => {
+    if (!value) return undefined
+    return dayjs.isDayjs(value) ? value.tz(timezone) : dayjs(value).tz(timezone)
+  }, [value, timezone])
+
+  const inputValue = useRef(normalizedValue).current
   const defaultValue = useRef(getDateWithTimezone({ timezone })).current
 
   const [currentDate, setCurrentDate] = useState(inputValue || defaultValue)
@@ -68,8 +75,8 @@ const DatePicker = ({
       return
     }
     clearMonthMapCache()
-    if (value) {
-      const newValue = getDateWithTimezone({ date: value, timezone })
+    if (normalizedValue) {
+      const newValue = getDateWithTimezone({ date: normalizedValue, timezone })
       setCurrentDate(newValue)
       setSelectedDate(newValue)
       onChange(newValue)
@@ -88,9 +95,9 @@ const DatePicker = ({
     }
     setView(ViewType.date)
     setIsOpen(true)
-    if (value) {
-      setCurrentDate(value)
-      setSelectedDate(value)
+    if (normalizedValue) {
+      setCurrentDate(normalizedValue)
+      setSelectedDate(normalizedValue)
     }
   }
 
@@ -192,7 +199,7 @@ const DatePicker = ({
   }
 
   const timeFormat = needTimePicker ? t('time.dateFormats.displayWithTime') : t('time.dateFormats.display')
-  const displayValue = value?.format(timeFormat) || ''
+  const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
   const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('time.defaultPlaceholder'))
 
@@ -204,7 +211,7 @@ const DatePicker = ({
     >
       <PortalToFollowElemTrigger className={triggerWrapClassName}>
         {renderTrigger ? (renderTrigger({
-          value,
+          value: normalizedValue,
           selectedDate,
           isOpen,
           handleClear,

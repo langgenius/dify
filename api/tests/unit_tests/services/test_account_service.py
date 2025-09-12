@@ -10,7 +10,6 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFoundError,
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
@@ -195,7 +194,7 @@ class TestAccountService:
 
         # Execute test and verify exception
         self._assert_exception_raised(
-            AccountNotFoundError, AccountService.authenticate, "notfound@example.com", "password"
+            AccountPasswordError, AccountService.authenticate, "notfound@example.com", "password"
         )
 
     def test_authenticate_account_banned(self, mock_db_dependencies):

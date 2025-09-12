@@ -1,4 +1,4 @@
-import enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -26,25 +26,25 @@ class AgentStrategyProviderIdentity(ToolProviderIdentity):
 
 
 class AgentStrategyParameter(PluginParameter):
-    class AgentStrategyParameterType(enum.StrEnum):
+    class AgentStrategyParameterType(StrEnum):
         """
         Keep all the types from PluginParameterType
         """
 
-        STRING = CommonParameterType.STRING.value
-        NUMBER = CommonParameterType.NUMBER.value
-        BOOLEAN = CommonParameterType.BOOLEAN.value
-        SELECT = CommonParameterType.SELECT.value
-        SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
-        FILE = CommonParameterType.FILE.value
-        FILES = CommonParameterType.FILES.value
-        APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
-        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
-        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
-        ANY = CommonParameterType.ANY.value
+        STRING = CommonParameterType.STRING
+        NUMBER = CommonParameterType.NUMBER
+        BOOLEAN = CommonParameterType.BOOLEAN
+        SELECT = CommonParameterType.SELECT
+        SECRET_INPUT = CommonParameterType.SECRET_INPUT
+        FILE = CommonParameterType.FILE
+        FILES = CommonParameterType.FILES
+        APP_SELECTOR = CommonParameterType.APP_SELECTOR
+        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+        ANY = CommonParameterType.ANY
 
         # deprecated, should not use.
-        SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
+        SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
 
         def as_normal_type(self):
             return as_normal_type(self)
@@ -72,7 +72,7 @@ class AgentStrategyIdentity(ToolIdentity):
     pass
 
 
-class AgentFeature(enum.StrEnum):
+class AgentFeature(StrEnum):
     """
     Agent Feature, used to describe the features of the agent strategy.
     """

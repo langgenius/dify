@@ -11,12 +11,12 @@ class TestSupabaseStorage:
 
     def test_init_success_with_all_config(self):
         """Test successful initialization when all required config is provided."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -31,7 +31,7 @@ class TestSupabaseStorage:
 
     def test_init_raises_error_when_url_missing(self):
         """Test initialization raises ValueError when SUPABASE_URL is None."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = None
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
@@ -41,7 +41,7 @@ class TestSupabaseStorage:
 
     def test_init_raises_error_when_api_key_missing(self):
         """Test initialization raises ValueError when SUPABASE_API_KEY is None."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = None
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
@@ -51,7 +51,7 @@ class TestSupabaseStorage:
 
     def test_init_raises_error_when_bucket_name_missing(self):
         """Test initialization raises ValueError when SUPABASE_BUCKET_NAME is None."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = None
@@ -61,12 +61,12 @@ class TestSupabaseStorage:
 
     def test_create_bucket_when_not_exists(self):
         """Test create_bucket creates bucket when it doesn't exist."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -77,12 +77,12 @@ class TestSupabaseStorage:
 
     def test_create_bucket_when_exists(self):
         """Test create_bucket does not create bucket when it already exists."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -94,12 +94,12 @@ class TestSupabaseStorage:
     @pytest.fixture
     def storage_with_mock_client(self):
         """Fixture providing SupabaseStorage with mocked client."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -251,12 +251,12 @@ class TestSupabaseStorage:
 
     def test_bucket_exists_returns_true_when_bucket_found(self):
         """Test bucket_exists returns True when bucket is found in list."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -271,12 +271,12 @@ class TestSupabaseStorage:
 
     def test_bucket_exists_returns_false_when_bucket_not_found(self):
         """Test bucket_exists returns False when bucket is not found in list."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -294,12 +294,12 @@ class TestSupabaseStorage:
 
     def test_bucket_exists_returns_false_when_no_buckets(self):
         """Test bucket_exists returns False when no buckets exist."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 

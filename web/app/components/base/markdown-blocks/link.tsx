@@ -17,7 +17,7 @@ const Link = ({ node, children, ...props }: any) => {
   }
   else {
     const href = props.href || node.properties?.href
-    if (href && /^#[a-zA-Z0-9_\-]+$/.test(href.toString())) {
+    if (href && /^#[a-zA-Z0-9_-]+$/.test(href.toString())) {
       const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
         e.preventDefault()
         // scroll to target element if exists within the answer container

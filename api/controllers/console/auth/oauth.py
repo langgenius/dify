@@ -18,6 +18,7 @@ from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
+from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
@@ -183,7 +184,15 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
 
     if not account:
         if not FeatureService.get_system_features().is_allow_register:
-            raise AccountNotFoundError()
+            if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(user_info.email):
+                raise AccountRegisterError(
+                    description=(
+                        "This email account has been deleted within the past "
+                        "30 days and is temporarily unavailable for new account registration"
+                    )
+                )
+            else:
+                raise AccountRegisterError(description=("Invalid email or password"))
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider

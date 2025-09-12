@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 # public
 GEN_AI_SESSION_ID = "gen_ai.session.id"
@@ -53,7 +53,7 @@ TOOL_DESCRIPTION = "tool.description"
 TOOL_PARAMETERS = "tool.parameters"
 
 
-class GenAISpanKind(Enum):
+class GenAISpanKind(StrEnum):
     CHAIN = "CHAIN"
     RETRIEVER = "RETRIEVER"
     RERANKER = "RERANKER"

@@ -52,7 +52,7 @@ export const useNodesSyncDraft = () => {
           })
         })
       })
-      const producedEdges = produce(edges, (draft) => {
+      const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
         draft.forEach((edge) => {
           Object.keys(edge.data).forEach((key) => {
             if (key.startsWith('_'))

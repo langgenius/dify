@@ -27,20 +27,42 @@ class InvalidTokenError(BaseHTTPException):
 
 class PasswordResetRateLimitExceededError(BaseHTTPException):
     error_code = "password_reset_rate_limit_exceeded"
-    description = "Too many password reset emails have been sent. Please try again in 1 minute."
+    description = "Too many password reset emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
+
+
+class EmailRegisterRateLimitExceededError(BaseHTTPException):
+    error_code = "email_register_rate_limit_exceeded"
+    description = "Too many email register emails have been sent. Please try again in {minutes} minutes."
+    code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailChangeRateLimitExceededError(BaseHTTPException):
     error_code = "email_change_rate_limit_exceeded"
-    description = "Too many email change emails have been sent. Please try again in 1 minute."
+    description = "Too many email change emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class OwnerTransferRateLimitExceededError(BaseHTTPException):
     error_code = "owner_transfer_rate_limit_exceeded"
-    description = "Too many owner transfer emails have been sent. Please try again in 1 minute."
+    description = "Too many owner transfer emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailCodeError(BaseHTTPException):
@@ -69,19 +91,33 @@ class EmailPasswordLoginLimitError(BaseHTTPException):
 
 class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     error_code = "email_code_login_rate_limit_exceeded"
-    description = "Too many login emails have been sent. Please try again in 5 minutes."
+    description = "Too many login emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 5):
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
     error_code = "email_code_account_deletion_rate_limit_exceeded"
-    description = "Too many account deletion emails have been sent. Please try again in 5 minutes."
+    description = "Too many account deletion emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 5):
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailPasswordResetLimitError(BaseHTTPException):
     error_code = "email_password_reset_limit"
     description = "Too many failed password reset attempts. Please try again in 24 hours."
+    code = 429
+
+
+class EmailRegisterLimitError(BaseHTTPException):
+    error_code = "email_register_limit"
+    description = "Too many failed email register attempts. Please try again in 24 hours."
     code = 429
 
 

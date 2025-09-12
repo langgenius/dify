@@ -181,7 +181,7 @@ export default function AccountSetting({
           </div>
         </div>
         <div className='relative flex w-[824px]'>
-          <div className='absolute -right-11 top-6 z-[9999] flex flex-col items-center'>
+          <div className='fixed right-6 top-6 z-[9999] flex flex-col items-center'>
             <Button
               variant='tertiary'
               size='large'

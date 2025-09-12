@@ -224,35 +224,35 @@ class Dataset(Base):
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.document_name.value,
+                    "name": BuiltInField.document_name,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.uploader.value,
+                    "name": BuiltInField.uploader,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.upload_date.value,
+                    "name": BuiltInField.upload_date,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.last_update_date.value,
+                    "name": BuiltInField.last_update_date,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.source.value,
+                    "name": BuiltInField.source,
                     "type": "string",
                 }
             )
@@ -544,7 +544,7 @@ class Document(Base):
                 "id": "built-in",
                 "name": BuiltInField.source,
                 "type": "string",
-                "value": MetadataDataSource[self.data_source_type].value,
+                "value": MetadataDataSource[self.data_source_type],
             }
         )
         return built_in_fields

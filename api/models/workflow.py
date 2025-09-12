@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
 
@@ -41,13 +41,13 @@ from .types import EnumText, StringUUID
 logger = logging.getLogger(__name__)
 
 
-class WorkflowType(Enum):
+class WorkflowType(StrEnum):
     """
     Workflow Type Enum
     """
 
-    WORKFLOW = "workflow"
-    CHAT = "chat"
+    WORKFLOW = auto()
+    CHAT = auto()
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowType":
@@ -777,7 +777,7 @@ class WorkflowNodeExecutionModel(Base):
         return extras
 
 
-class WorkflowAppLogCreatedFrom(Enum):
+class WorkflowAppLogCreatedFrom(StrEnum):
     """
     Workflow App Log Created From Enum
     """

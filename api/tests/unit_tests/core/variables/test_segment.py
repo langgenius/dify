@@ -129,7 +129,6 @@ class TestSegmentDumpAndLoad:
         """Test basic segment serialization compatibility"""
         model = _Segments(segments=[IntegerSegment(value=1), StringSegment(value="a")])
         json = model.model_dump_json()
-        print("Json: ", json)
         loaded = _Segments.model_validate_json(json)
         assert loaded == model
 
@@ -137,7 +136,6 @@ class TestSegmentDumpAndLoad:
         """Test number segment serialization compatibility"""
         model = _Segments(segments=[IntegerSegment(value=1), FloatSegment(value=1.0)])
         json = model.model_dump_json()
-        print("Json: ", json)
         loaded = _Segments.model_validate_json(json)
         assert loaded == model
 
@@ -145,7 +143,6 @@ class TestSegmentDumpAndLoad:
         """Test variable serialization compatibility"""
         model = _Variables(variables=[IntegerVariable(value=1, name="int"), StringVariable(value="a", name="str")])
         json = model.model_dump_json()
-        print("Json: ", json)
         restored = _Variables.model_validate_json(json)
         assert restored == model
 

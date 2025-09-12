@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum, auto
 from functools import cached_property
 from typing import Optional
 
@@ -12,9 +12,9 @@ from .engine import db
 from .types import StringUUID
 
 
-class ProviderType(Enum):
-    CUSTOM = "custom"
-    SYSTEM = "system"
+class ProviderType(StrEnum):
+    CUSTOM = auto()
+    SYSTEM = auto()
 
     @staticmethod
     def value_of(value: str) -> "ProviderType":
@@ -24,14 +24,14 @@ class ProviderType(Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class ProviderQuotaType(Enum):
-    PAID = "paid"
+class ProviderQuotaType(StrEnum):
+    PAID = auto()
     """hosted paid quota"""
 
-    FREE = "free"
+    FREE = auto()
     """third-party free quota"""
 
-    TRIAL = "trial"
+    TRIAL = auto()
     """hosted trial quota"""
 
     @staticmethod

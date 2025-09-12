@@ -9,19 +9,19 @@ import json
 import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum, auto
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
-class FileStatus(Enum):
+class FileStatus(StrEnum):
     """File status enumeration"""
 
-    ACTIVE = "active"  # Active status
-    ARCHIVED = "archived"  # Archived
-    DELETED = "deleted"  # Deleted (soft delete)
-    BACKUP = "backup"  # Backup file
+    ACTIVE = auto()  # Active status
+    ARCHIVED = auto()  # Archived
+    DELETED = auto()  # Deleted (soft delete)
+    BACKUP = auto()  # Backup file
 
 
 @dataclass

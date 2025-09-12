@@ -45,7 +45,7 @@
     "no-unassigned-vars": "warn",
     "no-unsafe-finally": "warn",
     "no-unsafe-negation": "warn",
-    "no-unsafe-optional-chaining": "warn",
+    "no-unsafe-optional-chaining": "error",
     "no-unused-labels": "warn",
     "no-unused-private-class-members": "warn",
     "no-unused-vars": "warn",
