@@ -646,7 +646,7 @@ def on_test_start(environment: object, **kwargs: object) -> None:
                         total = environment.stats.total
                         if hasattr(total, 'num_requests') and total.num_requests > 0:
                             logger.info(
-                                f"\n{'LOCUST STATS':<25} {'Requests':>12} {'Fails':>8} {'Avg (ms)':>12} {'Min':>8} {'Max':>8}"
+                                f"{'LOCUST STATS':<25} {'Requests':>12} {'Fails':>8} {'Avg (ms)':>12} {'Min':>8} {'Max':>8}"
                             )
                             logger.info("-" * 80)
                             logger.info(
