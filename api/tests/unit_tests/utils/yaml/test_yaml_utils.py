@@ -56,11 +56,11 @@ def prepare_invalid_yaml_file(tmp_path, monkeypatch) -> str:
 
 
 def test_load_yaml_non_existing_file():
-    assert _load_yaml_file(file_path=NON_EXISTING_YAML_FILE) == {}
-    assert _load_yaml_file(file_path="") == {}
-
     with pytest.raises(FileNotFoundError):
-        _load_yaml_file(file_path=NON_EXISTING_YAML_FILE, ignore_error=False)
+        _load_yaml_file(file_path=NON_EXISTING_YAML_FILE)
+    
+    with pytest.raises(FileNotFoundError):
+        _load_yaml_file(file_path="")
 
 
 def test_load_valid_yaml_file(prepare_example_yaml_file):
@@ -77,7 +77,4 @@ def test_load_valid_yaml_file(prepare_example_yaml_file):
 def test_load_invalid_yaml_file(prepare_invalid_yaml_file):
     # yaml syntax error
     with pytest.raises(YAMLError):
-        _load_yaml_file(file_path=prepare_invalid_yaml_file, ignore_error=False)
-
-    # ignore error
-    assert _load_yaml_file(file_path=prepare_invalid_yaml_file) == {}
+        _load_yaml_file(file_path=prepare_invalid_yaml_file)
