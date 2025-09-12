@@ -486,7 +486,7 @@ def _generate_file(draw) -> File:
 def _scalar_value() -> st.SearchStrategy[int | float | str | File | None]:
     return st.one_of(
         st.none(),
-        st.integers(min_value=-10**6, max_value=10**6),
+        st.integers(min_value=-(10**6), max_value=10**6),
         st.floats(allow_nan=True, allow_infinity=False),
         st.text(max_size=50),
         _generate_file(),
@@ -502,6 +502,7 @@ def test_build_segment_and_extract_values_for_scalar_types(value):
         assert math.isnan(seg.value)
     else:
         assert seg.value == value
+
 
 @settings(max_examples=50)
 @given(values=st.lists(_scalar_value(), max_size=20))
