@@ -723,7 +723,7 @@ class ProviderConfiguration(BaseModel):
 
             try:
                 provider_record.credential_id = None
-                provider_record.credential_status = CredentialStatus.CANCEL.value
+                provider_record.credential_status = CredentialStatus.CANCELED.value
                 provider_record.updated_at = naive_utc_now()
                 session.commit()
 
