@@ -217,6 +217,7 @@ class AccountService:
         # encrypt password with salt
         password_hashed = hash_password(new_password, salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
+        account = db.session.merge(account)
         account.password = base64_password_hashed
         account.password_salt = base64_salt
         db.session.add(account)
