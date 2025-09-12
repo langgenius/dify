@@ -167,13 +167,6 @@ class DatetimeString:
         return value
 
 
-def _get_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"{value} is not a valid float")
-
-
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string

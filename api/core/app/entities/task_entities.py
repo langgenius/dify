@@ -5,7 +5,6 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -91,9 +90,6 @@ class StreamResponse(BaseModel):
 
     event: StreamEvent
     task_id: str
-
-    def to_dict(self):
-        return jsonable_encoder(self)
 
 
 class ErrorStreamResponse(StreamResponse):
@@ -745,9 +741,6 @@ class AppBlockingResponse(BaseModel):
 
     task_id: str
 
-    def to_dict(self):
-        return jsonable_encoder(self)
-
 
 class ChatbotAppBlockingResponse(AppBlockingResponse):
     """
@@ -828,8 +821,8 @@ class AgentLogStreamResponse(StreamResponse):
         node_execution_id: str
         id: str
         label: str
-        parent_id: str | None
-        error: str | None
+        parent_id: str | None = None
+        error: str | None = None
         status: str
         data: Mapping[str, Any]
         metadata: Optional[Mapping[str, Any]] = None

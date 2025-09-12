@@ -134,6 +134,10 @@ class KnowledgeRateLimitModel(BaseModel):
     subscription_plan: str = ""
 
 
+class PluginManagerModel(BaseModel):
+    enabled: bool = False
+
+
 class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
@@ -150,6 +154,7 @@ class SystemFeatureModel(BaseModel):
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
+    plugin_manager: PluginManagerModel = PluginManagerModel()
 
 
 class FeatureService:
@@ -188,6 +193,7 @@ class FeatureService:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
+            system_features.plugin_manager.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
