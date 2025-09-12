@@ -1004,12 +1004,12 @@ class TenantService:
         account: Account, name: Optional[str] = None, is_setup: Optional[bool] = False
     ):
         """Check if user have a workspace or not"""
-        available_ta = (
-            db.session.query(TenantAccountJoin)
-            .filter_by(account_id=account.id)
+        available_ta = db.session.scalars(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.account_id == account.id)
             .order_by(TenantAccountJoin.id.asc())
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if available_ta:
             return
@@ -1040,7 +1040,9 @@ class TenantService:
                 raise Exception("Tenant already has an owner.")
 
         ta = db.session.scalars(
-            select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).limit(1)
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+            .limit(1)
         ).first()
         if ta:
             ta.role = role
