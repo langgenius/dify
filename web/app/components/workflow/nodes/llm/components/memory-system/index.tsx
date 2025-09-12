@@ -6,7 +6,9 @@ import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
+import MemoryCreateButton from './memory-create-button'
 import MemorySelector from './memory-selector'
 import LinearMemory from './linear-memory'
 import type { Memory } from '@/app/components/workflow/types'
@@ -54,6 +56,10 @@ const MemorySystem = ({
                     triggerClassName='w-4 h-4'
                   />
                   {collapseIcon}
+                  <Divider type='vertical' className='!ml-1.5 !mr-1 h-3 !w-px bg-divider-regular' />
+                  <div onClick={e => e.stopPropagation()}>
+                    <MemoryCreateButton />
+                  </div>
                 </div>
                 <MemorySelector
                   value={memoryType}
