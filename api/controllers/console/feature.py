@@ -1,26 +1,40 @@
 from flask_login import current_user
-from flask_restx import Resource
+from flask_restx import Resource, fields
 
 from libs.login import login_required
 from services.feature_service import FeatureService
 
-from . import api
+from . import api, console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
 
 
+@console_ns.route("/features")
 class FeatureApi(Resource):
+    @api.doc("get_tenant_features")
+    @api.doc(description="Get feature configuration for current tenant")
+    @api.response(
+        200,
+        "Success",
+        api.model("FeatureResponse", {"features": fields.Raw(description="Feature configuration object")}),
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_utm_record
     def get(self):
+        """Get feature configuration for current tenant"""
         return FeatureService.get_features(current_user.current_tenant_id).model_dump()
 
 
+@console_ns.route("/system-features")
 class SystemFeatureApi(Resource):
+    @api.doc("get_system_features")
+    @api.doc(description="Get system-wide feature configuration")
+    @api.response(
+        200,
+        "Success",
+        api.model("SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}),
+    )
     def get(self):
+        """Get system-wide feature configuration"""
         return FeatureService.get_system_features().model_dump()
-
-
-api.add_resource(FeatureApi, "/features")
-api.add_resource(SystemFeatureApi, "/system-features")
