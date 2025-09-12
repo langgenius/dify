@@ -1004,7 +1004,7 @@ class DocumentService:
         if dataset.built_in_field_enabled:
             if document.doc_metadata:
                 doc_metadata = copy.deepcopy(document.doc_metadata)
-                doc_metadata[BuiltInField.document_name.value] = name
+                doc_metadata[BuiltInField.document_name] = name
                 document.doc_metadata = doc_metadata
 
         document.name = name

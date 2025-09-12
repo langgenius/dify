@@ -1,4 +1,4 @@
-from enum import StrEnum, auto
+from enum import Enum
 from typing import Literal, Optional
 
 from pydantic import Field, PositiveInt
@@ -10,13 +10,13 @@ class OpenSearchConfig(BaseSettings):
     Configuration settings for OpenSearch
     """
 
-    class AuthMethod(StrEnum):
+    class AuthMethod(Enum):
         """
         Authentication method for OpenSearch
         """
 
-        BASIC = auto()
-        AWS_MANAGED_IAM = auto()
+        BASIC = "basic"
+        AWS_MANAGED_IAM = "aws_managed_iam"
 
     OPENSEARCH_HOST: Optional[str] = Field(
         description="Hostname or IP address of the OpenSearch server (e.g., 'localhost' or 'opensearch.example.com')",

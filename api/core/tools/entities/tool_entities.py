@@ -46,7 +46,7 @@ class ToolProviderType(StrEnum):
     """
 
     PLUGIN = auto()
-    BUILT_IN = auto()
+    BUILT_IN = "builtin"
     WORKFLOW = auto()
     API = auto()
     APP = auto()
