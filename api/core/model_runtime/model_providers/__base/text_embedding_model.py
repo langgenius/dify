@@ -47,7 +47,7 @@ class TextEmbeddingModel(AIModel):
                 model=model,
                 credentials=credentials,
                 texts=texts,
-                input_type=input_type.value,
+                input_type=input_type,
             )
         except Exception as e:
             raise self._transform_invoke_error(e)
