@@ -21,12 +21,13 @@ export const useNodesSyncDraft = () => {
       onError?: () => void
       onSettled?: () => void
     },
+    forceUpload?: boolean,
   ) => {
     if (getNodesReadOnly())
       return
 
     if (sync)
-      doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
+      doSyncWorkflowDraft(notRefreshWhenSyncError, callback, forceUpload)
     else
       debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
   }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly])

@@ -72,7 +72,7 @@ const HeaderInRestoring = ({
       onSettled: () => {
         onRestoreSettled?.()
       },
-    })
+    }, true) // Enable forceUpload for restore operation
     deleteAllInspectVars()
     invalidAllLastRun()
   }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled, appDetail])

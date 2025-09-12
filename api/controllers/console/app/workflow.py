@@ -107,6 +107,7 @@ class DraftWorkflowApi(Resource):
             parser.add_argument("hash", type=str, required=False, location="json")
             parser.add_argument("environment_variables", type=list, required=True, location="json")
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
+            parser.add_argument("force_upload", type=bool, required=False, default=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -123,6 +124,7 @@ class DraftWorkflowApi(Resource):
                     "hash": data.get("hash"),
                     "environment_variables": data.get("environment_variables"),
                     "conversation_variables": data.get("conversation_variables"),
+                    "force_upload": data.get("force_upload", False),
                 }
             except json.JSONDecodeError:
                 return {"message": "Invalid JSON data"}, 400
@@ -151,6 +153,7 @@ class DraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                force_upload=args.get("force_upload", False),
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
