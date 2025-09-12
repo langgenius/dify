@@ -85,7 +85,6 @@ const DatePicker = ({
       setCurrentDate(prev => getDateWithTimezone({ date: prev, timezone }))
       setSelectedDate(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timezone])
 
   const handleClickTrigger = (e: React.MouseEvent) => {
