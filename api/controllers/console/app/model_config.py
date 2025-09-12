@@ -2,10 +2,11 @@ import json
 from typing import cast
 
 from flask import request
-from flask_restx import Resource
+from flask_login import current_user
+from flask_restx import Resource, fields
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.agent.entities import AgentToolEntity
@@ -13,13 +14,39 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models.account import Account
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
 
+@console_ns.route("/apps/<uuid:app_id>/model-config")
 class ModelConfigResource(Resource):
+    @api.doc("update_app_model_config")
+    @api.doc(description="Update application model configuration")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "ModelConfigRequest",
+            {
+                "provider": fields.String(description="Model provider"),
+                "model": fields.String(description="Model name"),
+                "configs": fields.Raw(description="Model configuration parameters"),
+                "opening_statement": fields.String(description="Opening statement"),
+                "suggested_questions": fields.List(fields.String(), description="Suggested questions"),
+                "more_like_this": fields.Raw(description="More like this configuration"),
+                "speech_to_text": fields.Raw(description="Speech to text configuration"),
+                "text_to_speech": fields.Raw(description="Text to speech configuration"),
+                "retrieval_model": fields.Raw(description="Retrieval model configuration"),
+                "tools": fields.List(fields.Raw(), description="Available tools"),
+                "dataset_configs": fields.Raw(description="Dataset configurations"),
+                "agent_mode": fields.Raw(description="Agent mode configuration"),
+            },
+        )
+    )
+    @api.response(200, "Model configuration updated successfully")
+    @api.response(400, "Invalid configuration")
+    @api.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -150,6 +177,3 @@ class ModelConfigResource(Resource):
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
 
         return {"result": "success"}
-
-
-api.add_resource(ModelConfigResource, "/apps/<uuid:app_id>/model-config")
