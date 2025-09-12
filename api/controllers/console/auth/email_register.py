@@ -23,7 +23,6 @@ from models.account import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 
 
 class EmailRegisterSendEmailApi(Resource):
@@ -39,11 +38,9 @@ class EmailRegisterSendEmailApi(Resource):
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
-
-        if args["language"] is not None and args["language"] == "zh-Hans":
-            language = "zh-Hans"
-        else:
-            language = "en-US"
+        language = "en-US"
+        if args["language"] in languages:
+            language = args["language"]
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
             raise AccountInFreezeError()
@@ -147,10 +144,6 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=languages[0],
             )
-        except WorkSpaceNotAllowedCreateError:
-            pass
-        except WorkspacesLimitExceededError:
-            pass
         except AccountRegisterError:
             raise AccountInFreezeError()
 
