@@ -293,7 +293,7 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
             port=dify_config.OPENSEARCH_PORT,
             secure=dify_config.OPENSEARCH_SECURE,
             verify_certs=dify_config.OPENSEARCH_VERIFY_CERTS,
-            auth_method=dify_config.OPENSEARCH_AUTH_METHOD.value,
+            auth_method=dify_config.OPENSEARCH_AUTH_METHOD,
             user=dify_config.OPENSEARCH_USER,
             password=dify_config.OPENSEARCH_PASSWORD,
             aws_region=dify_config.OPENSEARCH_AWS_REGION,

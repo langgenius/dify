@@ -1,10 +1,10 @@
-from enum import Enum
+from enum import StrEnum, auto
 
 
-class RetrievalMethod(Enum):
-    SEMANTIC_SEARCH = "semantic_search"
-    FULL_TEXT_SEARCH = "full_text_search"
-    HYBRID_SEARCH = "hybrid_search"
+class RetrievalMethod(StrEnum):
+    SEMANTIC_SEARCH = auto()
+    FULL_TEXT_SEARCH = auto()
+    HYBRID_SEARCH = auto()
 
     @staticmethod
     def is_support_semantic_search(retrieval_method: str) -> bool:

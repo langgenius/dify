@@ -299,8 +299,8 @@ class EasyUIBasedAppModelConfigFrom(StrEnum):
     """
 
     ARGS = auto()
-    APP_LATEST_CONFIG = auto()
-    CONVERSATION_SPECIFIC_CONFIG = auto()
+    APP_LATEST_CONFIG = "app-latest-config"
+    CONVERSATION_SPECIFIC_CONFIG = "conversation-specific-config"
 
 
 class EasyUIBasedAppConfig(AppConfig):

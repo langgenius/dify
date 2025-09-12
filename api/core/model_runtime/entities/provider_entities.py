@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from enum import StrEnum, auto
+from enum import Enum, StrEnum, auto
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -8,7 +8,7 @@ from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 
-class ConfigurateMethod(StrEnum):
+class ConfigurateMethod(Enum):
     """
     Enum class for configurate method of provider model.
     """
