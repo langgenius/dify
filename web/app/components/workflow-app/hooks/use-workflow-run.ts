@@ -340,7 +340,22 @@ export const useWorkflowRun = () => {
     }
 
     featuresStore?.setState({ features: mappedFeatures })
-    workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+
+    // Clear previous restore info before setting new ones
+    workflowStore.getState().setRestoredSecretsInfo({})
+
+    const restoredSecretsInfo: Record<string, { from_version: string }> = {}
+    ;(publishedWorkflow.environment_variables || []).forEach((env) => {
+      if (env.value_type === 'secret')
+        restoredSecretsInfo[env.id] = { from_version: publishedWorkflow.id }
+    })
+    workflowStore.getState().setRestoredSecretsInfo(restoredSecretsInfo)
+
+    workflowStore.getState().setEnvSecrets((publishedWorkflow.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
+      acc[env.id] = env.value
+      return acc
+    }, {} as Record<string, string>))
+    workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 
   return {
