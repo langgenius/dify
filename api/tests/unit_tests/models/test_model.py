@@ -52,7 +52,7 @@ def test_file_preview_misspelled_not_replaced_after_fix():
     msg = Message(answer=original)
 
     out = msg.re_sign_file_url_answer
-    # Expect NO replacement, Should not rewrite misspelled file-previe URL
+    # Expect NO replacement, should not rewrite misspelled file-previe URL
     assert out == original
 
 
@@ -79,5 +79,5 @@ def test_image_preview_misspelled_not_replaced_after_fix():
     msg = Message(answer=original)
 
     out = msg.re_sign_file_url_answer
-    # Expect NO replacement, Should not rewrite misspelled image-previe URL
+    # Expect NO replacement, should not rewrite misspelled image-previe URL
     assert out == original
