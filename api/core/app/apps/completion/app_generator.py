@@ -271,6 +271,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             raise MoreLikeThisDisabledError()
 
         app_model_config = message.app_model_config
+        if not app_model_config:
+            raise ValueError("Message app_model_config is None")
         override_model_config_dict = app_model_config.to_dict()
         model_dict = override_model_config_dict["model"]
         completion_params = model_dict.get("completion_params")

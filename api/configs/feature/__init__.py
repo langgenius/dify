@@ -796,6 +796,11 @@ class DataSetConfig(BaseSettings):
         default=30,
     )
 
+    DSL_EXPORT_ENCRYPT_DATASET_ID: bool = Field(
+        description="Enable or disable dataset ID encryption when exporting DSL files",
+        default=True,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """

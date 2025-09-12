@@ -18,10 +18,10 @@ from models import AppMode, Message
 
 
 class DailyMessageStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -75,10 +75,10 @@ WHERE
 
 
 class DailyConversationStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -127,10 +127,10 @@ class DailyConversationStatistic(Resource):
 
 
 class DailyTerminalsStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -184,10 +184,10 @@ WHERE
 
 
 class DailyTokenCostStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -320,10 +320,10 @@ ORDER BY
 
 
 class UserSatisfactionRateStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -443,10 +443,10 @@ WHERE
 
 
 class TokensPerSecondStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
