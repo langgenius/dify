@@ -135,6 +135,7 @@ class ConversationService:
             except Exception as e:
                 # Handle case where conversation was deleted after we retrieved it
                 from sqlalchemy.orm.exc import StaleDataError
+
                 db.session.rollback()
                 if isinstance(e, StaleDataError):
                     # Conversation was likely deleted, raise ConversationNotExistsError
@@ -169,6 +170,7 @@ class ConversationService:
         except Exception as e:
             # Handle case where conversation was deleted after we retrieved it
             from sqlalchemy.orm.exc import StaleDataError
+
             db.session.rollback()
             if isinstance(e, StaleDataError):
                 # Conversation was likely deleted, raise ConversationNotExistsError
@@ -218,20 +220,17 @@ class ConversationService:
 
     @classmethod
     def clear_conversations(
-        cls, 
-        app_model: App, 
-        user: Optional[Union[Account, EndUser]], 
-        conversation_ids: Optional[list[str]] = None
+        cls, app_model: App, user: Optional[Union[Account, EndUser]], conversation_ids: Optional[list[str]] = None
     ) -> dict[str, Any]:
         """
         Clear conversations and related data, optionally for specific conversation IDs.
         Uses Celery task for handling large datasets.
-        
+
         Args:
             app_model: The app model
             user: The user (Account or EndUser)
             conversation_ids: Optional list of specific conversation IDs to clear
-            
+
         Returns:
             dict with task info and estimated counts
         """
@@ -239,41 +238,45 @@ class ConversationService:
         if conversation_ids:
             for conversation_id in conversation_ids:
                 cls.get_conversation(app_model, conversation_id, user)
-                
+
         # Get conversation mode for task
-        if app_model.mode == 'completion':
-            mode = 'completion'
+        if app_model.mode == "completion":
+            mode = "completion"
         else:
-            mode = 'chat'  # covers chat, agent-chat, advanced-chat
-            
+            mode = "chat"  # covers chat, agent-chat, advanced-chat
+
         # Queue the Celery task
         task = clear_conversations_task.delay(
             app_id=app_model.id,
             conversation_mode=mode,
             conversation_ids=conversation_ids,
             user_id=user.id if user else None,
-            user_type='account' if isinstance(user, Account) else 'end_user' if isinstance(user, EndUser) else None
+            user_type="account" if isinstance(user, Account) else "end_user" if isinstance(user, EndUser) else None,
         )
-        
+
         # Get estimated counts for response
         if conversation_ids:
             conversation_count = len(conversation_ids)
         else:
             # Estimate total conversations for this app
-            conversation_count = db.session.query(Conversation).filter(
-                Conversation.app_id == app_model.id,
-                Conversation.mode == mode,
-                Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted == False,
-            ).count()
-        
+            conversation_count = (
+                db.session.query(Conversation)
+                .filter(
+                    Conversation.app_id == app_model.id,
+                    Conversation.mode == mode,
+                    Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                    Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                    Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+                    Conversation.is_deleted == False,
+                )
+                .count()
+            )
+
         return {
-            'task_id': task.id,
-            'status': 'queued',
-            'estimated_conversations': conversation_count,
-            'mode': 'selective' if conversation_ids else 'all'
+            "task_id": task.id,
+            "status": "queued",
+            "estimated_conversations": conversation_count,
+            "mode": "selective" if conversation_ids else "all",
         }
 
     @classmethod
