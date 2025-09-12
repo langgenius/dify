@@ -13,7 +13,6 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFoundError,
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
@@ -161,7 +160,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         password = fake.password(length=12)
-        with pytest.raises(AccountNotFoundError):
+        with pytest.raises(AccountPasswordError):
             AccountService.authenticate(email, password)
 
     def test_authenticate_banned_account(self, db_session_with_containers, mock_external_service_dependencies):
