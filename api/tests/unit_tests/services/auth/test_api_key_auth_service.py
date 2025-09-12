@@ -170,11 +170,11 @@ class TestApiKeyAuthService:
         # Verify scalars was called with a select statement
         mock_session.scalars.assert_called_once()
         select_arg = mock_session.scalars.call_args[0][0]
-        
+
         # Verify the select statement contains the expected filters
         select_str = str(select_arg).lower()
         assert "tenant_id" in select_str
-        assert "category" in select_str  
+        assert "category" in select_str
         assert "provider" in select_str
         assert "disabled" in select_str
 
@@ -227,7 +227,7 @@ class TestApiKeyAuthService:
         # Verify scalars was called with a select statement
         mock_session.scalars.assert_called_once()
         select_arg = mock_session.scalars.call_args[0][0]
-        
+
         # Verify the select statement contains tenant_id and binding_id filters
         select_str = str(select_arg).lower()
         assert "tenant_id" in select_str
