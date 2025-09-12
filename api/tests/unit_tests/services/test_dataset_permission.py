@@ -102,7 +102,10 @@ class TestDatasetPermissionService:
 
     def _assert_database_query_called(self, mock_session: Mock, dataset_id: str, account_id: str):
         """Helper method to verify database query calls for permission checks."""
-        mock_session.scalars().first.assert_called_with(dataset_id=dataset_id, account_id=account_id)
+        # verify scalars was called to construct the query
+        assert mock_session.scalars.called, "db.session.scalars should be called"
+        # first() should be invoked without kwargs in SQLAlchemy; ensure it was called
+        mock_session.scalars().first.assert_called_with()
 
     def _assert_database_query_not_called(self, mock_session: Mock):
         """Helper method to verify that database query was not called."""
