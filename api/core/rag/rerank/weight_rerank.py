@@ -14,7 +14,7 @@ from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
 class WeightRerankRunner(BaseRerankRunner):
-    def __init__(self, tenant_id: str, weights: Weights) -> None:
+    def __init__(self, tenant_id: str, weights: Weights):
         self.tenant_id = tenant_id
         self.weights = weights
 
@@ -39,9 +39,16 @@ class WeightRerankRunner(BaseRerankRunner):
         unique_documents = []
         doc_ids = set()
         for document in documents:
-            if document.metadata is not None and document.metadata["doc_id"] not in doc_ids:
+            if (
+                document.provider == "dify"
+                and document.metadata is not None
+                and document.metadata["doc_id"] not in doc_ids
+            ):
                 doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
+            else:
+                if document not in unique_documents:
+                    unique_documents.append(document)
 
         documents = unique_documents
 

@@ -18,6 +18,7 @@ from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import build_dataset_tag_fields
 from libs.login import current_user
+from models.account import Account
 from models.dataset import Dataset, DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
@@ -213,7 +214,10 @@ class DatasetListApi(DatasetApiResource):
         )
         # check embedding setting
         provider_manager = ProviderManager()
-        configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
+        assert isinstance(current_user, Account)
+        cid = current_user.current_tenant_id
+        assert cid is not None
+        configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
 
@@ -266,6 +270,7 @@ class DatasetListApi(DatasetApiResource):
             )
 
         try:
+            assert isinstance(current_user, Account)
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
                 name=args["name"],
@@ -313,13 +318,12 @@ class DatasetApi(DatasetApiResource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = marshal(dataset, dataset_detail_fields)
-        if data.get("permission") == "partial_members":
-            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-            data.update({"partial_member_list": part_users_list})
-
         # check embedding setting
         provider_manager = ProviderManager()
-        configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
+        assert isinstance(current_user, Account)
+        cid = current_user.current_tenant_id
+        assert cid is not None
+        configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
 
@@ -391,6 +395,7 @@ class DatasetApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
 
         result_data = marshal(dataset, dataset_detail_fields)
+        assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
         if data.get("partial_member_list") and data.get("permission") == "partial_members":
@@ -532,7 +537,10 @@ class DatasetTagsApi(DatasetApiResource):
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     def get(self, _, dataset_id):
         """Get all knowledge type tags."""
-        tags = TagService.get_tags("knowledge", current_user.current_tenant_id)
+        assert isinstance(current_user, Account)
+        cid = current_user.current_tenant_id
+        assert cid is not None
+        tags = TagService.get_tags("knowledge", cid)
 
         return tags, 200
 
@@ -550,7 +558,8 @@ class DatasetTagsApi(DatasetApiResource):
     @validate_dataset_token
     def post(self, _, dataset_id):
         """Add a knowledge type tag."""
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        assert isinstance(current_user, Account)
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_create_parser.parse_args()
@@ -573,7 +582,8 @@ class DatasetTagsApi(DatasetApiResource):
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     @validate_dataset_token
     def patch(self, _, dataset_id):
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        assert isinstance(current_user, Account)
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_update_parser.parse_args()
@@ -599,7 +609,8 @@ class DatasetTagsApi(DatasetApiResource):
     @validate_dataset_token
     def delete(self, _, dataset_id):
         """Delete a knowledge type tag."""
-        if not current_user.is_editor:
+        assert isinstance(current_user, Account)
+        if not current_user.has_edit_permission:
             raise Forbidden()
         args = tag_delete_parser.parse_args()
         TagService.delete_tag(args.get("tag_id"))
@@ -622,7 +633,8 @@ class DatasetTagBindingApi(DatasetApiResource):
     @validate_dataset_token
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        assert isinstance(current_user, Account)
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_binding_parser.parse_args()
@@ -647,7 +659,8 @@ class DatasetTagUnbindingApi(DatasetApiResource):
     @validate_dataset_token
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        assert isinstance(current_user, Account)
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         args = tag_unbinding_parser.parse_args()
@@ -672,6 +685,8 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
     def get(self, _, *args, **kwargs):
         """Get all knowledge type tags."""
         dataset_id = kwargs.get("dataset_id")
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         tags = TagService.get_tags_by_target_id("knowledge", current_user.current_tenant_id, str(dataset_id))
         tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
         response = {"data": tags_list, "total": len(tags)}

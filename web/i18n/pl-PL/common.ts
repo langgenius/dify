@@ -204,7 +204,6 @@ const translation = {
     showAppLength: 'Pokaż {{length}} aplikacje',
     delete: 'Usuń konto',
     deleteTip: 'Usunięcie konta spowoduje trwałe usunięcie wszystkich danych i nie będzie można ich odzyskać.',
-    deleteConfirmTip: 'Aby potwierdzić, wyślij następujące informacje z zarejestrowanego adresu e-mail na adres ',
     myAccount: 'Moje konto',
     studio: 'Dify Studio',
     account: 'Rachunek',
@@ -760,6 +759,12 @@ const translation = {
   avatar: {
     deleteTitle: 'Usuń awatar',
     deleteDescription: 'Czy na pewno chcesz usunąć swoje zdjęcie profilowe? Twoje konto będzie używać domyślnego, początkowego awatara.',
+  },
+  feedback: {
+    title: 'Przekaż opinie',
+    content: 'Treść opinii',
+    subtitle: 'Proszę powiedz nam, co poszło nie tak z tą odpowiedzią.',
+    placeholder: 'Proszę opisać, co poszło nie tak lub jak możemy poprawić...',
   },
 }
 

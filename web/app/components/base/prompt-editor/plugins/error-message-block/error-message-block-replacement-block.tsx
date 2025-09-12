@@ -52,7 +52,6 @@ const ErrorMessageBlockReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createErrorMessageBlockNode)),
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

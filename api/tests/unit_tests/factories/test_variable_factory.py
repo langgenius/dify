@@ -24,16 +24,18 @@ from core.variables.segments import (
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArrayStringSegment,
+    BooleanSegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
     NoneSegment,
     ObjectSegment,
+    Segment,
     StringSegment,
 )
 from core.variables.types import SegmentType
 from factories import variable_factory
-from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 
 
 def test_string_variable():
@@ -137,6 +139,26 @@ def test_array_number_variable():
     assert isinstance(variable, ArrayNumberVariable)
     assert isinstance(variable.value[0], int)
     assert isinstance(variable.value[1], float)
+
+
+def test_build_segment_scalar_values():
+    @dataclass
+    class TestCase:
+        value: Any
+        expected: Segment
+        description: str
+
+    cases = [
+        TestCase(
+            value=True,
+            expected=BooleanSegment(value=True),
+            description="build_segment with boolean should yield BooleanSegment",
+        )
+    ]
+
+    for idx, c in enumerate(cases, 1):
+        seg = build_segment(c.value)
+        assert seg == c.expected, f"Test case {idx} failed: {c.description}"
 
 
 def test_array_object_variable():
@@ -847,15 +869,22 @@ class TestBuildSegmentValueErrors:
                 f"but got: {error_message}"
             )
 
-    def test_build_segment_boolean_type_note(self):
-        """Note: Boolean values are actually handled as integers in Python, so they don't raise ValueError."""
-        # Boolean values in Python are subclasses of int, so they get processed as integers
-        # True becomes IntegerSegment(value=1) and False becomes IntegerSegment(value=0)
+    def test_build_segment_boolean_type(self):
+        """Test that Boolean values are correctly handled as boolean type, not integers."""
+        # Boolean values should now be processed as BooleanSegment, not IntegerSegment
+        # This is because the bool check now comes before the int check in build_segment
         true_segment = variable_factory.build_segment(True)
         false_segment = variable_factory.build_segment(False)
 
-        # Verify they are processed as integers, not as errors
-        assert true_segment.value == 1, "Test case 1 (boolean_true): Expected True to be processed as integer 1"
-        assert false_segment.value == 0, "Test case 2 (boolean_false): Expected False to be processed as integer 0"
-        assert true_segment.value_type == SegmentType.INTEGER
-        assert false_segment.value_type == SegmentType.INTEGER
+        # Verify they are processed as booleans, not integers
+        assert true_segment.value is True, "Test case 1 (boolean_true): Expected True to be processed as boolean True"
+        assert false_segment.value is False, (
+            "Test case 2 (boolean_false): Expected False to be processed as boolean False"
+        )
+        assert true_segment.value_type == SegmentType.BOOLEAN
+        assert false_segment.value_type == SegmentType.BOOLEAN
+
+        # Test array of booleans
+        bool_array_segment = variable_factory.build_segment([True, False, True])
+        assert bool_array_segment.value_type == SegmentType.ARRAY_BOOLEAN
+        assert bool_array_segment.value == [True, False, True]

@@ -4,6 +4,7 @@ from typing import Literal
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -11,6 +12,8 @@ from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -21,7 +24,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
     :param action: action
     Usage: deal_dataset_vector_index_task.delay(dataset_id, action)
     """
-    logging.info(click.style(f"Start deal dataset vector index: {dataset_id}", fg="green"))
+    logger.info(click.style(f"Start deal dataset vector index: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -34,16 +37,14 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
         if action == "remove":
             index_processor.clean(dataset, None, with_keywords=False)
         elif action == "add":
-            dataset_documents = (
-                db.session.query(DatasetDocument)
-                .where(
+            dataset_documents = db.session.scalars(
+                select(DatasetDocument).where(
                     DatasetDocument.dataset_id == dataset_id,
                     DatasetDocument.indexing_status == "completed",
                     DatasetDocument.enabled == True,
                     DatasetDocument.archived == False,
                 )
-                .all()
-            )
+            ).all()
 
             if dataset_documents:
                 dataset_documents_ids = [doc.id for doc in dataset_documents]
@@ -87,16 +88,14 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                         )
                         db.session.commit()
         elif action == "update":
-            dataset_documents = (
-                db.session.query(DatasetDocument)
-                .where(
+            dataset_documents = db.session.scalars(
+                select(DatasetDocument).where(
                     DatasetDocument.dataset_id == dataset_id,
                     DatasetDocument.indexing_status == "completed",
                     DatasetDocument.enabled == True,
                     DatasetDocument.archived == False,
                 )
-                .all()
-            )
+            ).all()
             # add new index
             if dataset_documents:
                 # update document status
@@ -163,8 +162,8 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                 index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("Deal dataset vector index failed")
+        logger.exception("Deal dataset vector index failed")
     finally:
         db.session.close()

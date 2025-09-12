@@ -651,6 +651,10 @@ const translation = {
     'string': 'متن کوتاه',
     'text-input': 'متن کوتاه',
     'localUpload': 'آپلود محلی',
+    'json': 'کد JSON',
+    'jsonSchema': 'طرح‌واره JSON',
+    'optional': 'اختیاری',
+    'checkbox': 'چک باکس',
   },
   vision: {
     visionSettings: {

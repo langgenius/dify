@@ -215,11 +215,19 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         }
       }
       if (item.number) {
-        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
+        const convertedNumber = Number(initInputs[item.number.variable])
         return {
           ...item.number,
           default: convertedNumber || item.default || item.number.default,
           type: 'number',
+        }
+      }
+
+      if(item.checkbox) {
+        return {
+          ...item.checkbox,
+          default: false,
+          type: 'checkbox',
         }
       }
       if (item.select) {
@@ -242,6 +250,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         return {
           ...item.file,
           type: 'file',
+        }
+      }
+
+      if (item.json_object) {
+        return {
+          ...item.json_object,
+          type: 'json_object',
         }
       }
 
@@ -340,7 +355,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -392,9 +407,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
-    handleNewConversationInputsChange(await getRawInputsFromUrlParams())
+    const conversationInputs: Record<string, any> = {}
+    inputsForms.forEach((item: any) => {
+      conversationInputs[item.variable] = item.default || null
+    })
+    handleNewConversationInputsChange(conversationInputs)
     setClearChatList(true)
-  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList, inputsForms])
   const handleUpdateConversationList = useCallback(() => {
     mutateAppConversationData()
     mutateAppPinnedConversationData()
@@ -489,7 +508,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 

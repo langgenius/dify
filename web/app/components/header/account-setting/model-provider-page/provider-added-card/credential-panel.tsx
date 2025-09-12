@@ -81,12 +81,12 @@ const CredentialPanel = ({
   }, [authorized, authRemoved, current_credential_name, hasCredential])
 
   const color = useMemo(() => {
-    if (authRemoved)
+    if (authRemoved || !hasCredential)
       return 'red'
     if (notAllowedToUse)
       return 'gray'
     return 'green'
-  }, [authRemoved, notAllowedToUse])
+  }, [authRemoved, notAllowedToUse, hasCredential])
 
   return (
     <>
@@ -111,7 +111,6 @@ const CredentialPanel = ({
             <div className='flex items-center gap-0.5'>
               <ConfigProvider
                 provider={provider}
-                configurationMethod={ConfigurationMethodEnum.predefinedModel}
               />
               {
                 systemConfig.enabled && isCustomConfigured && (

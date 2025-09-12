@@ -1,6 +1,6 @@
 from typing import Literal
 
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from flask_restx import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
@@ -174,7 +174,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
             MetadataService.enable_built_in_field(dataset)
         elif action == "disable":
             MetadataService.disable_built_in_field(dataset)
-        return 200
+        return {"result": "success"}, 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
@@ -204,4 +204,4 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 
-        return 200
+        return {"result": "success"}, 200

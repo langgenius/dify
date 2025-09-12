@@ -66,7 +66,7 @@ class AgentNode(BaseNode):
     _node_type = NodeType.AGENT
     _node_data: AgentNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = AgentNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
@@ -153,7 +153,7 @@ class AgentNode(BaseNode):
                 messages=message_stream,
                 tool_info={
                     "icon": self.agent_strategy_icon,
-                    "agent_strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
+                    "agent_strategy": self._node_data.agent_strategy_name,
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=self.user_id,
@@ -394,8 +394,7 @@ class AgentNode(BaseNode):
             current_plugin = next(
                 plugin
                 for plugin in plugins
-                if f"{plugin.plugin_id}/{plugin.name}"
-                == cast(AgentNodeData, self._node_data).agent_strategy_provider_name
+                if f"{plugin.plugin_id}/{plugin.name}" == self._node_data.agent_strategy_provider_name
             )
             icon = current_plugin.declaration.icon
         except StopIteration:

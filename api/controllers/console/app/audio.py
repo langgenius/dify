@@ -31,6 +31,8 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ChatMessageAudioApi(Resource):
     @setup_required
@@ -49,7 +51,7 @@ class ChatMessageAudioApi(Resource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -70,15 +72,15 @@ class ChatMessageAudioApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("Failed to handle post request to ChatMessageAudioApi")
+            logger.exception("Failed to handle post request to ChatMessageAudioApi")
             raise InternalServerError()
 
 
 class ChatMessageTextApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def post(self, app_model: App):
         try:
             parser = reqparse.RequestParser()
@@ -97,7 +99,7 @@ class ChatMessageTextApi(Resource):
             )
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -118,15 +120,15 @@ class ChatMessageTextApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("Failed to handle post request to ChatMessageTextApi")
+            logger.exception("Failed to handle post request to ChatMessageTextApi")
             raise InternalServerError()
 
 
 class TextModesApi(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         try:
             parser = reqparse.RequestParser()
@@ -160,7 +162,7 @@ class TextModesApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("Failed to handle get request to TextModesApi")
+            logger.exception("Failed to handle get request to TextModesApi")
             raise InternalServerError()
 
 

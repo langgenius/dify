@@ -280,7 +280,7 @@ class ToolEngine:
                     mimetype = "image/jpeg"
 
                 yield ToolInvokeMessageBinary(
-                    mimetype=response.meta.get("mime_type", "image/jpeg"),
+                    mimetype=response.meta.get("mime_type", mimetype),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
                 )
             elif response.type == ToolInvokeMessage.MessageType.BLOB:

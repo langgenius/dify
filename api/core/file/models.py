@@ -146,3 +146,11 @@ class File(BaseModel):
                 if not self.related_id:
                     raise ValueError("Missing file related_id")
         return self
+
+    @property
+    def storage_key(self) -> str:
+        return self._storage_key
+
+    @storage_key.setter
+    def storage_key(self, value: str):
+        self._storage_key = value

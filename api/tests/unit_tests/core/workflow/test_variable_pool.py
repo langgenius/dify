@@ -379,7 +379,7 @@ class TestVariablePoolSerialization:
         self._assert_pools_equal(reconstructed_dict, reconstructed_json)
         # TODO: assert the data for file object...
 
-    def _assert_pools_equal(self, pool1: VariablePool, pool2: VariablePool) -> None:
+    def _assert_pools_equal(self, pool1: VariablePool, pool2: VariablePool):
         """Assert that two VariablePools contain equivalent data"""
 
         # Compare system variables

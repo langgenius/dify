@@ -138,5 +138,5 @@ def create_mcp_error_response(
         error=error_data,
     )
     json_data = json.dumps(jsonable_encoder(json_response))
-    sse_content = f"event: message\ndata: {json_data}\n\n".encode()
+    sse_content = json_data.encode()
     yield sse_content

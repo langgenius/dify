@@ -3,12 +3,15 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -20,13 +23,13 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_update_task.delay(dataset_id, document_id)
     """
-    logging.info(click.style(f"Start update document: {document_id}", fg="green"))
+    logger.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
     document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
     if not document:
-        logging.info(click.style(f"Document not found: {document_id}", fg="red"))
+        logger.info(click.style(f"Document not found: {document_id}", fg="red"))
         db.session.close()
         return
 
@@ -43,7 +46,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         index_type = document.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
+        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
 
@@ -54,7 +57,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                 db.session.delete(segment)
             db.session.commit()
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(
                 "Cleaned document when document update data source or process rule: {} latency: {}".format(
                     document_id, end_at - start_at
@@ -63,16 +66,16 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             )
         )
     except Exception:
-        logging.exception("Cleaned document when document update data source or process rule failed")
+        logger.exception("Cleaned document when document update data source or process rule failed")
 
     try:
         indexing_runner = IndexingRunner()
         indexing_runner.run([document])
         end_at = time.perf_counter()
-        logging.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
-        logging.info(click.style(str(ex), fg="yellow"))
+        logger.info(click.style(str(ex), fg="yellow"))
     except Exception:
-        logging.exception("document_indexing_update_task failed, document_id: %s", document_id)
+        logger.exception("document_indexing_update_task failed, document_id: %s", document_id)
     finally:
         db.session.close()

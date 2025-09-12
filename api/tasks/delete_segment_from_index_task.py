@@ -8,6 +8,8 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_database import db
 from models.dataset import Dataset, Document
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def delete_segment_from_index_task(
@@ -21,7 +23,7 @@ def delete_segment_from_index_task(
 
     Usage: delete_segment_from_index_task.delay(index_node_ids, dataset_id, document_id)
     """
-    logging.info(click.style("Start delete segment from index", fg="green"))
+    logger.info(click.style("Start delete segment from index", fg="green"))
     start_at = time.perf_counter()
     try:
         # Early return if no index_node_ids to process
@@ -54,8 +56,8 @@ def delete_segment_from_index_task(
         )
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("delete segment from index failed")
+        logger.exception("delete segment from index failed")
     finally:
         db.session.close()

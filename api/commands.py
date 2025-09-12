@@ -38,6 +38,8 @@ from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
+logger = logging.getLogger(__name__)
+
 
 @click.command("reset-password", help="Reset the account password.")
 @click.option("--email", prompt=True, help="Account email to reset password for")
@@ -210,7 +212,9 @@ def migrate_annotation_vector_database():
                 if not dataset_collection_binding:
                     click.echo(f"App annotation collection binding not found: {app.id}")
                     continue
-                annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
+                annotations = db.session.scalars(
+                    select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
+                ).all()
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
@@ -365,29 +369,25 @@ def migrate_knowledge_vector_database():
                     )
                     raise e
 
-                dataset_documents = (
-                    db.session.query(DatasetDocument)
-                    .where(
+                dataset_documents = db.session.scalars(
+                    select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset.id,
                         DatasetDocument.indexing_status == "completed",
                         DatasetDocument.enabled == True,
                         DatasetDocument.archived == False,
                     )
-                    .all()
-                )
+                ).all()
 
                 documents = []
                 segments_count = 0
                 for dataset_document in dataset_documents:
-                    segments = (
-                        db.session.query(DocumentSegment)
-                        .where(
+                    segments = db.session.scalars(
+                        select(DocumentSegment).where(
                             DocumentSegment.document_id == dataset_document.id,
                             DocumentSegment.status == "completed",
                             DocumentSegment.enabled == True,
                         )
-                        .all()
-                    )
+                    ).all()
 
                     for segment in segments:
                         document = Document(
@@ -509,7 +509,7 @@ def add_qdrant_index(field: str):
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
 
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
@@ -523,7 +523,21 @@ def add_qdrant_index(field: str):
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,
             )
             try:
-                client = qdrant_client.QdrantClient(**qdrant_config.to_qdrant_params())
+                params = qdrant_config.to_qdrant_params()
+                # Check the type before using
+                if isinstance(params, PathQdrantParams):
+                    # PathQdrantParams case
+                    client = qdrant_client.QdrantClient(path=params.path)
+                else:
+                    # UrlQdrantParams case - params is UrlQdrantParams
+                    client = qdrant_client.QdrantClient(
+                        url=params.url,
+                        api_key=params.api_key,
+                        timeout=int(params.timeout),
+                        verify=params.verify,
+                        grpc_port=params.grpc_port,
+                        prefer_grpc=params.prefer_grpc,
+                    )
                 # create payload index
                 client.create_payload_index(binding.collection_name, field, field_schema=PayloadSchemaType.KEYWORD)
                 create_count += 1
@@ -569,7 +583,7 @@ def old_metadata_migration():
         for document in documents:
             if document.doc_metadata:
                 doc_metadata = document.doc_metadata
-                for key, value in doc_metadata.items():
+                for key in doc_metadata:
                     for field in BuiltInField:
                         if field.value == key:
                             break
@@ -685,7 +699,7 @@ def upgrade_db():
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception:
-            logging.exception("Failed to execute database migration")
+            logger.exception("Failed to execute database migration")
         finally:
             lock.release()
     else:
@@ -733,7 +747,7 @@ where sites.id is null limit 1000"""
                 except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
-                    logging.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
+                    logger.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
                     continue
 
             if not processed_count:

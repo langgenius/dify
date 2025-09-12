@@ -215,6 +215,7 @@ class DatabaseConfig(BaseSettings):
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
+            "pool_reset_on_return": None,
         }
 
 
@@ -299,8 +300,7 @@ class DatasetQueueMonitorConfig(BaseSettings):
 
 class MiddlewareConfig(
     # place the configs in alphabet order
-    CeleryConfig,
-    DatabaseConfig,
+    CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
     KeywordStoreConfig,
     RedisConfig,
     # configs of storage and storage providers

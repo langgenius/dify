@@ -21,7 +21,7 @@ login_manager = flask_login.LoginManager()
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
     # Skip authentication for documentation endpoints
-    if request.path.endswith("/docs") or request.path.endswith("/swagger.json"):
+    if dify_config.SWAGGER_UI_ENABLED and request.path.endswith((dify_config.SWAGGER_UI_PATH, "/swagger.json")):
         return None
 
     auth_header = request.headers.get("Authorization", "")
@@ -86,9 +86,7 @@ def load_user_from_request(request_from_flask_login):
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
         end_user = (
-            db.session.query(EndUser)
-            .where(EndUser.external_user_id == app_mcp_server.id, EndUser.type == "mcp")
-            .first()
+            db.session.query(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == "mcp").first()
         )
         if not end_user:
             raise NotFound("End user not found.")

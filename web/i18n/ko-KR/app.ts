@@ -297,6 +297,10 @@ const translation = {
       runDesc: '빠른 명령 실행 (테마, 언어 등...)',
       themeSystemDesc: '운영 체제의 외관을 따르세요',
       slashDesc: '/theme, /lang와 같은 명령어를 실행하십시오.',
+      communityDesc: '오픈 디스코드 커뮤니티',
+      feedbackDesc: '공개 커뮤니티 피드백 토론',
+      docDesc: '도움 문서 열기',
+      accountDesc: '계정 페이지로 이동',
     },
     emptyState: {
       noAppsFound: '앱을 찾을 수 없습니다.',
@@ -331,6 +335,7 @@ const translation = {
     inScope: '{{scope}}s 내에서',
     tryDifferentSearch: '다른 검색어 사용해 보기',
     noMatchingCommands: '일치하는 명령을 찾을 수 없습니다.',
+    slashHint: '모든 사용 가능한 명령을 보려면 /를 입력하세요.',
   },
 }
 

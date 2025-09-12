@@ -54,6 +54,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         function_call_state = True
         llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
         final_answer = ""
+        prompt_messages: list = []  # Initialize prompt_messages
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager

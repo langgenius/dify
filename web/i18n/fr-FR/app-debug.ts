@@ -334,6 +334,10 @@ const translation = {
     'maxNumberOfUploads': 'Nombre maximal de téléchargements',
     'localUpload': 'Téléchargement local',
     'single-file': 'En file indienne',
+    'optional': 'optionnel',
+    'checkbox': 'Checkbox',
+    'jsonSchema': 'Schéma JSON',
+    'json': 'Code JSON',
   },
   vision: {
     name: 'Vision',

@@ -1,10 +1,11 @@
 import logging
 
 from flask import request
+from flask_restx import fields, marshal_with, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -28,9 +29,31 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
+logger = logging.getLogger(__name__)
 
+
+@web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
+    audio_to_text_response_fields = {
+        "text": fields.String,
+    }
+
+    @marshal_with(audio_to_text_response_fields)
+    @web_ns.doc("Audio to Text")
+    @web_ns.doc(description="Convert audio file to text using speech-to-text service.")
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            413: "Audio file too large",
+            415: "Unsupported audio type",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model: App, end_user):
+        """Convert audio to text"""
         file = request.files["file"]
 
         try:
@@ -38,7 +61,7 @@ class AudioApi(WebApiResource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -59,14 +82,31 @@ class AudioApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("Failed to handle post request to AudioApi")
+            logger.exception("Failed to handle post request to AudioApi")
             raise InternalServerError()
 
 
+@web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
-    def post(self, app_model: App, end_user):
-        from flask_restx import reqparse
+    text_to_audio_response_fields = {
+        "audio_url": fields.String,
+        "duration": fields.Float,
+    }
 
+    @marshal_with(text_to_audio_response_fields)
+    @web_ns.doc("Text to Audio")
+    @web_ns.doc(description="Convert text to audio using text-to-speech service.")
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            500: "Internal Server Error",
+        }
+    )
+    def post(self, app_model: App, end_user):
+        """Convert text to audio"""
         try:
             parser = reqparse.RequestParser()
             parser.add_argument("message_id", type=str, required=False, location="json")
@@ -84,7 +124,7 @@ class TextApi(WebApiResource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -105,9 +145,5 @@ class TextApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("Failed to handle post request to TextApi")
+            logger.exception("Failed to handle post request to TextApi")
             raise InternalServerError()
-
-
-api.add_resource(AudioApi, "/audio-to-text")
-api.add_resource(TextApi, "/text-to-audio")

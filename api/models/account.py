@@ -1,12 +1,13 @@
 import enum
 import json
 from datetime import datetime
-from typing import Optional, cast
+from typing import Any, Optional
 
 import sqlalchemy as sa
-from flask_login import UserMixin  # type: ignore
+from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, mapped_column, reconstructor
+from sqlalchemy.orm import Mapped, Session, mapped_column, reconstructor
+from typing_extensions import deprecated
 
 from models.base import Base
 
@@ -118,10 +119,24 @@ class Account(UserMixin, Base):
 
     @current_tenant.setter
     def current_tenant(self, tenant: "Tenant"):
-        ta = db.session.scalar(select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).limit(1))
-        if ta:
-            self.role = TenantAccountRole(ta.role)
-            self._current_tenant = tenant
+        with Session(db.engine, expire_on_commit=False) as session:
+            tenant_join_query = select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
+            )
+            tenant_join = session.scalar(tenant_join_query)
+            tenant_query = select(Tenant).where(Tenant.id == tenant.id)
+            # TODO: A workaround to reload the tenant with `expire_on_commit=False`, allowing
+            # access to it after the session has been closed.
+            # This prevents `DetachedInstanceError` when accessing the tenant outside
+            # the session's lifecycle.
+            # (The `tenant` argument is typically loaded by `db.session` without the
+            # `expire_on_commit=False` flag, meaning its lifetime is tied to the web
+            # request's lifecycle.)
+            tenant_reloaded = session.scalars(tenant_query).one()
+
+        if tenant_join:
+            self.role = TenantAccountRole(tenant_join.role)
+            self._current_tenant = tenant_reloaded
             return
         self._current_tenant = None
 
@@ -130,23 +145,19 @@ class Account(UserMixin, Base):
         return self._current_tenant.id if self._current_tenant else None
 
     def set_tenant_id(self, tenant_id: str):
-        tenant_account_join = cast(
-            tuple[Tenant, TenantAccountJoin],
-            (
-                db.session.query(Tenant, TenantAccountJoin)
-                .where(Tenant.id == tenant_id)
-                .where(TenantAccountJoin.tenant_id == Tenant.id)
-                .where(TenantAccountJoin.account_id == self.id)
-                .one_or_none()
-            ),
+        query = (
+            select(Tenant, TenantAccountJoin)
+            .where(Tenant.id == tenant_id)
+            .where(TenantAccountJoin.tenant_id == Tenant.id)
+            .where(TenantAccountJoin.account_id == self.id)
         )
-
-        if not tenant_account_join:
-            return
-
-        tenant, join = tenant_account_join
-        self.role = TenantAccountRole(join.role)
-        self._current_tenant = tenant
+        with Session(db.engine, expire_on_commit=False) as session:
+            tenant_account_join = session.execute(query).first()
+            if not tenant_account_join:
+                return
+            tenant, join = tenant_account_join
+            self.role = TenantAccountRole(join.role)
+            self._current_tenant = tenant
 
     @property
     def current_role(self):
@@ -177,7 +188,28 @@ class Account(UserMixin, Base):
         return TenantAccountRole.is_admin_role(self.role)
 
     @property
+    @deprecated("Use has_edit_permission instead.")
     def is_editor(self):
+        """Determines if the account has edit permissions in their current tenant (workspace).
+
+        This property checks if the current role has editing privileges, which includes:
+        - `OWNER`
+        - `ADMIN`
+        - `EDITOR`
+
+        Note: This checks for any role with editing permission, not just the 'EDITOR' role specifically.
+        """
+        return self.has_edit_permission
+
+    @property
+    def has_edit_permission(self):
+        """Determines if the account has editing permissions in their current tenant (workspace).
+
+        This property checks if the current role has editing privileges, which includes:
+        - `OWNER`
+        - `ADMIN`
+        - `EDITOR`
+        """
         return TenantAccountRole.is_editing_role(self.role)
 
     @property
@@ -200,7 +232,7 @@ class Tenant(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     name: Mapped[str] = mapped_column(String(255))
-    encrypt_public_key = db.Column(sa.Text)
+    encrypt_public_key: Mapped[Optional[str]] = mapped_column(sa.Text)
     plan: Mapped[str] = mapped_column(String(255), server_default=sa.text("'basic'::character varying"))
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'::character varying"))
     custom_config: Mapped[Optional[str]] = mapped_column(sa.Text)
@@ -208,18 +240,20 @@ class Tenant(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
-        return (
-            db.session.query(Account)
-            .where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
-            .all()
+        return list(
+            db.session.scalars(
+                select(Account).where(
+                    Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id
+                )
+            ).all()
         )
 
     @property
-    def custom_config_dict(self) -> dict:
+    def custom_config_dict(self) -> dict[str, Any]:
         return json.loads(self.custom_config) if self.custom_config else {}
 
     @custom_config_dict.setter
-    def custom_config_dict(self, value: dict):
+    def custom_config_dict(self, value: dict[str, Any]) -> None:
         self.custom_config = json.dumps(value)
 
 
@@ -325,5 +359,5 @@ class TenantPluginAutoUpgradeStrategy(Base):
     upgrade_mode: Mapped[UpgradeMode] = mapped_column(String(16), nullable=False, server_default="exclude")
     exclude_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False)  # plugin_id (author/name)
     include_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False)  # plugin_id (author/name)
-    created_at = db.Column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

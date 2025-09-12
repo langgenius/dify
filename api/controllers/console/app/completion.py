@@ -1,9 +1,8 @@
 import logging
 
-import flask_login
 from flask import request
 from flask_restx import Resource, reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api
@@ -29,10 +28,13 @@ from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
+
+logger = logging.getLogger(__name__)
 
 
 # define completion message api for user
@@ -54,11 +56,11 @@ class CompletionMessageApi(Resource):
         streaming = args["response_mode"] != "blocking"
         args["auto_generate_name"] = False
 
-        account = flask_login.current_user
-
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account or EndUser instance")
             response = AppGenerateService.generate(
-                app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
@@ -67,7 +69,7 @@ class CompletionMessageApi(Resource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -80,7 +82,7 @@ class CompletionMessageApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -90,9 +92,9 @@ class CompletionMessageStopApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model, task_id):
-        account = flask_login.current_user
-
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {"result": "success"}, 200
 
@@ -103,6 +105,12 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     def post(self, app_model):
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, required=True, location="json")
@@ -121,11 +129,11 @@ class ChatMessageApi(Resource):
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
-        account = flask_login.current_user
-
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account or EndUser instance")
             response = AppGenerateService.generate(
-                app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
@@ -134,7 +142,7 @@ class ChatMessageApi(Resource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -149,7 +157,7 @@ class ChatMessageApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -159,9 +167,9 @@ class ChatMessageStopApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def post(self, app_model, task_id):
-        account = flask_login.current_user
-
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {"result": "success"}, 200
 
