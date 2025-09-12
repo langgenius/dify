@@ -149,13 +149,20 @@ class GraphEngine:
         stream_processor: StreamProcessor
 
         try:
+            # Check if this is a complex branch merge scenario that needs runtime state
+            has_complex_topology = self._has_complex_branch_merge_topology()
+
             if self.init_params.workflow_type == WorkflowType.CHAT:
                 stream_processor = AnswerStreamProcessor(
-                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                    graph=self.graph,
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    node_run_state=self.graph_runtime_state.node_run_state if has_complex_topology else None,
                 )
             else:
                 stream_processor = EndStreamProcessor(
-                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                    graph=self.graph,
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    node_run_state=self.graph_runtime_state.node_run_state if has_complex_topology else None,
                 )
 
             # run graph
@@ -907,6 +914,45 @@ class GraphEngine:
                 },
             )
         return error_result
+
+    def _has_complex_branch_merge_topology(self) -> bool:
+        """
+        Detect complex branch merge topology that requires dynamic dependency checking
+        Returns True if graph has answer nodes with conditional branch merges
+        """
+        # Check if any answer node has multiple incoming paths with conditional branches
+        for node_id, node_config in self.graph.node_id_config_mapping.items():
+            if node_config.get("data", {}).get("type") != "answer":
+                continue
+
+            # Check if this answer node has branch merge in its path
+            if self._has_conditional_branch_merge_to_node(node_id):
+                return True
+
+        return False
+
+    def _has_conditional_branch_merge_to_node(self, target_node_id: str, visited=None) -> bool:
+        """
+        Check if there are conditional branch merges in the path to target node
+        """
+        if visited is None:
+            visited = set()
+        if target_node_id in visited or target_node_id == self.graph.root_node_id:
+            return False
+        visited.add(target_node_id)
+
+        reverse_edges = self.graph.reverse_edge_mapping.get(target_node_id, [])
+
+        # Check if this node has multiple incoming edges with at least one conditional
+        if len(reverse_edges) > 1:
+            has_conditional = any(edge.run_condition and edge.run_condition.branch_identify for edge in reverse_edges)
+            if has_conditional:
+                return True
+
+        # Recursively check upstream nodes
+        return any(
+            self._has_conditional_branch_merge_to_node(edge.source_node_id, visited.copy()) for edge in reverse_edges
+        )
 
 
 class GraphRunFailedError(Exception):
