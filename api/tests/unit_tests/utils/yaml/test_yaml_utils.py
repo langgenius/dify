@@ -58,7 +58,7 @@ def prepare_invalid_yaml_file(tmp_path, monkeypatch) -> str:
 def test_load_yaml_non_existing_file():
     with pytest.raises(FileNotFoundError):
         _load_yaml_file(file_path=NON_EXISTING_YAML_FILE)
-    
+
     with pytest.raises(FileNotFoundError):
         _load_yaml_file(file_path="")
 
