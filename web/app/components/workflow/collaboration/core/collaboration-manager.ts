@@ -226,6 +226,20 @@ export class CollaborationManager {
     }
   }
 
+  emitWorkflowUpdate(appId: string): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+
+    const socket = webSocketClient.getSocket(this.currentAppId)
+    if (socket) {
+      console.log('Emitting Workflow update event')
+      socket.emit('collaboration_event', {
+        type: 'workflowUpdate',
+        data: { appId, timestamp: Date.now() },
+        timestamp: Date.now(),
+      })
+    }
+  }
+
   onSyncRequest(callback: () => void): () => void {
     return this.eventEmitter.on('syncRequest', callback)
   }
@@ -240,6 +254,10 @@ export class CollaborationManager {
 
   onOnlineUsersUpdate(callback: (users: OnlineUser[]) => void): () => void {
     return this.eventEmitter.on('onlineUsers', callback)
+  }
+
+  onWorkflowUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
+    return this.eventEmitter.on('workflowUpdate', callback)
   }
 
   onVarsAndFeaturesUpdate(callback: (update: any) => void): () => void {
@@ -590,6 +608,10 @@ export class CollaborationManager {
       else if (update.type === 'mcpServerUpdate') {
         console.log('Processing mcpServerUpdate event:', update)
         this.eventEmitter.emit('mcpServerUpdate', update)
+      }
+      else if (update.type === 'workflowUpdate') {
+        console.log('Processing workflowUpdate event:', update)
+        this.eventEmitter.emit('workflowUpdate', update.data)
       }
       else if (update.type === 'syncRequest') {
         console.log('Received sync request from another user')

@@ -23,6 +23,7 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useCollaboration } from '@/app/components/workflow/collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
@@ -115,6 +116,7 @@ const WorkflowMain = ({
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
     handleBackupDraft,
     handleLoadBackupDraft,
@@ -138,6 +140,35 @@ const WorkflowMain = ({
 
     return unsubscribe
   }, [appId, handleWorkflowDataUpdate])
+
+  // Listen for workflow updates from other users
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
+      console.log('Received workflow update from collaborator, fetching latest workflow data')
+      try {
+        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+
+        // Handle features, variables etc.
+        handleWorkflowDataUpdate(response)
+
+        // Update workflow canvas (nodes, edges, viewport)
+        if (response.graph) {
+          handleUpdateWorkflowCanvas({
+            nodes: response.graph.nodes || [],
+            edges: response.graph.edges || [],
+            viewport: response.graph.viewport || { x: 0, y: 0, zoom: 1 },
+          })
+        }
+      }
+      catch (error) {
+        console.error('Failed to fetch updated workflow:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId, handleWorkflowDataUpdate, handleUpdateWorkflowCanvas])
 
   // Listen for sync requests from other users (only processed by leader)
   useEffect(() => {
