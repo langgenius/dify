@@ -30,7 +30,6 @@ const List: FC<Props> = ({
   onSelectedIdsChange,
   onBatchDelete,
   onCancel,
-  isBatchDeleting,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -142,7 +141,6 @@ const List: FC<Props> = ({
           selectedIds={selectedIds}
           onBatchDelete={onBatchDelete}
           onCancel={onCancel}
-          isBatchDeleting={isBatchDeleting}
         />
       )}
     </div>

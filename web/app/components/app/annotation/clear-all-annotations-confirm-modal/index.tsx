@@ -23,7 +23,7 @@ const ClearAllAnnotationsConfirmModal: FC<Props> = ({
       isShow={isShow}
       onCancel={onHide}
       onConfirm={onConfirm}
-      type='danger'
+      type='warning'
       title={t('appAnnotation.table.header.clearAllConfirm')}
     />
   )

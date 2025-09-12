@@ -387,7 +387,7 @@ export type VarInInspect = {
   value_type: VarType
   value: any
   edited: boolean
-  visible: boolean
+  visible?: boolean
 }
 
 export type NodeWithVar = {

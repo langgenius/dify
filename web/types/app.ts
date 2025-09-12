@@ -241,7 +241,7 @@ export type ModelConfig = {
   dataset_configs: DatasetConfigs
   file_upload?: {
     image: VisionSettings
-  } & UploadFileSetting
+  } & Partial<UploadFileSetting>
   files?: VisionFile[]
   created_at?: number
   updated_at?: number
