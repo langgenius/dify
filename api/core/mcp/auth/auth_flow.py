@@ -299,7 +299,6 @@ def auth(
     server_url: str,
     authorization_code: Optional[str] = None,
     state_param: Optional[str] = None,
-    for_list: bool = False,
 ) -> dict[str, str]:
     """Orchestrates the full auth flow with a server using secure Redis state storage."""
     metadata = discover_oauth_metadata(server_url)

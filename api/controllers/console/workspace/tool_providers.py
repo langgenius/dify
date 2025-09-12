@@ -947,15 +947,19 @@ class ToolMCPAuthApi(Resource):
         provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if not provider:
             raise ValueError("provider not found")
+        # headers1: if headers is provided, use it and don't need to get token
+        headers = provider.decrypted_headers or {}
+
+        # headers2: Add OAuth token if authed and no headers provided
+        if not provider.decrypted_headers and provider.authed:
+            token = OAuthClientProvider(provider_id, tenant_id, for_list=True).tokens()
+            if token:
+                headers["Authorization"] = f"{token.token_type.capitalize()} {token.access_token}"
         try:
+            # try to connect to MCP server with headers
             with MCPClient(
                 provider.decrypted_server_url,
-                provider_id,
-                tenant_id,
-                authed=False,
-                authorization_code=args["authorization_code"],
-                for_list=True,
-                headers=provider.decrypted_headers,
+                headers=headers,
                 timeout=provider.timeout,
                 sse_read_timeout=provider.sse_read_timeout,
             ):
@@ -966,8 +970,11 @@ class ToolMCPAuthApi(Resource):
                 )
                 return {"result": "success"}
 
-        except MCPAuthError:
+        except MCPAuthError as e:
             try:
+                if provider.decrypted_headers:
+                    raise ValueError(f"Failed to authenticate, please check your headers: {e}") from e
+                # if auth failed, try to auth with OAuth or exchange token
                 auth_provider = OAuthClientProvider(provider_id, tenant_id, for_list=True)
                 return auth(auth_provider, provider.decrypted_server_url, args["authorization_code"])
             except Exception as e:

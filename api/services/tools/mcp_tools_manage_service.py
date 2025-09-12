@@ -1,7 +1,7 @@
 import hashlib
 import json
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -10,10 +10,10 @@ from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
+from core.mcp.types import OAuthTokens
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from extensions.ext_database import db
 from models.tools import MCPToolProvider
@@ -55,7 +55,25 @@ class MCPToolManageService:
             cache=NoOpProviderCredentialCache(),
         )
 
-        return cast(dict[str, str], encrypter_instance.encrypt(headers))
+        return encrypter_instance.encrypt(headers)
+
+    @staticmethod
+    def _retrieve_remote_mcp_tools(server_url: str, headers: dict[str, str], timeout: float, sse_read_timeout: float):
+        with MCPClient(
+            server_url,
+            headers=headers,
+            timeout=timeout,
+            sse_read_timeout=sse_read_timeout,
+        ) as mcp_client:
+            tools = mcp_client.list_tools()
+            return tools
+
+    @staticmethod
+    def _process_headers(headers: dict[str, str], tokens: OAuthTokens | None = None):
+        headers = headers or {}
+        if tokens:
+            headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
+        return headers
 
     @staticmethod
     def get_mcp_provider_by_provider_id(provider_id: str, tenant_id: str) -> MCPToolProvider:
@@ -153,6 +171,9 @@ class MCPToolManageService:
 
     @classmethod
     def list_mcp_tool_from_remote_server(cls, tenant_id: str, provider_id: str) -> ToolProviderApiEntity:
+        from core.mcp.auth.auth_flow import auth
+        from core.mcp.auth.auth_provider import OAuthClientProvider
+
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         server_url = mcp_provider.decrypted_server_url
         authed = mcp_provider.authed
@@ -160,20 +181,24 @@ class MCPToolManageService:
         timeout = mcp_provider.timeout
         sse_read_timeout = mcp_provider.sse_read_timeout
 
-        try:
-            with MCPClient(
-                server_url,
-                provider_id,
-                tenant_id,
-                authed=authed,
-                for_list=True,
-                headers=headers,
-                timeout=timeout,
-                sse_read_timeout=sse_read_timeout,
-            ) as mcp_client:
-                tools = mcp_client.list_tools()
-        except MCPAuthError:
+        # Handle authentication headers if authed
+        if not authed:
             raise ValueError("Please auth the tool first")
+
+        provider = OAuthClientProvider(provider_id, tenant_id, for_list=True)
+        tokens = provider.tokens()
+        headers = cls._process_headers(headers, tokens)
+
+        try:
+            tools = cls._retrieve_remote_mcp_tools(server_url, headers, timeout, sse_read_timeout)
+        except MCPAuthError:
+            try:
+                auth(provider, server_url, None, None, False)
+                tokens = provider.tokens()
+                re_authed_headers = cls._process_headers(headers, tokens)
+                tools = cls._retrieve_remote_mcp_tools(server_url, re_authed_headers, timeout, sse_read_timeout)
+            except Exception:
+                raise ValueError("Please auth the tool first")
         except MCPError as e:
             raise ValueError(f"Failed to connect to MCP server: {e}")
 
@@ -284,10 +309,12 @@ class MCPToolManageService:
     def update_mcp_provider_credentials(
         cls, mcp_provider: MCPToolProvider, credentials: dict[str, Any], authed: bool = False
     ):
+        from core.tools.mcp_tool.provider import MCPToolProviderController
+
         provider_controller = MCPToolProviderController.from_db(mcp_provider)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=mcp_provider.tenant_id,
-            config=list(provider_controller.get_credentials_schema()),  # ty: ignore [invalid-argument-type]
+            config=list(provider_controller.get_credentials_schema()),
             provider_config_cache=NoOpProviderCredentialCache(),
         )
         credentials = tool_configuration.encrypt(credentials)
@@ -310,7 +337,7 @@ class MCPToolManageService:
         db.session.commit()
 
     @classmethod
-    def _re_connect_mcp_provider(cls, server_url: str, provider_id: str, tenant_id: str):
+    def _re_connect_mcp_provider(cls, server_url: str, provider_id: str, tenant_id: str) -> dict[str, Any]:
         # Get the existing provider to access headers and timeout settings
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         headers = mcp_provider.decrypted_headers
@@ -320,10 +347,6 @@ class MCPToolManageService:
         try:
             with MCPClient(
                 server_url,
-                provider_id,
-                tenant_id,
-                authed=False,
-                for_list=True,
                 headers=headers,
                 timeout=timeout,
                 sse_read_timeout=sse_read_timeout,
