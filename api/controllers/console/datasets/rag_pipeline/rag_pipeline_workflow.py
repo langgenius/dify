@@ -950,6 +950,12 @@ class RagPipelineTransformApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, dataset_id):
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        if not (current_user.is_editor or current_user.is_dataset_operator):
+            raise Forbidden()
+
         dataset_id = str(dataset_id)
         rag_pipeline_transform_service = RagPipelineTransformService()
         result = rag_pipeline_transform_service.transform_dataset(dataset_id)
