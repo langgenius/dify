@@ -90,7 +90,13 @@ class ExternalApiTemplateListApi(Resource):
         return external_knowledge_api.to_dict(), 201
 
 
+@console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
 class ExternalApiTemplateApi(Resource):
+    @api.doc("get_external_api_template")
+    @api.doc(description="Get external knowledge API template details")
+    @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
+    @api.response(200, "External API template retrieved successfully")
+    @api.response(404, "Template not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -149,7 +155,12 @@ class ExternalApiTemplateApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>/use-check")
 class ExternalApiUseCheckApi(Resource):
+    @api.doc("check_external_api_usage")
+    @api.doc(description="Check if external knowledge API is being used")
+    @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
+    @api.response(200, "Usage check completed successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -219,7 +230,24 @@ class ExternalDatasetCreateApi(Resource):
         return marshal(dataset, dataset_detail_fields), 201
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
 class ExternalKnowledgeHitTestingApi(Resource):
+    @api.doc("test_external_knowledge_retrieval")
+    @api.doc(description="Test external knowledge retrieval for dataset")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.expect(
+        api.model(
+            "ExternalHitTestingRequest",
+            {
+                "query": fields.String(required=True, description="Query text for testing"),
+                "retrieval_model": fields.Raw(description="Retrieval model configuration"),
+                "external_retrieval_model": fields.Raw(description="External retrieval model configuration"),
+            },
+        )
+    )
+    @api.response(200, "External hit testing completed successfully")
+    @api.response(404, "Dataset not found")
+    @api.response(400, "Invalid parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -256,8 +284,22 @@ class ExternalKnowledgeHitTestingApi(Resource):
             raise InternalServerError(str(e))
 
 
+@console_ns.route("/test/retrieval")
 class BedrockRetrievalApi(Resource):
     # this api is only for internal testing
+    @api.doc("bedrock_retrieval_test")
+    @api.doc(description="Bedrock retrieval test (internal use only)")
+    @api.expect(
+        api.model(
+            "BedrockRetrievalTestRequest",
+            {
+                "retrieval_setting": fields.Raw(required=True, description="Retrieval settings"),
+                "query": fields.String(required=True, description="Query text"),
+                "knowledge_id": fields.String(required=True, description="Knowledge ID"),
+            },
+        )
+    )
+    @api.response(200, "Bedrock retrieval test completed")
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("retrieval_setting", nullable=False, required=True, type=dict, location="json")

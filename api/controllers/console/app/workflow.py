@@ -249,7 +249,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/<string:node_id>/run")
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run")
 class AdvancedChatDraftRunIterationNodeApi(Resource):
     @api.doc("run_advanced_chat_draft_iteration_node")
     @api.doc(description="Run draft workflow iteration node for advanced chat")
@@ -301,7 +301,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/<string:node_id>/run")
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class WorkflowDraftRunIterationNodeApi(Resource):
     @api.doc("run_workflow_draft_iteration_node")
     @api.doc(description="Run draft workflow iteration node")
@@ -353,7 +353,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/<string:node_id>/run")
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run")
 class AdvancedChatDraftRunLoopNodeApi(Resource):
     @api.doc("run_advanced_chat_draft_loop_node")
     @api.doc(description="Run draft workflow loop node for advanced chat")
@@ -406,7 +406,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/<string:node_id>/run")
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class WorkflowDraftRunLoopNodeApi(Resource):
     @api.doc("run_workflow_draft_loop_node")
     @api.doc(description="Run draft workflow loop node")
