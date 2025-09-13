@@ -362,7 +362,7 @@ class TestCleanDatasetTask:
 
         # Create segments for each document
         segments = []
-        for i, document in enumerate(documents):
+        for document in documents:
             segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
             segments.append(segment)
 

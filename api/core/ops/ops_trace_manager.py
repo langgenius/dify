@@ -1,3 +1,4 @@
+import collections
 import json
 import logging
 import os
@@ -40,7 +41,7 @@ from tasks.ops_trace_task import process_trace_tasks
 logger = logging.getLogger(__name__)
 
 
-class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
+class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
         match provider:
             case TracingProviderEnum.LANGFUSE:
@@ -121,7 +122,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
-provider_config_map: dict[str, dict[str, Any]] = OpsTraceProviderConfigMap()
+provider_config_map = OpsTraceProviderConfigMap()
 
 
 class OpsTraceManager:

@@ -284,7 +284,7 @@ class LoopNode(BaseNode):
         current_index: int,
         start_at: datetime,
         inputs: dict,
-    ) -> Generator[NodeEvent | InNodeEvent, None, dict]:
+    ):
         """Run a single loop iteration.
         Returns:
             dict:  {'check_break_result': bool}
