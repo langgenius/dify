@@ -21,7 +21,7 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import type {
@@ -39,7 +39,7 @@ import {
 
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()
-  const userProfile = useAppContextSelector(s => s.userProfile)
+  const { userProfile } = useContext(AppContext)
   const {
     mode,
     dataSets: dataSet,

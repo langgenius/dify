@@ -8,7 +8,7 @@ import { useContext } from 'use-context-selector'
 import s from './index.module.css'
 import Button from '@/app/components/base/button'
 import { RiCloseLine } from '@remixicon/react'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import { noop } from 'lodash-es'
@@ -21,7 +21,7 @@ const EditWorkspaceModal = ({
 }: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceOwner } = useContext(AppContext)
   const [name, setName] = useState<string>(currentWorkspace.name)
 
   const changeWorkspaceInfo = async (name: string) => {

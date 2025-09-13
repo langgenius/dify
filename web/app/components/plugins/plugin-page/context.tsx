@@ -17,7 +17,7 @@ import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type PluginPageContextValue = {
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
   currentPluginID: string | undefined
   setCurrentPluginID: (pluginID?: string) => void
   filters: FilterState

@@ -14,7 +14,7 @@ import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory
 import Divider from '@/app/components/base/divider'
 import Loading from './loading'
 import Empty from './empty'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useAppContextSelector } from '@/context/app-context'
 import RestoreConfirmModal from './restore-confirm-modal'
 import DeleteConfirmModal from './delete-confirm-modal'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'

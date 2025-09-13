@@ -1,3 +1,4 @@
+// useContext is used here instead of use because useContext is the standard React hook for accessing context in client components; use is not suitable for context consumption.
 import { type Context, type Provider, createContext, useContext } from 'react'
 import * as selector from 'use-context-selector'
 
@@ -41,5 +42,6 @@ export const createCtx = createCreateCtxFunction(useContext, createContext)
 
 export const createSelectorCtx = createCreateCtxFunction(
   selector.useContext,
-  selector.createContext as typeof createContext,
+  selector.createContext as typeof
+  createContext,
 )

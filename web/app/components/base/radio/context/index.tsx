@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext } from 'use-context-selector'
+import { createContext } from 'react'
 
 const RadioGroupContext = createContext<any>(null)
 export default RadioGroupContext

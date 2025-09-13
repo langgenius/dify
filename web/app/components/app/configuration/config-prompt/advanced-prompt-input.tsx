@@ -26,7 +26,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
 import { AppType } from '@/types/app'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -74,18 +74,20 @@ const AdvancedPromptInput: FC<Props> = ({
     externalDataToolsConfig,
   } = useContext(ConfigContext)
   const { notify } = useToastContext()
-  const { setShowExternalDataToolModal } = useModalContext()
+  const { setShowExternalDataToolModal } = useContext(ModalContext)
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newPayload?: ExternalDataTool, formValues?: Record<string, any>) => {
+        if (!newPayload) return
+
         eventEmitter?.emit({
           type: ADD_EXTERNAL_DATA_TOOL,
-          payload: newExternalDataTool,
+          payload: newPayload,
         } as any)
         eventEmitter?.emit({
           type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-          payload: newExternalDataTool.variable,
+          payload: newPayload.variable,
         } as any)
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {

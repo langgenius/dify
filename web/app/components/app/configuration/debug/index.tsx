@@ -494,7 +494,7 @@ const Debug: FC<IDebug> = ({
             {mode !== AppType.completion && (
               <div className='h-0 grow overflow-hidden'>
                 <DebugWithSingleModel
-                  ref={debugWithSingleModelRef}
+                  ref={debugWithSingleModelRef as React.RefObject<DebugWithSingleModelRefType>}
                   checkCanSend={checkCanSend}
                 />
               </div>

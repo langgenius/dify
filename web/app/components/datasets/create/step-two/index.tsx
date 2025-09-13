@@ -651,13 +651,13 @@ const StepTwo = ({
                 <MaxLengthInput
                   unit='characters'
                   value={maxChunkLength}
-                  onChange={setMaxChunkLength}
+                  onChange={value => setMaxChunkLength(value ?? 0)}
                 />
                 <OverlapInput
                   unit='characters'
                   value={overlap}
                   min={1}
-                  onChange={setOverlap}
+                  onChange={value => setOverlap(value ?? 0)}
                 />
               </div>
               <div className='flex w-full flex-col'>
@@ -788,7 +788,7 @@ const StepTwo = ({
                           ...parentChildConfig,
                           parent: {
                             ...parentChildConfig.parent,
-                            maxLength: value,
+                            maxLength: value ?? 0,
                           },
                         })}
                       />
@@ -835,7 +835,7 @@ const StepTwo = ({
                       ...parentChildConfig,
                       child: {
                         ...parentChildConfig.child,
-                        maxLength: value,
+                        maxLength: value ?? 0,
                       },
                     })}
                   />

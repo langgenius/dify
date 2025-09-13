@@ -31,15 +31,25 @@ import {
   getPayUrl,
 } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
+import { useModalContextSelector } from '@/context/modal-context'
 import {
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginType } from '@/app/components/plugins/types'
 import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
-import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
+
+type ModelModalPayload = {
+  currentProvider: ModelProvider
+  currentConfigurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  isModelCredential?: boolean
+  credential?: Credential
+  model?: CustomModel
+  onSaveCallback: () => void
+} | null
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,

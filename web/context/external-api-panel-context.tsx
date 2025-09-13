@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, use, useState } from 'react'
 
 type ExternalApiPanelContextType = {
   showExternalApiPanel: boolean
@@ -20,7 +20,7 @@ export const ExternalApiPanelProvider: React.FC<{ children: React.ReactNode }> =
 }
 
 export const useExternalApiPanel = () => {
-  const context = useContext(ExternalApiPanelContext)
+  const context = use(ExternalApiPanelContext)
   if (context === undefined)
     throw new Error('useExternalApiPanel must be used within an ExternalApiPanelProvider')
 

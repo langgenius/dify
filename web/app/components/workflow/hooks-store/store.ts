@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { use } from 'react'
 import {
   noop,
 } from 'lodash-es'
@@ -119,7 +119,7 @@ export const createHooksStore = ({
 }
 
 export function useHooksStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(HooksStoreContext)
+  const store = use(HooksStoreContext)
   if (!store)
     throw new Error('Missing HooksStoreContext.Provider in the tree')
 
@@ -127,5 +127,5 @@ export function useHooksStore<T>(selector: (state: Shape) => T): T {
 }
 
 export const useHooksStoreApi = () => {
-  return useContext(HooksStoreContext)!
+  return use(HooksStoreContext)!
 }

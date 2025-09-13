@@ -12,7 +12,7 @@ import Operation from './operation'
 import TransferOwnership from './operation/transfer-ownership'
 import { fetchMembers } from '@/service/common'
 import I18n from '@/context/i18n'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
 import type { InvitationResult } from '@/models/common'
 import { useProviderContext } from '@/context/provider-context'
@@ -38,7 +38,7 @@ const MembersPage = () => {
   }
   const { locale } = useContext(I18n)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useContext(AppContext)
   const { data, mutate } = useSWR(
     {
       url: '/workspaces/current/members',
@@ -53,7 +53,7 @@ const MembersPage = () => {
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)

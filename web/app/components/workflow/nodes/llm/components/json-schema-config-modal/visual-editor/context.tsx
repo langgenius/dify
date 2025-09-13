@@ -1,6 +1,6 @@
 import {
   createContext,
-  useContext,
+  use,
   useRef,
 } from 'react'
 import { createVisualEditorStore } from './store'
@@ -18,7 +18,7 @@ type VisualEditorProviderProps = {
 export const VisualEditorContext = createContext<VisualEditorContextType>(null)
 
 export const VisualEditorContextProvider = ({ children }: VisualEditorProviderProps) => {
-  const storeRef = useRef<VisualEditorStore>()
+  const storeRef = useRef<VisualEditorStore>(null)
 
   if (!storeRef.current)
     storeRef.current = createVisualEditorStore()
@@ -46,5 +46,5 @@ export const MittProvider = ({ children }: { children: React.ReactNode }) => {
 }
 
 export const useMittContext = () => {
-  return useContext(MittContext)
+  return use(MittContext)
 }

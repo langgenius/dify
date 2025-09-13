@@ -101,7 +101,7 @@ type ContextType = ReturnType<typeof usePortalToFollowElem> | null
 const PortalToFollowElemContext = React.createContext<ContextType>(null)
 
 export function usePortalToFollowElemContext() {
-  const context = React.useContext(PortalToFollowElemContext)
+  const context = React.use(PortalToFollowElemContext)
 
   if (context == null)
     throw new Error('PortalToFollowElem components must be wrapped in <PortalToFollowElem />')

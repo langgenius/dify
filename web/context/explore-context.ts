@@ -1,4 +1,4 @@
-import { createContext } from 'use-context-selector'
+import { createContext } from 'react'
 import type { InstalledApp } from '@/models/explore'
 import { noop } from 'lodash-es'
 

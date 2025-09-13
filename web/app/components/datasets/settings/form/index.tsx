@@ -20,7 +20,7 @@ import { updateDatasetSetting } from '@/service/datasets'
 import { type DataSetListResponse, DatasetPermission } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
@@ -50,7 +50,7 @@ const Form = () => {
   const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
   const { mutate } = useSWRConfig()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { isCurrentWorkspaceDatasetOperator } = useContext(AppContext)
   const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')

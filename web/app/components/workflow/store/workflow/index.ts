@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { use } from 'react'
 import type {
   StateCreator,
 } from 'zustand'
@@ -78,7 +78,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
 }
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(WorkflowContext)
+  const store = use(WorkflowContext)
   if (!store)
     throw new Error('Missing WorkflowContext.Provider in the tree')
 
@@ -86,5 +86,5 @@ export function useStore<T>(selector: (state: Shape) => T): T {
 }
 
 export const useWorkflowStore = () => {
-  return useContext(WorkflowContext)!
+  return use(WorkflowContext)!
 }

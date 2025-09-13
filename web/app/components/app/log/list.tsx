@@ -32,7 +32,7 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
@@ -197,7 +197,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
   const SCROLL_THRESHOLD_PX = 50
   const SCROLL_DEBOUNCE_MS = 200
-  const { userProfile: { timezone } } = useAppContext()
+  const { userProfile: { timezone } } = useContext(AppContext)
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
   const { notify } = useContext(ToastContext)

@@ -9,7 +9,7 @@ jest.mock('swr', () => ({
   useSWRConfig: jest.fn(),
 }))
 
-// mock use-context-selector
+// mock react
 jest.mock('use-context-selector', () => ({
   useContext: jest.fn(),
 }))

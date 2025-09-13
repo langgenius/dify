@@ -45,4 +45,5 @@ export const useDocLink = (baseUrl?: string): ((path?: string, pathMap?: { [inde
     return `${baseDocUrl}/${docLanguage}/${targetPath}`
   }
 }
+
 export default I18NContext

@@ -168,9 +168,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
               <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
           )}
-          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
+          <div
+            className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5'
+            onClick={() => toggleFullScreen()}
+          >
             <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />
           </div>
+
           <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={handleCancel.bind(null, 'esc')}>
             <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>

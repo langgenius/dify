@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { basePath } from '@/utils/var'
-import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
@@ -51,7 +51,7 @@ import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, Trans
 import { PromptMode } from '@/models/debug'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -82,8 +82,7 @@ import { MittProvider } from '@/context/mitt-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
 import { fetchCollectionList } from '@/service/tools'
-import { useAppContext } from '@/context/app-context'
-
+import AppContext from '@/context/app-context'
 type PublishConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
@@ -92,7 +91,7 @@ type PublishConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isLoadingCurrentWorkspace, currentWorkspace } = useContext(AppContext)
 
   const { appDetail, showAppConfigureFeaturesModal, setAppSiderbarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -104,7 +103,7 @@ const Configuration: FC = () => {
 
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
-  const { setShowAccountSettingModal } = useModalContext()
+  const { setShowAccountSettingModal } = useContext(ModalContext)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
   const pathname = usePathname()
@@ -532,17 +531,22 @@ const Configuration: FC = () => {
         })
       }
       setCollectionList(collectionList)
-      fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
+
+      const res = await fetchAppDetail({ url: '/apps', id: appId })
+      if (res) {
         setMode(res.mode)
         const modelConfig = res.model_config
         const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
         doSetPromptMode(promptMode)
         if (promptMode === PromptMode.advanced) {
-          if (modelConfig.chat_prompt_config && modelConfig.chat_prompt_config.prompt.length > 0)
-            setChatPromptConfig(modelConfig.chat_prompt_config)
+          if(
+            modelConfig.chat_prompt_config && (modelConfig.chat_prompt_config as any).prompt?.length > 0
+          )
+            setChatPromptConfig(modelConfig.chat_prompt_config as any)
           else
             setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG))
-          setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
+          setCompletionPromptConfig((modelConfig.completion_prompt_config as any) || clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
+          )
           setCanReturnToSimpleMode(false)
         }
 
@@ -565,7 +569,7 @@ const Configuration: FC = () => {
         setIntroduction(modelConfig.opening_statement)
         setSuggestedQuestions(modelConfig.suggested_questions || [])
         if (modelConfig.more_like_this)
-          setMoreLikeThisConfig(modelConfig.more_like_this)
+          setMoreLikeThisConfig(modelConfig.more_like_this as any)
 
         if (modelConfig.suggested_questions_after_answer)
           setSuggestedQuestionsAfterAnswerConfig(modelConfig.suggested_questions_after_answer)
@@ -596,8 +600,8 @@ const Configuration: FC = () => {
         if (modelConfig.sensitive_word_avoidance)
           setModerationConfig(modelConfig.sensitive_word_avoidance)
 
-        if (modelConfig.external_data_tools)
-          setExternalDataToolsConfig(modelConfig.external_data_tools)
+        if ((modelConfig as any).external_data_tools)
+          setExternalDataToolsConfig((modelConfig as any).external_data_tools)
 
         const config = {
           modelConfig: {
@@ -610,8 +614,8 @@ const Configuration: FC = () => {
                 [
                   ...modelConfig.user_input_form,
                   ...(
-                    modelConfig.external_data_tools?.length
-                      ? modelConfig.external_data_tools.map((item: any) => {
+                    (modelConfig as any).external_data_tools?.length
+                      ? (modelConfig as any).external_data_tools.map((item: any) => {
                         return {
                           external_data_tool: {
                             variable: item.variable as string,
@@ -641,7 +645,7 @@ const Configuration: FC = () => {
             suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
             retriever_resource: modelConfig.retriever_resource,
             annotation_reply: modelConfig.annotation_reply,
-            external_data_tools: modelConfig.external_data_tools,
+            external_data_tools: (modelConfig as any).external_data_tools,
             dataSets: datasets || [],
             agentConfig: res.mode === 'agent-chat' ? {
               max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
@@ -654,7 +658,7 @@ const Configuration: FC = () => {
                 const toolInCollectionList = collectionList.find(c => tool.provider_id === c.id)
                 return {
                   ...tool,
-                  isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
+                  isDeleted: (res as any).deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
                   notAuthor: toolInCollectionList?.is_team_authorization === false,
                   ...(tool.provider_type === 'builtin' ? {
                     provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
@@ -670,8 +674,8 @@ const Configuration: FC = () => {
         if (modelConfig.file_upload)
           handleSetVisionConfig(modelConfig.file_upload.image, true)
 
-        syncToPublishedConfig(config)
-        setPublishedConfig(config)
+        syncToPublishedConfig(config as any) // fix types after migration
+        setPublishedConfig(config as any) // fix types after migration
         const retrievalConfig = getMultipleRetrievalConfig({
           ...modelConfig.dataset_configs,
           reranking_model: modelConfig.dataset_configs.reranking_model && {
@@ -683,18 +687,18 @@ const Configuration: FC = () => {
           model: currentRerankModel?.model,
         })
         setDatasetConfigs({
-          retrieval_model: RETRIEVE_TYPE.multiWay,
+          // retrieval_model: RETRIEVE_TYPE.multiWay  (since it's being overwritten)
           ...modelConfig.dataset_configs,
           ...retrievalConfig,
           ...(retrievalConfig.reranking_model ? {
             reranking_model: {
               reranking_model_name: retrievalConfig.reranking_model.model,
               reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
-            },
+            } as any,
           } : {}),
         })
         setHasFetchedDetail(true)
-      })
+      }
     })()
   }, [appId])
 

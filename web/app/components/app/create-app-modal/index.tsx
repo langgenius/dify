@@ -15,7 +15,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { basePath } from '@/utils/var'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
@@ -52,7 +52,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useContext(AppContext)
 
   const isCreatingRef = useRef(false)
 

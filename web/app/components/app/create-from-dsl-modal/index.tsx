@@ -20,7 +20,7 @@ import {
   DSLImportMode,
   DSLImportStatus,
 } from '@/models/app'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -73,7 +73,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       setFileContent('')
   }
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useContext(AppContext)
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -84,7 +84,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       handleFile(droppedFile)
   }, [droppedFile])
 
-  const onCreate: MouseEventHandler = async () => {
+  const onCreate = async () => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
       return
     if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue)

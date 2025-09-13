@@ -5,7 +5,7 @@ import { useDebounceFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
-import { useDocumentContext } from '../index'
+import { DocumentContext } from '../index'
 import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import SegmentList from './segment-list'
@@ -47,6 +47,11 @@ import {
 } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { noop } from 'lodash-es'
+
+const useDocumentSelector = (selector: (context: any) => any) => {
+  const context = useContext(DocumentContext)
+  return selector(context)
+}
 
 const DEFAULT_LIMIT = 10
 
@@ -102,11 +107,11 @@ const Completed: FC<ICompletedProps> = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const pathname = usePathname()
-  const datasetId = useDocumentContext(s => s.datasetId) || ''
-  const documentId = useDocumentContext(s => s.documentId) || ''
-  const docForm = useDocumentContext(s => s.docForm)
-  const mode = useDocumentContext(s => s.mode)
-  const parentMode = useDocumentContext(s => s.parentMode)
+  const datasetId = useDocumentSelector(s => s.datasetId) || ''
+  const documentId = useDocumentSelector(s => s.documentId) || ''
+  const docForm = useDocumentSelector(s => s.docForm)
+  const mode = useDocumentSelector(s => s.mode)
+  const parentMode = useDocumentSelector(s => s.parentMode)
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
   const [currChildChunk, setCurrChildChunk] = useState<CurrChildChunkType>({ showModal: false })

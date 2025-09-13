@@ -14,7 +14,7 @@ import Modal from '@/app/components/base/modal'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
 import { deleteApp, switchApp } from '@/service/apps'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -39,7 +39,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { notify } = useContext(ToastContext)
   const setAppDetail = useAppStore(s => s.setAppDetail)
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useContext(AppContext)
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 

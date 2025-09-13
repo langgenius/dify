@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { RiCloseLine } from '@remixicon/react'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { ToastContext } from '@/app/components/base/toast'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -29,7 +29,7 @@ enum STEP {
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { currentWorkspace, userProfile } = useAppContext()
+  const { currentWorkspace, userProfile } = useContext(AppContext)
   const [step, setStep] = useState<STEP>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [time, setTime] = useState<number>(0)
