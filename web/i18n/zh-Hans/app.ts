@@ -268,6 +268,7 @@ const translation = {
     selectToNavigate: '选择以导航',
     startTyping: '开始输入以搜索',
     tips: '按 ↑↓ 导航',
+    pressEscToClose: '按 ESC 关闭',
     selectSearchType: '选择搜索内容',
     searchHint: '开始输入即可立即搜索所有内容',
     commandHint: '输入 @ 按类别浏览',

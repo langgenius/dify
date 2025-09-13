@@ -268,6 +268,7 @@ const translation = {
     selectToNavigate: '選択してナビゲート',
     startTyping: '入力を開始して検索',
     tips: '↑↓ でナビゲート',
+    pressEscToClose: 'ESC で閉じる',
     selectSearchType: '検索対象を選択',
     searchHint: '入力を開始してすべてを瞬時に検索',
     commandHint: '@ を入力してカテゴリ別に参照',

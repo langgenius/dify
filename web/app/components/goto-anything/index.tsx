@@ -453,7 +453,10 @@ const GotoAnything: FC<Props> = ({
                       }
                     </span>
                     <span className='opacity-60'>
-                      {t('app.gotoAnything.tips')}
+                      {searchQuery.trim() || isCommandsMode
+                        ? t('app.gotoAnything.tips')
+                        : t('app.gotoAnything.pressEscToClose')
+                      }
                     </span>
                   </>
                 )}

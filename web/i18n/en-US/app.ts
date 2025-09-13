@@ -269,6 +269,7 @@ const translation = {
     selectToNavigate: 'Select to navigate',
     startTyping: 'Start typing to search',
     tips: 'Press ↑↓ to navigate',
+    pressEscToClose: 'Press ESC to close',
     selectSearchType: 'Choose what to search for',
     searchHint: 'Start typing to search everything instantly',
     commandHint: 'Type @ to browse by category',
