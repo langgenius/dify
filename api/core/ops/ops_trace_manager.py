@@ -122,7 +122,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
-provider_config_map: dict[str, dict[str, Any]] = OpsTraceProviderConfigMap()
+provider_config_map = OpsTraceProviderConfigMap()
 
 
 class OpsTraceManager:
