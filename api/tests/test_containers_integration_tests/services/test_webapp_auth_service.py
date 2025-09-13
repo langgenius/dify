@@ -252,7 +252,7 @@ class TestWebAppAuthService:
         """
         # Arrange: Generate a guaranteed non-existent email
         # Use UUID and timestamp to ensure uniqueness
-        unique_id = str(uuid.uuid4()).replace('-', '')
+        unique_id = str(uuid.uuid4()).replace("-", "")
         timestamp = str(int(time.time() * 1000000))  # microseconds
         non_existent_email = f"nonexistent_{unique_id}_{timestamp}@test-domain-that-never-exists.invalid"
 
