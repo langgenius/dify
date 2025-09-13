@@ -6,17 +6,15 @@ from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.event import RunCompletedEvent
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.graph import Graph
+from core.workflow.node_events import StreamCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowType
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
 
@@ -30,10 +28,8 @@ def init_llm_node(config: dict) -> LLMNode:
                 "target": "llm",
             },
         ],
-        "nodes": [{"data": {"type": "start"}, "id": "start"}, config],
+        "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
-
-    graph = Graph.init(graph_config=graph_config)
 
     # Use proper UUIDs for database compatibility
     tenant_id = "9d2074fc-6f86-45a9-b09d-6ecc63b9056b"
@@ -44,7 +40,6 @@ def init_llm_node(config: dict) -> LLMNode:
     init_params = GraphInitParams(
         tenant_id=tenant_id,
         app_id=app_id,
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id=workflow_id,
         graph_config=graph_config,
         user_id=user_id,
@@ -69,12 +64,21 @@ def init_llm_node(config: dict) -> LLMNode:
     )
     variable_pool.add(["abc", "output"], "sunny")
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node = LLMNode(
         id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
     )
 
     # Initialize node data
@@ -173,15 +177,15 @@ def test_execute_llm():
         assert isinstance(result, Generator)
 
         for item in result:
-            if isinstance(item, RunCompletedEvent):
-                if item.run_result.status != WorkflowNodeExecutionStatus.SUCCEEDED:
-                    print(f"Error: {item.run_result.error}")
-                    print(f"Error type: {item.run_result.error_type}")
-                assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-                assert item.run_result.process_data is not None
-                assert item.run_result.outputs is not None
-                assert item.run_result.outputs.get("text") is not None
-                assert item.run_result.outputs.get("usage", {})["total_tokens"] > 0
+            if isinstance(item, StreamCompletedEvent):
+                if item.node_run_result.status != WorkflowNodeExecutionStatus.SUCCEEDED:
+                    print(f"Error: {item.node_run_result.error}")
+                    print(f"Error type: {item.node_run_result.error_type}")
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.process_data is not None
+                assert item.node_run_result.outputs is not None
+                assert item.node_run_result.outputs.get("text") is not None
+                assert item.node_run_result.outputs.get("usage", {})["total_tokens"] > 0
 
 
 def test_execute_llm_with_jinja2():
@@ -284,11 +288,11 @@ def test_execute_llm_with_jinja2():
         result = node._run()
 
         for item in result:
-            if isinstance(item, RunCompletedEvent):
-                assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-                assert item.run_result.process_data is not None
-                assert "sunny" in json.dumps(item.run_result.process_data)
-                assert "what's the weather today?" in json.dumps(item.run_result.process_data)
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.process_data is not None
+                assert "sunny" in json.dumps(item.node_run_result.process_data)
+                assert "what's the weather today?" in json.dumps(item.node_run_result.process_data)
 
 
 def test_extract_json():

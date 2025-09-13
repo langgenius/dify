@@ -6,14 +6,6 @@ from datetime import datetime
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
-from core.plugin.entities.plugin import GenericProviderID
-from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.signature import sign_tool_file
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
-
-if TYPE_CHECKING:
-    from models.workflow import Workflow
-
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
@@ -24,13 +16,19 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
+from core.tools.signature import sign_tool_file
+from core.workflow.enums import WorkflowExecutionStatus
 from libs.helper import generate_string  # type: ignore[import-not-found]
 
 from .account import Account, Tenant
 from .base import Base
 from .engine import db
 from .enums import CreatorUserRole
+from .provider_ids import GenericProviderID
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from models.workflow import Workflow
 
 
 class DifySetup(Base):
@@ -163,7 +161,7 @@ class App(Base):
 
     @property
     def deleted_tools(self) -> list[dict[str, str]]:
-        from core.tools.tool_manager import ToolManager
+        from core.tools.tool_manager import ToolManager, ToolProviderType
         from services.plugin.plugin_service import PluginService
 
         # get agent mode tools
@@ -178,6 +176,7 @@ class App(Base):
         tools = agent_mode.get("tools", [])
 
         api_provider_ids: list[str] = []
+
         builtin_provider_ids: list[GenericProviderID] = []
 
         for tool in tools:
@@ -846,7 +845,8 @@ class Conversation(Base):
 
     @property
     def app(self) -> Optional[App]:
-        return db.session.query(App).where(App.id == self.app_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            return session.query(App).where(App.id == self.app_id).first()
 
     @property
     def from_end_user_session_id(self):
@@ -1138,7 +1138,7 @@ class Message(Base):
         )
 
     @property
-    def retriever_resources(self) -> Any | list[Any]:
+    def retriever_resources(self) -> Any:
         return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property

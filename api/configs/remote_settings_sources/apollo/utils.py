@@ -29,7 +29,7 @@ def no_key_cache_key(namespace: str, key: str) -> str:
 
 
 # Returns whether the obtained value is obtained, and None if it does not
-def get_value_from_dict(namespace_cache: dict[str, Any] | None, key: str) -> Any | None:
+def get_value_from_dict(namespace_cache: dict[str, Any] | None, key: str) -> Any:
     if namespace_cache:
         kv_data = namespace_cache.get(CONFIGURATIONS)
         if kv_data is None:

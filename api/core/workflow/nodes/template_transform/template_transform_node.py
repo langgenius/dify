@@ -1,27 +1,26 @@
 import os
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 
 MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get("TEMPLATE_TRANSFORM_MAX_LENGTH", "80000"))
 
 
-class TemplateTransformNode(BaseNode):
-    _node_type = NodeType.TEMPLATE_TRANSFORM
+class TemplateTransformNode(Node):
+    node_type = NodeType.TEMPLATE_TRANSFORM
 
     _node_data: TemplateTransformNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = TemplateTransformNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -30,7 +29,7 @@ class TemplateTransformNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -40,7 +39,7 @@ class TemplateTransformNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         """
         Get default config of node.
         :param filters: filter by node config parameters.
@@ -57,7 +56,7 @@ class TemplateTransformNode(BaseNode):
 
     def _run(self) -> NodeRunResult:
         # Get variables
-        variables = {}
+        variables: dict[str, Any] = {}
         for variable_selector in self._node_data.variables:
             variable_name = variable_selector.variable
             value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)

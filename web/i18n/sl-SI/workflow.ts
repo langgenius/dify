@@ -79,7 +79,6 @@ const translation = {
     overwriteAndImport: 'Prepiši in uvozi',
     features: 'Značilnosti',
     exportPNG: 'Izvozi kot PNG',
-    parallelRun: 'Paralelni tek',
     chooseDSL: 'Izberi DSL datoteko',
     unpublished: 'Nepublikirano',
     pasteHere: 'Prilepite tukaj',

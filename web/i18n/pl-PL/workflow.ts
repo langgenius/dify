@@ -86,7 +86,6 @@ const translation = {
       limit: 'Równoległość jest ograniczona do gałęzi {{num}}.',
       depthLimit: 'Limit warstw zagnieżdżania równoległego dla warstw {{num}}',
     },
-    parallelRun: 'Bieg równoległy',
     jumpToNode: 'Przejdź do tego węzła',
     disconnect: 'Odłączyć',
     addParallelNode: 'Dodaj węzeł równoległy',

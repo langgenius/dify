@@ -1,23 +1,23 @@
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
 
 class RetrievalSourceMetadata(BaseModel):
-    position: Optional[int] = None
-    dataset_id: Optional[str] = None
-    dataset_name: Optional[str] = None
-    document_id: Optional[str] = None
-    document_name: Optional[str] = None
-    data_source_type: Optional[str] = None
-    segment_id: Optional[str] = None
-    retriever_from: Optional[str] = None
-    score: Optional[float] = None
-    hit_count: Optional[int] = None
-    word_count: Optional[int] = None
-    segment_position: Optional[int] = None
-    index_node_hash: Optional[str] = None
-    content: Optional[str] = None
-    page: Optional[int] = None
-    doc_metadata: Optional[dict[str, Any]] = None
-    title: Optional[str] = None
+    position: int | None = None
+    dataset_id: str | None = None
+    dataset_name: str | None = None
+    document_id: str | None = None
+    document_name: str | None = None
+    data_source_type: str | None = None
+    segment_id: str | None = None
+    retriever_from: str | None = None
+    score: float | None = None
+    hit_count: int | None = None
+    word_count: int | None = None
+    segment_position: int | None = None
+    index_node_hash: str | None = None
+    content: str | None = None
+    page: int | None = None
+    doc_metadata: dict[str, Any] | None = None
+    title: str | None = None

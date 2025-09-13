@@ -27,7 +27,7 @@ from core.variables.variables import (
     VariableUnion,
 )
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.system_variable import SystemVariable
 from factories.variable_factory import build_segment, segment_to_variable
 
@@ -66,18 +66,6 @@ def test_get_file_attribute(pool, file):
     # Test getting a non-existent attribute
     result = pool.get(("node_1", "file_var", "non_existent_attr"))
     assert result is None
-
-
-def test_use_long_selector(pool):
-    # The add method now only accepts 2-element selectors (node_id, variable_name)
-    # Store nested data as an ObjectSegment instead
-    nested_data = {"part_2": "test_value"}
-    pool.add(("node_1", "part_1"), ObjectSegment(value=nested_data))
-
-    # The get method supports longer selectors for nested access
-    result = pool.get(("node_1", "part_1", "part_2"))
-    assert result is not None
-    assert result.value == "test_value"
 
 
 class TestVariablePool:
@@ -284,11 +272,6 @@ class TestVariablePoolSerialization:
             pool.add((self._NODE2_ID, "array_file"), ArrayFileSegment(value=[test_file]))
         pool.add((self._NODE2_ID, "array_any"), ArrayAnySegment(value=["mixed", 123, {"key": "value"}]))
 
-        # Add nested variables as ObjectSegment
-        # The add method only accepts 2-element selectors
-        nested_obj = {"deep": {"var": "deep_value"}}
-        pool.add((self._NODE3_ID, "nested"), ObjectSegment(value=nested_obj))
-
     def test_system_variables(self):
         sys_vars = SystemVariable(
             user_id="test_user_id",
@@ -406,7 +389,6 @@ class TestVariablePoolSerialization:
             (self._NODE1_ID, "float_var"),
             (self._NODE2_ID, "array_string"),
             (self._NODE2_ID, "array_number"),
-            (self._NODE3_ID, "nested", "deep", "var"),
         ]
 
         for selector in test_selectors:
@@ -442,3 +424,13 @@ class TestVariablePoolSerialization:
         loaded = VariablePool.model_validate(pool_dict)
         assert isinstance(loaded.variable_dictionary, defaultdict)
         loaded.add(["non_exist_node", "a"], 1)
+
+
+def test_get_attr():
+    vp = VariablePool()
+    value = {"output": StringSegment(value="hello")}
+
+    vp.add(["node", "name"], value)
+    res = vp.get(["node", "name", "output"])
+    assert res is not None
+    assert res.value == "hello"

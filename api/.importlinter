@@ -1,0 +1,105 @@
+[importlinter]
+root_packages =
+    core
+    configs
+    controllers
+    models
+    tasks
+    services
+
+[importlinter:contract:workflow]
+name = Workflow
+type=layers
+layers =
+    graph_engine
+    graph_events
+    graph
+    nodes
+    node_events
+    entities
+containers =
+    core.workflow
+ignore_imports =
+    core.workflow.nodes.base.node -> core.workflow.graph_events
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_events
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_events
+
+    core.workflow.nodes.node_factory -> core.workflow.graph
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine.command_channels
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
+
+[importlinter:contract:rsc]
+name = RSC
+type = layers
+layers =
+    graph_engine
+    response_coordinator
+containers =
+    core.workflow.graph_engine
+
+[importlinter:contract:worker]
+name = Worker
+type = layers
+layers =
+    graph_engine
+    worker
+containers =
+    core.workflow.graph_engine
+
+[importlinter:contract:graph-engine-architecture]
+name = Graph Engine Architecture
+type = layers
+layers =
+    graph_engine
+    orchestration
+    command_processing
+    event_management
+    error_handler
+    graph_traversal
+    graph_state_manager
+    worker_management
+    domain
+containers =
+    core.workflow.graph_engine
+
+[importlinter:contract:domain-isolation]
+name = Domain Model Isolation
+type = forbidden
+source_modules =
+    core.workflow.graph_engine.domain
+forbidden_modules =
+    core.workflow.graph_engine.worker_management
+    core.workflow.graph_engine.command_channels
+    core.workflow.graph_engine.layers
+    core.workflow.graph_engine.protocols
+
+[importlinter:contract:worker-management]
+name = Worker Management
+type = forbidden
+source_modules =
+    core.workflow.graph_engine.worker_management
+forbidden_modules =
+    core.workflow.graph_engine.orchestration
+    core.workflow.graph_engine.command_processing
+    core.workflow.graph_engine.event_management
+
+
+[importlinter:contract:graph-traversal-components]
+name = Graph Traversal Components
+type = layers
+layers =
+    edge_processor
+    skip_propagator
+containers =
+    core.workflow.graph_engine.graph_traversal
+
+[importlinter:contract:command-channels]
+name = Command Channels Independence
+type = independence
+modules =
+    core.workflow.graph_engine.command_channels.in_memory_channel
+    core.workflow.graph_engine.command_channels.redis_channel
