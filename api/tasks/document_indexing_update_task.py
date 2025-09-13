@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -45,7 +46,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         index_type = document.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
+        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
 

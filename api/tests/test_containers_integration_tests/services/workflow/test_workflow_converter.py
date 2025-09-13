@@ -14,6 +14,7 @@ from core.app.app_config.entities import (
     VariableEntityType,
 )
 from core.model_runtime.entities.llm_entities import LLMMode
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.account import Account, Tenant
 from models.api_based_extension import APIBasedExtension
 from models.model import App, AppMode, AppModelConfig
@@ -37,7 +38,7 @@ class TestWorkflowConverter:
             # Setup default mock returns
             mock_encrypter.decrypt_token.return_value = "decrypted_api_key"
             mock_prompt_transform.return_value.get_prompt_template.return_value = {
-                "prompt_template": type("obj", (object,), {"template": "You are a helpful assistant {{text_input}}"})(),
+                "prompt_template": PromptTemplateParser(template="You are a helpful assistant {{text_input}}"),
                 "prompt_rules": {"human_prefix": "Human", "assistant_prefix": "Assistant"},
             }
             mock_agent_chat_config_manager.get_app_config.return_value = self._create_mock_app_config()

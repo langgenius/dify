@@ -3,6 +3,7 @@ from flask_restx import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -20,8 +21,8 @@ from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService
-from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from services.billing_service import BillingService
+from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 
 class EmailRegisterSendEmailApi(Resource):
@@ -37,11 +38,12 @@ class EmailRegisterSendEmailApi(Resource):
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
+        language = "en-US"
+        if args["language"] in languages:
+            language = args["language"]
 
-        if args["language"] is not None and args["language"] == "zh-Hans":
-            language = "zh-Hans"
-        else:
-            language = "en-US"
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
+            raise AccountInFreezeError()
 
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
@@ -125,13 +127,16 @@ class EmailRegisterResetApi(Resource):
                 raise EmailAlreadyInUseError()
             else:
                 account = self._create_new_account(email, args["password_confirm"])
+                if not account:
+                    raise AccountNotFoundError()
                 token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
                 AccountService.reset_login_error_rate_limit(email)
 
         return {"result": "success", "data": token_pair.model_dump()}
 
-    def _create_new_account(self, email, password):
+    def _create_new_account(self, email, password) -> Account | None:
         # Create new account if allowed
+        account = None
         try:
             account = AccountService.create_account_and_tenant(
                 email=email,
@@ -139,10 +144,6 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=languages[0],
             )
-        except WorkSpaceNotAllowedCreateError:
-            pass
-        except WorkspacesLimitExceededError:
-            pass
         except AccountRegisterError:
             raise AccountInFreezeError()
 

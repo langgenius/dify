@@ -68,7 +68,7 @@ class AppIconUrlField(fields.Raw):
         if isinstance(obj, dict) and "app" in obj:
             obj = obj["app"]
 
-        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
+        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(obj.icon)
         return None
 
@@ -165,13 +165,6 @@ class DatetimeString:
             raise ValueError(error)
 
         return value
-
-
-def _get_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"{value} is not a valid float")
 
 
 def timezone(timezone_string):

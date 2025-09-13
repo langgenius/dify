@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -432,8 +432,8 @@ class QueueAgentLogEvent(AppQueueEvent):
     id: str
     label: str
     node_execution_id: str
-    parent_id: str | None
-    error: str | None
+    parent_id: str | None = None
+    error: str | None = None
     status: str
     data: Mapping[str, Any]
     metadata: Optional[Mapping[str, Any]] = None
@@ -626,15 +626,15 @@ class QueueStopEvent(AppQueueEvent):
     QueueStopEvent entity
     """
 
-    class StopBy(Enum):
+    class StopBy(StrEnum):
         """
         Stop by enum
         """
 
-        USER_MANUAL = "user-manual"
-        ANNOTATION_REPLY = "annotation-reply"
-        OUTPUT_MODERATION = "output-moderation"
-        INPUT_MODERATION = "input-moderation"
+        USER_MANUAL = auto()
+        ANNOTATION_REPLY = auto()
+        OUTPUT_MODERATION = auto()
+        INPUT_MODERATION = auto()
 
     event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy

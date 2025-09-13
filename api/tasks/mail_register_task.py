@@ -48,7 +48,7 @@ def send_email_register_mail_task(language: str, to: str, code: str) -> None:
 
 
 @shared_task(queue="mail")
-def send_email_register_mail_task_when_account_exist(language: str, to: str) -> None:
+def send_email_register_mail_task_when_account_exist(language: str, to: str, account_name: str) -> None:
     """
     Send email register email with internationalization support when account exist.
 
@@ -75,6 +75,7 @@ def send_email_register_mail_task_when_account_exist(language: str, to: str) -> 
                 "to": to,
                 "login_url": login_url,
                 "reset_password_url": reset_password_url,
+                "account_name": account_name,
             },
         )
 

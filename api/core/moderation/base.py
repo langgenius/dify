@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum, auto
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 from core.extension.extensible import Extensible, ExtensionModule
 
 
-class ModerationAction(Enum):
-    DIRECT_OUTPUT = "direct_output"
-    OVERRIDDEN = "overridden"
+class ModerationAction(StrEnum):
+    DIRECT_OUTPUT = auto()
+    OVERRIDDEN = auto()
 
 
 class ModerationInputsResult(BaseModel):

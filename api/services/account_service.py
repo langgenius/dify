@@ -87,7 +87,7 @@ class AccountService:
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
-        prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
+        prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
     )
     email_code_account_deletion_rate_limiter = RateLimiter(
         prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
@@ -251,6 +251,8 @@ class AccountService:
         account.name = name
 
         if password:
+            valid_password(password)
+
             # generate password salt
             salt = secrets.token_bytes(16)
             base64_salt = base64.b64encode(salt).decode()
@@ -299,7 +301,9 @@ class AccountService:
         if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
 
-            raise EmailCodeAccountDeletionRateLimitExceededError()
+            raise EmailCodeAccountDeletionRateLimitExceededError(
+                int(cls.email_code_account_deletion_rate_limiter.time_window / 60)
+            )
 
         send_account_deletion_verification_code.delay(to=email, code=code)
 
@@ -447,7 +451,7 @@ class AccountService:
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import PasswordResetRateLimitExceededError
 
-            raise PasswordResetRateLimitExceededError()
+            raise PasswordResetRateLimitExceededError(int(cls.reset_password_rate_limiter.time_window / 60))
 
         code, token = cls.generate_reset_password_token(account_email, account)
 
@@ -480,7 +484,7 @@ class AccountService:
         if cls.email_register_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailRegisterRateLimitExceededError
 
-            raise EmailRegisterRateLimitExceededError()
+            raise EmailRegisterRateLimitExceededError(int(cls.email_register_rate_limiter.time_window / 60))
 
         code, token = cls.generate_email_register_token(account_email)
 
@@ -488,6 +492,7 @@ class AccountService:
             send_email_register_mail_task_when_account_exist.delay(
                 language=language,
                 to=account_email,
+                account_name=account.name,
             )
 
         else:
@@ -517,7 +522,7 @@ class AccountService:
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
-            raise EmailChangeRateLimitExceededError()
+            raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
         code, token = cls.generate_change_email_token(account_email, account, old_email=old_email)
 
@@ -561,7 +566,7 @@ class AccountService:
         if cls.owner_transfer_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import OwnerTransferRateLimitExceededError
 
-            raise OwnerTransferRateLimitExceededError()
+            raise OwnerTransferRateLimitExceededError(int(cls.owner_transfer_rate_limiter.time_window / 60))
 
         code, token = cls.generate_owner_transfer_token(account_email, account)
         workspace_name = workspace_name or ""
@@ -723,7 +728,7 @@ class AccountService:
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
-            raise EmailCodeLoginRateLimitExceededError()
+            raise EmailCodeLoginRateLimitExceededError(int(cls.email_code_login_rate_limiter.time_window / 60))
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
@@ -1413,7 +1418,7 @@ class RegisterService:
     def get_invitation_if_token_valid(
         cls, workspace_id: Optional[str], email: str, token: str
     ) -> Optional[dict[str, Any]]:
-        invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
+        invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
 
@@ -1450,7 +1455,7 @@ class RegisterService:
         }
 
     @classmethod
-    def _get_invitation_by_token(
+    def get_invitation_by_token(
         cls, token: str, workspace_id: Optional[str] = None, email: Optional[str] = None
     ) -> Optional[dict[str, str]]:
         if workspace_id is not None and email is not None:
