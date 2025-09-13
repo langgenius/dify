@@ -33,13 +33,13 @@ const Operation = ({
   const roleList = useMemo(() => {
     if (operatorRole === 'owner') {
       return [
-        ...['admin', 'editor', 'normal'],
+        'admin', 'editor', 'normal',
         ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
       ]
     }
     if (operatorRole === 'admin') {
       return [
-        ...['editor', 'normal'],
+        'editor', 'normal',
         ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
       ]
     }

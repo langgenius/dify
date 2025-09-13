@@ -24,17 +24,6 @@ import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
-type ObjectChildrenProps = {
-  nodeId: string
-  title: string
-  data: Var[]
-  objPath: string[]
-  onChange: (value: ValueSelector, item: Var) => void
-  onHovering?: (value: boolean) => void
-  itemWidth?: number
-  isSupportFileVar?: boolean
-}
-
 type ItemProps = {
   nodeId: string
   title: string
