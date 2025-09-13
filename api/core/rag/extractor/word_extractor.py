@@ -1,3 +1,5 @@
+import httpx
+
 """Abstract interface for document loader implementations."""
 
 import logging
@@ -9,7 +11,6 @@ import uuid
 from urllib.parse import urlparse
 from xml.etree import ElementTree
 
-import requests
 from docx import Document as DocxDocument
 
 from configs import dify_config
@@ -43,7 +44,7 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            r = requests.get(self.file_path)
+            r = httpx.get(self.file_path)
 
             if r.status_code != 200:
                 raise ValueError(f"Check the url of your file; returned status code {r.status_code}")

@@ -3,8 +3,8 @@ from collections.abc import Generator
 from typing import Union
 from urllib.parse import urljoin
 
-import requests
-from requests import Response
+import httpx
+from httpx import Response
 
 from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlAuthenticationError,
@@ -20,7 +20,7 @@ class BaseAPIClient:
         self.session = self.init_session()
 
     def init_session(self):
-        session = requests.Session()
+        session = httpx.Client()
         session.headers.update({"X-API-Key": self.api_key})
         session.headers.update({"Content-Type": "application/json"})
         session.headers.update({"Accept": "application/json"})
@@ -170,7 +170,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict):
-        response = requests.get(result_object["result"])
+        response = httpx.get(result_object["result"])
         response.raise_for_status()
         result_object["result"] = response.json()
         return result_object
