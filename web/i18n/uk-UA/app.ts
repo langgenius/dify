@@ -316,6 +316,10 @@ const translation = {
     noMatchingCommands: 'Відповідних команд не знайдено',
     tryDifferentSearch: 'Спробуйте інший пошуковий термін',
     slashHint: 'Наберіть / , щоб побачити всі доступні команди',
+    selectToNavigate: 'Виберіть, щоб перейти',
+    tips: 'Натисніть ↑↓ для навігації',
+    startTyping: 'Почніть вводити для пошуку',
+    pressEscToClose: 'Натисніть ESC, щоб закрити',
   },
 }
 

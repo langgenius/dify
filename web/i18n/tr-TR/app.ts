@@ -312,6 +312,10 @@ const translation = {
     tryDifferentSearch: 'Farklı bir arama terimi deneyin',
     noMatchingCommands: 'Eşleşen komut bulunamadı',
     slashHint: 'Tüm mevcut komutları görmek için / yazın',
+    tips: 'Navigasyon için ↑↓ tuşlarına basın',
+    selectToNavigate: 'Gezinmek için seçin',
+    pressEscToClose: 'Kapatmak için ESC tuşuna basın',
+    startTyping: 'Arama yapmak için yazmaya başlayın',
   },
 }
 
