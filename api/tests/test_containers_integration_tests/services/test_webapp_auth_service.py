@@ -249,8 +249,8 @@ class TestWebAppAuthService:
         - Correct exception type and message
         """
         # Arrange: Generate a guaranteed non-existent email
-        import uuid
         import time
+        import uuid
         
         # Use UUID and timestamp to ensure uniqueness
         unique_id = str(uuid.uuid4()).replace('-', '')
