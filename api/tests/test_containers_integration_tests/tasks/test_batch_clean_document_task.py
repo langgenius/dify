@@ -13,6 +13,7 @@ import pytest
 from faker import Faker
 
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
@@ -202,7 +203,6 @@ class TestBatchCleanDocumentTask:
             UploadFile: Created upload file instance
         """
         fake = Faker()
-        from datetime import datetime
 
         from models.enums import CreatorUserRole
 
@@ -216,7 +216,7 @@ class TestBatchCleanDocumentTask:
             mime_type="text/plain",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
             used=False,
         )
 
