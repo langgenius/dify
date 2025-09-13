@@ -339,7 +339,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor or current_user.is_dataset_operator:
+        if not (current_user.is_editor or current_user.is_dataset_operator):
             raise Forbidden()
 
         try:
