@@ -122,7 +122,7 @@ class CompletionConversationApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("conversation_ids", type=str, action="append", location="json")
+        parser.add_argument("conversation_ids", type=list, location="json")
         args = parser.parse_args()
 
         # If specific conversation IDs provided, delete only those; otherwise delete all
@@ -418,7 +418,7 @@ class ChatConversationApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("conversation_ids", type=str, action="append", location="json")
+        parser.add_argument("conversation_ids", type=list, location="json")
         args = parser.parse_args()
 
         # If specific conversation IDs provided, delete only those; otherwise delete all
