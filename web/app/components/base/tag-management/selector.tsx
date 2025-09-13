@@ -105,7 +105,7 @@ const Panel = (props: PanelProps) => {
     onCacheUpdate(selectedTags)
     Promise.all([
       ...(addTagIDs.length ? [bind(addTagIDs)] : []),
-      removeTagIDs.length ? removeTagIDs.map(tagID => unbind(tagID)) : [],
+      ...(removeTagIDs.length ? removeTagIDs.map(tagID => unbind(tagID)) : []),
     ]).finally(() => {
       if (onChange)
         onChange()
