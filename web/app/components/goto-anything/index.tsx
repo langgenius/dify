@@ -220,7 +220,7 @@ const GotoAnything: FC<Props> = ({
     if (searchQuery.trim())
       return null
 
-    return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+    return (<div className="flex items-center justify-center py-8 text-center text-text-tertiary">
       <div>
         <div className='text-sm font-medium'>{t('app.gotoAnything.searchTitle')}</div>
         <div className='mt-3 space-y-1 text-xs text-text-quaternary'>
@@ -294,7 +294,7 @@ const GotoAnything: FC<Props> = ({
               </div>
             </div>
 
-            <Command.List className='max-h-[275px] min-h-[240px] overflow-y-auto'>
+            <Command.List className='h-[240px] overflow-y-auto'>
               {isLoading && (
                 <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div className="flex items-center gap-2">
@@ -368,32 +368,49 @@ const GotoAnything: FC<Props> = ({
               )}
             </Command.List>
 
-            {(!!searchResults.length || isError) && (
-              <div className='border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary'>
-                <div className='flex items-center justify-between'>
-                  <span>
-                    {isError ? (
-                      <span className='text-red-500'>{t('app.gotoAnything.someServicesUnavailable')}</span>
-                    ) : (
-                      <>
-                        {t('app.gotoAnything.resultCount', { count: searchResults.length })}
-                        {searchMode !== 'general' && (
-                          <span className='ml-2 opacity-60'>
-                            {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </span>
-                  <span className='opacity-60'>
-                    {searchMode !== 'general'
-                      ? t('app.gotoAnything.clearToSearchAll')
-                      : t('app.gotoAnything.useAtForSpecific')
-                    }
-                  </span>
-                </div>
+            {/* Always show footer to prevent height jumping */}
+            <div className='border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary'>
+              <div className='flex min-h-[16px] items-center justify-between'>
+                {(!!searchResults.length || isError) ? (
+                  <>
+                    <span>
+                      {isError ? (
+                        <span className='text-red-500'>{t('app.gotoAnything.someServicesUnavailable')}</span>
+                      ) : (
+                        <>
+                          {t('app.gotoAnything.resultCount', { count: searchResults.length })}
+                          {searchMode !== 'general' && (
+                            <span className='ml-2 opacity-60'>
+                              {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                    <span className='opacity-60'>
+                      {searchMode !== 'general'
+                        ? t('app.gotoAnything.clearToSearchAll')
+                        : t('app.gotoAnything.useAtForSpecific')
+                      }
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className='opacity-60'>
+                      {isCommandsMode
+                        ? t('app.gotoAnything.selectToNavigate')
+                        : searchQuery.trim()
+                          ? t('app.gotoAnything.searching')
+                          : t('app.gotoAnything.startTyping')
+                      }
+                    </span>
+                    <span className='opacity-60'>
+                      {t('app.gotoAnything.tips')}
+                    </span>
+                  </>
+                )}
               </div>
-            )}
+            </div>
           </Command>
         </div>
 
