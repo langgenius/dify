@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 import pytest
 
@@ -60,8 +61,7 @@ class TestClickZettaVolumeStorage(unittest.TestCase):
         # Test download
         with tempfile.NamedTemporaryFile() as temp_file:
             storage.download(test_filename, temp_file.name)
-            with open(temp_file.name, "rb") as f:
-                downloaded_content = f.read()
+            downloaded_content = Path(temp_file.name).read_bytes()
             assert downloaded_content == test_content
 
         # Test scan

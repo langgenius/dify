@@ -104,7 +104,7 @@ class OpenSearchVector(BaseVector):
                 },
             }
             # See https://github.com/langchain-ai/langchainjs/issues/4346#issuecomment-1935123377
-            if self._client_config.aws_service not in ["aoss"]:
+            if self._client_config.aws_service != "aoss":
                 action["_id"] = uuid4().hex
             actions.append(action)
 
