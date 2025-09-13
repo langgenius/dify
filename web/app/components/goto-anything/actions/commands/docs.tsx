@@ -15,6 +15,16 @@ type DocDeps = Record<string, never>
 export const docsCommand: SlashCommandHandler<DocDeps> = {
   name: 'docs',
   description: 'Open documentation',
+  mode: 'direct',
+
+  // Direct execution function
+  execute: () => {
+    const currentLocale = i18n.language
+    const docLanguage = getDocLanguage(currentLocale)
+    const url = `${defaultDocBaseUrl}/${docLanguage}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  },
+
   async search(args: string, locale: string = 'en') {
     return [{
       id: 'doc',

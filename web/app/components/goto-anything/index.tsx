@@ -11,6 +11,7 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { RiSearchLine } from '@remixicon/react'
 import { Actions as AllActions, type SearchResult, matchAction, searchAnything } from './actions'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
+import { slashCommandRegistry } from './actions/commands/registry'
 import { useQuery } from '@tanstack/react-query'
 import { useGetLanguage } from '@/context/i18n'
 import { useTranslation } from 'react-i18next'
@@ -131,6 +132,21 @@ const GotoAnything: FC<Props> = ({
   }
 
   const handleCommandSelect = useCallback((commandKey: string) => {
+    // Check if it's a slash command
+    if (commandKey.startsWith('/')) {
+      const commandName = commandKey.substring(1)
+      const handler = slashCommandRegistry.findCommand(commandName)
+
+      // If it's a direct mode command, execute immediately
+      if (handler?.mode === 'direct' && handler.execute) {
+        handler.execute()
+        setShow(false)
+        setSearchQuery('')
+        return
+      }
+    }
+
+    // Otherwise, proceed with the normal flow (submenu mode)
     setSearchQuery(`${commandKey} `)
     clearSelection()
     setTimeout(() => {
@@ -280,6 +296,24 @@ const GotoAnything: FC<Props> = ({
                     setSearchQuery(e.target.value)
                     if (!e.target.value.startsWith('@') && !e.target.value.startsWith('/'))
                       clearSelection()
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const query = searchQuery.trim()
+                      // Check if it's a complete slash command
+                      if (query.startsWith('/')) {
+                        const commandName = query.substring(1).split(' ')[0]
+                        const handler = slashCommandRegistry.findCommand(commandName)
+
+                        // If it's a direct mode command, execute immediately
+                        if (handler?.mode === 'direct' && handler.execute) {
+                          e.preventDefault()
+                          handler.execute()
+                          setShow(false)
+                          setSearchQuery('')
+                        }
+                      }
+                    }
                   }}
                   className='flex-1 !border-0 !bg-transparent !shadow-none'
                   wrapperClassName='flex-1 !border-0 !bg-transparent'

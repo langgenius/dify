@@ -235,15 +235,20 @@ export const searchAnything = async (
 
 export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
   return Object.values(actions).find((action) => {
-    // Special handling for slash commands - only match when there's a complete command
+    // Special handling for slash commands
     if (action.key === '/') {
       // Get all registered commands from the registry
       const allCommands = slashCommandRegistry.getAllCommands()
 
-      // Check if query matches any registered command (with or without space/args)
+      // Check if query matches any registered command
       return allCommands.some((cmd) => {
         const cmdPattern = `/${cmd.name}`
-        // Match exact command or command with space/args
+
+        // For direct mode commands, don't match (keep in command selector)
+        if (cmd.mode === 'direct')
+          return false
+
+        // For submenu mode commands, match when complete command is entered
         return query === cmdPattern || query.startsWith(`${cmdPattern} `)
       })
     }
