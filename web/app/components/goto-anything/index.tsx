@@ -87,14 +87,21 @@ const GotoAnything: FC<Props> = ({
     || (searchQuery.trim().startsWith('/') && !matchAction(searchQuery.trim(), Actions))
 
   const searchMode = useMemo(() => {
-    if (isCommandsMode) return 'commands'
+    if (isCommandsMode) {
+      // Distinguish between @ (scopes) and / (commands) mode
+      if (searchQuery.trim().startsWith('@'))
+        return 'scopes'
+      else if (searchQuery.trim().startsWith('/'))
+        return 'commands'
+      return 'commands' // default fallback
+    }
 
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
     return action
       ? (action.key === '/' ? '@command' : action.key)
       : 'general'
-  }, [searchQueryDebouncedValue, Actions, isCommandsMode])
+  }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
@@ -280,7 +287,14 @@ const GotoAnything: FC<Props> = ({
                 />
                 {searchMode !== 'general' && (
                   <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-[2px] text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'>
-                    <span>{searchMode.replace('@', '').toUpperCase()}</span>
+                    <span>{(() => {
+                      if (searchMode === 'scopes')
+                        return 'SCOPES'
+                      else if (searchMode === 'commands')
+                        return 'COMMANDS'
+                      else
+                        return searchMode.replace('@', '').toUpperCase()
+                    })()}</span>
                   </div>
                 )}
               </div>
