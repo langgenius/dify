@@ -5,11 +5,6 @@ import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
-type Option = {
-  label: string
-  value: number
-}
-
 type VersionSelectorProps = {
   versionLen: number;
   value: number;

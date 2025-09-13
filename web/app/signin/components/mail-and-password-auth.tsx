@@ -19,8 +19,6 @@ type MailAndPasswordAuthProps = {
   allowRegistration: boolean
 }
 
-const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
-
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
   const { locale } = useContext(I18NContext)
