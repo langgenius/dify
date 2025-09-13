@@ -8,7 +8,7 @@ import { setLocaleOnClient } from '@/i18n-config'
 import { themeCommand } from './theme'
 import { languageCommand } from './language'
 import { feedbackCommand } from './feedback'
-import { docCommand } from './doc'
+import { docsCommand } from './docs'
 import { communityCommand } from './community'
 import { accountCommand } from './account'
 import i18n from '@/i18n-config/i18next-config'
@@ -35,7 +35,7 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
   slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })
   slashCommandRegistry.register(feedbackCommand, {})
-  slashCommandRegistry.register(docCommand, {})
+  slashCommandRegistry.register(docsCommand, {})
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
 }
@@ -45,7 +45,7 @@ export const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('theme')
   slashCommandRegistry.unregister('language')
   slashCommandRegistry.unregister('feedback')
-  slashCommandRegistry.unregister('doc')
+  slashCommandRegistry.unregister('docs')
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
 }
