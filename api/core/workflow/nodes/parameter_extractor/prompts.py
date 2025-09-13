@@ -19,7 +19,7 @@ Steps:
 1. Review the chat history provided within the <histories> tags.
 2. Extract the relevant information based on the criteria given, output multiple values if there is multiple relevant information that match the criteria in the given text.
 3. Generate a well-formatted output using the defined functions and arguments.
-4. Use the `extract_parameter` function to create structured outputs with appropriate parameters.
+4. Use the `extract_parameters` function to create structured outputs with appropriate parameters.
 5. Do not include any XML tags in your output.
 ### Example
 To illustrate, if the task involves extracting a user's name and their request, your function call might look like this: Ensure your output follows a similar structure to examples.
@@ -179,6 +179,6 @@ CHAT_EXAMPLE = [
                 "required": ["food"],
             },
         },
-        "assistant": {"text": "I need to output a valid JSON object.", "json": {"result": "apple pie"}},
+        "assistant": {"text": "I need to output a valid JSON object.", "json": {"food": "apple pie"}},
     },
 ]
