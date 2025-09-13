@@ -9,6 +9,7 @@ const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Logic,
   sort: 2,
   type: BlockEnum.Iteration,
+  isTypeFixed: true,
 })
 const nodeDefault: NodeDefault<IterationNodeType> = {
   metaData,

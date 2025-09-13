@@ -6,6 +6,8 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const metaData = genNodeMetaData({
   sort: -1,
   type: BlockEnum.DataSourceEmpty,
+  isUndeletable: true,
+  isSingleton: true,
 })
 const nodeDefault: NodeDefault<DataSourceEmptyNodeType> = {
   metaData,

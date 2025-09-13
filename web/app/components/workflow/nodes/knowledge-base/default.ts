@@ -6,6 +6,10 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const metaData = genNodeMetaData({
   sort: 3.1,
   type: BlockEnum.KnowledgeBase,
+  isRequired: true,
+  isUndeletable: true,
+  isSingleton: true,
+  isTypeFixed: true,
 })
 const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
   metaData,

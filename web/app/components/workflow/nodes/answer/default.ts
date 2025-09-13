@@ -6,6 +6,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const metaData = genNodeMetaData({
   sort: 2.1,
   type: BlockEnum.Answer,
+  isRequired: true,
 })
 const nodeDefault: NodeDefault<AnswerNodeType> = {
   metaData,

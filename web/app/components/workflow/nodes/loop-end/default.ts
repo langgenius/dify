@@ -10,6 +10,7 @@ const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Logic,
   sort: 2,
   type: BlockEnum.LoopEnd,
+  isSingleton: true,
 })
 const nodeDefault: NodeDefault<SimpleNodeType> = {
   metaData,

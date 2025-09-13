@@ -14,6 +14,7 @@ const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.Loop,
   author: 'AICT-Team',
+  isTypeFixed: true,
 })
 const nodeDefault: NodeDefault<LoopNodeType> = {
   metaData,
