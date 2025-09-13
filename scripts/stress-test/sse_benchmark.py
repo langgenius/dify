@@ -36,7 +36,11 @@ logger = logging.getLogger(__name__)
 WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", "/v1/workflows/run")
 CONNECT_TIMEOUT = float(os.getenv("CONNECT_TIMEOUT", "10"))
 READ_TIMEOUT = float(os.getenv("READ_TIMEOUT", "60"))
-TERMINAL_EVENTS = [e.strip() for e in os.getenv("TERMINAL_EVENTS", "workflow_finished,error").split(",") if e.strip()]
+TERMINAL_EVENTS = [
+    e.strip()
+    for e in os.getenv("TERMINAL_EVENTS", "workflow_finished,error").split(",")
+    if e.strip()
+]
 QUESTIONS_FILE = os.getenv("QUESTIONS_FILE", "")
 
 
@@ -54,6 +58,7 @@ ErrorType: TypeAlias = Literal[
 
 class ErrorCounts(TypedDict):
     """Error count tracking"""
+
     connection_error: int
     timeout: int
     invalid_json: int
@@ -65,6 +70,7 @@ class ErrorCounts(TypedDict):
 
 class SSEEvent(TypedDict):
     """Server-Sent Event structure"""
+
     data: str
     event: str
     id: str | None
@@ -72,11 +78,13 @@ class SSEEvent(TypedDict):
 
 class WorkflowInputs(TypedDict):
     """Workflow input structure"""
+
     question: str
 
 
 class WorkflowRequestData(TypedDict):
     """Workflow request payload"""
+
     inputs: WorkflowInputs
     response_mode: Literal["streaming"]
     user: str
@@ -84,6 +92,7 @@ class WorkflowRequestData(TypedDict):
 
 class ParsedEventData(TypedDict, total=False):
     """Parsed event data from SSE stream"""
+
     event: str
     task_id: str
     workflow_run_id: str
@@ -93,6 +102,7 @@ class ParsedEventData(TypedDict, total=False):
 
 class LocustStats(TypedDict):
     """Locust statistics structure"""
+
     total_requests: int
     total_failures: int
     avg_response_time: float
@@ -102,6 +112,7 @@ class LocustStats(TypedDict):
 
 class ReportData(TypedDict):
     """JSON report structure"""
+
     timestamp: str
     duration_seconds: float
     metrics: dict[str, object]  # Metrics as dict for JSON serialization
@@ -154,7 +165,7 @@ class MetricsTracker:
         self.total_connections = 0
         self.total_events = 0
         self.start_time = time.time()
-        
+
         # Enhanced metrics with memory limits
         self.max_samples = 10000  # Prevent unbounded growth
         self.ttfe_samples: deque[float] = deque(maxlen=self.max_samples)
@@ -473,10 +484,13 @@ class DifyWorkflowUser(HttpUser):
 
                 for line in response.iter_lines(decode_unicode=True):
                     # Check if runner is stopping
-                    if getattr(self.environment.runner, 'state', '') in ('stopping', 'stopped'):
+                    if getattr(self.environment.runner, "state", "") in (
+                        "stopping",
+                        "stopped",
+                    ):
                         logger.debug("Runner stopping, breaking streaming loop")
                         break
-                    
+
                     if line is not None:
                         bytes_received += len(line.encode("utf-8"))
 
@@ -509,7 +523,9 @@ class DifyWorkflowUser(HttpUser):
                                     break
 
                                 try:
-                                    parsed_event: ParsedEventData = json.loads(event_data)
+                                    parsed_event: ParsedEventData = json.loads(
+                                        event_data
+                                    )
                                     # Check for terminal events
                                     if parsed_event.get("event") in TERMINAL_EVENTS:
                                         logger.debug(
@@ -583,16 +599,20 @@ def on_test_start(environment: object, **kwargs: object) -> None:
 
     # Periodic stats reporting
     def report_stats() -> None:
-        if not hasattr(environment, 'runner'):
+        if not hasattr(environment, "runner"):
             return
         runner = environment.runner
-        while hasattr(runner, 'state') and runner.state not in ["stopped", "stopping"]:
+        while hasattr(runner, "state") and runner.state not in ["stopped", "stopping"]:
             time.sleep(5)  # Report every 5 seconds
-            if hasattr(runner, 'state') and runner.state == "running":
+            if hasattr(runner, "state") and runner.state == "running":
                 stats = metrics.get_stats()
 
                 # Only log on master node in distributed mode
-                is_master = not getattr(environment.runner, "worker_id", None) if hasattr(environment, 'runner') else True
+                is_master = (
+                    not getattr(environment.runner, "worker_id", None)
+                    if hasattr(environment, "runner")
+                    else True
+                )
                 if is_master:
                     # Clear previous lines and show updated stats
                     logger.info("\n" + "=" * 80)
@@ -623,8 +643,12 @@ def on_test_start(environment: object, **kwargs: object) -> None:
                     logger.info(
                         f"{'(TTFE in ms)':<25} {stats.ttfe_avg:>15.1f} {stats.ttfe_p50:>10.1f} {stats.ttfe_p95:>10.1f} {stats.ttfe_min:>10.1f} {stats.ttfe_max:>10.1f}"
                     )
-                    logger.info(f"{'Window Samples':<25} {stats.ttfe_samples:>15,d} (last {min(10000, stats.ttfe_total_samples):,d} samples)")
-                    logger.info(f"{'Total Samples':<25} {stats.ttfe_total_samples:>15,d}")
+                    logger.info(
+                        f"{'Window Samples':<25} {stats.ttfe_samples:>15,d} (last {min(10000, stats.ttfe_total_samples):,d} samples)"
+                    )
+                    logger.info(
+                        f"{'Total Samples':<25} {stats.ttfe_total_samples:>15,d}"
+                    )
 
                     # Inter-event latency
                     if stats.inter_event_latency_avg > 0:
@@ -647,9 +671,11 @@ def on_test_start(environment: object, **kwargs: object) -> None:
                     logger.info("=" * 80)
 
                     # Show Locust stats summary
-                    if hasattr(environment, 'stats') and hasattr(environment.stats, 'total'):
+                    if hasattr(environment, "stats") and hasattr(
+                        environment.stats, "total"
+                    ):
                         total = environment.stats.total
-                        if hasattr(total, 'num_requests') and total.num_requests > 0:
+                        if hasattr(total, "num_requests") and total.num_requests > 0:
                             logger.info(
                                 f"{'LOCUST STATS':<25} {'Requests':>12} {'Fails':>8} {'Avg (ms)':>12} {'Min':>8} {'Max':>8}"
                             )
@@ -716,7 +742,9 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
     logger.info(f"  {'95th Percentile:':<30} {stats.ttfe_p95:>10.1f} ms")
     logger.info(f"  {'Minimum:':<30} {stats.ttfe_min:>10.1f} ms")
     logger.info(f"  {'Maximum:':<30} {stats.ttfe_max:>10.1f} ms")
-    logger.info(f"  {'Window Samples:':<30} {stats.ttfe_samples:>10,d} (last {min(10000, stats.ttfe_total_samples):,d})")
+    logger.info(
+        f"  {'Window Samples:':<30} {stats.ttfe_samples:>10,d} (last {min(10000, stats.ttfe_total_samples):,d})"
+    )
     logger.info(f"  {'Total Samples:':<30} {stats.ttfe_total_samples:>10,d}")
 
     # Error summary
@@ -730,12 +758,18 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
     logger.info("=" * 80 + "\n")
 
     # Export machine-readable report (only on master node)
-    is_master = not getattr(environment.runner, 'worker_id', None) if hasattr(environment, 'runner') else True
+    is_master = (
+        not getattr(environment.runner, "worker_id", None)
+        if hasattr(environment, "runner")
+        else True
+    )
     if is_master:
         export_json_report(stats, test_duration, environment)
 
 
-def export_json_report(stats: MetricsSnapshot, duration: float, environment: object) -> None:
+def export_json_report(
+    stats: MetricsSnapshot, duration: float, environment: object
+) -> None:
     """Export metrics to JSON file for CI/CD analysis"""
 
     reports_dir = Path(__file__).parent / "reports"
@@ -746,9 +780,9 @@ def export_json_report(stats: MetricsSnapshot, duration: float, environment: obj
 
     # Access environment.stats.total attributes safely
     locust_stats: LocustStats | None = None
-    if hasattr(environment, 'stats') and hasattr(environment.stats, 'total'):
+    if hasattr(environment, "stats") and hasattr(environment.stats, "total"):
         total = environment.stats.total
-        if hasattr(total, 'num_requests') and total.num_requests > 0:
+        if hasattr(total, "num_requests") and total.num_requests > 0:
             locust_stats = LocustStats(
                 total_requests=total.num_requests,
                 total_failures=total.num_failures,
