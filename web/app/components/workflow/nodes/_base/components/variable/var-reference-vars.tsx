@@ -55,8 +55,6 @@ type ItemProps = {
   preferSchemaType?: boolean
 }
 
-const objVarTypes = [VarType.object, VarType.file]
-
 const Item: FC<ItemProps> = ({
   nodeId,
   title,
@@ -237,68 +235,6 @@ const Item: FC<ItemProps> = ({
         )}
       </PortalToFollowElemContent>
     </PortalToFollowElem >
-  )
-}
-
-const ObjectChildren: FC<ObjectChildrenProps> = ({
-  title,
-  nodeId,
-  objPath,
-  data,
-  onChange,
-  onHovering,
-  itemWidth,
-  isSupportFileVar,
-  preferSchemaType,
-}) => {
-  const currObjPath = objPath
-  const itemRef = useRef<HTMLDivElement>(null)
-  const [isItemHovering, setIsItemHovering] = useState(false)
-  useHover(itemRef, {
-    onChange: (hovering) => {
-      if (hovering) {
-        setIsItemHovering(true)
-      }
-      else {
-        setTimeout(() => {
-          setIsItemHovering(false)
-        }, 100)
-      }
-    },
-  })
-  const [isChildrenHovering, setIsChildrenHovering] = useState(false)
-  const isHovering = isItemHovering || isChildrenHovering
-  useEffect(() => {
-    onHovering && onHovering(isHovering)
-  }, [isHovering])
-  useEffect(() => {
-    onHovering && onHovering(isItemHovering)
-  }, [isItemHovering])
-  // absolute top-[-2px]
-  return (
-    <div ref={itemRef} className=' space-y-1 rounded-lg border border-gray-200 bg-white shadow-lg' style={{
-      right: itemWidth ? itemWidth - 10 : 215,
-      minWidth: 252,
-    }}>
-      <div className='flex h-[22px] items-center px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
-      {
-        (data && data.length > 0)
-        && data.map((v, i) => (
-          <Item
-            key={i}
-            nodeId={nodeId}
-            title={title}
-            objPath={objPath}
-            itemData={v}
-            onChange={onChange}
-            onHovering={setIsChildrenHovering}
-            isSupportFileVar={isSupportFileVar}
-            isException={v.isException}
-            preferSchemaType={preferSchemaType}
-          />
-        ))
-      }
-    </div>
   )
 }
 
