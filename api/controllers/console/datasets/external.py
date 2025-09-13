@@ -1,10 +1,10 @@
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, reqparse
+from flask_restx import Resource, fields, marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.dataset_fields import dataset_detail_fields
@@ -21,7 +21,18 @@ def _validate_name(name):
     return name
 
 
+@console_ns.route("/datasets/external-knowledge-api")
 class ExternalApiTemplateListApi(Resource):
+    @api.doc("get_external_api_templates")
+    @api.doc(description="Get external knowledge API templates")
+    @api.doc(
+        params={
+            "page": "Page number (default: 1)",
+            "limit": "Number of items per page (default: 20)",
+            "keyword": "Search keyword",
+        }
+    )
+    @api.response(200, "External API templates retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -151,7 +162,24 @@ class ExternalApiUseCheckApi(Resource):
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 
 
+@console_ns.route("/datasets/external")
 class ExternalDatasetCreateApi(Resource):
+    @api.doc("create_external_dataset")
+    @api.doc(description="Create external knowledge dataset")
+    @api.expect(
+        api.model(
+            "CreateExternalDatasetRequest",
+            {
+                "external_knowledge_api_id": fields.String(required=True, description="External knowledge API ID"),
+                "external_knowledge_id": fields.String(required=True, description="External knowledge ID"),
+                "name": fields.String(required=True, description="Dataset name"),
+                "description": fields.String(description="Dataset description"),
+            },
+        )
+    )
+    @api.response(201, "External dataset created successfully", dataset_detail_fields)
+    @api.response(400, "Invalid parameters")
+    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -247,12 +275,3 @@ class BedrockRetrievalApi(Resource):
             args["retrieval_setting"], args["query"], args["knowledge_id"]
         )
         return result, 200
-
-
-api.add_resource(ExternalKnowledgeHitTestingApi, "/datasets/<uuid:dataset_id>/external-hit-testing")
-api.add_resource(ExternalDatasetCreateApi, "/datasets/external")
-api.add_resource(ExternalApiTemplateListApi, "/datasets/external-knowledge-api")
-api.add_resource(ExternalApiTemplateApi, "/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
-api.add_resource(ExternalApiUseCheckApi, "/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>/use-check")
-# this api is only for internal test
-api.add_resource(BedrockRetrievalApi, "/test/retrieval")
