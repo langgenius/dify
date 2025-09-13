@@ -39,7 +39,7 @@ class DifyClient:
         params = {"user": user}
         return self._send_request("GET", "/parameters", params=params)
 
-    def file_upload(self, user: str, files):
+    def file_upload(self, user: str, files: dict):
         data = {"user": user}
         return self._send_request_with_files(
             "POST", "/files/upload", data=data, files=files
