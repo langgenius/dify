@@ -119,6 +119,7 @@ const FormItem = ({
         && (
           <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
             <CodeEditor
+              nodeId={nodeId}
               value={value}
               isExpand
               noWrapper
