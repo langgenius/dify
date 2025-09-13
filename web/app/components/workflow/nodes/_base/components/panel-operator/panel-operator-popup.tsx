@@ -16,7 +16,6 @@ import {
 } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 
 type PanelOperatorPopupProps = {
   id: string
@@ -43,7 +42,7 @@ const PanelOperatorPopup = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const edge = edges.find(edge => edge.target === id)
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
-  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop
+  const showChangeBlock = !nodeMetaData.isTypeFixed && !nodesReadOnly
   const isChildNode = !!(data.isInIteration || data.isInLoop)
 
   return (
@@ -85,31 +84,37 @@ const PanelOperatorPopup = ({
         )
       }
       {
-        data.type !== BlockEnum.Start && !nodesReadOnly && (
+        !nodesReadOnly && (
           <>
-            <div className='p-1'>
-              <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-                onClick={() => {
-                  onClosePopup()
-                  handleNodesCopy(id)
-                }}
-              >
-                {t('workflow.common.copy')}
-                <ShortcutsName keys={['ctrl', 'c']} />
-              </div>
-              <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-                onClick={() => {
-                  onClosePopup()
-                  handleNodesDuplicate(id)
-                }}
-              >
-                {t('workflow.common.duplicate')}
-                <ShortcutsName keys={['ctrl', 'd']} />
-              </div>
-            </div>
-            <div className='h-px bg-divider-regular'></div>
+            {
+              !nodeMetaData.isSingleton && (
+                <>
+                  <div className='p-1'>
+                    <div
+                      className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                      onClick={() => {
+                        onClosePopup()
+                        handleNodesCopy(id)
+                      }}
+                    >
+                      {t('workflow.common.copy')}
+                      <ShortcutsName keys={['ctrl', 'c']} />
+                    </div>
+                    <div
+                      className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                      onClick={() => {
+                        onClosePopup()
+                        handleNodesDuplicate(id)
+                      }}
+                    >
+                      {t('workflow.common.duplicate')}
+                      <ShortcutsName keys={['ctrl', 'd']} />
+                    </div>
+                  </div>
+                  <div className='h-px bg-divider-regular'></div>
+                </>
+              )
+            }
             {
               !nodeMetaData.isUndeletable && (
                 <>
@@ -117,7 +122,7 @@ const PanelOperatorPopup = ({
                     <div
                       className={`
                       flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary
-                      hover:bg-state-destructive-hover hover:text-red-500
+                      hover:bg-state-destructive-hover hover:text-text-destructive
                       `}
                       onClick={() => handleNodeDelete(id)}
                     >

@@ -19,26 +19,9 @@ export const useAvailableNodesMetaData = () => {
         ...dataSourceDefault.defaultValue,
         _dataSourceStartToAdd: true,
       },
-      metaData: {
-        ...dataSourceDefault.metaData,
-        isStart: true,
-        isRequired: true,
-      },
     },
-    {
-      ...knowledgeBaseDefault,
-      metaData: {
-        ...knowledgeBaseDefault.metaData,
-        isRequired: true,
-      },
-    },
-    {
-      ...dataSourceEmptyDefault,
-      metaData: {
-        ...dataSourceEmptyDefault.metaData,
-        isUndeletable: true,
-      },
-    },
+    knowledgeBaseDefault,
+    dataSourceEmptyDefault,
   ], [])
 
   const prefixLink = useMemo(() => {

@@ -15,6 +15,8 @@ const i18nPrefix = 'workflow.errorMsg'
 const metaData = genNodeMetaData({
   sort: -1,
   type: BlockEnum.DataSource,
+  isStart: true,
+  isRequired: true,
 })
 const nodeDefault: NodeDefault<DataSourceNodeType> = {
   metaData,

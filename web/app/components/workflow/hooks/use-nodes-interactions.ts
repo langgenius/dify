@@ -1256,15 +1256,26 @@ export const useNodesInteractions = () => {
     }
     else {
       // If no nodeId is provided, fall back to the current behavior
-      const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.DataSource && node.data.type !== BlockEnum.KnowledgeBase && node.data.type !== BlockEnum.DataSourceEmpty
-        && !node.data.isInIteration && !node.data.isInLoop)
+      const bundledNodes = nodes.filter((node) => {
+        if (!node.data._isBundled)
+          return false
+        const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
+        if (metaData.isSingleton)
+          return false
+        return !node.data.isInIteration && !node.data.isInLoop
+      })
 
       if (bundledNodes.length) {
         setClipboardElements(bundledNodes)
         return
       }
 
-      const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.LoopEnd && node.data.type !== BlockEnum.DataSource)
+      const selectedNode = nodes.find((node) => {
+        if (!node.data.selected)
+          return false
+        const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
+        return !metaData.isSingleton
+      })
 
       if (selectedNode)
         setClipboardElements([selectedNode])

@@ -329,6 +329,8 @@ export type NodeDefault<T = {}> = {
     isRequired?: boolean
     isUndeletable?: boolean
     isStart?: boolean
+    isSingleton?: boolean
+    isTypeFixed?: boolean
   }
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
