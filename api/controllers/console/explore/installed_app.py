@@ -116,14 +116,16 @@ class InstalledAppsListApi(Resource):
         parser.add_argument("app_id", type=str, required=True, help="Invalid app_id")
         args = parser.parse_args()
 
-        recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == args["app_id"]).first()
+        recommended_app = db.session.scalars(
+            select(RecommendedApp).where(RecommendedApp.app_id == args["app_id"]).limit(1)
+        ).first()
         if recommended_app is None:
             raise NotFound("App not found")
 
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
         current_tenant_id = current_user.current_tenant_id
-        app = db.session.query(App).where(App.id == args["app_id"]).first()
+        app = db.session.scalars(select(App).where(App.id == args["app_id"]).limit(1)).first()
 
         if app is None:
             raise NotFound("App not found")
@@ -131,11 +133,11 @@ class InstalledAppsListApi(Resource):
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")
 
-        installed_app = (
-            db.session.query(InstalledApp)
+        installed_app = db.session.scalars(
+            select(InstalledApp)
             .where(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if installed_app is None:
             # todo: position

@@ -177,7 +177,24 @@ class TestAccountService:
         query_results = {("Account", "email", "test@example.com"): mock_account}
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
+        # Ensure select(...).where(...).order_by(...).limit(...).first() returns None for both checks
+        select_result = MagicMock()
+        mock_db_dependencies["db"].session.scalars.return_value = select_result
+
+        def _make_chain_none():
+            chain = MagicMock()
+            chain.order_by.return_value = chain
+            chain.limit.return_value = chain
+            chain.first.return_value = None
+            return chain
+
+        # First None for available_ta check; second None for existing tenant member check
+        select_result.where.side_effect = [_make_chain_none(), _make_chain_none()]
+
         mock_password_dependencies["compare_password"].return_value = True
+
+        # scalars(select(Account).filter_by(email=...)).first() should return the mock account
+        mock_db_dependencies["db"].session.scalars.return_value.first.return_value = mock_account
 
         # Execute test
         result = AccountService.authenticate("test@example.com", "password")
@@ -192,6 +209,9 @@ class TestAccountService:
         query_results = {("Account", "email", "notfound@example.com"): None}
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
+        # No account found via scalars
+        mock_db_dependencies["db"].session.scalars.return_value.first.return_value = None
+
         # Execute test and verify exception
         self._assert_exception_raised(
             AccountPasswordError, AccountService.authenticate, "notfound@example.com", "password"
@@ -205,6 +225,9 @@ class TestAccountService:
         # Setup smart database query mock
         query_results = {("Account", "email", "banned@example.com"): mock_account}
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+
+        # Return banned account via scalars
+        mock_db_dependencies["db"].session.scalars.return_value.first.return_value = mock_account
 
         # Execute test and verify exception
         self._assert_exception_raised(AccountLoginError, AccountService.authenticate, "banned@example.com", "password")
@@ -235,6 +258,9 @@ class TestAccountService:
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
         mock_password_dependencies["compare_password"].return_value = True
+
+        # Return pending account via scalars
+        mock_db_dependencies["db"].session.scalars.return_value.first.return_value = mock_account
 
         # Execute test
         result = AccountService.authenticate("pending@example.com", "password")
@@ -429,6 +455,9 @@ class TestAccountService:
         }
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
+        # First scalars(): account; second scalars(): current tenant join
+        mock_db_dependencies["db"].session.scalars.return_value.first.side_effect = [mock_account, mock_tenant_join]
+
         # Mock datetime
         with patch("services.account_service.datetime") as mock_datetime:
             mock_now = datetime.now()
@@ -447,6 +476,9 @@ class TestAccountService:
         # Setup smart database query mock - no matching results
         query_results = {("Account", "id", "non-existent-user"): None}
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+
+        # No account found
+        mock_db_dependencies["db"].session.scalars.return_value.first.return_value = None
 
         # Execute test
         result = AccountService.load_user("non-existent-user")
@@ -484,6 +516,9 @@ class TestAccountService:
         }
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
+        # First scalars(): account; second scalars(): no current tenant join
+        mock_db_dependencies["db"].session.scalars.return_value.first.side_effect = [mock_account, None]
+
         # Mock datetime
         with patch("services.account_service.datetime") as mock_datetime:
             mock_now = datetime.now()
@@ -510,6 +545,9 @@ class TestAccountService:
             ("TenantAccountJoin", "order_by", "first_available"): None,  # No available tenants
         }
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+
+        # First scalars(): account; second scalars(): no current tenant join
+        mock_db_dependencies["db"].session.scalars.return_value.first.side_effect = [mock_account, None]
 
         # Mock datetime
         with patch("services.account_service.datetime") as mock_datetime:
@@ -1199,16 +1237,14 @@ class TestRegisterService:
 
         # Mock database queries - need to mock the Session query
         mock_session = MagicMock()
-        mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
+        mock_session.scalars.return_value.first.return_value = mock_existing_account
 
         with patch("services.account_service.Session") as mock_session_class:
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
 
-            # Mock the db.session.query for TenantAccountJoin
-            mock_db_query = MagicMock()
-            mock_db_query.filter_by.return_value.first.return_value = None  # No existing member
-            mock_db_dependencies["db"].session.query.return_value = mock_db_query
+            # Mock the db.session.scalars for TenantAccountJoin existence check
+            mock_db_dependencies["db"].session.scalars.return_value.first.return_value = None  # No existing member
 
             # Mock TenantService methods
             with (
@@ -1379,13 +1415,13 @@ class TestRegisterService:
             mock_get_invitation_by_token.return_value = invitation_data
 
             # Mock database queries - complex query mocking
-            mock_query1 = MagicMock()
-            mock_query1.where.return_value.first.return_value = mock_tenant
+            # db.session.scalars(select(Tenant)...).first() -> tenant
+            mock_db_dependencies["db"].session.scalars.return_value.first.return_value = mock_tenant
 
+            # db.session.query(Account, TenantAccountJoin.role).join(...).where(...).first() -> (account, role)
             mock_query2 = MagicMock()
             mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
-
-            mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
+            mock_db_dependencies["db"].session.query.return_value = mock_query2
 
             # Execute test
             result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")

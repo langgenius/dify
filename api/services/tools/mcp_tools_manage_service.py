@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
 from core.helper import encrypter
@@ -59,22 +59,22 @@ class MCPToolManageService:
 
     @staticmethod
     def get_mcp_provider_by_provider_id(provider_id: str, tenant_id: str) -> MCPToolProvider:
-        res = (
-            db.session.query(MCPToolProvider)
+        res = db.session.scalars(
+            select(MCPToolProvider)
             .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not res:
             raise ValueError("MCP tool not found")
         return res
 
     @staticmethod
     def get_mcp_provider_by_server_identifier(server_identifier: str, tenant_id: str) -> MCPToolProvider:
-        res = (
-            db.session.query(MCPToolProvider)
+        res = db.session.scalars(
+            select(MCPToolProvider)
             .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not res:
             raise ValueError("MCP tool not found")
         return res
@@ -94,8 +94,8 @@ class MCPToolManageService:
         headers: dict[str, str] | None = None,
     ) -> ToolProviderApiEntity:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
-        existing_provider = (
-            db.session.query(MCPToolProvider)
+        existing_provider = db.session.scalars(
+            select(MCPToolProvider)
             .where(
                 MCPToolProvider.tenant_id == tenant_id,
                 or_(
@@ -104,8 +104,8 @@ class MCPToolManageService:
                     MCPToolProvider.server_identifier == server_identifier,
                 ),
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if existing_provider:
             if existing_provider.name == name:
                 raise ValueError(f"MCP tool {name} already exists")

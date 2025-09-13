@@ -6,6 +6,7 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import reqparse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
@@ -29,14 +30,9 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             if not user_id:
                 user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 
-            user_model = (
-                session.query(EndUser)
-                .where(
-                    EndUser.session_id == user_id,
-                    EndUser.tenant_id == tenant_id,
-                )
-                .first()
-            )
+            user_model = session.scalars(
+                select(EndUser).where(EndUser.session_id == user_id, EndUser.tenant_id == tenant_id).limit(1)
+            ).first()
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
@@ -75,13 +71,7 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
                 user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 
             try:
-                tenant_model = (
-                    db.session.query(Tenant)
-                    .where(
-                        Tenant.id == tenant_id,
-                    )
-                    .first()
-                )
+                tenant_model = db.session.scalars(select(Tenant).where(Tenant.id == tenant_id).limit(1)).first()
             except Exception:
                 raise ValueError("tenant not found")
 

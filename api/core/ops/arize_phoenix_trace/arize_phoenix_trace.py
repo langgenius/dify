@@ -308,9 +308,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
-            )
+            end_user_data: Optional[EndUser] = db.session.scalars(
+                select(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).limit(1)
+            ).first()
             if end_user_data is not None:
                 message_metadata["end_user_id"] = end_user_data.session_id
 

@@ -26,13 +26,15 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
     """
     start_at = time.perf_counter()
 
-    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+    dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
     if not dataset:
         logger.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
         db.session.close()
         return
 
-    dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
+    dataset_document = db.session.scalars(
+        select(DatasetDocument).where(DatasetDocument.id == document_id).limit(1)
+    ).first()
 
     if not dataset_document:
         logger.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))

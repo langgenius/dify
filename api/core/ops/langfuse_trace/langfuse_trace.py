@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from langfuse import Langfuse  # type: ignore
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -242,9 +243,9 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: Optional[EndUser] = db.session.scalars(
+                select(EndUser).where(EndUser.id == message_data.from_end_user_id).limit(1)
+            ).first()
             if end_user_data is not None:
                 user_id = end_user_data.session_id
                 metadata["user_id"] = user_id

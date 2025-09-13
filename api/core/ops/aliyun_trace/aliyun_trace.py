@@ -123,9 +123,9 @@ class AliyunDataTrace(BaseTraceInstance):
 
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: Optional[EndUser] = db.session.scalars(
+                select(EndUser).where(EndUser.id == message_data.from_end_user_id).limit(1)
+            ).first()
             if end_user_data is not None:
                 user_id = end_user_data.session_id
 

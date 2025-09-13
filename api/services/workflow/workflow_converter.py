@@ -1,6 +1,8 @@
 import json
 from typing import Any, Optional
 
+from sqlalchemy import select
+
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -630,11 +632,11 @@ class WorkflowConverter:
         :param api_based_extension_id: api based extension id
         :return:
         """
-        api_based_extension = (
-            db.session.query(APIBasedExtension)
+        api_based_extension = db.session.scalars(
+            select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not api_based_extension:
             raise ValueError(f"API Based Extension not found, id: {api_based_extension_id}")

@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import Optional, cast
 
 import json_repair
+from sqlalchemy import select
 
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
@@ -420,7 +421,7 @@ class LLMGenerator:
     ):
         from services.workflow_service import WorkflowService
 
-        app: App | None = db.session.query(App).where(App.id == flow_id).first()
+        app: App | None = db.session.scalars(select(App).where(App.id == flow_id).limit(1)).first()
         if not app:
             raise ValueError("App not found.")
         workflow = WorkflowService().get_draft_workflow(app_model=app)

@@ -349,15 +349,15 @@ class ModelLoadBalancingService:
 
             if credential_id:
                 if config_from == "predefined-model":
-                    credential_record = (
-                        db.session.query(ProviderCredential)
+                    credential_record = db.session.scalars(
+                        select(ProviderCredential)
                         .filter_by(
                             id=credential_id,
                             tenant_id=tenant_id,
                             provider_name=provider_configuration.provider.provider,
                         )
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
                 else:
                     credential_record = (
                         db.session.query(ProviderModelCredential)
