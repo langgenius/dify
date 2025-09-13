@@ -2,13 +2,14 @@
 Graph state manager that combines node, edge, and execution tracking.
 """
 
-import queue
 import threading
 from collections.abc import Sequence
 from typing import TypedDict, final
 
 from core.workflow.enums import NodeState
 from core.workflow.graph import Edge, Graph
+
+from .ready_queue import ReadyQueue
 
 
 class EdgeStateAnalysis(TypedDict):
@@ -21,7 +22,7 @@ class EdgeStateAnalysis(TypedDict):
 
 @final
 class GraphStateManager:
-    def __init__(self, graph: Graph, ready_queue: queue.Queue[str]) -> None:
+    def __init__(self, graph: Graph, ready_queue: ReadyQueue) -> None:
         """
         Initialize the state manager.
 

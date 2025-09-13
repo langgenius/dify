@@ -38,6 +38,7 @@ from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
+from .ready_queue import InMemoryReadyQueue
 from .response_coordinator import ResponseStreamCoordinator
 from .worker_management import WorkerPool
 
@@ -104,7 +105,7 @@ class GraphEngine:
 
         # === Execution Queues ===
         # Queue for nodes ready to execute
-        self._ready_queue: queue.Queue[str] = queue.Queue()
+        self._ready_queue = InMemoryReadyQueue()
         # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
 
